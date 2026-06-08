@@ -1,6 +1,6 @@
 # LLM Cloud Deployment and Fine-Tuning
 
-Use this directory for cloud-server model deployment and later fine-tuning. The local machine prepares code and pushes it to GitHub; the cloud server clones the repository, installs dependencies, and serves the model.
+Use this directory for cloud-server model deployment and later fine-tuning. The local machine prepares code and pushes it to GitHub; the cloud server clones the repository, installs dependencies, and serves the model. On Windows cloud servers, run the deployment inside WSL2/Ubuntu.
 
 Default base model: `google/gemma-4-12B-it`.
 
@@ -20,7 +20,7 @@ On the cloud server:
 git clone https://github.com/y779325643-art/cuc-ai-fpga.git
 cd cuc-ai-fpga
 bash LLM/scripts/setup_server.sh
-huggingface-cli login
+hf auth login
 ```
 
 Use a Hugging Face account that has accepted the `google/gemma-4-12B-it` model license/access terms.
