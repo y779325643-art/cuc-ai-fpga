@@ -1,0 +1,138 @@
+{
+  "output": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/output/HNAI-FPGA_team_technical_sync_redesign.pptx",
+  "outputBytes": 82370,
+  "slideCount": 12,
+  "slideSize": {
+    "width": 1280,
+    "height": 720
+  },
+  "previewDir": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview",
+  "previewPaths": [
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-01.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-02.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-03.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-04.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-05.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-06.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-07.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-08.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-09.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-10.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-11.png",
+    "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/preview/slide-12.png"
+  ],
+  "layoutDir": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout",
+  "layoutResults": [
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-01.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-02.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-03.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-04.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-05.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-06.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-07.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-08.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-09.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-10.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-11.layout.json"
+    },
+    {
+      "layoutPath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/layout/slide-12.layout.json"
+    }
+  ],
+  "contactSheet": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt-redesign/qa/contact-sheet.png",
+  "slides": [
+    {
+      "index": 1,
+      "requestedSlideNumber": 1,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-01.mjs",
+      "exportName": "slide01"
+    },
+    {
+      "index": 2,
+      "requestedSlideNumber": 2,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-02.mjs",
+      "exportName": "slide02"
+    },
+    {
+      "index": 3,
+      "requestedSlideNumber": 3,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-03.mjs",
+      "exportName": "slide03"
+    },
+    {
+      "index": 4,
+      "requestedSlideNumber": 4,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-04.mjs",
+      "exportName": "slide04"
+    },
+    {
+      "index": 5,
+      "requestedSlideNumber": 5,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-05.mjs",
+      "exportName": "slide05"
+    },
+    {
+      "index": 6,
+      "requestedSlideNumber": 6,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-06.mjs",
+      "exportName": "slide06"
+    },
+    {
+      "index": 7,
+      "requestedSlideNumber": 7,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-07.mjs",
+      "exportName": "slide07"
+    },
+    {
+      "index": 8,
+      "requestedSlideNumber": 8,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-08.mjs",
+      "exportName": "slide08"
+    },
+    {
+      "index": 9,
+      "requestedSlideNumber": 9,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-09.mjs",
+      "exportName": "slide09"
+    },
+    {
+      "index": 10,
+      "requestedSlideNumber": 10,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-10.mjs",
+      "exportName": "slide10"
+    },
+    {
+      "index": 11,
+      "requestedSlideNumber": 11,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-11.mjs",
+      "exportName": "slide11"
+    },
+    {
+      "index": 12,
+      "requestedSlideNumber": 12,
+      "modulePath": "/Users/yangaowen/Documents/Communication University of China/Project/HNAI-FPGA/outputs/team-sync-ppt/slides-redesign/slide-12.mjs",
+      "exportName": "slide12"
+    }
+  ]
+}

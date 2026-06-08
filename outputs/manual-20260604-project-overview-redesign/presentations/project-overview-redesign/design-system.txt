@@ -1,0 +1,8 @@
+slide size: 1280x720
+palette: deep navy, technical blue, cyan, mint, amber, red, light canvas
+type: Chinese sans-serif with Aptos/monospace fallbacks
+content rule: one claim title + one proof object + one support note
+table rule: editable cells, larger row height, no dense paragraph tables
+diagram rule: left-to-right reading, large nodes, direct labels
+code rule: show representative snippets only
+footer rule: quiet source footer and page marker

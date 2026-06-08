@@ -1,0 +1,24 @@
+task mode: create
+primary deck-profile: engineering-platform
+secondary gates: strategy-leadership for team roadmap and ownership clarity
+
+required proof objects:
+- Seven-layer platform architecture map
+- FPGA toolchain closed-loop workflow
+- Resource, timing, and power evidence tied to Vivado/Verilator reports
+- XDC and deployment readiness slide
+- Team workstream and near-term roadmap slide
+
+source requirements:
+- HNAI-FPGA business plan docx
+- HNAI-FPGA IEEE Access manuscript Chinese translation docx
+- Existing rendered business plan PDF/PNG for source consistency checks
+
+known missing inputs:
+- No live Vivado project, RTL source tree, board schematic, or XDC files are present in the workspace.
+- Board-level validation remains explicitly marked as a next-step item.
+
+QA gates:
+- Technical labels must remain precise.
+- Every quantitative claim must come from source text.
+- The deck should read as an internal technical sync, not an investor pitch.

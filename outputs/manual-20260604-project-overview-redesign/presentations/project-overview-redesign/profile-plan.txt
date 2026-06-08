@@ -1,0 +1,6 @@
+task mode: create
+primary deck-profile: engineering-platform
+secondary gates: preserve source story; improve projector readability
+required proof objects: flow diagrams, comparison tables, code/pseudo-code panels, roadmap, glossary matrix
+source requirements: use existing project overview PPT and Markdown; do not invent external metrics
+qa gates: 37 slides, nonblank render, priority slides 03/10/20/25/37 visibly clearer

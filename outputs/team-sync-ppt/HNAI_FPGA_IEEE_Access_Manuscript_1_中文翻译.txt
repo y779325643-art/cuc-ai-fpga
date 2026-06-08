@@ -1,0 +1,151 @@
+HNAI-FPGA：一种由自然语言驱动、经约束验证的生成式平台，用于进化式与强化学习 AI 系统的 FPGA 设计
+作者 A，作者 B，作者 C，作者 D
+电气与计算机工程系 -- [机构] -- 投稿至 IEEE Access
+摘要
+现有 AI 辅助 FPGA 设计工具（如 Vitis AI、Intel FPGA AI Suite、hls4ml 和 FINN）主要局限于神经网络推理部署，并且通常要求以专家编写的模型文件或 C/C++ 内核作为入口。通用大型语言模型（LLM）能够从自然语言生成 RTL 片段，但由于缺少嵌入式物理约束验证，生成设计的时序闭合失败率超过 65%，资源超限率超过 22%。本文提出 HNAI-FPGA：一种经约束验证的生成式架构平台，可接受自然语言硬件需求，并为既有工具链尚不支持的非神经网络 AI 算法生成完整可部署的 FPGA 设计包，包括 RTL/HLS 代码、时序约束、仿真测试平台、综合报告和可生成比特流的检查点。平台形式化了以硬件意图规范（HIS）中间表示、机器可执行硬规则检查器、多物理仿真反馈和设计空间探索引擎为核心的七层闭环架构。本文构建两个应用基准：GA-FPGA，覆盖 0-1 背包、旅行商和任务调度的遗传算法加速；RL-FPGA，覆盖 GridWorld、Pong-lite 和路径规划中的 Q-learning 与 DQN 智能体。在 Zynq UltraScale+、Zynq-7020 和 Artix-7 200T 目标平台上的六个基准配置中，HNAI-FPGA 达到 96.4% 的 RTL 编译成功率（基础 LLM 为 61.2%）、88.7% 的时序闭合率（基础 LLM 为 34.1%），相对 CPU 基线获得 29.4 倍至 37.9 倍的平均吞吐加速，并且相较专家手工 FPGA 开发将端到端设计时间缩短 94% 至 97%。这些结果表明，HNAI-FPGA 能够将 FPGA 设计从专家专属的工具驱动流程转变为面向算法研究者、领域专家和教育者的 AI 驱动、约束验证平台。
+关键词
+FPGA 设计自动化；硬件原生人工智能（HNAI）；生成式硬件；约束验证；遗传算法加速；强化学习 FPGA；HLS；自然语言接口；硬件意图规范；设计空间探索。
+I. 引言
+现场可编程门阵列（FPGA）在 AI 硬件生态中占据独特位置：它们具备可重构性、确定性低时延执行、较高能效，并能实现并不自然映射到 GPU 张量核的非标准 AI 算法。从边缘推理加速器，到自适应控制系统、强化学习智能体和进化优化引擎，FPGA 支持的 AI 计算类别比单纯面向推理的加速器更广。然而，FPGA 设计仍是要求极高的工程学科，需要同时掌握 HDL、HLS、时序约束、资源映射以及反复的工具链交互。
+定制 AI 算法的典型 FPGA 设计流程包括：算法规格说明、架构并行策略选择、手工 HLS C++ 或 RTL 编码、测试平台开发与功能仿真、综合与时序分析、布局布线、约束迭代收紧，以及比特流生成和板级验证。即便对经验丰富的工程师而言，每个设计通常也需要 48 到 120 小时；从算法意图到时序闭合实现之间，往往需要超过 5 到 10 轮迭代。对于机器学习、优化或控制领域中并非 FPGA 专家的研究者而言，这一门槛几乎是阻断性的。
+近期 AI 辅助 EDA 工具已开始处理这一问题的若干局部环节。AlphaChip [2] 和 Ricursive Intelligence [3] 将强化学习用于芯片布局规划，但目标用户是芯片设计者而非 FPGA 算法研究者。Vitis AI [4] 和 Intel FPGA AI Suite [5] 简化了深度神经网络推理部署，却将输入限制为预训练的 Keras、PyTorch 或 TensorFlow 模型，不支持遗传算法、表格式强化学习等非 DNN 算法。hls4ml [6] 与 FINN [7] 专注于量化神经网络到 HLS/RTL 的转换，推理时延表现优秀，但同样要求已训练模型作为输入，不能生成系统级、多领域架构。将通用 LLM 用于 RTL 生成的研究 [8,9] 展现了代码生成潜力，但由于缺乏物理约束验证，复杂设计的时序闭合率低于 40%，并且容易系统性超出资源预算。
+本文研究的问题是：生成式 AI 平台能否接受自然语言硬件需求，并在不要求用户具备专家级 HLS 或 RTL 编码能力的情况下，为非神经网络 AI 算法生成经约束验证、可部署的 FPGA 设计？要回答这一问题，系统必须超越单纯代码生成，建立连接自然语言解析、算法到架构映射、RTL/HLS 综合、物理约束检查、仿真反馈和部署打包的闭环验证流水线。
+A. 主要贡献
+本文的主要贡献包括：第一，形式化定义自然语言到 FPGA（NL2FPGA）问题，明确输入空间、输出空间和优化目标，为此前较为松散的工作提供严格学术基础。第二，提出硬件意图规范（Hardware Intent Specification, HIS），作为连接自然语言意图与硬件约束验证的结构化中间表示。第三，给出七层 HNAI-FPGA 架构，并对每层的功能角色、输入输出接口、算法绑定和工具链依赖作形式化说明。第四，构建 GA-FPGA 与 RL-FPGA 基准套件，覆盖背包、TSP、调度、GridWorld、Pong-lite 和路径规划六个可复现实验任务。第五，开展综合实验评估，将 HNAI-FPGA 与 Vitis AI、hls4ml、FINN、Vitis HLS、ChipNeMo、LLM-to-RTL 以及 CPU/GPU 基线进行受控比较，并通过消融实验量化各层对 RTL 正确性、时序闭合、资源效率和设计时间缩短的贡献。
+B. 论文结构
+第二节综述相关工作。第三节形式化 NL2FPGA 问题并介绍 HIS 模式。第四节描述七层 HNAI-FPGA 架构。第五节和第六节分别给出 GA-FPGA 与 RL-FPGA 案例研究。第七节报告实验结果。第八节讨论其对 FPGA 教育、产业和平台经济的影响。第九节说明局限性。第十节总结全文。
+II. 相关工作
+AlphaChip [2] 首次将深度强化学习用于芯片布局规划，证明 RL 智能体能够以超越人工水平的效率放置 TPU 级设计中的宏单元。其创始团队随后成立 Ricursive Intelligence [3]，面向大型云厂商将 AI 应用于完整芯片设计流程。尽管这些工作是 AI for EDA 的标志性进展，但其范围限于硅芯片设计，需要专家提供 RTL 网表作为输入，并未解决系统级多物理设计或非 DNN 算法。ChipNeMo [8] 通过领域自适应预训练将通用 LLM 适配到芯片设计流程，在 EDA 脚本生成和硬件问答方面取得改进，但未包含物理约束验证或 FPGA 专用设计生成。
+Vitis AI [4] 为 AMD/Xilinx FPGA 平台部署预训练 CNN/DNN 模型提供量化、编译和运行时 IP 等完整工具链。Intel FPGA AI Suite [5] 通过 OpenVINO 与 Quartus 集成为 Intel 平台提供类似能力。二者在 DNN 工作负载上推理效率优异，但架构上限定于前馈神经网络，不能为非 DNN 算法生成硬件。hls4ml [6] 将训练好的 Keras 模型转换为 HLS C++，FINN [7] 为量化神经网络生成数据流架构。它们代表神经网络 FPGA 部署的先进水平，却并不处理算法级硬件生成。
+多项近期工作直接将 LLM 用于 RTL 生成。Thakur 等 [9] 在 Verilog 任务集上评估 GPT-4，简单模块功能正确率为 58.6%。AutoChip [10] 通过仿真反馈迭代修正 LLM 生成的 RTL，将正确率提高到约 70%。RTLCoder [11] 在整理后的 RTL 语料上微调开源 LLM，在 VerilogEval 上达到有竞争力的性能。这些方法说明 LLM 能生成中等复杂度模块的语法和功能正确 RTL 片段，但没有强制执行跨领域物理约束，例如时序、功耗、资源和接口，也未解决完整 AI 算法的系统级架构生成。
+大量工作通过专家手工设计实现遗传算法 [12,13] 和强化学习 [14,15] 的 FPGA 加速。Vakili 等 [12] 在 Virtex-7 上实现基于 GA 的 VLSI 布局优化器，相对 CPU 加速 18.3 倍。Yoshida 等 [13] 为 TSP 实现并行 GA 加速器，相对 Intel Core i7 加速 89 倍。强化学习方面，El-Said 等 [14] 在 Zynq-7020 上实现机器人导航 Q-learning 智能体，达到亚微秒决策时延。这些工作确认 FPGA 是 GA/RL 加速的有效目标，但全部依赖专家 RTL 或 HLS 编码，而这正是 HNAI-FPGA 试图消除的瓶颈。
+更广义的 AI 原生硬件设计平台仍处于早期。Budak 等 [16] 将强化学习用于模拟电路拓扑选择，展示了运算放大器电路的自动尺寸优化。Liao 等 [17] 通过 RL 自动化模拟拓扑选择，并获得可与专家设计竞争的性能。最近，HNAI 框架 [18] 提出硬件原生 AI 概念，包含 18 维设计空间和八层约束验证流水线；HNAI-FPGA 将该框架具体实例化到 FPGA 目标上，增加 NL2FPGA 形式化、HIS 模式、算法到架构映射器以及 GA/RL 基准套件。
+III. 问题形式化
+我们将自然语言到 FPGA（NL2FPGA）设计问题形式化为约束优化任务。令 R 为自然语言需求字符串，用于描述算法、性能目标、平台、接口和部署语境；P 为目标 FPGA 平台描述符，包括器件系列、逻辑容量、存储资源、I/O 与时钟约束；A 为算法类别标识；C={c_1,c_2,...,c_n} 为 n 个物理与工程硬约束集合；V 为验证预言机，即黄金模型或参考实现。输出设计包定义为 D={HIS, arch, RTL, HLS, XDC, TB, R_synth, R_timing, R_power, bitstream, API, manifest}。其中 HIS 为硬件意图规范，arch 为架构描述，RTL/HLS 为生成的硬件代码，XDC 为时序约束文件，TB 为测试平台，R_synth/R_timing/R_power 为工具生成报告，bitstream/API/manifest 为部署工件。
+HNAI-FPGA 的优化目标为：D* = argmax_D [Perf(D) * Correct(D,V)]，约束条件是对所有 c_i 属于 C，Satisfy(D,C)=TRUE。Perf(D) 是吞吐、时延和能效的加权性能指标；Correct(D,V) 是相对黄金模型的功能正确性分数；Satisfy(D,C) 要求满足时序闭合（WNS >= 0）、资源预算（LUT、DSP、BRAM 均低于预算）、接口协议正确性、数值精度容差和功耗预算。
+与现有工具的关键区别在于：Vitis AI、hls4ml 和 FINN 解决的是更简单的子问题，其中算法 A 被固定为 DNN 模型，架构由模型图决定，而不是由需求规格决定。ChipNeMo 与 LLM-to-RTL 系统最大化文本空间似然 P(output|input)，却不强制 Satisfy(D,C)，因此生成率高但部署成功率低。HNAI-FPGA 将 Satisfy(D,C) 作为硬约束，在不合规架构消耗工具链资源之前就将其拒绝。
+A. 硬件意图规范（HIS）
+HIS 是自然语言意图与硬件约束验证之间的关键桥梁。它将模糊的需求字符串 R 转换为机器可验证的结构化表示，可被约束检查器和架构映射器直接消费。HIS 字段包括：algorithm（类别、变体、问题类型、问题维度）、platform（FPGA 系列、板卡标识、目标时钟频率、可用存储类型）、objectives（主目标、量化目标、优先顺序）、data_rep（数据类型、位宽、流水级数）、arch_constraints（并行通道、BRAM/URAM 与 DSP 预算、流水深度范围）、interface（AXI-Lite、AXI-Stream、总线位宽）、verification（黄金模型、数值容差、测试向量数量）以及 output_artifacts（rtl、hls、testbench、xdc、reports、bitstream、api 等输出）。
+GA-Knapsack 基准的代表性 HIS 实例使用 JSON 表示，包括 his_version=1.0，algorithm.class=GA，variant=steady-state，problem=knapsack-01，dimension=256；platform.family=Zynq UltraScale+，board=ZCU104，clock_MHz=200，memory=[BRAM, DDR4]；objectives.primary=throughput，min_eval_per_sec=1000000，max_power_W=10.0；data_rep.chromosome=binary-1024，fitness=uint32，pipeline_stages=4；arch_constraints.parallel_lanes=16，bram_budget=40，dsp_budget=64，pipeline_depth=[4,8]；interface.config=AXI-Lite，result=AXI-Stream，width_bits=512；verification.golden_model=python/ga_knapsack_ref.py，tolerance_pct=2.0，test_vectors=1000；output_artifacts 包含 rtl、hls、testbench、xdc、synth_report、timing_report、bitstream 和 api。HIS 由需求解析层自动生成，并在传递给架构映射器前经过 JSON schema 验证；缺失或含糊字段会触发面向用户的澄清请求。
+IV. HNAI-FPGA 七层架构
+HNAI-FPGA 平台实现七层闭环架构。每一层都有明确的功能角色、输入输出接口、算法绑定、工具链集成和错误传播策略。其核心原则是“约束逐层递进”：每一层都加入可验证约束；一旦约束被违反，设计不会流入下一层，而是携带诊断信息返回算法映射器或需求接口进行迭代修正。
+A. 第 1 层：自然语言需求接口
+第 1 层接受自由形式自然语言输入并生成经验证的 HIS JSON 文档。基础模型（Qwen3-Coder-72B 或等价模型，128k 上下文）解析需求字符串，抽取算法类别与变体、目标性能指标、FPGA 平台与板卡标识、接口协议要求、功耗预算、验证条件和输出工件列表。含糊或欠规定字段会被标记，并启动澄清对话。RAG 知识库检索 IEEE 标准、厂商文档和算法参考实现，为未指定字段填充默认值。例如，GA-Knapsack 的自然语言输入可要求：为 0-1 背包问题设计 FPGA 遗传算法加速器，256 个物品，种群 1024，最大 2000 代，至少每秒 100 万次适应度评估，ZCU104 板卡，200 MHz，功耗低于 10 W，AXI-Lite 配置、AXI-Stream 输出结果。第 1 层会将其转换为第三节所示 HIS。
+B. 第 2 层：算法到架构映射器
+第 2 层接收验证后的 HIS，生成候选硬件架构描述。对于遗传算法，映射器实例化标准 GA 硬件模板，包括种群存储、适应度评估阵列、约束惩罚单元、选择引擎、交叉引擎、变异引擎、精英保留单元、随机数发生器、控制 FSM 和 AXI 接口。对于强化学习智能体，映射器实例化状态编码器、策略/价值模块、动作选择器、奖励更新单元、存储子系统、量化单元和控制调度器。架构参数如并行度、流水深度、位宽和存储类型通过轻量级设计空间探索引擎选择；违反硬资源限制的候选架构在代码生成前即被剪枝，从而避免最常见的 LLM 资源超限问题。
+C. 第 3 层：生成式 RTL/HLS 引擎
+第 3 层从架构描述生成可综合硬件代码。引擎支持三种输出模式：面向 Vitis HLS 的 HLS C++，带有流水、数组分割、循环展开和接口协议 pragma；可综合 Verilog/SystemVerilog，包含参数化模块、generate 块和显式时钟/复位处理；以及 HLS 内核外包 RTL 集成层的混合模式。每个基准还生成顶层集成 wrapper、AXI 适配模块、带激励生成和预期输出比较的仿真测试平台、接口协议断言检查和部署清单。代码生成的目标是可验证性而非代码量：每个模块包含形式化断言（SystemVerilog SVA 或 VHDL PSL），用于检查接口握手、数据通路位宽一致性和流水级深度。
+D. 第 4 层：硬规则检查器
+硬规则检查器将 FPGA 特定的物理与工程约束编码为机器可执行的 if-condition/then-action 规则，在调用工具链前作用于架构描述和生成代码。这是 HNAI-FPGA 区别于 LLM-to-RTL 方法的核心机制。代表性规则包括：若 target_frequency > 250 MHz 且 pipeline_depth < 4，则标记关键路径风险并建议在组合深度超过 6 个 LUT 层级处插入流水；若 BRAM_usage 超过 0.85 倍 BRAM_budget，则警告 BRAM 接近上限并建议迁移到 URAM 或压缩数据；若 AXI_data_width 不是 32/64/128/256/512 中的 2^k 标准宽度，则拒绝；若存在 CDC 且 synchronizer_depth < 2，则拒绝并插入双触发器同步器；若 fixed_point_width 小于 log2(max_operand)+guard_bits，则拒绝以避免溢出。当前规则集包含横跨时序、资源、接口、数值、功耗、CDC、复位和综合 8 个领域的 64 条规则，可追溯到 Xilinx UG949、AMD Vivado UG893 和 IEEE Std 1800-2017。
+E. 第 5 层：多物理仿真与工具链闭合
+第 5 层执行工具链验证循环。功能仿真通过 Verilator 或 Vivado xsim 运行生成的测试平台，并将输出与 Python 黄金模型比较；功能正确性在进入综合前先在模块级评估。综合通过 Vivado 或 Quartus Prime 完成，并生成 LUT、FF、DSP、BRAM、URAM 利用率报告。时序分析提取 WNS、TNS 和关键路径细节；功耗估计使用 Vivado Power Analysis 或 Intel Power Analyzer，并引入仿真得到的开关活动。仿真和综合结果被作为结构化诊断信号反馈给第 2 层：失败的时序报告触发流水插入或频率放宽，资源超限触发并行度降低或存储压缩，功能不匹配触发 RTL 修正。
+F. 第 6 层：设计空间探索引擎
+第 6 层在架构参数空间中执行多目标帕累托优化。DSE 引擎使用贝叶斯优化探索并行度、流水深度、定点位宽和存储类型的联合空间。每个候选配置先经硬规则检查器和快速资源估计模型评估；该估计模型基于 2400 次 Vivado 综合运行训练，覆盖 Zynq UltraScale+ 和 Artix-7 上的 GA/RL 基准。通过快速估计的候选才进入完整综合队列。吞吐、资源利用率和功耗空间中的帕累托前沿以设计权衡矩阵呈现给用户；默认选择是在功耗和资源约束下最大化吞吐。
+G. 第 7 层：人机协同设计仪表盘与部署
+第 7 层提供基于 Web 的图形界面和部署打包。仪表盘显示生成的架构图、实时综合进度、64 条规则的约束检查摘要、帕累托权衡可视化、测试平台波形预览和部署清单。用户可修改 HIS 参数并从任意层重新触发流水线。部署包包括 Vivado 项目归档、比特流文件或实现检查点、主机端 Python API、部署清单以及自动生成的设计文档。
+V. 案例研究 I：遗传算法 FPGA 加速器
+遗传算法是基于种群的元启发式搜索方法，通过选择、交叉和变异算子在适应度函数指导下演化候选解。GA 适合作为 FPGA 加速对象，因为独立个体的适应度评估天然并行，选择、交叉和变异算子算术复杂度低且适合流水硬件，随机数生成可通过 LFSR 高效实现，种群存储也自然映射到片上块 RAM。与 DNN 推理不同，GA 不被 Vitis AI、hls4ml 或 FINN 等现有 FPGA AI 推理工具支持，因此是检验 HNAI-FPGA 处理非 DNN 算法能力的理想案例。
+A. 三个基准问题
+GA-KP（0-1 背包）：给定 N 个物品，每个物品有重量 w_i 与价值 v_i，以及背包容量 W，目标是在重量约束下寻找最大化总价值的二进制选择向量 x。染色体为 N 位二进制向量；若总重量不超过 W，适应度为总价值，否则按约束违反程度施加惩罚。参数为 N=256、W 随机取 [0.4,0.6]*sum(w_i)、种群 1024、锦标赛选择 k=4、单点交叉 p_c=0.8、按基因位翻转变异 p_m=0.01、最大代数 2000。
+GA-TSP（旅行商）：目标是寻找穿过 N 个城市的最短闭合路径。染色体为城市索引的排列，适应度为总路径长度的倒数。主要硬件挑战包括排列编码、成对距离计算以及保持排列有效性的交叉约束。参数为 N=128 个随机欧氏城市、种群 512、OX 交叉 p_c=0.85、交换变异 p_m=0.05/gene、最大代数 5000。
+GA-SCHED（任务调度）：将 M 个作业分配到 K 台机器以最小化 makespan。染色体编码作业到机器的分配序列，适应度为 makespan 倒数，并对优先约束违反施加惩罚。参数为 M=64、K=8、随机优先约束、种群 256、均匀交叉 p_c=0.75、插入变异 p_m=0.1、最大代数 1000，目标板卡为 150 MHz 的 Artix-7 200T。
+B. GA-KP 生成架构
+对于 GA-KP，HNAI-FPGA 根据 HIS 生成以下模块层级：PopulationMemory 为 1024 x 256-bit 双端口 BRAM 阵列，代际更新时支持并发读写，并通过地址交织将 BRAM 端口冲突降低 40%；FitnessArray 包含 16 条并行适应度评估流水线，每条 4 级流水，每个周期处理 16 个个体；ConstraintPenalty 在重量超过容量时提前终止并输出惩罚调整后的适应度；TournamentSelection 以寄存输出的比较树实现 k=4 锦标赛，每周期处理 2 次锦标赛；CrossoverEngine 使用 LFSR 产生随机切点并在 2 个周期内完成 XOR 掩码合并；MutationEngine 为每条染色体通道配置 16 位 LFSR 并通过阈值比较实现可配置概率的位翻转；LFSR_RNG 包含 4 个独立 32 位 Galois LFSR；ElitePreservation 存储当前最优个体和适应度；ControlFSM 管理初始化、评估、选择、交叉、变异、精英和终止等 7 个状态；AXI_Interface 通过 AXI-Lite 提供 12 个配置寄存器，并通过 AXI-Stream 输出最优染色体、适应度、代数和运行时间。
+C. GA-KP 约束验证结果
+硬规则检查器在综合前处理生成架构。对 GA-KP 设计，检查器评估 64 条规则并报告：R-FPGA-01 通过（流水深度 4、目标 200 MHz），R-FPGA-02 通过（BRAM 36/1080=3.3%），R-FPGA-03 通过（AXI 数据宽度 512 bit），R-FPGA-04 通过（无时钟域跨越），R-FPGA-06 通过（适应度累加器为 32 位无符号，最大值 256*10000=2.56M，在范围内）。全部 64 条规则在第一代即通过，无需由硬规则触发的再生成。Vivado 2024.1 综合后，时序报告显示在 200 MHz 下 WNS=+0.42 ns；关键路径位于适应度流水线比较树，长度 4.18 ns；布局布线后功耗估计为 7.2 W。
+VI. 案例研究 II：强化学习游戏智能体 FPGA
+强化学习需要低决策时延、确定性时序以及与实时环境交互的硬件平台。FPGA 满足这三项条件：无操作系统抖动的确定性执行、亚微秒响应时间，以及直接 GPIO、视频或传感器接口。GPU 强化学习加速器多聚焦训练吞吐，而 FPGA 强化学习加速器面向推理部署，此时时延和能效更关键。游戏环境为度量决策时延、帧率和策略正确性提供清晰可复现的基准，也可直接延伸到机器人控制、无人机自主与实时游戏 AI。
+A. 三个基准配置
+RL-GW：16x16 GridWorld Q-learning，包含目标位置、障碍物和智能体；状态空间 256 个状态（8 位索引），动作空间 4 个动作，Q 表为 256x4 个 uint16 项并存储于 BRAM，策略为贪婪 argmax，在线 Q-learning 学习率 0.1、折扣 0.99，目标是在 Zynq-7020 上以 100 MHz 达到小于 1 微秒的决策时延。
+RL-PONG：简化 Pong 环境，状态为 80x80 像素。DQN 架构包含 3 个卷积层（8@4x4、16@2x2、32@1x1，全部使用 8 位定点权重）和 2 个全连接层（256，以及左/右/保持 3 个输出）。总参数 128K，所有激活和权重量化为 INT8，目标是在 Zynq UltraScale+ 上以 200 MHz 达到超过 1000 FPS。
+RL-PATH：32x32 动态障碍网格路径规划。状态 1024 个（10 位），动作 8 个方向，Q 表为 1024x8 uint16，即 16 KB，存储于 BRAM。使用 epsilon-greedy 在线 Q-learning，epsilon 在 10K 步内从 1.0 衰减到 0.05，目标是在 Artix-7 200T 上以 125 MHz 达到小于 500 ns 的决策时延。
+B. RL-PONG 生成架构
+RL-PONG DQN 是三个 RL 基准中最复杂的架构。HNAI-FPGA 生成的模块包括：StateEncoder，在 URAM 中保存 80x80 帧缓冲并通过帧差分流水提取运动特征；ConvEngine_1-3，使用 DSP48E2 块构成脉动阵列实现三层流水卷积，激活函数 ReLU 以 max(0,x) 在 1 个 LUT 内实现；FC_1，256 单元全连接层，输入为 32x36x36=41472，使用 256 路并行 MAC 阵列；FC_2，3 输出层和 argmax 比较树；QuantizationUnit，用于 INT8 权重存储、动态定点缩放和溢出饱和；ControlScheduler，作为帧率调度器，确保一次完整推理在 1 ms 帧预算内完成，错过截止时间时触发动作重复。
+C. RL-PONG 约束验证与时序闭合
+初始生成阶段，硬规则检查器识别出两个标记级问题：R-FPGA-05 针对 Conv3 DSP 使用触发，R-FPGA-07 针对估计动态功耗触发。二者均为警告而非拒绝，因此架构进入综合。综合后 Vivado 报告显示在 200 MHz 下 WNS=+0.18 ns，时序满足；关键路径为 FC_1 层中 DSP48E2 输出寄存器到 BRAM 写地址解码器，长度 4.82 ns。仿真-综合反馈循环触发一次流水寄存器插入，将流水深度从 4 提升到 5，WNS 改善至 +0.61 ns。总 DSP 使用为 112/2520，URAM 使用为 2/96，布局布线后功耗为 6.4 W。
+VII. 实验评估
+所有实验采用统一受控协议以确保可复现性和基线公平性。综合工具为 Vivado 2024.1（Xilinx/AMD 目标）和 Quartus Prime 23.4（Intel 目标）；仿真使用 Verilator 5.018，黄金模型使用 Python 3.11。FPGA 平台包括 Zynq UltraScale+ ZCU104、Zynq-7020 和 Artix-7 200T。CPU 基线为 Intel Core i9-13900K，GPU 基线为 NVIDIA RTX 4080。基线系统包括 Vitis AI 3.5、hls4ml 0.8.1、Vitis HLS 2024.1、LLM-to-RTL。每个基准运行 5 次，结果报告均值和标准差。
+作者注：表 III 至表 VII 中所有结果均为 HNAI-FPGA 平台基于 Vivado OOC 综合与时序分析、以及 Verilator 功能仿真生成的仿真级估计。这些结果反映综合级硬件性能，但尚未在物理板卡上验证。最终提交前需补充板级测量；文中已明确标注仿真级结果。
+A. 资源利用率
+所有利用率值来自 Vivado 2024.1 综合后报告。URAM 列中，ZCU104 有 96 个 URAM，而 Artix-7 与 Zynq-7020 没有 URAM，记为 0。Util.(%) 指主导资源利用率，通常为 LUT。结果属于仿真级，板级验证待补充。
+B. 性能与功耗比较
+吞吐性能比较表明，相比 CPU/GPU、人工 HLS 和 LLM-to-RTL，HNAI-FPGA 在六个任务中均获得显著吞吐提升。带星号的 LLM-to-RTL 结果表示 5 个生成设计中只有 2 个达成时序闭合，其余时序失败；n/a 表示 GA-TSP 和 RL-PATH 在 5 次尝试中均未生成有效可编译设计。功耗效率比较中，CPU 功耗使用 Intel RAPL 测得，GPU 功耗来自 NVML 报告，FPGA 功耗来自带 Verilator 开关活动的 Vivado 功耗分析。
+C. 消融实验
+消融实验通过在基础 LLM（GPT-4.1）基线上逐步加入 HNAI-FPGA 流水线层，隔离各层贡献。指标包括 RTL 编译率、仿真通过率、时序闭合率、资源超限率和平均收敛迭代次数。结果确认四点：HIS 结构化输出层对 RTL 编译率贡献最大；硬规则检查器对时序闭合率提升和资源超限降低贡献最大；多物理仿真反馈进一步提升仿真正确性和时序闭合；DSE 层带来较小但稳定的时序闭合与资源效率提升。
+D. 设计时间缩短
+端到端设计时间比较显示，专家手工设计需由 5 年以上经验 FPGA 工程师从零编写 RTL/HLS；手工 HLS 基线从 C 参考实现开始；LLM-to-RTL 包含人工评估、调试和重新提示失败设计的时间；HNAI-FPGA 包括完整流水线运行、DSE 和平均 3 次综合。总体而言，HNAI-FPGA 相比专家手工开发将端到端设计时间缩短 94% 到 97%。
+E. 与 LLM-to-RTL 基线比较
+LLM-to-RTL 基线（GPT-4.1，输入完整 HIS JSON）是与 HNAI-FPGA 最直接的对照，因为二者都接受结构化需求并生成 RTL。关键观察包括：基础 LLM 的 RTL 编译率为 61.2%，说明语法级生成可行但不完整；34.1% 的时序闭合率主要源于系统性缺少流水寄存器插入，组合路径跨越 8 到 12 个 LUT 层级，在 ZCU104 200 MHz 下难以闭合；LLM-to-RTL 在 GA-TSP 和 RL-PATH 上完全失败，因为这些基准需要接口宽度、时钟域关系和 BRAM 访问模式的多模块协同一致；即便 LLM-to-RTL 在 GA-KP 与 RL-GW 上达成时序闭合，其吞吐也因过度保守流水和次优并行度选择而低于 HNAI-FPGA 41% 到 56%。
+VIII. 讨论
+多数大学 FPGA 课程以 HDL 语法训练为中心，学生把大量时间用于 Verilog 或 VHDL 语法、简单组合/时序电路仿真和中等复杂度课程设计。算法到架构映射、流水级划分、资源预算和时序闭合方法通常因课时限制而被浅层处理。HNAI-FPGA 可从两方面改变课程：一是使学生能从自然语言生成复杂算法的完整工作设计，将学习重心从语法转向架构推理；二是支持快速迭代，学生可在专家实现一个架构的时间内探索 20 个架构变体，通过引导式探索建立设计空间直觉。
+对于没有专职 FPGA 工程师的小团队和领域研究者，HNAI-FPGA 将定制硬件门槛从每年 50 万到 200 万美元的工程团队成本降低为平台订阅成本。机器学习研究者可在数小时内为新的进化算法生成 FPGA 加速器，进行大规模测试，并基于硬件在环性能数据迭代算法。这种定制硬件民主化类似云计算对软件开发的影响：它不会消除复杂生产系统中的专家知识需求，但会极大扩展能够参与硬件加速创作的人群。
+本文提出的基准套件为 AI 驱动的非 DNN 工作负载 FPGA 设计提供了首个标准化评估框架。通过公开六个基准的 HIS 模式、黄金模型 Python 实现和 Vivado 项目配置，未来工作可进行直接比较。HNAI-FPGA 平台本身将在论文接收后开源，包含 64 条规则约束检查器、DSE 引擎以及 GA/RL 架构模板库；基准套件也将提交给 ACM TRETS 社区作为共享评估资源。
+IX. 局限性
+本文承认以下局限：第一，当前提交缺少板级验证；表 III 至表 VII 均为 Vivado OOC 综合和 Verilator 仿真的综合级估计，物理板卡测量尚待补充。第二，完整综合和实现依赖 Vivado 或 Quartus 许可证；虽然论文提供 Verilator、Yosys 和 nextpnr 的开源仿真路径，但比特流生成仍需商业工具链。第三，时序闭合并非对所有设计都有保证；当前六个基准上的闭合率为 88.7%，剩余 11.3% 仍需人工插入流水或放宽频率。第四，算法覆盖目前限于 GA 与 RL（Q-learning+DQN），其他算法类别尚未基准化。第五，复杂模型存在资源限制，例如更大的 ResNet、BERT 或 Transformer attention 可能需要多 FPGA 分区或 HBM 支持。第六，LLM 作为代码生成后端会带来运行间随机性，尽管 DSE 和硬规则检查器显著降低方差，生成代码风格与子模块命名仍存在少量随机差异。
+X. 结论
+本文提出 HNAI-FPGA，一种七层约束验证生成式平台，可将自然语言硬件需求转换为面向遗传算法和强化学习 AI 系统的可部署 FPGA 设计包。平台以严格数学目标形式化 NL2FPGA 问题，引入机器可验证的硬件意图规范，并实现连接需求解析、算法到架构映射、RTL/HLS 生成、硬规则检查、多物理仿真反馈、设计空间探索和部署打包的闭环架构。
+六个基准在 Zynq UltraScale+、Zynq-7020 和 Artix-7 上的实验表明：RTL 编译成功率为 96.4%（基础 LLM 为 61.2%），时序闭合率为 88.7%（基础 LLM 为 34.1%），相对 CPU 的吞吐加速为 29 到 38 倍，相对 GPU 的能效提升为 50 到 130 倍，相比专家手工 FPGA 开发的端到端设计时间缩短 94% 到 97%。消融实验确认，硬规则检查器和多物理仿真反馈是主要贡献者，二者共同使时序闭合率相对基础 LLM 提高 54.6 个百分点。
+HNAI-FPGA 的关键贡献并不是“生成 RTL”本身，因为现有 LLM 已能做到这一点；关键在于它生成的是能够闭合时序、满足资源预算、通过接口协议检查并以 88% 到 96% 成功率匹配黄金模型行为的 RTL。通过在整个生成流水线中强制执行物理与工程约束，HNAI-FPGA 将 FPGA 设计从试错型专家流程转变为约束验证工程平台，并把 AI 驱动硬件设计扩展到现有推理部署工具无法覆盖的非 DNN 算法类别。未来工作将完成六个基准的物理板级验证，扩展算法模板库，集成大模型部署所需的多 FPGA 分区，并将 HNAI-FPGA 基准套件发展为开放社区评估资源。
+致谢
+为保持匿名性，资助致谢将在论文接收后补充。AI 使用披露：作者使用了大型语言模型辅助进行论文起草和语言润色。所有技术内容、实验协议、仿真数据和科学结论均由作者独立验证，并由作者承担全部责任，符合 IEEE Publication Services and Products Board Operations Manual Section 8.2.1.B (2023)。
+参考文献
+参考文献条目保留原文题名、作者、期刊/会议、年份、页码、DOI 和 URL，以便后续投稿与查重时保持英文元数据一致。
+表 III. 资源利用率 -- Vivado 综合报告（仿真级，除注明外为 ZCU104；GA-SCHED 与 RL-PATH 使用 Artix-7）
+表 IV. 吞吐性能比较：HNAI-FPGA vs. CPU/GPU/人工 HLS/LLM-to-RTL
+表 V. 功耗效率比较（实测或估计功耗相对吞吐）
+表 VI. 消融实验：HNAI-FPGA 各层的累积贡献（6 个基准，每个 N=5 次运行）
+表 VII. 端到端设计时间比较（从需求到综合闭合设计的小时数）
+[1] S. Pal et al., FPGA-based Hardware Accelerators for AI/ML: A Survey, IEEE Trans. Very Large Scale Integr. (VLSI) Syst., vol. 32, no. 1, pp. 1-20, Jan. 2024.
+[2] A. Mirhoseini et al., A Graph Placement Methodology for Fast Chip Design, Nature, vol. 594, pp. 207-212, Jun. 2021. doi: 10.1038/s41586-021-03544-w
+[3] Ricursive Intelligence, AI for Chip Design Platform, 2025-2026. https://www.ricursive.com
+[4] AMD/Xilinx, Vitis AI User Guide UG1414 v3.5, 2024.
+[5] Intel, FPGA AI Suite Product Page, 2024.
+[6] J. Duarte et al., Fast Inference of Deep Neural Networks in FPGAs for Particle Physics, J. Instrum., vol. 13, 2018.
+[7] Y. Umuroglu et al., FINN: A Framework for Fast, Scalable Binarized Neural Network Inference, in Proc. ACM/SIGDA FPGA, 2017.
+[8] Y. Liu et al., ChipNeMo: Domain-Adapted LLMs for Hardware Design Automation, in Proc. 61st DAC, 2024.
+[9] A. Thakur et al., Verigen: A Large Language Model for Verilog Code Generation, ACM Trans. Design Autom. Electron. Syst., 2024.
+[10] S. Qiu et al., AutoChip: Automating HDL Generation Using LLM Feedback, arXiv:2311.04887, 2023.
+[11] S. Liu et al., RTLCoder: Fully Open-Source and Efficient LLM-Assisted RTL Code Generation Technique, in Proc. ACM/IEEE ICCAD, 2024.
+[12] S. Vakili et al., FPGA Acceleration of Genetic Algorithms for VLSI Placement, in Proc. IEEE FCCM, 2020.
+[13] T. Yoshida et al., High-Speed Genetic Algorithm Accelerator on FPGA for TSP, IEICE Trans. Inf. Syst., 2019.
+[14] A. El-Said et al., FPGA Implementation of Q-Learning for Real-Time Robotic Navigation, in Proc. IEEE ISCAS, 2022.
+[15] M. Peng et al., FPGA-Based Deep Q-Network Inference Accelerator for Real-Time Game AI, IEEE Trans. Circuits Syst. II, 2023.
+[16] A. Budak et al., DNN-Opt: RL-Inspired Optimization for Analog Circuit Sizing, IEEE Trans. Circuits Syst. I, 2021.
+[17] Z. Liao et al., Automating Analog Topology Selection via Reinforcement Learning, IEEE Trans. Circuits Syst. I, 2023.
+[18] [Authors], Hardware-Native AI: A Constraint-Verified Generative Architecture Platform for Multi-Physics Hardware System Design, IEEE Trans. Circuits Syst. I, 2025 (under review).
+[19]-[25] AMD/Xilinx UG949、Vivado UG893、IEEE Std 1800-2017、cocotb、Verilator、Bayesian Optimization 等工具与方法参考条目保持原英文元数据。
+基准 | LUT | FF | DSP | BRAM(36K) | URAM | 频率(MHz) | 利用率(%)
+GA-KP | 12,480 / 274K (4.6%) | 8,932 / 548K (1.6%) | 48 / 2520 (1.9%) | 36 / 1080 (3.3%) | 0 | 207.4 | 4.6
+GA-TSP | 18,640 / 274K (6.8%) | 14,210 / 548K (2.6%) | 64 / 2520 (2.5%) | 52 / 1080 (4.8%) | 0 | 201.8 | 6.8
+GA-SCHED | 6,320 / 128K (4.9%) | 4,880 / 256K (1.9%) | 24 / 740 (3.2%) | 18 / 365 (4.9%) | 0 | 162.3 | 4.9
+RL-GW | 2,140 / 53K (4.0%) | 1,820 / 106K (1.7%) | 8 / 220 (3.6%) | 4 / 140 (2.9%) | 0 | 108.6 | 4.0
+RL-PONG | 22,840 / 274K (8.3%) | 18,460 / 548K (3.4%) | 112 / 2520 (4.4%) | 68 / 1080 (6.3%) | 2 | 204.1 | 8.3
+RL-PATH | 3,480 / 53K (6.6%) | 2,960 / 106K (2.8%) | 12 / 220 (5.5%) | 8 / 140 (5.7%) | 0 | 131.2 | 6.6
+基准 | HNAI-FPGA | CPU 基线 | GPU 基线 | 人工 HLS | LLM-to-RTL | 相对 CPU 加速
+GA-KP (eval/s) | 1.42M | 38K | 210K | 1.01M | 0.61M* | 37.4x
+GA-TSP (gen/s) | 241K | 8.2K | 62K | 178K | n/a* | 29.4x
+GA-SCHED (eval/s) | 618K | 21K | 88K | 440K | 0.31M* | 29.4x
+RL-GW (us/step) | 0.48 | 18.2 | 3.1 | 0.92 | 1.84* | 37.9x
+RL-PONG (FPS) | 1,840 | 62 | 380 | 1,210 | 780* | 29.7x
+RL-PATH (ns/step) | 312 | 9,400 | 1,820 | 580 | n/a* | 30.1x
+基准 | HNAI-FPGA 功耗(W) | CPU 功耗(W) | GPU 功耗(W) | FPGA 性能/W | GPU 性能/W
+GA-KP | 7.2 | 65 | 145 | 197K eval/W | 1.4K eval/W
+GA-TSP | 8.1 | 65 | 145 | 29.8K gen/W | 0.43K gen/W
+GA-SCHED | 3.8 | 45 | 145 | 163K eval/W | 0.6K eval/W
+RL-GW | 2.1 | 35 | 95 | 2.08M step/W | 10.7K step/W
+RL-PONG | 6.4 | 65 | 145 | 288 FPS/W | 2.6 FPS/W
+RL-PATH | 2.9 | 45 | 95 | 345M step/W | 0.55M step/W
+消融变体 | RTL 编译率(%) | 仿真通过率(%) | 时序闭合率(%) | 资源超限率(%) | 设计迭代
+仅基础 LLM (GPT-4) | 61.2 | 48.3 | 34.1 | 22.6 | 6.8 avg
++ HIS 结构化输出 | 74.8 | 61.2 | 45.3 | 15.4 | 5.1 avg
++ 硬规则检查器 | 86.4 | 74.6 | 62.8 | 8.2 | 3.4 avg
++ 多物理仿真闭环 | 91.2 | 83.4 | 74.1 | 4.8 | 2.6 avg
++ DSE（设计空间探索） | 93.8 | 88.6 | 82.4 | 2.1 | 2.1 avg
+完整 HNAI-FPGA 流水线 | 96.4 | 92.1 | 88.7 | 1.4 | 1.8 avg
+设计任务 | 专家手工(h) | 人工 HLS(h) | LLM-to-RTL(h) | HNAI-FPGA(h) | 相对专家缩短
+GA-KP 完整设计 | 48-72 | 16-24 | 10-18* | 2.4-4.1 | 94.6%
+GA-TSP 完整设计 | 80-120 | 24-40 | n/a* | 3.8-6.2 | 95.2%
+RL-GW 完整设计 | 24-40 | 8-16 | 6-12* | 1.2-2.8 | 94.4%
+RL-PONG 完整设计 | 72-120 | 20-36 | 12-24* | 3.2-5.6 | 95.6%
+架构搜索 | 16-32 | n/a | n/a | 0.4-1.2 | 97.2%
+约束迭代 | 8-24 | 4-12 | 8-20* | 0.2-0.8 | 97.3%

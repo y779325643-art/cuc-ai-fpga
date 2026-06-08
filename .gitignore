@@ -1,0 +1,35 @@
+.DS_Store
+**/.DS_Store
+
+# Local assistant/tooling state
+.superpowers/
+LLM/.claude/settings.local.json
+
+# Python/Node caches
+__pycache__/
+*.py[cod]
+node_modules/
+.venv/
+venv/
+
+# Large model artifacts and local runtime files
+models/
+LLM/.venv/
+LLM/data/*.jsonl
+LLM/runs/
+LLM/merged/
+LLM/checkpoints/
+LLM/configs/serve_vllm.env
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.bin
+*.onnx
+
+# Generated previews and render artifacts
+reports/rendered/
+outputs/**/preview/
+outputs/**/qa/
+outputs/**/layout/
+outputs/**/template-inspect/
