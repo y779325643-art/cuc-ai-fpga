@@ -4,6 +4,17 @@ Use this directory for cloud-server model deployment and later fine-tuning. The 
 
 Default base model: `google/gemma-4-12B-it`.
 
+Primary deployment guide: `LLM/DEPLOY.md`.
+
+Current deployment decision:
+
+- Deploy first, fine-tune later.
+- Use Windows + WSL2/Ubuntu on the cloud server.
+- Move the WSL distribution, project files, model files, caches, and experiment outputs under `E:\Aowen`; the current cloud setup may still be under `C:` temporarily.
+- Run Gemma 4 12B in BF16 without 4-bit quantization.
+- Use vLLM CPU offload for RTX 4090 24GB.
+- Use ModelScope as the current model download route if Hugging Face fails inside WSL.
+
 ## Layout
 
 - `configs/` - LoRA training and vLLM serving configuration templates.
@@ -12,23 +23,47 @@ Default base model: `google/gemma-4-12B-it`.
 - `src/` - Python entrypoints for dataset preparation, training, and adapter merge.
 - `tests/` - lightweight tests for repository-side utilities.
 
-## Recommended Workflow: Deploy First
+## Quick Workflow: Deploy First
 
-On the cloud server:
+In Ubuntu/WSL on the cloud server:
 
 ```bash
+# Recommended final project location after moving WSL itself to E drive:
+mkdir -p /mnt/e/Aowen/repos
+cd /mnt/e/Aowen/repos
 git clone https://github.com/y779325643-art/cuc-ai-fpga.git
 cd cuc-ai-fpga
+
+# If you have not moved to E drive yet, use your current project path instead:
+# cd /mnt/c/WSL/cuc-ai-fpga
+
 bash LLM/scripts/setup_server.sh
-hf auth login
+source LLM/.venv/bin/activate
 ```
 
-Use a Hugging Face account that has accepted the `google/gemma-4-12B-it` model license/access terms.
+Download or prepare the model. Current working route:
+
+```bash
+python -m pip install -U modelscope
+mkdir -p /mnt/e/Aowen/models
+modelscope download --model google/gemma-4-12B-it --local_dir /mnt/e/Aowen/models/gemma-4-12B-it
+```
 
 Serve with vLLM:
 
 ```bash
 cp LLM/configs/serve_vllm.env.example LLM/configs/serve_vllm.env
+```
+
+Set this in `LLM/configs/serve_vllm.env`:
+
+```bash
+MODEL_PATH=/mnt/e/Aowen/models/gemma-4-12B-it
+```
+
+Then start:
+
+```bash
 bash LLM/scripts/serve_vllm.sh
 ```
 
@@ -38,7 +73,7 @@ Test the OpenAI-compatible API:
 BASE_URL=http://127.0.0.1:8000/v1 bash LLM/scripts/test_api.sh
 ```
 
-The server exposes an OpenAI-compatible API at `http://<server-ip>:8000/v1`.
+The server exposes an OpenAI-compatible API at `http://127.0.0.1:8000/v1` inside WSL. Use SSH port forwarding rather than exposing port `8000` publicly.
 
 For detailed deployment steps, see `LLM/DEPLOY.md`.
 

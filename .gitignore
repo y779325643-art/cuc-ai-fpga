@@ -4,6 +4,7 @@
 # Local assistant/tooling state
 .superpowers/
 .gh-config/
+hf_token.txt
 LLM/.claude/settings.local.json
 
 # Python/Node caches

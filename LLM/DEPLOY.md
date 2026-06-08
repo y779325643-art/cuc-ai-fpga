@@ -1,19 +1,68 @@
-# Deploy Gemma 4 12B on a Cloud Server
+# Windows Cloud Deployment Guide for Gemma 4 12B
 
-This guide deploys `google/gemma-4-12B-it` directly with vLLM. Fine-tuning is optional and can be added later. On Windows cloud servers, use WSL2/Ubuntu rather than native Windows Python.
+This guide describes how to deploy `google/gemma-4-12B-it` on a Windows cloud server with an RTX 4090 24GB GPU. The deployment uses **WSL2 + Ubuntu + vLLM**.
 
-## 1. Server Assumptions
+Current policy:
 
-- NVIDIA RTX 4090 24GB or similar CUDA GPU.
-- Ubuntu/Linux cloud server, or Windows cloud server with WSL2 + Ubuntu.
-- Recent NVIDIA Windows driver with CUDA support when using WSL2.
-- 64GB system RAM is recommended for non-quantized CPU weight offloading.
-- Python 3.10 or newer.
-- A Hugging Face account that has accepted access terms for `google/gemma-4-12B-it`.
+- Deploy the base model first.
+- Do not fine-tune yet.
+- Do not use 4-bit quantization.
+- Use BF16 plus vLLM CPU offload.
+- The cloud server currently may have WSL/project files under `C:`; move the WSL distribution and project files to `E:\Aowen` because `C:` and `D:` may be cleaned.
+- Hugging Face access from WSL may fail; the current working download route is ModelScope.
+- The model prepared for serving is `gemma-4-12B-it`.
 
-## 2. Windows Cloud Server Setup
+## 1. Target Layout
 
-Run these commands in **Administrator PowerShell**:
+Create these folders on Windows:
+
+```powershell
+mkdir E:\Aowen\repos
+mkdir E:\Aowen\wsl
+mkdir E:\Aowen\hf-cache
+mkdir E:\Aowen\models
+mkdir E:\Aowen\datasets
+mkdir E:\Aowen\runs
+mkdir E:\Aowen\backups
+```
+
+Inside Ubuntu/WSL, these paths appear as:
+
+```text
+/mnt/e/Aowen/repos
+/mnt/e/Aowen/wsl
+/mnt/e/Aowen/hf-cache
+/mnt/e/Aowen/models
+/mnt/e/Aowen/datasets
+/mnt/e/Aowen/runs
+/mnt/e/Aowen/backups
+```
+
+Use `E:\Aowen` for the WSL distribution, code, model files, caches, datasets, outputs, and backups. Avoid storing important files under `/mnt/c` or `/mnt/d`.
+
+If you have not moved the project yet, it is acceptable to continue temporarily from the current WSL path, for example:
+
+```text
+/mnt/c/WSL/cuc-ai-fpga
+```
+
+However, treat that path as temporary. Before long experiments or model serving, move or re-clone the project under:
+
+```text
+/mnt/e/Aowen/repos/cuc-ai-fpga
+```
+
+Also move the WSL distribution itself to:
+
+```text
+E:\Aowen\wsl\Ubuntu-22.04
+```
+
+If the WSL distribution stays under the default Windows user profile on `C:`, cleaning `C:` can remove the entire Ubuntu environment, including installed packages and virtual environments.
+
+## 2. Windows and WSL2 Setup
+
+Open **Administrator PowerShell**:
 
 ```powershell
 wsl --install -d Ubuntu-22.04
@@ -22,38 +71,388 @@ wsl --update
 wsl --shutdown
 ```
 
-Restart the Windows server if WSL asks for it. Install or update the NVIDIA Windows driver from NVIDIA/your cloud provider before continuing.
+If `wsl --install` cannot download the distribution list, use manual installation:
 
-Open **Ubuntu** from the Start menu, then run:
+```powershell
+mkdir C:\WSL
+cd C:\WSL
+curl.exe -L -o Ubuntu-22.04.appx https://aka.ms/wslubuntu2204
+Add-AppxPackage .\Ubuntu-22.04.appx
+```
+
+Then start Ubuntu from the Start menu, or from PowerShell:
+
+```powershell
+wsl -d Ubuntu-22.04
+```
+
+Do not install a Linux NVIDIA driver inside WSL2. CUDA is provided by the Windows NVIDIA driver.
+
+## 3. Move the WSL Distribution to E Drive
+
+Do this before serious deployment work if `C:` can be cleaned.
+
+First, check the distribution name in **PowerShell**:
+
+```powershell
+wsl -l -v
+```
+
+Assume the name is `Ubuntu-22.04`. If your output shows a different name, replace `Ubuntu-22.04` in the commands below.
+
+Create backup and target folders:
+
+```powershell
+mkdir E:\Aowen\backups
+mkdir E:\Aowen\wsl
+```
+
+Shut down WSL:
+
+```powershell
+wsl --shutdown
+```
+
+Export the current Ubuntu distribution:
+
+```powershell
+wsl --export Ubuntu-22.04 E:\Aowen\backups\ubuntu-22.04.tar
+```
+
+Confirm the backup exists before deleting the old distribution:
+
+```powershell
+dir E:\Aowen\backups\ubuntu-22.04.tar
+```
+
+Only after the `.tar` file exists, unregister the old distribution:
+
+```powershell
+wsl --unregister Ubuntu-22.04
+```
+
+Import it into E drive:
+
+```powershell
+mkdir E:\Aowen\wsl\Ubuntu-22.04
+wsl --import Ubuntu-22.04 E:\Aowen\wsl\Ubuntu-22.04 E:\Aowen\backups\ubuntu-22.04.tar --version 2
+```
+
+Start it:
+
+```powershell
+wsl -d Ubuntu-22.04
+```
+
+Important notes:
+
+- `wsl --unregister` deletes the old distribution. Do not run it before verifying the exported `.tar`.
+- After import, Ubuntu may start as `root`. For deployment commands this works, but a normal user is cleaner.
+- Keep `E:\Aowen\backups\ubuntu-22.04.tar` as a recovery backup.
+
+Optional: if your imported Ubuntu starts as root and you want to create a user:
+
+```bash
+adduser administrator
+usermod -aG sudo administrator
+```
+
+If `ubuntu2204.exe` is still available, set the default user from PowerShell:
+
+```powershell
+ubuntu2204.exe config --default-user administrator
+```
+
+If `ubuntu2204.exe` is unavailable after import, simply enter with:
+
+```powershell
+wsl -d Ubuntu-22.04
+```
+
+## 4. Verify GPU in Ubuntu
+
+In Ubuntu:
+
+```bash
+nvidia-smi
+```
+
+If this fails:
+
+- Install or update the NVIDIA Windows driver.
+- Restart Windows.
+- Run `wsl --shutdown` in PowerShell.
+- Enter Ubuntu again.
+
+Then install base tools:
 
 ```bash
 sudo apt update
 sudo apt install -y git python3-venv python3-pip curl
-nvidia-smi
 ```
 
-Do not install a Linux NVIDIA driver inside WSL2. CUDA is provided through the Windows NVIDIA driver.
+## 5. Clone the Project to E Drive
 
-## 3. Clone and Install
+In Ubuntu:
 
 ```bash
+mkdir -p /mnt/e/Aowen/repos
+cd /mnt/e/Aowen/repos
 git clone https://github.com/y779325643-art/cuc-ai-fpga.git
 cd cuc-ai-fpga
+```
+
+If Git asks for GitHub credentials:
+
+- Username: `y779325643-art`
+- Password: a GitHub Personal Access Token, not the GitHub account password.
+
+For public read-only clone, credentials should not normally be needed.
+
+## 6. Install Python Environment
+
+From the project root:
+
+```bash
 bash LLM/scripts/setup_server.sh
 source LLM/.venv/bin/activate
+```
+
+This creates:
+
+```text
+/mnt/e/Aowen/repos/cuc-ai-fpga/LLM/.venv
+```
+
+Because the project is under `E:\Aowen`, the virtual environment is also persistent.
+
+## 7. Persist Model and Package Caches on E Drive
+
+Use this once you are ready to move persistent files to `E:\Aowen`. In Ubuntu:
+
+```bash
+mkdir -p /mnt/e/Aowen/hf-cache
+
+cat >> ~/.bashrc <<'EOF'
+export HF_HOME=/mnt/e/Aowen/hf-cache
+export HF_HUB_CACHE=/mnt/e/Aowen/hf-cache/hub
+export TRANSFORMERS_CACHE=/mnt/e/Aowen/hf-cache
+EOF
+
+source ~/.bashrc
+```
+
+This keeps downloaded model files on the persistent E drive.
+
+For ModelScope, also add:
+
+```bash
+cat >> ~/.bashrc <<'EOF'
+export MODELSCOPE_CACHE=/mnt/e/Aowen/modelscope-cache
+EOF
+
+mkdir -p /mnt/e/Aowen/modelscope-cache
+source ~/.bashrc
+```
+
+## 8. Hugging Face Login
+
+This section is optional for the current deployment, because the model has been downloaded through ModelScope. Keep it only for future Hugging Face downloads.
+
+Open this page in a browser:
+
+```text
+https://huggingface.co/settings/tokens
+```
+
+Create a **Read** token. Do not use a Write token.
+
+In Ubuntu:
+
+```bash
 hf auth login
 ```
 
-## 4. Configure vLLM
+Paste the `hf_...` token. If it asks:
+
+```text
+Add token as git credential? (Y/n)
+```
+
+Answer:
+
+```text
+Y
+```
+
+Verify:
 
 ```bash
+hf auth whoami
+```
+
+If PowerShell or the terminal cannot paste, create a temporary file on Windows:
+
+```text
+E:\Aowen\hf_token.txt
+```
+
+Put the token in that file, then run in Ubuntu:
+
+```bash
+TOKEN=$(cat /mnt/e/Aowen/hf_token.txt)
+hf auth login --token "$TOKEN"
+hf auth whoami
+rm /mnt/e/Aowen/hf_token.txt
+```
+
+Never put the token inside the Git repository.
+
+## 9. If WSL Cannot Access Hugging Face
+
+If Windows browser can open Hugging Face but Ubuntu reports errors such as:
+
+```text
+Temporary failure in name resolution
+Could not resolve host: huggingface.co
+Network is unreachable
+```
+
+Check Ubuntu networking:
+
+```bash
+cat /etc/resolv.conf
+ip route
+ping -c 3 1.1.1.1
+curl -I https://huggingface.co
+```
+
+If `/etc/resolv.conf` is missing or DNS fails, recreate it:
+
+```bash
+sudo tee /etc/wsl.conf > /dev/null <<'EOF'
+[network]
+generateResolvConf = false
+EOF
+
+sudo tee /etc/resolv.conf > /dev/null <<'EOF'
+nameserver 8.8.8.8
+nameserver 1.1.1.1
+EOF
+```
+
+Then in Windows PowerShell:
+
+```powershell
+wsl --shutdown
+wsl -d Ubuntu-22.04
+```
+
+In the current setup, Hugging Face access from WSL failed, so use ModelScope download or an already-downloaded local model path.
+
+## 10. Model Download Options
+
+### Option A: Download with ModelScope
+
+This is the current working route. Install ModelScope in the active environment:
+
+```bash
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
+source LLM/.venv/bin/activate
+python -m pip install -U modelscope
+```
+
+Download to the persistent E drive:
+
+```bash
+mkdir -p /mnt/e/Aowen/models
+modelscope download --model google/gemma-4-12B-it --local_dir /mnt/e/Aowen/models/gemma-4-12B-it
+```
+
+If the project has not moved to E drive yet, still put the model under E drive:
+
+```bash
+mkdir -p /mnt/e/Aowen/models
+modelscope download --model google/gemma-4-12B-it --local_dir /mnt/e/Aowen/models/gemma-4-12B-it
+```
+
+Expected model path for vLLM:
+
+```text
+/mnt/e/Aowen/models/gemma-4-12B-it
+```
+
+The folder should include files such as:
+
+```text
+config.json
+tokenizer.json
+model.safetensors
+```
+
+or sharded `.safetensors` files.
+
+ModelScope's official download command supports `--model` and `--local_dir`, and its default cache is under `~/.cache/modelscope/hub`. We explicitly use `--local_dir` so the final model folder is easy for vLLM to load.
+
+### Option B: Download from Hugging Face
+
+Use this only if WSL can access Hugging Face reliably:
+
+```bash
+cd /mnt/e/Aowen
+hf download google/gemma-4-12B-it --local-dir models/gemma-4-12B-it
+```
+
+### Option C: Download Elsewhere and Copy to E Drive
+
+Use this if neither WSL Hugging Face access nor ModelScope download works.
+
+On a machine that can access Hugging Face:
+
+```bash
+pip install -U huggingface_hub
+hf auth login
+hf download google/gemma-4-12B-it --local-dir gemma-4-12B-it
+```
+
+Copy the full folder to the Windows cloud server:
+
+```text
+E:\Aowen\models\gemma-4-12B-it
+```
+
+Then verify in Ubuntu:
+
+```bash
+ls /mnt/e/Aowen/models/gemma-4-12B-it
+```
+
+Do not place model files inside the Git repository.
+
+## 11. Configure vLLM
+
+From the project root:
+
+```bash
+# Use this if the project has already been moved to E drive:
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
+
+# Or use the current temporary C-drive path if you have not moved yet:
+# cd /mnt/c/WSL/cuc-ai-fpga
+
 cp LLM/configs/serve_vllm.env.example LLM/configs/serve_vllm.env
 ```
 
-Default values:
+Edit:
 
 ```bash
-MODEL_PATH=google/gemma-4-12B-it
+nano LLM/configs/serve_vllm.env
+```
+
+Set `MODEL_PATH` to the local ModelScope-downloaded folder:
+
+```bash
+MODEL_PATH=/mnt/e/Aowen/models/gemma-4-12B-it
 HOST=127.0.0.1
 PORT=8000
 SERVED_MODEL_NAME=cuc-ai-fpga
@@ -67,37 +466,79 @@ LIMIT_MM_PER_PROMPT='{"image":0,"audio":0}'
 ENFORCE_EAGER=false
 ```
 
-These defaults run the base model in BF16 without quantization and bind the API to localhost for safer access. Because an RTX 4090 24GB cannot comfortably hold the model weights and KV cache together, vLLM offloads 8GB of model weights to system RAM. This is slower than full-GPU inference but preserves the non-quantized model.
+These settings are non-quantized. They use BF16 and vLLM CPU offload.
 
-## 5. Start the API Server
+Why CPU offload is enabled:
+
+- Gemma 4 12B in BF16 is large for a 24GB GPU.
+- vLLM also needs GPU memory for KV cache.
+- `CPU_OFFLOAD_GB=8` moves part of the model weights to system RAM.
+- This is slower than full GPU serving but keeps the non-quantized model.
+
+64GB system RAM is recommended.
+
+## 12. Start the API Server
+
+From the project root:
 
 ```bash
+source LLM/.venv/bin/activate
 bash LLM/scripts/serve_vllm.sh
 ```
 
-The service exposes an OpenAI-compatible API:
-
-```text
-http://<server-ip>:8000/v1
-```
-
-## 6. Smoke Test
-
-In a second terminal:
+If using a local model folder and you want to avoid any Hugging Face network calls:
 
 ```bash
+export HF_HUB_OFFLINE=1
+export TRANSFORMERS_OFFLINE=1
+bash LLM/scripts/serve_vllm.sh
+```
+
+The API listens on:
+
+```text
+http://127.0.0.1:8000/v1
+```
+
+`HOST=127.0.0.1` is intentional. It avoids exposing an unauthenticated model API to the public internet.
+
+## 13. Test the API
+
+Open a second Ubuntu terminal:
+
+```bash
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
+source LLM/.venv/bin/activate
 BASE_URL=http://127.0.0.1:8000/v1 bash LLM/scripts/test_api.sh
 ```
 
-From your laptop, replace `127.0.0.1` with the cloud server IP after opening the cloud firewall/security group for port `8000`.
+You can also test with curl:
 
-For Windows cloud servers, prefer SSH port forwarding instead of exposing port `8000` publicly:
+```bash
+curl http://127.0.0.1:8000/v1/models
+```
+
+## 14. Access from Your Local Computer
+
+Prefer SSH port forwarding:
 
 ```bash
 ssh -L 8000:127.0.0.1:8000 <windows-user>@<server-ip>
 ```
 
-If startup fails with CUDA out-of-memory, edit `LLM/configs/serve_vllm.env`:
+Then access locally:
+
+```text
+http://127.0.0.1:8000/v1
+```
+
+Avoid opening port `8000` directly to the public internet unless you add authentication and firewall rules.
+
+## 15. Troubleshooting
+
+### CUDA Out of Memory
+
+Edit `LLM/configs/serve_vllm.env`:
 
 ```bash
 MAX_MODEL_LEN=1024
@@ -106,6 +547,78 @@ CPU_OFFLOAD_GB=10
 ENFORCE_EAGER=true
 ```
 
-## 7. Later Fine-Tuning Path
+Restart:
 
-When ready, use `LLM/data/`, `LLM/src/prepare_dataset.py`, `LLM/scripts/train_lora.sh`, and `LLM/scripts/merge_lora.sh` to train a LoRA adapter and switch `MODEL_PATH` to the merged model directory.
+```bash
+bash LLM/scripts/serve_vllm.sh
+```
+
+If it still fails, use a smaller model. Do not switch to 4-bit unless the project decision changes.
+
+### WSL DNS Failure
+
+Symptoms:
+
+```text
+Temporary failure in name resolution
+Could not resolve host
+```
+
+Use the DNS repair steps in Section 9.
+
+### Hugging Face Permission Error
+
+Symptoms:
+
+```text
+401 Unauthorized
+403 Forbidden
+Repository access denied
+```
+
+Fix:
+
+- Accept the `google/gemma-4-12B-it` terms on Hugging Face.
+- Create a Read token.
+- Run `hf auth login` again.
+
+### Model Path Error
+
+If vLLM still tries to download from Hugging Face when you intended offline mode, check:
+
+```bash
+cat LLM/configs/serve_vllm.env
+ls /mnt/e/Aowen/models/gemma-4-12B-it
+```
+
+`MODEL_PATH` must be a local path:
+
+```bash
+MODEL_PATH=/mnt/e/Aowen/models/gemma-4-12B-it
+```
+
+not:
+
+```bash
+MODEL_PATH=google/gemma-4-12B-it
+```
+
+## 16. Later Fine-Tuning Path
+
+Fine-tuning is not part of the first deployment. When ready:
+
+```bash
+python -m LLM.src.prepare_dataset --input LLM/data/raw.jsonl --output LLM/data/train.jsonl
+bash LLM/scripts/train_lora.sh
+bash LLM/scripts/merge_lora.sh
+```
+
+Then update `MODEL_PATH` to the merged model directory.
+
+## 17. References
+
+- ModelScope model download documentation: https://modelscope.cn/docs/models/download
+- ModelScope quick start: https://modelscope.cn/docs/intro/quickstart
+- Microsoft WSL installation: https://learn.microsoft.com/windows/wsl/install
+- NVIDIA CUDA on WSL: https://docs.nvidia.com/cuda/wsl-user-guide/
+- vLLM Gemma 4 guide: https://docs.vllm.ai/projects/recipes/en/stable/Google/Gemma4.html
