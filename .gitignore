@@ -3,6 +3,7 @@
 
 # Local assistant/tooling state
 .superpowers/
+.gh-config/
 LLM/.claude/settings.local.json
 
 # Python/Node caches
