@@ -7,10 +7,11 @@ Current policy:
 - Deploy the base model first.
 - Do not fine-tune yet.
 - Do not use 4-bit quantization.
-- Use BF16 plus vLLM CPU offload.
+- Use float16 for the current Gemma compatibility test and Qwen vLLM service.
 - The cloud server currently may have WSL/project files under `C:`; move the WSL distribution and project files to `E:\Aowen` because `C:` and `D:` may be cleaned.
 - Hugging Face access from WSL may fail; the current working download route is ModelScope.
 - The model prepared for serving is `gemma-4-12B-it`.
+- Gemma 4 12B currently has a Gemma4 Unified compatibility failure in vLLM EngineCore; use Transformers for Gemma testing and Qwen2.5-Coder for the stable vLLM service.
 
 ## 1. Target Layout
 
@@ -452,46 +453,84 @@ nano LLM/configs/serve_vllm.env
 Set `MODEL_PATH` to the local ModelScope-downloaded folder:
 
 ```bash
-MODEL_PATH=/mnt/e/Aowen/models/gemma-4-12B-it
+MODEL_PATH=/mnt/c/Users/Administrator/models/gemma-4-12B-it
 HOST=127.0.0.1
 PORT=8000
 SERVED_MODEL_NAME=cuc-ai-fpga
-GPU_MEMORY_UTILIZATION=0.90
-MAX_MODEL_LEN=2048
+GPU_MEMORY_UTILIZATION=0.85
+MAX_MODEL_LEN=1024
 MAX_NUM_SEQS=1
-CPU_OFFLOAD_GB=8
-DTYPE=bfloat16
-TRUST_REMOTE_CODE=false
-LIMIT_MM_PER_PROMPT='{"image":0,"audio":0}'
-ENFORCE_EAGER=false
+DTYPE=float16
 ```
 
-These settings are non-quantized. They use BF16 and vLLM CPU offload.
-
-Why CPU offload is enabled:
-
-- Gemma 4 12B in BF16 is large for a 24GB GPU.
-- vLLM also needs GPU memory for KV cache.
-- `CPU_OFFLOAD_GB=8` moves part of the model weights to system RAM.
-- This is slower than full GPU serving but keeps the non-quantized model.
-
-64GB system RAM is recommended.
+The Gemma script adds `--trust-remote-code`, `--enforce-eager`, and
+`--language-model-only` directly. It intentionally does not pass a
+multimodal-limit JSON argument.
 
 ## 12. Start the API Server
 
 From the project root:
+
+### Gemma 4 vLLM Compatibility Test
 
 ```bash
 source LLM/.venv/bin/activate
 bash LLM/scripts/serve_vllm.sh
 ```
 
-If using a local model folder and you want to avoid any Hugging Face network calls:
+The script uses:
+
+```text
+/mnt/c/Users/Administrator/models/gemma-4-12B-it
+```
+
+It also uses `--language-model-only`, `--trust-remote-code`, and
+`--enforce-eager`. It does not pass `--limit-mm-per-prompt`, avoiding the
+previous malformed JSON argument.
+
+The known vLLM failure is:
+
+```text
+RuntimeError: mat1 and mat2 shapes cannot be multiplied
+(1024x4096 and 8192x3840)
+```
+
+This occurs in Gemma4 Unified attention `o_proj`. Loading 22.56 GiB of model
+weights succeeds before this failure, so the model path and weight files are
+probably valid.
+
+### Gemma 4 Transformers Test
+
+```bash
+source LLM/.venv/bin/activate
+python test_gemma_transformers.py
+```
+
+This route uses the tokenizer chat template instead of a raw prompt.
+
+### Recommended Qwen vLLM Service
+
+```bash
+source LLM/.venv/bin/activate
+bash LLM/scripts/serve_qwen_vllm.sh
+```
+
+The Qwen service defaults to:
+
+```text
+Qwen/Qwen2.5-Coder-7B-Instruct
+```
+
+It is the recommended path for completing the RTL/Verilog API workflow on an
+RTX 4090 24GB.
+
+If using a local model folder and you want to avoid any Hugging Face network
+calls, set the relevant model path to a complete local snapshot before
+starting:
 
 ```bash
 export HF_HUB_OFFLINE=1
 export TRANSFORMERS_OFFLINE=1
-bash LLM/scripts/serve_vllm.sh
 ```
 
 The API listens on:
@@ -542,9 +581,7 @@ Edit `LLM/configs/serve_vllm.env`:
 
 ```bash
 MAX_MODEL_LEN=1024
-GPU_MEMORY_UTILIZATION=0.85
-CPU_OFFLOAD_GB=10
-ENFORCE_EAGER=true
+GPU_MEMORY_UTILIZATION=0.80
 ```
 
 Restart:
@@ -553,7 +590,9 @@ Restart:
 bash LLM/scripts/serve_vllm.sh
 ```
 
-If it still fails, use a smaller model. Do not switch to 4-bit unless the project decision changes.
+If the same matrix-shape error appears, it is the known Gemma4 Unified
+compatibility issue rather than CUDA OOM. Use the Transformers test or switch
+the vLLM service to Qwen2.5-Coder.
 
 ### WSL DNS Failure
 

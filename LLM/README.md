@@ -2,7 +2,9 @@
 
 Use this directory for cloud-server model deployment and later fine-tuning. The local machine prepares code and pushes it to GitHub; the cloud server clones the repository, installs dependencies, and serves the model. On Windows cloud servers, run the deployment inside WSL2/Ubuntu.
 
-Default base model: `google/gemma-4-12B-it`.
+Current downloaded model: `google/gemma-4-12B-it`.
+
+Recommended vLLM service model: `Qwen/Qwen2.5-Coder-7B-Instruct`.
 
 Primary deployment guide: `LLM/DEPLOY.md`.
 
@@ -11,9 +13,35 @@ Current deployment decision:
 - Deploy first, fine-tune later.
 - Use Windows + WSL2/Ubuntu on the cloud server.
 - Move the WSL distribution, project files, model files, caches, and experiment outputs under `E:\Aowen`; the current cloud setup may still be under `C:` temporarily.
-- Run Gemma 4 12B in BF16 without 4-bit quantization.
-- Use vLLM CPU offload for RTX 4090 24GB.
+- Run the current Gemma compatibility test in float16 without 4-bit quantization.
 - Use ModelScope as the current model download route if Hugging Face fails inside WSL.
+- Treat Gemma 4 12B vLLM serving as an experimental compatibility path.
+- Use Qwen2.5-Coder-7B-Instruct as the preferred vLLM path for RTL/Verilog generation.
+
+## Gemma 4 vLLM Compatibility Status
+
+The ModelScope download completed successfully and the local model is expected at:
+
+```text
+/mnt/c/Users/Administrator/models/gemma-4-12B-it
+```
+
+vLLM can load approximately 22.56 GiB of weights, but the current
+vLLM/Transformers combination may fail while starting EngineCore:
+
+```text
+RuntimeError: mat1 and mat2 shapes cannot be multiplied
+(1024x4096 and 8192x3840)
+```
+
+The failure occurs in Gemma4 Unified attention `o_proj` during profiling or a
+dummy run. It is not a model-path error, malformed JSON, or a simple CUDA OOM.
+
+Use these routes:
+
+- `LLM/scripts/serve_vllm.sh`: Gemma 4 vLLM compatibility testing only.
+- `python test_gemma_transformers.py`: Gemma 4 Transformers chat-template test.
+- `LLM/scripts/serve_qwen_vllm.sh`: recommended stable vLLM service.
 
 ## Layout
 
@@ -41,30 +69,38 @@ bash LLM/scripts/setup_server.sh
 source LLM/.venv/bin/activate
 ```
 
-Download or prepare the model. Current working route:
+Download or prepare Gemma 4. Current working route:
 
 ```bash
 python -m pip install -U modelscope
-mkdir -p /mnt/e/Aowen/models
-modelscope download --model google/gemma-4-12B-it --local_dir /mnt/e/Aowen/models/gemma-4-12B-it
+modelscope download \
+  --model google/gemma-4-12B-it \
+  --local_dir /mnt/c/Users/Administrator/models/gemma-4-12B-it
 ```
 
-Serve with vLLM:
+### Gemma Transformers Test
+
+```bash
+python test_gemma_transformers.py
+```
+
+The test uses `tokenizer.apply_chat_template`, deterministic decoding, an EOS
+token, a padding token, and eager attention.
+
+### Gemma vLLM Compatibility Test
 
 ```bash
 cp LLM/configs/serve_vllm.env.example LLM/configs/serve_vllm.env
-```
-
-Set this in `LLM/configs/serve_vllm.env`:
-
-```bash
-MODEL_PATH=/mnt/e/Aowen/models/gemma-4-12B-it
-```
-
-Then start:
-
-```bash
 bash LLM/scripts/serve_vllm.sh
+```
+
+The Gemma script deliberately omits `--limit-mm-per-prompt`, so the previous
+extra-closing-brace JSON error cannot recur.
+
+### Recommended Qwen vLLM Service
+
+```bash
+bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
 Test the OpenAI-compatible API:

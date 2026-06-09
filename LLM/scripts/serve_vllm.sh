@@ -13,41 +13,30 @@ if [ -f "LLM/configs/serve_vllm.env" ]; then
   set +a
 fi
 
-MODEL_PATH="${MODEL_PATH:-google/gemma-4-12B-it}"
+MODEL_PATH="${MODEL_PATH:-/mnt/c/Users/Administrator/models/gemma-4-12B-it}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
-SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-cuc-ai-fpga}"
-GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.90}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-2048}"
+DTYPE="${DTYPE:-float16}"
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-1024}"
+GPU_MEMORY_UTILIZATION="${GPU_MEMORY_UTILIZATION:-0.85}"
 MAX_NUM_SEQS="${MAX_NUM_SEQS:-1}"
-CPU_OFFLOAD_GB="${CPU_OFFLOAD_GB:-8}"
-DTYPE="${DTYPE:-bfloat16}"
-TRUST_REMOTE_CODE="${TRUST_REMOTE_CODE:-false}"
-LIMIT_MM_PER_PROMPT="${LIMIT_MM_PER_PROMPT:-{\"image\":0,\"audio\":0}}"
-ENFORCE_EAGER="${ENFORCE_EAGER:-false}"
+SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-cuc-ai-fpga}"
 
-ARGS=(
-  --model "$MODEL_PATH" \
-  --served-model-name "$SERVED_MODEL_NAME" \
+cat >&2 <<'EOF'
+WARNING: Gemma 4 12B uses the Gemma4 Unified architecture. The current
+vLLM/Transformers combination may fail during EngineCore profiling with an
+attention o_proj matrix shape mismatch. Use this script for compatibility
+testing; use serve_qwen_vllm.sh for the stable RTL/Verilog service path.
+EOF
+
+vllm serve "$MODEL_PATH" \
   --host "$HOST" \
   --port "$PORT" \
-  --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
+  --dtype "$DTYPE" \
   --max-model-len "$MAX_MODEL_LEN" \
+  --gpu-memory-utilization "$GPU_MEMORY_UTILIZATION" \
   --max-num-seqs "$MAX_NUM_SEQS" \
-  --cpu-offload-gb "$CPU_OFFLOAD_GB" \
-  --dtype "$DTYPE"
-)
-
-if [ -n "$LIMIT_MM_PER_PROMPT" ]; then
-  ARGS+=(--limit-mm-per-prompt "$LIMIT_MM_PER_PROMPT")
-fi
-
-if [ "$TRUST_REMOTE_CODE" = "true" ]; then
-  ARGS+=(--trust-remote-code)
-fi
-
-if [ "$ENFORCE_EAGER" = "true" ]; then
-  ARGS+=(--enforce-eager)
-fi
-
-python -m vllm.entrypoints.openai.api_server "${ARGS[@]}"
+  --served-model-name "$SERVED_MODEL_NAME" \
+  --trust-remote-code \
+  --enforce-eager \
+  --language-model-only
