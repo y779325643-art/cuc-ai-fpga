@@ -14,7 +14,9 @@ class ServingEntrypointsTest(unittest.TestCase):
 
         self.assertIn("*.sh text eol=lf", attributes)
 
-    def _capture_vllm_args(self, script: Path) -> list[str]:
+    def _capture_vllm_args(
+        self, script: Path, extra_env: dict[str, str] | None = None
+    ) -> list[str]:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
             capture_file = temp_path / "args.txt"
@@ -28,6 +30,8 @@ class ServingEntrypointsTest(unittest.TestCase):
             env = os.environ.copy()
             env["PATH"] = f"{temp_path}:{env['PATH']}"
             env["CAPTURE_FILE"] = str(capture_file)
+            if extra_env:
+                env.update(extra_env)
             subprocess.run(
                 ["bash", str(script)],
                 cwd=REPO_ROOT,
@@ -49,12 +53,33 @@ class ServingEntrypointsTest(unittest.TestCase):
         self.assertNotIn("/mnt/c/Users/models/gemma-4-12B-it", args)
 
     def test_qwen_vllm_has_stable_coder_defaults(self) -> None:
-        args = self._capture_vllm_args(REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh")
+        with tempfile.TemporaryDirectory() as model_dir:
+            args = self._capture_vllm_args(
+                REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh",
+                {"QWEN_MODEL_PATH": model_dir},
+            )
 
-        self.assertEqual(args[0:2], ["serve", "Qwen/Qwen2.5-Coder-7B-Instruct"])
+        self.assertEqual(args[0:2], ["serve", model_dir])
         self.assertIn("--max-model-len", args)
         self.assertEqual(args[args.index("--max-model-len") + 1], "4096")
         self.assertEqual(args[args.index("--served-model-name") + 1], "cuc-ai-fpga")
+
+    def test_qwen_vllm_explains_how_to_download_a_missing_local_model(self) -> None:
+        missing_path = "/tmp/definitely-missing-qwen-model"
+        env = os.environ.copy()
+        env["QWEN_MODEL_PATH"] = missing_path
+
+        result = subprocess.run(
+            ["bash", str(REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh")],
+            cwd=REPO_ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+        )
+
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn(f"Qwen model directory not found: {missing_path}", result.stderr)
+        self.assertIn("modelscope download", result.stderr)
 
     def test_transformers_smoke_test_uses_chat_template(self) -> None:
         script = (REPO_ROOT / "test_gemma_transformers.py").read_text(encoding="utf-8")

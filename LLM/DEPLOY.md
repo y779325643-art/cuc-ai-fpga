@@ -510,27 +510,42 @@ This route uses the tokenizer chat template instead of a raw prompt.
 
 ### Recommended Qwen vLLM Service
 
+Download Qwen through ModelScope to the persistent `E:` drive:
+
+```bash
+mkdir -p /mnt/e/Aowen/models
+modelscope download \
+  --model Qwen/Qwen2.5-Coder-7B-Instruct \
+  --local_dir /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
+```
+
+Confirm that the snapshot is complete:
+
+```bash
+test -f /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct/config.json
+```
+
+Start vLLM:
+
 ```bash
 source LLM/.venv/bin/activate
 bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
-The Qwen service defaults to:
+The Qwen service defaults to this local path:
 
 ```text
-Qwen/Qwen2.5-Coder-7B-Instruct
+/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 It is the recommended path for completing the RTL/Verilog API workflow on an
 RTX 4090 24GB.
 
-If using a local model folder and you want to avoid any Hugging Face network
-calls, set the relevant model path to a complete local snapshot before
-starting:
+If the model is stored elsewhere, pass its complete local snapshot path:
 
 ```bash
-export HF_HUB_OFFLINE=1
-export TRANSFORMERS_OFFLINE=1
+QWEN_MODEL_PATH=/path/to/Qwen2.5-Coder-7B-Instruct \
+  bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
 The API listens on:

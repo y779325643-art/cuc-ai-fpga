@@ -99,8 +99,28 @@ extra-closing-brace JSON error cannot recur.
 
 ### Recommended Qwen vLLM Service
 
+Download Qwen to the persistent `E:` drive through ModelScope:
+
+```bash
+mkdir -p /mnt/e/Aowen/models
+modelscope download \
+  --model Qwen/Qwen2.5-Coder-7B-Instruct \
+  --local_dir /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
+```
+
+Then start the service:
+
 ```bash
 bash LLM/scripts/serve_qwen_vllm.sh
+```
+
+The script defaults to
+`/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct`. Override it only when the
+model is stored elsewhere:
+
+```bash
+QWEN_MODEL_PATH=/path/to/Qwen2.5-Coder-7B-Instruct \
+  bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
 Test the OpenAI-compatible API:
