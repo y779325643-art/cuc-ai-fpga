@@ -64,6 +64,16 @@ class ServingEntrypointsTest(unittest.TestCase):
         self.assertEqual(args[args.index("--max-model-len") + 1], "4096")
         self.assertEqual(args[args.index("--served-model-name") + 1], "cuc-ai-fpga")
 
+    def test_qwen_vllm_defaults_to_verified_windows_model_path(self) -> None:
+        script = (
+            REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn(
+            "/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct",
+            script,
+        )
+
     def test_qwen_vllm_explains_how_to_download_a_missing_local_model(self) -> None:
         missing_path = "/tmp/definitely-missing-qwen-model"
         env = os.environ.copy()
@@ -80,6 +90,13 @@ class ServingEntrypointsTest(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(f"Qwen model directory not found: {missing_path}", result.stderr)
         self.assertIn("modelscope download", result.stderr)
+
+    def test_qwen_vllm_disables_flashinfer_sampler_without_nvcc(self) -> None:
+        script = (
+            REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh"
+        ).read_text(encoding="utf-8")
+
+        self.assertIn('export VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}"', script)
 
     def test_transformers_smoke_test_uses_chat_template(self) -> None:
         script = (REPO_ROOT / "test_gemma_transformers.py").read_text(encoding="utf-8")

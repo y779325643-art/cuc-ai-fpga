@@ -510,32 +510,48 @@ This route uses the tokenizer chat template instead of a raw prompt.
 
 ### Recommended Qwen vLLM Service
 
-Download Qwen through ModelScope to the persistent `E:` drive:
+This deployment has been verified successfully on an RTX 4090 24GB. The
+current Windows model directory is:
+
+```text
+C:\Users\Administrator\models\Qwen2.5-Coder-7B-Instruct
+```
+
+The corresponding WSL path is:
+
+```text
+/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+```
+
+If the model must be downloaded again, use ModelScope:
 
 ```bash
-mkdir -p /mnt/e/Aowen/models
+mkdir -p /mnt/c/Users/Administrator/models
 modelscope download \
   --model Qwen/Qwen2.5-Coder-7B-Instruct \
-  --local_dir /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
+  --local_dir /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 Confirm that the snapshot is complete:
 
 ```bash
-test -f /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct/config.json
+test -f /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct/config.json
 ```
 
 Start vLLM:
 
 ```bash
+cd /mnt/c/WSL/cuc-ai-fpga
 source LLM/.venv/bin/activate
+sed -i 's/\r$//' LLM/scripts/*.sh
+chmod +x LLM/scripts/*.sh
 bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
 The Qwen service defaults to this local path:
 
 ```text
-/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
+/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 It is the recommended path for completing the RTL/Verilog API workflow on an
@@ -545,6 +561,21 @@ If the model is stored elsewhere, pass its complete local snapshot path:
 
 ```bash
 QWEN_MODEL_PATH=/path/to/Qwen2.5-Coder-7B-Instruct \
+  bash LLM/scripts/serve_qwen_vllm.sh
+```
+
+The script sets `VLLM_USE_FLASHINFER_SAMPLER=0` by default. This avoids
+FlashInfer sampler JIT compilation on WSL installations that have GPU runtime
+support but do not have the CUDA Toolkit, `/usr/local/cuda`, or `nvcc`.
+Attention and model execution still use the NVIDIA GPU; only the sampling
+implementation falls back to PyTorch.
+
+The model currently resides on `C:` and may be deleted by the cloud provider's
+cleanup policy. After validation, move it to
+`E:\Aowen\models\Qwen2.5-Coder-7B-Instruct`, then start with:
+
+```bash
+QWEN_MODEL_PATH=/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct \
   bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
@@ -561,7 +592,7 @@ http://127.0.0.1:8000/v1
 Open a second Ubuntu terminal:
 
 ```bash
-cd /mnt/e/Aowen/repos/cuc-ai-fpga
+cd /mnt/c/WSL/cuc-ai-fpga
 source LLM/.venv/bin/activate
 BASE_URL=http://127.0.0.1:8000/v1 bash LLM/scripts/test_api.sh
 ```
@@ -570,6 +601,31 @@ You can also test with curl:
 
 ```bash
 curl http://127.0.0.1:8000/v1/models
+```
+
+From Windows PowerShell, prefer `Invoke-RestMethod`. It avoids the JSON quoting
+error that can occur when passing escaped JSON to `curl.exe`:
+
+```powershell
+$body = @{
+    model = "cuc-ai-fpga"
+    messages = @(
+        @{
+            role = "user"
+            content = "请写一个可综合的 Verilog 8位同步计数器，包含 clk、rst_n、en、count 端口，只输出代码。"
+        }
+    )
+    temperature = 0.2
+    max_tokens = 512
+} | ConvertTo-Json -Depth 5
+
+$response = Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/v1/chat/completions" `
+  -Method Post `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([Text.Encoding]::UTF8.GetBytes($body))
+
+$response.choices[0].message.content
 ```
 
 ## 14. Access from Your Local Computer
@@ -641,23 +697,94 @@ Fix:
 If vLLM still tries to download from Hugging Face when you intended offline mode, check:
 
 ```bash
-cat LLM/configs/serve_vllm.env
-ls /mnt/e/Aowen/models/gemma-4-12B-it
+ls /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
 ```
 
-`MODEL_PATH` must be a local path:
+Start Qwen with a complete local path:
 
 ```bash
-MODEL_PATH=/mnt/e/Aowen/models/gemma-4-12B-it
+QWEN_MODEL_PATH=/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct \
+  bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
-not:
+Do not pass only the online repository ID when Hugging Face traffic is
+unavailable:
+
+```text
+Qwen/Qwen2.5-Coder-7B-Instruct
+```
+
+### Shell Script CRLF Error
+
+Symptom:
+
+```text
+set: pipefail: invalid option name
+```
+
+Repair the current checkout and disable automatic CRLF conversion:
 
 ```bash
-MODEL_PATH=google/gemma-4-12B-it
+git config core.autocrlf false
+sed -i 's/\r$//' LLM/scripts/*.sh
+chmod +x LLM/scripts/*.sh
 ```
 
-## 16. Later Fine-Tuning Path
+The repository's `.gitattributes` forces shell scripts to use LF.
+
+### FlashInfer Cannot Find nvcc
+
+Symptom:
+
+```text
+RuntimeError: Could not find nvcc and default cuda_home='/usr/local/cuda' doesn't exist
+```
+
+The Qwen startup script sets this automatically:
+
+```bash
+export VLLM_USE_FLASHINFER_SAMPLER=0
+```
+
+Installing the full CUDA Toolkit is not required for this deployment. The
+model and attention kernels continue running on the GPU.
+
+### Git Pull Blocked by Local Changes
+
+Symptom:
+
+```text
+Your local changes would be overwritten by merge
+```
+
+Preserve the cloud changes before pulling:
+
+```bash
+git stash push -m "cloud-local-changes"
+git pull origin main
+```
+
+Review the stash later with `git stash show -p`.
+
+## 16. Verified Deployment Result
+
+The completed deployment used:
+
+- Windows cloud server with Ubuntu 22.04 under WSL2.
+- NVIDIA RTX 4090 24GB.
+- vLLM `0.22.1`.
+- Qwen2.5-Coder-7B-Instruct in float16, without 4-bit quantization.
+- ModelScope for model download.
+- Local model path
+  `/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct`.
+- `VLLM_USE_FLASHINFER_SAMPLER=0` because the WSL image did not contain
+  `nvcc`.
+- OpenAI-compatible endpoint `http://127.0.0.1:8000/v1`.
+
+The model loaded approximately 14.29 GiB of GPU memory and successfully
+generated synthesizable Verilog through `/v1/chat/completions`.
+
+## 17. Later Fine-Tuning Path
 
 Fine-tuning is not part of the first deployment. When ready:
 
@@ -669,7 +796,7 @@ bash LLM/scripts/merge_lora.sh
 
 Then update `MODEL_PATH` to the merged model directory.
 
-## 17. References
+## 18. References
 
 - ModelScope model download documentation: https://modelscope.cn/docs/models/download
 - ModelScope quick start: https://modelscope.cn/docs/intro/quickstart

@@ -2,9 +2,16 @@
 
 Use this directory for cloud-server model deployment and later fine-tuning. The local machine prepares code and pushes it to GitHub; the cloud server clones the repository, installs dependencies, and serves the model. On Windows cloud servers, run the deployment inside WSL2/Ubuntu.
 
-Current downloaded model: `google/gemma-4-12B-it`.
+Downloaded models:
+
+- `google/gemma-4-12B-it`
+- `Qwen/Qwen2.5-Coder-7B-Instruct`
 
 Recommended vLLM service model: `Qwen/Qwen2.5-Coder-7B-Instruct`.
+
+Deployment status: Qwen2.5-Coder-7B-Instruct has been successfully served with
+vLLM on an RTX 4090 24GB under Windows WSL2, and the OpenAI-compatible chat API
+has returned valid Verilog output.
 
 Primary deployment guide: `LLM/DEPLOY.md`.
 
@@ -99,27 +106,37 @@ extra-closing-brace JSON error cannot recur.
 
 ### Recommended Qwen vLLM Service
 
-Download Qwen to the persistent `E:` drive through ModelScope:
+The currently verified Windows model directory is:
 
-```bash
-mkdir -p /mnt/e/Aowen/models
-modelscope download \
-  --model Qwen/Qwen2.5-Coder-7B-Instruct \
-  --local_dir /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
+```text
+C:\Users\Administrator\models\Qwen2.5-Coder-7B-Instruct
 ```
 
-Then start the service:
+Its WSL path is:
+
+```text
+/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+```
+
+Start the verified service:
 
 ```bash
+cd /mnt/c/WSL/cuc-ai-fpga
+source LLM/.venv/bin/activate
+sed -i 's/\r$//' LLM/scripts/*.sh
 bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
-The script defaults to
-`/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct`. Override it only when the
-model is stored elsewhere:
+The script disables the FlashInfer sampler by default because the current WSL
+environment has the NVIDIA runtime but no CUDA Toolkit or `nvcc`. vLLM falls
+back to its PyTorch sampler while continuing to run the model on the GPU.
+
+The current C-drive model is vulnerable to cloud-machine cleanup. After the
+deployment is stable, move it to
+`E:\Aowen\models\Qwen2.5-Coder-7B-Instruct` and start with:
 
 ```bash
-QWEN_MODEL_PATH=/path/to/Qwen2.5-Coder-7B-Instruct \
+QWEN_MODEL_PATH=/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct \
   bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
@@ -127,6 +144,31 @@ Test the OpenAI-compatible API:
 
 ```bash
 BASE_URL=http://127.0.0.1:8000/v1 bash LLM/scripts/test_api.sh
+```
+
+From Windows PowerShell, use `Invoke-RestMethod` so JSON and Chinese text are
+encoded correctly:
+
+```powershell
+$body = @{
+    model = "cuc-ai-fpga"
+    messages = @(
+        @{
+            role = "user"
+            content = "请写一个可综合的 Verilog 8位同步计数器，包含 clk、rst_n、en、count 端口，只输出代码。"
+        }
+    )
+    temperature = 0.2
+    max_tokens = 512
+} | ConvertTo-Json -Depth 5
+
+$response = Invoke-RestMethod `
+  -Uri "http://127.0.0.1:8000/v1/chat/completions" `
+  -Method Post `
+  -ContentType "application/json; charset=utf-8" `
+  -Body ([Text.Encoding]::UTF8.GetBytes($body))
+
+$response.choices[0].message.content
 ```
 
 The server exposes an OpenAI-compatible API at `http://127.0.0.1:8000/v1` inside WSL. Use SSH port forwarding rather than exposing port `8000` publicly.
