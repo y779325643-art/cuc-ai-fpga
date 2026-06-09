@@ -1,0 +1,9 @@
+* text=auto
+
+# Files executed inside WSL/Linux must never be checked out with CRLF.
+*.sh text eol=lf
+*.py text eol=lf
+*.yaml text eol=lf
+*.yml text eol=lf
+*.env text eol=lf
+*.example text eol=lf

@@ -9,6 +9,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class ServingEntrypointsTest(unittest.TestCase):
+    def test_shell_scripts_are_forced_to_lf_by_git(self) -> None:
+        attributes = (REPO_ROOT / ".gitattributes").read_text(encoding="utf-8")
+
+        self.assertIn("*.sh text eol=lf", attributes)
+
     def _capture_vllm_args(self, script: Path) -> list[str]:
         with tempfile.TemporaryDirectory() as temp_dir:
             temp_path = Path(temp_dir)
