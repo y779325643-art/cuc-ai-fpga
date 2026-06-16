@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>HNAI-FPGA 项目生成界面</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <aside class="sidebar" aria-label="主导航">
+        <div class="brand">
+          <div class="brand-mark">HF</div>
+          <div>
+            <p class="brand-kicker">HNAI-FPGA</p>
+            <h1>项目生成台</h1>
+          </div>
+        </div>
+
+        <nav class="nav-list">
+          <button class="nav-item active" type="button" data-view="workspace" title="项目工作台">
+            <span class="icon">P</span>
+            <span>项目</span>
+          </button>
+          <button class="nav-item" type="button" data-view="verification" title="验证计划">
+            <span class="icon">V</span>
+            <span>验证</span>
+          </button>
+          <button class="nav-item" type="button" data-view="deployment" title="部署">
+            <span class="icon">D</span>
+            <span>部署</span>
+          </button>
+        </nav>
+
+        <section class="status-panel" aria-label="系统状态">
+          <div class="status-row">
+            <span>生成范围</span>
+            <strong class="ok">完整项目</strong>
+          </div>
+          <div class="status-row">
+            <span>模型服务</span>
+            <strong>vLLM</strong>
+          </div>
+          <div class="status-row">
+            <span>目标板卡</span>
+            <strong>FPGA</strong>
+          </div>
+        </section>
+      </aside>
+
+      <section class="content">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">Spec to FPGA Project</p>
+            <h2>从系统需求生成完整 FPGA 工程</h2>
+          </div>
+          <div class="api-box">
+            <label for="apiUrl">API 地址</label>
+            <input id="apiUrl" value="http://127.0.0.1:8000/v1" />
+          </div>
+        </header>
+
+        <section class="workspace-grid view active" id="workspace">
+          <form class="panel prompt-panel" id="generateForm">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">项目规格</p>
+                <h3>工程生成输入</h3>
+              </div>
+              <button class="icon-button" type="button" id="sampleBtn" title="填入示例">R</button>
+            </div>
+
+            <div class="control-row">
+              <label class="field">
+                <span>项目名称</span>
+                <input id="projectName" value="uart_sensor_logger" />
+              </label>
+              <label class="field">
+                <span>顶层模块</span>
+                <input id="topModule" value="uart_sensor_logger_top" />
+              </label>
+            </div>
+
+            <div class="control-row">
+              <label class="select-field">
+                <span>项目类型</span>
+                <select id="projectType">
+                  <option value="数据采集与串口输出">数据采集与串口输出</option>
+                  <option value="控制器与状态机">控制器与状态机</option>
+                  <option value="数字信号处理流水线">数字信号处理流水线</option>
+                  <option value="外设接口桥接">外设接口桥接</option>
+                </select>
+              </label>
+              <label class="select-field">
+                <span>目标语言</span>
+                <select id="hdlType">
+                  <option value="Verilog-2001">Verilog-2001</option>
+                  <option value="SystemVerilog">SystemVerilog</option>
+                </select>
+              </label>
+            </div>
+
+            <label class="field">
+              <span>系统级需求</span>
+              <textarea id="projectSpec" rows="7">设计一个完整 FPGA 项目：采集 8 位传感器数据，使用 FIFO 做缓存，通过 UART 以 115200 波特率发送到上位机。系统包含低电平复位、使能控制、忙闲状态输出、错误计数和可仿真的 testbench。</textarea>
+            </label>
+
+            <label class="field">
+              <span>期望模块划分</span>
+              <textarea id="modulePlan" rows="5">clock_reset：统一复位同步
+sensor_capture：采集 sensor_data 和 sensor_valid
+fifo_buffer：缓存采集数据
+uart_tx：串口发送
+control_fsm：调度采集、缓存和发送流程</textarea>
+            </label>
+
+            <label class="field">
+              <span>时钟、接口与约束</span>
+              <textarea id="constraintText" rows="4">系统时钟 50MHz；UART 波特率 115200；输入 sensor_data[7:0]、sensor_valid；输出 uart_tx、busy、error_count[7:0]；生成基础 XDC/SDC 约束模板。</textarea>
+            </label>
+
+            <fieldset class="deliverables">
+              <legend>生成交付物</legend>
+              <label><input type="checkbox" id="deliverRtl" checked /> RTL 多文件</label>
+              <label><input type="checkbox" id="deliverTb" checked /> Testbench</label>
+              <label><input type="checkbox" id="deliverConstraints" checked /> 约束模板</label>
+              <label><input type="checkbox" id="deliverReadme" checked /> 项目 README</label>
+            </fieldset>
+
+            <div class="control-row">
+              <label class="select-field">
+                <span>目标模型</span>
+                <select id="modelName">
+                  <option value="cuc-ai-fpga">cuc-ai-fpga</option>
+                  <option value="Qwen2.5-Coder-7B-Instruct">Qwen2.5-Coder</option>
+                  <option value="gemma-4-12B-it">Gemma 4 12B</option>
+                </select>
+              </label>
+              <label class="range-field">
+                <span>温度 <output id="tempValue">0.2</output></span>
+                <input id="temperature" type="range" min="0" max="1" step="0.1" value="0.2" />
+              </label>
+            </div>
+
+            <button class="primary-button" type="submit">
+              <span>生成完整项目</span>
+            </button>
+          </form>
+
+          <section class="panel output-panel" aria-label="生成结果">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">项目输出</p>
+                <h3>工程结构与文件内容</h3>
+              </div>
+              <div class="tool-group">
+                <button class="icon-button" type="button" id="copyBtn" title="复制项目输出">C</button>
+                <button class="icon-button" type="button" id="downloadBtn" title="下载项目说明">DL</button>
+              </div>
+            </div>
+
+            <div class="project-summary">
+              <div><span>RTL</span><strong id="rtlCount">5</strong></div>
+              <div><span>验证</span><strong id="tbCount">1</strong></div>
+              <div><span>约束</span><strong id="constraintCount">1</strong></div>
+              <div><span>文档</span><strong id="docCount">1</strong></div>
+            </div>
+
+            <pre class="code-block project-output"><code id="projectOutput"></code></pre>
+          </section>
+
+          <section class="panel review-panel" aria-label="质量检查">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">项目质量门禁</p>
+                <h3>生成后检查</h3>
+              </div>
+              <span class="score">88</span>
+            </div>
+            <div class="check-list">
+              <label><input type="checkbox" checked /> 顶层端口与子模块连线完整</label>
+              <label><input type="checkbox" checked /> 已拆分数据通路与控制状态机</label>
+              <label><input type="checkbox" checked /> 包含仿真入口</label>
+              <label><input type="checkbox" /> 已运行综合与时序检查</label>
+            </div>
+          </section>
+
+          <section class="panel flow-panel" aria-label="项目流程">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">工程链路</p>
+                <h3>需求 → 架构 → 多文件 RTL → 验证 → 约束</h3>
+              </div>
+            </div>
+            <div class="pipeline">
+              <div class="step done"><span>1</span><strong>系统需求</strong><small>输入功能、接口、性能目标</small></div>
+              <div class="step done"><span>2</span><strong>模块规划</strong><small>生成顶层与子模块边界</small></div>
+              <div class="step active"><span>3</span><strong>工程生成</strong><small>输出 RTL、TB、约束和文档</small></div>
+              <div class="step"><span>4</span><strong>EDA 闭环</strong><small>综合反馈后继续修正</small></div>
+            </div>
+          </section>
+        </section>
+
+        <section class="view secondary-view" id="verification">
+          <section class="panel full-panel">
+            <p class="eyebrow">验证视图</p>
+            <h3>完整项目验证计划</h3>
+            <div class="metrics">
+              <div><span>单元测试</span><strong>5</strong></div>
+              <div><span>系统 TB</span><strong>1</strong></div>
+              <div><span>约束检查</span><strong>待运行</strong></div>
+              <div><span>EDA 反馈</span><strong>待接入</strong></div>
+            </div>
+          </section>
+        </section>
+
+        <section class="view secondary-view" id="deployment">
+          <section class="panel full-panel">
+            <p class="eyebrow">部署视图</p>
+            <h3>云端项目生成服务</h3>
+            <div class="deployment-list">
+              <div><span>服务框架</span><strong>vLLM OpenAI-compatible API</strong></div>
+              <div><span>推荐模型</span><strong>Qwen2.5-Coder-7B-Instruct</strong></div>
+              <div><span>输出形态</span><strong>RTL + Testbench + Constraints + README</strong></div>
+              <div><span>访问方式</span><strong>本地端口或 SSH 端口转发</strong></div>
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+
+    <div class="toast" id="toast" role="status" aria-live="polite"></div>
+    <script src="./app.js"></script>
+  </body>
+</html>
