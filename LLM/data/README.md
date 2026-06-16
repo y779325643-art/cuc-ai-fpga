@@ -15,3 +15,17 @@ Convert raw data before training:
 ```bash
 python -m LLM.src.prepare_dataset --input LLM/data/raw.jsonl --output LLM/data/train.jsonl
 ```
+
+For the first pipeline test, use the tracked smoke dataset:
+
+```bash
+python -m LLM.src.prepare_dataset \
+  --input LLM/data/examples/smoke_verilog_raw.jsonl \
+  --output LLM/data/train.jsonl
+```
+
+Then run:
+
+```bash
+bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
+```

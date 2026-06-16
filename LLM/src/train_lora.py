@@ -70,13 +70,14 @@ def main() -> None:
     training_args = TrainingArguments(
         output_dir=output_dir,
         num_train_epochs=float(config.get("num_train_epochs", 3)),
+        max_steps=int(config.get("max_steps", -1)),
         per_device_train_batch_size=int(config.get("per_device_train_batch_size", 1)),
         gradient_accumulation_steps=int(config.get("gradient_accumulation_steps", 16)),
         learning_rate=float(config.get("learning_rate", 2e-4)),
         warmup_ratio=float(config.get("warmup_ratio", 0.03)),
         logging_steps=int(config.get("logging_steps", 10)),
         save_steps=int(config.get("save_steps", 200)),
-        bf16=True,
+        bf16=bool(config.get("bf16", True)),
         report_to="none",
     )
 

@@ -784,7 +784,67 @@ The completed deployment used:
 The model loaded approximately 14.29 GiB of GPU memory and successfully
 generated synthesizable Verilog through `/v1/chat/completions`.
 
-## 17. Later Fine-Tuning Path
+## 17. First Smoke Fine-Tuning Run
+
+Before building a real FPGA dataset, run the tiny tracked Verilog smoke
+dataset once. This verifies the full path:
+
+```text
+raw JSONL -> chat JSONL -> QLoRA training -> LoRA adapter output
+```
+
+Use the existing cloud checkout:
+
+```bash
+cd /mnt/c/WSL/cuc-ai-fpga
+source LLM/.venv/bin/activate
+```
+
+Generate the training file. `LLM/data/train.jsonl` is intentionally ignored by
+Git because real datasets can become large:
+
+```bash
+python -m LLM.src.prepare_dataset \
+  --input LLM/data/examples/smoke_verilog_raw.jsonl \
+  --output LLM/data/train.jsonl
+```
+
+Run the short Qwen QLoRA job:
+
+```bash
+bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
+```
+
+The smoke config uses:
+
+- Base model:
+  `/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct`
+- `use_qlora: true`
+- `max_seq_length: 512`
+- `max_steps: 10`
+- LoRA rank `8`
+- Output directory:
+  `LLM/runs/qwen2_5_coder_7b_smoke_lora`
+
+Expected result:
+
+```text
+LLM/runs/qwen2_5_coder_7b_smoke_lora/
+```
+
+That folder should contain adapter files such as `adapter_config.json` and
+adapter weights. This smoke run is not meant to improve the model; it only
+proves the training stack works.
+
+If CUDA runs out of memory during the smoke run, reduce these fields in
+`LLM/configs/train_qwen_smoke.yaml`:
+
+```yaml
+max_seq_length: 256
+lora_r: 4
+```
+
+## 18. Later Real Fine-Tuning Path
 
 Fine-tuning is not part of the first deployment. When ready:
 
@@ -796,7 +856,7 @@ bash LLM/scripts/merge_lora.sh
 
 Then update `MODEL_PATH` to the merged model directory.
 
-## 18. References
+## 19. References
 
 - ModelScope model download documentation: https://modelscope.cn/docs/models/download
 - ModelScope quick start: https://modelscope.cn/docs/intro/quickstart

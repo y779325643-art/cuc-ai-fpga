@@ -177,6 +177,39 @@ For detailed deployment steps, see `LLM/DEPLOY.md`.
 
 ## Optional Workflow: Fine-Tune Later
 
+### First Smoke Training Run
+
+Use the tiny built-in Verilog dataset first. This is only for validating the
+training pipeline, not for model quality:
+
+```bash
+cd /mnt/c/WSL/cuc-ai-fpga
+source LLM/.venv/bin/activate
+
+python -m LLM.src.prepare_dataset \
+  --input LLM/data/examples/smoke_verilog_raw.jsonl \
+  --output LLM/data/train.jsonl
+
+bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
+```
+
+The smoke config uses the verified local Qwen path:
+
+```text
+/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+```
+
+It runs only `10` optimizer steps with QLoRA and writes the adapter to:
+
+```text
+LLM/runs/qwen2_5_coder_7b_smoke_lora
+```
+
+If this run finishes, the environment, tokenizer, dataset conversion, LoRA
+setup, and adapter saving path are all working.
+
+### Custom Training Data
+
 Prepare training data:
 
 ```bash
