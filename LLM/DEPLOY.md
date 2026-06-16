@@ -8,12 +8,13 @@ Current policy:
 
 - WSL/Ubuntu stays in its normal Windows-managed location. On this cloud
   machine, WSL cannot be installed or imported directly onto `E:`.
-- Treat WSL and the project checkout as rebuildable.
+- Treat WSL itself as rebuildable.
+- Store the project checkout on `E:` at
+  `/mnt/e/Aowen/repos/cuc-ai-fpga`.
 - Store the Python virtual environment on `E:` at
   `/mnt/e/Aowen/venvs/cuc-ai-fpga`.
-- Keep durable assets on `E:\Aowen`: model files, datasets, LoRA outputs,
-  merged models, caches, logs, and optional WSL export backups.
-- The current project checkout can remain at `/mnt/c/WSL/cuc-ai-fpga`.
+- Keep durable assets on `E:\Aowen`: project code, model files, datasets,
+  LoRA outputs, merged models, caches, logs, and optional WSL export backups.
 - Do not use 4-bit quantization for inference; the Qwen vLLM service uses
   float16.
 - The smoke fine-tuning flow uses QLoRA to reduce training memory.
@@ -27,6 +28,7 @@ Create durable folders on the `E:` drive from Windows PowerShell:
 
 ```powershell
 mkdir E:\Aowen
+mkdir E:\Aowen\repos
 mkdir E:\Aowen\models
 mkdir E:\Aowen\datasets
 mkdir E:\Aowen\runs
@@ -41,6 +43,7 @@ mkdir E:\Aowen\logs
 Inside Ubuntu/WSL, these paths appear as:
 
 ```text
+/mnt/e/Aowen/repos
 /mnt/e/Aowen/models
 /mnt/e/Aowen/datasets
 /mnt/e/Aowen/runs
@@ -55,16 +58,15 @@ Inside Ubuntu/WSL, these paths appear as:
 Use `E:\Aowen` for files that must survive cleanup. Do not rely on `C:` or
 `D:` for model weights, real datasets, long training runs, or final adapters.
 
-The current verified project path is:
+The project checkout should live on `E:`:
 
 ```text
-/mnt/c/WSL/cuc-ai-fpga
+/mnt/e/Aowen/repos/cuc-ai-fpga
 ```
 
-This is acceptable because the code is recoverable from GitHub. If `C:` is
-cleaned, reclone the repository and reuse the E-drive virtual environment at
-`/mnt/e/Aowen/venvs/cuc-ai-fpga`. If the virtual environment is missing,
-recreate it with `bash LLM/scripts/setup_server.sh`.
+This keeps code, configs, and scripts alongside the persistent venv, models,
+datasets, and outputs. If `C:` is cleaned, reinstall or enter WSL, then
+continue from this E-drive checkout.
 
 Because WSL itself cannot be placed on `E:` in the current environment, protect
 it by keeping a WSL export backup on `E:` and keeping all experiment outputs on
@@ -171,13 +173,13 @@ sudo apt update
 sudo apt install -y git python3-venv python3-pip curl
 ```
 
-## 5. Clone or Update the Project
+## 5. Clone or Update the Project on E Drive
 
-The current verified checkout is under `C:`:
+Use the persistent E-drive path:
 
 ```bash
-mkdir -p /mnt/c/WSL
-cd /mnt/c/WSL
+mkdir -p /mnt/e/Aowen/repos
+cd /mnt/e/Aowen/repos
 git clone https://github.com/y779325643-art/cuc-ai-fpga.git
 cd cuc-ai-fpga
 ```
@@ -185,7 +187,7 @@ cd cuc-ai-fpga
 If the repository already exists, update it instead:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 git pull origin main
 ```
 
@@ -211,8 +213,8 @@ This creates:
 /mnt/e/Aowen/venvs/cuc-ai-fpga
 ```
 
-The setup script creates the venv on `E:` by default, while the project and WSL
-can remain on `C:`. Override the location only if needed:
+The setup script creates the venv on `E:` by default. Override the location
+only if needed:
 
 ```bash
 LLM_VENV_PATH=/custom/path bash LLM/scripts/setup_server.sh
@@ -350,19 +352,12 @@ In the current setup, Hugging Face access from WSL failed, so use ModelScope dow
 This is the current working route. Install ModelScope in the active environment:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 python -m pip install -U modelscope
 ```
 
 Download to the persistent E drive:
-
-```bash
-mkdir -p /mnt/e/Aowen/models
-modelscope download --model google/gemma-4-12B-it --local_dir /mnt/e/Aowen/models/gemma-4-12B-it
-```
-
-Even though the project is on `C:`, put model files on `E:`:
 
 ```bash
 mkdir -p /mnt/e/Aowen/models
@@ -427,7 +422,7 @@ Do not place model files inside the Git repository.
 From the project root:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 cp LLM/configs/serve_vllm.env.example LLM/configs/serve_vllm.env
 ```
 
@@ -498,37 +493,37 @@ This route uses the tokenizer chat template instead of a raw prompt.
 ### Recommended Qwen vLLM Service
 
 This deployment has been verified successfully on an RTX 4090 24GB. The
-current Windows model directory is:
+recommended persistent Windows model directory is:
 
 ```text
-C:\Users\Administrator\models\Qwen2.5-Coder-7B-Instruct
+E:\Aowen\models\Qwen2.5-Coder-7B-Instruct
 ```
 
 The corresponding WSL path is:
 
 ```text
-/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 If the model must be downloaded again, use ModelScope:
 
 ```bash
-mkdir -p /mnt/c/Users/Administrator/models
+mkdir -p /mnt/e/Aowen/models
 modelscope download \
   --model Qwen/Qwen2.5-Coder-7B-Instruct \
-  --local_dir /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+  --local_dir /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 Confirm that the snapshot is complete:
 
 ```bash
-test -f /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct/config.json
+test -f /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct/config.json
 ```
 
 Start vLLM:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 sed -i 's/\r$//' LLM/scripts/*.sh
 chmod +x LLM/scripts/*.sh
@@ -538,7 +533,7 @@ bash LLM/scripts/serve_qwen_vllm.sh
 The Qwen service defaults to this local path:
 
 ```text
-/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 It is the recommended path for completing the RTL/Verilog API workflow on an
@@ -557,12 +552,10 @@ support but do not have the CUDA Toolkit, `/usr/local/cuda`, or `nvcc`.
 Attention and model execution still use the NVIDIA GPU; only the sampling
 implementation falls back to PyTorch.
 
-The model currently resides on `C:` and may be deleted by the cloud provider's
-cleanup policy. After validation, move it to
-`E:\Aowen\models\Qwen2.5-Coder-7B-Instruct`, then start with:
+If the model is still in the old C-drive location, use this temporarily:
 
 ```bash
-QWEN_MODEL_PATH=/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct \
+QWEN_MODEL_PATH=/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct \
   bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
@@ -579,7 +572,7 @@ http://127.0.0.1:8000/v1
 Open a second Ubuntu terminal:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 BASE_URL=http://127.0.0.1:8000/v1 bash LLM/scripts/test_api.sh
 ```
@@ -684,13 +677,13 @@ Fix:
 If vLLM still tries to download from Hugging Face when you intended offline mode, check:
 
 ```bash
-ls /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+ls /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 Start Qwen with a complete local path:
 
 ```bash
-QWEN_MODEL_PATH=/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct \
+QWEN_MODEL_PATH=/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct \
   bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
@@ -763,7 +756,7 @@ The completed deployment used:
 - Qwen2.5-Coder-7B-Instruct in float16, without 4-bit quantization.
 - ModelScope for model download.
 - Local model path
-  `/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct`.
+  `/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct`.
 - `VLLM_USE_FLASHINFER_SAMPLER=0` because the WSL image did not contain
   `nvcc`.
 - OpenAI-compatible endpoint `http://127.0.0.1:8000/v1`.
@@ -783,7 +776,7 @@ raw JSONL -> chat JSONL -> QLoRA training -> LoRA adapter output
 Use the existing cloud checkout:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 ```
 
@@ -806,7 +799,7 @@ bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
 The smoke config uses:
 
 - Base model:
-  `/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct`
+  `/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct`
 - `use_qlora: true`
 - `max_seq_length: 512`
 - `max_steps: 10`

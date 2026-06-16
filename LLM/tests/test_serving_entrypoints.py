@@ -79,13 +79,13 @@ class ServingEntrypointsTest(unittest.TestCase):
         self.assertEqual(args[args.index("--max-model-len") + 1], "4096")
         self.assertEqual(args[args.index("--served-model-name") + 1], "cuc-ai-fpga")
 
-    def test_qwen_vllm_defaults_to_verified_windows_model_path(self) -> None:
+    def test_qwen_vllm_defaults_to_persistent_e_drive_model_path(self) -> None:
         script = (
             REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh"
         ).read_text(encoding="utf-8")
 
         self.assertIn(
-            "/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct",
+            "/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct",
             script,
         )
 

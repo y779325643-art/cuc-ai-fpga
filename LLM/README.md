@@ -21,9 +21,10 @@ Current deployment decision:
 - Use Windows + WSL2/Ubuntu on the cloud server.
 - WSL itself stays in the Windows-managed location on `C:` because `E:` may
   not be suitable for WSL registration.
-- Keep durable assets under `E:\Aowen`: the Python venv, model files,
-  datasets, caches, training outputs, merged models, logs, and WSL export
-  backups.
+- Keep durable assets under `E:\Aowen`: the project checkout, Python venv,
+  model files, datasets, caches, training outputs, merged models, logs, and
+  WSL export backups.
+- The default project path is `/mnt/e/Aowen/repos/cuc-ai-fpga`.
 - The default venv path is `/mnt/e/Aowen/venvs/cuc-ai-fpga`.
 - Run the current Gemma compatibility test in float16 without 4-bit quantization.
 - Use ModelScope as the current model download route if Hugging Face fails inside WSL.
@@ -68,8 +69,8 @@ Use these routes:
 In Ubuntu/WSL on the cloud server:
 
 ```bash
-mkdir -p /mnt/c/WSL
-cd /mnt/c/WSL
+mkdir -p /mnt/e/Aowen/repos
+cd /mnt/e/Aowen/repos
 git clone https://github.com/y779325643-art/cuc-ai-fpga.git
 cd cuc-ai-fpga
 
@@ -83,7 +84,7 @@ Download or prepare Gemma 4. Current working route:
 python -m pip install -U modelscope
 modelscope download \
   --model google/gemma-4-12B-it \
-  --local_dir /mnt/c/Users/Administrator/models/gemma-4-12B-it
+  --local_dir /mnt/e/Aowen/models/gemma-4-12B-it
 ```
 
 ### Gemma Transformers Test
@@ -107,22 +108,22 @@ extra-closing-brace JSON error cannot recur.
 
 ### Recommended Qwen vLLM Service
 
-The currently verified Windows model directory is:
+Recommended Qwen model directory:
 
 ```text
-C:\Users\Administrator\models\Qwen2.5-Coder-7B-Instruct
+E:\Aowen\models\Qwen2.5-Coder-7B-Instruct
 ```
 
 Its WSL path is:
 
 ```text
-/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 Start the verified service:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 sed -i 's/\r$//' LLM/scripts/*.sh
 bash LLM/scripts/serve_qwen_vllm.sh
@@ -132,12 +133,10 @@ The script disables the FlashInfer sampler by default because the current WSL
 environment has the NVIDIA runtime but no CUDA Toolkit or `nvcc`. vLLM falls
 back to its PyTorch sampler while continuing to run the model on the GPU.
 
-The current C-drive model is vulnerable to cloud-machine cleanup. After the
-deployment is stable, move it to
-`E:\Aowen\models\Qwen2.5-Coder-7B-Instruct` and start with:
+If the model is still in the old C-drive location, use this temporarily:
 
 ```bash
-QWEN_MODEL_PATH=/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct \
+QWEN_MODEL_PATH=/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct \
   bash LLM/scripts/serve_qwen_vllm.sh
 ```
 
@@ -184,7 +183,7 @@ Use the tiny built-in Verilog dataset first. This is only for validating the
 training pipeline, not for model quality:
 
 ```bash
-cd /mnt/c/WSL/cuc-ai-fpga
+cd /mnt/e/Aowen/repos/cuc-ai-fpga
 source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 
 python -m LLM.src.prepare_dataset \
@@ -198,7 +197,7 @@ bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
 The smoke config uses the verified local Qwen path:
 
 ```text
-/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 ```
 
 It runs only `10` optimizer steps with QLoRA and writes the adapter to the

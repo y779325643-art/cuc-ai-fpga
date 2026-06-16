@@ -32,7 +32,7 @@ class TrainingSmokeAssetsTest(unittest.TestCase):
 
         self.assertEqual(
             config["model_name_or_path"],
-            "/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct",
+            "/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct",
         )
         self.assertEqual(config["train_file"], "LLM/data/train.jsonl")
         self.assertEqual(config["output_dir"], "/mnt/e/Aowen/runs/qwen2_5_coder_7b_smoke_lora")

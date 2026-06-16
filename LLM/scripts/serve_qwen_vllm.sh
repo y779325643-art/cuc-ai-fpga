@@ -10,7 +10,7 @@ elif [ -f "LLM/.venv/bin/activate" ]; then
   source LLM/.venv/bin/activate
 fi
 
-MODEL_PATH="${QWEN_MODEL_PATH:-/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct}"
+MODEL_PATH="${QWEN_MODEL_PATH:-/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 DTYPE="${DTYPE:-float16}"
@@ -27,9 +27,9 @@ if [ ! -d "$MODEL_PATH" ]; then
 Qwen model directory not found: $MODEL_PATH
 
 Download it with ModelScope:
-  mkdir -p /mnt/c/Users/Administrator/models
+  mkdir -p /mnt/e/Aowen/models
   modelscope download --model Qwen/Qwen2.5-Coder-7B-Instruct \
-    --local_dir /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
+    --local_dir /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
 
 Or start with another complete local snapshot:
   QWEN_MODEL_PATH=/path/to/Qwen2.5-Coder-7B-Instruct bash LLM/scripts/serve_qwen_vllm.sh
