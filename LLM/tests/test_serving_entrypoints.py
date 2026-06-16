@@ -14,6 +14,21 @@ class ServingEntrypointsTest(unittest.TestCase):
 
         self.assertIn("*.sh text eol=lf", attributes)
 
+    def test_runtime_scripts_use_persistent_e_drive_venv_by_default(self) -> None:
+        scripts = [
+            "setup_server.sh",
+            "serve_qwen_vllm.sh",
+            "serve_vllm.sh",
+            "train_lora.sh",
+            "merge_lora.sh",
+        ]
+
+        for script_name in scripts:
+            script = (REPO_ROOT / f"LLM/scripts/{script_name}").read_text(encoding="utf-8")
+            with self.subTest(script=script_name):
+                self.assertIn("/mnt/e/Aowen/venvs/cuc-ai-fpga", script)
+                self.assertIn("LLM_VENV_PATH", script)
+
     def _capture_vllm_args(
         self, script: Path, extra_env: dict[str, str] | None = None
     ) -> list[str]:

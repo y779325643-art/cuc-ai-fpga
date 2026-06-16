@@ -27,5 +27,6 @@ python -m LLM.src.prepare_dataset \
 Then run:
 
 ```bash
+mkdir -p /mnt/e/Aowen/runs
 bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
 ```

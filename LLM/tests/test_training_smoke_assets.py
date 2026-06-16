@@ -35,6 +35,7 @@ class TrainingSmokeAssetsTest(unittest.TestCase):
             "/mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct",
         )
         self.assertEqual(config["train_file"], "LLM/data/train.jsonl")
+        self.assertEqual(config["output_dir"], "/mnt/e/Aowen/runs/qwen2_5_coder_7b_smoke_lora")
         self.assertLessEqual(config["max_seq_length"], 512)
         self.assertLessEqual(config["max_steps"], 20)
         self.assertTrue(config["use_qlora"])

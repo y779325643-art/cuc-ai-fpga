@@ -1,65 +1,74 @@
-# Windows Cloud Deployment Guide for Gemma 4 12B
+# Windows Cloud Deployment Guide for Qwen/Gemma on WSL
 
-This guide describes how to deploy `google/gemma-4-12B-it` on a Windows cloud server with an RTX 4090 24GB GPU. The deployment uses **WSL2 + Ubuntu + vLLM**.
+This guide describes how to deploy and smoke-train local LLMs on a Windows
+cloud server with an RTX 4090 24GB GPU. The deployment uses
+**Windows + WSL2/Ubuntu + vLLM + Transformers/QLoRA**.
 
 Current policy:
 
-- Deploy the base model first.
-- Do not fine-tune yet.
-- Do not use 4-bit quantization.
-- Use float16 for the current Gemma compatibility test and Qwen vLLM service.
-- The cloud server currently may have WSL/project files under `C:`; move the WSL distribution and project files to `E:\Aowen` because `C:` and `D:` may be cleaned.
+- WSL/Ubuntu stays in its normal Windows-managed location. On this cloud
+  machine, WSL cannot be installed or imported directly onto `E:`.
+- Treat WSL and the project checkout as rebuildable.
+- Store the Python virtual environment on `E:` at
+  `/mnt/e/Aowen/venvs/cuc-ai-fpga`.
+- Keep durable assets on `E:\Aowen`: model files, datasets, LoRA outputs,
+  merged models, caches, logs, and optional WSL export backups.
+- The current project checkout can remain at `/mnt/c/WSL/cuc-ai-fpga`.
+- Do not use 4-bit quantization for inference; the Qwen vLLM service uses
+  float16.
+- The smoke fine-tuning flow uses QLoRA to reduce training memory.
 - Hugging Face access from WSL may fail; the current working download route is ModelScope.
-- The model prepared for serving is `gemma-4-12B-it`.
+- The verified serving model is `Qwen/Qwen2.5-Coder-7B-Instruct`.
 - Gemma 4 12B currently has a Gemma4 Unified compatibility failure in vLLM EngineCore; use Transformers for Gemma testing and Qwen2.5-Coder for the stable vLLM service.
 
 ## 1. Target Layout
 
-Create these folders on Windows:
+Create durable folders on the `E:` drive from Windows PowerShell:
 
 ```powershell
-mkdir E:\Aowen\repos
-mkdir E:\Aowen\wsl
-mkdir E:\Aowen\hf-cache
+mkdir E:\Aowen
 mkdir E:\Aowen\models
 mkdir E:\Aowen\datasets
 mkdir E:\Aowen\runs
+mkdir E:\Aowen\merged
+mkdir E:\Aowen\venvs
+mkdir E:\Aowen\hf-cache
+mkdir E:\Aowen\modelscope-cache
 mkdir E:\Aowen\backups
+mkdir E:\Aowen\logs
 ```
 
 Inside Ubuntu/WSL, these paths appear as:
 
 ```text
-/mnt/e/Aowen/repos
-/mnt/e/Aowen/wsl
-/mnt/e/Aowen/hf-cache
 /mnt/e/Aowen/models
 /mnt/e/Aowen/datasets
 /mnt/e/Aowen/runs
+/mnt/e/Aowen/merged
+/mnt/e/Aowen/venvs
+/mnt/e/Aowen/hf-cache
+/mnt/e/Aowen/modelscope-cache
 /mnt/e/Aowen/backups
+/mnt/e/Aowen/logs
 ```
 
-Use `E:\Aowen` for the WSL distribution, code, model files, caches, datasets, outputs, and backups. Avoid storing important files under `/mnt/c` or `/mnt/d`.
+Use `E:\Aowen` for files that must survive cleanup. Do not rely on `C:` or
+`D:` for model weights, real datasets, long training runs, or final adapters.
 
-If you have not moved the project yet, it is acceptable to continue temporarily from the current WSL path, for example:
+The current verified project path is:
 
 ```text
 /mnt/c/WSL/cuc-ai-fpga
 ```
 
-However, treat that path as temporary. Before long experiments or model serving, move or re-clone the project under:
+This is acceptable because the code is recoverable from GitHub. If `C:` is
+cleaned, reclone the repository and reuse the E-drive virtual environment at
+`/mnt/e/Aowen/venvs/cuc-ai-fpga`. If the virtual environment is missing,
+recreate it with `bash LLM/scripts/setup_server.sh`.
 
-```text
-/mnt/e/Aowen/repos/cuc-ai-fpga
-```
-
-Also move the WSL distribution itself to:
-
-```text
-E:\Aowen\wsl\Ubuntu-22.04
-```
-
-If the WSL distribution stays under the default Windows user profile on `C:`, cleaning `C:` can remove the entire Ubuntu environment, including installed packages and virtual environments.
+Because WSL itself cannot be placed on `E:` in the current environment, protect
+it by keeping a WSL export backup on `E:` and keeping all experiment outputs on
+`E:`.
 
 ## 2. Windows and WSL2 Setup
 
@@ -89,9 +98,10 @@ wsl -d Ubuntu-22.04
 
 Do not install a Linux NVIDIA driver inside WSL2. CUDA is provided by the Windows NVIDIA driver.
 
-## 3. Move the WSL Distribution to E Drive
+## 3. Back Up WSL to E Drive
 
-Do this before serious deployment work if `C:` can be cleaned.
+Do this periodically if `C:` can be cleaned. This does not move WSL to `E:`;
+it creates a recoverable snapshot.
 
 First, check the distribution name in **PowerShell**:
 
@@ -101,11 +111,10 @@ wsl -l -v
 
 Assume the name is `Ubuntu-22.04`. If your output shows a different name, replace `Ubuntu-22.04` in the commands below.
 
-Create backup and target folders:
+Create a backup folder:
 
 ```powershell
 mkdir E:\Aowen\backups
-mkdir E:\Aowen\wsl
 ```
 
 Shut down WSL:
@@ -117,29 +126,16 @@ wsl --shutdown
 Export the current Ubuntu distribution:
 
 ```powershell
-wsl --export Ubuntu-22.04 E:\Aowen\backups\ubuntu-22.04.tar
+wsl --export Ubuntu-22.04 E:\Aowen\backups\ubuntu-22.04-latest.tar
 ```
 
-Confirm the backup exists before deleting the old distribution:
+Confirm the backup exists:
 
 ```powershell
-dir E:\Aowen\backups\ubuntu-22.04.tar
+dir E:\Aowen\backups\ubuntu-22.04-latest.tar
 ```
 
-Only after the `.tar` file exists, unregister the old distribution:
-
-```powershell
-wsl --unregister Ubuntu-22.04
-```
-
-Import it into E drive:
-
-```powershell
-mkdir E:\Aowen\wsl\Ubuntu-22.04
-wsl --import Ubuntu-22.04 E:\Aowen\wsl\Ubuntu-22.04 E:\Aowen\backups\ubuntu-22.04.tar --version 2
-```
-
-Start it:
+Start Ubuntu again:
 
 ```powershell
 wsl -d Ubuntu-22.04
@@ -147,28 +143,11 @@ wsl -d Ubuntu-22.04
 
 Important notes:
 
-- `wsl --unregister` deletes the old distribution. Do not run it before verifying the exported `.tar`.
-- After import, Ubuntu may start as `root`. For deployment commands this works, but a normal user is cleaner.
-- Keep `E:\Aowen\backups\ubuntu-22.04.tar` as a recovery backup.
-
-Optional: if your imported Ubuntu starts as root and you want to create a user:
-
-```bash
-adduser administrator
-usermod -aG sudo administrator
-```
-
-If `ubuntu2204.exe` is still available, set the default user from PowerShell:
-
-```powershell
-ubuntu2204.exe config --default-user administrator
-```
-
-If `ubuntu2204.exe` is unavailable after import, simply enter with:
-
-```powershell
-wsl -d Ubuntu-22.04
-```
+- Do not run `wsl --unregister` unless you intentionally want to delete the
+  current Ubuntu distribution.
+- The export file can be large. Keep at least one known-good backup on `E:`.
+- Even with WSL backups, put model files, datasets, and adapter outputs under
+  `E:\Aowen` because they are the most expensive files to recreate.
 
 ## 4. Verify GPU in Ubuntu
 
@@ -192,15 +171,22 @@ sudo apt update
 sudo apt install -y git python3-venv python3-pip curl
 ```
 
-## 5. Clone the Project to E Drive
+## 5. Clone or Update the Project
 
-In Ubuntu:
+The current verified checkout is under `C:`:
 
 ```bash
-mkdir -p /mnt/e/Aowen/repos
-cd /mnt/e/Aowen/repos
+mkdir -p /mnt/c/WSL
+cd /mnt/c/WSL
 git clone https://github.com/y779325643-art/cuc-ai-fpga.git
 cd cuc-ai-fpga
+```
+
+If the repository already exists, update it instead:
+
+```bash
+cd /mnt/c/WSL/cuc-ai-fpga
+git pull origin main
 ```
 
 If Git asks for GitHub credentials:
@@ -216,20 +202,26 @@ From the project root:
 
 ```bash
 bash LLM/scripts/setup_server.sh
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 ```
 
 This creates:
 
 ```text
-/mnt/e/Aowen/repos/cuc-ai-fpga/LLM/.venv
+/mnt/e/Aowen/venvs/cuc-ai-fpga
 ```
 
-Because the project is under `E:\Aowen`, the virtual environment is also persistent.
+The setup script creates the venv on `E:` by default, while the project and WSL
+can remain on `C:`. Override the location only if needed:
+
+```bash
+LLM_VENV_PATH=/custom/path bash LLM/scripts/setup_server.sh
+source /custom/path/bin/activate
+```
 
 ## 7. Persist Model and Package Caches on E Drive
 
-Use this once you are ready to move persistent files to `E:\Aowen`. In Ubuntu:
+Use this before downloading models or training. In Ubuntu:
 
 ```bash
 mkdir -p /mnt/e/Aowen/hf-cache
@@ -243,7 +235,7 @@ EOF
 source ~/.bashrc
 ```
 
-This keeps downloaded model files on the persistent E drive.
+This keeps Hugging Face cache files on the persistent E drive.
 
 For ModelScope, also add:
 
@@ -358,8 +350,8 @@ In the current setup, Hugging Face access from WSL failed, so use ModelScope dow
 This is the current working route. Install ModelScope in the active environment:
 
 ```bash
-cd /mnt/e/Aowen/repos/cuc-ai-fpga
-source LLM/.venv/bin/activate
+cd /mnt/c/WSL/cuc-ai-fpga
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 python -m pip install -U modelscope
 ```
 
@@ -370,7 +362,7 @@ mkdir -p /mnt/e/Aowen/models
 modelscope download --model google/gemma-4-12B-it --local_dir /mnt/e/Aowen/models/gemma-4-12B-it
 ```
 
-If the project has not moved to E drive yet, still put the model under E drive:
+Even though the project is on `C:`, put model files on `E:`:
 
 ```bash
 mkdir -p /mnt/e/Aowen/models
@@ -435,12 +427,7 @@ Do not place model files inside the Git repository.
 From the project root:
 
 ```bash
-# Use this if the project has already been moved to E drive:
-cd /mnt/e/Aowen/repos/cuc-ai-fpga
-
-# Or use the current temporary C-drive path if you have not moved yet:
-# cd /mnt/c/WSL/cuc-ai-fpga
-
+cd /mnt/c/WSL/cuc-ai-fpga
 cp LLM/configs/serve_vllm.env.example LLM/configs/serve_vllm.env
 ```
 
@@ -474,7 +461,7 @@ From the project root:
 ### Gemma 4 vLLM Compatibility Test
 
 ```bash
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 bash LLM/scripts/serve_vllm.sh
 ```
 
@@ -502,7 +489,7 @@ probably valid.
 ### Gemma 4 Transformers Test
 
 ```bash
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 python test_gemma_transformers.py
 ```
 
@@ -542,7 +529,7 @@ Start vLLM:
 
 ```bash
 cd /mnt/c/WSL/cuc-ai-fpga
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 sed -i 's/\r$//' LLM/scripts/*.sh
 chmod +x LLM/scripts/*.sh
 bash LLM/scripts/serve_qwen_vllm.sh
@@ -593,7 +580,7 @@ Open a second Ubuntu terminal:
 
 ```bash
 cd /mnt/c/WSL/cuc-ai-fpga
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 BASE_URL=http://127.0.0.1:8000/v1 bash LLM/scripts/test_api.sh
 ```
 
@@ -797,7 +784,7 @@ Use the existing cloud checkout:
 
 ```bash
 cd /mnt/c/WSL/cuc-ai-fpga
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 ```
 
 Generate the training file. `LLM/data/train.jsonl` is intentionally ignored by
@@ -812,6 +799,7 @@ python -m LLM.src.prepare_dataset \
 Run the short Qwen QLoRA job:
 
 ```bash
+mkdir -p /mnt/e/Aowen/runs
 bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
 ```
 
@@ -824,12 +812,12 @@ The smoke config uses:
 - `max_steps: 10`
 - LoRA rank `8`
 - Output directory:
-  `LLM/runs/qwen2_5_coder_7b_smoke_lora`
+  `/mnt/e/Aowen/runs/qwen2_5_coder_7b_smoke_lora`
 
 Expected result:
 
 ```text
-LLM/runs/qwen2_5_coder_7b_smoke_lora/
+/mnt/e/Aowen/runs/qwen2_5_coder_7b_smoke_lora/
 ```
 
 That folder should contain adapter files such as `adapter_config.json` and

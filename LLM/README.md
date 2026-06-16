@@ -19,7 +19,12 @@ Current deployment decision:
 
 - Deploy first, fine-tune later.
 - Use Windows + WSL2/Ubuntu on the cloud server.
-- Move the WSL distribution, project files, model files, caches, and experiment outputs under `E:\Aowen`; the current cloud setup may still be under `C:` temporarily.
+- WSL itself stays in the Windows-managed location on `C:` because `E:` may
+  not be suitable for WSL registration.
+- Keep durable assets under `E:\Aowen`: the Python venv, model files,
+  datasets, caches, training outputs, merged models, logs, and WSL export
+  backups.
+- The default venv path is `/mnt/e/Aowen/venvs/cuc-ai-fpga`.
 - Run the current Gemma compatibility test in float16 without 4-bit quantization.
 - Use ModelScope as the current model download route if Hugging Face fails inside WSL.
 - Treat Gemma 4 12B vLLM serving as an experimental compatibility path.
@@ -63,17 +68,13 @@ Use these routes:
 In Ubuntu/WSL on the cloud server:
 
 ```bash
-# Recommended final project location after moving WSL itself to E drive:
-mkdir -p /mnt/e/Aowen/repos
-cd /mnt/e/Aowen/repos
+mkdir -p /mnt/c/WSL
+cd /mnt/c/WSL
 git clone https://github.com/y779325643-art/cuc-ai-fpga.git
 cd cuc-ai-fpga
 
-# If you have not moved to E drive yet, use your current project path instead:
-# cd /mnt/c/WSL/cuc-ai-fpga
-
 bash LLM/scripts/setup_server.sh
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 ```
 
 Download or prepare Gemma 4. Current working route:
@@ -122,7 +123,7 @@ Start the verified service:
 
 ```bash
 cd /mnt/c/WSL/cuc-ai-fpga
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 sed -i 's/\r$//' LLM/scripts/*.sh
 bash LLM/scripts/serve_qwen_vllm.sh
 ```
@@ -184,12 +185,13 @@ training pipeline, not for model quality:
 
 ```bash
 cd /mnt/c/WSL/cuc-ai-fpga
-source LLM/.venv/bin/activate
+source /mnt/e/Aowen/venvs/cuc-ai-fpga/bin/activate
 
 python -m LLM.src.prepare_dataset \
   --input LLM/data/examples/smoke_verilog_raw.jsonl \
   --output LLM/data/train.jsonl
 
+mkdir -p /mnt/e/Aowen/runs
 bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_smoke.yaml
 ```
 
@@ -199,10 +201,11 @@ The smoke config uses the verified local Qwen path:
 /mnt/c/Users/Administrator/models/Qwen2.5-Coder-7B-Instruct
 ```
 
-It runs only `10` optimizer steps with QLoRA and writes the adapter to:
+It runs only `10` optimizer steps with QLoRA and writes the adapter to the
+persistent E drive:
 
 ```text
-LLM/runs/qwen2_5_coder_7b_smoke_lora
+/mnt/e/Aowen/runs/qwen2_5_coder_7b_smoke_lora
 ```
 
 If this run finishes, the environment, tokenizer, dataset conversion, LoRA
