@@ -11,6 +11,14 @@ This repository collects project materials for HNAI-FPGA, including LLM-assisted
 - `references/` - background reading and reference notes.
 - `reports/manuscripts/` - manuscript drafts, reports, and Word documents.
 - `reports/rendered/` - rendered PDFs and page images generated from reports or presentations.
+- `app/` - final project application interface for the Spec-to-RTL demo.
+
+## Application Interface
+
+Open `app/index.html` in a browser to use the HNAI-FPGA Spec-to-RTL interface.
+The page can call the local OpenAI-compatible vLLM endpoint at
+`http://127.0.0.1:8000/v1` when the model service is running, and falls back to
+demo Verilog output when the service is unavailable.
 
 ## Git Notes
 
