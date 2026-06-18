@@ -100,6 +100,24 @@ python3 -m LLM.src.sr2fpga_agent.cli \
   --project-name counter_8bit
 ```
 
+Use DeepSeek as the project generator:
+
+```bash
+export DEEPSEEK_API_KEY="your-key"
+
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_000006 \
+  --provider deepseek \
+  --model deepseek-v4-flash \
+  --task-type counter \
+  --width 8 \
+  --project-name counter_8bit
+```
+
+The API key is read only from the environment. Do not write it into repository
+files or generated samples.
+
 Each sample records generated project files under `attempts/` and `final/`,
 plus labels and measured QoR under `eval/`.
 
