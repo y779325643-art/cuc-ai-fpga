@@ -36,16 +36,30 @@ def parse_yosys_stats(log_text: str) -> dict[str, object]:
     """Extract resource-like counts from Yosys `stat` output."""
     cell_breakdown: dict[str, int] = {}
     cell_count = 0
+    in_current_cell_section = False
     for raw_line in log_text.splitlines():
         line = raw_line.strip()
+        if line.startswith("===") and line.endswith("==="):
+            in_current_cell_section = False
+            continue
         total_match = re.match(r"Number of cells:\s+(\d+)", line)
         if total_match:
             cell_count = int(total_match.group(1))
+            in_current_cell_section = True
+            continue
+        current_total_match = re.match(r"(\d+)\s+cells$", line)
+        if current_total_match:
+            cell_count = int(current_total_match.group(1))
+            in_current_cell_section = True
             continue
 
         cell_match = re.match(r"([A-Za-z0-9_$.\-]+)\s+(\d+)$", line)
         if cell_match:
             cell_breakdown[cell_match.group(1)] = int(cell_match.group(2))
+            continue
+        current_cell_match = re.match(r"(\d+)\s+([A-Za-z0-9_$.\-]+)$", line)
+        if in_current_cell_section and current_cell_match:
+            cell_breakdown[current_cell_match.group(2)] = int(current_cell_match.group(1))
 
     totals = defaultdict(int)
     for cell_name, count in cell_breakdown.items():

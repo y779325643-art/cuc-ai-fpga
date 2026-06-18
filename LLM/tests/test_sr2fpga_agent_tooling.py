@@ -64,6 +64,49 @@ class ToolingTest(unittest.TestCase):
         self.assertEqual(stats["bram"], 1)
         self.assertEqual(stats["dsp"], 2)
 
+    def test_parse_yosys_stats_extracts_current_yosys_stat_format(self) -> None:
+        log = """
+        === top ===
+
+           12 wires
+           33 wire bits
+            4 ports
+           11 port bits
+           22 cells
+            5   $_AND_
+            8   $_DFFE_PN0P_
+            1   $_NAND_
+            1   $_NOT_
+            1   $_XNOR_
+            6   $_XOR_
+        """
+
+        stats = parse_yosys_stats(log)
+
+        self.assertEqual(stats["cell_count"], 22)
+        self.assertEqual(stats["cell_breakdown"]["$_DFFE_PN0P_"], 8)
+        self.assertNotIn("wires", stats["cell_breakdown"])
+        self.assertNotIn("ports", stats["cell_breakdown"])
+        self.assertEqual(stats["ff"], 8)
+
+    def test_parse_yosys_stats_resets_at_repeated_module_headers(self) -> None:
+        log = """
+        === top ===
+           22 cells
+            8   $_DFFE_PN0P_
+
+        === top ===
+           12 wires
+            4 ports
+           22 cells
+            8   $_DFFE_PN0P_
+        """
+
+        stats = parse_yosys_stats(log)
+
+        self.assertEqual(stats["cell_breakdown"], {"$_DFFE_PN0P_": 8})
+        self.assertEqual(stats["cell_count"], 22)
+
 
 if __name__ == "__main__":
     unittest.main()
