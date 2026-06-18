@@ -64,6 +64,45 @@ Use these routes:
 - `src/` - Python entrypoints for dataset preparation, training, and adapter merge.
 - `tests/` - lightweight tests for repository-side utilities.
 
+## SR2FPGA Data Generation Agent
+
+The `LLM/src/sr2fpga_agent/` package contains the first lightweight data
+generation agent for SR2FPGA RTL project samples. It is a tool-calling dataset
+factory, not the final no-tool generation model.
+
+V1 generates a small Verilog project package with:
+
+- `system_his.json`
+- `manifest.json`
+- `rtl/top.v`
+- `constraints/timing.sdc`
+- `sim/tb_top.v`
+- `reports/predicted_qor.json`
+
+It can then run a command-line pipeline:
+
+- Verilator for lint
+- Icarus Verilog for simulation
+- Yosys for synthesis and resource statistics
+
+Install those tools separately before running real checks. Without them, the
+agent still records missing-tool results, which is useful for testing the
+dataset structure.
+
+Generate one sample:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_000001 \
+  --task-type counter \
+  --width 8 \
+  --project-name counter_8bit
+```
+
+Each sample records generated project files under `attempts/` and `final/`,
+plus labels and measured QoR under `eval/`.
+
 ## Quick Workflow: Deploy First
 
 In Ubuntu/WSL on the cloud server:
