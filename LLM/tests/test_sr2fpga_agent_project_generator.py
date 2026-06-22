@@ -102,9 +102,51 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("mem", project.files["rtl/top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
+    def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = [
+            ("counter", 8, "counter_8bit"),
+            ("fifo", 8, "fifo_8bit"),
+            ("simple_fsm", 4, "fsm_sequence_4bit"),
+            ("ram_read_write", 16, "ram_rw_16bit"),
+            ("uart_tx", 8, "uart_tx_8bit"),
+            ("spi_master", 8, "spi_master_8bit"),
+            ("pwm_controller", 8, "pwm_controller_8bit"),
+            ("fir_filter", 8, "fir_filter_8bit"),
+            ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
+            ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+        ]
+
+        for task_type, width, project_name in cases:
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                _assert_manifest_sources_exist(self, project)
+                self.assertEqual(_manifest(project)["simulation"]["testbench"], "sim/tb_top.v")
+                self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
 
 def _task_type(project) -> str:
     return json.loads(project.files["system_his.json"])["task_type"]
+
+
+def _manifest(project) -> dict:
+    return json.loads(project.files["manifest.json"])
+
+
+def _system_his(project) -> dict:
+    return json.loads(project.files["system_his.json"])
+
+
+def _assert_manifest_sources_exist(testcase: unittest.TestCase, project) -> None:
+    manifest = _manifest(project)
+    testcase.assertIn("rtl/top.v", manifest["sources"])
+    for source in manifest["sources"]:
+        testcase.assertIn(source, project.files)
+        testcase.assertTrue(source.startswith("rtl/"), source)
+        testcase.assertIn("module ", project.files[source])
 
 
 if __name__ == "__main__":

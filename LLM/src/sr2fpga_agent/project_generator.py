@@ -8,19 +8,34 @@ from textwrap import dedent
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 
 
+SUPPORTED_TASK_TYPES = {
+    "counter",
+    "fifo",
+    "simple_fsm",
+    "ram_read_write",
+    "uart_tx",
+    "spi_master",
+    "pwm_controller",
+    "fir_filter",
+    "streaming_valid_ready",
+    "matrix_vector_mac",
+}
+
+
 class ProjectGenerator:
     """Generate minimal Verilog RTL project packages."""
 
     def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
-        if request.task_type not in {"counter", "fifo", "simple_fsm", "ram_read_write"}:
+        if request.task_type not in SUPPORTED_TASK_TYPES:
             raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
         if request.width <= 0:
             raise ValueError("width must be positive")
 
+        rtl_files = _rtl_files(request)
         files = {
             "system_his.json": _to_json(_system_his(request, platform)),
-            "manifest.json": _to_json(_manifest(request, platform)),
-            "rtl/top.v": _rtl(request),
+            "manifest.json": _to_json(_manifest(request, platform, rtl_files)),
+            **rtl_files,
             "constraints/timing.sdc": _timing_sdc(platform),
             "sim/tb_top.v": _testbench(request),
             "reports/predicted_qor.json": _to_json(_predicted_qor(request, platform)),
@@ -57,7 +72,12 @@ def _system_his(request: ProjectRequest, platform: PlatformProfile) -> dict[str,
     }
 
 
-def _manifest(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
+def _manifest(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+    rtl_files: dict[str, str] | None = None,
+) -> dict[str, object]:
+    sources = list((rtl_files or {"rtl/top.v": ""}).keys())
     return {
         "project_name": request.project_name,
         "top_module": "top",
@@ -69,7 +89,7 @@ def _manifest(request: ProjectRequest, platform: PlatformProfile) -> dict[str, o
             "board": platform.board,
             "toolchain": platform.toolchain,
         },
-        "sources": ["rtl/top.v"],
+        "sources": sources,
         "constraints": {"timing": "constraints/timing.sdc"},
         "simulation": {"testbench": "sim/tb_top.v", "type": "self_checking"},
         "reports": {"predicted_qor": "reports/predicted_qor.json"},
@@ -102,16 +122,32 @@ def _counter_rtl(width: int) -> str:
     )
 
 
-def _rtl(request: ProjectRequest) -> str:
+def _rtl_files(request: ProjectRequest) -> dict[str, str]:
     if request.task_type == "counter":
-        return _counter_rtl(request.width)
+        return {"rtl/top.v": _counter_rtl(request.width)}
     if request.task_type == "fifo":
-        return _fifo_rtl(request.width)
+        return {"rtl/top.v": _fifo_rtl(request.width)}
     if request.task_type == "simple_fsm":
-        return _simple_fsm_rtl(max(2, request.width))
+        return {"rtl/top.v": _simple_fsm_rtl(max(2, request.width))}
     if request.task_type == "ram_read_write":
-        return _ram_read_write_rtl(request.width)
+        return {"rtl/top.v": _ram_read_write_rtl(request.width)}
+    if request.task_type == "uart_tx":
+        return _uart_tx_rtl_files(request.width)
+    if request.task_type == "spi_master":
+        return _spi_master_rtl_files(request.width)
+    if request.task_type == "pwm_controller":
+        return _pwm_controller_rtl_files(request.width)
+    if request.task_type == "fir_filter":
+        return _fir_filter_rtl_files(request.width)
+    if request.task_type == "streaming_valid_ready":
+        return _streaming_valid_ready_rtl_files(request.width)
+    if request.task_type == "matrix_vector_mac":
+        return _matrix_vector_mac_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
+
+
+def _rtl(request: ProjectRequest) -> str:
+    return _rtl_files(request)["rtl/top.v"]
 
 
 def _timing_sdc(platform: PlatformProfile) -> str:
@@ -128,6 +164,15 @@ def _testbench(request: ProjectRequest) -> str:
         return _simple_fsm_testbench(max(2, request.width))
     if request.task_type == "ram_read_write":
         return _ram_read_write_testbench(request.width)
+    if request.task_type in {
+        "uart_tx",
+        "spi_master",
+        "pwm_controller",
+        "fir_filter",
+        "streaming_valid_ready",
+        "matrix_vector_mac",
+    }:
+        return _passthrough_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -500,6 +545,121 @@ def _ram_read_write_testbench(width: int) -> str:
     )
 
 
+def _passthrough_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg [{msb}:0] din;
+          wire [{msb}:0] dout;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .din(din),
+            .dout(dout)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          initial begin
+            rst_n = 1'b0;
+            din = {width}'d0;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            @(negedge clk);
+            din = {width}'d165;
+            #1;
+            if (dout !== {width}'d165) begin
+              $display("TEST_FAIL expected dout=165 got %0d", dout);
+              $finish;
+            end
+
+            @(negedge clk);
+            din = {width}'d90;
+            #1;
+            if (dout !== {width}'d90) begin
+              $display("TEST_FAIL expected dout=90 got %0d", dout);
+              $finish;
+            end
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _simple_passthrough_multimodule(task_name: str, width: int, submodule_name: str) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire [{msb}:0] din,
+            output wire [{msb}:0] dout
+        );
+
+          {submodule_name} u_core (
+            .din(din),
+            .dout(dout)
+          );
+
+        endmodule
+        """
+    )
+    core = dedent(
+        f"""\
+        module {submodule_name} (
+            input wire [{msb}:0] din,
+            output wire [{msb}:0] dout
+        );
+
+          assign dout = din;
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        f"rtl/{task_name}_core.v": core,
+    }
+
+
+def _uart_tx_rtl_files(width: int) -> dict[str, str]:
+    return _simple_passthrough_multimodule("uart_tx", width, "uart_tx_core")
+
+
+def _spi_master_rtl_files(width: int) -> dict[str, str]:
+    return _simple_passthrough_multimodule("spi_master", width, "spi_master_core")
+
+
+def _pwm_controller_rtl_files(width: int) -> dict[str, str]:
+    return _simple_passthrough_multimodule("pwm_controller", width, "pwm_channel")
+
+
+def _fir_filter_rtl_files(width: int) -> dict[str, str]:
+    return _simple_passthrough_multimodule("fir_filter", width, "fir_filter_core")
+
+
+def _streaming_valid_ready_rtl_files(width: int) -> dict[str, str]:
+    return _simple_passthrough_multimodule("streaming_valid_ready", width, "stream_stage")
+
+
+def _matrix_vector_mac_rtl_files(width: int) -> dict[str, str]:
+    return _simple_passthrough_multimodule("matrix_vector_mac", width, "dot_product_engine")
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -536,6 +696,14 @@ def _default_description(request: ProjectRequest) -> str:
         "fifo": f"Generate a {request.width}-bit synchronous FIFO with depth 4.",
         "simple_fsm": "Generate a simple three-state FSM with start and done handshake.",
         "ram_read_write": f"Generate a {request.width}-bit by 4-entry synchronous RAM read/write block.",
+        "uart_tx": f"Generate a transitional {request.width}-bit UART TX multi-module package.",
+        "spi_master": f"Generate a transitional {request.width}-bit SPI master multi-module package.",
+        "pwm_controller": f"Generate a transitional {request.width}-bit PWM controller multi-module package.",
+        "fir_filter": f"Generate a transitional {request.width}-bit FIR filter multi-module package.",
+        "streaming_valid_ready": (
+            f"Generate a transitional {request.width}-bit valid-ready streaming multi-module package."
+        ),
+        "matrix_vector_mac": f"Generate a transitional {request.width}-bit matrix-vector MAC multi-module package.",
     }
     return descriptions[request.task_type]
 
@@ -601,6 +769,24 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 "outputs": [{"name": "rdata", "width": request.width}],
             }
         )
+    elif request.task_type in {
+        "uart_tx",
+        "spi_master",
+        "pwm_controller",
+        "fir_filter",
+        "streaming_valid_ready",
+        "matrix_vector_mac",
+    }:
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "din", "width": request.width},
+                ],
+                "outputs": [{"name": "dout", "width": request.width}],
+            }
+        )
     return common
 
 
@@ -610,6 +796,12 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "fifo": "data written into the FIFO is read back in order",
         "simple_fsm": "FSM transitions from idle to run to done and back to idle",
         "ram_read_write": "data written to an address can be read back from the same address",
+        "uart_tx": "transitional core passes din through to dout",
+        "spi_master": "transitional core passes din through to dout",
+        "pwm_controller": "transitional core passes din through to dout",
+        "fir_filter": "transitional core passes din through to dout",
+        "streaming_valid_ready": "transitional core passes din through to dout",
+        "matrix_vector_mac": "transitional core passes din through to dout",
     }
     return expectations[request.task_type]
 
@@ -623,4 +815,16 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": 6, "ff": max(2, request.width) + 3, "bram": 0, "dsp": 0}
     if request.task_type == "ram_read_write":
         return {"lut": max(4, request.width), "ff": request.width * 4 + request.width, "bram": 0, "dsp": 0}
+    if request.task_type == "uart_tx":
+        return {"lut": max(12, request.width * 2), "ff": request.width + 16, "bram": 0, "dsp": 0}
+    if request.task_type == "spi_master":
+        return {"lut": max(16, request.width * 2), "ff": request.width * 2 + 16, "bram": 0, "dsp": 0}
+    if request.task_type == "pwm_controller":
+        return {"lut": max(8, request.width), "ff": request.width * 2, "bram": 0, "dsp": 0}
+    if request.task_type == "fir_filter":
+        return {"lut": max(20, request.width * 3), "ff": request.width * 3, "bram": 0, "dsp": 2}
+    if request.task_type == "streaming_valid_ready":
+        return {"lut": max(10, request.width), "ff": request.width * 2 + 4, "bram": 0, "dsp": 0}
+    if request.task_type == "matrix_vector_mac":
+        return {"lut": max(24, request.width * 4), "ff": request.width * 4, "bram": 0, "dsp": 2}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
