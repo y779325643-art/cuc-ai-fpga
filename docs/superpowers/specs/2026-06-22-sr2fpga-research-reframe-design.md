@@ -147,21 +147,41 @@ under a fixed iteration budget.
 评测 + 可复现 req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨迹微调一个
 模型，使其内化工具接受度、在固定迭代预算下提升生成与自修复。**
 
-### Differentiation (against AutoChip / RTLCoder / VeriGen / ChipNeMo / VerilogEval / RTLLM)
+### Differentiation (related-work map; full lit-review in the author's vault)
 
-Three support points, so the paper does not depend on "our model generates
-better" (a losing fight):
+Three support points, stated honestly against the *current* field (not the
+field as of VerilogEval):
 
-1. **System-HIS intermediate supervision** — req→structured hardware intent
-   (System-HIS)→project instead of req→code directly: an explicit, learnable,
-   evaluable intermediate representation for project-level generation. Its gain
-   is **proven by ablation, not assumed**.
-2. **Project-level L0–L5 benchmark** — existing RTL-LLM benchmarks are
-   single-file and stop at simulation or synthesis; cross-module/cross-file
-   consistency and timing are structurally untestable there.
-3. **Fully reproducible req→bitstream→board closed loop** (code/data/scripts/
-   device public, tool versions pinned; open-source where mature) — almost no
-   prior RTL-LLM work reaches P&R / timing, on-board, or full reproducibility.
+1. **System-HIS as a requirement-level front-end IR** — req→System-HIS→project
+   instead of req→code; an explicit, learnable, evaluable intermediate
+   representation that sits **above** the hardware-IR spectrum (FIRRTL / CIRCT /
+   LLHD / HIR / Calyx) and can *lower to* it — it does not replace or
+   re-implement CIRCT. (Decision: **shallow CIRCT coupling** — position + an
+   optional lowering bridge, not a deep dependency.) Gain **proven by ablation**.
+2. **Tool-verified trajectory dataset + L0–L5 project evaluation** — NOT
+   "project-level" as the moat: multi-file/project benchmarks **already exist
+   (RTL-Repo, CktEvo, ArchXBench)**, so that alone is no longer novel. The moat
+   is the *unit of data* = a **project trajectory**
+   (generate→tool→fail→diagnose→patch, with L0–L5 labels), which those
+   benchmarks do not produce.
+3. **Reproducible req→bitstream→board closed loop** to L4/L5 (code/data/scripts/
+   device public, versions pinned) — almost no prior RTL-LLM work reaches
+   P&R/timing, on-board, or full reproducibility.
+
+Field map (what each line is, and why it is not us):
+
+- **LLM-to-RTL benchmarks / models:** VerilogEval, RTLLM, **RTLCoder (TCAD'25)**,
+  OpenLLM-RTL — single module / RTL code, pass@k. (RTLCoder is the closest TCAD
+  baseline: code-gen model vs our tool-verified project generation.)
+- **Project-level RTL benchmarks:** **RTL-Repo, CktEvo, ArchXBench** — multi-file
+  / repository-level, but code/compile-level, no physical closure, no trajectory.
+- **Tool-feedback / agentic:** AutoChip, RTLFixer, MAGE, **Spec2RTL-Agent**
+  (spec→C++→HLS→RTL) — repair loops are mature → not a selling point.
+- **Hardware IRs:** FIRRTL / CIRCT / LLHD / HIR / Calyx, and **CPPL**
+  (LLM→circuit-IR→CIRCT) — IR/lowering, input already a program/DSL/IR; CPPL is
+  at circuit-structure level, System-HIS at requirement-intent level.
+- **HLS DSE:** NSGA-II, Chimera, IronMan, AutoHLS — optimize a given design point
+  (directly relevant to Paper ②, e.g. predictor-as-proxy-fitness).
 
 The model/data is a method contribution riding on these, **not** a SOTA-model
 claim.
