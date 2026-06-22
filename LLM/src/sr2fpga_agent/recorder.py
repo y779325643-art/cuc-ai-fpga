@@ -189,9 +189,12 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
 def _read_project_files(project_dir: Path) -> list[dict[str, str]]:
     files: list[dict[str, str]] = []
     for path in sorted(item for item in project_dir.rglob("*") if item.is_file()):
+        relative_path = path.relative_to(project_dir)
+        if any(part.startswith(".") for part in relative_path.parts):
+            continue
         files.append(
             {
-                "path": path.relative_to(project_dir).as_posix(),
+                "path": relative_path.as_posix(),
                 "content": path.read_text(encoding="utf-8"),
             }
         )

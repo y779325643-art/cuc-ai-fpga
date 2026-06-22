@@ -242,6 +242,36 @@ class DatasetRecorderTest(unittest.TestCase):
     def test_repair_result_is_shared_model_and_agent_compatible(self) -> None:
         self.assertIs(RepairResult, ModelRepairResult)
 
+    def test_export_training_views_ignores_hidden_project_files(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            recorder = DatasetRecorder(root)
+            requirement = "Design an 8-bit counter with enable and active-low reset."
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter_8bit"),
+                platform,
+            )
+            recorder.start_sample("sample_000001", requirement, platform)
+            recorder.write_final(
+                "sample_000001",
+                project,
+                labels={"pass_level": "L3"},
+                measured_qor={"lut": 1, "ff": 8, "bram": 0, "dsp": 0},
+                tool_versions={"yosys": "unknown"},
+                trajectory={"sample_id": "sample_000001", "attempts": []},
+            )
+            hidden_file = root / "sample_000001" / "final" / "generated_project" / ".DS_Store"
+            hidden_file.write_bytes(b"\x00\x80binary finder metadata")
+
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+
+            rows = (export_dir / "requirement_to_project.jsonl").read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(rows), 1)
+            exported_paths = [item["path"] for item in json.loads(rows[0])["files"]]
+            self.assertNotIn(".DS_Store", exported_paths)
+
 
 class FakeRunner:
     def __init__(self) -> None:
