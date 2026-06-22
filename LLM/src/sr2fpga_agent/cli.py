@@ -11,7 +11,7 @@ from LLM.src.sr2fpga_agent.deepseek import DeepSeekClient, DeepSeekConfig, DeepS
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
 
 
-def main() -> None:
+def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description="Generate one SR2FPGA RTL dataset sample.")
     parser.add_argument("--dataset-root", required=True, type=Path)
     parser.add_argument("--sample-id", required=True)
@@ -24,9 +24,9 @@ def main() -> None:
     parser.add_argument("--model", default="deepseek-v4-flash")
     parser.add_argument("--base-url", default="https://api.deepseek.com")
     parser.add_argument("--api-key-env", default="DEEPSEEK_API_KEY")
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
-    requirement = args.requirement or f"Design a {args.width}-bit counter with enable and active-low reset."
+    requirement = args.requirement or f"Design a {args.width}-bit {args.task_type} RTL block with active-low reset."
     project_generator = build_project_generator(
         provider=args.provider,
         model=args.model,
@@ -36,7 +36,12 @@ def main() -> None:
     result = DataGenerationAgent(args.dataset_root, project_generator=project_generator).run_one(
         sample_id=args.sample_id,
         requirement=requirement,
-        request=ProjectRequest(task_type=args.task_type, width=args.width, project_name=args.project_name),
+        request=ProjectRequest(
+            task_type=args.task_type,
+            width=args.width,
+            project_name=args.project_name,
+            description=requirement,
+        ),
         platform=PlatformProfile(name=args.platform, vendor="generic", toolchain="open_source"),
     )
     print(f"sample_dir={result['sample_dir']}")

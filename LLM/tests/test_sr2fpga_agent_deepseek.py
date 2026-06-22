@@ -69,6 +69,55 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertIsInstance(generator, DeepSeekProjectGenerator)
 
+    def test_cli_passes_requirement_into_project_request(self) -> None:
+        from LLM.src.sr2fpga_agent import cli
+
+        captured = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, project_generator=None) -> None:
+                captured["dataset_root"] = dataset_root
+                captured["project_generator"] = project_generator
+
+            def run_one(self, sample_id, requirement, request, platform):
+                captured["sample_id"] = sample_id
+                captured["requirement"] = requirement
+                captured["request"] = request
+                captured["platform"] = platform
+                return {"sample_dir": "datasets/sr2fpga_rtl_v1/sample_llm_000001", "pass_level": "L0"}
+
+        requirement = "Design an 8-bit counter with enable, reset, and a self-checking testbench."
+        with (
+            mock.patch.object(cli, "DataGenerationAgent", FakeAgent),
+            mock.patch.object(cli, "build_project_generator", return_value="fake-llm-generator"),
+            mock.patch("builtins.print"),
+        ):
+            cli.main(
+                [
+                    "--dataset-root",
+                    "datasets/sr2fpga_rtl_v1",
+                    "--sample-id",
+                    "sample_llm_000001",
+                    "--provider",
+                    "deepseek",
+                    "--task-type",
+                    "counter",
+                    "--width",
+                    "8",
+                    "--project-name",
+                    "llm_counter_8bit",
+                    "--requirement",
+                    requirement,
+                ]
+            )
+
+        self.assertEqual(captured["requirement"], requirement)
+        self.assertEqual(captured["request"].description, requirement)
+        self.assertEqual(captured["request"].task_type, "counter")
+        self.assertEqual(captured["request"].width, 8)
+        self.assertEqual(captured["request"].project_name, "llm_counter_8bit")
+        self.assertEqual(captured["project_generator"], "fake-llm-generator")
+
 
 class FakeDeepSeekClient:
     def __init__(self, content: str) -> None:
