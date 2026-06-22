@@ -47,9 +47,12 @@ feedback** — but makes it defensible and feasible under the real resource budg
 
 ## Hard Constraints (shape every decision below)
 
-- **Compute:** single RTX 4090 24 GB. Feasible: 7B-class QLoRA fine-tuning +
-  inference. **Not feasible:** pretraining or training a generation model that
-  beats GPT-5 / DeepSeek head-to-head. That ambition is explicitly abandoned.
+- **Compute:** single RTX 4090 24 GB for any local fine-tuning. **Not feasible:**
+  pretraining or training a generation model that beats GPT-5 / DeepSeek
+  head-to-head — that ambition is abandoned. **Model size is deliberately not
+  fixed now:** dataset and benchmark design must stay model-agnostic; model and
+  scale are chosen at the modeling stage from whatever compute is available then.
+  **Current priority is building the dataset.**
 - **Data:** none exists; all trajectories are generated from scratch by running
   tools locally. **Labels come entirely from tools** (open-source Yosys/Verilator/
   Icarus for L0–L3, OpenXC7/Vivado for L4–L5), so "tool-verified learning" is literally
@@ -135,13 +138,13 @@ SR2FPGA generates multi-module, cross-file-consistent RTL **projects** from
 system requirements **through a System-HIS intermediate representation**, drives
 them through a **reproducible flow** to **L4 timing closure** (plus L5 on-board
 cases on the AC820-ZYNQ), and quantifies each level with an **L0–L5 project-level
-evaluation**; on this evaluation, a 7B-class model fine-tuned on tool-verified
-trajectories internalizes tool acceptance and improves generation + self-repair
+evaluation**; on this evaluation, a tool-verified fine-tuned model
+internalizes tool acceptance and improves generation + self-repair
 under a fixed iteration budget.
 
 中文定位：**面向系统需求的项目级 RTL 工程生成——以 System-HIS 中间表示 + 项目级 L0–L5
 评测 + 可复现 req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨迹微调一个
-7B 级模型，使其内化工具接受度、在固定迭代预算下提升生成与自修复。**
+模型，使其内化工具接受度、在固定迭代预算下提升生成与自修复。**
 
 ### Differentiation (against AutoChip / RTLCoder / VeriGen / ChipNeMo / VerilogEval / RTLLM)
 
@@ -172,6 +175,26 @@ datapaths, storage, interfaces). Entry ticket: the generated object must be a
 **variable-topology multi-module design** (a top instantiating several submodules
 with consistent ports/params across files), not a fixed 6-file template —
 otherwise "project-level" collapses.
+
+### System-HIS schema (v1 — fields adjustable)
+
+System-HIS is the machine-readable hardware-intent spec emitted from the
+requirement and consumed by **both** generation and the L0 checker. Proposed v1
+fields:
+
+- `project`: name, one-line description.
+- `clocks` / `resets`: domains — `{name, target_fmax_mhz, reset_polarity}`.
+- `modules`: `[{name, role, ports:[{name, dir, width}], params:[{name, value}],
+  behavior: {fsm | datapath | storage}}]`.
+- `connections`: cross-module contracts — `{from:"mod.port", to:"mod.port",
+  protocol: register|valid_ready|axi_lite|axi_stream, width}`.
+- `verification`: what the testbench checks; the meaning of TEST_PASS.
+- `qor_intent`: target Fmax + rough resource expectation (model-side, never
+  measured — feeds `predicted_qor.json`, kept separate from measured QoR).
+
+**Dual use** (this is why System-HIS is a contribution, not a side artifact): it
+is the **intermediate supervision target** (REQ→HIS) for generation, AND the
+**ground-truth contract** the L0 checker validates the generated RTL against.
 
 ### Benchmark design
 
@@ -210,7 +233,12 @@ otherwise "project-level" collapses.
   2. timing pressure (target Fmax / critical-path depth) — primary
   3. protocol/control complexity (register → valid/ready → backpressured pipeline → AXI4-Lite/Stream) — the carrier that drives axis 1 up
   4. structural scale (submodule count / hierarchy depth) and CDC — high-difficulty tier
-- **Scale:** thousands to ~10k samples, not millions (4090-realistic). Benchmark
+- **Difficulty tiers (to report the frontier pass-rate knee):** map the axes onto
+  **T1 Easy / T2 Medium / T3 Hard / T4 Stress** by submodule count, number of
+  cross-module contracts, protocol class, and target Fmax (concrete thresholds
+  fixed during the baseline (a) measurement). Pass rates are reported **per tier**
+  so the knee where frontier models start failing is visible.
+- **Scale:** thousands to ~10k samples, not millions (data-volume-realistic). Benchmark
   items are mostly small/medium multi-module designs (an RL-sized accelerator is
   a *flagship case*, not the body — see scope). The existing deterministic
   `ProjectGenerator` is the seed of the component library.
@@ -222,6 +250,13 @@ otherwise "project-level" collapses.
   (Yosys); **L4** place-and-route timing closure (**OpenXC7 on the AC820-ZYNQ /
   XC7Z020CLG484-2, Vivado as fallback/baseline**, report Fmax/slack); **L5**
   sparse representative on-board runs (AC820-ZYNQ).
+- **L0 consistency checker (a named component, not a side note):** validates the
+  generated RTL against the System-HIS contract — top instantiates the declared
+  modules; every port name/direction/width, parameter, and cross-module
+  connection matches System-HIS; the testbench instantiates the real top;
+  constraints reference real ports. This automates the cross-file-consistency
+  verdict and yields the **"cross-file consistency error rate"** metric — the
+  structural check single-file benchmarks structurally cannot do.
 - **Toolchain (all-open primary, Vivado fallback):** synthesis and large-scale
   data through **L3 use Yosys** (open, fast, free — fits thousands of samples);
   **L4 timing closure + L5 on-board use OpenXC7 (nextpnr-xilinx) on the
@@ -254,11 +289,11 @@ otherwise "project-level" collapses.
   **generation + self-repair** (read tool errors and fix), the form closest to
   the author's intent. Discrimination (QoR/pass prediction = the QoR predictor
   for Paper ②) is the natural companion task.
-- **Base model:** a 7B-class code/RTL base trainable via QLoRA on one 4090 —
-  candidates Qwen2.5-Coder-7B, DeepSeek-Coder-7B, CodeLlama-7B, StarCoder2-7B,
-  etc. **Selection is a replaceable choice and may itself be a small comparison
-  experiment** (which base gains most from tool-verified fine-tuning). The only
-  fixed constraint is "7B-class, single-GPU QLoRA."
+- **Base model (deferred to the modeling stage):** family and size are chosen
+  later from then-available compute — the dataset is model-agnostic. Likely
+  candidates: code/RTL bases (Qwen2.5-Coder, DeepSeek-Coder, CodeLlama,
+  StarCoder2, …) at whatever scale fits (QLoRA on one 4090 is the floor, not a
+  ceiling). Base choice can itself be a small comparison experiment.
 - **Framework:** tool-in-the-loop (generate → tool check → feedback on
   errors/resources → regenerate/repair → record), matching the author's
   steps 1–4.
@@ -286,9 +321,10 @@ The contributions are the deltas:
 
 The generator is **swappable**, which yields a strong headline result: use a
 large model (GPT/DeepSeek) as the chain's first half for a high baseline, but the
-model you can actually fine-tune is the local 7B. Then ask: **can a tool-verified
-fine-tuned local 7B's (c) reach a large model's (a) or even (b)?** A small model
-matching a large one with fewer tool calls is a hard, publishable result.
+model you can actually fine-tune is a smaller, local one. Then ask: **can a
+tool-verified fine-tuned smaller model's (c) reach a large model's (a) or even
+(b)?** A small model matching a large one with fewer tool calls is a hard,
+publishable result.
 
 Plus one purity ablation that disarms critique #3: **tool-verified trajectories
 vs same-source un-filtered distillation trajectories** — does the tool filter
