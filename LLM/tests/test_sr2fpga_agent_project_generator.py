@@ -158,6 +158,54 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("out_valid", project.files["rtl/top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
+    def test_generates_spi_master_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="spi_master", width=8, project_name="spi_master_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "spi_master",
+            {"rtl/top.v", "rtl/spi_master_core.v", "rtl/clock_divider.v"},
+            ["spi_master_core", "clock_divider", ".mosi(mosi)", ".miso(miso)", ".cs_n(cs_n)"],
+        )
+        self.assertIn("output wire sclk", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_fir_filter_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="fir_filter", width=8, project_name="fir_filter_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "fir_filter",
+            {"rtl/top.v", "rtl/fir_filter_core.v", "rtl/mac_unit.v"},
+            ["fir_filter_core", "mac_unit", ".sample_valid(sample_valid)", ".result_valid(result_valid)"],
+        )
+        self.assertIn("result", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_matrix_vector_mac_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="matrix_vector_mac", width=8, project_name="matrix_vector_mac_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "matrix_vector_mac",
+            {"rtl/top.v", "rtl/dot_product_engine.v", "rtl/mac_unit.v", "rtl/vector_rom.v"},
+            ["dot_product_engine", "mac_unit", "vector_rom", ".done(done)"],
+        )
+        self.assertIn("result", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -189,12 +237,15 @@ class ProjectGeneratorTest(unittest.TestCase):
                 self.assertEqual(architecture["style"], expected_style)
 
     @unittest.skipUnless(shutil.which("iverilog") and shutil.which("vvp"), "iverilog/vvp are not installed")
-    def test_task2_generated_testbenches_pass_under_icarus(self) -> None:
+    def test_multimodule_generated_testbenches_pass_under_icarus(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
         cases = [
             ("uart_tx", 8, "uart_tx_8bit"),
+            ("spi_master", 8, "spi_master_8bit"),
             ("pwm_controller", 8, "pwm_controller_8bit"),
+            ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
+            ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
         ]
 
         for task_type, width, project_name in cases:
