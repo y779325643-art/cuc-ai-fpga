@@ -179,6 +179,49 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("rtl/top.v", project.files)
         self.assertEqual(client.call_count, 2)
 
+    def test_deepseek_project_generator_retries_single_file_multimodule_response(self) -> None:
+        single_file_payload = json.dumps(
+            {
+                "files": {
+                    "system_his.json": json.dumps({"task_type": "uart_tx"}) + "\n",
+                    "manifest.json": _valid_manifest(),
+                    "rtl/top.v": "module top; endmodule\n",
+                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                    "sim/tb_top.v": "module tb_top; initial $display(\"TEST_PASS\"); endmodule\n",
+                    "reports/predicted_qor.json": "{}\n",
+                }
+            }
+        )
+        multi_file_payload = json.dumps(
+            {
+                "files": {
+                    "system_his.json": json.dumps({"task_type": "uart_tx"}) + "\n",
+                    "manifest.json": _valid_manifest(
+                        sources=["rtl/top.v", "rtl/baud_tick_gen.v", "rtl/uart_tx_core.v"]
+                    ),
+                    "rtl/top.v": "module top; baud_tick_gen u_tick(); uart_tx_core u_core(); endmodule\n",
+                    "rtl/baud_tick_gen.v": "module baud_tick_gen; endmodule\n",
+                    "rtl/uart_tx_core.v": "module uart_tx_core; endmodule\n",
+                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                    "sim/tb_top.v": "module tb_top; initial $display(\"TEST_PASS\"); endmodule\n",
+                    "reports/predicted_qor.json": "{}\n",
+                }
+            }
+        )
+        client = FakeDeepSeekClient([single_file_payload, multi_file_payload])
+        request = ProjectRequest(task_type="uart_tx", width=8, project_name="uart_tx_8bit")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        project = DeepSeekProjectGenerator(client=client).generate(request, platform)
+
+        manifest = json.loads(project.files["manifest.json"])
+        self.assertEqual(client.call_count, 2)
+        self.assertEqual(
+            manifest["sources"],
+            ["rtl/top.v", "rtl/baud_tick_gen.v", "rtl/uart_tx_core.v"],
+        )
+        self.assertIn("rtl/uart_tx_core.v", project.files)
+
     def test_deepseek_repairer_uses_failure_context_and_returns_patch(self) -> None:
         original = GeneratedProject(
             project_name="counter_8bit",
@@ -299,6 +342,21 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn('"top_module": "top"', user_prompt)
         self.assertIn('"sources": ["rtl/top.v"]', user_prompt)
         self.assertIn('"simulation": {"testbench": "sim/tb_top.v"}', user_prompt)
+
+    def test_project_prompt_requests_true_multifile_rtl_for_multimodule_tasks(self) -> None:
+        request = ProjectRequest(task_type="spi_master", width=8, project_name="spi_master_8bit")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        messages = _project_messages(request, platform)
+        user_prompt = messages[1]["content"]
+
+        self.assertIn("Generate a true multi-file RTL implementation", user_prompt)
+        self.assertIn("rtl/top.v must be an integration wrapper", user_prompt)
+        self.assertIn('"rtl/clock_divider.v"', user_prompt)
+        self.assertIn('"rtl/spi_master_core.v"', user_prompt)
+        self.assertIn('"rtl/clock_divider.v": "..."', user_prompt)
+        self.assertIn('"rtl/spi_master_core.v": "..."', user_prompt)
+        self.assertIn('"sources": ["rtl/top.v", "rtl/clock_divider.v", "rtl/spi_master_core.v"]', user_prompt)
 
     def test_cli_builds_deepseek_generator_from_env_without_exposing_key(self) -> None:
         with mock.patch.dict(os.environ, {"DEEPSEEK_API_KEY": "secret-value"}):
@@ -440,13 +498,15 @@ class FakeDeepSeekClient:
         return self.content
 
 
-def _valid_manifest() -> str:
+def _valid_manifest(sources=None) -> str:
+    if sources is None:
+        sources = ["rtl/top.v"]
     return (
         json.dumps(
             {
                 "project_name": "counter_8bit",
                 "top_module": "top",
-                "sources": ["rtl/top.v"],
+                "sources": sources,
                 "constraints": ["constraints/timing.sdc"],
                 "simulation": {"testbench": "sim/tb_top.v"},
                 "reports": ["reports/predicted_qor.json"],

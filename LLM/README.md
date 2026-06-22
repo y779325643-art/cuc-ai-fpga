@@ -74,15 +74,15 @@ V1 generates a small Verilog project package with:
 
 - `system_his.json`
 - `manifest.json`
-- `rtl/top.v`
+- one or more RTL files under `rtl/`, always including `rtl/top.v`
 - `constraints/timing.sdc`
 - `sim/tb_top.v`
 - `reports/predicted_qor.json`
 
-Current deterministic V1 task types are `counter`, `fifo`, `simple_fsm`, and
-`ram_read_write`. These are intentionally small building blocks for validating
-the data schema, tool pipeline, and training views before moving to larger RTL
-design families.
+Current deterministic V1 task types are `counter`, `fifo`, `simple_fsm`,
+`ram_read_write`, `uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`,
+`streaming_valid_ready`, and `matrix_vector_mac`. The last six are multi-module
+families that generate `rtl/top.v` plus task-specific submodule `.v` files.
 
 It can then run a command-line pipeline:
 
@@ -106,7 +106,7 @@ python3 -m LLM.src.sr2fpga_agent.cli \
 ```
 
 Replace `--task-type`, `--width`, and `--project-name` to generate another
-supported task family, for example `fifo`, `simple_fsm`, or `ram_read_write`.
+supported task family, for example `fifo`, `spi_master`, or `fir_filter`.
 
 Use DeepSeek as the project generator:
 
@@ -121,6 +121,27 @@ python3 -m LLM.src.sr2fpga_agent.cli \
   --task-type counter \
   --width 8 \
   --project-name counter_8bit
+```
+
+For multi-module task types, the DeepSeek prompt requires the LLM to generate a
+true multi-file RTL package. For example, `spi_master` is expected to return
+`rtl/top.v`, `rtl/clock_divider.v`, and `rtl/spi_master_core.v`, and
+`manifest.json.sources` must list every RTL file. The agent rejects a single
+`rtl/top.v` response for these multi-module task families and asks DeepSeek to
+retry.
+
+```bash
+export DEEPSEEK_API_KEY="your-key"
+
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_llm_spi_master_000001 \
+  --provider deepseek \
+  --model deepseek-v4-flash \
+  --task-type spi_master \
+  --width 8 \
+  --project-name llm_spi_master_8bit \
+  --requirement "Design an 8-bit SPI master as a true multi-file Verilog RTL project. Keep rtl/top.v as the integration wrapper, place protocol and clocking logic in separate submodule .v files, include a self-checking testbench, timing constraint, manifest, system_his, and predicted QoR."
 ```
 
 The API key is read only from the environment. Do not write it into repository

@@ -170,8 +170,15 @@ Export counts after refresh:
 
 Notes:
 
-- Datasets remain untracked local artifacts.
+- Dataset snapshot is committed in `0ec152a Add SR2FPGA generated dataset snapshot`.
 - API keys were not used for deterministic generation.
+- DeepSeek generation now has a multi-module RTL contract for `uart_tx`,
+  `spi_master`, `pwm_controller`, `fir_filter`, `streaming_valid_ready`, and
+  `matrix_vector_mac`: prompts require `rtl/top.v` as an integration wrapper
+  plus at least two submodule `.v` files, and the parser rejects single-file
+  LLM responses for those task families.
+- `DEEPSEEK_API_KEY` was not present in the current shell during this update,
+  so no real DeepSeek multi-module sample was generated in this pass.
 - Next useful work: add failure injectors for multi-module-specific errors.
 - Known non-blocking hardening: `matrix_vector_mac` width values below 3 should be guarded or generated without negative repeat counts.
 - Simulation label hardening was added after final review: `sim_run` now fails if the log contains `TEST_FAIL` or omits `TEST_PASS`, even when `vvp` exits 0.

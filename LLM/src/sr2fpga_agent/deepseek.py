@@ -21,6 +21,20 @@ REQUIRED_PROJECT_FILES = {
     "reports/predicted_qor.json",
 }
 
+MULTIMODULE_RTL_EXAMPLES = {
+    "uart_tx": ["rtl/top.v", "rtl/baud_tick_gen.v", "rtl/uart_tx_core.v"],
+    "spi_master": ["rtl/top.v", "rtl/clock_divider.v", "rtl/spi_master_core.v"],
+    "pwm_controller": ["rtl/top.v", "rtl/pwm_timer.v", "rtl/pwm_channel.v"],
+    "fir_filter": ["rtl/top.v", "rtl/mac_unit.v", "rtl/fir_filter_core.v"],
+    "streaming_valid_ready": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_stage.v"],
+    "matrix_vector_mac": [
+        "rtl/top.v",
+        "rtl/vector_rom.v",
+        "rtl/mac_unit.v",
+        "rtl/dot_product_engine.v",
+    ],
+}
+
 
 @dataclass(frozen=True)
 class DeepSeekConfig:
@@ -83,7 +97,7 @@ class DeepSeekProjectGenerator:
         for _attempt in range(self.max_attempts):
             content = self.client.chat(messages)
             try:
-                files = parse_project_files(content)
+                files = parse_project_files(content, expected_task_type=request.task_type)
                 return GeneratedProject(project_name=request.project_name, files=files)
             except ValueError as exc:
                 last_error = exc
@@ -105,7 +119,7 @@ class DeepSeekRepairer:
         for _attempt in range(self.max_attempts):
             content = self.client.chat(messages)
             try:
-                files = parse_project_files(content)
+                files = parse_project_files(content, expected_task_type=_project_task_type(project.files))
                 repaired_project = _minimize_repaired_project(
                     project,
                     GeneratedProject(project_name=project.project_name, files=files),
@@ -122,7 +136,7 @@ class DeepSeekRepairer:
         raise RuntimeError("DeepSeek repairer did not run")
 
 
-def parse_project_files(content: str) -> dict[str, str]:
+def parse_project_files(content: str, expected_task_type: str | None = None) -> dict[str, str]:
     """Parse DeepSeek JSON output into project files."""
     cleaned = _strip_markdown_fence(content)
     try:
@@ -143,6 +157,7 @@ def parse_project_files(content: str) -> dict[str, str]:
     if missing:
         raise ValueError(f"DeepSeek output is missing required files: {', '.join(missing)}")
     _validate_manifest(files)
+    _validate_expected_rtl_structure(files, expected_task_type)
     return files
 
 
@@ -228,6 +243,31 @@ def _validate_manifest(files: dict[str, str]) -> None:
         raise ValueError(f"manifest.json references missing testbench file: {testbench}")
 
 
+def _validate_expected_rtl_structure(files: dict[str, str], expected_task_type: str | None) -> None:
+    if expected_task_type not in MULTIMODULE_RTL_EXAMPLES:
+        return
+
+    manifest = json.loads(files["manifest.json"])
+    sources = manifest["sources"]
+    rtl_sources = [path for path in sources if path.startswith("rtl/") and path.endswith(".v")]
+    if "rtl/top.v" not in rtl_sources:
+        raise ValueError("manifest.json sources must include rtl/top.v for multi-module tasks")
+    if len(rtl_sources) < 3:
+        raise ValueError(
+            "DeepSeek output for multi-module task "
+            f"{expected_task_type} must include rtl/top.v and at least two submodule .v files"
+        )
+
+
+def _project_task_type(files: dict[str, str]) -> str | None:
+    try:
+        system_his = json.loads(files.get("system_his.json", "{}"))
+    except json.JSONDecodeError:
+        return None
+    task_type = system_his.get("task_type")
+    return task_type if isinstance(task_type, str) else None
+
+
 def _files_from_list(raw_files: list[Any]) -> dict[str, str]:
     files: dict[str, str] = {}
     for item in raw_files:
@@ -251,6 +291,7 @@ def _strip_markdown_fence(content: str) -> str:
 
 def _project_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:
     required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
+    rtl_contract = _rtl_contract_for_task(request.task_type)
     system = (
         "You generate complete FPGA RTL project packages as JSON. "
         "Return only valid JSON. Do not include markdown. "
@@ -275,6 +316,9 @@ Platform:
 Required files:
 {required_files}
 
+RTL structure:
+{rtl_contract}
+
 Return JSON in this exact shape. The value of each file must be a JSON string;
 escape newlines as \\n and escape any double quotes inside file contents:
 {{
@@ -282,6 +326,7 @@ escape newlines as \\n and escape any double quotes inside file contents:
     "system_his.json": "...",
     "manifest.json": "...",
     "rtl/top.v": "...",
+{_additional_project_file_entries(request.task_type)}
     "constraints/timing.sdc": "...",
     "sim/tb_top.v": "...",
     "reports/predicted_qor.json": "..."
@@ -293,7 +338,7 @@ pipeline schema:
 {{
   "project_name": "{request.project_name}",
   "top_module": "top",
-  "sources": ["rtl/top.v"],
+  "sources": {_manifest_sources_example(request.task_type)},
   "constraints": ["constraints/timing.sdc"],
   "simulation": {{"testbench": "sim/tb_top.v"}},
   "reports": ["reports/predicted_qor.json"]
@@ -310,6 +355,8 @@ def _repair_messages(project: GeneratedProject, diagnosis: dict[str, object]) ->
     )
     diagnosis_text = json.dumps(diagnosis, ensure_ascii=False, indent=2)
     required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
+    task_type = _project_task_type(project.files)
+    rtl_contract = _repair_rtl_contract(project.files, task_type)
     system = (
         "You repair FPGA RTL project packages as JSON. "
         "Return only valid JSON. Do not include markdown. "
@@ -327,6 +374,9 @@ Current project files:
 Required files:
 {required_files}
 
+RTL structure:
+{rtl_contract}
+
 Preserve every file that is not needed for the fix byte-for-byte. If
 manifest.json already has a valid top_module, sources, and simulation.testbench,
 copy the original manifest.json unchanged unless the failure log specifically
@@ -339,6 +389,7 @@ escape newlines as \\n and escape any double quotes inside file contents:
     "system_his.json": "...",
     "manifest.json": "...",
     "rtl/top.v": "...",
+{_additional_repair_file_entries(project.files, task_type)}
     "constraints/timing.sdc": "...",
     "sim/tb_top.v": "...",
     "reports/predicted_qor.json": "..."
@@ -350,7 +401,7 @@ pipeline schema:
 {{
   "project_name": "{project.project_name}",
   "top_module": "top",
-  "sources": ["rtl/top.v"],
+  "sources": {_repair_sources_example(project.files, task_type)},
   "constraints": ["constraints/timing.sdc"],
   "simulation": {{"testbench": "sim/tb_top.v"}},
   "reports": ["reports/predicted_qor.json"]
@@ -360,3 +411,78 @@ Make the smallest practical fix for the failing tool log. Preserve pure
 Verilog RTL and ensure the testbench prints TEST_PASS on success.
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _rtl_contract_for_task(task_type: str) -> str:
+    example_sources = MULTIMODULE_RTL_EXAMPLES.get(task_type)
+    if example_sources is None:
+        return (
+            "Single-file RTL is allowed for this task. Put the synthesizable top module in "
+            "rtl/top.v and list it in manifest.json sources."
+        )
+    return (
+        "Generate a true multi-file RTL implementation. rtl/top.v must be an integration wrapper "
+        "that instantiates task-specific submodules. Generate at least two additional Verilog "
+        f"source files for this task. Recommended source list: {json.dumps(example_sources)}. "
+        "List every RTL source in manifest.json sources and include every listed source in files."
+    )
+
+
+def _manifest_sources_example(task_type: str) -> str:
+    return json.dumps(MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"]))
+
+
+def _additional_project_file_entries(task_type: str) -> str:
+    return _additional_file_entries(MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"]))
+
+
+def _additional_file_entries(sources: list[str]) -> str:
+    extra_sources = [source for source in sources if source != "rtl/top.v"]
+    if not extra_sources:
+        return ""
+    return "".join(f'    "{source}": "...",\n' for source in extra_sources)
+
+
+def _repair_rtl_contract(files: dict[str, str], task_type: str | None) -> str:
+    if task_type in MULTIMODULE_RTL_EXAMPLES:
+        return (
+            "Preserve the true multi-file RTL structure. Do not collapse submodules into rtl/top.v. "
+            "rtl/top.v must remain an integration wrapper, and manifest.json sources must keep "
+            "rtl/top.v plus at least two submodule .v files unless the failure specifically requires "
+            "renaming a source."
+        )
+    try:
+        manifest = json.loads(files.get("manifest.json", "{}"))
+    except json.JSONDecodeError:
+        manifest = {}
+    sources = manifest.get("sources")
+    rtl_sources = sources if isinstance(sources, list) else []
+    if len([path for path in rtl_sources if isinstance(path, str) and path.endswith(".v")]) >= 3:
+        return (
+            "Preserve the existing multi-file RTL structure. Do not collapse submodules into rtl/top.v. "
+            "Return all existing source files unless the repair requires adding or renaming one."
+        )
+    return "Preserve the existing RTL source structure unless the failure requires changing it."
+
+
+def _repair_sources_example(files: dict[str, str], task_type: str | None) -> str:
+    try:
+        manifest = json.loads(files.get("manifest.json", "{}"))
+    except json.JSONDecodeError:
+        manifest = {}
+    sources = manifest.get("sources")
+    if isinstance(sources, list) and all(isinstance(path, str) for path in sources):
+        return json.dumps(sources)
+    if task_type in MULTIMODULE_RTL_EXAMPLES:
+        return json.dumps(MULTIMODULE_RTL_EXAMPLES[task_type])
+    return json.dumps(["rtl/top.v"])
+
+
+def _additional_repair_file_entries(files: dict[str, str], task_type: str | None) -> str:
+    try:
+        sources = json.loads(_repair_sources_example(files, task_type))
+    except json.JSONDecodeError:
+        sources = ["rtl/top.v"]
+    if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
+        sources = ["rtl/top.v"]
+    return _additional_file_entries(sources)
