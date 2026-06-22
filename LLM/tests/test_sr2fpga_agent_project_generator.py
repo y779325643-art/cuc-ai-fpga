@@ -1,6 +1,10 @@
 import json
 import re
+import shutil
+import subprocess
+import tempfile
 import unittest
+from pathlib import Path
 
 from LLM.src.sr2fpga_agent import PlatformProfile, ProjectGenerator, ProjectRequest
 
@@ -127,6 +131,41 @@ class ProjectGeneratorTest(unittest.TestCase):
                 self.assertEqual(_manifest(project)["simulation"]["testbench"], "sim/tb_top.v")
                 self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
+    @unittest.skipUnless(shutil.which("verilator"), "verilator is not installed")
+    def test_transitional_task_sources_are_verilator_wall_clean(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = [
+            ("uart_tx", 8, "uart_tx_8bit"),
+            ("spi_master", 8, "spi_master_8bit"),
+            ("pwm_controller", 8, "pwm_controller_8bit"),
+            ("fir_filter", 8, "fir_filter_8bit"),
+            ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
+            ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+        ]
+
+        for task_type, width, project_name in cases:
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                with tempfile.TemporaryDirectory() as tmp:
+                    project_dir = Path(tmp)
+                    _write_project(project_dir, project)
+                    manifest = _manifest(project)
+                    result = subprocess.run(
+                        ["verilator", "--lint-only", "-Wall", *manifest["sources"]],
+                        cwd=project_dir,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                self.assertEqual(
+                    result.returncode,
+                    0,
+                    f"{task_type} lint failed\nSTDOUT:\n{result.stdout}\nSTDERR:\n{result.stderr}",
+                )
+
 
 def _task_type(project) -> str:
     return json.loads(project.files["system_his.json"])["task_type"]
@@ -142,11 +181,20 @@ def _system_his(project) -> dict:
 
 def _assert_manifest_sources_exist(testcase: unittest.TestCase, project) -> None:
     manifest = _manifest(project)
+    rtl_sources = sorted(path for path in project.files if path.startswith("rtl/"))
+    testcase.assertEqual(sorted(manifest["sources"]), rtl_sources)
     testcase.assertIn("rtl/top.v", manifest["sources"])
     for source in manifest["sources"]:
         testcase.assertIn(source, project.files)
         testcase.assertTrue(source.startswith("rtl/"), source)
         testcase.assertIn("module ", project.files[source])
+
+
+def _write_project(project_dir: Path, project) -> None:
+    for relative_path, content in project.files.items():
+        target = project_dir / relative_path
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_text(content, encoding="utf-8")
 
 
 if __name__ == "__main__":

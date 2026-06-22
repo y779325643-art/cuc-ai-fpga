@@ -21,6 +21,15 @@ SUPPORTED_TASK_TYPES = {
     "matrix_vector_mac",
 }
 
+TRANSITIONAL_PASSTHROUGH_TASK_TYPES = {
+    "uart_tx",
+    "spi_master",
+    "pwm_controller",
+    "fir_filter",
+    "streaming_valid_ready",
+    "matrix_vector_mac",
+}
+
 
 class ProjectGenerator:
     """Generate minimal Verilog RTL project packages."""
@@ -164,14 +173,7 @@ def _testbench(request: ProjectRequest) -> str:
         return _simple_fsm_testbench(max(2, request.width))
     if request.task_type == "ram_read_write":
         return _ram_read_write_testbench(request.width)
-    if request.task_type in {
-        "uart_tx",
-        "spi_master",
-        "pwm_controller",
-        "fir_filter",
-        "streaming_valid_ready",
-        "matrix_vector_mac",
-    }:
+    if request.task_type in TRANSITIONAL_PASSTHROUGH_TASK_TYPES:
         return _passthrough_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
@@ -611,6 +613,8 @@ def _simple_passthrough_multimodule(task_name: str, width: int, submodule_name: 
         );
 
           {submodule_name} u_core (
+            .clk(clk),
+            .rst_n(rst_n),
             .din(din),
             .dout(dout)
           );
@@ -621,11 +625,13 @@ def _simple_passthrough_multimodule(task_name: str, width: int, submodule_name: 
     core = dedent(
         f"""\
         module {submodule_name} (
+            input wire clk,
+            input wire rst_n,
             input wire [{msb}:0] din,
             output wire [{msb}:0] dout
         );
 
-          assign dout = din;
+          assign dout = rst_n ? din : {{{width}{{clk}}}};
 
         endmodule
         """
@@ -645,7 +651,7 @@ def _spi_master_rtl_files(width: int) -> dict[str, str]:
 
 
 def _pwm_controller_rtl_files(width: int) -> dict[str, str]:
-    return _simple_passthrough_multimodule("pwm_controller", width, "pwm_channel")
+    return _simple_passthrough_multimodule("pwm_controller", width, "pwm_controller_core")
 
 
 def _fir_filter_rtl_files(width: int) -> dict[str, str]:
@@ -653,11 +659,11 @@ def _fir_filter_rtl_files(width: int) -> dict[str, str]:
 
 
 def _streaming_valid_ready_rtl_files(width: int) -> dict[str, str]:
-    return _simple_passthrough_multimodule("streaming_valid_ready", width, "stream_stage")
+    return _simple_passthrough_multimodule("streaming_valid_ready", width, "streaming_valid_ready_core")
 
 
 def _matrix_vector_mac_rtl_files(width: int) -> dict[str, str]:
-    return _simple_passthrough_multimodule("matrix_vector_mac", width, "dot_product_engine")
+    return _simple_passthrough_multimodule("matrix_vector_mac", width, "matrix_vector_mac_core")
 
 
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
@@ -769,14 +775,7 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 "outputs": [{"name": "rdata", "width": request.width}],
             }
         )
-    elif request.task_type in {
-        "uart_tx",
-        "spi_master",
-        "pwm_controller",
-        "fir_filter",
-        "streaming_valid_ready",
-        "matrix_vector_mac",
-    }:
+    elif request.task_type in TRANSITIONAL_PASSTHROUGH_TASK_TYPES:
         common.update(
             {
                 "inputs": [
