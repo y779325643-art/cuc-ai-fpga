@@ -3,8 +3,13 @@ import os
 import unittest
 from unittest import mock
 
-from LLM.src.sr2fpga_agent.deepseek import DeepSeekProjectGenerator, _project_messages, parse_project_files
-from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.deepseek import (
+    DeepSeekProjectGenerator,
+    _project_messages,
+    diff_projects,
+    parse_project_files,
+)
+from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 
 
 class DeepSeekProviderTest(unittest.TestCase):
@@ -85,6 +90,41 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         with self.assertRaisesRegex(ValueError, "manifest.json missing required fields"):
             parse_project_files(content)
+
+    def test_diff_projects_outputs_unified_diff_for_changed_files(self) -> None:
+        old = GeneratedProject(
+            project_name="demo",
+            files={
+                "rtl/top.v": "module top; assign out = 1'b0; endmodule\n",
+                "manifest.json": _valid_manifest(),
+            },
+        )
+        new = GeneratedProject(
+            project_name="demo",
+            files={
+                "rtl/top.v": "module top; assign out = 1'b1; endmodule\n",
+                "manifest.json": _valid_manifest(),
+            },
+        )
+
+        patch = diff_projects(old, new)
+
+        self.assertIn("--- a/rtl/top.v", patch)
+        self.assertIn("+++ b/rtl/top.v", patch)
+        self.assertIn("-module top; assign out = 1'b0; endmodule", patch)
+        self.assertIn("+module top; assign out = 1'b1; endmodule", patch)
+        self.assertNotIn("manifest.json", patch)
+
+    def test_diff_projects_includes_added_and_deleted_files(self) -> None:
+        old = GeneratedProject(project_name="demo", files={"old.v": "module old; endmodule\n"})
+        new = GeneratedProject(project_name="demo", files={"new.v": "module new; endmodule\n"})
+
+        patch = diff_projects(old, new)
+
+        self.assertIn("--- a/old.v", patch)
+        self.assertIn("+++ b/old.v", patch)
+        self.assertIn("--- a/new.v", patch)
+        self.assertIn("+++ b/new.v", patch)
 
     def test_deepseek_project_generator_uses_client_response(self) -> None:
         client = FakeDeepSeekClient(

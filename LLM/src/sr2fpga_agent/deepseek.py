@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import json
 import urllib.error
 import urllib.request
@@ -113,6 +114,25 @@ def parse_project_files(content: str) -> dict[str, str]:
         raise ValueError(f"DeepSeek output is missing required files: {', '.join(missing)}")
     _validate_manifest(files)
     return files
+
+
+def diff_projects(old: GeneratedProject, new: GeneratedProject) -> str:
+    """Return a unified diff between two generated project file maps."""
+    chunks: list[str] = []
+    for path in sorted(set(old.files) | set(new.files)):
+        old_content = old.files.get(path, "")
+        new_content = new.files.get(path, "")
+        if old_content == new_content:
+            continue
+        chunks.extend(
+            difflib.unified_diff(
+                old_content.splitlines(keepends=True),
+                new_content.splitlines(keepends=True),
+                fromfile=f"a/{path}",
+                tofile=f"b/{path}",
+            )
+        )
+    return "".join(chunks)
 
 
 def _ensure_trailing_newline(content: str) -> str:
