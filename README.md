@@ -2,6 +2,18 @@
 
 This repository collects project materials for HNAI-FPGA, including LLM-assisted FPGA design notes, manuscripts, presentation outputs, and supporting assets.
 
+## Research Direction
+
+The current project goal is recorded in
+`docs/research-objective-sr2fpga-tcad.md`.
+
+In short, the project is being reframed as **SR2FPGA: tool-verified learning
+for system-requirement-to-FPGA RTL project generation**. Future engineering and
+writing work should align with that document: System-HIS intermediate
+supervision, multi-file RTL project generation, tool-verified trajectories,
+failure diagnosis and patch learning, QoR prediction, and project-level L0-L5
+evaluation.
+
 ## Directory Layout
 
 - `LLM/` - local LLM deployment and model-integration workspace.
