@@ -27,6 +27,25 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(files["rtl/top.v"], "module top; endmodule\n")
         self.assertEqual(len(files), 6)
 
+    def test_parse_project_files_accepts_files_list(self) -> None:
+        content = json.dumps(
+            {
+                "files": [
+                    {"path": "system_his.json", "content": "{}\n"},
+                    {"path": "manifest.json", "content": "{}\n"},
+                    {"path": "rtl/top.v", "content": "module top; endmodule\n"},
+                    {"path": "constraints/timing.sdc", "content": "create_clock -name clk -period 10 [get_ports clk]\n"},
+                    {"path": "sim/tb_top.v", "content": "module tb_top; endmodule\n"},
+                    {"path": "reports/predicted_qor.json", "content": "{}\n"},
+                ]
+            }
+        )
+
+        files = parse_project_files(content)
+
+        self.assertEqual(files["rtl/top.v"], "module top; endmodule\n")
+        self.assertEqual(files["sim/tb_top.v"], "module tb_top; endmodule\n")
+
     def test_parse_project_files_rejects_missing_required_file(self) -> None:
         with self.assertRaisesRegex(ValueError, "missing required files"):
             parse_project_files(json.dumps({"files": {"rtl/top.v": "module top; endmodule\n"}}))
