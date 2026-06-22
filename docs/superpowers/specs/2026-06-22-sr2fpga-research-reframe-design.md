@@ -176,25 +176,43 @@ datapaths, storage, interfaces). Entry ticket: the generated object must be a
 with consistent ports/params across files), not a fixed 6-file template —
 otherwise "project-level" collapses.
 
-### System-HIS schema (v1 — fields adjustable)
+### System-HIS schema (v1.1 — structure-contract level; fields extended per task)
 
-System-HIS is the machine-readable hardware-intent spec emitted from the
-requirement and consumed by **both** generation and the L0 checker. Proposed v1
-fields:
+**Abstraction level (decided):** structure contract + coarse behavior tags, NOT
+a full behavioral spec. System-HIS captures modules / interfaces / connections /
+params plus a one-line behavior intent; **functional correctness is verified by
+the L2 testbench, not described in HIS**. This keeps HIS an *intent* abstraction
+(not another RTL), keeps REQ→HIS learnable, and lets the compositional generator
+emit it reliably. L0 checks structure against HIS; L2 checks function.
 
-- `project`: name, one-line description.
-- `clocks` / `resets`: domains — `{name, target_fmax_mhz, reset_polarity}`.
-- `modules`: `[{name, role, ports:[{name, dir, width}], params:[{name, value}],
-  behavior: {fsm | datapath | storage}}]`.
-- `connections`: cross-module contracts — `{from:"mod.port", to:"mod.port",
-  protocol: register|valid_ready|axi_lite|axi_stream, width}`.
-- `verification`: what the testbench checks; the meaning of TEST_PASS.
-- `qor_intent`: target Fmax + rough resource expectation (model-side, never
-  measured — feeds `predicted_qor.json`, kept separate from measured QoR).
+```
+project:   {name, description, top}                 # top = top-level module name
+clocks:    [{name, target_fmax_mhz}]                # clock domains + target freq (authoritative for L4/SDC)
+resets:    [{name, polarity: active_low|active_high, kind: sync|async}]
+modules:   [{
+   name, role,                  # role = fifo|arbiter|pipeline|alu|regfile|cdc_sync|decoder|…
+   clock, reset,                # which clock/reset domain this module belongs to
+   ports:  [{name, dir: in|out|inout, width}],  # width = resolved integer (or "PARAM" ref) so L0 can compare
+   params: [{name, value}],
+   intent: "<one-line behavior intent, tag-level, not executable>"
+}]
+connections: [{                 # cross-module contracts = the core of cross-file consistency
+   from: "mod.port" | "TOP.port", to: "mod.port" | "TOP.port",
+   protocol: register|valid_ready|axi_lite|axi_stream,
+   width, cdc: true|false       # cdc=true marks a clock-domain crossing (difficulty axis 4)
+}]
+top_ports: [{name, dir, width}]                     # top-level external IO
+verification: {checks: [...], test_pass_means: "..."}   # acceptance semantics guiding the auto testbench
+qor_intent:  {resources: {lut?, ff?, bram?, dsp?}}      # model-side prediction → predicted_qor.json (freq lives in clocks)
+```
 
-**Dual use** (this is why System-HIS is a contribution, not a side artifact): it
-is the **intermediate supervision target** (REQ→HIS) for generation, AND the
-**ground-truth contract** the L0 checker validates the generated RTL against.
+**Dual use** (why System-HIS is a contribution, not a side artifact): it is the
+**intermediate supervision target** (REQ→HIS) for generation, AND the
+**ground-truth contract** the L0 checker validates generated RTL against.
+
+Fields are extended per task as new design families are added — e.g. Paper ②'s
+searchable architecture params (parallelism / pipeline depth / memory banks)
+will live here later.
 
 ### Benchmark design
 
