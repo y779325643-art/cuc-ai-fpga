@@ -5,6 +5,7 @@ from pathlib import Path
 
 from LLM.src.sr2fpga_agent import GeneratedProject, PlatformProfile, ProjectGenerator, ProjectRequest
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent, RepairResult
+from LLM.src.sr2fpga_agent.models import RepairResult as ModelRepairResult
 from LLM.src.sr2fpga_agent.models import ToolResult
 from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
 
@@ -228,6 +229,9 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(trajectory["attempts"][0]["status"], "failed")
             self.assertEqual(trajectory["attempts"][-1]["attempt_id"], 1)
             self.assertEqual(trajectory["attempts"][-1]["stage"], "synth")
+
+    def test_repair_result_is_shared_model_and_agent_compatible(self) -> None:
+        self.assertIs(RepairResult, ModelRepairResult)
 
 
 class FakeRunner:

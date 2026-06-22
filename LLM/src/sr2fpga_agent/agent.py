@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from LLM.src.sr2fpga_agent.log_parser import classify_failure, parse_yosys_stats
-from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, ToolResult
+from LLM.src.sr2fpga_agent.models import (
+    GeneratedProject,
+    PlatformProfile,
+    ProjectRequest,
+    RepairResult,
+    ToolResult,
+)
 from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
 from LLM.src.sr2fpga_agent.tool_runner import CommandRunner
@@ -160,14 +165,6 @@ def _measured_qor(tool_results: dict[str, ToolResult]) -> dict[str, Any]:
     if synth is None or synth.status != "passed":
         return {"lut": 0, "ff": 0, "bram": 0, "dsp": 0, "cell_count": 0, "cell_breakdown": {}}
     return parse_yosys_stats(f"{synth.stdout}\n{synth.stderr}")
-
-
-@dataclass(frozen=True)
-class RepairResult:
-    """Project returned by a repairer plus the patch used to reach it."""
-
-    generated_project: GeneratedProject
-    patch_diff: str
 
 
 def _labels(tool_results: dict[str, ToolResult], final_attempt_id: int, failure_count: int) -> dict[str, Any]:

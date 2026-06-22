@@ -51,4 +51,12 @@ class ToolResult:
     duration_seconds: float
 
 
+@dataclass(frozen=True)
+class RepairResult:
+    """Project returned by a repairer plus the patch used to reach it."""
+
+    generated_project: GeneratedProject
+    patch_diff: str
+
+
 JsonObject = dict[str, Any]
