@@ -173,13 +173,23 @@ Field map (what each line is, and why it is not us):
 - **LLM-to-RTL benchmarks / models:** VerilogEval, RTLLM, **RTLCoder (TCAD'25)**,
   OpenLLM-RTL — single module / RTL code, pass@k. (RTLCoder is the closest TCAD
   baseline: code-gen model vs our tool-verified project generation.)
-- **Project-level RTL benchmarks:** **RTL-Repo, CktEvo, ArchXBench** — multi-file
-  / repository-level, but code/compile-level, no physical closure, no trajectory.
+- **Project-level RTL benchmarks:** **RTL-Repo** (repo-context Verilog
+  *completion*; no synthesis/physical, no trajectory) and **ArchXBench**
+  (MLCAD'25; **6 levels by *design complexity***, frontier models already fail
+  from its Level 4 — cite as motivation; note its levels ≠ our L0–L5, which are
+  *verification/physical depth* to P&R+board). Neither does physical closure or
+  tool-verified trajectories.
 - **Tool-feedback / agentic:** AutoChip, RTLFixer, MAGE, **Spec2RTL-Agent**
   (spec→C++→HLS→RTL) — repair loops are mature → not a selling point.
 - **Hardware IRs:** FIRRTL / CIRCT / LLHD / HIR / Calyx, and **CPPL**
-  (LLM→circuit-IR→CIRCT) — IR/lowering, input already a program/DSL/IR; CPPL is
-  at circuit-structure level, System-HIS at requirement-intent level.
+  (LLM→circuit-IR JSON→CIRCT→Verilog; input is a **Python DSL with fixed ports +
+  docstrings, NOT natural language**; consistency by compile-time width
+  inference; no physical/PnR). CPPL is at circuit-structure level, System-HIS at
+  requirement-intent level (input = NL requirement, lowers *to* CIRCT/CPPL).
+- **Repo-level PPA optimization (closest to Paper ②):** **CktEvo** — closed-loop
+  LLM+toolchain edits that preserve function while improving PPA on existing
+  repos; no L4/L5 physical labels. We differ by searching the System-HIS
+  architecture-parameter space (not editing repos) with a distilled QoR proxy.
 - **HLS DSE:** NSGA-II, Chimera, IronMan, AutoHLS — optimize a given design point
   (directly relevant to Paper ②, e.g. predictor-as-proxy-fitness).
 
@@ -339,7 +349,9 @@ will live here later.
 - **Method-novelty candidates (to clear the TCAD bar — choose/deepen later):**
   (i) **System-HIS-constrained / verification-guided decoding** — generation
   constrained by the System-HIS contract so cross-file consistency holds by
-  construction, not by luck; (ii) **structured tool-feedback learning** — tool
+  construction (differs from CPPL, which enforces consistency by compile-time
+  checks on a circuit-level IR; ours acts at *decode time* from a
+  *requirement-level* contract); (ii) **structured tool-feedback learning** — tool
   diagnoses as a structured training signal (diagnosis→patch), not plain SFT on
   trajectories; (iii) **two-stage REQ→HIS→Project with consistency constraints**.
   Pick/deepen one for TCAD; if none lands, the (a)/(b)/(c) framework still
@@ -415,7 +427,11 @@ architecture/System-HIS parameters and/or RL with a tool-derived reward, using
 Paper ①'s QoR predictor as a fast proxy fitness to make large-scale search
 feasible on one GPU. GA optimizes architecture parameters, not raw Verilog
 tokens (consistent with the research-objective document). The RL flagship case
-naturally lives here, on the AC820-ZYNQ (220 DSP + ARM).
+naturally lives here, on the AC820-ZYNQ (220 DSP + ARM). Closest prior work:
+**CktEvo** (repo-level closed-loop LLM+toolchain PPA optimization) — differentiate
+by searching the System-HIS architecture-parameter space (not editing existing
+repos), using a distilled QoR predictor as proxy fitness, with physical (L4)
+labels CktEvo lacks.
 
 ## Relationship to existing documents
 
