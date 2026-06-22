@@ -106,7 +106,11 @@ class DeepSeekRepairer:
             content = self.client.chat(messages)
             try:
                 files = parse_project_files(content)
-                repaired_project = GeneratedProject(project_name=project.project_name, files=files)
+                repaired_project = _minimize_repaired_project(
+                    project,
+                    GeneratedProject(project_name=project.project_name, files=files),
+                    diagnosis,
+                )
                 return RepairResult(
                     generated_project=repaired_project,
                     patch_diff=diff_projects(project, repaired_project),
@@ -159,6 +163,36 @@ def diff_projects(old: GeneratedProject, new: GeneratedProject) -> str:
             )
         )
     return "".join(chunks)
+
+
+def _minimize_repaired_project(
+    original: GeneratedProject,
+    repaired: GeneratedProject,
+    diagnosis: dict[str, object],
+) -> GeneratedProject:
+    files = dict(repaired.files)
+    if (
+        original.files.get("manifest.json") != repaired.files.get("manifest.json")
+        and _manifest_is_valid_for_project(original.files)
+        and not _diagnosis_mentions_path(diagnosis, "manifest.json")
+    ):
+        files["manifest.json"] = original.files["manifest.json"]
+    return GeneratedProject(project_name=repaired.project_name, files=files)
+
+
+def _manifest_is_valid_for_project(files: dict[str, str]) -> bool:
+    try:
+        _validate_manifest(files)
+    except ValueError:
+        return False
+    return True
+
+
+def _diagnosis_mentions_path(diagnosis: dict[str, object], path: str) -> bool:
+    affected_files = diagnosis.get("affected_files")
+    if isinstance(affected_files, list) and path in {str(item) for item in affected_files}:
+        return True
+    return path.lower() in json.dumps(diagnosis, ensure_ascii=False).lower()
 
 
 def _ensure_trailing_newline(content: str) -> str:
@@ -292,6 +326,11 @@ Current project files:
 
 Required files:
 {required_files}
+
+Preserve every file that is not needed for the fix byte-for-byte. If
+manifest.json already has a valid top_module, sources, and simulation.testbench,
+copy the original manifest.json unchanged unless the failure log specifically
+points to manifest.json.
 
 Return JSON in this exact shape. The value of each file must be a JSON string;
 escape newlines as \\n and escape any double quotes inside file contents:
