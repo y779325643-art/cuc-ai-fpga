@@ -3,7 +3,7 @@ import os
 import unittest
 from unittest import mock
 
-from LLM.src.sr2fpga_agent.deepseek import DeepSeekProjectGenerator, parse_project_files
+from LLM.src.sr2fpga_agent.deepseek import DeepSeekProjectGenerator, _project_messages, parse_project_files
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
 
 
@@ -13,7 +13,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             {
                 "files": {
                     "system_his.json": "{}\n",
-                    "manifest.json": "{}\n",
+                    "manifest.json": _valid_manifest(),
                     "rtl/top.v": "module top; endmodule\n",
                     "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
                     "sim/tb_top.v": "module tb_top; endmodule\n",
@@ -32,7 +32,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             {
                 "files": [
                     {"path": "system_his.json", "content": "{}\n"},
-                    {"path": "manifest.json", "content": "{}\n"},
+                    {"path": "manifest.json", "content": _valid_manifest()},
                     {"path": "rtl/top.v", "content": "module top; endmodule\n"},
                     {"path": "constraints/timing.sdc", "content": "create_clock -name clk -period 10 [get_ports clk]\n"},
                     {"path": "sim/tb_top.v", "content": "module tb_top; endmodule\n"},
@@ -50,13 +50,49 @@ class DeepSeekProviderTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing required files"):
             parse_project_files(json.dumps({"files": {"rtl/top.v": "module top; endmodule\n"}}))
 
+    def test_parse_project_files_normalizes_trailing_newlines(self) -> None:
+        content = json.dumps(
+            {
+                "files": {
+                    "system_his.json": "{}",
+                    "manifest.json": _valid_manifest().rstrip(),
+                    "rtl/top.v": "module top; endmodule",
+                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]",
+                    "sim/tb_top.v": "module tb_top; endmodule",
+                    "reports/predicted_qor.json": "{}",
+                }
+            }
+        )
+
+        files = parse_project_files(content)
+
+        for file_content in files.values():
+            self.assertTrue(file_content.endswith("\n"))
+
+    def test_parse_project_files_rejects_manifest_without_pipeline_fields(self) -> None:
+        content = json.dumps(
+            {
+                "files": {
+                    "system_his.json": "{}\n",
+                    "manifest.json": json.dumps({"files": ["rtl/top.v"]}) + "\n",
+                    "rtl/top.v": "module top; endmodule\n",
+                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                    "sim/tb_top.v": "module tb_top; endmodule\n",
+                    "reports/predicted_qor.json": "{}\n",
+                }
+            }
+        )
+
+        with self.assertRaisesRegex(ValueError, "manifest.json missing required fields"):
+            parse_project_files(content)
+
     def test_deepseek_project_generator_uses_client_response(self) -> None:
         client = FakeDeepSeekClient(
             json.dumps(
                 {
                     "files": {
                         "system_his.json": "{}\n",
-                        "manifest.json": "{\"top_module\":\"top\"}\n",
+                        "manifest.json": _valid_manifest(),
                         "rtl/top.v": "module top; endmodule\n",
                         "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
                         "sim/tb_top.v": "module tb_top; endmodule\n",
@@ -74,6 +110,43 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("rtl/top.v", project.files)
         self.assertEqual(client.call_count, 1)
         self.assertIn("counter_8bit", client.messages[1]["content"])
+
+    def test_deepseek_project_generator_retries_after_invalid_response(self) -> None:
+        client = FakeDeepSeekClient(
+            [
+                '{"files": {"system_his.json": "{}"',
+                json.dumps(
+                    {
+                        "files": {
+                            "system_his.json": "{}\n",
+                            "manifest.json": _valid_manifest(),
+                            "rtl/top.v": "module top; endmodule\n",
+                            "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                            "sim/tb_top.v": "module tb_top; endmodule\n",
+                            "reports/predicted_qor.json": "{}\n",
+                        }
+                    }
+                ),
+            ]
+        )
+        request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        project = DeepSeekProjectGenerator(client=client).generate(request, platform)
+
+        self.assertIn("rtl/top.v", project.files)
+        self.assertEqual(client.call_count, 2)
+
+    def test_project_prompt_requests_agent_manifest_schema(self) -> None:
+        request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        messages = _project_messages(request, platform)
+        user_prompt = messages[1]["content"]
+
+        self.assertIn('"top_module": "top"', user_prompt)
+        self.assertIn('"sources": ["rtl/top.v"]', user_prompt)
+        self.assertIn('"simulation": {"testbench": "sim/tb_top.v"}', user_prompt)
 
     def test_cli_builds_deepseek_generator_from_env_without_exposing_key(self) -> None:
         with mock.patch.dict(os.environ, {"DEEPSEEK_API_KEY": "secret-value"}):
@@ -139,7 +212,7 @@ class DeepSeekProviderTest(unittest.TestCase):
 
 
 class FakeDeepSeekClient:
-    def __init__(self, content: str) -> None:
+    def __init__(self, content) -> None:
         self.content = content
         self.call_count = 0
         self.messages = []
@@ -147,7 +220,25 @@ class FakeDeepSeekClient:
     def chat(self, messages):
         self.call_count += 1
         self.messages = messages
+        if isinstance(self.content, list):
+            return self.content[self.call_count - 1]
         return self.content
+
+
+def _valid_manifest() -> str:
+    return (
+        json.dumps(
+            {
+                "project_name": "counter_8bit",
+                "top_module": "top",
+                "sources": ["rtl/top.v"],
+                "constraints": ["constraints/timing.sdc"],
+                "simulation": {"testbench": "sim/tb_top.v"},
+                "reports": ["reports/predicted_qor.json"],
+            }
+        )
+        + "\n"
+    )
 
 
 if __name__ == "__main__":

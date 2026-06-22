@@ -72,13 +72,23 @@ class DeepSeekClient:
 class DeepSeekProjectGenerator:
     """Generate a project package by asking DeepSeek for required files."""
 
-    def __init__(self, client: DeepSeekClient) -> None:
+    def __init__(self, client: DeepSeekClient, max_attempts: int = 3) -> None:
         self.client = client
+        self.max_attempts = max_attempts
 
     def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
-        content = self.client.chat(_project_messages(request, platform))
-        files = parse_project_files(content)
-        return GeneratedProject(project_name=request.project_name, files=files)
+        messages = _project_messages(request, platform)
+        last_error: ValueError | None = None
+        for _attempt in range(self.max_attempts):
+            content = self.client.chat(messages)
+            try:
+                files = parse_project_files(content)
+                return GeneratedProject(project_name=request.project_name, files=files)
+            except ValueError as exc:
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("DeepSeek generator did not run")
 
 
 def parse_project_files(content: str) -> dict[str, str]:
@@ -97,10 +107,45 @@ def parse_project_files(content: str) -> dict[str, str]:
     else:
         raise ValueError("DeepSeek output must contain files as an object or list")
 
+    files = {path: _ensure_trailing_newline(content) for path, content in files.items()}
     missing = sorted(REQUIRED_PROJECT_FILES - set(files))
     if missing:
         raise ValueError(f"DeepSeek output is missing required files: {', '.join(missing)}")
+    _validate_manifest(files)
     return files
+
+
+def _ensure_trailing_newline(content: str) -> str:
+    return content if content.endswith("\n") else content + "\n"
+
+
+def _validate_manifest(files: dict[str, str]) -> None:
+    try:
+        manifest = json.loads(files["manifest.json"])
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"manifest.json is not valid JSON: {exc.msg}") from exc
+
+    missing_fields: list[str] = []
+    if not isinstance(manifest.get("top_module"), str) or not manifest["top_module"]:
+        missing_fields.append("top_module")
+
+    sources = manifest.get("sources")
+    if not isinstance(sources, list) or not all(isinstance(item, str) for item in sources):
+        missing_fields.append("sources")
+
+    simulation = manifest.get("simulation")
+    testbench = simulation.get("testbench") if isinstance(simulation, dict) else None
+    if not isinstance(testbench, str) or not testbench:
+        missing_fields.append("simulation.testbench")
+
+    if missing_fields:
+        raise ValueError(f"manifest.json missing required fields: {', '.join(missing_fields)}")
+
+    missing_sources = sorted(path for path in sources if path not in files)
+    if missing_sources:
+        raise ValueError(f"manifest.json references missing source files: {', '.join(missing_sources)}")
+    if testbench not in files:
+        raise ValueError(f"manifest.json references missing testbench file: {testbench}")
 
 
 def _files_from_list(raw_files: list[Any]) -> dict[str, str]:
@@ -150,7 +195,8 @@ Platform:
 Required files:
 {required_files}
 
-Return JSON in this exact shape:
+Return JSON in this exact shape. The value of each file must be a JSON string;
+escape newlines as \\n and escape any double quotes inside file contents:
 {{
   "files": {{
     "system_his.json": "...",
@@ -160,6 +206,17 @@ Return JSON in this exact shape:
     "sim/tb_top.v": "...",
     "reports/predicted_qor.json": "..."
   }}
+}}
+
+The manifest.json file content must itself be JSON and must contain this tool
+pipeline schema:
+{{
+  "project_name": "{request.project_name}",
+  "top_module": "top",
+  "sources": ["rtl/top.v"],
+  "constraints": ["constraints/timing.sdc"],
+  "simulation": {{"testbench": "sim/tb_top.v"}},
+  "reports": ["reports/predicted_qor.json"]
 }}
 
 The Verilog must be synthesizable and the testbench must print TEST_PASS on success.
