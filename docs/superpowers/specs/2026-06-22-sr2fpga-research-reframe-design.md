@@ -1,0 +1,296 @@
+# SR2FPGA Research Reframe Design
+
+## Status
+
+Proposed (2026-06-22). Refines and scopes the direction in
+`docs/research-objective-sr2fpga-tcad.md`. This document is the agreed research
+line after a critical review of the current data-agent work. It decomposes the
+vision into a publishable program and specifies Paper ① in detail.
+
+## Motivation
+
+A harsh-reviewer pass over the current state found a real risk: the project has
+a high-quality data pipeline but **no scientific result yet**, and its initial
+tasks (`counter`, `fifo`, `simple_fsm`, `ram_read_write`) are too easy — strong
+base models pass them at L3 in one shot, so the repair loop never triggers and
+`failure_to_patch` stays empty. Fixing the task difficulty is the root that
+relieves most downstream symptoms.
+
+This reframe keeps the author's true goal — **a model that generates a complete
+RTL project from a natural-language requirement and repairs it from tool
+feedback** — but makes it defensible and feasible under the real resource
+budget.
+
+## Hard Constraints (shape every decision below)
+
+- **Compute:** single RTX 4090 24 GB. Feasible: 7B-class QLoRA fine-tuning +
+  inference. **Not feasible:** pretraining or training a generation model that
+  beats GPT-5 / DeepSeek head-to-head. That ambition is explicitly abandoned.
+- **Data:** none exists; all trajectories are generated from scratch by running
+  open-source tools locally. The upside: **labels come entirely from tools**, so
+  "tool-verified learning" is literally true (the supervision is the tool, not
+  another LLM).
+
+## Core Reframe: distill the TOOL, not the LLM
+
+The earlier worry was "you use DeepSeek to generate and repair, then train on
+that → you are distilling DeepSeek." The author's actual intent is the opposite
+and stronger: **distill the EDA tool oracle into a model.** EDA tools
+(Verilator / Yosys / nextpnr / board) are an expensive, slow, external,
+non-differentiable oracle. The research question is whether their judgement can
+be internalized so a model can generate, predict, diagnose, and repair RTL
+*without* calling the tools at inference time.
+
+The same open-source tool oracle plays a **dual role**:
+
+- it is the **judge** of the benchmark (evaluation / data contribution), and
+- it is the **teacher** of the model (method contribution).
+
+Evaluation and method share one tool judge, which keeps the story self-consistent.
+
+To stay a *tool* distillation (not an LLM distillation):
+
+- **inputs must be multi-source** — combinational component-library assembly,
+  deliberately mutated/broken designs, real IP — not only one LLM's outputs;
+- **all labels come from tools.**
+
+This input distribution naturally produces many failures, which revives the
+failure/repair trajectories by design rather than by luck.
+
+## Frontier Models Are the First Half of the Chain (the baseline)
+
+A frontier model generating a complete project directly is **not a competitor —
+it is a measurement point inside the chain**: it is exactly the
+"first-half, no-tool-feedback, first-attempt generation" baseline. So "competing
+with GPT" turns from a threat into the **baseline + ablation** of this work. A
+stronger frontier model only raises the starting point; the scientific
+contribution is **how much tool feedback adds on top of it**.
+
+Frontier-model status (qualitative, **to be measured, not asserted from
+numbers** — see "Immediate next step"): today's frontier models reliably handle
+single-file / small RTL (this is why DeepSeek passed the smoke counter at L3 in
+one shot) and can emit *formally* multi-file projects, but they do **not
+reliably** produce large, strongly cross-file-consistent, timing-closing,
+board-ready projects — cross-file/cross-module contract errors and L4 timing are
+their failure region. That failure region is the open space this work targets,
+and it is why benchmark difficulty must be calibrated to where the frontier pass
+rate starts to drop.
+
+## Program Decomposition (this is a 2–3 paper program, not one paper)
+
+```
+Paper ①  Foundation: the tool oracle's dual role
+         ├─ project-level L0–L5 benchmark + fully-open reproducible
+         │  req→bitstream→board closed loop      (evaluation / data contribution)
+         └─ tool-verified fine-tuned model: generation + self-repair  (method contribution)
+                    │  produces: reproducible eval + trajectory data + QoR predictor
+                    ▼
+Paper ②  Optimization: tool-in-the-loop QoR search (LUT / performance / power)
+         └─ GA over architecture params / RL with tool reward,
+            using Paper ①'s QoR predictor as a fast proxy fitness
+```
+
+The dependency is organic: Paper ②'s killer is that tools are too slow for the
+thousands of evaluations GA/RL need; Paper ①'s QoR predictor (a tool
+distillation) is exactly the fast proxy fitness that unblocks Paper ②. So doing
+① first is not a delay — it is ②'s prerequisite and accelerator.
+
+GA/RL and "retrain a large generation model" are **out of scope for Paper ①**
+(a teaser + future work paragraph only).
+
+## Paper ① Design
+
+### One-sentence thesis
+
+SR2FPGA generates multi-module, cross-file-consistent RTL **projects** from
+system requirements, drives them through a fully open-source flow to **L4 timing
+closure** (plus a few L5 on-board and Xilinx-portability cases), and quantifies
+each level with an **L0–L5 project-level evaluation**; on this evaluation, a
+7B-class model fine-tuned on tool-verified trajectories internalizes tool
+acceptance and improves generation + self-repair under a fixed iteration budget.
+
+中文定位：**面向系统需求的项目级 RTL 工程生成——提出项目级 L0–L5 评测 + 全开源可复现
+req→bitstream→上板闭环（评测/数据贡献），并以工具验证轨迹微调一个 7B 级模型，使其
+内化工具接受度、在固定迭代预算下提升生成与自修复（方法贡献）。**
+
+### Differentiation (against AutoChip / RTLCoder / VeriGen / ChipNeMo / VerilogEval / RTLLM)
+
+Dual support points, so the paper does not depend on "our model generates
+better" (a losing fight):
+
+1. **Project-level L0–L5 benchmark** — existing RTL-LLM benchmarks are
+   single-file and stop at simulation or synthesis; cross-module/cross-file
+   consistency and timing are structurally untestable there.
+2. **Fully open, reproducible req→bitstream→board closed loop** — almost no
+   prior RTL-LLM work reaches P&R / timing, on-board, or full reproducibility.
+
+The model/data is a method contribution riding on these, **not** a SOTA-model
+claim.
+
+### Core argument
+
+The point of "project-level" is **not** "bigger code." It is **correctness
+structure (multi-module + cross-file/cross-module consistency) + physical
+realizability (synthesis / timing closure)**. Entry ticket: the generated object
+must be a **variable-topology multi-module design** (a top instantiating several
+submodules with consistent ports/params across files), not a fixed 6-file
+template — otherwise "project-level" collapses.
+
+### Benchmark design
+
+- **Single item form (verification-based, NOT reference-matching):** RTL has no
+  unique correct answer, so ground truth is "passes the acceptance criteria,"
+  never "matches a reference file." Input = NL requirement + machine-readable
+  interface contract. Judgement = L0–L5 tool verdicts + functional testbench.
+- **Production mechanism — compositional program generation as the main force:**
+  - a **component library** of parameterized primitives (FIFO, arbiter, CDC
+    synchronizer, pipeline stage, ALU slice, register file, protocol adapter,
+    decoder, …);
+  - a **topology generator** that wires components into multi-module systems
+    (chain / tree / bus-attached / producer-consumer) and auto-guarantees
+    interface-contract consistency;
+  - diversity = component types × parameter space × topology × protocol variant ×
+    name randomization (combinatorial explosion, not a fixed template count);
+  - the generator emits `(requirement, contract, testbench, constraints,
+    reference impl)` together. The reference impl passing the testbench gives a
+    **machine-checked self-consistency** of the testbench — the load-bearing
+    reason to prefer program generation over LLM-authored tests (no one can
+    certify an LLM-written testbench).
+- **Testbench discipline:** test the **black-box interface contract only**
+  (port behavior, protocol timing, functional correctness); never depend on
+  internal signal names / implementation details — this is what keeps the
+  benchmark fair to any implementation.
+- **Anti-leakage:** held-out parameter combinations + randomization make
+  concrete instances effectively unseen in any training corpus. (Real open-source
+  IP is the leakage risk, not synthetic instances.)
+- **Sources (mixed):** compositional synthetic tasks as the main body (controlled
+  difficulty, scalable, leakage-safe), plus a small set of real open-source IP
+  (OpenCores / LiteX …) as external-validity anchors. An LLM may **surface-rewrite**
+  the program-generated requirement text into more natural language — wording only,
+  never touching semantics or acceptance — to mitigate the "synthetic NL" critique.
+- **Difficulty axes (all four, with the first two primary):**
+  1. cross-module / cross-file consistency (number of interface/param contracts) — primary
+  2. timing pressure (target Fmax / critical-path depth) — primary
+  3. protocol/control complexity (register → valid/ready → backpressured pipeline → AXI4-Lite/Stream) — the carrier that drives axis 1 up
+  4. structural scale (submodule count / hierarchy depth) and CDC — high-difficulty tier
+- **Scale:** thousands to ~10k samples, not millions (4090-realistic). The
+  existing deterministic `ProjectGenerator` is the seed of the component library.
+
+### Evaluation levels and toolchain
+
+- **L0** project contract + cross-file consistency; **L1** lint (Verilator);
+  **L2** functional simulation (Icarus Verilog); **L3** synthesis + measured QoR
+  (Yosys); **L4** place-and-route timing closure (nextpnr, report Fmax/slack);
+  **L5** sparse representative on-board runs.
+- **Toolchain:** open-source full flow **Yosys + nextpnr + Lattice (iCE40/ECP5,
+  e.g. iCEBreaker / ULX3S)** as the main reproducible loop; **L4 as primary
+  evidence + a few L5 on-board cases**; **a small number of Xilinx (Vivado)
+  cases** to argue portability to commercial large devices. Reproducibility of
+  the all-open flow is itself a stated methodological selling point.
+
+### Data engine (two production lines)
+
+- **Line A — benchmark eval set:** quality first, modest size (tens to ~hundreds
+  of items), each with requirement + contract + functional testbench +
+  constraints + difficulty label.
+- **Line B — training/trajectory data:** scale first, fully automatic; run
+  generate → tools → fail → repair at volume, collecting L0–L5 labels,
+  diagnoses, patch trajectories. Hard tasks drop first-pass rates, so
+  failure/repair trajectories appear by design.
+- **Candidate sources for inputs:** prefer the compositional component library
+  (free, controllable, large, leakage-safe) + a small amount of DeepSeek/local
+  candidates. **All labels come from tools** (tool-distillation purity).
+
+### Method (the model)
+
+- **What it distills:** tool capability internalized — focus Paper ① on
+  **generation + self-repair** (read tool errors and fix), the form closest to
+  the author's intent. Discrimination (QoR/pass prediction = the QoR predictor
+  for Paper ②) is the natural companion task.
+- **Base model:** a 7B-class code/RTL base trainable via QLoRA on one 4090 —
+  candidates Qwen2.5-Coder-7B, DeepSeek-Coder-7B, CodeLlama-7B, StarCoder2-7B,
+  etc. **Selection is a replaceable choice and may itself be a small comparison
+  experiment** (which base gains most from tool-verified fine-tuning). The only
+  fixed constraint is "7B-class, single-GPU QLoRA."
+- **Framework:** tool-in-the-loop (generate → tool check → feedback on
+  errors/resources → regenerate/repair → record), matching the author's
+  steps 1–4.
+
+### Measurement structure (the fair fights)
+
+The model is NOT sold as "generates better." Everything is measured as **tool
+acceptance under a fixed iteration budget**, against the same generator at three
+points (this is the operational form of "frontier model = first half of the
+chain = baseline"):
+
+- **(a) first attempt, no tools** — the first-half-of-chain baseline (what a
+  frontier/base model alone does);
+- **(b) with the tool-in-the-loop feedback/repair loop** — full chain, tools
+  called at inference;
+- **(c) the tool-verified fine-tuned model, first attempt, no tools** — tool
+  ability internalized into the weights.
+
+The contributions are the deltas:
+
+- **b − a:** does the tool-in-the-loop framework help?
+- **c − a:** does tool-verified fine-tuning help?
+- **c vs b:** can internalization match the loop *without* calling tools at
+  inference — the strongest result if it holds.
+
+The generator is **swappable**, which yields a strong headline result: use a
+large model (GPT/DeepSeek) as the chain's first half for a high baseline, but the
+model you can actually fine-tune is the local 7B. Then ask: **can a tool-verified
+fine-tuned local 7B's (c) reach a large model's (a) or even (b)?** A small model
+matching a large one with fewer tool calls is a hard, publishable result.
+
+Plus one purity ablation that disarms critique #3: **tool-verified trajectories
+vs same-source un-filtered distillation trajectories** — does the tool filter
+itself add gain? A negative result is still reportable, and either way no one can
+call this "just distilling an LLM."
+
+### Planned ablations
+
+- **System-HIS:** req→HIS→project vs req→project (does the intermediate
+  supervision add gain, or is it decoration?).
+- **QoR prediction calibration:** predicted vs Yosys-measured correlation /
+  calibration curve (predicted QoR must stay model-only, never leak measured
+  results — preserve the existing `predicted_qor.json` / `measured_qor.json`
+  separation).
+
+### Scope boundary (YAGNI)
+
+- No retraining of a large generation model (insufficient compute).
+- No GA/RL / heavy QoR optimization (Paper ②; needs the QoR predictor as proxy
+  fitness).
+- L4 is the primary evidence ceiling; L5 and Xilinx are small case studies.
+
+## Paper ② (brief)
+
+Tool-in-the-loop QoR optimization (LUT / performance / power): GA over
+architecture/System-HIS parameters and/or RL with a tool-derived reward, using
+Paper ①'s QoR predictor as a fast proxy fitness to make large-scale search
+feasible on one GPU. GA optimizes architecture parameters, not raw Verilog
+tokens (consistent with the research-objective document).
+
+## Relationship to existing documents
+
+This document scopes and operationalizes `docs/research-objective-sr2fpga-tcad.md`.
+Where they differ, this reframe (compute-calibrated, decomposed into ①/②, tool
+oracle as the explicit distillation target) governs near-term work. Update the
+research-objective document if this direction is adopted.
+
+## Immediate next step
+
+The first concrete experiment is **measuring baseline (a)**: run existing
+frontier/local LLMs over multiple difficulty tiers through the existing tool
+pipeline, recording cross-file consistency error rate and L3/L4 pass rates. It is
+the cheapest slice (API/inference + the tool flow that mostly exists), and it
+simultaneously (1) validates the framing premise (frontier models fail in the
+hard region), (2) calibrates where benchmark difficulty must sit (the pass-rate
+knee), and (3) becomes the paper's baseline + motivating experiment.
+
+Only then upgrade the deterministic `ProjectGenerator` into a compositional
+multi-module component library + topology generator with verification-based
+testbenches, since every downstream piece (data, eval, model) depends on it.
+Write the implementation plan for the chosen first slice with the writing-plans
+skill once this spec is approved.
