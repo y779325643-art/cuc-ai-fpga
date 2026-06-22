@@ -106,6 +106,58 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("mem", project.files["rtl/top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
+    def test_generates_uart_tx_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="uart_tx", width=8, project_name="uart_tx_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "uart_tx",
+            {"rtl/top.v", "rtl/uart_tx_core.v", "rtl/baud_tick_gen.v"},
+            ["uart_tx_core", "baud_tick_gen", ".tx(tx)", ".busy(busy)"],
+        )
+        self.assertIn("output wire tx", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_pwm_controller_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="pwm_controller", width=8, project_name="pwm_controller_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "pwm_controller",
+            {"rtl/top.v", "rtl/pwm_timer.v", "rtl/pwm_channel.v"},
+            ["pwm_timer", "pwm_channel", ".pwm_out(pwm_out)"],
+        )
+        self.assertIn("input wire [7:0] duty", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_streaming_valid_ready_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="streaming_valid_ready",
+                width=8,
+                project_name="streaming_valid_ready_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "streaming_valid_ready",
+            {"rtl/top.v", "rtl/stream_stage.v", "rtl/skid_buffer.v"},
+            ["stream_stage", "skid_buffer", ".in_valid(in_valid)", ".out_ready(out_ready)"],
+        )
+        self.assertIn("out_valid", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
         cases = [
@@ -188,6 +240,26 @@ def _assert_manifest_sources_exist(testcase: unittest.TestCase, project) -> None
         testcase.assertIn(source, project.files)
         testcase.assertTrue(source.startswith("rtl/"), source)
         testcase.assertIn("module ", project.files[source])
+
+
+def _assert_multimodule_task(
+    testcase: unittest.TestCase,
+    project,
+    task_type: str,
+    expected_sources: set[str],
+    top_markers: list[str],
+) -> None:
+    manifest = _manifest(project)
+    system_his = _system_his(project)
+    testcase.assertEqual(system_his["task_type"], task_type)
+    testcase.assertTrue(expected_sources.issubset(set(manifest["sources"])))
+    testcase.assertTrue(expected_sources.issubset(set(project.files)))
+    testcase.assertGreater(len(manifest["sources"]), 1)
+    testcase.assertIn("architecture", system_his)
+    testcase.assertIn("submodules", system_his["architecture"])
+    for marker in top_markers:
+        testcase.assertIn(marker, project.files["rtl/top.v"])
+    testcase.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
 
 def _write_project(project_dir: Path, project) -> None:
