@@ -7,6 +7,24 @@ Proposed (2026-06-22). Refines and scopes the direction in
 line after a critical review of the current data-agent work. It decomposes the
 vision into a publishable program and specifies Paper ① in detail.
 
+## Target Venue
+
+**ACM TRETS** (Transactions on Reconfigurable Technology and Systems) — the FPGA
+/ reconfigurable-computing flagship journal. Chosen over TCAD because the
+reviewers are the FPGA community: they value reproducible on-board results, L4
+timing closure, the open Yosys+nextpnr flow, and device portability, and they do
+not demand commercial-scale ICs the way TCAD does. This choice shifts emphasis:
+
+- **Physical realization is the main dish, not a garnish:** L4 timing closure +
+  L5 on-board runs + Lattice→Xilinx portability + resource/Fmax/power reporting
+  are core evidence.
+- **The reproducible open-source FPGA flow** (req→bitstream→board) is a primary
+  selling point TRETS actively rewards.
+- **Method-novelty bar is relatively relaxed:** the (a)/(b)/(c) tool-acceptance
+  framework + reproducible closed loop suffices; no need to over-engineer a novel
+  training algorithm for a TCAD-style novelty claim. TCAD remains the target for
+  a deepened ①+② journal version later.
+
 ## Motivation
 
 A harsh-reviewer pass over the current state found a real risk: the project has
@@ -262,7 +280,8 @@ call this "just distilling an LLM."
 - No retraining of a large generation model (insufficient compute).
 - No GA/RL / heavy QoR optimization (Paper ②; needs the QoR predictor as proxy
   fitness).
-- L4 is the primary evidence ceiling; L5 and Xilinx are small case studies.
+- L4 timing + L5 on-board are core evidence (TRETS-aligned); commercial-scale
+  large-device results remain future work.
 
 ## Paper ② (brief)
 
