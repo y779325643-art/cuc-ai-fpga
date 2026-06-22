@@ -9,13 +9,13 @@ vision into a publishable program and specifies Paper ① in detail.
 
 ## Target Venue
 
-**ACM TRETS** (Transactions on Reconfigurable Technology and Systems) — the FPGA
-/ reconfigurable-computing flagship journal. Chosen over TCAD because the
-reviewers are the FPGA community: they value reproducible on-board results, L4
-timing closure, and device realism, and they do not demand commercial-scale ICs
-the way TCAD does. (For the same scope, TRETS is also the *easier* hit: higher
-fit to this work, and it does not gate on method novelty the way TODAES would —
-our weakest link is exactly method novelty.) This choice shifts emphasis:
+**Primary target: IEEE TCAD**, with **ACM TRETS as the fallback** — aim high,
+decide at submission by what was actually achieved. Both reward the
+physical-realization + reproducibility story; TCAD additionally demands the
+method novelty TRETS relaxes (see the last point). A helper for either: the
+**AC820-ZYNQ (XC7Z020) is a mainstream commercial Xilinx device**, so TCAD's
+"is this realistic silicon?" reflex is already answered — a better fit here than
+a small Lattice part. Emphasis:
 
 - **Physical realization is the main dish, not a garnish:** L4 timing closure +
   L5 on-board runs + resource/Fmax/power reporting are core evidence.
@@ -27,10 +27,11 @@ our weakest link is exactly method novelty.) This choice shifts emphasis:
   fallback/baseline**, and the **OpenXC7-vs-Vivado comparison is itself a bonus**
   (usability/QoR of open tools on LLM-generated RTL). All code/data/scripts/
   device public, tool versions pinned.
-- **Method-novelty bar is relatively relaxed:** the (a)/(b)/(c) tool-acceptance
-  framework + reproducible closed loop suffices; no need to over-engineer a novel
-  training algorithm for a TCAD-style novelty claim. TCAD remains the target for
-  a deepened ①+② journal version later.
+- **Method novelty is the gap to close for TCAD** (not relaxed): TCAD will not
+  accept "QLoRA fine-tuning + a tool loop" as the method contribution — it needs
+  a genuine methodological idea (see Method → "Method-novelty candidates"), plus
+  scale beyond the TRETS minimum. If novelty/scale do not land, drop to TRETS
+  (which gates far less on novelty); the rest of the paper is unchanged.
 
 ## Motivation
 
@@ -315,6 +316,14 @@ will live here later.
 - **Framework:** tool-in-the-loop (generate → tool check → feedback on
   errors/resources → regenerate/repair → record), matching the author's
   steps 1–4.
+- **Method-novelty candidates (to clear the TCAD bar — choose/deepen later):**
+  (i) **System-HIS-constrained / verification-guided decoding** — generation
+  constrained by the System-HIS contract so cross-file consistency holds by
+  construction, not by luck; (ii) **structured tool-feedback learning** — tool
+  diagnoses as a structured training signal (diagnosis→patch), not plain SFT on
+  trajectories; (iii) **two-stage REQ→HIS→Project with consistency constraints**.
+  Pick/deepen one for TCAD; if none lands, the (a)/(b)/(c) framework still
+  carries a TRETS paper.
 
 ### Measurement structure (the fair fights)
 
