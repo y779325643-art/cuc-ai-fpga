@@ -1,0 +1,49 @@
+{
+  "project_name": "forced_repair_fsm_8state_width",
+  "task_type": "simple_fsm",
+  "system": {
+    "description": "Design a synthesizable Verilog RTL simple_fsm project package with width 8, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "start",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "done",
+        "width": 1
+      },
+      {
+        "name": "state_value",
+        "width": 8
+      }
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "FSM transitions from idle to run to done and back to idle"
+  }
+}

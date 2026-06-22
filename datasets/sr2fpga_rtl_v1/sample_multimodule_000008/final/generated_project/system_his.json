@@ -1,0 +1,61 @@
+{
+  "project_name": "fir_filter_12bit",
+  "task_type": "fir_filter",
+  "system": {
+    "description": "Design a multi-module Verilog RTL fir_filter project package with width 12, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "sample_valid",
+        "width": 1
+      },
+      {
+        "name": "sample",
+        "width": 12
+      }
+    ],
+    "outputs": [
+      {
+        "name": "result_valid",
+        "width": 1
+      },
+      {
+        "name": "result",
+        "width": 15
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "mac_unit",
+      "fir_filter_core"
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "valid input samples produce a three-tap [1, 2, 1] FIR result"
+  }
+}

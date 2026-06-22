@@ -1,0 +1,2 @@
+TEST_FAIL fsm did not reach done
+sim/tb_top.v:33: $finish called at 65000 (1ps)

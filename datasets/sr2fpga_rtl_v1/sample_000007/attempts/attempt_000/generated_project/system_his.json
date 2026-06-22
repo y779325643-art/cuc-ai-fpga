@@ -1,0 +1,61 @@
+{
+  "project_name": "fifo_8bit",
+  "task_type": "fifo",
+  "system": {
+    "description": "Design an 8-bit synchronous FIFO with push/pop handshaking, full and empty flags, active-low reset, no vendor IP."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "wr_en",
+        "width": 1
+      },
+      {
+        "name": "rd_en",
+        "width": 1
+      },
+      {
+        "name": "din",
+        "width": 8
+      }
+    ],
+    "outputs": [
+      {
+        "name": "dout",
+        "width": 8
+      },
+      {
+        "name": "full",
+        "width": 1
+      },
+      {
+        "name": "empty",
+        "width": 1
+      }
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "data written into the FIFO is read back in order"
+  }
+}

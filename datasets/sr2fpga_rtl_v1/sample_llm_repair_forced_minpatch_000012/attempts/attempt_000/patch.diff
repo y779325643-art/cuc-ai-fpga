@@ -1,0 +1,24 @@
+--- a/rtl/top.v
++++ b/rtl/top.v
+@@ -10,8 +10,8 @@
+   reg [31:0] mem [0:3];
+   integer i;
+ 
+-  always @(posedge clk or negedge rst_n) begin
+-    if (!rst_n) begin
++  always @(posedge clk or negedge reset_n) begin
++    if (!reset_n) begin
+       rdata <= 32'd0;
+       for (i = 0; i < 4; i = i + 1) begin
+         mem[i] <= 32'd0;
+--- a/sim/tb_top.v
++++ b/sim/tb_top.v
+@@ -10,7 +10,7 @@
+ 
+   top dut (
+     .clk(clk),
+-    .rst_n(rst_n),
++    .reset_n(rst_n),
+     .we(we),
+     .addr(addr),
+     .wdata(wdata),

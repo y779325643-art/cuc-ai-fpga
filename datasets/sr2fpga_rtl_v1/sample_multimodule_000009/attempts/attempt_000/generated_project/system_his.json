@@ -1,0 +1,69 @@
+{
+  "project_name": "streaming_valid_ready_8bit",
+  "task_type": "streaming_valid_ready",
+  "system": {
+    "description": "Design a multi-module Verilog RTL streaming_valid_ready project package with width 8, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "name": "in_data",
+        "width": 8
+      },
+      {
+        "name": "out_ready",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "name": "out_data",
+        "width": 8
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "skid_buffer",
+      "stream_stage"
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "valid-ready transfers preserve data order across stalls"
+  }
+}

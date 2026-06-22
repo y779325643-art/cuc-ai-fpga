@@ -1,0 +1,20 @@
+{
+  "sample_id": "sample_llm_000002",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "verilator",
+      "exit_code": 1,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v"
+      ],
+      "failure_type": "unknown",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ]
+}

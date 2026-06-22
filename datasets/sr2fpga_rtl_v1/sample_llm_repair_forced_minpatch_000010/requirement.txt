@@ -1,0 +1,1 @@
+Design a synthesizable Verilog RTL simple_fsm project package with width 8, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR.

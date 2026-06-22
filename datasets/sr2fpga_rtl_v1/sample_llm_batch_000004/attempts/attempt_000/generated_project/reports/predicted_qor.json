@@ -1,0 +1,7 @@
+{
+  "estimated_fmax_mhz": 200,
+  "lut_usage": 100,
+  "ff_usage": 50,
+  "bram_usage": 1,
+  "timing_violations": 0
+}

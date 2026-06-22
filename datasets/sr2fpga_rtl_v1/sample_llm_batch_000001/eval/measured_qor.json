@@ -1,0 +1,15 @@
+{
+  "cell_count": 16,
+  "cell_breakdown": {
+    "$_AND_": 3,
+    "$_NAND_": 1,
+    "$_NOT_": 1,
+    "$_SDFF_PN0_": 6,
+    "$_XNOR_": 1,
+    "$_XOR_": 4
+  },
+  "lut": 0,
+  "ff": 6,
+  "bram": 0,
+  "dsp": 0
+}

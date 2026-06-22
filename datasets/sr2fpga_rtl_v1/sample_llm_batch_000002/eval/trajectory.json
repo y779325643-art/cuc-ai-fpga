@@ -1,0 +1,51 @@
+{
+  "sample_id": "sample_llm_batch_000002",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "verilator",
+      "exit_code": 1,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v"
+      ],
+      "failure_type": "unknown",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json",
+      "patch_path": "attempts/attempt_000/patch.diff"
+    },
+    {
+      "attempt_id": 1,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "verilator",
+      "exit_code": 0,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v"
+      ]
+    },
+    {
+      "attempt_id": 1,
+      "stage": "sim_compile",
+      "status": "failed",
+      "tool": "iverilog",
+      "exit_code": 2,
+      "command": [
+        "iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "sim/tb_top.v"
+      ],
+      "failure_type": "syntax_error",
+      "diagnosis_path": "attempts/attempt_001/diagnosis.json"
+    }
+  ]
+}

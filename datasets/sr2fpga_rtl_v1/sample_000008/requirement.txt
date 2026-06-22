@@ -1,0 +1,1 @@
+Design a simple FSM with start/done handshake, state visibility, active-low reset, no vendor IP.

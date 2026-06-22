@@ -1,0 +1,1 @@
+Design a fifo RTL project with active-low reset. This sample intentionally starts with a reset-port mismatch so the repairer must fix it without rewriting unrelated files.

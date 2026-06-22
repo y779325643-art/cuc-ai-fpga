@@ -1,0 +1,23 @@
+{
+  "project_name": "matrix_vector_mac_8bit",
+  "target": {
+    "platform": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source"
+  },
+  "predicted": {
+    "lut": 32,
+    "ff": 32,
+    "bram": 0,
+    "dsp": 2,
+    "fmax_mhz": 300.0,
+    "confidence": 0.65
+  },
+  "assumptions": {
+    "data_width": 8,
+    "task_type": "matrix_vector_mac",
+    "single_clock": true,
+    "no_vendor_ip": true,
+    "estimate_type": "pre_synthesis_model_prediction"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "max_frequency_MHz": 125,
+  "slack_ns": 0.5,
+  "area_LUTs": 16,
+  "area_FFs": 8,
+  "power_mW": 0.5,
+  "methodology": "Estimated from 7nm generic library"
+}

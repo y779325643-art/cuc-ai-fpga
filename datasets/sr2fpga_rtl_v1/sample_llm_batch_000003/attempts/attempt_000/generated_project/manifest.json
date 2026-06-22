@@ -1,0 +1,1 @@
+{"project_name":"llm_batch_fsm_4width","top_module":"top","sources":["rtl/top.v"],"constraints":["constraints/timing.sdc"],"simulation":{"testbench":"sim/tb_top.v"},"reports":["reports/predicted_qor.json"]}

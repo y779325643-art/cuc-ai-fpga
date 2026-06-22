@@ -1,0 +1,1 @@
+Design a synthesizable Verilog RTL ram_read_write project package with width 12, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR.

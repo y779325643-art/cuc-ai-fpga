@@ -1,0 +1,1 @@
+Design an 8-bit synchronous counter with enable and active-low reset. This smoke intentionally starts with a reset-port mismatch so the repairer must fix it.

@@ -1,0 +1,14 @@
+{
+  "project": "llm_counter_8bit",
+  "task": "counter",
+  "width": 8,
+  "description": "Design an 8-bit synchronous counter with enable, active-low reset, self-checking Verilog testbench, timing constraint, manifest, system_his, and predicted QoR.",
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000,
+    "reset_polarity": "active_low"
+  },
+  "generated_by": "LLM"
+}

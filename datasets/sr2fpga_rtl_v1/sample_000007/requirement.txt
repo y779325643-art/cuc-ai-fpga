@@ -1,0 +1,1 @@
+Design an 8-bit synchronous FIFO with push/pop handshaking, full and empty flags, active-low reset, no vendor IP.

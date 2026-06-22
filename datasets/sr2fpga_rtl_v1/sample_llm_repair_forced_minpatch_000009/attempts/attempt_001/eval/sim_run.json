@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "TEST_FAIL fsm did not reach done\nsim/tb_top.v:33: $finish called at 65000 (1ps)\n",
+  "stderr": "",
+  "duration_seconds": 0.007541124999988824
+}

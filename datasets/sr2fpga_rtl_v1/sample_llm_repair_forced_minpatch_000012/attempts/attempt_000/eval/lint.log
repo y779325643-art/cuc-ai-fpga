@@ -1,0 +1,6 @@
+%Error: rtl/top.v:13:35: Can't find definition of variable: 'rst_n'
+                       : ... Suggested alternative: 'reset_n'
+   13 |   always @(posedge clk or negedge rst_n) begin
+      |                                   ^~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: Exiting due to 1 error(s)

@@ -1,0 +1,45 @@
+{
+  "project_name": "forced_repair_counter_4bit",
+  "task_type": "counter",
+  "system": {
+    "description": "Design a counter RTL project with active-low reset. This sample intentionally starts with a reset-port mismatch so the repairer must fix it without rewriting unrelated files."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "en",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "count",
+        "width": 4
+      }
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "count increments when en is high and holds when en is low"
+  }
+}

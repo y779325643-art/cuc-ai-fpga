@@ -1,0 +1,22 @@
+{
+  "cell_count": 71,
+  "cell_breakdown": {
+    "$_ANDNOT_": 6,
+    "$_AND_": 14,
+    "$_DFFE_PN0P_": 27,
+    "$_DFFE_PN1P_": 1,
+    "$_DFF_PN0_": 3,
+    "$_MUX_": 9,
+    "$_NAND_": 4,
+    "$_NOR_": 1,
+    "$_ORNOT_": 4,
+    "$_OR_": 2,
+    "submodules": 2,
+    "clock_divider": 1,
+    "spi_master_core": 1
+  },
+  "lut": 0,
+  "ff": 31,
+  "bram": 0,
+  "dsp": 0
+}

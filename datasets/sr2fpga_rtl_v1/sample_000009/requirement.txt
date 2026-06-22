@@ -1,0 +1,1 @@
+Design a 16-bit by 4-entry synchronous RAM read/write block with active-low reset and no vendor IP.
