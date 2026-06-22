@@ -230,6 +230,15 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(trajectory["attempts"][-1]["attempt_id"], 1)
             self.assertEqual(trajectory["attempts"][-1]["stage"], "synth")
 
+            export_dir = Path(tmp) / "exports"
+            DatasetRecorder(root).export_training_views(export_dir)
+            patch_rows = (export_dir / "failure_to_patch.jsonl").read_text(encoding="utf-8").splitlines()
+            self.assertEqual(len(patch_rows), 1)
+            patch_row = json.loads(patch_rows[0])
+            self.assertEqual(patch_row["sample_id"], "sample_000002")
+            self.assertEqual(patch_row["diagnosis"]["failure_type"], "port_mismatch")
+            self.assertIn("fix reset port", patch_row["patch"])
+
     def test_repair_result_is_shared_model_and_agent_compatible(self) -> None:
         self.assertIs(RepairResult, ModelRepairResult)
 
