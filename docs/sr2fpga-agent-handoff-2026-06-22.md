@@ -110,3 +110,68 @@ PY
 4. Keep generated datasets out of Git for now.
    - Commit code, tests, docs, configs.
    - Do not commit `datasets/`, model weights, LoRA outputs, or API keys.
+
+## Multi-Module Task Family Implementation
+
+Spec path: `docs/superpowers/specs/2026-06-22-sr2fpga-multimodule-task-families-design.md`
+
+Plan path: `docs/superpowers/plans/2026-06-22-sr2fpga-multimodule-task-families.md`
+
+New deterministic task families:
+
+- `uart_tx`
+- `spi_master`
+- `pwm_controller`
+- `fir_filter`
+- `streaming_valid_ready`
+- `matrix_vector_mac`
+
+Generated local samples:
+
+- `sample_multimodule_000001`
+- `sample_multimodule_000002`
+- `sample_multimodule_000003`
+- `sample_multimodule_000004`
+- `sample_multimodule_000005`
+- `sample_multimodule_000006`
+- `sample_multimodule_000007`
+- `sample_multimodule_000008`
+- `sample_multimodule_000009`
+- `sample_multimodule_000010`
+- `sample_multimodule_000011`
+- `sample_multimodule_000012`
+
+Observed local labels:
+
+| Sample | Task type | Pass level | Source count |
+| --- | --- | --- | --- |
+| `sample_multimodule_000001` | `uart_tx` | `L3` | 3 |
+| `sample_multimodule_000002` | `uart_tx` | `L3` | 3 |
+| `sample_multimodule_000003` | `spi_master` | `L3` | 3 |
+| `sample_multimodule_000004` | `spi_master` | `L3` | 3 |
+| `sample_multimodule_000005` | `pwm_controller` | `L3` | 3 |
+| `sample_multimodule_000006` | `pwm_controller` | `L3` | 3 |
+| `sample_multimodule_000007` | `fir_filter` | `L3` | 3 |
+| `sample_multimodule_000008` | `fir_filter` | `L3` | 3 |
+| `sample_multimodule_000009` | `streaming_valid_ready` | `L3` | 3 |
+| `sample_multimodule_000010` | `streaming_valid_ready` | `L3` | 3 |
+| `sample_multimodule_000011` | `matrix_vector_mac` | `L3` | 4 |
+| `sample_multimodule_000012` | `matrix_vector_mac` | `L3` | 4 |
+
+Export counts after refresh:
+
+- `failure_to_diagnosis.jsonl`: 16
+- `failure_to_patch.jsonl`: 14
+- `his_to_project.jsonl`: 45
+- `project_to_measured_qor.jsonl`: 45
+- `project_to_predicted_qor.jsonl`: 45
+- `requirement_to_his.jsonl`: 45
+- `requirement_to_project.jsonl`: 45
+
+Notes:
+
+- Datasets remain untracked local artifacts.
+- API keys were not used for deterministic generation.
+- Next useful work: add failure injectors for multi-module-specific errors.
+- Known non-blocking hardening: `matrix_vector_mac` width values below 3 should be guarded or generated without negative repeat counts.
+- Known pre-existing risk: `simple_fsm` generated testbench may print `TEST_FAIL` despite a zero simulator exit code; do not address it in this task.
