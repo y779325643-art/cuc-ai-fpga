@@ -5,7 +5,9 @@ from unittest import mock
 
 from LLM.src.sr2fpga_agent.deepseek import (
     DeepSeekProjectGenerator,
+    DeepSeekRepairer,
     _project_messages,
+    _repair_messages,
     diff_projects,
     parse_project_files,
 )
@@ -176,6 +178,64 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertIn("rtl/top.v", project.files)
         self.assertEqual(client.call_count, 2)
+
+    def test_deepseek_repairer_uses_failure_context_and_returns_patch(self) -> None:
+        original = GeneratedProject(
+            project_name="counter_8bit",
+            files={
+                "system_his.json": "{}\n",
+                "manifest.json": _valid_manifest(),
+                "rtl/top.v": "module top(input wire clk); endmodule\n",
+                "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                "sim/tb_top.v": "module tb_top; endmodule\n",
+                "reports/predicted_qor.json": "{}\n",
+            },
+        )
+        repaired_payload = json.dumps(
+            {
+                "files": {
+                    "system_his.json": "{}\n",
+                    "manifest.json": _valid_manifest(),
+                    "rtl/top.v": "module top(input wire clk, input wire rst_n); endmodule\n",
+                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                    "sim/tb_top.v": "module tb_top; endmodule\n",
+                    "reports/predicted_qor.json": "{}\n",
+                }
+            }
+        )
+        client = FakeDeepSeekClient(repaired_payload)
+        diagnosis = {
+            "stage": "lint",
+            "failure_type": "port_mismatch",
+            "root_cause": "Port rst_n of module top is not declared",
+            "affected_files": ["rtl/top.v"],
+        }
+
+        result = DeepSeekRepairer(client).repair(original, diagnosis)
+
+        self.assertIn("rst_n", result.generated_project.files["rtl/top.v"])
+        self.assertIn("--- a/rtl/top.v", result.patch_diff)
+        self.assertIn("+++ b/rtl/top.v", result.patch_diff)
+        self.assertIn("Port rst_n of module top is not declared", client.messages[1]["content"])
+        self.assertIn("module top(input wire clk); endmodule", client.messages[1]["content"])
+
+    def test_repair_prompt_requests_complete_project_package(self) -> None:
+        project = GeneratedProject(
+            project_name="counter_8bit",
+            files={
+                "manifest.json": _valid_manifest(),
+                "rtl/top.v": "module top; endmodule\n",
+            },
+        )
+        diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "syntax error"}
+
+        messages = _repair_messages(project, diagnosis)
+        prompt = messages[1]["content"]
+
+        self.assertIn("Return JSON in this exact shape", prompt)
+        self.assertIn('"manifest.json"', prompt)
+        self.assertIn('"top_module": "top"', prompt)
+        self.assertIn("syntax error", prompt)
 
     def test_project_prompt_requests_agent_manifest_schema(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")

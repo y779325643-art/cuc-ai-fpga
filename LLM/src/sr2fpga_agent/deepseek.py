@@ -9,7 +9,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
-from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
 
 
 REQUIRED_PROJECT_FILES = {
@@ -90,6 +90,32 @@ class DeepSeekProjectGenerator:
         if last_error is not None:
             raise last_error
         raise RuntimeError("DeepSeek generator did not run")
+
+
+class DeepSeekRepairer:
+    """Repair a generated project package using DeepSeek and a tool diagnosis."""
+
+    def __init__(self, client: DeepSeekClient, max_attempts: int = 3) -> None:
+        self.client = client
+        self.max_attempts = max_attempts
+
+    def repair(self, project: GeneratedProject, diagnosis: dict[str, object]) -> RepairResult:
+        messages = _repair_messages(project, diagnosis)
+        last_error: ValueError | None = None
+        for _attempt in range(self.max_attempts):
+            content = self.client.chat(messages)
+            try:
+                files = parse_project_files(content)
+                repaired_project = GeneratedProject(project_name=project.project_name, files=files)
+                return RepairResult(
+                    generated_project=repaired_project,
+                    patch_diff=diff_projects(project, repaired_project),
+                )
+            except ValueError as exc:
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("DeepSeek repairer did not run")
 
 
 def parse_project_files(content: str) -> dict[str, str]:
@@ -240,5 +266,58 @@ pipeline schema:
 }}
 
 The Verilog must be synthesizable and the testbench must print TEST_PASS on success.
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _repair_messages(project: GeneratedProject, diagnosis: dict[str, object]) -> list[dict[str, str]]:
+    files_text = "\n\n".join(
+        f"### {path}\n{content}" for path, content in sorted(project.files.items())
+    )
+    diagnosis_text = json.dumps(diagnosis, ensure_ascii=False, indent=2)
+    required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
+    system = (
+        "You repair FPGA RTL project packages as JSON. "
+        "Return only valid JSON. Do not include markdown. "
+        "Do not generate vendor IP, HLS, bitstreams, or real tool reports."
+    )
+    user = f"""
+Repair this SR2FPGA project package.
+
+Failure diagnosis:
+{diagnosis_text}
+
+Current project files:
+{files_text}
+
+Required files:
+{required_files}
+
+Return JSON in this exact shape. The value of each file must be a JSON string;
+escape newlines as \\n and escape any double quotes inside file contents:
+{{
+  "files": {{
+    "system_his.json": "...",
+    "manifest.json": "...",
+    "rtl/top.v": "...",
+    "constraints/timing.sdc": "...",
+    "sim/tb_top.v": "...",
+    "reports/predicted_qor.json": "..."
+  }}
+}}
+
+The manifest.json file content must itself be JSON and must contain this tool
+pipeline schema:
+{{
+  "project_name": "{project.project_name}",
+  "top_module": "top",
+  "sources": ["rtl/top.v"],
+  "constraints": ["constraints/timing.sdc"],
+  "simulation": {{"testbench": "sim/tb_top.v"}},
+  "reports": ["reports/predicted_qor.json"]
+}}
+
+Make the smallest practical fix for the failing tool log. Preserve pure
+Verilog RTL and ensure the testbench prints TEST_PASS on success.
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
