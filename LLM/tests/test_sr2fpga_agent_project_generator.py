@@ -172,6 +172,7 @@ class ProjectGeneratorTest(unittest.TestCase):
             ["spi_master_core", "clock_divider", ".mosi(mosi)", ".miso(miso)", ".cs_n(cs_n)"],
         )
         self.assertIn("output wire sclk", project.files["rtl/top.v"])
+        self.assertIn("sclk_edge_count", project.files["sim/tb_top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
     def test_generates_fir_filter_multimodule_project_package(self) -> None:

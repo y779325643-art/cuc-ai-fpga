@@ -742,6 +742,7 @@ def _spi_master_testbench() -> str:
 
           reg [7:0] miso_pattern;
           integer miso_bit;
+          integer sclk_edge_count;
 
           top dut (
             .clk(clk),
@@ -772,12 +773,19 @@ def _spi_master_testbench() -> str:
             end
           end
 
+          always @(posedge sclk) begin
+            if (!cs_n) begin
+              sclk_edge_count = sclk_edge_count + 1;
+            end
+          end
+
           initial begin
             rst_n = 1'b0;
             start = 1'b0;
             tx_data = 8'd0;
             miso_pattern = 8'h3C;
             miso_bit = 7;
+            sclk_edge_count = 0;
             miso = miso_pattern[7];
             repeat (2) @(posedge clk);
             rst_n = 1'b1;
@@ -803,6 +811,10 @@ def _spi_master_testbench() -> str:
             #1;
             if (cs_n !== 1'b1) begin
               $display("TEST_FAIL cs_n was not released");
+              $finish;
+            end
+            if (sclk_edge_count != 8) begin
+              $display("TEST_FAIL expected 8 SCLK rising edges got %0d", sclk_edge_count);
               $finish;
             end
             if (rx_data !== 8'h3C) begin
@@ -1436,16 +1448,18 @@ def _spi_master_rtl_files(width: int) -> dict[str, str]:
                   rx_shift <= {rx_shift[5:0], miso};
                   if (bit_index == 3'd7) begin
                     rx_data <= {rx_shift, miso};
-                    busy <= 1'b0;
-                    done <= 1'b1;
-                    sclk <= 1'b0;
-                    cs_n <= 1'b1;
                   end
                 end else begin
                   sclk <= 1'b0;
-                  bit_index <= bit_index + 3'd1;
-                  mosi <= tx_shift[7];
-                  tx_shift <= {tx_shift[6:0], 1'b0};
+                  if (bit_index == 3'd7) begin
+                    busy <= 1'b0;
+                    done <= 1'b1;
+                    cs_n <= 1'b1;
+                  end else begin
+                    bit_index <= bit_index + 3'd1;
+                    mosi <= tx_shift[7];
+                    tx_shift <= {tx_shift[6:0], 1'b0};
+                  end
                 end
               end
             end
