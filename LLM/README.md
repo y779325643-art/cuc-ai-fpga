@@ -126,6 +126,23 @@ python3 -m LLM.src.sr2fpga_agent.cli \
 The API key is read only from the environment. Do not write it into repository
 files or generated samples.
 
+Use DeepSeek for generation and one repair attempt:
+
+```bash
+export DEEPSEEK_API_KEY="your-key"
+
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_llm_repair_000001 \
+  --provider deepseek \
+  --repair-provider deepseek \
+  --max-attempts 2 \
+  --task-type counter \
+  --width 8 \
+  --project-name llm_counter_repair_8bit \
+  --requirement "Design an 8-bit synchronous counter with enable, active-low reset, self-checking Verilog testbench, timing constraint, manifest, system_his, and predicted QoR."
+```
+
 Each sample records generated project files under `attempts/` and `final/`,
 plus labels and measured QoR under `eval/`.
 

@@ -267,9 +267,17 @@ class DeepSeekProviderTest(unittest.TestCase):
         captured = {}
 
         class FakeAgent:
-            def __init__(self, dataset_root, project_generator=None) -> None:
+            def __init__(
+                self,
+                dataset_root,
+                project_generator=None,
+                repairer=None,
+                max_attempts=1,
+            ) -> None:
                 captured["dataset_root"] = dataset_root
                 captured["project_generator"] = project_generator
+                captured["repairer"] = repairer
+                captured["max_attempts"] = max_attempts
 
             def run_one(self, sample_id, requirement, request, platform):
                 captured["sample_id"] = sample_id
@@ -282,6 +290,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         with (
             mock.patch.object(cli, "DataGenerationAgent", FakeAgent),
             mock.patch.object(cli, "build_project_generator", return_value="fake-llm-generator"),
+            mock.patch.object(cli, "build_repairer", return_value="fake-repairer"),
             mock.patch("builtins.print"),
         ):
             cli.main(
@@ -300,6 +309,10 @@ class DeepSeekProviderTest(unittest.TestCase):
                     "llm_counter_8bit",
                     "--requirement",
                     requirement,
+                    "--repair-provider",
+                    "deepseek",
+                    "--max-attempts",
+                    "2",
                 ]
             )
 
@@ -309,6 +322,56 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(captured["request"].width, 8)
         self.assertEqual(captured["request"].project_name, "llm_counter_8bit")
         self.assertEqual(captured["project_generator"], "fake-llm-generator")
+        self.assertEqual(captured["repairer"], "fake-repairer")
+        self.assertEqual(captured["max_attempts"], 2)
+
+    def test_cli_builds_no_repairer_by_default(self) -> None:
+        from LLM.src.sr2fpga_agent.cli import build_repairer
+
+        repairer = build_repairer(
+            provider="none",
+            model="deepseek-v4-flash",
+            base_url="https://api.deepseek.com",
+            api_key_env="DEEPSEEK_API_KEY",
+        )
+
+        self.assertIsNone(repairer)
+
+    def test_cli_builds_deepseek_repairer_from_env_without_exposing_key(self) -> None:
+        with mock.patch.dict(os.environ, {"DEEPSEEK_API_KEY": "secret-value"}):
+            from LLM.src.sr2fpga_agent.cli import build_repairer
+
+            repairer = build_repairer(
+                provider="deepseek",
+                model="deepseek-v4-flash",
+                base_url="https://api.deepseek.com",
+                api_key_env="DEEPSEEK_API_KEY",
+            )
+
+        self.assertIsInstance(repairer, DeepSeekRepairer)
+
+    def test_cli_rejects_non_positive_max_attempts(self) -> None:
+        from LLM.src.sr2fpga_agent import cli
+
+        with self.assertRaisesRegex(SystemExit, "--max-attempts must be >= 1"):
+            cli.main(
+                [
+                    "--dataset-root",
+                    "datasets/sr2fpga_rtl_v1",
+                    "--sample-id",
+                    "sample_bad_attempts",
+                    "--provider",
+                    "deterministic",
+                    "--task-type",
+                    "counter",
+                    "--width",
+                    "8",
+                    "--project-name",
+                    "bad_attempts",
+                    "--max-attempts",
+                    "0",
+                ]
+            )
 
 
 class FakeDeepSeekClient:

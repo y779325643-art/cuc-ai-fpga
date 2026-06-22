@@ -7,7 +7,12 @@ import os
 from pathlib import Path
 
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
-from LLM.src.sr2fpga_agent.deepseek import DeepSeekClient, DeepSeekConfig, DeepSeekProjectGenerator
+from LLM.src.sr2fpga_agent.deepseek import (
+    DeepSeekClient,
+    DeepSeekConfig,
+    DeepSeekProjectGenerator,
+    DeepSeekRepairer,
+)
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
 
 
@@ -24,7 +29,12 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--model", default="deepseek-v4-flash")
     parser.add_argument("--base-url", default="https://api.deepseek.com")
     parser.add_argument("--api-key-env", default="DEEPSEEK_API_KEY")
+    parser.add_argument("--repair-provider", choices=["none", "deepseek"], default="none")
+    parser.add_argument("--max-attempts", default=1, type=int)
     args = parser.parse_args(argv)
+
+    if args.max_attempts < 1:
+        raise SystemExit("--max-attempts must be >= 1")
 
     requirement = args.requirement or f"Design a {args.width}-bit {args.task_type} RTL block with active-low reset."
     project_generator = build_project_generator(
@@ -33,7 +43,18 @@ def main(argv: list[str] | None = None) -> None:
         base_url=args.base_url,
         api_key_env=args.api_key_env,
     )
-    result = DataGenerationAgent(args.dataset_root, project_generator=project_generator).run_one(
+    repairer = build_repairer(
+        provider=args.repair_provider,
+        model=args.model,
+        base_url=args.base_url,
+        api_key_env=args.api_key_env,
+    )
+    result = DataGenerationAgent(
+        args.dataset_root,
+        project_generator=project_generator,
+        repairer=repairer,
+        max_attempts=args.max_attempts,
+    ).run_one(
         sample_id=args.sample_id,
         requirement=requirement,
         request=ProjectRequest(
@@ -70,6 +91,30 @@ def build_project_generator(
             )
         )
     raise SystemExit(f"Unsupported provider: {provider}")
+
+
+def build_repairer(
+    provider: str,
+    model: str,
+    base_url: str,
+    api_key_env: str,
+):
+    if provider == "none":
+        return None
+    if provider == "deepseek":
+        api_key = os.environ.get(api_key_env)
+        if not api_key:
+            raise SystemExit(f"{api_key_env} is not set")
+        return DeepSeekRepairer(
+            DeepSeekClient(
+                DeepSeekConfig(
+                    api_key=api_key,
+                    model=model,
+                    base_url=base_url,
+                )
+            )
+        )
+    raise SystemExit(f"Unsupported repair provider: {provider}")
 
 
 if __name__ == "__main__":
