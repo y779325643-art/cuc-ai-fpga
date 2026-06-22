@@ -264,8 +264,10 @@ Avoid overclaiming:
 
 Near-term work should follow this order:
 
-1. Expand the data generation agent beyond `counter`.
-2. Add task families: FIFO, FSM, RAM read/write, valid-ready pipeline, vector add, and small AI kernels.
+1. Expand the data generation agent beyond `counter`. Current status:
+   `counter`, `fifo`, `simple_fsm`, and `ram_read_write` are implemented in
+   the deterministic V1 generator.
+2. Add remaining task families: valid-ready pipeline, vector add, and small AI kernels.
 3. Intentionally collect failures and repair trajectories, not only successful samples.
 4. Export stable JSONL views for each training task.
 5. Train or fine-tune first models on `REQ2HIS`, `LOG2DIAG`, `FAILURE2PATCH`, and small `HIS2FILES`.

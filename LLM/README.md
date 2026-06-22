@@ -79,6 +79,11 @@ V1 generates a small Verilog project package with:
 - `sim/tb_top.v`
 - `reports/predicted_qor.json`
 
+Current deterministic V1 task types are `counter`, `fifo`, `simple_fsm`, and
+`ram_read_write`. These are intentionally small building blocks for validating
+the data schema, tool pipeline, and training views before moving to larger RTL
+design families.
+
 It can then run a command-line pipeline:
 
 - Verilator for lint
@@ -99,6 +104,9 @@ python3 -m LLM.src.sr2fpga_agent.cli \
   --width 8 \
   --project-name counter_8bit
 ```
+
+Replace `--task-type`, `--width`, and `--project-name` to generate another
+supported task family, for example `fifo`, `simple_fsm`, or `ram_read_write`.
 
 Use DeepSeek as the project generator:
 

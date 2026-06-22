@@ -63,6 +63,49 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIsNotNone(module_name)
         self.assertEqual(manifest["top_module"], module_name.group(1))
 
+    def test_generates_fifo_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="fifo", width=8, project_name="fifo_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        self.assertEqual(_task_type(project), "fifo")
+        self.assertIn("module top", project.files["rtl/top.v"])
+        self.assertIn("wr_en", project.files["rtl/top.v"])
+        self.assertIn("rd_en", project.files["rtl/top.v"])
+        self.assertIn("full", project.files["rtl/top.v"])
+        self.assertIn("empty", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_simple_fsm_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="simple_fsm", width=4, project_name="fsm_sequence_4bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        self.assertEqual(_task_type(project), "simple_fsm")
+        self.assertIn("state", project.files["rtl/top.v"])
+        self.assertIn("start", project.files["rtl/top.v"])
+        self.assertIn("done", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_ram_read_write_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="ram_read_write", width=16, project_name="ram_rw_16bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        self.assertEqual(_task_type(project), "ram_read_write")
+        self.assertIn("addr", project.files["rtl/top.v"])
+        self.assertIn("wdata", project.files["rtl/top.v"])
+        self.assertIn("rdata", project.files["rtl/top.v"])
+        self.assertIn("mem", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+
+def _task_type(project) -> str:
+    return json.loads(project.files["system_his.json"])["task_type"]
+
 
 if __name__ == "__main__":
     unittest.main()
