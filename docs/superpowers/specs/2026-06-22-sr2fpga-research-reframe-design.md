@@ -19,11 +19,14 @@ our weakest link is exactly method novelty.) This choice shifts emphasis:
 
 - **Physical realization is the main dish, not a garnish:** L4 timing closure +
   L5 on-board runs + resource/Fmax/power reporting are core evidence.
-- **A fully reproducible closed loop** (req→bitstream→board, with all
-  code/data/scripts/device public and tool versions pinned) is a primary selling
-  point TRETS rewards. The toolchain is open-source where mature (Yosys) and
-  Vivado for Xilinx P&R — the claim is *reproducibility*, not pure openness, so
-  it is not hostage to the maturity of open Xilinx tools.
+- **A fully open, reproducible closed loop** (req→bitstream→board) is a primary
+  selling point TRETS rewards. The author's **AC820-ZYNQ board (chip
+  XC7Z020CLG484-2) is in OpenXC7's support list**, so an all-open
+  Yosys→nextpnr-xilinx (OpenXC7)→bitstream→board flow on a *real Xilinx device*
+  is feasible — pending a spike verification. **Vivado is kept as a
+  fallback/baseline**, and the **OpenXC7-vs-Vivado comparison is itself a bonus**
+  (usability/QoR of open tools on LLM-generated RTL). All code/data/scripts/
+  device public, tool versions pinned.
 - **Method-novelty bar is relatively relaxed:** the (a)/(b)/(c) tool-acceptance
   framework + reproducible closed loop suffices; no need to over-engineer a novel
   training algorithm for a TCAD-style novelty claim. TCAD remains the target for
@@ -49,12 +52,13 @@ feedback** — but makes it defensible and feasible under the real resource budg
   beats GPT-5 / DeepSeek head-to-head. That ambition is explicitly abandoned.
 - **Data:** none exists; all trajectories are generated from scratch by running
   tools locally. **Labels come entirely from tools** (open-source Yosys/Verilator/
-  Icarus for L0–L3, Vivado for L4–L5), so "tool-verified learning" is literally
+  Icarus for L0–L3, OpenXC7/Vivado for L4–L5), so "tool-verified learning" is literally
   true — the supervision is the tool, not another LLM.
-- **Hardware:** on-board validation uses the author's **Xilinx Zynq-7020**
-  (XC7Z020: ~53k LUT, 220 DSP, dual-core ARM — large enough for big designs and
-  an RL flagship case). No Lattice board. A second board ("AC820", exact device
-  TBD) may be added later for portability evidence.
+- **Hardware:** on-board validation uses the author's **AC820-ZYNQ board** —
+  chip **XC7Z020CLG484-2** (~53k LUT, 220 DSP, dual-core ARM; large enough for
+  big designs and an RL flagship case). The device is **in OpenXC7's support
+  list**, enabling an all-open req→bitstream→board flow (subject to spike
+  verification); **Vivado is the fallback/baseline**.
 
 ## Core Reframe: distill the TOOL, not the LLM
 
@@ -130,13 +134,13 @@ GA/RL and "retrain a large generation model" are **out of scope for Paper ①**
 SR2FPGA generates multi-module, cross-file-consistent RTL **projects** from
 system requirements **through a System-HIS intermediate representation**, drives
 them through a **reproducible flow** to **L4 timing closure** (plus L5 on-board
-cases on a Zynq-7020), and quantifies each level with an **L0–L5 project-level
+cases on the AC820-ZYNQ), and quantifies each level with an **L0–L5 project-level
 evaluation**; on this evaluation, a 7B-class model fine-tuned on tool-verified
 trajectories internalizes tool acceptance and improves generation + self-repair
 under a fixed iteration budget.
 
 中文定位：**面向系统需求的项目级 RTL 工程生成——以 System-HIS 中间表示 + 项目级 L0–L5
-评测 + 可复现 req→bitstream→上板闭环（Zynq-7020）为贡献，并以工具验证轨迹微调一个
+评测 + 可复现 req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨迹微调一个
 7B 级模型，使其内化工具接受度、在固定迭代预算下提升生成与自修复。**
 
 ### Differentiation (against AutoChip / RTLCoder / VeriGen / ChipNeMo / VerilogEval / RTLLM)
@@ -215,16 +219,19 @@ otherwise "project-level" collapses.
 
 - **L0** project contract + cross-file consistency; **L1** lint (Verilator);
   **L2** functional simulation (Icarus Verilog); **L3** synthesis + measured QoR
-  (Yosys); **L4** place-and-route timing closure (**Vivado on Zynq-7020**, report
-  Fmax/slack); **L5** sparse representative on-board runs (Zynq-7020).
-- **Toolchain (Zynq-based, reproducibility over pure openness):** synthesis and
-  large-scale data through **L3 use Yosys** (open, fast, free — fits thousands of
-  samples); **L4 timing closure and L5 on-board use Vivado on the Zynq-7020**
-  (XC7Z020, its 220 DSP / ARM hosting the larger designs incl. an RL flagship
-  case). The claim is a **fully reproducible** loop (all code/data/scripts/device
-  public, tool versions pinned), open-source where mature. **Optional bonus:**
-  spike openXC7 / F4PGA on the Zynq PL — if it works, claim a fully open flow; if
-  not, the main line is unaffected.
+  (Yosys); **L4** place-and-route timing closure (**OpenXC7 on the AC820-ZYNQ /
+  XC7Z020CLG484-2, Vivado as fallback/baseline**, report Fmax/slack); **L5**
+  sparse representative on-board runs (AC820-ZYNQ).
+- **Toolchain (all-open primary, Vivado fallback):** synthesis and large-scale
+  data through **L3 use Yosys** (open, fast, free — fits thousands of samples);
+  **L4 timing closure + L5 on-board use OpenXC7 (nextpnr-xilinx) on the
+  AC820-ZYNQ** (XC7Z020CLG484-2, in OpenXC7's support list; 220 DSP / ARM host
+  the larger designs incl. an RL flagship case), giving an all-open
+  req→bitstream→board loop — **subject to an early spike verification**.
+  **Vivado is the fallback/baseline** so L4/L5 results are never lost to
+  open-tool immaturity, and **OpenXC7-vs-Vivado (usability/QoR) is a bonus
+  comparison** TRETS readers value. All code/data/scripts/device public, tool
+  versions pinned.
 
 ### Data engine (two production lines)
 
@@ -311,8 +318,8 @@ call this "just distilling an LLM."
 **Nice-to-have** (only if time/compute allow):
 
 - L4 timing at scale and L5 on-board beyond a few cases;
-- the RL-sized flagship case on Zynq-7020;
-- openXC7 fully-open flow; QoR calibration depth; a second device (AC820).
+- the RL-sized flagship case on the AC820-ZYNQ;
+- OpenXC7-vs-Vivado comparison depth; QoR calibration depth.
 
 **Out of scope (YAGNI):** retraining a large generation model (insufficient
 compute); GA/RL / heavy QoR optimization (Paper ②, needs the QoR predictor as
@@ -325,7 +332,7 @@ architecture/System-HIS parameters and/or RL with a tool-derived reward, using
 Paper ①'s QoR predictor as a fast proxy fitness to make large-scale search
 feasible on one GPU. GA optimizes architecture parameters, not raw Verilog
 tokens (consistent with the research-objective document). The RL flagship case
-naturally lives here, on the Zynq-7020 (220 DSP + ARM).
+naturally lives here, on the AC820-ZYNQ (220 DSP + ARM).
 
 ## Relationship to existing documents
 
@@ -351,6 +358,11 @@ hard region), (2) calibrates where benchmark difficulty must sit (the pass-rate
 knee), and (3) becomes the paper's baseline + motivating experiment. Producing a
 small graded multi-module task set (the component-library MVP) is the prerequisite
 that feeds this measurement.
+
+In parallel, run an **OpenXC7 spike** on the AC820-ZYNQ — push one
+representative multi-module design all the way to bitstream + on-board — to
+de-risk the all-open L4/L5 claim early, since the open-flow selling point rests
+on it (Vivado stays the fallback if the spike exposes gaps).
 
 Write the implementation plan for the chosen first slice with the writing-plans
 skill once this spec is approved.
