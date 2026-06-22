@@ -86,11 +86,11 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
         "simple_fsm": [],
         "ram_read_write": [],
         "uart_tx": ["baud_tick_gen", "uart_tx_core"],
-        "spi_master": ["clock_divider", "spi_master_core"],
+        "spi_master": ["spi_master_core"],
         "pwm_controller": ["pwm_timer", "pwm_channel"],
-        "fir_filter": ["mac_unit", "fir_filter_core"],
+        "fir_filter": ["fir_filter_core"],
         "streaming_valid_ready": ["skid_buffer", "stream_stage"],
-        "matrix_vector_mac": ["vector_rom", "mac_unit", "dot_product_engine"],
+        "matrix_vector_mac": ["matrix_vector_mac_core"],
     }
     return {
         "style": "multi_module" if submodules[request.task_type] else "single_module",

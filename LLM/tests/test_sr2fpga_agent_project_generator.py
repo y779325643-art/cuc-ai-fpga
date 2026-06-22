@@ -160,20 +160,8 @@ class ProjectGeneratorTest(unittest.TestCase):
 
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
-        cases = [
-            ("counter", 8, "counter_8bit"),
-            ("fifo", 8, "fifo_8bit"),
-            ("simple_fsm", 4, "fsm_sequence_4bit"),
-            ("ram_read_write", 16, "ram_rw_16bit"),
-            ("uart_tx", 8, "uart_tx_8bit"),
-            ("spi_master", 8, "spi_master_8bit"),
-            ("pwm_controller", 8, "pwm_controller_8bit"),
-            ("fir_filter", 8, "fir_filter_8bit"),
-            ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
-            ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
-        ]
 
-        for task_type, width, project_name in cases:
+        for task_type, width, project_name in _supported_task_cases():
             with self.subTest(task_type=task_type):
                 project = ProjectGenerator().generate(
                     ProjectRequest(task_type=task_type, width=width, project_name=project_name),
@@ -183,8 +171,79 @@ class ProjectGeneratorTest(unittest.TestCase):
                 self.assertEqual(_manifest(project)["simulation"]["testbench"], "sim/tb_top.v")
                 self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
+    def test_system_his_architecture_submodules_match_emitted_rtl_modules(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        for task_type, width, project_name in _supported_task_cases():
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                architecture = _system_his(project)["architecture"]
+                actual_submodules = sorted(_non_top_rtl_module_names(project))
+
+                self.assertEqual(architecture["top_module"], "top")
+                self.assertEqual(sorted(architecture["submodules"]), actual_submodules)
+                expected_style = "multi_module" if actual_submodules else "single_module"
+                self.assertEqual(architecture["style"], expected_style)
+
+    @unittest.skipUnless(shutil.which("iverilog") and shutil.which("vvp"), "iverilog/vvp are not installed")
+    def test_task2_generated_testbenches_pass_under_icarus(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = [
+            ("uart_tx", 8, "uart_tx_8bit"),
+            ("pwm_controller", 8, "pwm_controller_8bit"),
+            ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
+        ]
+
+        for task_type, width, project_name in cases:
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                with tempfile.TemporaryDirectory() as tmp:
+                    project_dir = Path(tmp)
+                    _write_project(project_dir, project)
+                    manifest = _manifest(project)
+                    compile_result = subprocess.run(
+                        [
+                            "iverilog",
+                            "-g2012",
+                            "-o",
+                            "sim.out",
+                            *manifest["sources"],
+                            manifest["simulation"]["testbench"],
+                        ],
+                        cwd=project_dir,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    self.assertEqual(
+                        compile_result.returncode,
+                        0,
+                        f"{task_type} sim compile failed\n"
+                        f"STDOUT:\n{compile_result.stdout}\n"
+                        f"STDERR:\n{compile_result.stderr}",
+                    )
+                    run_result = subprocess.run(
+                        ["vvp", "sim.out"],
+                        cwd=project_dir,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                self.assertEqual(
+                    run_result.returncode,
+                    0,
+                    f"{task_type} sim run failed\nSTDOUT:\n{run_result.stdout}\nSTDERR:\n{run_result.stderr}",
+                )
+                self.assertIn("TEST_PASS", run_result.stdout)
+
     @unittest.skipUnless(shutil.which("verilator"), "verilator is not installed")
-    def test_transitional_task_sources_are_verilator_wall_clean(self) -> None:
+    def test_multimodule_task_sources_are_verilator_wall_clean(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
         cases = [
             ("uart_tx", 8, "uart_tx_8bit"),
@@ -229,6 +288,30 @@ def _manifest(project) -> dict:
 
 def _system_his(project) -> dict:
     return json.loads(project.files["system_his.json"])
+
+
+def _supported_task_cases() -> list[tuple[str, int, str]]:
+    return [
+        ("counter", 8, "counter_8bit"),
+        ("fifo", 8, "fifo_8bit"),
+        ("simple_fsm", 4, "fsm_sequence_4bit"),
+        ("ram_read_write", 16, "ram_rw_16bit"),
+        ("uart_tx", 8, "uart_tx_8bit"),
+        ("spi_master", 8, "spi_master_8bit"),
+        ("pwm_controller", 8, "pwm_controller_8bit"),
+        ("fir_filter", 8, "fir_filter_8bit"),
+        ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
+        ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+    ]
+
+
+def _non_top_rtl_module_names(project) -> list[str]:
+    names = []
+    for source in _manifest(project)["sources"]:
+        for match in re.finditer(r"\bmodule\s+([a-zA-Z_][a-zA-Z0-9_$]*)\b", project.files[source]):
+            if match.group(1) != "top":
+                names.append(match.group(1))
+    return names
 
 
 def _assert_manifest_sources_exist(testcase: unittest.TestCase, project) -> None:
