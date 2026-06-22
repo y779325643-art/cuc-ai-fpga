@@ -239,6 +239,35 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(patch_row["diagnosis"]["failure_type"], "port_mismatch")
             self.assertIn("fix reset port", patch_row["patch"])
 
+    def test_agent_treats_test_fail_output_as_failed_simulation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = SemanticFailRunner()
+            agent = DataGenerationAgent(dataset_root=root, command_runner=runner)
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_000003",
+                requirement="Design an 8-bit counter with enable.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_000003"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            diagnosis_path = sample_dir / "attempts/attempt_000/diagnosis.json"
+            self.assertTrue(diagnosis_path.exists())
+            diagnosis = json.loads(diagnosis_path.read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertFalse(labels["checks"]["l2_sim_pass"])
+            self.assertEqual(labels["failure_count"], 1)
+            self.assertEqual(diagnosis["stage"], "sim_run")
+            self.assertIn("TEST_FAIL", diagnosis["root_cause"])
+            self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["lint", "sim_compile", "sim_run"])
+
     def test_repair_result_is_shared_model_and_agent_compatible(self) -> None:
         self.assertIs(RepairResult, ModelRepairResult)
 
@@ -353,6 +382,22 @@ class FailThenPassRunner(FakeRunner):
                 exit_code=1,
                 stdout="",
                 stderr="Port rst_n of module top is not declared",
+                duration_seconds=0.01,
+            )
+        return super().run(command, cwd, stage, timeout_seconds)
+
+
+class SemanticFailRunner(FakeRunner):
+    def run(self, command, cwd, stage, timeout_seconds=30):
+        if stage == "sim_run":
+            self.calls.append({"command": command, "cwd": cwd, "stage": stage, "timeout_seconds": timeout_seconds})
+            return ToolResult(
+                stage=stage,
+                command=list(command),
+                status="passed",
+                exit_code=0,
+                stdout="TEST_FAIL semantic mismatch\n",
+                stderr="",
                 duration_seconds=0.01,
             )
         return super().run(command, cwd, stage, timeout_seconds)

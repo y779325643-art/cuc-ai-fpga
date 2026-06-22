@@ -174,4 +174,6 @@ Notes:
 - API keys were not used for deterministic generation.
 - Next useful work: add failure injectors for multi-module-specific errors.
 - Known non-blocking hardening: `matrix_vector_mac` width values below 3 should be guarded or generated without negative repeat counts.
-- Known pre-existing risk: `simple_fsm` generated testbench may print `TEST_FAIL` despite a zero simulator exit code; do not address it in this task.
+- Simulation label hardening was added after final review: `sim_run` now fails if the log contains `TEST_FAIL` or omits `TEST_PASS`, even when `vvp` exits 0.
+- Rechecked after hardening: all 12 multi-module sample configurations still reach `L3`.
+- Known pre-existing issue exposed by hardening: future `simple_fsm` generation currently reaches `L1` because its generated testbench prints `TEST_FAIL`; fix that separately before generating more FSM data.

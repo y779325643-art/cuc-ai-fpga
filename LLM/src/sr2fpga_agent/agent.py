@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 import json
 from pathlib import Path
 from typing import Any
@@ -127,6 +128,7 @@ class DataGenerationAgent:
             cwd=project_dir,
             stage="sim_run",
         )
+        results["sim_run"] = _validate_simulation_output(results["sim_run"])
         if results["sim_run"].status != "passed":
             return results
 
@@ -158,6 +160,23 @@ def _diagnose_first_failure(tool_results: dict[str, ToolResult]) -> dict[str, An
                 "affected_files": [],
             }
     return None
+
+
+def _validate_simulation_output(result: ToolResult) -> ToolResult:
+    if result.status != "passed":
+        return result
+    log_text = f"{result.stdout}\n{result.stderr}"
+    if "TEST_FAIL" in log_text or "TEST_PASS" not in log_text:
+        reason = "Simulation did not report TEST_PASS"
+        if "TEST_FAIL" in log_text:
+            reason = "Simulation reported TEST_FAIL"
+        stderr = result.stderr
+        if stderr:
+            stderr = f"{stderr}\n{reason}\n"
+        else:
+            stderr = f"{reason}\n"
+        return replace(result, status="failed", stderr=stderr)
+    return result
 
 
 def _measured_qor(tool_results: dict[str, ToolResult]) -> dict[str, Any]:
