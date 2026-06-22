@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from LLM.src.sr2fpga_agent import PlatformProfile, ProjectGenerator, ProjectRequest
+from LLM.src.sr2fpga_agent import GeneratedProject, PlatformProfile, ProjectGenerator, ProjectRequest
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent, RepairResult
 from LLM.src.sr2fpga_agent.models import ToolResult
 from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
@@ -155,6 +155,43 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["lint", "sim_compile", "sim_run", "synth"])
             self.assertEqual([call["stage"] for call in runner.calls], ["lint", "sim_compile", "sim_run", "synth"])
 
+    def test_agent_records_project_from_injected_llm_generator(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            llm_generator = FakeLLMProjectGenerator()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=llm_generator,
+            )
+            request = ProjectRequest(
+                task_type="counter",
+                width=8,
+                project_name="llm_counter_8bit",
+                description="Design a counter using an LLM-generated package.",
+            )
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_llm_000001",
+                requirement=request.description,
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_llm_000001"
+            top_rtl = (sample_dir / "final/generated_project/rtl/top.v").read_text(encoding="utf-8")
+            system_his = json.loads(
+                (sample_dir / "final/generated_project/system_his.json").read_text(encoding="utf-8")
+            )
+
+            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(llm_generator.call_count, 1)
+            self.assertIn("LLM_GENERATED_MARKER", top_rtl)
+            self.assertEqual(system_his["system"]["description"], request.description)
+            self.assertNotIn("count <= count +", top_rtl)
+
     def test_agent_records_failed_attempt_patch_and_repaired_attempt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
@@ -218,6 +255,48 @@ class FakeRunner:
             stderr="",
             duration_seconds=0.01,
         )
+
+
+class FakeLLMProjectGenerator:
+    def __init__(self) -> None:
+        self.call_count = 0
+
+    def generate(self, request, platform):
+        self.call_count += 1
+        files = {
+            "system_his.json": json.dumps(
+                {
+                    "project_name": request.project_name,
+                    "task_type": request.task_type,
+                    "system": {"description": request.description},
+                    "platform": {"name": platform.name},
+                }
+            )
+            + "\n",
+            "manifest.json": json.dumps(
+                {
+                    "project_name": request.project_name,
+                    "top_module": "top",
+                    "sources": ["rtl/top.v"],
+                    "constraints": ["constraints/timing.sdc"],
+                    "simulation": {"testbench": "sim/tb_top.v"},
+                    "reports": ["reports/predicted_qor.json"],
+                }
+            )
+            + "\n",
+            "rtl/top.v": "module top(input wire clk, output wire out); assign out = clk; endmodule // LLM_GENERATED_MARKER\n",
+            "constraints/timing.sdc": "create_clock -name clk -period 10.000 [get_ports clk]\n",
+            "sim/tb_top.v": "module tb_top; initial begin $display(\"TEST_PASS\"); $finish; end endmodule\n",
+            "reports/predicted_qor.json": json.dumps(
+                {
+                    "project_name": request.project_name,
+                    "predicted": {"lut": 1, "ff": 0, "bram": 0, "dsp": 0},
+                    "assumptions": {"generator": "fake_llm"},
+                }
+            )
+            + "\n",
+        }
+        return GeneratedProject(project_name=request.project_name, files=files)
 
 
 class FailThenPassRunner(FakeRunner):
