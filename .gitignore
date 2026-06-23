@@ -7,6 +7,14 @@
 hf_token.txt
 LLM/.claude/settings.local.json
 
+# Local secrets
+.env
+.env.*
+!.env.example
+LLM/.env
+LLM/.env.*
+!LLM/.env.example
+
 # Python/Node caches
 __pycache__/
 *.py[cod]
