@@ -4,10 +4,15 @@ import unittest
 from pathlib import Path
 
 from LLM.src.sr2fpga_agent.runner import (
+    RunState,
     RunnerConfig,
     TaskConfig,
+    classify_sample_bucket,
     load_runner_config,
     planned_samples,
+    read_run_state,
+    should_skip_sample,
+    write_run_state,
 )
 
 
@@ -158,3 +163,29 @@ class RunnerConfigTest(unittest.TestCase):
         samples = planned_samples(config)
 
         self.assertEqual([item.width for item in samples], [4, 8, 4])
+
+    def test_classify_sample_bucket(self) -> None:
+        self.assertEqual(classify_sample_bucket({"pass_level": "L3", "failure_count": 0}), "success_l3")
+        self.assertEqual(classify_sample_bucket({"pass_level": "L1", "failure_count": 2}), "repair_trajectory")
+        self.assertEqual(classify_sample_bucket({"pass_level": "L0", "failure_count": 0}), "rejected")
+
+    def test_run_state_round_trip_and_skip_completed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            state_path = Path(tmp) / "run_state.json"
+            state = RunState(
+                run_id="run_test",
+                next_index=1,
+                completed_samples=["sample_runner_counter_4_000001"],
+                buckets={"success_l3": ["sample_runner_counter_4_000001"], "repair_trajectory": [], "rejected": []},
+                failure_types={},
+                exports_refreshed=False,
+            )
+
+            write_run_state(state_path, state)
+            loaded = read_run_state(state_path)
+
+            self.assertEqual(loaded.run_id, "run_test")
+            self.assertEqual(loaded.next_index, 1)
+            self.assertEqual(loaded.completed_samples, ["sample_runner_counter_4_000001"])
+            self.assertTrue(should_skip_sample(loaded, "sample_runner_counter_4_000001"))
+            self.assertFalse(should_skip_sample(loaded, "sample_runner_counter_8_000002"))

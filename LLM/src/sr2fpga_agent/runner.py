@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
@@ -43,6 +43,16 @@ class PlannedSample:
     requirement: str
 
 
+@dataclass(frozen=True)
+class RunState:
+    run_id: str
+    next_index: int
+    completed_samples: list[str]
+    buckets: dict[str, list[str]]
+    failure_types: dict[str, int]
+    exports_refreshed: bool
+
+
 def load_runner_config(path: Path) -> RunnerConfig:
     raw = _load_mapping(path)
     return RunnerConfig(
@@ -60,6 +70,46 @@ def load_runner_config(path: Path) -> RunnerConfig:
         api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
         platform=str(raw.get("platform", "generic_verilog")),
     )
+
+
+def initial_run_state(run_id: str) -> RunState:
+    return RunState(
+        run_id=run_id,
+        next_index=0,
+        completed_samples=[],
+        buckets={"success_l3": [], "repair_trajectory": [], "rejected": []},
+        failure_types={},
+        exports_refreshed=False,
+    )
+
+
+def read_run_state(path: Path) -> RunState:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return RunState(
+        run_id=str(data["run_id"]),
+        next_index=int(data["next_index"]),
+        completed_samples=[str(item) for item in data.get("completed_samples", [])],
+        buckets={str(key): [str(item) for item in value] for key, value in data.get("buckets", {}).items()},
+        failure_types={str(key): int(value) for key, value in data.get("failure_types", {}).items()},
+        exports_refreshed=bool(data.get("exports_refreshed", False)),
+    )
+
+
+def write_run_state(path: Path, state: RunState) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(asdict(state), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def should_skip_sample(state: RunState, sample_id: str) -> bool:
+    return sample_id in set(state.completed_samples)
+
+
+def classify_sample_bucket(labels: dict[str, Any]) -> str:
+    if labels.get("pass_level") == "L3":
+        return "success_l3"
+    if int(labels.get("failure_count", 0)) > 0:
+        return "repair_trajectory"
+    return "rejected"
 
 
 def _parse_bool(value: Any, name: str) -> bool:
