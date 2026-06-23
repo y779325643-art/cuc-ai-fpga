@@ -2,17 +2,10 @@
 
 from __future__ import annotations
 
-import argparse
 import json
-from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
-
-from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
-from LLM.src.sr2fpga_agent.cli import build_project_generator, build_repairer
-from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
-from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
 
 
 @dataclass(frozen=True)
@@ -59,21 +52,38 @@ def load_runner_config(path: Path) -> RunnerConfig:
         provider=str(raw.get("provider", "deterministic")),
         repair_provider=str(raw.get("repair_provider", "none")),
         max_attempts=int(raw.get("max_attempts", 1)),
-        refresh_exports=bool(raw.get("refresh_exports", True)),
+        refresh_exports=_parse_bool(raw.get("refresh_exports", True), "refresh_exports"),
         line_b_targets=dict(raw.get("line_b_targets", {})),
-        tasks=[
-            TaskConfig(
-                source=str(item.get("source", raw.get("provider", "deterministic"))),
-                task_type=str(item["task_type"]),
-                widths=[int(width) for width in item.get("widths", [8])],
-                count=int(item.get("count", 1)),
-            )
-            for item in raw.get("tasks", [])
-        ],
+        tasks=[_load_task_config(item, raw) for item in raw.get("tasks", [])],
         model=str(raw.get("model", "deepseek-v4-flash")),
         base_url=str(raw.get("base_url", "https://api.deepseek.com")),
         api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
         platform=str(raw.get("platform", "generic_verilog")),
+    )
+
+
+def _parse_bool(value: Any, name: str) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        normalized = value.strip().lower()
+        if normalized == "true":
+            return True
+        if normalized == "false":
+            return False
+    raise SystemExit(f"{name} must be a boolean")
+
+
+def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
+    widths = [int(width) for width in item.get("widths", [8])]
+    count = int(item.get("count", 1))
+    if count > 0 and not widths:
+        raise SystemExit("Task widths must not be empty when count is positive")
+    return TaskConfig(
+        source=str(item.get("source", raw.get("provider", "deterministic"))),
+        task_type=str(item["task_type"]),
+        widths=widths,
+        count=count,
     )
 
 
@@ -96,6 +106,8 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
     samples: list[PlannedSample] = []
     sequence = 1
     for task in config.tasks:
+        if task.count > 0 and not task.widths:
+            raise SystemExit("Task widths must not be empty when count is positive")
         produced = 0
         while produced < task.count:
             for width in task.widths:

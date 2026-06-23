@@ -68,6 +68,51 @@ class RunnerConfigTest(unittest.TestCase):
             with self.assertRaises(SystemExit):
                 load_runner_config(config_path)
 
+    def test_load_runner_config_rejects_empty_widths_for_positive_count(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "datasets/sr2fpga_rtl_v1_exports",
+                        "run_root": "tmp/sr2fpga_runs",
+                        "tasks": [
+                            {
+                                "source": "deterministic",
+                                "task_type": "counter",
+                                "widths": [],
+                                "count": 1,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaises(SystemExit):
+                load_runner_config(config_path)
+
+    def test_load_runner_config_parses_false_refresh_exports_string(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "datasets/sr2fpga_rtl_v1_exports",
+                        "run_root": "tmp/sr2fpga_runs",
+                        "refresh_exports": "false",
+                        "tasks": [],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+
+            self.assertFalse(config.refresh_exports)
+
     def test_planned_samples_expand_widths_and_counts(self) -> None:
         config = RunnerConfig(
             dataset_root=Path("datasets/sr2fpga_rtl_v1"),
@@ -94,3 +139,22 @@ class RunnerConfigTest(unittest.TestCase):
                 ("sample_runner_fifo_8_000003", "fifo", 8, "runner_fifo_8_000003"),
             ],
         )
+
+    def test_planned_samples_cycle_widths_and_respect_max_samples(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("datasets/sr2fpga_rtl_v1"),
+            export_root=Path("datasets/sr2fpga_rtl_v1_exports"),
+            run_root=Path("tmp/sr2fpga_runs"),
+            provider="deterministic",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=True,
+            line_b_targets={"max_samples": 3},
+            tasks=[
+                TaskConfig(source="deterministic", task_type="counter", widths=[4, 8], count=5),
+            ],
+        )
+
+        samples = planned_samples(config)
+
+        self.assertEqual([item.width for item in samples], [4, 8, 4])
