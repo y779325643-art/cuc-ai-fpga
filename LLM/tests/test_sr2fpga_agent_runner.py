@@ -12,6 +12,7 @@ from LLM.src.sr2fpga_agent.runner import (
     load_runner_config,
     planned_samples,
     read_run_state,
+    run_batch,
     should_skip_sample,
     write_run_state,
 )
@@ -201,3 +202,30 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(loaded.completed_samples, ["sample_runner_counter_4_000001"])
             self.assertTrue(should_skip_sample(loaded, "sample_runner_counter_4_000001"))
             self.assertFalse(should_skip_sample(loaded, "sample_runner_counter_8_000002"))
+
+    def test_run_batch_records_samples_summary_and_exports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=True,
+                line_b_targets={"l3_success_ratio": 0.4, "repair_trajectory_ratio": 0.6, "max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+
+            summary = run_batch(config, run_id="run_unit")
+
+            run_dir = root / "runs" / "run_unit"
+            self.assertEqual(summary["run_id"], "run_unit")
+            self.assertEqual(summary["total_completed"], 1)
+            self.assertEqual(summary["buckets"]["success_l3"], ["sample_runner_counter_4_000001"])
+            self.assertTrue((run_dir / "run_state.json").exists())
+            self.assertTrue((run_dir / "summary.json").exists())
+            self.assertTrue((run_dir / "events.jsonl").exists())
+            self.assertTrue((root / "datasets/sample_runner_counter_4_000001/eval/labels.json").exists())
+            self.assertTrue((root / "exports/requirement_to_project.jsonl").exists())
