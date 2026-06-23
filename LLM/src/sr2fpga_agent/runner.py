@@ -80,12 +80,13 @@ def load_runner_config(path: Path) -> RunnerConfig:
 def _load_mapping(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     if path.suffix == ".json":
-        return json.loads(text)
-    try:
-        import yaml
-    except ModuleNotFoundError as exc:
-        raise SystemExit("PyYAML is required for YAML runner configs; use .json or install pyyaml") from exc
-    data = yaml.safe_load(text)
+        data = json.loads(text)
+    else:
+        try:
+            import yaml
+        except ModuleNotFoundError as exc:
+            raise SystemExit("PyYAML is required for YAML runner configs; use .json or install pyyaml") from exc
+        data = yaml.safe_load(text)
     if not isinstance(data, dict):
         raise SystemExit("Runner config must be a mapping")
     return data

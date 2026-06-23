@@ -52,9 +52,21 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(config.repair_provider, "none")
             self.assertEqual(config.max_attempts, 1)
             self.assertTrue(config.refresh_exports)
+            self.assertEqual(config.line_b_targets["l3_success_ratio"], 0.4)
+            self.assertEqual(config.line_b_targets["repair_trajectory_ratio"], 0.6)
             self.assertEqual(config.line_b_targets["max_samples"], 3)
+            self.assertEqual(config.tasks[0].source, "deterministic")
             self.assertEqual(config.tasks[0].task_type, "counter")
             self.assertEqual(config.tasks[0].widths, [4, 8])
+            self.assertEqual(config.tasks[0].count, 2)
+
+    def test_load_runner_config_rejects_non_mapping_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(json.dumps(["not", "a", "mapping"]), encoding="utf-8")
+
+            with self.assertRaises(SystemExit):
+                load_runner_config(config_path)
 
     def test_planned_samples_expand_widths_and_counts(self) -> None:
         config = RunnerConfig(
