@@ -196,6 +196,25 @@ Field map (what each line is, and why it is not us):
 The model/data is a method contribution riding on these, **not** a SOTA-model
 claim.
 
+### Gaps we fill (acknowledged by the field)
+
+This is not "integration for its own sake": the LLM-for-EDA survey (TODAES'25,
+arXiv 2501.09655) lists these as open, and the strongest RL/PPA works concede
+them as future work.
+
+| Acknowledged gap (survey / competitor's own words) | Our contribution |
+|---|---|
+| "complete multi-file / end-to-end system-spec generation … remains unexplored" | req→System-HIS→multi-file project |
+| "bridging NL and RTL … future work, not solved" | System-HIS requirement-level front-end IR |
+| "no systematic validation / reproducibility standard" | reproducible req→bitstream→board loop |
+| "FPGA LLM applications remain limited" | FPGA physical implementation (L4/L5) |
+| ChipSeek-R1 / MasterRTL / POET are ASIC, single-module, stop at synthesis (their own future work) | FPGA, multi-file, to P&R + on-board |
+| ChipSeek-R1 has **no reusable trajectory dataset** (per-attempt RL reward) | a persistent **tool-verified trajectory dataset** |
+
+**Caveat (the honest catch):** these are *acknowledged* gaps, so the contribution
+is real only if execution actually reaches L4/on-board and a real trajectory
+dataset is built — otherwise it collapses to "porting known methods to FPGA."
+
 ### Core argument
 
 The point of "project-level" is **not** "bigger code." It is **correctness
