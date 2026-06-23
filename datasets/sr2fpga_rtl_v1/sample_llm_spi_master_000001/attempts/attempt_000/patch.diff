@@ -1,0 +1,46 @@
+--- a/rtl/spi_master_core.v
++++ b/rtl/spi_master_core.v
+@@ -22,7 +22,6 @@
+         cs_n <= 1;
+         busy <= 0;
+         done <= 0;
+-        bit_count <= 0;
+     end else begin
+         case (state)
+             IDLE: begin
+@@ -31,8 +30,6 @@
+                     state <= SHIFT;
+                     cs_n <= 0;
+                     busy <= 1;
+-                    shift_reg <= data_in;
+-                    bit_count <= 7;
+                 end
+             end
+             SHIFT: begin
+@@ -51,14 +48,21 @@
+     end
+ end
+ 
+-// Shift on negedge sclk
++// Shift and load on negedge sclk
+ always @(negedge sclk or negedge rst_n) begin
+     if (!rst_n) begin
+         mosi <= 0;
+-    end else if (state == SHIFT) begin
+-        mosi <= shift_reg[7];
+-        shift_reg <= shift_reg << 1;
+-        bit_count <= bit_count - 1;
++        shift_reg <= 0;
++        bit_count <= 0;
++    end else begin
++        if (state == IDLE && start) begin
++            shift_reg <= data_in;
++            bit_count <= 7;
++        end else if (state == SHIFT) begin
++            mosi <= shift_reg[7];
++            shift_reg <= shift_reg << 1;
++            bit_count <= bit_count - 1;
++        end
+     end
+ end
+ 

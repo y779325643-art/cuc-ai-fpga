@@ -158,15 +158,22 @@ Observed local labels:
 | `sample_multimodule_000011` | `matrix_vector_mac` | `L3` | 4 |
 | `sample_multimodule_000012` | `matrix_vector_mac` | `L3` | 4 |
 
+Real DeepSeek multi-file samples:
+
+| Sample | Task type | Pass level | Source count | Outcome |
+| --- | --- | --- | --- | --- |
+| `sample_llm_spi_master_000001` | `spi_master` | `L1` | 3 | LLM generated `top.v`, `clock_divider.v`, and `spi_master_core.v`; first attempt failed lint with multi-driven registers, DeepSeek repaired lint, final attempt timed out in `vvp`. |
+| `sample_llm_uart_tx_000001` | `uart_tx` | `L1` | 3 | LLM generated `top.v`, `baud_tick_gen.v`, and `uart_tx_core.v`; DeepSeek repaired lint, final attempts reached simulation but printed `TEST_FAIL`. |
+
 Export counts after refresh:
 
-- `failure_to_diagnosis.jsonl`: 16
-- `failure_to_patch.jsonl`: 14
-- `his_to_project.jsonl`: 45
-- `project_to_measured_qor.jsonl`: 45
-- `project_to_predicted_qor.jsonl`: 45
-- `requirement_to_his.jsonl`: 45
-- `requirement_to_project.jsonl`: 45
+- `failure_to_diagnosis.jsonl`: 21
+- `failure_to_patch.jsonl`: 17
+- `his_to_project.jsonl`: 47
+- `project_to_measured_qor.jsonl`: 47
+- `project_to_predicted_qor.jsonl`: 47
+- `requirement_to_his.jsonl`: 47
+- `requirement_to_project.jsonl`: 47
 
 Notes:
 
@@ -177,8 +184,12 @@ Notes:
   `matrix_vector_mac`: prompts require `rtl/top.v` as an integration wrapper
   plus at least two submodule `.v` files, and the parser rejects single-file
   LLM responses for those task families.
-- `DEEPSEEK_API_KEY` was not present in the current shell during this update,
-  so no real DeepSeek multi-module sample was generated in this pass.
+- A local ignored `.env` file now provides `DEEPSEEK_API_KEY` for real DeepSeek
+  runs; do not commit the secret. `.env.example` documents the variable name.
+- Real DeepSeek multi-file generation has been exercised. The first two samples
+  are valuable failure/repair trajectories rather than L3 examples; next useful
+  work is improving prompt constraints or repair policy for bounded testbenches
+  and simulation semantic failures.
 - Next useful work: add failure injectors for multi-module-specific errors.
 - Known non-blocking hardening: `matrix_vector_mac` width values below 3 should be guarded or generated without negative repeat counts.
 - Simulation label hardening was added after final review: `sim_run` now fails if the log contains `TEST_FAIL` or omits `TEST_PASS`, even when `vvp` exits 0.

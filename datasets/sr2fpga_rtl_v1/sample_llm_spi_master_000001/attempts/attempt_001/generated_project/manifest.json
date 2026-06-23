@@ -1,0 +1,8 @@
+{
+  "project_name": "llm_spi_master_8bit",
+  "top_module": "top",
+  "sources": ["rtl/top.v", "rtl/clock_divider.v", "rtl/spi_master_core.v"],
+  "constraints": ["constraints/timing.sdc"],
+  "simulation": {"testbench": "sim/tb_top.v"},
+  "reports": ["reports/predicted_qor.json"]
+}

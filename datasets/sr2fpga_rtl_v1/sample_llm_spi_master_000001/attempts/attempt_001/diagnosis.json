@@ -1,0 +1,6 @@
+{
+  "failure_type": "testbench_timeout",
+  "stage": "sim_run",
+  "root_cause": "Command timed out after 30 seconds",
+  "affected_files": []
+}

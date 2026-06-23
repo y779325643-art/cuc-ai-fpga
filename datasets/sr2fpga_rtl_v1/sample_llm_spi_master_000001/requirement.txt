@@ -1,0 +1,1 @@
+Design an 8-bit SPI master as a true multi-file Verilog RTL project. Keep rtl/top.v as the integration wrapper, place clock divider and protocol core logic in separate submodule .v files, include a self-checking testbench that prints TEST_PASS on success, timing constraint, manifest, system_his, and predicted QoR.

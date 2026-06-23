@@ -1,0 +1,3 @@
+TEST_FAIL
+sim/tb_top.v:27: $finish called at 1040 (1s)
+Simulation reported TEST_FAIL

@@ -1,0 +1,25 @@
+%Warning-WIDTHEXPAND: rtl/baud_tick_gen.v:17:25: Operator EQ expects 32 or 27 bits on the LHS, but LHS's VARREF 'counter' generates 16 bits.
+                                               : ... note: In instance 'top.u_baud'
+   17 |             if (counter == DIVISOR - 1) begin
+      |                         ^~
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Error-BLKANDNBLK: rtl/uart_tx_core.v:15:15: Unsupported: Blocking and non-blocking assignments to potentially overlapping bits of same packed variable: 'top.u_uart.bit_index'
+   15 |     reg [3:0] bit_index;
+      |               ^~~~~~~~~
+                   rtl/uart_tx_core.v:60:21: ... Location of blocking assignment (bits [3:0])
+   60 |                     bit_index = bit_index + 1;
+      |                     ^~~~~~~~~
+                   rtl/uart_tx_core.v:32:25: ... Location of nonblocking assignment (bits [3:0])
+   32 |                         bit_index <= 0;
+      |                         ^~~~~~~~~
+                   ... For error description see https://verilator.org/warn/BLKANDNBLK?v=5.048
+%Warning-UNOPTFLAT: rtl/uart_tx_core.v:15:15: Signal unoptimizable: Circular combinational logic: 'top.u_uart.bit_index'
+   15 |     reg [3:0] bit_index;
+      |               ^~~~~~~~~
+                    ... For warning description see https://verilator.org/warn/UNOPTFLAT?v=5.048
+                    ... Use "/* verilator lint_off UNOPTFLAT */" and lint_on around source to disable this message.
+                    rtl/uart_tx_core.v:15:15:      Example path: top.u_uart.bit_index
+                    rtl/uart_tx_core.v:51:5:      Example path: ALWAYS
+                    rtl/uart_tx_core.v:15:15:      Example path: top.u_uart.bit_index
+%Error: Exiting due to 1 error(s), 2 warning(s)
