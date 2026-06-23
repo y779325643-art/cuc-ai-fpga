@@ -1,5 +1,12 @@
 # SR2FPGA TCAD Research Objective
 
+> **Note (2026-06-22):** This document records the early-form research objective and is superseded
+> on most design decisions by the approved reframe spec:
+> `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md`.
+> Where the two differ (measurement structure (a)/(b)/(c), toolchain hierarchy,
+> program decomposition into Paper ①/②, benchmark difficulty tiers T1–T4, AC820-ZYNQ +
+> OpenXC7 as L4 primary), the reframe spec governs. This file is kept as historical context.
+
 ## Purpose
 
 This document records the project-level research objective for HNAI-FPGA / SR2FPGA. Future development, dataset construction, model training, and manuscript writing should align with this direction.

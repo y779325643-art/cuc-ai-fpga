@@ -192,6 +192,23 @@ Field map (what each line is, and why it is not us):
   architecture-parameter space (not editing repos) with a distilled QoR proxy.
 - **HLS DSE:** NSGA-II, Chimera, IronMan, AutoHLS — optimize a given design point
   (directly relevant to Paper ②, e.g. predictor-as-proxy-fitness).
+- **FPGA-specific benchmark:** **ResBench** (2025, arXiv 2503.08823) — 56 problems /
+  12 categories, functional correctness + LUT resource estimation on FPGA; but
+  **single-module, stops at resource estimation** (no PnR, no timing closure, no
+  board, no multi-file project structure). The nearest existing FPGA benchmark;
+  its evidence ceiling is exactly where our L3–L5 begin.
+- **RL for RTL generation (single-module cluster):** **ChipSeek-R1** (hierarchical
+  reward RL, ASIC synthesis), **VeriRL** (trace-back rescore for sparse reward +
+  Veribench-53K, arXiv 2508.18462), **VeriReason** (RL + testbench feedback +
+  chain-of-thought reasoning) — all single-module / functional; none produce a
+  persistent tool-verified trajectory dataset or reach FPGA physical. Their
+  shared stated future work: FPGA, multi-file, physical — our design space.
+- **Synthetic RTL data generation:** **SynCircuit** (HKUST 2025, arXiv 2509.00071)
+  — diffusion-based graph generation + MCTS for synthetic RTL circuits, aimed at
+  ML4EDA data augmentation. Circuit-graph level: no NL requirement input, no
+  testbench, no project structure. Conceptually adjacent to our compositional
+  benchmark production but orthogonal in purpose (circuit-level ML data vs
+  requirement-level verifiable project + trajectory).
 
 The model/data is a method contribution riding on these, **not** a SOTA-model
 claim.
@@ -210,6 +227,8 @@ them as future work.
 | "FPGA LLM applications remain limited" | FPGA physical implementation (L4/L5) |
 | ChipSeek-R1 / MasterRTL / POET are ASIC, single-module, stop at synthesis (their own future work) | FPGA, multi-file, to P&R + on-board |
 | ChipSeek-R1 has **no reusable trajectory dataset** (per-attempt RL reward) | a persistent **tool-verified trajectory dataset** |
+| ResBench (2025): closest FPGA LLM benchmark, but single-module + stops at LUT resource estimation (no PnR / timing / board) | L3 measured QoR (Yosys) + L4 timing (OpenXC7/Vivado) + L5 on-board |
+| SynCircuit (2025, HKUST): synthetic RTL generation at circuit-graph level; no NL requirements, no testbench, no verifiable project structure | requirement-level compositional generation with machine-checked testbenches + tool trajectories |
 
 **Caveat (the honest catch):** these are *acknowledged* gaps, so the contribution
 is real only if execution actually reaches L4/on-board and a real trajectory
@@ -284,6 +303,13 @@ will live here later.
     testbench gives a **machine-checked self-consistency** of the testbench — the
     load-bearing reason to prefer program generation over LLM-authored tests (no
     one can certify an LLM-written testbench).
+  - **(Distinction from SynCircuit, HKUST 2025):** SynCircuit generates synthetic
+    RTL at the circuit-graph level (diffusion + MCTS) for ML4EDA data augmentation
+    — no NL input, no testbench, no project structure. Our generation is at the
+    requirement-intent level, producing verifiable multi-file projects + acceptance
+    testbenches + tool trajectories. Different purpose and different abstraction
+    level; SynCircuit demonstrates that purely synthetic RTL generation is feasible
+    and that data scarcity is a shared problem.
 - **Testbench discipline:** test the **black-box interface contract only**
   (port behavior, protocol timing, functional correctness); never depend on
   internal signal names / implementation details — this is what keeps the
@@ -356,7 +382,13 @@ will live here later.
 - **What it distills:** tool capability internalized — focus Paper ① on
   **generation + self-repair** (read tool errors and fix), the form closest to
   the author's intent. Discrimination (QoR/pass prediction = the QoR predictor
-  for Paper ②) is the natural companion task.
+  for Paper ②) is the natural companion task. **(Shift-left framing):** the
+  Shift-Left EDA survey (2025, arXiv 2509.14551) identifies "correlating
+  early RTL-stage predictions with downstream physical outcomes" as the central
+  open challenge in EDA; SR2FPGA's `predicted_qor.json` (model-side, before tool
+  execution) vs `measured_qor.json` (Yosys/Vivado-measured) separation + QoR
+  calibration is a direct instantiation of shift-left — and the correlation gap
+  is an honest limitation to report.
 - **Base model (deferred to the modeling stage):** family and size are chosen
   later from then-available compute — the dataset is model-agnostic. Likely
   candidates: code/RTL bases (Qwen2.5-Coder, DeepSeek-Coder, CodeLlama,
