@@ -8,6 +8,70 @@ requirement -> System-HIS -> multi-file Verilog RTL project -> open-source EDA t
 
 The important research asset is not only passing RTL, but also failed attempts with tool logs, diagnosis, and locally computed `patch.diff`.
 
+## Current Handoff Update - 2026-06-23
+
+Branch:
+
+`codex/sr2fpga-data-agent`
+
+Latest relevant commits:
+
+- `5042bed Update project README for SR2FPGA` - root README is now the project
+  entry point and reflects SR2FPGA, System-HIS, tool-verified trajectories,
+  autonomous runner usage, dataset/export layout, deployment pointers, and
+  secret-handling rules.
+- `bb5d055 Document SR2FPGA autonomous runner` - `LLM/README.md` and this
+  handoff file document the runner.
+- `48a11b4 Add SR2FPGA runner CLI` - runner has a direct command-line entry:
+  `python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_agent.example.yaml --run-id <run-id>`.
+- `4da2e69 Fix SR2FPGA runner rejected sample cursor` - fixed resume/progress
+  behavior for pre-existing sample directories.
+- `1629619 Add autonomous SR2FPGA batch runner` - batch runner can plan samples,
+  call `DataGenerationAgent.run_one()`, write `run_state.json`, `events.jsonl`,
+  `summary.json`, and refresh exports.
+- `9007910 Add SR2FPGA runner state buckets` - runner state tracks
+  `success_l3`, `repair_trajectory`, and `rejected` buckets.
+- `2157d1c update 2026.06.23 agent` - later workspace update adding Claude
+  context files, report PDFs, temporary PDF renders, and smoke data.
+
+Current verification:
+
+```bash
+python3 -m unittest LLM.tests.test_sr2fpga_agent_failure_injector -q
+# Ran 3 tests - OK
+
+python3 -m unittest discover -s LLM/tests -q
+# Ran 78 tests - OK
+```
+
+Current uncommitted work observed after the latest commits:
+
+- New untracked files:
+  - `LLM/src/sr2fpga_agent/failure_injector.py`
+  - `LLM/tests/test_sr2fpga_agent_failure_injector.py`
+- The failure injector currently supports:
+  - `rename_reset_port`
+  - `missing_manifest_source`
+  - `wrong_top_module`
+  - `FailureInjectingProjectGenerator` wrapper around a base project generator
+- There are also tracked dataset deletions in the working tree, affecting:
+  - parts of `sample_llm_repair_forced_minpatch_000011`
+  - parts of `sample_llm_repair_forced_minpatch_000012`
+  - `sample_llm_uart_tx_000001/attempt_001/rtl/uart_tx_core.v`
+  - selected generated files under `sample_multimodule_000005` and
+    `sample_multimodule_000010`
+- Do not revert those deletions automatically. They may be intentional cleanup
+  from Claude/user work. Confirm before staging or restoring dataset files.
+
+Recommended immediate next step:
+
+1. Decide whether the uncommitted dataset deletions should be kept, restored, or
+   replaced by a cleaner dataset-snapshot commit.
+2. Integrate `failure_injector.py` into the autonomous runner as an optional
+   configured project-generator wrapper.
+3. Add runner config fields for synthetic failure injection only after the
+   dataset deletion question is resolved.
+
 ## Current Branch And Code State
 
 - Branch: `codex/sr2fpga-data-agent`
@@ -95,21 +159,25 @@ PY
 
 ## Known Issues And Next Work
 
-1. Add a formal batch data-generation runner instead of ad hoc Python snippets.
-   - Suggested command: `python3 -m LLM.src.sr2fpga_agent.batch_generate --mode forced-repair --count ...`
-   - It should write a JSON run summary under `tmp/data_generation_runs/` or another ignored run-log directory.
+1. Continue hardening the autonomous runner.
+   - Current command: `python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_agent.example.yaml --run-id <run-id>`.
+   - Run state and logs live under `tmp/sr2fpga_runs/<run-id>/`.
+   - Next useful runner feature is optional synthetic failure injection.
 
-2. Add a first-class failure injector.
-   - Current forced samples use only one injected error: rename RTL port `rst_n` to `reset_n`.
-   - Next useful injectors: width mismatch, testbench expected-value mismatch, missing manifest source, wrong top module, constraint references missing clock.
+2. Finish first-class failure injector integration.
+   - Current untracked injector code already covers reset-port rename, missing
+     manifest source, and wrong top module.
+   - Next useful injectors: width mismatch, testbench expected-value mismatch,
+     constraint references missing clock, and multi-module connection mismatch.
 
 3. Improve DeepSeek repair for real LLM failures.
    - `sample_llm_batch_000002` stopped at L1 after repair.
    - Inspect its attempt logs and patch before changing prompts.
 
-4. Keep generated datasets out of Git for now.
-   - Commit code, tests, docs, configs.
-   - Do not commit `datasets/`, model weights, LoRA outputs, or API keys.
+4. Treat dataset commits deliberately.
+   - The repo already contains a milestone dataset snapshot.
+   - Do not stage generated dataset deletions or additions casually.
+   - Never commit model weights, LoRA outputs, or API keys.
 
 ## Multi-Module Task Family Implementation
 
