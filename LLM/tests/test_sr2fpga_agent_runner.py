@@ -221,11 +221,93 @@ class RunnerConfigTest(unittest.TestCase):
             summary = run_batch(config, run_id="run_unit")
 
             run_dir = root / "runs" / "run_unit"
+            events = [
+                json.loads(line)
+                for line in (run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            state = read_run_state(run_dir / "run_state.json")
             self.assertEqual(summary["run_id"], "run_unit")
             self.assertEqual(summary["total_completed"], 1)
+            self.assertEqual(summary["next_index"], 1)
             self.assertEqual(summary["buckets"]["success_l3"], ["sample_runner_counter_4_000001"])
+            self.assertEqual(state.next_index, 1)
+            self.assertEqual(
+                events,
+                [
+                    {
+                        "event": "sample_completed",
+                        "sample_id": "sample_runner_counter_4_000001",
+                        "task_type": "counter",
+                        "width": 4,
+                        "pass_level": "L3",
+                        "bucket": "success_l3",
+                    }
+                ],
+            )
             self.assertTrue((run_dir / "run_state.json").exists())
             self.assertTrue((run_dir / "summary.json").exists())
             self.assertTrue((run_dir / "events.jsonl").exists())
             self.assertTrue((root / "datasets/sample_runner_counter_4_000001/eval/labels.json").exists())
             self.assertTrue((root / "exports/requirement_to_project.jsonl").exists())
+
+    def test_run_batch_records_existing_sample_rejection_and_advances_cursor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "datasets/sample_runner_counter_4_000001").mkdir(parents=True)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+
+            summary = run_batch(config, run_id="run_unit")
+            state = read_run_state(root / "runs" / "run_unit" / "run_state.json")
+            events = [
+                json.loads(line)
+                for line in (root / "runs" / "run_unit" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+
+            self.assertEqual(summary["next_index"], 1)
+            self.assertEqual(state.next_index, 1)
+            self.assertEqual(state.buckets["rejected"], ["sample_runner_counter_4_000001"])
+            self.assertEqual(state.failure_types["sample_exists"], 1)
+            self.assertEqual(
+                events,
+                [{"event": "sample_exists", "sample_id": "sample_runner_counter_4_000001"}],
+            )
+
+    def test_run_batch_resume_does_not_duplicate_completed_state_or_events(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+
+            first_summary = run_batch(config, run_id="run_unit")
+            second_summary = run_batch(config, run_id="run_unit", resume=True)
+            state = read_run_state(root / "runs" / "run_unit" / "run_state.json")
+            events = [
+                json.loads(line)
+                for line in (root / "runs" / "run_unit" / "events.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+
+            self.assertEqual(first_summary["total_completed"], 1)
+            self.assertEqual(second_summary["total_completed"], 1)
+            self.assertEqual(state.completed_samples, ["sample_runner_counter_4_000001"])
+            self.assertEqual(state.buckets["success_l3"], ["sample_runner_counter_4_000001"])
+            self.assertEqual(state.failure_types, {})
+            self.assertEqual(len(events), 1)

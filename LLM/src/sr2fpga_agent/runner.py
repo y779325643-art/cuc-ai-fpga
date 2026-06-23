@@ -112,7 +112,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         if index < state.next_index or should_skip_sample(state, sample.sample_id):
             continue
         if (config.dataset_root / sample.sample_id).exists():
-            state = _record_rejected(state, sample.sample_id, "sample_exists")
+            state = _record_rejected(state, sample.sample_id, index + 1, "sample_exists")
             _append_event(events_path, {"event": "sample_exists", "sample_id": sample.sample_id})
             write_run_state(state_path, state)
             continue
@@ -245,7 +245,7 @@ def _record_completed(
     )
 
 
-def _record_rejected(state: RunState, sample_id: str, failure_type: str) -> RunState:
+def _record_rejected(state: RunState, sample_id: str, next_index: int, failure_type: str) -> RunState:
     buckets = {key: list(value) for key, value in state.buckets.items()}
     buckets.setdefault("rejected", [])
     if sample_id not in buckets["rejected"]:
@@ -260,7 +260,7 @@ def _record_rejected(state: RunState, sample_id: str, failure_type: str) -> RunS
 
     return RunState(
         run_id=state.run_id,
-        next_index=state.next_index,
+        next_index=next_index,
         completed_samples=completed_samples,
         buckets=buckets,
         failure_types=failure_types,
