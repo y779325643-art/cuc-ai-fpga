@@ -311,3 +311,48 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(state.buckets["success_l3"], ["sample_runner_counter_4_000001"])
             self.assertEqual(state.failure_types, {})
             self.assertEqual(len(events), 1)
+
+    def test_runner_main_loads_config_and_prints_summary(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config_path = root / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": str(root / "datasets"),
+                        "export_root": str(root / "exports"),
+                        "run_root": str(root / "runs"),
+                        "provider": "deterministic",
+                        "repair_provider": "none",
+                        "max_attempts": 1,
+                        "refresh_exports": True,
+                        "line_b_targets": {"max_samples": 1},
+                        "tasks": [
+                            {
+                                "source": "deterministic",
+                                "task_type": "counter",
+                                "widths": [4],
+                                "count": 1,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            output = run_main_for_test(["--config", str(config_path), "--run-id", "run_cli_unit"])
+
+            self.assertIn("run_id=run_cli_unit", output)
+            self.assertIn("total_completed=1", output)
+
+
+def run_main_for_test(argv: list[str]) -> str:
+    import io
+    from contextlib import redirect_stdout
+
+    from LLM.src.sr2fpga_agent import runner
+
+    output = io.StringIO()
+    with redirect_stdout(output):
+        runner.main(argv)
+    return output.getvalue()

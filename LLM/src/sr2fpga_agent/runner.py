@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
@@ -76,6 +77,22 @@ def load_runner_config(path: Path) -> RunnerConfig:
         api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
         platform=str(raw.get("platform", "generic_verilog")),
     )
+
+
+def main(argv: list[str] | None = None) -> None:
+    parser = argparse.ArgumentParser(description="Run an autonomous SR2FPGA trajectory batch.")
+    parser.add_argument("--config", required=True, type=Path)
+    parser.add_argument("--run-id", default="")
+    parser.add_argument("--no-resume", action="store_true")
+    args = parser.parse_args(argv)
+
+    config = load_runner_config(args.config)
+    summary = run_batch(config, run_id=args.run_id or None, resume=not args.no_resume)
+    print(f"run_id={summary['run_id']}")
+    print(f"total_completed={summary['total_completed']}")
+    print(f"success_l3={len(summary['buckets'].get('success_l3', []))}")
+    print(f"repair_trajectory={len(summary['buckets'].get('repair_trajectory', []))}")
+    print(f"rejected={len(summary['buckets'].get('rejected', []))}")
 
 
 def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = True) -> dict[str, Any]:
@@ -385,3 +402,7 @@ def _default_requirement(task_type: str, width: int) -> str:
         "timing constraints, a bounded self-checking testbench that prints TEST_PASS on success "
         "or TEST_FAIL on failure, and predicted QoR."
     )
+
+
+if __name__ == "__main__":
+    main()
