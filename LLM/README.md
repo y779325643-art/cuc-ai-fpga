@@ -164,6 +164,26 @@ python3 -m LLM.src.sr2fpga_agent.cli \
   --requirement "Design an 8-bit synchronous counter with enable, active-low reset, self-checking Verilog testbench, timing constraint, manifest, system_his, and predicted QoR."
 ```
 
+### Autonomous Batch Runner
+
+Use the runner when generating more than one sample. The runner reads a config,
+creates sample IDs, runs the existing `DataGenerationAgent`, records a resumable
+run state, refreshes training exports, and prints a compact summary.
+
+```bash
+set -a
+source .env
+set +a
+
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_agent.example.yaml \
+  --run-id deepseek-multimodule-smoke
+```
+
+Run state and full logs live under `tmp/sr2fpga_runs/<run-id>/`. Keep those logs
+local by default. Commit only milestone dataset snapshots or compact summaries
+when they are useful for research traceability.
+
 Each sample records generated project files under `attempts/` and `final/`,
 plus labels and measured QoR under `eval/`.
 

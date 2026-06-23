@@ -195,3 +195,20 @@ Notes:
 - Simulation label hardening was added after final review: `sim_run` now fails if the log contains `TEST_FAIL` or omits `TEST_PASS`, even when `vvp` exits 0.
 - Rechecked after hardening: all 12 multi-module sample configurations still reach `L3`.
 - Known pre-existing issue exposed by hardening: future `simple_fsm` generation currently reaches `L1` because its generated testbench prints `TEST_FAIL`; fix that separately before generating more FSM data.
+
+## Autonomous Runner Plan
+
+Spec path:
+`docs/superpowers/specs/2026-06-23-sr2fpga-autonomous-trajectory-runner-design.md`
+
+Plan path:
+`docs/superpowers/plans/2026-06-23-sr2fpga-autonomous-trajectory-runner.md`
+
+Confirmed decisions:
+
+- implement the runner shell first around existing deterministic and DeepSeek
+  sources;
+- keep large future datasets local by default, with only milestone snapshots
+  committed;
+- keep full run state/logs under ignored `tmp/sr2fpga_runs/`; commit compact
+  summaries only when useful for research traceability.
