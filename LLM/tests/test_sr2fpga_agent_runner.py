@@ -8,6 +8,7 @@ from LLM.src.sr2fpga_agent.runner import (
     RunnerConfig,
     TaskConfig,
     classify_sample_bucket,
+    initial_run_state,
     load_runner_config,
     planned_samples,
     read_run_state,
@@ -169,6 +170,16 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(classify_sample_bucket({"pass_level": "L1", "failure_count": 2}), "repair_trajectory")
         self.assertEqual(classify_sample_bucket({"pass_level": "L0", "failure_count": 0}), "rejected")
 
+    def test_initial_run_state_defaults(self) -> None:
+        state = initial_run_state("run_test")
+
+        self.assertEqual(state.run_id, "run_test")
+        self.assertEqual(state.next_index, 0)
+        self.assertEqual(state.completed_samples, [])
+        self.assertEqual(state.buckets, {"success_l3": [], "repair_trajectory": [], "rejected": []})
+        self.assertEqual(state.failure_types, {})
+        self.assertFalse(state.exports_refreshed)
+
     def test_run_state_round_trip_and_skip_completed(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             state_path = Path(tmp) / "run_state.json"
@@ -182,6 +193,7 @@ class RunnerConfigTest(unittest.TestCase):
             )
 
             write_run_state(state_path, state)
+            self.assertTrue(state_path.read_text(encoding="utf-8").endswith("\n"))
             loaded = read_run_state(state_path)
 
             self.assertEqual(loaded.run_id, "run_test")
