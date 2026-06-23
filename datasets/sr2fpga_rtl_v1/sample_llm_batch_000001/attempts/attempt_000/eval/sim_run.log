@@ -1,0 +1,2 @@
+TEST_PASS
+sim/tb_top.v:33: $finish called at 655 (1s)

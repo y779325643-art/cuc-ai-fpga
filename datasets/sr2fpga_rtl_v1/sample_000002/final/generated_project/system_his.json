@@ -1,0 +1,45 @@
+{
+  "project_name": "counter_8bit",
+  "task_type": "counter",
+  "system": {
+    "description": "Design a synthesizable 8-bit synchronous counter in Verilog. The counter shall use clk, active-low rst_n, and en inputs. When rst_n is low, count resets to zero. When en is high, count increments by one each cycle. When en is low, count holds its value. Generate a self-checking testbench and predicted QoR."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "en",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "count",
+        "width": 8
+      }
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "count increments when en is high and holds when en is low"
+  }
+}

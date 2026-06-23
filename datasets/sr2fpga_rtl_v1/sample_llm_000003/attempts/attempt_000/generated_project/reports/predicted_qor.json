@@ -1,0 +1,7 @@
+{
+  "predicted_fmax_mhz": 100,
+  "predicted_area_luts": 16,
+  "predicted_area_ffs": 8,
+  "predicted_power_mw": 5.0,
+  "notes": "Estimated for 8-bit counter on generic platform."
+}

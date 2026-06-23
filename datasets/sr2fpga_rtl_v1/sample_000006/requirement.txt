@@ -1,0 +1,1 @@
+Design a synthesizable 24-bit synchronous counter in Verilog. Use clk, active-low rst_n, and en inputs. Reset count to zero when rst_n is low, increment when en is high, and hold when en is low. Generate a self-checking testbench and predicted QoR.

@@ -1,0 +1,16 @@
+{
+  "stage": "sim_compile",
+  "command": [
+    "iverilog",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "sim/tb_top.v"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "",
+  "duration_seconds": 0.02512070897500962
+}

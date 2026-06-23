@@ -1,0 +1,8 @@
+{
+  "project_name": "llm_uart_tx_8bit",
+  "top_module": "top",
+  "sources": ["rtl/top.v", "rtl/baud_tick_gen.v", "rtl/uart_tx_core.v"],
+  "constraints": ["constraints/timing.sdc"],
+  "simulation": {"testbench": "sim/tb_top.v"},
+  "reports": ["reports/predicted_qor.json"]
+}

@@ -1,0 +1,5 @@
+create_clock -period 10.000 -name clk [get_ports clk]
+set_clock_uncertainty 0.200 [get_clocks clk]
+set_input_delay -max 2.000 -clock clk [get_ports en]
+set_input_delay -max 2.000 -clock clk [get_ports reset_n]
+set_output_delay -max 2.000 -clock clk [get_ports q]

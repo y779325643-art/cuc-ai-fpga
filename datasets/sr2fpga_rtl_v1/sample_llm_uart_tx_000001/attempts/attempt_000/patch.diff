@@ -1,0 +1,39 @@
+--- a/rtl/baud_tick_gen.v
++++ b/rtl/baud_tick_gen.v
+@@ -8,7 +8,7 @@
+     output reg tick
+ );
+     localparam DIVISOR = CLK_FREQ / BAUD_RATE;
+-    reg [15:0] counter;
++    reg [31:0] counter;
+     always @(posedge clk or negedge rst_n) begin
+         if (!rst_n) begin
+             counter <= 0;
+--- a/rtl/uart_tx_core.v
++++ b/rtl/uart_tx_core.v
+@@ -38,7 +38,10 @@
+                 end
+                 DATA: begin
+                     tx <= shift_reg[0];
+-                    shift_reg <= {1'b0, shift_reg[7:1]}; // LSB first
++                    if (baud_tick) begin
++                        shift_reg <= {1'b0, shift_reg[7:1]};
++                        bit_index <= bit_index + 1;
++                    end
+                     busy <= 1;
+                 end
+                 STOP: begin
+@@ -54,11 +57,8 @@
+             IDLE: if (start) next_state = START;
+             START: if (baud_tick) next_state = DATA;
+             DATA: if (baud_tick) begin
+-                if (bit_index == 7) begin
+-                    next_state = STOP;
+-                end else begin
+-                    bit_index = bit_index + 1;
+-                end
++                if (bit_index == 7) next_state = STOP;
++                else next_state = DATA;
+             end
+             STOP: if (baud_tick) next_state = IDLE;
+         endcase

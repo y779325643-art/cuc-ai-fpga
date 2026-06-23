@@ -1,0 +1,5 @@
+{
+  "area": {"LUTs": 16, "FFs": 8, "DSPs": 0, "BRAMs": 0},
+  "power": {"dynamic_mW": 0.5, "static_mW": 0.1},
+  "timing": {"fmax_MHz": 150, "setup_slack_ns": 2.3, "hold_slack_ns": 0.5}
+}

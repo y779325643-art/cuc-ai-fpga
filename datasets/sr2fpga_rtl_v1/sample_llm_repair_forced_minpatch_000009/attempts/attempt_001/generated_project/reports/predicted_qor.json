@@ -1,0 +1,23 @@
+{
+  "project_name": "forced_repair_fsm_3state_width",
+  "target": {
+    "platform": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source"
+  },
+  "predicted": {
+    "lut": 6,
+    "ff": 6,
+    "bram": 0,
+    "dsp": 0,
+    "fmax_mhz": 300.0,
+    "confidence": 0.65
+  },
+  "assumptions": {
+    "data_width": 3,
+    "task_type": "simple_fsm",
+    "single_clock": true,
+    "no_vendor_ip": true,
+    "estimate_type": "pre_synthesis_model_prediction"
+  }
+}

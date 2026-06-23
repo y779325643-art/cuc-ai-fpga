@@ -1,0 +1,6 @@
+{
+  "worst_negative_slack": 0.123,
+  "total_power_mw": 0.5,
+  "area_luts": 50,
+  "area_ff": 30
+}

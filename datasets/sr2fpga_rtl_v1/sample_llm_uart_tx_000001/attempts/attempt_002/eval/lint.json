@@ -1,0 +1,16 @@
+{
+  "stage": "lint",
+  "command": [
+    "verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/baud_tick_gen.v",
+    "rtl/uart_tx_core.v"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "- V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426\n- Verilator: Built from 0.066 MB sources in 4 modules, into 0.019 MB in 3 C++ files needing 0.000 MB\n- Verilator: Walltime 0.007 s (elab=0.001, cvt=0.003, bld=0.000); cpu 0.006 s on 1 threads; allocated 9.766 MB\n",
+  "stderr": "",
+  "duration_seconds": 0.0936376250028843
+}

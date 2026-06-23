@@ -1,0 +1,1 @@
+Design a synthesizable 8-bit synchronous counter in Verilog. The counter shall use clk, active-low rst_n, and en inputs. When rst_n is low, count resets to zero. When en is high, count increments by one each cycle. When en is low, count holds its value. Generate a self-checking testbench and predicted QoR.

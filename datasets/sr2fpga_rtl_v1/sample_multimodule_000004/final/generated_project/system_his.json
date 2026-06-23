@@ -1,0 +1,81 @@
+{
+  "project_name": "spi_master_control_12width",
+  "task_type": "spi_master",
+  "system": {
+    "description": "Design a multi-module Verilog RTL spi_master project package with width 12, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "start",
+        "width": 1
+      },
+      {
+        "name": "tx_data",
+        "width": 8
+      },
+      {
+        "name": "miso",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rx_data",
+        "width": 8
+      },
+      {
+        "name": "busy",
+        "width": 1
+      },
+      {
+        "name": "done",
+        "width": 1
+      },
+      {
+        "name": "sclk",
+        "width": 1
+      },
+      {
+        "name": "mosi",
+        "width": 1
+      },
+      {
+        "name": "cs_n",
+        "width": 1
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "clock_divider",
+      "spi_master_core"
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "start launches an 8-bit MSB-first SPI transfer and captures MISO data"
+  }
+}

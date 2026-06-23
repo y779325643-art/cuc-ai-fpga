@@ -1,0 +1,56 @@
+{
+  "sample_id": "sample_000009",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "verilator",
+      "exit_code": 0,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "iverilog",
+      "exit_code": 0,
+      "command": [
+        "iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "vvp",
+      "exit_code": 0,
+      "command": [
+        "vvp",
+        "sim.out"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "yosys",
+      "exit_code": 0,
+      "command": [
+        "yosys",
+        "-p",
+        "read_verilog rtl/top.v; synth -top top; stat"
+      ]
+    }
+  ]
+}

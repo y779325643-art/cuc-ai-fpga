@@ -1,0 +1,16 @@
+{
+  "stage": "sim_compile",
+  "command": [
+    "iverilog",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "sim/tb_top.v"
+  ],
+  "status": "failed",
+  "exit_code": 2,
+  "stdout": "",
+  "stderr": "sim/tb_top.v:2: syntax error\nI give up.\n",
+  "duration_seconds": 0.014717666999786161
+}

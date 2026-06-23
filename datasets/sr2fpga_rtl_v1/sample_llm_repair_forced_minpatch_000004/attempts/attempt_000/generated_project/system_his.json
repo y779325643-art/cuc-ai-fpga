@@ -1,0 +1,53 @@
+{
+  "project_name": "forced_repair_ram_rw_16bit",
+  "task_type": "ram_read_write",
+  "system": {
+    "description": "Design a ram_read_write RTL project with active-low reset. This sample intentionally starts with a reset-port mismatch so the repairer must fix it without rewriting unrelated files."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "we",
+        "width": 1
+      },
+      {
+        "name": "addr",
+        "width": 2
+      },
+      {
+        "name": "wdata",
+        "width": 16
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rdata",
+        "width": 16
+      }
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "data written to an address can be read back from the same address"
+  }
+}

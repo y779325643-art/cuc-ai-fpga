@@ -1,0 +1,10 @@
+{
+  "project": "llm_counter_repair_8bit",
+  "top_module": "top",
+  "target_frequency_MHz": 100,
+  "estimated_LUTs": 8,
+  "estimated_FFs": 8,
+  "estimated_slices": 4,
+  "estimated_power_mW": 1.2,
+  "status": "estimated"
+}

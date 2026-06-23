@@ -1,0 +1,6 @@
+{
+  "failure_type": "reset_behavior_error",
+  "stage": "lint",
+  "root_cause": "%Error: rtl/top.v:13:35: Can't find definition of variable: 'rst_n'\n                       : ... Suggested alternative: 'reset_n'\n   13 |   always @(posedge clk or negedge rst_n) begin\n      |                                   ^~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: Exiting due to 1 error(s)",
+  "affected_files": []
+}

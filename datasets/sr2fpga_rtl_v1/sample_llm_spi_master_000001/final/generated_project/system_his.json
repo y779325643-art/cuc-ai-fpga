@@ -1,0 +1,6 @@
+{
+  "project_name": "llm_spi_master_8bit",
+  "creation_date": "2025-03-27",
+  "description": "8-bit SPI master with clock divider and protocol core, targeting generic Verilog platform.",
+  "version": "1.0.0"
+}

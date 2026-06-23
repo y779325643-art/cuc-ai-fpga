@@ -1,0 +1,62 @@
+"""Command-line tool execution helpers."""
+
+from __future__ import annotations
+
+import subprocess
+import time
+from pathlib import Path
+
+from LLM.src.sr2fpga_agent.models import ToolResult
+
+
+class CommandRunner:
+    """Run external commands and convert outcomes into ToolResult objects."""
+
+    def run(
+        self,
+        command: list[str],
+        cwd: Path,
+        stage: str,
+        timeout_seconds: int = 30,
+    ) -> ToolResult:
+        start = time.monotonic()
+        try:
+            completed = subprocess.run(
+                command,
+                cwd=cwd,
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=timeout_seconds,
+            )
+        except FileNotFoundError:
+            return ToolResult(
+                stage=stage,
+                command=command,
+                status="missing_tool",
+                exit_code=None,
+                stdout="",
+                stderr=f"Missing executable: {command[0]}",
+                duration_seconds=time.monotonic() - start,
+            )
+        except subprocess.TimeoutExpired as exc:
+            return ToolResult(
+                stage=stage,
+                command=command,
+                status="timeout",
+                exit_code=None,
+                stdout=exc.stdout or "",
+                stderr=exc.stderr or f"Command timed out after {timeout_seconds} seconds",
+                duration_seconds=time.monotonic() - start,
+            )
+
+        status = "passed" if completed.returncode == 0 else "failed"
+        return ToolResult(
+            stage=stage,
+            command=command,
+            status=status,
+            exit_code=completed.returncode,
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+            duration_seconds=time.monotonic() - start,
+        )

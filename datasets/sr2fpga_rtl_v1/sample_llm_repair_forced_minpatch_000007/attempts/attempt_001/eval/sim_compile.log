@@ -1,0 +1,2 @@
+sim/tb_top.v:38: warning: Numeric constant truncated to 4 bits.
+sim/tb_top.v:51: warning: Numeric constant truncated to 4 bits.

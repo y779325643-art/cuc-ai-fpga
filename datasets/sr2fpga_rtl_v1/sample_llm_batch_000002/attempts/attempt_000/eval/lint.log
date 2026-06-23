@@ -1,0 +1,7 @@
+%Warning-WIDTHTRUNC: rtl/top.v:1:892: Bit extraction of array[15:0] requires 4 bit index, not 5 bits.
+                                    : ... note: In instance 'top'
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.048
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-WIDTHTRUNC: rtl/top.v:1:926: Bit extraction of array[15:0] requires 4 bit index, not 5 bits.
+                                    : ... note: In instance 'top'
+%Error: Exiting due to 2 warning(s)

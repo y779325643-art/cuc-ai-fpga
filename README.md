@@ -1,39 +1,259 @@
-# HNAI-FPGA
+# HNAI-FPGA / SR2FPGA
 
-This repository collects project materials for HNAI-FPGA, including LLM-assisted FPGA design notes, manuscripts, presentation outputs, and supporting assets.
+HNAI-FPGA is being developed as **SR2FPGA: tool-verified learning for
+system-requirement-to-FPGA RTL project generation**.
 
-## Directory Layout
+The repository contains research documents, dataset-generation tools, generated
+SR2FPGA samples, local/cloud LLM deployment utilities, and a small Spec-to-RTL
+demo interface. The central research direction is not plain
+`natural language -> Verilog`; it is project-level generation with tool-derived
+supervision:
 
-- `LLM/` - local LLM deployment and model-integration workspace.
-- `assets/images/` - project images, screenshots, and visual references.
-- `docs/` - planning documents and structured project notes.
-- `outputs/` - generated project deliverables, scripts, and intermediate output packages.
+```text
+system requirement
+-> System-HIS
+-> multi-file Verilog RTL project
+-> constraints / testbench / predicted QoR
+-> lint / simulation / synthesis / later implementation labels
+-> diagnosis / patch / repair trajectory
+-> trainable dataset and model
+```
+
+The current engineering priority is the dataset factory and benchmark pipeline.
+The long-term paper target is TCAD, with TRETS as a fallback if the eventual
+method novelty or physical-evaluation depth is better suited there.
+
+## Research Position
+
+The project studies how a model can learn to generate complete FPGA RTL project
+packages from system requirements by internalizing feedback from EDA tools.
+
+Core ideas:
+
+- **System-HIS**: an intermediate hardware-intent representation above RTL.
+- **Project-level generation**: output is a coherent project package, not a
+  single code snippet.
+- **Tool-verified trajectories**: failed attempts, logs, diagnoses, patches,
+  pass levels, and measured QoR are preserved as training data.
+- **L0-L5 evaluation**: progress from project consistency through lint,
+  simulation, synthesis, implementation/timing, and representative board runs.
+- **Tool distillation, not LLM distillation**: tools are the objective teacher;
+  DeepSeek/frontier models are candidate generators and baselines.
+
+Important project documents:
+
+- `docs/research-objective-sr2fpga-tcad.md` - project-level research objective.
+- `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md` -
+  TCAD/TRETS research reframe and paper program.
+- `docs/superpowers/specs/2026-06-23-sr2fpga-autonomous-trajectory-runner-design.md`
+  - autonomous trajectory runner design.
+- `docs/superpowers/decisions/2026-06-22-sr2fpga-reframe-decision-log.md` -
+  decision log and reasoning trail.
+
+## Current Capability
+
+The current SR2FPGA agent can generate Verilog RTL project samples, run a
+lightweight open-source EDA pipeline, record labels, and export trainable JSONL
+views.
+
+Generated project package:
+
+```text
+generated_project/
+  system_his.json
+  manifest.json
+  rtl/top.v
+  rtl/*.v
+  constraints/timing.sdc
+  sim/tb_top.v
+  reports/predicted_qor.json
+```
+
+Current verification levels:
+
+- `L1`: Verilator lint pass.
+- `L2`: Icarus Verilog compile/run with `TEST_PASS`.
+- `L3`: Yosys synthesis pass with measured resource statistics.
+
+Planned later levels:
+
+- `L4`: implementation and timing closure through OpenXC7/Vivado.
+- `L5`: sparse representative board validation, initially targeting the
+  AC820-ZYNQ / XC7Z020 line of work described in the research specs.
+
+Current task families include single-module and multi-module RTL projects:
+
+- `counter`
+- `fifo`
+- `simple_fsm`
+- `ram_read_write`
+- `uart_tx`
+- `spi_master`
+- `pwm_controller`
+- `fir_filter`
+- `streaming_valid_ready`
+- `matrix_vector_mac`
+
+The multi-module families are expected to emit `rtl/top.v` plus task-specific
+submodule `.v` files. The DeepSeek path rejects single-file responses for these
+families.
+
+## Quick Start
+
+Run the test suite:
+
+```bash
+python3 -m unittest discover -s LLM/tests -q
+```
+
+Generate one deterministic sample:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_local_counter_000001 \
+  --task-type counter \
+  --width 8 \
+  --project-name local_counter_8bit
+```
+
+Run the autonomous batch runner with the example config:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_agent.example.yaml \
+  --run-id deepseek-multimodule-smoke
+```
+
+The example runner config uses DeepSeek by default. Set the API key through the
+environment, never in tracked files:
+
+```bash
+cp .env.example .env
+# edit .env locally
+set -a
+source .env
+set +a
+```
+
+For a no-network deterministic smoke run, create a temporary JSON config with
+`provider: deterministic` and `repair_provider: none`, or use the unit tests in
+`LLM/tests/test_sr2fpga_agent_runner.py`.
+
+## Autonomous Runner
+
+The runner is the preferred control entry for producing more than one sample:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_agent.example.yaml \
+  --run-id <run-id>
+```
+
+It provides:
+
+- config-driven task planning;
+- resumable `run_state.json`;
+- `events.jsonl` for compact run events;
+- `summary.json` with bucket counts and failure histograms;
+- `success_l3`, `repair_trajectory`, and `rejected` sample buckets;
+- automatic refresh of training exports.
+
+Full run logs live under `tmp/sr2fpga_runs/<run-id>/` and should remain local
+by default. Commit compact summaries only when they are useful for research
+traceability.
+
+## Dataset And Exports
+
+The repository currently includes a milestone SR2FPGA RTL dataset snapshot under
+`datasets/sr2fpga_rtl_v1/` and exported JSONL views under
+`datasets/sr2fpga_rtl_v1_exports/`.
+
+Each sample may contain:
+
+```text
+requirement.txt
+platform_profile.json
+attempts/attempt_*/generated_project/
+attempts/attempt_*/eval/
+attempts/attempt_*/diagnosis.json
+attempts/attempt_*/patch.diff
+final/generated_project/
+eval/labels.json
+eval/measured_qor.json
+eval/tool_versions.json
+eval/trajectory.json
+```
+
+Training views include:
+
+- `requirement_to_his.jsonl`
+- `his_to_project.jsonl`
+- `requirement_to_project.jsonl`
+- `failure_to_diagnosis.jsonl`
+- `failure_to_patch.jsonl`
+- `project_to_predicted_qor.jsonl`
+- `project_to_measured_qor.jsonl`
+
+## Repository Layout
+
+- `LLM/` - local/cloud LLM deployment, fine-tuning utilities, and SR2FPGA agent
+  code.
+- `LLM/src/sr2fpga_agent/` - generation, tool running, recording, DeepSeek
+  integration, and autonomous runner modules.
+- `LLM/tests/` - unit and smoke tests for dataset preparation, serving scripts,
+  and SR2FPGA agent behavior.
+- `configs/` - repository-level runner configs, including the safe example
+  config.
+- `datasets/` - committed SR2FPGA milestone dataset snapshot and exported JSONL
+  views.
+- `docs/` - research objectives, specs, decisions, handoff notes, and plans.
+- `app/` - browser-based Spec-to-RTL demo interface.
+- `assets/` - images and visual references.
+- `reports/` - manuscripts, rendered PDFs, and report outputs.
+- `outputs/` - generated presentation/report deliverables.
 - `references/` - background reading and reference notes.
-- `reports/manuscripts/` - manuscript drafts, reports, and Word documents.
-- `reports/rendered/` - rendered PDFs and page images generated from reports or presentations.
-- `app/` - final project application interface for the Spec-to-RTL demo.
+- `tmp/` - ignored local run logs and temporary artifacts.
+
+## LLM Deployment
+
+The `LLM/` workspace also contains cloud deployment and fine-tuning scripts.
+The verified preferred serving path is currently Qwen2.5-Coder-7B-Instruct via
+vLLM on an OpenAI-compatible local API. Gemma 4 compatibility work is recorded
+but not the preferred serving route.
+
+See:
+
+- `LLM/README.md`
+- `LLM/DEPLOY.md`
+- `LLM/scripts/serve_qwen_vllm.sh`
+- `LLM/scripts/setup_server.sh`
 
 ## Application Interface
 
-Open `app/index.html` in a browser to use the HNAI-FPGA Spec-to-RTL interface.
-The page can call the local OpenAI-compatible vLLM endpoint at
-`http://127.0.0.1:8000/v1` when the model service is running, and falls back to
-demo Verilog output when the service is unavailable.
+Open `app/index.html` in a browser to use the Spec-to-RTL demo interface. It can
+call a local OpenAI-compatible vLLM endpoint at `http://127.0.0.1:8000/v1` when
+the model service is running, and falls back to demo Verilog output when the
+service is unavailable.
 
-## Git Notes
+## Tooling Requirements
 
-Large model weights, local runtime files, assistant state, and generated preview folders are ignored by default. Keep source code, reproducible scripts, and final documents in Git; keep downloaded model files outside the repository or under ignored `models/` directories.
+For real L0-L3 sample validation, install:
 
-## Cloud Deployment Direction
+- Verilator
+- Icarus Verilog (`iverilog` and `vvp`)
+- Yosys
 
-This project is prepared on a local machine and deployed on a cloud server by cloning the GitHub repository. The `LLM/` workspace defaults to `google/gemma-4-12B-it` and deploys the base model first; fine-tuning can be enabled later:
+If the tools are missing, the agent can still record missing-tool failures,
+which is useful for validating dataset structure but not for producing passing
+L3 samples.
 
-```bash
-git clone https://github.com/y779325643-art/cuc-ai-fpga.git
-cd cuc-ai-fpga
+## Secrets And Git Hygiene
 
-bash LLM/scripts/setup_server.sh
-bash LLM/scripts/serve_vllm.sh
-```
-
-Model weights, raw datasets, LoRA adapters, merged models, and server-specific environment files are intentionally ignored by Git.
+- Do not commit real API keys.
+- `.env` is ignored and should stay local.
+- `.env.example` documents the expected environment variable names.
+- Large model weights, LoRA outputs, server-local caches, and temporary run logs
+  should remain outside Git or under ignored directories.
+- Commit source code, tests, configs, research docs, reproducible scripts, and
+  intentional milestone dataset snapshots.

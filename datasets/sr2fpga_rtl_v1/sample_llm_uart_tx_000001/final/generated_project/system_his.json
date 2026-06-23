@@ -1,0 +1,7 @@
+{
+  "design": "llm_uart_tx_8bit",
+  "task": "uart_tx",
+  "platform": "generic_verilog",
+  "clock": 100000000,
+  "baud_rate": 115200
+}

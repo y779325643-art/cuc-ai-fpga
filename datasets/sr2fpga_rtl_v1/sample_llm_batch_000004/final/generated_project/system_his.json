@@ -1,0 +1,13 @@
+{
+  "project": "llm_batch_ram_rw_12bit",
+  "task_type": "ram_read_write",
+  "width": 12,
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000,
+    "reset_polarity": "active_low"
+  },
+  "date": "2025-04-10"
+}

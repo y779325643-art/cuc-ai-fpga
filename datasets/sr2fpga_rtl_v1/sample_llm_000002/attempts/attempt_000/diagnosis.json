@@ -1,0 +1,6 @@
+{
+  "failure_type": "unknown",
+  "stage": "lint",
+  "root_cause": "%Warning-EOFNEWLINE: rtl/top.v:13:10: Missing newline at end of file (POSIX 3.206).\n                                    : ... Suggest add newline.\n   13 | endmodule\n      |          ^\n                     ... For warning description see https://verilator.org/warn/EOFNEWLINE?v=5.048\n                     ... Use \"/* verilator lint_off EOFNEWLINE */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)",
+  "affected_files": []
+}

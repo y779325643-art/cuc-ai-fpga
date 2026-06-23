@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "TEST_PASS\nsim/tb_top.v:60: $finish called at 50000 (1ps)\n",
+  "stderr": "",
+  "duration_seconds": 0.010189791966695338
+}

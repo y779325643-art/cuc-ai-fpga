@@ -1,0 +1,1 @@
+Design a synthesizable Verilog RTL counter project package with width 5, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR.

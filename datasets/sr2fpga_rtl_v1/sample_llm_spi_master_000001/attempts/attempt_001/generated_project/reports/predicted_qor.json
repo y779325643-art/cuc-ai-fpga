@@ -1,0 +1,14 @@
+{
+  "area": {
+    "LUTs": 32,
+    "FFs": 24,
+    "slices": 12
+  },
+  "timing": {
+    "max_frequency_MHz": 100,
+    "slack_ns": 2.5
+  },
+  "power": {
+    "total_mW": 5.0
+  }
+}

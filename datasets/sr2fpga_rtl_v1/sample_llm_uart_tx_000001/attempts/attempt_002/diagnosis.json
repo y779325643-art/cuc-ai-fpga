@@ -1,0 +1,6 @@
+{
+  "failure_type": "port_mismatch",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL\nsim/tb_top.v:28: $finish called at 1040000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": []
+}

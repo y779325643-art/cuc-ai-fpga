@@ -64,6 +64,129 @@ Use these routes:
 - `src/` - Python entrypoints for dataset preparation, training, and adapter merge.
 - `tests/` - lightweight tests for repository-side utilities.
 
+## SR2FPGA Data Generation Agent
+
+The `LLM/src/sr2fpga_agent/` package contains the first lightweight data
+generation agent for SR2FPGA RTL project samples. It is a tool-calling dataset
+factory, not the final no-tool generation model.
+
+V1 generates a small Verilog project package with:
+
+- `system_his.json`
+- `manifest.json`
+- one or more RTL files under `rtl/`, always including `rtl/top.v`
+- `constraints/timing.sdc`
+- `sim/tb_top.v`
+- `reports/predicted_qor.json`
+
+Current deterministic V1 task types are `counter`, `fifo`, `simple_fsm`,
+`ram_read_write`, `uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`,
+`streaming_valid_ready`, and `matrix_vector_mac`. The last six are multi-module
+families that generate `rtl/top.v` plus task-specific submodule `.v` files.
+
+It can then run a command-line pipeline:
+
+- Verilator for lint
+- Icarus Verilog for simulation
+- Yosys for synthesis and resource statistics
+
+Install those tools separately before running real checks. Without them, the
+agent still records missing-tool results, which is useful for testing the
+dataset structure.
+
+Generate one sample:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_000001 \
+  --task-type counter \
+  --width 8 \
+  --project-name counter_8bit
+```
+
+Replace `--task-type`, `--width`, and `--project-name` to generate another
+supported task family, for example `fifo`, `spi_master`, or `fir_filter`.
+
+Use DeepSeek as the project generator:
+
+```bash
+export DEEPSEEK_API_KEY="your-key"
+
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_000006 \
+  --provider deepseek \
+  --model deepseek-v4-flash \
+  --task-type counter \
+  --width 8 \
+  --project-name counter_8bit
+```
+
+For multi-module task types, the DeepSeek prompt requires the LLM to generate a
+true multi-file RTL package. For example, `spi_master` is expected to return
+`rtl/top.v`, `rtl/clock_divider.v`, and `rtl/spi_master_core.v`, and
+`manifest.json.sources` must list every RTL file. The agent rejects a single
+`rtl/top.v` response for these multi-module task families and asks DeepSeek to
+retry.
+
+```bash
+export DEEPSEEK_API_KEY="your-key"
+
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_llm_spi_master_000001 \
+  --provider deepseek \
+  --model deepseek-v4-flash \
+  --task-type spi_master \
+  --width 8 \
+  --project-name llm_spi_master_8bit \
+  --requirement "Design an 8-bit SPI master as a true multi-file Verilog RTL project. Keep rtl/top.v as the integration wrapper, place protocol and clocking logic in separate submodule .v files, include a self-checking testbench, timing constraint, manifest, system_his, and predicted QoR."
+```
+
+The API key is read only from the environment. Do not write it into repository
+files or generated samples.
+
+Use DeepSeek for generation and one repair attempt:
+
+```bash
+export DEEPSEEK_API_KEY="your-key"
+
+python3 -m LLM.src.sr2fpga_agent.cli \
+  --dataset-root datasets/sr2fpga_rtl_v1 \
+  --sample-id sample_llm_repair_000001 \
+  --provider deepseek \
+  --repair-provider deepseek \
+  --max-attempts 2 \
+  --task-type counter \
+  --width 8 \
+  --project-name llm_counter_repair_8bit \
+  --requirement "Design an 8-bit synchronous counter with enable, active-low reset, self-checking Verilog testbench, timing constraint, manifest, system_his, and predicted QoR."
+```
+
+### Autonomous Batch Runner
+
+Use the runner when generating more than one sample. The runner reads a config,
+creates sample IDs, runs the existing `DataGenerationAgent`, records a resumable
+run state, refreshes training exports, and prints a compact summary.
+
+```bash
+set -a
+source .env
+set +a
+
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_agent.example.yaml \
+  --run-id deepseek-multimodule-smoke
+```
+
+Run state and full logs live under `tmp/sr2fpga_runs/<run-id>/`. Keep those logs
+local by default. Commit only milestone dataset snapshots or compact summaries
+when they are useful for research traceability.
+
+Each sample records generated project files under `attempts/` and `final/`,
+plus labels and measured QoR under `eval/`.
+
 ## Quick Workflow: Deploy First
 
 In Ubuntu/WSL on the cloud server:

@@ -1,0 +1,65 @@
+{
+  "project_name": "uart_tx_8bit",
+  "task_type": "uart_tx",
+  "system": {
+    "description": "Design a multi-module Verilog RTL uart_tx project package with width 8, active-low reset rst_n, self-checking testbench, manifest, timing constraint, and predicted QoR."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "start",
+        "width": 1
+      },
+      {
+        "name": "data",
+        "width": 8
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tx",
+        "width": 1
+      },
+      {
+        "name": "busy",
+        "width": 1
+      },
+      {
+        "name": "done",
+        "width": 1
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "baud_tick_gen",
+      "uart_tx_core"
+    ]
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "expected_behavior": "start launches an 8-bit LSB-first UART frame with start and stop bits"
+  }
+}

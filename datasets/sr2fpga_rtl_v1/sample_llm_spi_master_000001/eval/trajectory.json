@@ -1,0 +1,68 @@
+{
+  "sample_id": "sample_llm_spi_master_000001",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "verilator",
+      "exit_code": 1,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/clock_divider.v",
+        "rtl/spi_master_core.v"
+      ],
+      "failure_type": "clocking_error",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json",
+      "patch_path": "attempts/attempt_000/patch.diff"
+    },
+    {
+      "attempt_id": 1,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "verilator",
+      "exit_code": 0,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/clock_divider.v",
+        "rtl/spi_master_core.v"
+      ]
+    },
+    {
+      "attempt_id": 1,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "iverilog",
+      "exit_code": 0,
+      "command": [
+        "iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/clock_divider.v",
+        "rtl/spi_master_core.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 1,
+      "stage": "sim_run",
+      "status": "timeout",
+      "tool": "vvp",
+      "exit_code": null,
+      "command": [
+        "vvp",
+        "sim.out"
+      ],
+      "failure_type": "testbench_timeout",
+      "diagnosis_path": "attempts/attempt_001/diagnosis.json"
+    }
+  ]
+}

@@ -1,0 +1,3 @@
+VCD info: dumpfile tb_top.vcd opened for output.
+TEST_FAIL: after reset state not S0
+sim/tb_top.v:28: $finish called at 30000 (1ps)

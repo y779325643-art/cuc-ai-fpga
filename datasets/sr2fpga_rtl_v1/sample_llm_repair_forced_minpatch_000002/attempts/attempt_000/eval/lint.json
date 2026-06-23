@@ -1,0 +1,14 @@
+{
+  "stage": "lint",
+  "command": [
+    "verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Error: rtl/top.v:8:35: Can't find definition of variable: 'rst_n'\n                      : ... Suggested alternative: 'reset_n'\n    8 |   always @(posedge clk or negedge rst_n) begin\n      |                                   ^~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: Exiting due to 1 error(s)\n",
+  "duration_seconds": 0.06712925000010728
+}

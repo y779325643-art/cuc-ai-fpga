@@ -1,0 +1,15 @@
+{
+  "cell_count": 9842,
+  "cell_breakdown": {
+    "$_ANDNOT_": 17,
+    "$_AND_": 3642,
+    "$_DFFE_PN0P_": 12,
+    "$_DFFE_PP_": 3072,
+    "$_NAND_": 3084,
+    "$_NOR_": 15
+  },
+  "lut": 0,
+  "ff": 3084,
+  "bram": 0,
+  "dsp": 0
+}

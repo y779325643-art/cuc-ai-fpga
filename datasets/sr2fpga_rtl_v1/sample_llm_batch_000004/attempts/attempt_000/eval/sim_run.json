@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "VCD info: dumpfile dump.vcd opened for output.\nTEST_PASS\nsim/tb_top.v:48: $finish called at 100 (1s)\n",
+  "stderr": "",
+  "duration_seconds": 0.007605541999510024
+}
