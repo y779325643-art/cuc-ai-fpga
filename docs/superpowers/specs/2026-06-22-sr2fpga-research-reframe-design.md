@@ -229,7 +229,7 @@ them as future work.
 | ChipSeek-R1 has **no reusable trajectory dataset** (per-attempt RL reward) | a persistent **tool-verified trajectory dataset** |
 | ResBench (2025): closest FPGA LLM benchmark, but single-module + stops at LUT resource estimation (no PnR / timing / board) | L3 measured QoR (Yosys) + L4 timing (OpenXC7/Vivado) + L5 on-board |
 | SynCircuit (2025, HKUST): synthetic RTL generation at circuit-graph level; no NL requirements, no testbench, no verifiable project structure | requirement-level compositional generation with machine-checked testbenches + tool trajectories |
-| All LLM-to-RTL works use black-box pass/fail; none categorize errors by **sequential vs combinational type** nor train with seq/comb-aware supervision (MeltRTL "hardware-specific inaccuracy" is closest but still uses simulation pass rate) | SR2FPGA failure taxonomy adds a **seq/comb axis** (multi_driven_net, latch_inference, blocking_in_sequential, cdc_missing_sync); System-HIS `modules[].timing_type` declares intent → future L0 checks RTL implementation matches |
+| All LLM-to-RTL works use black-box pass/fail; none categorize errors by **hardware-semantic type** (the software→hardware gap) nor train with semantics-aware supervision (MeltRTL "hardware-specific inaccuracy" is closest but still uses simulation pass rate) | SR2FPGA **hardware-semantic failure taxonomy cross-indexed against L0–L5** (seq/comb at L1, backpressure at L2, memory inference at L3, CDC structurally at L0, timing at L4) — see "Hardware-semantic gap" below |
 
 **Caveat (the honest catch):** these are *acknowledged* gaps, so the contribution
 is real only if execution actually reaches L4/on-board and a real trajectory
@@ -261,12 +261,16 @@ clocks:    [{name, target_fmax_mhz}]                # clock domains + target fre
 resets:    [{name, polarity: active_low|active_high, kind: sync|async}]
 modules:   [{
    name, role,                  # role = fifo|arbiter|pipeline|alu|regfile|cdc_sync|decoder|…
-   timing_type: combinational|sequential|mixed,  # declared intent; L0 can check vs RTL always-block structure
-   clock, reset,                # which clock/reset domain this module belongs to (absent when combinational)
+   clock, reset,                # which clock/reset domain this module belongs to
    ports:  [{name, dir: in|out|inout, width}],  # width = resolved integer (or "PARAM" ref) so L0 can compare
    params: [{name, value}],
    intent: "<one-line behavior intent, tag-level, not executable>"
 }]
+# NOTE: the seq/comb distinction is NOT a separate field. In the v1.2 top-down
+# schema it is captured structurally — a combinational component owns no `state`,
+# has no `clock` domain, and has no `reset_rule` in `control_flow`. See the
+# "Hardware-semantic gap" subsection and the v1.2 spec
+# (2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md).
 connections: [{                 # cross-module contracts = the core of cross-file consistency
    from: "mod.port" | "TOP.port", to: "mod.port" | "TOP.port",
    protocol: register|valid_ready|axi_lite|axi_stream,
@@ -378,29 +382,57 @@ will live here later.
 - **Candidate sources for inputs:** prefer the compositional component library
   (free, controllable, large, leakage-safe) + a small amount of DeepSeek/local
   candidates. **All labels come from tools** (tool-distillation purity).
-- **Failure taxonomy — sequential/combinational axis (mid-level contribution):**
-  LLMs pre-trained on software code systematically confuse hardware's
-  sequential/combinational boundary; all existing works use black-box pass/fail
-  with no per-error-type breakdown. SR2FPGA's failure taxonomy adds a
-  **seq/comb axis** as a named sub-category of `failure_to_diagnosis`:
+- **Hardware-semantic gap — failure taxonomy cross-indexed against L0–L5
+  (a named contribution, not just "more error types"):** LLMs are pre-trained on
+  software (sequential-execution) semantics and systematically fail at hardware's
+  concurrent/physical semantics. Crucially, **each class of this gap surfaces at a
+  different verification depth**, so the L0–L5 hierarchy is not only "verification
+  depth" but "depth of hardware-semantic understanding required." This reframes the
+  failure-taxonomy contribution from "we have a taxonomy" to "we map the
+  software→hardware semantic gap onto a verification-depth hierarchy" — and shows
+  why prior work (stopping at L2/L3) covers only the front half of the gap.
 
-  | Failure type label | Root cause |
-  |---|---|
-  | `multi_driven_net` | same signal driven by both `always @(posedge clk)` and `always @(*)` |
-  | `latch_inference` | `always @(*)` with incomplete if/case branches → unintended latch |
-  | `blocking_in_sequential` | `=` (blocking) inside `always @(posedge clk)` instead of `<=` |
-  | `cdc_missing_sync` | cross-domain signal without synchronizer |
+  | Semantic-gap class | Surfaces at | Observable with our tools? | How |
+  |---|---|---|---|
+  | seq/comb confusion | **L1** lint | yes (now) | Verilator named warnings: `MULTIDRIVEN`, `LATCH`, `COMBDLY`, `BLKSEQ` |
+  | valid-ready backpressure | **L2** sim | yes, **iff our testbench applies backpressure** | we emit the testbench → controllable by design |
+  | memory/BRAM inference miss | **L3** synth | yes (now) | Yosys `stat`: `$mem` mapped to BRAM vs flattened to FF/LUT |
+  | CDC missing synchronizer | **L0** (structural) + L5 (metastability) | structural only | L0 checks a `cdc_sync` instance exists on a `cdc:true` path |
+  | timing / SDC closure | **L4** P&R | gated on OpenXC7 spike | nextpnr/Vivado timing report (Fmax/slack) |
 
-  These four types map directly to Verilator/Icarus/Yosys diagnostic messages, so
-  `classify_failure()` can detect them from tool logs without manual annotation.
-  Downstream: `LOG2DIAG` training samples tagged with these types teach the model
-  *why* the error occurred (not just *that* it occurred), making `FAILURE2PATCH`
-  repairs structurally more targeted.
+  **Honest boundaries:** CDC we can check *structurally* (synchronizer present),
+  not *behaviorally* (metastability absent); backpressure and BRAM are vacuous
+  unless the testbench/QoR machinery actually stresses them; L4/timing is gated on
+  the OpenXC7 spike. State these limits in the paper rather than overclaiming.
 
-  The `System-HIS modules[].timing_type` field (`combinational|sequential|mixed`)
-  encodes the declared intent from requirements. A future L0 extension can flag
-  "System-HIS declares combinational but RTL contains `always @(posedge clk)`" —
-  a structural check EDA lint tools cannot surface before synthesis.
+- **Priority tiers for the hardware-semantic taxonomy:**
+  - **Tier A (Paper ① core — observable now at L0–L3, low marginal cost):**
+    seq/comb (L1), memory/BRAM inference (L3), valid-ready backpressure (L2). Each
+    feeds a *different* training view — seq/comb → `LOG2DIAG`/`FAILURE2PATCH`,
+    BRAM-miss → `QOR_PRED` (a *soft* failure: passes L3 but blows the resource
+    budget, a live shift-left predicted-vs-measured sample), backpressure →
+    functional `FAILURE2PATCH` that sim-pass benchmarks miss because their
+    testbenches never apply backpressure.
+  - **Tier B (structural now, physical later):** CDC — do the L0 structural check
+    + a synthetic injector ("remove synchronizer") now; defer metastability/L5 to
+    nice-to-have.
+  - **Tier C (gated on L4):** SDC/timing closure — defer to after the OpenXC7
+    spike; port-name checks against constraints already live in the L0 checker.
+
+  `classify_failure()` detects the Tier-A classes from Verilator/Icarus/Yosys logs
+  without manual annotation; the labels are recorded as named sub-categories of
+  `failure_to_diagnosis`.
+
+- **Where these land in System-HIS v1.2 (no schema redesign needed):**
+  - seq/comb: captured **structurally** — a combinational component owns no
+    `state`, no `clock`, no `reset_rule`; a future L0 extension flags "declared
+    combinational but RTL has `always @(posedge clk)`."
+  - memory/BRAM: extend `state.memories[]` with `memory_style: block|distributed`
+    and `read_type: sync|async`; L3 compares intent against Yosys-measured BRAM.
+  - CDC: `instances[].semantic_kind: cdc_sync` + a `cdc` flag on the crossing
+    `data_flow`; L0 verifies a synchronizer instance sits on the crossing path.
+  - backpressure: `verification.scenarios[]` includes a backpressure stimulus;
+    `control_flow` already enumerates `handshake_rule` and `stall_rule`.
 
 ### Method (the model)
 
