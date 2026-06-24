@@ -407,6 +407,13 @@ Key summary:
 
 ## Next Recommended Work
 
+0. **DO THIS FIRST — System-HIS v1.2 freeze (approved).** Implement the freeze
+   plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
+   (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).
+   It makes `system-his-v1.2` canonical, migrates the deterministic generator off
+   v1.1, gives the v1.2 checker HIS↔RTL cross-checks, adds `data_flow.timing` +
+   structured `control_flow`, and quarantines legacy/v1.1 data. Highest-collision
+   files: `project_generator.py`, `system_his_v12_checker.py`.
 1. Treat L0 project-package failures as first-class repair targets: missing or
    malformed `system_his.json`, manifest structure drift, missing source lists,
    missing constraints, incomplete reports, and cross-file inconsistency all
@@ -448,7 +455,9 @@ Key summary:
 - Primary research framing: `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md`
 - Objective summary: `docs/research-objective-sr2fpga-tcad.md`
 - Failure-repair research issue log: `docs/research-issues-failure-repair-2026-06-24.md`
-- System-HIS v1.2 top-down prototype spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
+- System-HIS v1.2 FREEZE spec (approved, canonical): `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
+- System-HIS v1.2 FREEZE implementation plan (for codex): `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
+- System-HIS v1.2 top-down prototype spec (superseded by the freeze): `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
 - System-HIS v1.2 T4 example: `docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json`
 - Detailed handoff: `docs/sr2fpga-agent-handoff-2026-06-22.md`
 - Runner design: `docs/superpowers/specs/2026-06-23-sr2fpga-autonomous-trajectory-runner-design.md`
