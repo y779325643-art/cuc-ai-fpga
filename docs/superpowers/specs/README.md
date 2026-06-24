@@ -26,7 +26,15 @@ Use `../../current-status.md` for the current engineering state.
 - `2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
   - Prototype top-down System-HIS v1.2 schema trial: top IO, architectural
     state, components, instances, data flow, control flow, verification, and
-    implementation artifacts.
+    implementation artifacts. **Superseded by the freeze spec below.**
+
+- `2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
+  - **Current schema-governing spec.** Freezes `system-his-v1.2` as the single
+    canonical schema (migrate deterministic generator off v1.1, v1.2 checker
+    gains HIS↔RTL cross-checks, data_flow.timing, structured control_flow/FSM,
+    quarantine legacy/v1.1). Staged behind a ratification gate (structural core
+    vs provisional new fields). Implementation plan:
+    `../plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`.
 
 ## Research Framing
 

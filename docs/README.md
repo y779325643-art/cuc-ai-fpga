@@ -22,10 +22,11 @@ Read these first:
    - Short living status page for the current engineering state.
    - Use this before continuing code or dataset work.
 
-5. `research-issues-failure-repair-2026-06-24.md`
-   - Research-significant issues found during natural LLM failure and repair
-     runs; useful for paper motivation, benchmark design, ablations, and
-     threats to validity.
+5. `research-issues-failure-repair-2026-06-24.md` and
+   `research-issues-training-data-quality-2026-06-24.md`
+   - Research-significant issues found during natural LLM failure/repair runs and
+     a review of the training-data contract; useful for paper motivation,
+     benchmark design, ablations, and threats to validity.
 
 6. `sr2fpga-agent-handoff-2026-06-22.md`
    - Detailed handoff and historical run notes for the SR2FPGA data agent.
@@ -47,8 +48,17 @@ Read these first:
 - `research-issues-failure-repair-2026-06-24.md`
   - Living issue log for academically meaningful failure-repair observations.
 
+- `superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
+  - Current schema-governing spec: freezes `system-his-v1.2` as canonical, staged
+    behind a ratification gate. Plan: `superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`.
+
 - `superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
   - Prototype System-HIS v1.2 top-down architecture contract design.
+    **Superseded by the freeze spec above.**
+
+- `research-issues-training-data-quality-2026-06-24.md`
+  - Living issue log for training-data-contract quality (failure-label noise,
+    taxonomy drift, QoR signal validity) found while reviewing recorder/log_parser.
 
 ## Engineering Docs
 
