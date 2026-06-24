@@ -198,6 +198,39 @@ Implemented and under active review:
   now exactly `system-his-v1.2`; the retired `system-his-v1.2-topdown` suffix is
   rejected by the v1.2 checker and should be treated as historical prototype
   data.
+- System-HIS v1.2 freeze Task 3 is implemented: `data_flow[*].timing` remains
+  optional, but when present the checker now requires `latency_cycles` to be a
+  non-negative integer, `initiation_interval` to be a positive integer, and
+  optional `throughput` to be a non-empty string.
+- System-HIS v1.2 freeze Task 4 is implemented for structured control rules:
+  `state.fsms` now validates declared states plus `initial`/`reset_state`, and
+  structured `fsm_transition`/`enable_rule` entries validate guard operators,
+  declared guard signals, effect targets, and guard nesting depth <= 2. The
+  canonical T4 fixture now includes a structured FSM/guard example.
+- System-HIS v1.2 freeze Task 5 is implemented: the v1.2 checker now exposes
+  `check_system_his_v12_against_rtl(payload, project)`, which runs IR checks and
+  then cross-checks RTL module declarations, top/component port name, direction,
+  semantic width equivalence, top-level instance presence, data-flow endpoints,
+  manifest/source alignment, testbench top instantiation, SDC `get_ports`, and
+  FSM state-name presence where FSMs are declared.
+- System-HIS v1.2 freeze Task 6 is implemented: project-level
+  `check_project_l0(project)` now routes canonical `system-his-v1.2` projects
+  through the v1.2 HIS↔RTL cross-check instead of only the standalone IR checker.
+  This makes v1.2 L0 labels sensitive to cross-file consistency before Verilator
+  or simulation runs.
+- System-HIS v1.2 freeze Tasks 7a/7b are implemented: deterministic
+  `ProjectGenerator` now emits canonical `system-his-v1.2` for all supported
+  single-module, multi-module, and composed topology families. Deterministic
+  v1.2 output carries the required aspect sections and passes project-level L0.
+  Streaming/composed streaming families include `data_flow.timing` plus
+  `handshake_rule`/`stall_rule` control entries.
+- System-HIS v1.2 freeze Task 8 is implemented: the DeepSeek REQ2HIS prompt now
+  asks for canonical v1.2, optional `data_flow.timing`, structured
+  `control_flow` `when/effect` rules, guard grammar, and guard depth <= 2.
+- System-HIS v1.2 freeze Task 9 is implemented: runner metadata derives
+  `training_split` from `system_his_schema_version`; v1.2 samples are `clean`,
+  and legacy/v1.1 samples are `quarantine`. Recorder exports backfill this field
+  for older metadata at export time.
 - The first DeepSeek REQ2HIS entry point now exists in
   `LLM/src/sr2fpga_agent/deepseek.py`: `DeepSeekSystemHisGenerator`,
   `parse_system_his_v12`, and `_system_his_v12_messages`. This stage asks
@@ -271,8 +304,8 @@ Implemented and under active review:
   topology), and `composed_dual_stream_join` (T4 dual-skid-buffer stream join
   into accumulator and output stage), all with explicit `architecture.topology`
   nodes/edges and port-level System-HIS connections.
-- Deterministic System-HIS output declares `schema_version:
-  system-his-v1.1`.
+- Deterministic System-HIS output now declares `schema_version:
+  system-his-v1.2`.
 - Synthetic failure injector module:
   - `LLM/src/sr2fpga_agent/failure_injector.py`
   - `LLM/tests/test_sr2fpga_agent_failure_injector.py`
@@ -293,7 +326,7 @@ Fresh verification from the latest implementation pass:
 
 ```bash
 python3 -m unittest discover -s LLM/tests -q
-# Ran 175 tests - OK
+# Ran 190 tests - OK
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok
@@ -417,16 +450,24 @@ Key summary:
 
 ## Next Recommended Work
 
-0. **DO THIS FIRST — System-HIS v1.2 freeze (approved).** Implement the freeze
+0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).
    It makes `system-his-v1.2` canonical, migrates the deterministic generator off
    v1.1, gives the v1.2 checker HIS↔RTL cross-checks, adds `data_flow.timing` +
-   structured `control_flow`, and quarantines legacy/v1.1 data. Highest-collision
-   files: `project_generator.py`, `system_his_v12_checker.py`. Task 1
-   (`rtl_introspect.py` extraction) and Task 2 (canonical schema string rename
-   to `system-his-v1.2`) are complete and verified; next freeze step is Task 3,
-   validating the optional `data_flow.timing` contract.
+   structured `control_flow`, and quarantines legacy/v1.1 data. The code path is
+   implemented and unit-verified; next work is to run a fresh deterministic and
+   DeepSeek v1.2 smoke after this freeze before generating a larger clean split.
+0b. **OpenXC7 L4 tool-stage spike (approved; run on the Windows+WSL2 box).**
+   Plan `docs/superpowers/plans/2026-06-24-openxc7-l4-tool-stage-spike.md`
+   (spec: `docs/superpowers/specs/2026-06-24-openxc7-l4-tool-stage-spike-design.md`).
+   Adds OpenXC7 (Yosys synth_xilinx → nextpnr-xilinx → bitstream) as the L4 stage
+   of the tool pipeline for batch, license-free post-P&R labels (real LUT/FF/BRAM/
+   DSP + Fmax — closes the Finding-G vacuous-LUT issue). Independent of the v1.2
+   freeze and the highest-value physical-implementation de-risk. Critical gate:
+   XC7Z020 prjxray chipdb availability (Task 1). Batch L0–L4 runs on WSL2; L5 board
+   load is a manual one-off via Vivado. Note: Task 3 edits `agent.py` `_run_pipeline`
+   — coordinate with the v1.2 freeze's agent changes to avoid collision.
 1. Treat L0 project-package failures as first-class repair targets: missing or
    malformed `system_his.json`, manifest structure drift, missing source lists,
    missing constraints, incomplete reports, and cross-file inconsistency all
@@ -481,6 +522,8 @@ Key summary:
 - Training-data-quality issue log: `docs/research-issues-training-data-quality-2026-06-24.md`
 - System-HIS v1.2 FREEZE spec (approved, canonical): `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
 - System-HIS v1.2 FREEZE implementation plan (for codex): `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
+- OpenXC7 L4 tool-stage spike spec: `docs/superpowers/specs/2026-06-24-openxc7-l4-tool-stage-spike-design.md`
+- OpenXC7 L4 tool-stage spike plan (run on Windows+WSL2): `docs/superpowers/plans/2026-06-24-openxc7-l4-tool-stage-spike.md`
 - System-HIS v1.2 top-down prototype spec (superseded by the freeze): `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
 - System-HIS v1.2 T4 example: `docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json`
 - Detailed handoff: `docs/sr2fpga-agent-handoff-2026-06-22.md`
