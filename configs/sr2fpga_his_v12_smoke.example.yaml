@@ -1,0 +1,24 @@
+dataset_root: datasets/sr2fpga_rtl_v1
+export_root: datasets/sr2fpga_rtl_v1_exports
+run_root: tmp/sr2fpga_runs
+env_file: .env
+provider: deepseek-his-v12
+repair_provider: none
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: his_v12_smoke_v6
+line_b_targets:
+  l3_success_ratio: 0.0
+  repair_trajectory_ratio: 1.0
+  max_samples: 1
+tasks:
+  - source: deepseek-his-v12
+    task_type: component_topology
+    topology_ids:
+      - t4_dual_stream_join
+    widths: [8]
+    count: 1
+    difficulty_tier: T4
+    failure_origin: natural_llm
+    measurement_point: a_first_attempt_no_tools
+    requirement_style: simple_prompt

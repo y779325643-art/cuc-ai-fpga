@@ -3,16 +3,32 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
-from dataclasses import asdict, dataclass
+import os
+import shutil
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
+from LLM.src.sr2fpga_agent.baseline_report import baseline_rows, render_markdown
 from LLM.src.sr2fpga_agent.cli import build_project_generator, build_repairer
+from LLM.src.sr2fpga_agent.deepseek import DeepSeekClient, DeepSeekConfig
+from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
+
+
+VALID_MEASUREMENT_POINTS = {
+    "a_first_attempt_no_tools",
+    "b_tool_in_loop_repair",
+    "c_finetuned_first_attempt_no_tools",
+}
+
+VALID_REQUIREMENT_STYLES = {"contract", "natural_component", "simple_prompt"}
 
 
 @dataclass(frozen=True)
@@ -21,6 +37,12 @@ class TaskConfig:
     task_type: str
     widths: list[int]
     count: int
+    failure_injectors: list[str] = field(default_factory=list)
+    difficulty_tier: str = "T1"
+    failure_origin: str = ""
+    topology_ids: list[str] = field(default_factory=list)
+    measurement_point: str = ""
+    requirement_style: str = "contract"
 
 
 @dataclass(frozen=True)
@@ -38,6 +60,8 @@ class RunnerConfig:
     base_url: str = "https://api.deepseek.com"
     api_key_env: str = "DEEPSEEK_API_KEY"
     platform: str = "generic_verilog"
+    env_file: Path = Path("")
+    sample_id_prefix: str = "runner"
 
 
 @dataclass(frozen=True)
@@ -48,6 +72,28 @@ class PlannedSample:
     width: int
     project_name: str
     requirement: str
+    failure_injectors: list[str] = field(default_factory=list)
+    difficulty_tier: str = "T1"
+    failure_origin: str = ""
+    topology_id: str = ""
+    measurement_point: str = ""
+    requirement_style: str = "contract"
+
+    def metadata(self, config: RunnerConfig) -> dict[str, Any]:
+        return {
+            "source": self.source,
+            "generator_provider": self.source,
+            "failure_origin": _sample_failure_origin(self),
+            "difficulty_tier": self.difficulty_tier,
+            "measurement_point": self.measurement_point or _measurement_point(config),
+            "repair_provider": config.repair_provider,
+            "failure_injectors": list(self.failure_injectors),
+            "task_type": self.task_type,
+            "width": self.width,
+            "system_his_schema_version": _sample_system_his_schema_version(self),
+            "topology_id": self.topology_id,
+            "requirement_style": self.requirement_style,
+        }
 
 
 @dataclass(frozen=True)
@@ -58,6 +104,7 @@ class RunState:
     buckets: dict[str, list[str]]
     failure_types: dict[str, int]
     exports_refreshed: bool
+    config_fingerprint: str = ""
 
 
 def load_runner_config(path: Path) -> RunnerConfig:
@@ -76,6 +123,8 @@ def load_runner_config(path: Path) -> RunnerConfig:
         base_url=str(raw.get("base_url", "https://api.deepseek.com")),
         api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
         platform=str(raw.get("platform", "generic_verilog")),
+        env_file=Path(str(raw.get("env_file", ""))),
+        sample_id_prefix=str(raw.get("sample_id_prefix", "runner")),
     )
 
 
@@ -84,9 +133,21 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--run-id", default="")
     parser.add_argument("--no-resume", action="store_true")
+    parser.add_argument("--preflight", action="store_true", help="Check runner readiness without generating samples")
+    parser.add_argument(
+        "--validate-provider",
+        action="store_true",
+        help="During preflight, make a minimal provider auth request without generating samples",
+    )
     args = parser.parse_args(argv)
 
     config = load_runner_config(args.config)
+    if args.preflight:
+        report = runner_preflight(config, run_id=args.run_id or None, validate_provider=args.validate_provider)
+        print(json.dumps(report, ensure_ascii=False, indent=2))
+        if not report["ok"]:
+            raise SystemExit(1)
+        return
     summary = run_batch(config, run_id=args.run_id or None, resume=not args.no_resume)
     print(f"run_id={summary['run_id']}")
     print(f"total_completed={summary['total_completed']}")
@@ -95,29 +156,96 @@ def main(argv: list[str] | None = None) -> None:
     print(f"rejected={len(summary['buckets'].get('rejected', []))}")
 
 
+def runner_preflight(
+    config: RunnerConfig,
+    run_id: str | None = None,
+    validate_provider: bool = False,
+) -> dict[str, Any]:
+    """Check whether a runner config is ready to launch without creating samples."""
+    loaded_env_keys = _load_env_file(config.env_file)
+    samples = planned_samples(config)
+    run_dir = config.run_root / run_id if run_id else None
+    required_tools = ("verilator", "iverilog", "vvp", "yosys")
+    tools = {tool: ("found" if shutil.which(tool) else "missing") for tool in required_tools}
+    errors: list[str] = []
+    warnings: list[str] = []
+
+    providers = {config.provider, config.repair_provider}
+    providers.update(sample.source for sample in samples)
+    if _uses_deepseek_provider(providers) and not os.environ.get(config.api_key_env):
+        errors.append(f"{config.api_key_env} is not set")
+
+    missing_tools = [tool for tool, status in tools.items() if status == "missing"]
+    if missing_tools:
+        warnings.append("missing HDL tools: " + ", ".join(missing_tools))
+
+    if run_dir is not None and run_dir.exists():
+        warnings.append("run directory already exists: " + str(run_dir))
+
+    if not samples:
+        errors.append("no planned samples")
+    provider_auth = _provider_auth_diagnostics(config, providers, validate_provider)
+    if validate_provider:
+        for provider, auth in provider_auth.items():
+            if auth.get("status") == "failed":
+                errors.append(f"{_provider_display_name(provider)} provider auth failed")
+
+    return {
+        "ok": not errors,
+        "errors": errors,
+        "warnings": warnings,
+        "planned_samples": len(samples),
+        "samples": [_preflight_sample_preview(sample, config) for sample in samples],
+        "run_dir": str(run_dir) if run_dir is not None else "",
+        "tools": tools,
+        "providers": sorted(provider for provider in providers if provider),
+        "env_file": _env_file_label(config.env_file),
+        "api_keys": _api_key_diagnostics(config, loaded_env_keys),
+        "provider_auth": provider_auth,
+    }
+
+
+def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> dict[str, Any]:
+    metadata = sample.metadata(config)
+    return {
+        "sample_id": sample.sample_id,
+        "source": sample.source,
+        "task_type": sample.task_type,
+        "width": sample.width,
+        "requirement_style": str(metadata["requirement_style"]),
+        "requirement": sample.requirement,
+        "difficulty_tier": str(metadata["difficulty_tier"]),
+        "topology_id": str(metadata["topology_id"]),
+        "failure_origin": str(metadata["failure_origin"]),
+        "measurement_point": str(metadata["measurement_point"]),
+    }
+
+
 def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = True) -> dict[str, Any]:
+    _load_env_file(config.env_file)
     if run_id is None:
         run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     run_dir = config.run_root / run_id
     state_path = run_dir / "run_state.json"
     events_path = run_dir / "events.jsonl"
     summary_path = run_dir / "summary.json"
+    config_fingerprint = _config_fingerprint(config)
     run_dir.mkdir(parents=True, exist_ok=True)
     _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
     if resume and state_path.exists():
         state = read_run_state(state_path)
+        if state.config_fingerprint and state.config_fingerprint != config_fingerprint:
+            raise SystemExit(
+                f"Run config fingerprint mismatch for {run_id}: "
+                f"existing {state.config_fingerprint}, current {config_fingerprint}"
+            )
     else:
-        state = initial_run_state(run_id)
+        state = initial_run_state(run_id, config_fingerprint=config_fingerprint)
         write_run_state(state_path, state)
 
     samples = planned_samples(config)
-    project_generator = build_project_generator(
-        provider=config.provider,
-        model=config.model,
-        base_url=config.base_url,
-        api_key_env=config.api_key_env,
-    )
+    project_generators: dict[str, object | None] = {}
     repairer = build_repairer(
         provider=config.repair_provider,
         model=config.model,
@@ -134,9 +262,10 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             write_run_state(state_path, state)
             continue
 
+        sample_project_generator = _project_generator_for_sample(project_generators, config, sample, events_path)
         agent = DataGenerationAgent(
             config.dataset_root,
-            project_generator=project_generator,
+            project_generator=sample_project_generator,
             repairer=repairer,
             max_attempts=config.max_attempts,
         )
@@ -150,6 +279,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 description=sample.requirement,
             ),
             platform=PlatformProfile(name=config.platform, vendor="generic", toolchain="open_source"),
+            metadata=sample.metadata(config),
         )
         labels = _read_labels(config.dataset_root / sample.sample_id)
         bucket = classify_sample_bucket(labels)
@@ -159,6 +289,9 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             {
                 "event": "sample_completed",
                 "sample_id": sample.sample_id,
+                "source": sample.source,
+                "failure_origin": _sample_failure_origin(sample),
+                "difficulty_tier": sample.difficulty_tier,
                 "task_type": sample.task_type,
                 "width": sample.width,
                 "pass_level": result["pass_level"],
@@ -176,15 +309,20 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             buckets=state.buckets,
             failure_types=state.failure_types,
             exports_refreshed=True,
+            config_fingerprint=state.config_fingerprint,
         )
         write_run_state(state_path, state)
 
     summary = _summary(config, state)
     _write_json(summary_path, summary)
+    (run_dir / "baseline_report.md").write_text(
+        render_markdown(str(summary["run_id"]), baseline_rows(summary)),
+        encoding="utf-8",
+    )
     return summary
 
 
-def initial_run_state(run_id: str) -> RunState:
+def initial_run_state(run_id: str, config_fingerprint: str = "") -> RunState:
     return RunState(
         run_id=run_id,
         next_index=0,
@@ -192,6 +330,7 @@ def initial_run_state(run_id: str) -> RunState:
         buckets={"success_l3": [], "repair_trajectory": [], "rejected": []},
         failure_types={},
         exports_refreshed=False,
+        config_fingerprint=config_fingerprint,
     )
 
 
@@ -204,6 +343,7 @@ def read_run_state(path: Path) -> RunState:
         buckets={str(key): [str(item) for item in value] for key, value in data.get("buckets", {}).items()},
         failure_types={str(key): int(value) for key, value in data.get("failure_types", {}).items()},
         exports_refreshed=bool(data.get("exports_refreshed", False)),
+        config_fingerprint=str(data.get("config_fingerprint", "")),
     )
 
 
@@ -229,7 +369,117 @@ def _config_to_jsonable(config: RunnerConfig) -> dict[str, Any]:
     payload["dataset_root"] = str(config.dataset_root)
     payload["export_root"] = str(config.export_root)
     payload["run_root"] = str(config.run_root)
+    payload["env_file"] = _env_file_label(config.env_file)
     return payload
+
+
+def _config_fingerprint(config: RunnerConfig) -> str:
+    payload = json.dumps(_config_to_jsonable(config), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _load_env_file(path: Path) -> set[str]:
+    loaded: set[str] = set()
+    if path == Path("") or not path.is_file():
+        return loaded
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, value = stripped.split("=", 1)
+        key = key.strip()
+        if not key or key in os.environ:
+            continue
+        os.environ[key] = _strip_env_value(value.strip())
+        loaded.add(key)
+    return loaded
+
+
+def _strip_env_value(value: str) -> str:
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+        return value[1:-1]
+    return value
+
+
+def _env_file_label(path: Path) -> str:
+    return "" if path == Path("") else str(path)
+
+
+def _api_key_diagnostics(config: RunnerConfig, loaded_env_keys: set[str]) -> dict[str, dict[str, object]]:
+    value = os.environ.get(config.api_key_env, "")
+    source = ""
+    if value:
+        source = _env_file_label(config.env_file) if config.api_key_env in loaded_env_keys else "environment"
+    return {
+        config.api_key_env: {
+            "present": bool(value),
+            "source": source,
+            "fingerprint": _secret_fingerprint(value) if value else "",
+        }
+    }
+
+
+def _secret_fingerprint(value: str) -> str:
+    return hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
+
+
+def _provider_auth_diagnostics(
+    config: RunnerConfig,
+    providers: set[str],
+    validate_provider: bool,
+) -> dict[str, dict[str, str]]:
+    diagnostics: dict[str, dict[str, str]] = {}
+    if not _uses_deepseek_provider(providers):
+        return diagnostics
+    if not validate_provider:
+        diagnostics["deepseek"] = {"status": "not_checked", "detail": ""}
+        return diagnostics
+
+    api_key = os.environ.get(config.api_key_env, "")
+    if not api_key:
+        diagnostics["deepseek"] = {"status": "skipped", "detail": f"{config.api_key_env} is not set"}
+        return diagnostics
+
+    client = DeepSeekClient(
+        DeepSeekConfig(
+            api_key=api_key,
+            model=config.model,
+            base_url=config.base_url,
+            timeout_seconds=20,
+        )
+    )
+    try:
+        client.chat(
+            [
+                {"role": "system", "content": "Return a tiny JSON object for authentication preflight."},
+                {"role": "user", "content": "Return {\"ok\": true}."},
+            ]
+        )
+    except RuntimeError as exc:
+        diagnostics["deepseek"] = {"status": "failed", "detail": _sanitize_secret(str(exc), api_key)}
+        return diagnostics
+    diagnostics["deepseek"] = {"status": "ok", "detail": ""}
+    return diagnostics
+
+
+def _provider_display_name(provider: str) -> str:
+    if _is_deepseek_provider(provider):
+        return "DeepSeek"
+    return provider
+
+
+def _uses_deepseek_provider(providers: set[str]) -> bool:
+    return any(_is_deepseek_provider(provider) for provider in providers)
+
+
+def _is_deepseek_provider(provider: str) -> bool:
+    return provider == "deepseek" or provider.startswith("deepseek-")
+
+
+def _sanitize_secret(text: str, secret: str) -> str:
+    if not secret:
+        return text
+    return text.replace(secret, "<redacted>")
 
 
 def _record_completed(
@@ -259,6 +509,7 @@ def _record_completed(
         buckets=buckets,
         failure_types=failure_types,
         exports_refreshed=state.exports_refreshed,
+        config_fingerprint=state.config_fingerprint,
     )
 
 
@@ -282,6 +533,7 @@ def _record_rejected(state: RunState, sample_id: str, next_index: int, failure_t
         buckets=buckets,
         failure_types=failure_types,
         exports_refreshed=state.exports_refreshed,
+        config_fingerprint=state.config_fingerprint,
     )
 
 
@@ -301,17 +553,155 @@ def _sample_failure_types(sample_dir: Path) -> dict[str, int]:
     return counts
 
 
+def _failure_family(failure_type: str, stage: str = "") -> str:
+    if failure_type == "l0_contract_violation":
+        return "artifact_contract_failure"
+    if stage in {"rtl_identifier_check", "lint", "sim_compile"}:
+        return "rtl_compile_failure"
+    if stage == "sim_run":
+        return "rtl_sim_failure"
+    if stage == "synth":
+        return "synth_failure"
+    if failure_type in {"syntax_error", "module_not_found", "port_mismatch", "width_mismatch"}:
+        return "rtl_compile_failure"
+    if failure_type == "sample_exists":
+        return "sample_rejection"
+    return "unknown_failure"
+
+
+def _sample_failure_families(sample_dir: Path) -> set[str]:
+    families: set[str] = set()
+    attempts_dir = sample_dir / "attempts"
+    if not attempts_dir.exists():
+        return families
+    for diagnosis_path in sorted(attempts_dir.glob("attempt_*/diagnosis.json")):
+        diagnosis = json.loads(diagnosis_path.read_text(encoding="utf-8"))
+        families.add(
+            _failure_family(
+                str(diagnosis.get("failure_type", "unknown")),
+                str(diagnosis.get("stage", "")),
+            )
+        )
+    return families
+
+
 def _summary(config: RunnerConfig, state: RunState) -> dict[str, Any]:
+    calibration = _calibration_breakdown(config.dataset_root, state.completed_samples)
     return {
         "run_id": state.run_id,
+        "config_fingerprint": state.config_fingerprint,
         "total_planned": len(planned_samples(config)),
         "total_completed": len(state.completed_samples),
         "next_index": state.next_index,
         "buckets": state.buckets,
         "failure_types": state.failure_types,
+        "failure_family_breakdown": calibration["failure_family_breakdown"],
+        "metadata_breakdown": calibration["metadata_breakdown"],
+        "pass_level_breakdown": calibration["pass_level_breakdown"],
+        "calibration_matrix": calibration["calibration_matrix"],
+        "contract_metrics": calibration["contract_metrics"],
         "exports_refreshed": state.exports_refreshed,
         "line_b_targets": config.line_b_targets,
     }
+
+
+def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[str, dict[str, dict[str, int]]]:
+    metadata_fields = (
+        "source",
+        "failure_origin",
+        "requirement_style",
+        "difficulty_tier",
+        "topology_id",
+        "measurement_point",
+    )
+    metadata_breakdown: dict[str, dict[str, int]] = {field: {} for field in metadata_fields}
+    failure_family_breakdown: dict[str, int] = {}
+    pass_level_breakdown: dict[str, int] = {}
+    calibration_counts: dict[str, dict[str, dict[str, Any]]] = {
+        field: {} for field in (*metadata_fields, "failure_family")
+    }
+    total_labeled = 0
+    l0_contract_failures = 0
+    for sample_id in sample_ids:
+        sample_dir = dataset_root / sample_id
+        labels_path = sample_dir / "eval" / "labels.json"
+        if not labels_path.exists():
+            continue
+        labels = json.loads(labels_path.read_text(encoding="utf-8"))
+        total_labeled += 1
+        l0_contract_failed = labels.get("checks", {}).get("l0_complete") is False
+        if l0_contract_failed:
+            l0_contract_failures += 1
+        pass_level = str(labels.get("pass_level", "unknown"))
+        pass_level_breakdown[pass_level] = pass_level_breakdown.get(pass_level, 0) + 1
+        metadata = _read_sample_metadata(sample_dir)
+        for field in metadata_fields:
+            value = str(metadata.get(field, "")).strip()
+            if not value:
+                continue
+            metadata_breakdown[field][value] = metadata_breakdown[field].get(value, 0) + 1
+            _record_calibration_cell(calibration_counts[field], value, pass_level, l0_contract_failed)
+        for failure_family in sorted(_sample_failure_families(sample_dir)):
+            failure_family_breakdown[failure_family] = failure_family_breakdown.get(failure_family, 0) + 1
+            _record_calibration_cell(
+                calibration_counts["failure_family"],
+                failure_family,
+                pass_level,
+                l0_contract_failed,
+            )
+    return {
+        "metadata_breakdown": metadata_breakdown,
+        "failure_family_breakdown": failure_family_breakdown,
+        "pass_level_breakdown": pass_level_breakdown,
+        "calibration_matrix": _calibration_rates(calibration_counts),
+        "contract_metrics": {
+            "total_labeled": total_labeled,
+            "l0_contract_failures": l0_contract_failures,
+            "cross_file_consistency_error_rate": (
+                0.0 if total_labeled == 0 else l0_contract_failures / total_labeled
+            ),
+        },
+    }
+
+
+def _record_calibration_cell(
+    cells: dict[str, dict[str, Any]],
+    value: str,
+    pass_level: str,
+    l0_contract_failed: bool,
+) -> None:
+    cell = cells.setdefault(value, {"total": 0, "pass_levels": {}, "l0_contract_failures": 0})
+    cell["total"] += 1
+    cell["pass_levels"][pass_level] = cell["pass_levels"].get(pass_level, 0) + 1
+    if l0_contract_failed:
+        cell["l0_contract_failures"] += 1
+
+
+def _calibration_rates(counts: dict[str, dict[str, dict[str, Any]]]) -> dict[str, dict[str, dict[str, Any]]]:
+    matrix: dict[str, dict[str, dict[str, Any]]] = {}
+    for field, cells in counts.items():
+        matrix[field] = {}
+        for value, cell in cells.items():
+            total = int(cell["total"])
+            l3_count = int(cell["pass_levels"].get("L3", 0))
+            l0_contract_failures = int(cell.get("l0_contract_failures", 0))
+            matrix[field][value] = {
+                "total": total,
+                "pass_levels": cell["pass_levels"],
+                "l3_pass_rate": 0.0 if total == 0 else l3_count / total,
+                "l0_contract_failures": l0_contract_failures,
+                "cross_file_consistency_error_rate": (
+                    0.0 if total == 0 else l0_contract_failures / total
+                ),
+            }
+    return matrix
+
+
+def _read_sample_metadata(sample_dir: Path) -> dict[str, Any]:
+    path = sample_dir / "metadata.json"
+    if not path.exists():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 def _write_json(path: Path, payload: dict[str, Any]) -> None:
@@ -342,11 +732,25 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     count = int(item.get("count", 1))
     if count > 0 and not widths:
         raise SystemExit("Task widths must not be empty when count is positive")
+    measurement_point = str(item.get("measurement_point", ""))
+    if measurement_point and measurement_point not in VALID_MEASUREMENT_POINTS:
+        allowed = ", ".join(sorted(VALID_MEASUREMENT_POINTS))
+        raise SystemExit(f"Unsupported measurement_point: {measurement_point}. Expected one of: {allowed}")
+    requirement_style = str(item.get("requirement_style", "contract"))
+    if requirement_style not in VALID_REQUIREMENT_STYLES:
+        allowed = ", ".join(sorted(VALID_REQUIREMENT_STYLES))
+        raise SystemExit(f"Unsupported requirement_style: {requirement_style}. Expected one of: {allowed}")
     return TaskConfig(
         source=str(item.get("source", raw.get("provider", "deterministic"))),
         task_type=str(item["task_type"]),
         widths=widths,
         count=count,
+        failure_injectors=[str(injector) for injector in item.get("failure_injectors", [])],
+        difficulty_tier=str(item.get("difficulty_tier", "T1")),
+        failure_origin=str(item.get("failure_origin", "")),
+        topology_ids=[str(topology_id) for topology_id in item.get("topology_ids", [])],
+        measurement_point=measurement_point,
+        requirement_style=requirement_style,
     )
 
 
@@ -373,19 +777,31 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
             raise SystemExit("Task widths must not be empty when count is positive")
         produced = 0
         while produced < task.count:
-            for width in task.widths:
+            for topology_id, task_type, difficulty_tier, width in _task_expansion_items(task):
                 if produced >= task.count:
                     break
-                sample_id = f"sample_runner_{task.task_type}_{width}_{sequence:06d}"
-                project_name = f"runner_{task.task_type}_{width}_{sequence:06d}"
+                sample_key = topology_id or task_type
+                sample_id = f"sample_{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
+                project_name = f"{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
                 samples.append(
                     PlannedSample(
                         sample_id=sample_id,
                         source=task.source,
-                        task_type=task.task_type,
+                        task_type=task_type,
                         width=width,
                         project_name=project_name,
-                        requirement=_default_requirement(task.task_type, width),
+                        requirement=_default_requirement(
+                            task_type,
+                            width,
+                            topology_id=topology_id,
+                            requirement_style=task.requirement_style,
+                        ),
+                        failure_injectors=list(task.failure_injectors),
+                        difficulty_tier=difficulty_tier,
+                        failure_origin=task.failure_origin,
+                        topology_id=topology_id,
+                        measurement_point=task.measurement_point,
+                        requirement_style=task.requirement_style,
                     )
                 )
                 sequence += 1
@@ -394,14 +810,202 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
     return samples[:max_samples]
 
 
-def _default_requirement(task_type: str, width: int) -> str:
+def _task_expansion_items(task: TaskConfig) -> list[tuple[str, str, str, int]]:
+    if task.task_type != "component_topology":
+        return [("", task.task_type, task.difficulty_tier, width) for width in task.widths]
+    topology_ids = task.topology_ids or sorted(_topology_id_to_task_type())
+    items: list[tuple[str, str, str, int]] = []
+    topology_lookup = _topology_id_to_task_type()
+    for topology_id in topology_ids:
+        if topology_id not in topology_lookup:
+            raise SystemExit(f"Unsupported topology_id: {topology_id}")
+        task_type = topology_lookup[topology_id]
+        difficulty_tier = str(COMPONENT_TOPOLOGIES[task_type]["difficulty_tier"])
+        for width in task.widths:
+            items.append((topology_id, task_type, difficulty_tier, width))
+    return items
+
+
+def _topology_id_to_task_type() -> dict[str, str]:
+    return {str(spec["topology_id"]): task_type for task_type, spec in COMPONENT_TOPOLOGIES.items()}
+
+
+def _default_requirement(
+    task_type: str,
+    width: int,
+    topology_id: str = "",
+    requirement_style: str = "contract",
+) -> str:
+    if requirement_style == "simple_prompt":
+        return _simple_prompt_requirement(task_type, width)
+    if requirement_style == "natural_component" and topology_id:
+        return _natural_component_requirement(task_type, width, topology_id)
     return (
         f"Design a {width}-bit {task_type} as a complete SR2FPGA Verilog RTL project. "
         "Use multi-file RTL for FIFO, SPI, UART, PWM, and controller-style tasks; "
         "include system_his.json, manifest.json, "
         "timing constraints, a bounded self-checking testbench that prints TEST_PASS on success "
-        "or TEST_FAIL on failure, and predicted QoR."
+        f"or TEST_FAIL on failure, and predicted QoR.{_topology_requirement_clause(task_type, topology_id)}"
     )
+
+
+def _simple_prompt_requirement(task_type: str, width: int) -> str:
+    prompts = {
+        "composed_event_counter": (
+            f"Generate an {width}-bit FPGA RTL project that counts incoming event pulses."
+        ),
+        "composed_stream_accumulator": (
+            f"Generate an {width}-bit FPGA RTL project that accepts a valid-ready input stream and accumulates samples."
+        ),
+        "composed_stream_fork": (
+            f"Generate an {width}-bit FPGA RTL project that duplicates one valid-ready input stream to two output streams."
+        ),
+        "composed_dual_stream_join": (
+            f"Generate an {width}-bit FPGA RTL project that joins two input streams, accumulates joined samples, "
+            "and exposes one output stream."
+        ),
+    }
+    return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
+
+
+def _natural_component_requirement(task_type: str, width: int, topology_id: str) -> str:
+    topology = COMPONENT_TOPOLOGIES[task_type]
+    title = _natural_component_title(task_type)
+    components = _natural_component_summary(task_type)
+    behavior = _topology_expected_behavior(task_type)
+    edges = "; ".join(f"{edge['from']} -> {edge['to']}" for edge in topology["edges"])
+    return (
+        f"Build an {width}-bit {title} as a complete SR2FPGA Verilog RTL project. "
+        f"This is component topology {topology_id}, difficulty tier {topology['difficulty_tier']}. "
+        f"Use {components}. The design must implement this black-box behavior: {behavior}. "
+        "Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. "
+        f"Preserve these interface contracts: {edges}. "
+        "Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded "
+        "self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+    )
+
+
+def _natural_component_title(task_type: str) -> str:
+    titles = {
+        "composed_event_counter": "event-counting subsystem",
+        "composed_stream_accumulator": "streaming accumulator datapath",
+        "composed_stream_fork": "valid-ready stream fork datapath",
+        "composed_dual_stream_join": "dual-stream join datapath",
+    }
+    return titles[task_type]
+
+
+def _natural_component_summary(task_type: str) -> str:
+    summaries = {
+        "composed_event_counter": "an event_gate in front of a counter_core",
+        "composed_stream_accumulator": "a skid_buffer feeding an accumulator_core",
+        "composed_stream_fork": "a skid_buffer feeding a stream_fork and two stream_stage outputs",
+        "composed_dual_stream_join": (
+            "two skid_buffer instances feeding stream_join, then accumulator_core, then stream_stage"
+        ),
+    }
+    return summaries[task_type]
+
+
+def _topology_requirement_clause(task_type: str, topology_id: str) -> str:
+    if not topology_id:
+        return ""
+    topology = COMPONENT_TOPOLOGIES[task_type]
+    nodes = ", ".join(f"{node['id']}:{node['component']}" for node in topology["nodes"])
+    edges = "; ".join(f"{edge['from']} -> {edge['to']}" for edge in topology["edges"])
+    behavior = _topology_expected_behavior(task_type)
+    return (
+        f" Use component topology {topology_id} at difficulty tier {topology['difficulty_tier']}. "
+        f"Instantiate nodes {nodes}. Wire required edges: {edges}. "
+        f"Expected behavior: {behavior}. "
+        "Keep rtl/top.v as the integration wrapper and keep submodules in separate RTL files."
+    )
+
+
+def _topology_expected_behavior(task_type: str) -> str:
+    behaviors = {
+        "composed_event_counter": "event_valid pulses pass through an event gate and increment the counter core",
+        "composed_stream_accumulator": (
+            "valid input samples pass through a skid buffer and accumulate into the running sum"
+        ),
+        "composed_stream_fork": (
+            "valid input samples pass through a skid buffer and are duplicated to two output stages"
+        ),
+        "composed_dual_stream_join": (
+            "two valid-ready input streams are buffered, synchronized, joined, accumulated, and staged"
+        ),
+    }
+    return behaviors[task_type]
+
+
+def _sample_failure_origin(sample: PlannedSample) -> str:
+    if sample.failure_origin:
+        return sample.failure_origin
+    if sample.failure_injectors:
+        return "synthetic_injected"
+    if _is_deepseek_provider(sample.source):
+        return "natural_llm"
+    if sample.source == "deterministic":
+        return "deterministic_template"
+    return sample.source
+
+
+def _sample_system_his_schema_version(sample: PlannedSample) -> str:
+    if sample.source == "deepseek-his-v12":
+        return "system-his-v1.2-topdown"
+    return "system-his-v1.1"
+
+
+def _measurement_point(config: RunnerConfig) -> str:
+    if config.repair_provider != "none" and config.max_attempts > 1:
+        return "b_tool_in_loop_repair"
+    return "a_first_attempt_no_tools"
+
+
+def _project_generator_for_sample(
+    project_generators: dict[str, object | None],
+    config: RunnerConfig,
+    sample: PlannedSample,
+    events_path: Path,
+) -> object | None:
+    cache_key = sample.source
+    if sample.source == "deepseek-his-v12":
+        cache_key = f"{sample.source}:{sample.sample_id}"
+    if cache_key not in project_generators:
+        kwargs: dict[str, Any] = {}
+        if sample.source == "deepseek-his-v12":
+            kwargs["event_sink"] = _generation_event_sink(events_path, sample)
+        project_generators[cache_key] = build_project_generator(
+            provider=sample.source,
+            model=config.model,
+            base_url=config.base_url,
+            api_key_env=config.api_key_env,
+            **kwargs,
+        )
+    project_generator = project_generators[cache_key]
+    if not sample.failure_injectors:
+        return project_generator
+    base_generator = project_generator or ProjectGenerator()
+    return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
+
+
+def _generation_event_sink(events_path: Path, sample: PlannedSample):
+    def emit(payload: dict[str, Any]) -> None:
+        _append_event(
+            events_path,
+            {
+                **payload,
+                "sample_id": sample.sample_id,
+                "source": sample.source,
+                "failure_origin": _sample_failure_origin(sample),
+                "difficulty_tier": sample.difficulty_tier,
+                "topology_id": sample.topology_id,
+                "requirement_style": sample.requirement_style,
+                "measurement_point": sample.measurement_point,
+            },
+        )
+
+    return emit
 
 
 if __name__ == "__main__":
