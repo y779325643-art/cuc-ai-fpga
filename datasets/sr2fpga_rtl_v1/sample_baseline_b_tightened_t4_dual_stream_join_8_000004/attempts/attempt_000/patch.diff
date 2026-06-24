@@ -1,0 +1,226 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -1,8 +1,200 @@
+ {
++  "schema_version": "system-his-v1.1",
+   "project_name": "baseline_b_tightened_t4_dual_stream_join_8_000004",
+-  "task_type": "composed_dual_stream_join",
+-  "width": 8,
+-  "description": "8-bit dual-stream join datapath with skid buffers, stream join, accumulator, and pipeline stage.",
++  "project": {
++    "name": "baseline_b_tightened_t4_dual_stream_join_8_000004",
++    "description": "8-bit dual-stream join datapath with skid buffers, stream join, accumulator, and pipeline stage.",
++    "top": "top"
++  },
++  "clocks": [
++    {
++      "name": "clk",
++      "target_fmax_mhz": 100
++    }
++  ],
++  "resets": [
++    {
++      "name": "rst_n",
++      "polarity": "active_low",
++      "kind": "async"
++    }
++  ],
++  "system": {
++    "description": "8-bit dual-stream join datapath with skid buffers, stream join, accumulator, and pipeline stage."
++  },
++  "interface": {
++    "top_module": "top",
++    "ports": [
++      {"name": "clk", "direction": "input", "width": 1, "type": "wire"},
++      {"name": "rst_n", "direction": "input", "width": 1, "type": "wire"},
++      {"name": "in0_valid", "direction": "input", "width": 1, "type": "wire"},
++      {"name": "in0_data", "direction": "input", "width": 8, "type": "wire"},
++      {"name": "in1_valid", "direction": "input", "width": 1, "type": "wire"},
++      {"name": "in1_data", "direction": "input", "width": 8, "type": "wire"},
++      {"name": "in0_ready", "direction": "output", "width": 1, "type": "wire"},
++      {"name": "in1_ready", "direction": "output", "width": 1, "type": "wire"},
++      {"name": "out_valid", "direction": "output", "width": 1, "type": "wire"},
++      {"name": "out_data", "direction": "output", "width": 16, "type": "wire"}
++    ]
++  },
++  "architecture": {
++    "top_module": "top",
++    "topology": {
++      "nodes": ["top", "sb0", "sb1", "join", "acc", "stg"],
++      "edges": []
++    }
++  },
++  "modules": [
++    {
++      "name": "top",
++      "role": "top",
++      "source": "rtl/top.v",
++      "ports": [
++        {"name": "clk", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "rst_n", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in0_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in0_data", "direction": "input", "width": 8, "type": "wire"},
++        {"name": "in1_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in1_data", "direction": "input", "width": 8, "type": "wire"},
++        {"name": "in0_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "in1_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_valid", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_data", "direction": "output", "width": 16, "type": "wire"}
++      ],
++      "parameters": {},
++      "params": [],
++      "clock": "clk",
++      "reset": "rst_n",
++      "intent": "integrates submodules and exposes the top interface"
++    },
++    {
++      "name": "sb0",
++      "role": "submodule",
++      "source": "rtl/skid_buffer.v",
++      "ports": [
++        {"name": "in_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in_data", "direction": "input", "width": 8, "type": "wire"},
++        {"name": "in_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_valid", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_data", "direction": "output", "width": 8, "type": "wire"},
++        {"name": "out_ready", "direction": "input", "width": 1, "type": "wire"}
++      ],
++      "parameters": {"DATA_WIDTH": 8},
++      "params": [{"name": "DATA_WIDTH", "value": 8}],
++      "clock": "clk",
++      "reset": "rst_n",
++      "intent": "buffers input stream"
++    },
++    {
++      "name": "sb1",
++      "role": "submodule",
++      "source": "rtl/skid_buffer.v",
++      "ports": [
++        {"name": "in_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in_data", "direction": "input", "width": 8, "type": "wire"},
++        {"name": "in_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_valid", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_data", "direction": "output", "width": 8, "type": "wire"},
++        {"name": "out_ready", "direction": "input", "width": 1, "type": "wire"}
++      ],
++      "parameters": {"DATA_WIDTH": 8},
++      "params": [{"name": "DATA_WIDTH", "value": 8}],
++      "clock": "clk",
++      "reset": "rst_n",
++      "intent": "buffers input stream"
++    },
++    {
++      "name": "join",
++      "role": "submodule",
++      "source": "rtl/stream_join.v",
++      "ports": [
++        {"name": "in0_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in0_data", "direction": "input", "width": 8, "type": "wire"},
++        {"name": "in0_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "in1_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in1_data", "direction": "input", "width": 8, "type": "wire"},
++        {"name": "in1_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_valid", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_data", "direction": "output", "width": 16, "type": "wire"},
++        {"name": "out_ready", "direction": "input", "width": 1, "type": "wire"}
++      ],
++      "parameters": {"DATA_WIDTH": 8},
++      "params": [{"name": "DATA_WIDTH", "value": 8}],
++      "clock": "clk",
++      "reset": "rst_n",
++      "intent": "joins two streams into one"
++    },
++    {
++      "name": "acc",
++      "role": "submodule",
++      "source": "rtl/accumulator_core.v",
++      "ports": [
++        {"name": "sample_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "sample", "direction": "input", "width": 16, "type": "wire"},
++        {"name": "sample_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "sum_valid", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "sum", "direction": "output", "width": 16, "type": "wire"},
++        {"name": "sum_ready", "direction": "input", "width": 1, "type": "wire"}
++      ],
++      "parameters": {"DATA_WIDTH": 8, "SUM_WIDTH": 16},
++      "params": [{"name": "DATA_WIDTH", "value": 8}, {"name": "SUM_WIDTH", "value": 16}],
++      "clock": "clk",
++      "reset": "rst_n",
++      "intent": "accumulates sum of samples"
++    },
++    {
++      "name": "stg",
++      "role": "submodule",
++      "source": "rtl/stream_stage.v",
++      "ports": [
++        {"name": "in_valid", "direction": "input", "width": 1, "type": "wire"},
++        {"name": "in_data", "direction": "input", "width": 16, "type": "wire"},
++        {"name": "in_ready", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_valid", "direction": "output", "width": 1, "type": "wire"},
++        {"name": "out_data", "direction": "output", "width": 16, "type": "wire"},
++        {"name": "out_ready", "direction": "input", "width": 1, "type": "wire"}
++      ],
++      "parameters": {"DATA_WIDTH": 16},
++      "params": [{"name": "DATA_WIDTH", "value": 16}],
++      "clock": "clk",
++      "reset": "rst_n",
++      "intent": "pipeline stage"
++    }
++  ],
++  "connections": [
++    {"from": {"module": "top", "port": "in0_valid"}, "to": {"module": "sb0", "port": "in_valid"}, "signal": "in0_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "in0_data"}, "to": {"module": "sb0", "port": "in_data"}, "signal": "in0_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "sb0", "port": "in_ready"}, "to": {"module": "top", "port": "in0_ready"}, "signal": "in0_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "in1_valid"}, "to": {"module": "sb1", "port": "in_valid"}, "signal": "in1_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "in1_data"}, "to": {"module": "sb1", "port": "in_data"}, "signal": "in1_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "sb1", "port": "in_ready"}, "to": {"module": "top", "port": "in1_ready"}, "signal": "in1_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "sb0", "port": "out_valid"}, "to": {"module": "join", "port": "in0_valid"}, "signal": "sb0_out_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "sb0", "port": "out_data"}, "to": {"module": "join", "port": "in0_data"}, "signal": "sb0_out_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "join", "port": "in0_ready"}, "to": {"module": "sb0", "port": "out_ready"}, "signal": "sb0_out_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "sb1", "port": "out_valid"}, "to": {"module": "join", "port": "in1_valid"}, "signal": "sb1_out_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "sb1", "port": "out_data"}, "to": {"module": "join", "port": "in1_data"}, "signal": "sb1_out_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "join", "port": "in1_ready"}, "to": {"module": "sb1", "port": "out_ready"}, "signal": "sb1_out_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "join", "port": "out_valid"}, "to": {"module": "acc", "port": "sample_valid"}, "signal": "join_out_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "join", "port": "out_data"}, "to": {"module": "acc", "port": "sample"}, "signal": "join_out_data", "protocol": "register", "width": 16, "cdc": false},
++    {"from": {"module": "acc", "port": "sample_ready"}, "to": {"module": "join", "port": "out_ready"}, "signal": "join_out_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "acc", "port": "sum_valid"}, "to": {"module": "stg", "port": "in_valid"}, "signal": "acc_out_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "acc", "port": "sum"}, "to": {"module": "stg", "port": "in_data"}, "signal": "acc_out_data", "protocol": "register", "width": 16, "cdc": false},
++    {"from": {"module": "stg", "port": "in_ready"}, "to": {"module": "acc", "port": "sum_ready"}, "signal": "acc_out_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stg", "port": "out_valid"}, "to": {"module": "top", "port": "out_valid"}, "signal": "out_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stg", "port": "out_data"}, "to": {"module": "top", "port": "out_data"}, "signal": "out_data", "protocol": "register", "width": 16, "cdc": false}
++  ],
++  "top_ports": [
++    {"name": "clk", "direction": "input", "width": 1, "type": "wire"},
++    {"name": "rst_n", "direction": "input", "width": 1, "type": "wire"},
++    {"name": "in0_valid", "direction": "input", "width": 1, "type": "wire"},
++    {"name": "in0_data", "direction": "input", "width": 8, "type": "wire"},
++    {"name": "in1_valid", "direction": "input", "width": 1, "type": "wire"},
++    {"name": "in1_data", "direction": "input", "width": 8, "type": "wire"},
++    {"name": "in0_ready", "direction": "output", "width": 1, "type": "wire"},
++    {"name": "in1_ready", "direction": "output", "width": 1, "type": "wire"},
++    {"name": "out_valid", "direction": "output", "width": 1, "type": "wire"},
++    {"name": "out_data", "direction": "output", "width": 16, "type": "wire"}
++  ],
+   "platform": {
+     "name": "generic_verilog",
+     "vendor": "generic",
+@@ -10,6 +202,17 @@
+     "clock_hz": 100000000,
+     "reset_polarity": "active_low"
+   },
+-  "rtl_structure": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_join.v", "rtl/accumulator_core.v", "rtl/stream_stage.v"],
+-  "version": "1.0"
++  "verification": {
++    "testbench": "sim/tb_top.v",
++    "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
++    "test_pass_means": "testbench prints TEST_PASS and no TEST_FAIL"
++  },
++  "qor_intent": {
++    "resources": {
++      "lut": 0,
++      "ff": 0,
++      "bram": 0,
++      "dsp": 0
++    }
++  }
+ }

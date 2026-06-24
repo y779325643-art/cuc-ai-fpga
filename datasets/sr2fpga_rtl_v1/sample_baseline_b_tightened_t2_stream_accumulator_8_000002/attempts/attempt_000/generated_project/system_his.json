@@ -1,0 +1,1 @@
+{"project_name":"baseline_b_tightened_t2_stream_accumulator_8_000002","task_type":"composed_stream_accumulator","width":8,"description":"8-bit streaming accumulator with skid buffer and accumulator core","platform":{"name":"generic_verilog","vendor":"generic","toolchain":"open_source","clock_hz":100000000,"reset_polarity":"active_low"}}

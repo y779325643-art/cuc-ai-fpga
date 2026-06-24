@@ -1,0 +1,9 @@
+{
+  "project_name": "baseline_b_t3_t4_smoke_t4_dual_stream_join_8_000002",
+  "task_type": "composed_dual_stream_join",
+  "width": 8,
+  "description": "8-bit dual-stream join datapath with skid buffers, stream join, accumulator, output stage.",
+  "target_device": "generic_verilog",
+  "clock_hz": 100000000,
+  "reset_polarity": "active_low"
+}

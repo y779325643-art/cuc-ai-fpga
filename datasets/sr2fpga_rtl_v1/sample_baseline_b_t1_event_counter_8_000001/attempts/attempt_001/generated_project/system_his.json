@@ -1,0 +1,268 @@
+{
+  "schema_version": "system-his-v1.1",
+  "project": {
+    "name": "baseline_b_t1_event_counter_8_000001",
+    "description": "Event counter with 8-bit width, triggered by valid events, using active-low async reset",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "system": {
+    "description": "Counts the number of event_valid pulses and outputs the count. Resets to 0 when rst_n is deasserted."
+  },
+  "interface": {
+    "top_module": "top",
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1,
+        "type": "wire"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1,
+        "type": "wire"
+      },
+      {
+        "name": "event_valid",
+        "direction": "input",
+        "width": 1,
+        "type": "wire"
+      },
+      {
+        "name": "count",
+        "direction": "output",
+        "width": 8,
+        "type": "wire"
+      }
+    ]
+  },
+  "architecture": {
+    "top_module": "top",
+    "topology": {
+      "nodes": [
+        {
+          "name": "top",
+          "type": "module"
+        },
+        {
+          "name": "event_gate",
+          "type": "module"
+        },
+        {
+          "name": "counter_core",
+          "type": "module"
+        }
+      ],
+      "edges": [
+        {
+          "from": "top.event_valid",
+          "to": "event_gate.event_valid"
+        },
+        {
+          "from": "event_gate.count_en",
+          "to": "counter_core.en"
+        },
+        {
+          "from": "counter_core.count",
+          "to": "top.count"
+        }
+      ]
+    }
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "integration_wrapper",
+      "source": "rtl/top.v",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "event_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": 8
+        }
+      ],
+      "params": [
+        {
+          "name": "WIDTH",
+          "type": "parameter",
+          "default": 8
+        }
+      ],
+      "clock_domain": "clk",
+      "reset": "rst_n",
+      "intent": "integrates event_gate and counter_core submodules"
+    },
+    {
+      "name": "event_gate",
+      "role": "synchronizer",
+      "source": "rtl/event_gate.v",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "event_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count_en",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "params": [],
+      "clock_domain": "clk",
+      "reset": "rst_n",
+      "intent": "gates the event_valid input to produce count_en"
+    },
+    {
+      "name": "counter_core",
+      "role": "counter",
+      "source": "rtl/counter_core.v",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "en",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": 8
+        }
+      ],
+      "params": [
+        {
+          "name": "WIDTH",
+          "type": "parameter",
+          "default": 8
+        }
+      ],
+      "clock_domain": "clk",
+      "reset": "rst_n",
+      "intent": "increments count when en is high on positive clock edge"
+    }
+  ],
+  "connections": [
+    {
+      "from": "top.event_valid",
+      "to": "event_gate.event_valid",
+      "type": "direct"
+    },
+    {
+      "from": "event_gate.count_en",
+      "to": "counter_core.en",
+      "type": "direct"
+    },
+    {
+      "from": "counter_core.count",
+      "to": "top.count",
+      "type": "direct"
+    },
+    {
+      "from": "top.clk",
+      "to": "event_gate.clk",
+      "type": "clock"
+    },
+    {
+      "from": "top.clk",
+      "to": "counter_core.clk",
+      "type": "clock"
+    },
+    {
+      "from": "top.rst_n",
+      "to": "event_gate.rst_n",
+      "type": "reset"
+    },
+    {
+      "from": "top.rst_n",
+      "to": "counter_core.rst_n",
+      "type": "reset"
+    }
+  ],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "event_valid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "count",
+      "direction": "output",
+      "width": 8
+    }
+  ],
+  "platform": {
+    "toolchain": "open_source"
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "acceptance": "prints TEST_PASS only on success"
+  },
+  "qor_intent": {
+    "resources": {
+      "lut": "minimize",
+      "ff": "minimize"
+    },
+    "timing": {
+      "target_fmax_mhz": 100
+    }
+  }
+}

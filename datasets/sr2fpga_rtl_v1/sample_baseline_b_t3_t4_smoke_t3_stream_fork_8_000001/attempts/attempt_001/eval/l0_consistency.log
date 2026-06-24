@@ -1,0 +1,50 @@
+System-HIS module 'top' port 'in_data' width [7:0] does not match RTL 8
+System-HIS module 'top' port 'out0_data' width [7:0] does not match RTL 8
+System-HIS module 'top' port 'out1_data' width [7:0] does not match RTL 8
+System-HIS module 'skid' is not declared in manifest sources
+System-HIS module 'skid' parameter 'WIDTH' is not declared in RTL
+System-HIS module 'skid' port 'clk' is not declared in RTL
+System-HIS module 'skid' port 'rst_n' is not declared in RTL
+System-HIS module 'skid' port 'in_data' is not declared in RTL
+System-HIS module 'skid' port 'in_valid' is not declared in RTL
+System-HIS module 'skid' port 'in_ready' is not declared in RTL
+System-HIS module 'skid' port 'out_data' is not declared in RTL
+System-HIS module 'skid' port 'out_valid' is not declared in RTL
+System-HIS module 'skid' port 'out_ready' is not declared in RTL
+System-HIS module 'fork_inst' is not declared in manifest sources
+System-HIS module 'fork_inst' parameter 'WIDTH' is not declared in RTL
+System-HIS module 'fork_inst' port 'clk' is not declared in RTL
+System-HIS module 'fork_inst' port 'rst_n' is not declared in RTL
+System-HIS module 'fork_inst' port 'in_data' is not declared in RTL
+System-HIS module 'fork_inst' port 'in_valid' is not declared in RTL
+System-HIS module 'fork_inst' port 'in_ready' is not declared in RTL
+System-HIS module 'fork_inst' port 'out0_data' is not declared in RTL
+System-HIS module 'fork_inst' port 'out0_valid' is not declared in RTL
+System-HIS module 'fork_inst' port 'out0_ready' is not declared in RTL
+System-HIS module 'fork_inst' port 'out1_data' is not declared in RTL
+System-HIS module 'fork_inst' port 'out1_valid' is not declared in RTL
+System-HIS module 'fork_inst' port 'out1_ready' is not declared in RTL
+System-HIS module 'stage0' is not declared in manifest sources
+System-HIS module 'stage0' parameter 'WIDTH' is not declared in RTL
+System-HIS module 'stage0' port 'clk' is not declared in RTL
+System-HIS module 'stage0' port 'rst_n' is not declared in RTL
+System-HIS module 'stage0' port 'in_data' is not declared in RTL
+System-HIS module 'stage0' port 'in_valid' is not declared in RTL
+System-HIS module 'stage0' port 'in_ready' is not declared in RTL
+System-HIS module 'stage0' port 'out_data' is not declared in RTL
+System-HIS module 'stage0' port 'out_valid' is not declared in RTL
+System-HIS module 'stage0' port 'out_ready' is not declared in RTL
+System-HIS module 'stage1' is not declared in manifest sources
+System-HIS module 'stage1' parameter 'WIDTH' is not declared in RTL
+System-HIS module 'stage1' port 'clk' is not declared in RTL
+System-HIS module 'stage1' port 'rst_n' is not declared in RTL
+System-HIS module 'stage1' port 'in_data' is not declared in RTL
+System-HIS module 'stage1' port 'in_valid' is not declared in RTL
+System-HIS module 'stage1' port 'in_ready' is not declared in RTL
+System-HIS module 'stage1' port 'out_data' is not declared in RTL
+System-HIS module 'stage1' port 'out_valid' is not declared in RTL
+System-HIS module 'stage1' port 'out_ready' is not declared in RTL
+RTL module 'skid_buffer' is missing from system_his.modules
+RTL module 'stream_fork' is missing from system_his.modules
+RTL module 'stream_stage' is missing from system_his.modules
+system_his.top_ports does not match top module RTL ports

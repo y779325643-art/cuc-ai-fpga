@@ -1,0 +1,170 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -25,17 +25,17 @@
+   "interface": {
+     "top_module": "top",
+     "ports": [
+-      {"name": "clk", "direction": "input", "width": "1"},
+-      {"name": "rst_n", "direction": "input", "width": "1"},
+-      {"name": "in_data", "direction": "input", "width": "[7:0]"},
+-      {"name": "in_valid", "direction": "input", "width": "1"},
+-      {"name": "in_ready", "direction": "output", "width": "1"},
+-      {"name": "out0_data", "direction": "output", "width": "[7:0]"},
+-      {"name": "out0_valid", "direction": "output", "width": "1"},
+-      {"name": "out0_ready", "direction": "input", "width": "1"},
+-      {"name": "out1_data", "direction": "output", "width": "[7:0]"},
+-      {"name": "out1_valid", "direction": "output", "width": "1"},
+-      {"name": "out1_ready", "direction": "input", "width": "1"}
++      {"name": "clk", "direction": "input", "width": 1},
++      {"name": "rst_n", "direction": "input", "width": 1},
++      {"name": "in_data", "direction": "input", "width": 8},
++      {"name": "in_valid", "direction": "input", "width": 1},
++      {"name": "in_ready", "direction": "output", "width": 1},
++      {"name": "out0_data", "direction": "output", "width": 8},
++      {"name": "out0_valid", "direction": "output", "width": 1},
++      {"name": "out0_ready", "direction": "input", "width": 1},
++      {"name": "out1_data", "direction": "output", "width": 8},
++      {"name": "out1_valid", "direction": "output", "width": 1},
++      {"name": "out1_ready", "direction": "input", "width": 1}
+     ]
+   },
+   "architecture": {
+@@ -63,17 +63,17 @@
+       "role": "top",
+       "source": "rtl/top.v",
+       "ports": [
+-        {"name": "clk", "direction": "input", "width": "1"},
+-        {"name": "rst_n", "direction": "input", "width": "1"},
+-        {"name": "in_data", "direction": "input", "width": "[7:0]"},
+-        {"name": "in_valid", "direction": "input", "width": "1"},
+-        {"name": "in_ready", "direction": "output", "width": "1"},
+-        {"name": "out0_data", "direction": "output", "width": "[7:0]"},
+-        {"name": "out0_valid", "direction": "output", "width": "1"},
+-        {"name": "out0_ready", "direction": "input", "width": "1"},
+-        {"name": "out1_data", "direction": "output", "width": "[7:0]"},
+-        {"name": "out1_valid", "direction": "output", "width": "1"},
+-        {"name": "out1_ready", "direction": "input", "width": "1"}
++        {"name": "clk", "direction": "input", "width": 1},
++        {"name": "rst_n", "direction": "input", "width": 1},
++        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_valid", "direction": "input", "width": 1},
++        {"name": "in_ready", "direction": "output", "width": 1},
++        {"name": "out0_data", "direction": "output", "width": 8},
++        {"name": "out0_valid", "direction": "output", "width": 1},
++        {"name": "out0_ready", "direction": "input", "width": 1},
++        {"name": "out1_data", "direction": "output", "width": 8},
++        {"name": "out1_valid", "direction": "output", "width": 1},
++        {"name": "out1_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {},
+       "params": [],
+@@ -82,18 +82,18 @@
+       "intent": "integrates submodules and exposes the top interface"
+     },
+     {
+-      "name": "skid",
++      "name": "skid_buffer",
+       "role": "submodule",
+       "source": "rtl/skid_buffer.v",
+       "ports": [
+-        {"name": "clk", "direction": "input", "width": "1"},
+-        {"name": "rst_n", "direction": "input", "width": "1"},
+-        {"name": "in_data", "direction": "input", "width": "[7:0]"},
+-        {"name": "in_valid", "direction": "input", "width": "1"},
+-        {"name": "in_ready", "direction": "output", "width": "1"},
+-        {"name": "out_data", "direction": "output", "width": "[7:0]"},
+-        {"name": "out_valid", "direction": "output", "width": "1"},
+-        {"name": "out_ready", "direction": "input", "width": "1"}
++        {"name": "clk", "direction": "input", "width": 1},
++        {"name": "rst_n", "direction": "input", "width": 1},
++        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_valid", "direction": "input", "width": 1},
++        {"name": "in_ready", "direction": "output", "width": 1},
++        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_valid", "direction": "output", "width": 1},
++        {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {"WIDTH": 8},
+       "params": [{"name": "WIDTH", "value": 8}],
+@@ -102,21 +102,21 @@
+       "intent": "Skid buffer for backpressure handling"
+     },
+     {
+-      "name": "fork_inst",
++      "name": "stream_fork",
+       "role": "submodule",
+       "source": "rtl/stream_fork.v",
+       "ports": [
+-        {"name": "clk", "direction": "input", "width": "1"},
+-        {"name": "rst_n", "direction": "input", "width": "1"},
+-        {"name": "in_data", "direction": "input", "width": "[7:0]"},
+-        {"name": "in_valid", "direction": "input", "width": "1"},
+-        {"name": "in_ready", "direction": "output", "width": "1"},
+-        {"name": "out0_data", "direction": "output", "width": "[7:0]"},
+-        {"name": "out0_valid", "direction": "output", "width": "1"},
+-        {"name": "out0_ready", "direction": "input", "width": "1"},
+-        {"name": "out1_data", "direction": "output", "width": "[7:0]"},
+-        {"name": "out1_valid", "direction": "output", "width": "1"},
+-        {"name": "out1_ready", "direction": "input", "width": "1"}
++        {"name": "clk", "direction": "input", "width": 1},
++        {"name": "rst_n", "direction": "input", "width": 1},
++        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_valid", "direction": "input", "width": 1},
++        {"name": "in_ready", "direction": "output", "width": 1},
++        {"name": "out0_data", "direction": "output", "width": 8},
++        {"name": "out0_valid", "direction": "output", "width": 1},
++        {"name": "out0_ready", "direction": "input", "width": 1},
++        {"name": "out1_data", "direction": "output", "width": 8},
++        {"name": "out1_valid", "direction": "output", "width": 1},
++        {"name": "out1_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {"WIDTH": 8},
+       "params": [{"name": "WIDTH", "value": 8}],
+@@ -125,38 +125,18 @@
+       "intent": "Forks input data to two output streams"
+     },
+     {
+-      "name": "stage0",
++      "name": "stream_stage",
+       "role": "submodule",
+       "source": "rtl/stream_stage.v",
+       "ports": [
+-        {"name": "clk", "direction": "input", "width": "1"},
+-        {"name": "rst_n", "direction": "input", "width": "1"},
+-        {"name": "in_data", "direction": "input", "width": "[7:0]"},
+-        {"name": "in_valid", "direction": "input", "width": "1"},
+-        {"name": "in_ready", "direction": "output", "width": "1"},
+-        {"name": "out_data", "direction": "output", "width": "[7:0]"},
+-        {"name": "out_valid", "direction": "output", "width": "1"},
+-        {"name": "out_ready", "direction": "input", "width": "1"}
+-      ],
+-      "parameters": {"WIDTH": 8},
+-      "params": [{"name": "WIDTH", "value": 8}],
+-      "clock": "clk",
+-      "reset": "rst_n",
+-      "intent": "Register stage for output pipeline"
+-    },
+-    {
+-      "name": "stage1",
+-      "role": "submodule",
+-      "source": "rtl/stream_stage.v",
+-      "ports": [
+-        {"name": "clk", "direction": "input", "width": "1"},
+-        {"name": "rst_n", "direction": "input", "width": "1"},
+-        {"name": "in_data", "direction": "input", "width": "[7:0]"},
+-        {"name": "in_valid", "direction": "input", "width": "1"},
+-        {"name": "in_ready", "direction": "output", "width": "1"},
+-        {"name": "out_data", "direction": "output", "width": "[7:0]"},
+-        {"name": "out_valid", "direction": "output", "width": "1"},
+-        {"name": "out_ready", "direction": "input", "width": "1"}
++        {"name": "clk", "direction": "input", "width": 1},
++        {"name": "rst_n", "direction": "input", "width": 1},
++        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_valid", "direction": "input", "width": 1},
++        {"name": "in_ready", "direction": "output", "width": 1},
++        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_valid", "direction": "output", "width": 1},
++        {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {"WIDTH": 8},
+       "params": [{"name": "WIDTH", "value": 8}],

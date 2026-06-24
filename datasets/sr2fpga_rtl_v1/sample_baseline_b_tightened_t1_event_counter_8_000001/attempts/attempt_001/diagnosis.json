@@ -1,0 +1,13 @@
+{
+  "failure_type": "l0_contract_violation",
+  "stage": "l0_consistency",
+  "root_cause": "System-HIS module 'counter_core' port 'count' width 8 does not match RTL [WIDTH-1:0]",
+  "affected_files": [
+    "system_his.json",
+    "manifest.json"
+  ],
+  "l0_errors": [
+    "System-HIS module 'counter_core' port 'count' width 8 does not match RTL [WIDTH-1:0]"
+  ],
+  "l0_warnings": []
+}

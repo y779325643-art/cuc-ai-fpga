@@ -1,0 +1,6 @@
+{
+  "failure_type": "unknown",
+  "stage": "lint",
+  "root_cause": "%Warning-WIDTHEXPAND: rtl/accumulator_core.v:14:24: Operator ADD expects 16 bits on the RHS, but RHS's VARREF 'sample' generates 8 bits.\n                                                  : ... note: In instance 'top.u_acc'\n   14 |             sum <= sum + sample;\n      |                        ^\n                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048\n                      ... Use \"/* verilator lint_off WIDTHEXPAND */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)",
+  "affected_files": []
+}

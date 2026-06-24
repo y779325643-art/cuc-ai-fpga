@@ -1,0 +1,62 @@
+{
+  "sample_id": "sample_baseline_b_tightened_t3_stream_fork_8_000003",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json",
+      "patch_path": "attempts/attempt_000/patch.diff"
+    },
+    {
+      "attempt_id": 1,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_001/diagnosis.json",
+      "patch_path": "attempts/attempt_001/patch.diff"
+    },
+    {
+      "attempt_id": 2,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_002/diagnosis.json",
+      "patch_path": "attempts/attempt_002/patch.diff"
+    },
+    {
+      "attempt_id": 3,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "verilator",
+      "exit_code": 1,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_fork.v",
+        "rtl/stream_stage.v"
+      ],
+      "failure_type": "syntax_error",
+      "diagnosis_path": "attempts/attempt_003/diagnosis.json"
+    }
+  ]
+}

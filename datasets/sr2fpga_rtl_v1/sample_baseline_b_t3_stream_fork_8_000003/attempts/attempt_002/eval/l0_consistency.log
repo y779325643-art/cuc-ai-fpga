@@ -1,0 +1,63 @@
+system_his.project_name is required
+manifest.constraints.timing is required
+System-HIS module 'top' parameters must be an object
+System-HIS module 'top' params must be a list
+System-HIS module 'skid_buffer' parameters must be an object
+System-HIS module 'skid_buffer' params must be a list
+System-HIS module 'skid_buffer' port 'in_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'skid_buffer' port 'out_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'stream_fork' parameters must be an object
+System-HIS module 'stream_fork' params must be a list
+System-HIS module 'stream_fork' port 'in_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'stream_fork' port 'out0_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'stream_fork' port 'out1_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'stream_stage' parameters must be an object
+System-HIS module 'stream_stage' params must be a list
+System-HIS module 'stream_stage' port 'in_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'stream_stage' port 'out_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS connection[0].to.module 'u_skid' is not declared
+System-HIS connection[0].protocol is invalid
+System-HIS connection[1].from.module 'u_skid' is not declared
+System-HIS connection[1].protocol is invalid
+System-HIS connection[2].to.module 'u_skid' is not declared
+System-HIS connection[2].protocol is invalid
+System-HIS connection[3].from.module 'u_skid' is not declared
+System-HIS connection[3].to.module 'u_fork' is not declared
+System-HIS connection[3].protocol is invalid
+System-HIS connection[4].from.module 'u_fork' is not declared
+System-HIS connection[4].to.module 'u_skid' is not declared
+System-HIS connection[4].protocol is invalid
+System-HIS connection[5].from.module 'u_skid' is not declared
+System-HIS connection[5].to.module 'u_fork' is not declared
+System-HIS connection[5].protocol is invalid
+System-HIS connection[6].from.module 'u_fork' is not declared
+System-HIS connection[6].to.module 'u_stage0' is not declared
+System-HIS connection[6].protocol is invalid
+System-HIS connection[7].from.module 'u_stage0' is not declared
+System-HIS connection[7].to.module 'u_fork' is not declared
+System-HIS connection[7].protocol is invalid
+System-HIS connection[8].from.module 'u_fork' is not declared
+System-HIS connection[8].to.module 'u_stage0' is not declared
+System-HIS connection[8].protocol is invalid
+System-HIS connection[9].from.module 'u_fork' is not declared
+System-HIS connection[9].to.module 'u_stage1' is not declared
+System-HIS connection[9].protocol is invalid
+System-HIS connection[10].from.module 'u_stage1' is not declared
+System-HIS connection[10].to.module 'u_fork' is not declared
+System-HIS connection[10].protocol is invalid
+System-HIS connection[11].from.module 'u_fork' is not declared
+System-HIS connection[11].to.module 'u_stage1' is not declared
+System-HIS connection[11].protocol is invalid
+System-HIS connection[12].from.module 'u_stage0' is not declared
+System-HIS connection[12].protocol is invalid
+System-HIS connection[13].to.module 'u_stage0' is not declared
+System-HIS connection[13].protocol is invalid
+System-HIS connection[14].from.module 'u_stage0' is not declared
+System-HIS connection[14].protocol is invalid
+System-HIS connection[15].from.module 'u_stage1' is not declared
+System-HIS connection[15].protocol is invalid
+System-HIS connection[16].to.module 'u_stage1' is not declared
+System-HIS connection[16].protocol is invalid
+System-HIS connection[17].from.module 'u_stage1' is not declared
+System-HIS connection[17].protocol is invalid
+system_his.top_ports does not match top module RTL ports

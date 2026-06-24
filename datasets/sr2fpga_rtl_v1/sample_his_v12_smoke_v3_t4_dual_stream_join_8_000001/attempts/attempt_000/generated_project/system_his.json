@@ -1,0 +1,660 @@
+{
+  "schema_version": "system-his-v1.2-topdown",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
+    "design_goal": "Implement a dual-stream join with accumulation, using skid buffers for input, a stream join core, an accumulator, and an output stage.",
+    "assumptions": [
+      "Streams use valid-ready handshake.",
+      "Both input streams are synchronous to the same clock.",
+      "Accumulator saturates or wraps as per design (here assumed wrapping).",
+      "No backpressure from output beyond ready."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "WIDTH",
+        "type": "integer",
+        "default": 8
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "polarity": "positive"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ],
+    "ports": [
+      {
+        "name": "s_axis0_tdata",
+        "direction": "input",
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "s_axis0_tvalid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axis0_tready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "s_axis1_tdata",
+        "direction": "input",
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "s_axis1_tvalid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axis1_tready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "m_axis_tdata",
+        "direction": "output",
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "m_axis_tvalid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "m_axis_tready",
+        "direction": "input",
+        "width": 1
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "accum_val",
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        },
+        "default": 0
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [
+      {
+        "name": "buffer0_storage",
+        "type": "fifo",
+        "depth": 4,
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "buffer1_storage",
+        "type": "fifo",
+        "depth": 4,
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      }
+    ],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_tdata",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "s_tvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_tready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tdata",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "m_tvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tready",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "state": [
+        {
+          "name": "buffer_storage",
+          "type": "fifo",
+          "depth": 4,
+          "width": {
+            "expr": "WIDTH"
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_join",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s0_tdata",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "s0_tvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s0_tready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s1_tdata",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "s1_tvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s1_tready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tdata",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "m_tvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tready",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "state": []
+    },
+    {
+      "name": "accumulator_core",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_tdata",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "s_tvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_tready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tdata",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "m_tvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tready",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "state": [
+        {
+          "name": "accum_val",
+          "type": "register",
+          "width": {
+            "expr": "WIDTH"
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_stage",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_tdata",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "s_tvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_tready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tdata",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH"
+          }
+        },
+        {
+          "name": "m_tvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_tready",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "state": []
+    }
+  ],
+  "instances": [
+    {
+      "name": "in0_buffer",
+      "component": "skid_buffer",
+      "params": {
+        "WIDTH": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_tdata": "top.s_axis0_tdata",
+        "s_tvalid": "top.s_axis0_tvalid",
+        "s_tready": "top.s_axis0_tready",
+        "m_tdata": "join_core.s0_tdata",
+        "m_tvalid": "join_core.s0_tvalid",
+        "m_tready": "join_core.s0_tready"
+      },
+      "owns_state": [
+        "buffer0_storage"
+      ]
+    },
+    {
+      "name": "in1_buffer",
+      "component": "skid_buffer",
+      "params": {
+        "WIDTH": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_tdata": "top.s_axis1_tdata",
+        "s_tvalid": "top.s_axis1_tvalid",
+        "s_tready": "top.s_axis1_tready",
+        "m_tdata": "join_core.s1_tdata",
+        "m_tvalid": "join_core.s1_tvalid",
+        "m_tready": "join_core.s1_tready"
+      },
+      "owns_state": [
+        "buffer1_storage"
+      ]
+    },
+    {
+      "name": "join_core",
+      "component": "stream_join",
+      "params": {
+        "WIDTH": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "m_tdata": "accumulator.s_tdata",
+        "m_tvalid": "accumulator.s_tvalid",
+        "m_tready": "accumulator.s_tready"
+      },
+      "owns_state": []
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "params": {
+        "WIDTH": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "m_tdata": "out_stage.s_tdata",
+        "m_tvalid": "out_stage.s_tvalid",
+        "m_tready": "out_stage.s_tready"
+      },
+      "owns_state": [
+        "accum_val"
+      ]
+    },
+    {
+      "name": "out_stage",
+      "component": "stream_stage",
+      "params": {
+        "WIDTH": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "m_tdata": "top.m_axis_tdata",
+        "m_tvalid": "top.m_axis_tvalid",
+        "m_tready": "top.m_axis_tready"
+      },
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input0_to_buffer",
+      "from": "top.s_axis0_tdata",
+      "to": "in0_buffer.s_tdata",
+      "path": []
+    },
+    {
+      "name": "input1_to_buffer",
+      "from": "top.s_axis1_tdata",
+      "to": "in1_buffer.s_tdata",
+      "path": []
+    },
+    {
+      "name": "buffer0_to_join",
+      "from": "in0_buffer.m_tdata",
+      "to": "join_core.s0_tdata",
+      "path": []
+    },
+    {
+      "name": "buffer1_to_join",
+      "from": "in1_buffer.m_tdata",
+      "to": "join_core.s1_tdata",
+      "path": []
+    },
+    {
+      "name": "join_to_accumulator",
+      "from": "join_core.m_tdata",
+      "to": "accumulator.s_tdata",
+      "path": []
+    },
+    {
+      "name": "accumulator_to_outstage",
+      "from": "accumulator.m_tdata",
+      "to": "out_stage.s_tdata",
+      "path": []
+    },
+    {
+      "name": "outstage_to_top",
+      "from": "out_stage.m_tdata",
+      "to": "top.m_axis_tdata",
+      "path": []
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_pipeline",
+      "kind": "reset_rule",
+      "condition": "rst_n assertion",
+      "effects": "Clear buffers, reset accumulator to zero",
+      "related_state": [
+        "buffer0_storage",
+        "buffer1_storage",
+        "accum_val"
+      ],
+      "related_flows": [
+        "input0_to_buffer",
+        "input1_to_buffer",
+        "buffer0_to_join",
+        "buffer1_to_join",
+        "join_to_accumulator",
+        "accumulator_to_outstage",
+        "outstage_to_top"
+      ]
+    },
+    {
+      "name": "input0_handshake",
+      "kind": "handshake_rule",
+      "condition": "s_axis0_tvalid and in0_buffer.s_tready",
+      "effects": "Capture s_axis0_tdata into in0_buffer",
+      "related_state": [
+        "buffer0_storage"
+      ],
+      "related_flows": [
+        "input0_to_buffer"
+      ]
+    },
+    {
+      "name": "input1_handshake",
+      "kind": "handshake_rule",
+      "condition": "s_axis1_tvalid and in1_buffer.s_tready",
+      "effects": "Capture s_axis1_tdata into in1_buffer",
+      "related_state": [
+        "buffer1_storage"
+      ],
+      "related_flows": [
+        "input1_to_buffer"
+      ]
+    },
+    {
+      "name": "join_handshake",
+      "kind": "handshake_rule",
+      "condition": "in0_buffer.m_tvalid and in1_buffer.m_tvalid and join_core.s0_tready and join_core.s1_tready",
+      "effects": "Transfer data from both buffers to join core simultaneously",
+      "related_state": [
+        "buffer0_storage",
+        "buffer1_storage"
+      ],
+      "related_flows": [
+        "buffer0_to_join",
+        "buffer1_to_join"
+      ]
+    },
+    {
+      "name": "accumulate_on_valid",
+      "kind": "enable_rule",
+      "condition": "accumulator.s_tvalid and accumulator.s_tready",
+      "effects": "Add accumulator.s_tdata to accum_val",
+      "related_state": [
+        "accum_val"
+      ],
+      "related_flows": [
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "output_handshake",
+      "kind": "handshake_rule",
+      "condition": "out_stage.m_tvalid and top.m_axis_tready",
+      "effects": "Output accumulated sample via m_axis_tdata",
+      "related_state": [],
+      "related_flows": [
+        "outstage_to_top"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_stream_join_and_accumulate",
+        "description": "Drive two input streams with known values, check that output is the sum of joined samples after latency.",
+        "pass_condition": "Output data matches expected accumulation for each pair."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/stream_join.v",
+      "rtl/accumulator_core.v",
+      "rtl/stream_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

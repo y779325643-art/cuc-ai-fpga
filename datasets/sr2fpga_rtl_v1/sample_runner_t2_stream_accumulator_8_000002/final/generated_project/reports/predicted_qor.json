@@ -1,0 +1,9 @@
+{
+  "fmax": 200,
+  "latency": 2,
+  "throughput": 1,
+  "area": {
+    "flops": 30,
+    "luts": 40
+  }
+}

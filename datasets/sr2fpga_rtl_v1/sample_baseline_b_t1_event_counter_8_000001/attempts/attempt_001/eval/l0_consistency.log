@@ -1,0 +1,59 @@
+system_his.project_name is required
+system_his.qor_intent.resources.lut must be a non-negative integer
+system_his.qor_intent.resources.ff must be a non-negative integer
+system_his.qor_intent.resources.bram is required
+system_his.qor_intent.resources.dsp is required
+system_his.verification.checks must be a non-empty list
+system_his.verification.test_pass_means is required
+System-HIS module 'top' role must be top or submodule
+System-HIS module 'top' clock is required
+System-HIS module 'top' parameters must be an object
+System-HIS module 'event_gate' role must be top or submodule
+System-HIS module 'event_gate' clock is required
+System-HIS module 'event_gate' parameters must be an object
+System-HIS module 'counter_core' role must be top or submodule
+System-HIS module 'counter_core' clock is required
+System-HIS module 'counter_core' parameters must be an object
+System-HIS module 'counter_core' port 'count' width 8 does not match RTL [WIDTH-1:0]
+System-HIS connection[0].from must be an object
+System-HIS connection[0].to must be an object
+System-HIS connection[0].signal is required
+System-HIS connection[0].protocol is invalid
+System-HIS connection[0].width must be positive
+System-HIS connection[0].cdc must be boolean
+System-HIS connection[1].from must be an object
+System-HIS connection[1].to must be an object
+System-HIS connection[1].signal is required
+System-HIS connection[1].protocol is invalid
+System-HIS connection[1].width must be positive
+System-HIS connection[1].cdc must be boolean
+System-HIS connection[2].from must be an object
+System-HIS connection[2].to must be an object
+System-HIS connection[2].signal is required
+System-HIS connection[2].protocol is invalid
+System-HIS connection[2].width must be positive
+System-HIS connection[2].cdc must be boolean
+System-HIS connection[3].from must be an object
+System-HIS connection[3].to must be an object
+System-HIS connection[3].signal is required
+System-HIS connection[3].protocol is invalid
+System-HIS connection[3].width must be positive
+System-HIS connection[3].cdc must be boolean
+System-HIS connection[4].from must be an object
+System-HIS connection[4].to must be an object
+System-HIS connection[4].signal is required
+System-HIS connection[4].protocol is invalid
+System-HIS connection[4].width must be positive
+System-HIS connection[4].cdc must be boolean
+System-HIS connection[5].from must be an object
+System-HIS connection[5].to must be an object
+System-HIS connection[5].signal is required
+System-HIS connection[5].protocol is invalid
+System-HIS connection[5].width must be positive
+System-HIS connection[5].cdc must be boolean
+System-HIS connection[6].from must be an object
+System-HIS connection[6].to must be an object
+System-HIS connection[6].signal is required
+System-HIS connection[6].protocol is invalid
+System-HIS connection[6].width must be positive
+System-HIS connection[6].cdc must be boolean

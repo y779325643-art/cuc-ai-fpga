@@ -1,0 +1,10 @@
+{
+  "total": {
+    "LUT": 200,
+    "FF": 150,
+    "BRAM": 0,
+    "DSP": 0
+  },
+  "fmax_mhz": 200,
+  "comment": "Prediction based on area-first optimization"
+}

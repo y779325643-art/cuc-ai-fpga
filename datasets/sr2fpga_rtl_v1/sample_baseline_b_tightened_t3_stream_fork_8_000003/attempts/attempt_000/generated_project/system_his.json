@@ -1,0 +1,8 @@
+{
+  "project_name": "baseline_b_tightened_t3_stream_fork_8_000003",
+  "task_type": "composed_stream_fork",
+  "width": 8,
+  "description": "8-bit valid-ready stream fork datapath with skid buffer, fork, and two stages",
+  "rtl_language": "verilog",
+  "platform": "generic"
+}

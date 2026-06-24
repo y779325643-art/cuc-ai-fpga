@@ -1,0 +1,4 @@
+TEST_FAIL: out_data=xx
+TEST_FAIL:           1 errors
+sim/tb_top.v:64: $finish called at 166000 (1ps)
+Simulation reported TEST_FAIL

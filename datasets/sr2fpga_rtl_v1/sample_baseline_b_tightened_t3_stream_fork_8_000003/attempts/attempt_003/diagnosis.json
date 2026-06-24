@@ -1,0 +1,6 @@
+{
+  "failure_type": "syntax_error",
+  "stage": "lint",
+  "root_cause": "%Error: rtl/top.v:35:30: syntax error, unexpected fork\n   35 | stream_fork #(.WIDTH(WIDTH)) fork (\n      |                              ^~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: Exiting due to 1 error(s)",
+  "affected_files": []
+}

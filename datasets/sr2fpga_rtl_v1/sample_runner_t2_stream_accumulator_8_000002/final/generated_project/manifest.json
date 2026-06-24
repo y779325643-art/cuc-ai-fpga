@@ -1,0 +1,8 @@
+{
+  "project_name": "runner_t2_stream_accumulator_8_000002",
+  "top_module": "top",
+  "sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/accumulator_core.v"],
+  "constraints": ["constraints/timing.sdc"],
+  "simulation": {"testbench": "sim/tb_top.v"},
+  "reports": ["reports/predicted_qor.json"]
+}

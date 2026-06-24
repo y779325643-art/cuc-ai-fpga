@@ -1,0 +1,32 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -141,7 +141,7 @@
+         {
+           "name": "count",
+           "direction": "output",
+-          "width": 8
++          "width": "[WIDTH-1:0]"
+         }
+       ],
+       "parameters": {
+@@ -184,6 +184,20 @@
+       },
+       "signal": "count_en",
+       "width": 1,
++      "protocol": "register",
++      "cdc": false
++    },
++    {
++      "from": {
++        "module": "counter_core",
++        "port": "count"
++      },
++      "to": {
++        "module": "top",
++        "port": "count"
++      },
++      "signal": "count",
++      "width": "[WIDTH-1:0]",
+       "protocol": "register",
+       "cdc": false
+     }

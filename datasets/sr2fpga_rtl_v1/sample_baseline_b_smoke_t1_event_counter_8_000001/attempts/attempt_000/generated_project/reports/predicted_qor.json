@@ -1,0 +1,15 @@
+{
+  "project_name": "baseline_b_smoke_t1_event_counter_8_000001",
+  "top_module": "top",
+  "target_device": "generic",
+  "clock_frequency_hz": 100000000,
+  "resource_estimates": {
+    "FF": 8,
+    "LUT": 8,
+    "CARRY4": 1
+  },
+  "timing": {
+    "worst_slack_ns": 4.5,
+    "status": "met"
+  }
+}

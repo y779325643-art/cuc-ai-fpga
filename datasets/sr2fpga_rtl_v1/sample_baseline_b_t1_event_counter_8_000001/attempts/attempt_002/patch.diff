@@ -1,0 +1,113 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -111,13 +111,14 @@
+           "width": 8
+         }
+       ],
+-      "params": {
++      "parameters": {
+         "WIDTH": {
+-          "type": "parameter",
++          "type": "integer",
+           "default": 8
+         }
+       },
+-      "clock": "clk",
++      "params": ["WIDTH"],
++      "clock_domain": "clk",
+       "reset": "rst_n",
+       "intent": "integrates event_gate and counter_core submodules"
+     },
+@@ -147,8 +148,9 @@
+           "width": 1
+         }
+       ],
+-      "params": {},
+-      "clock": "clk",
++      "parameters": {},
++      "params": [],
++      "clock_domain": "clk",
+       "reset": "rst_n",
+       "intent": "gates the event_valid input to produce count_en"
+     },
+@@ -178,13 +180,14 @@
+           "width": 8
+         }
+       ],
+-      "params": {
++      "parameters": {
+         "WIDTH": {
+-          "type": "parameter",
++          "type": "integer",
+           "default": 8
+         }
+       },
+-      "clock": "clk",
++      "params": ["WIDTH"],
++      "clock_domain": "clk",
+       "reset": "rst_n",
+       "intent": "increments count when en is high on positive clock edge"
+     }
+@@ -200,7 +203,7 @@
+         "port": "event_valid"
+       },
+       "signal": "event_valid",
+-      "protocol": "data",
++      "protocol": "simple",
+       "width": 1,
+       "cdc": false
+     },
+@@ -214,7 +217,7 @@
+         "port": "en"
+       },
+       "signal": "count_en",
+-      "protocol": "data",
++      "protocol": "simple",
+       "width": 1,
+       "cdc": false
+     },
+@@ -228,7 +231,7 @@
+         "port": "count"
+       },
+       "signal": "count",
+-      "protocol": "data",
++      "protocol": "simple",
+       "width": 8,
+       "cdc": false
+     },
+@@ -242,7 +245,7 @@
+         "port": "clk"
+       },
+       "signal": "clk",
+-      "protocol": "clock",
++      "protocol": "simple",
+       "width": 1,
+       "cdc": false
+     },
+@@ -256,7 +259,7 @@
+         "port": "clk"
+       },
+       "signal": "clk",
+-      "protocol": "clock",
++      "protocol": "simple",
+       "width": 1,
+       "cdc": false
+     },
+@@ -270,7 +273,7 @@
+         "port": "rst_n"
+       },
+       "signal": "rst_n",
+-      "protocol": "reset",
++      "protocol": "simple",
+       "width": 1,
+       "cdc": false
+     },
+@@ -284,7 +287,7 @@
+         "port": "rst_n"
+       },
+       "signal": "rst_n",
+-      "protocol": "reset",
++      "protocol": "simple",
+       "width": 1,
+       "cdc": false
+     }

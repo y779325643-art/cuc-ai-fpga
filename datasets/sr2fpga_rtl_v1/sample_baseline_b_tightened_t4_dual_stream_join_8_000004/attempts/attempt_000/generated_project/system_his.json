@@ -1,0 +1,15 @@
+{
+  "project_name": "baseline_b_tightened_t4_dual_stream_join_8_000004",
+  "task_type": "composed_dual_stream_join",
+  "width": 8,
+  "description": "8-bit dual-stream join datapath with skid buffers, stream join, accumulator, and pipeline stage.",
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000,
+    "reset_polarity": "active_low"
+  },
+  "rtl_structure": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_join.v", "rtl/accumulator_core.v", "rtl/stream_stage.v"],
+  "version": "1.0"
+}

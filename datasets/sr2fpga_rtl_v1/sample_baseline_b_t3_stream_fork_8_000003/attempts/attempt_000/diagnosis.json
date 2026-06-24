@@ -1,0 +1,37 @@
+{
+  "failure_type": "l0_contract_violation",
+  "stage": "l0_consistency",
+  "root_cause": "system_his.schema_version is not system-his-v1.1\n\nsystem_his.project is required\nsystem_his.clocks is required\nsystem_his.resets is required\nsystem_his.project_name is required\nsystem_his.system is required\nsystem_his.interface is required\nsystem_his.architecture is required\nsystem_his.modules is required\nsystem_his.connections is required\nsystem_his.top_ports is required\nsystem_his.platform is required\nsystem_his.verification is required\nsystem_his.qor_intent is required\nsystem_his.architecture.top_module is required\nsystem_his.project.top is required\nmanifest.constraints.timing is required\nsystem_his.clocks must be a non-empty list\nsystem_his.resets must be a non-empty list\nsystem_his.qor_intent must be an object\nsystem_his.verification must be an object\nsystem_his.modules must be a list\nsystem_his.connections must be a list\nsystem_his.top_ports must be a list",
+  "affected_files": [
+    "system_his.json",
+    "manifest.json"
+  ],
+  "l0_errors": [
+    "system_his.project is required",
+    "system_his.clocks is required",
+    "system_his.resets is required",
+    "system_his.project_name is required",
+    "system_his.system is required",
+    "system_his.interface is required",
+    "system_his.architecture is required",
+    "system_his.modules is required",
+    "system_his.connections is required",
+    "system_his.top_ports is required",
+    "system_his.platform is required",
+    "system_his.verification is required",
+    "system_his.qor_intent is required",
+    "system_his.architecture.top_module is required",
+    "system_his.project.top is required",
+    "manifest.constraints.timing is required",
+    "system_his.clocks must be a non-empty list",
+    "system_his.resets must be a non-empty list",
+    "system_his.qor_intent must be an object",
+    "system_his.verification must be an object",
+    "system_his.modules must be a list",
+    "system_his.connections must be a list",
+    "system_his.top_ports must be a list"
+  ],
+  "l0_warnings": [
+    "system_his.schema_version is not system-his-v1.1"
+  ]
+}

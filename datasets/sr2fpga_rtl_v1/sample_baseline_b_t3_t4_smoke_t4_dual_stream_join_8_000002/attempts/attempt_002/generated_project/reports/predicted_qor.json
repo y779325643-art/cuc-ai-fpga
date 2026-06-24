@@ -1,0 +1,11 @@
+{
+  "timing_met": true,
+  "worst_negative_slack_ns": 1.2,
+  "total_negative_slack_ns": 0.0,
+  "frequency_met": true,
+  "logic_levels_max": 12,
+  "register_count": 32,
+  "lut_count": 64,
+  "dsp_count": 2,
+  "block_ram_count": 0
+}

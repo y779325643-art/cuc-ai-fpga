@@ -1,0 +1,15 @@
+%Warning-UNUSEDSIGNAL: rtl/top.v:21:6: Signal is not driven, nor used: 'acc_sample_valid'
+                                     : ... note: In instance 'top'
+   21 | wire acc_sample_valid;
+      |      ^~~~~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/top.v:22:12: Signal is not driven, nor used: 'acc_sample'
+                                      : ... note: In instance 'top'
+   22 | wire [7:0] acc_sample;
+      |            ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:23:6: Signal is not driven, nor used: 'acc_sample_ready'
+                                     : ... note: In instance 'top'
+   23 | wire acc_sample_ready;
+      |      ^~~~~~~~~~~~~~~~
+%Error: Exiting due to 3 warning(s)

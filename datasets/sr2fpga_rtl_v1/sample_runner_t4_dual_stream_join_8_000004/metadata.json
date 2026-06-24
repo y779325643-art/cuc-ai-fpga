@@ -1,0 +1,14 @@
+{
+  "source": "deepseek",
+  "generator_provider": "deepseek",
+  "failure_origin": "natural_llm",
+  "difficulty_tier": "T4",
+  "measurement_point": "a_first_attempt_no_tools",
+  "repair_provider": "none",
+  "failure_injectors": [],
+  "task_type": "composed_dual_stream_join",
+  "width": 8,
+  "system_his_schema_version": "system-his-v1.1",
+  "topology_id": "t4_dual_stream_join",
+  "requirement_style": "natural_component"
+}

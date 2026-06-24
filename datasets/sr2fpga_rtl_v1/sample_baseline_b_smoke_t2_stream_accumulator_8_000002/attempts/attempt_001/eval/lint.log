@@ -1,0 +1,7 @@
+%Warning-WIDTHEXPAND: rtl/accumulator_core.v:14:24: Operator ADD expects 16 bits on the RHS, but RHS's VARREF 'sample' generates 8 bits.
+                                                  : ... note: In instance 'top.u_acc'
+   14 |             sum <= sum + sample;
+      |                        ^
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Error: Exiting due to 1 warning(s)

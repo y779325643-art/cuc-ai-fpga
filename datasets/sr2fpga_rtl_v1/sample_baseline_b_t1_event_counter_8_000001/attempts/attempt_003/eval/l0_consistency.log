@@ -1,0 +1,15 @@
+manifest.constraints.timing is required
+System-HIS module 'top' clock is required
+System-HIS module 'top' parameter 'WIDTH' is not declared in RTL
+System-HIS module 'top' params do not match parameters
+System-HIS module 'event_gate' clock is required
+System-HIS module 'counter_core' clock is required
+System-HIS module 'counter_core' params do not match parameters
+System-HIS module 'counter_core' port 'count' width 8 does not match RTL [WIDTH-1:0]
+System-HIS connection[0].protocol is invalid
+System-HIS connection[1].protocol is invalid
+System-HIS connection[2].protocol is invalid
+System-HIS connection[3].protocol is invalid
+System-HIS connection[4].protocol is invalid
+System-HIS connection[5].protocol is invalid
+System-HIS connection[6].protocol is invalid

@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "System-HIS module 'top' port 'in_data' width [7:0] does not match RTL 8\nSystem-HIS module 'top' port 'out0_data' width [7:0] does not match RTL 8\nSystem-HIS module 'top' port 'out1_data' width [7:0] does not match RTL 8\nsystem_his.top_ports does not match top module RTL ports\n",
+  "duration_seconds": 0.0
+}

@@ -1,0 +1,11 @@
+--- a/rtl/accumulator_core.v
++++ b/rtl/accumulator_core.v
+@@ -11,7 +11,7 @@
+         if (!reset_n) begin
+             sum <= 16'h0;
+         end else if (sample_valid && sample_ready) begin
+-            sum <= sum + sample;
++            sum <= sum + {8'b0, sample};
+         end
+     end
+ endmodule

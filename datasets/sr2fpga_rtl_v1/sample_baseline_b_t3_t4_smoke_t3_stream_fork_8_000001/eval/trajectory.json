@@ -1,0 +1,56 @@
+{
+  "sample_id": "sample_baseline_b_t3_t4_smoke_t3_stream_fork_8_000001",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json",
+      "patch_path": "attempts/attempt_000/patch.diff"
+    },
+    {
+      "attempt_id": 1,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_001/diagnosis.json",
+      "patch_path": "attempts/attempt_001/patch.diff"
+    },
+    {
+      "attempt_id": 2,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_002/diagnosis.json",
+      "patch_path": "attempts/attempt_002/patch.diff"
+    },
+    {
+      "attempt_id": 3,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_003/diagnosis.json"
+    }
+  ]
+}

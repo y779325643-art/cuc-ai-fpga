@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "manifest.constraints.timing is required\nSystem-HIS module 'top' parameters must be an object\nSystem-HIS module 'top' params must be a list\nSystem-HIS module 'skid_buffer' parameters must be an object\nSystem-HIS module 'skid_buffer' params must be a list\nSystem-HIS module 'stream_join' parameters must be an object\nSystem-HIS module 'stream_join' params must be a list\nSystem-HIS module 'accumulator_core' parameters must be an object\nSystem-HIS module 'accumulator_core' params must be a list\nSystem-HIS module 'stream_stage' parameters must be an object\nSystem-HIS module 'stream_stage' params must be a list\nSystem-HIS connection[0].protocol is invalid\nSystem-HIS connection[1].protocol is invalid\nSystem-HIS connection[2].protocol is invalid\nSystem-HIS connection[3].protocol is invalid\nSystem-HIS connection[4].protocol is invalid\nSystem-HIS connection[5].protocol is invalid\nSystem-HIS connection[6].protocol is invalid\nSystem-HIS connection[7].protocol is invalid\nSystem-HIS connection[8].protocol is invalid\nSystem-HIS connection[9].protocol is invalid\nSystem-HIS connection[10].protocol is invalid\nSystem-HIS connection[11].protocol is invalid\nsystem_his.top_ports does not match top module RTL ports\n",
+  "duration_seconds": 0.0
+}

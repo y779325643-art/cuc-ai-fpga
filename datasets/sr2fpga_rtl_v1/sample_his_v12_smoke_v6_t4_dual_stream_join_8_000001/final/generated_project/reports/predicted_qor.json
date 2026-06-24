@@ -1,0 +1,10 @@
+{
+  "design": "his_v12_smoke_v6_t4_dual_stream_join_8_000001",
+  "target_fmax": 100.0,
+  "estimated_fmax": 200.0,
+  "estimated_lut": 100,
+  "estimated_ff": 80,
+  "estimated_bram": 0,
+  "estimated_dsp": 0,
+  "warnings": []
+}

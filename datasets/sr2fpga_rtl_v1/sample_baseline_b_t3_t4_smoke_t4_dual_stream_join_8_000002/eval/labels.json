@@ -1,0 +1,12 @@
+{
+  "pass_level": "L1",
+  "checks": {
+    "l0_complete": true,
+    "l1_lint_pass": true,
+    "l2_sim_pass": false,
+    "l3_synth_pass": false,
+    "l4_lite_timing_pass": false
+  },
+  "final_attempt_id": 3,
+  "failure_count": 4
+}

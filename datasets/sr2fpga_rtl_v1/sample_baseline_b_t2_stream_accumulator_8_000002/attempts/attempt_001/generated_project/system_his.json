@@ -1,0 +1,137 @@
+{
+  "schema_version": "system-his-v1.1",
+  "project": {
+    "name": "baseline_b_t2_stream_accumulator_8_000002",
+    "description": "Build an 8-bit streaming accumulator datapath as a complete SR2FPGA Verilog RTL project. This is component topology t2_stream_accumulator, difficulty tier T2. Use a skid_buffer feeding an accumulator_core.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "system": {
+    "description": "Streaming accumulator that sums input samples with backpressure"
+  },
+  "interface": {
+    "top_module": "top",
+    "ports": [
+      {"name": "clk", "direction": "input", "width": 1},
+      {"name": "rst_n", "direction": "input", "width": 1},
+      {"name": "in_valid", "direction": "input", "width": 1},
+      {"name": "in_data", "direction": "input", "width": 8},
+      {"name": "sum", "direction": "output", "width": 8}
+    ]
+  },
+  "architecture": {
+    "top_module": "top",
+    "topology": {
+      "nodes": [
+        {"name": "skid", "module": "skid_buffer"},
+        {"name": "acc", "module": "accumulator_core"}
+      ],
+      "edges": [
+        {"from": "skid.out_valid", "to": "acc.sample_valid"},
+        {"from": "skid.out_data", "to": "acc.sample"},
+        {"from": "acc.sample_ready", "to": "skid.out_ready"}
+      ]
+    }
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "integration_wrapper",
+      "source": "rtl/top.v",
+      "ports": [
+        {"name": "clk", "direction": "input", "width": 1},
+        {"name": "rst_n", "direction": "input", "width": 1},
+        {"name": "in_valid", "direction": "input", "width": 1},
+        {"name": "in_data", "direction": "input", "width": 8},
+        {"name": "sum", "direction": "output", "width": 8}
+      ],
+      "params": [],
+      "clock_domain": "clk",
+      "reset": "rst_n",
+      "intent": "integrates submodules and exposes the top interface"
+    },
+    {
+      "name": "skid_buffer",
+      "role": "skid_buffer",
+      "source": "rtl/skid_buffer.v",
+      "ports": [
+        {"name": "clk", "direction": "input", "width": 1},
+        {"name": "rst_n", "direction": "input", "width": 1},
+        {"name": "in_valid", "direction": "input", "width": 1},
+        {"name": "in_data", "direction": "input", "width": 8},
+        {"name": "out_valid", "direction": "output", "width": 1},
+        {"name": "out_data", "direction": "output", "width": 8},
+        {"name": "out_ready", "direction": "input", "width": 1},
+        {"name": "in_ready", "direction": "output", "width": 1}
+      ],
+      "params": [{"name": "WIDTH", "value": 8}],
+      "clock_domain": "clk",
+      "reset": "rst_n",
+      "intent": "provides backpressure buffering"
+    },
+    {
+      "name": "accumulator_core",
+      "role": "accumulator",
+      "source": "rtl/accumulator_core.v",
+      "ports": [
+        {"name": "clk", "direction": "input", "width": 1},
+        {"name": "rst_n", "direction": "input", "width": 1},
+        {"name": "sample_valid", "direction": "input", "width": 1},
+        {"name": "sample", "direction": "input", "width": 8},
+        {"name": "sum", "direction": "output", "width": 8},
+        {"name": "sample_ready", "direction": "output", "width": 1}
+      ],
+      "params": [{"name": "WIDTH", "value": 8}],
+      "clock_domain": "clk",
+      "reset": "rst_n",
+      "intent": "accumulates input samples"
+    }
+  ],
+  "connections": [
+    {"from": "top.clk", "to": "skid_buffer.clk"},
+    {"from": "top.rst_n", "to": "skid_buffer.rst_n"},
+    {"from": "top.clk", "to": "accumulator_core.clk"},
+    {"from": "top.rst_n", "to": "accumulator_core.rst_n"},
+    {"from": "top.in_valid", "to": "skid_buffer.in_valid"},
+    {"from": "top.in_data", "to": "skid_buffer.in_data"},
+    {"from": "skid_buffer.out_valid", "to": "accumulator_core.sample_valid"},
+    {"from": "skid_buffer.out_data", "to": "accumulator_core.sample"},
+    {"from": "accumulator_core.sample_ready", "to": "skid_buffer.out_ready"},
+    {"from": "accumulator_core.sum", "to": "top.sum"}
+  ],
+  "top_ports": [
+    {"name": "clk", "direction": "input", "width": 1},
+    {"name": "rst_n", "direction": "input", "width": 1},
+    {"name": "in_valid", "direction": "input", "width": 1},
+    {"name": "in_data", "direction": "input", "width": 8},
+    {"name": "sum", "direction": "output", "width": 8}
+  ],
+  "platform": {
+    "toolchain": "open_source"
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "acceptance": "prints TEST_PASS only on success"
+  },
+  "qor_intent": {
+    "resources": {
+      "lut": "minimize",
+      "ff": "minimize"
+    },
+    "timing": {
+      "target_fmax_mhz": 100
+    }
+  }
+}

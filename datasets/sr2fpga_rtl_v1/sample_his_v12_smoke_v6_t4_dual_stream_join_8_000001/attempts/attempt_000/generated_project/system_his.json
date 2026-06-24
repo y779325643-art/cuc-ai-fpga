@@ -1,0 +1,602 @@
+{
+  "schema_version": "system-his-v1.2-topdown",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
+    "design_goal": "Implement an 8-bit dual-stream join with accumulation and output.",
+    "assumptions": [
+      "Clock domain is single at 100 MHz.",
+      "Reset is active-low, synchronous.",
+      "Input and output streams use ready/valid handshake.",
+      "Accumulation saturates at 8-bit maximum? Not specified, assumed modulo-256."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "WIDTH",
+        "default": 8,
+        "description": "Data width"
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "domain": "clk"
+      }
+    ],
+    "ports": [
+      {
+        "name": "in0_data",
+        "width": 8,
+        "direction": "input",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "in0_valid",
+        "width": 1,
+        "direction": "input",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "in0_ready",
+        "width": 1,
+        "direction": "output",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "in1_data",
+        "width": 8,
+        "direction": "input",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "in1_valid",
+        "width": 1,
+        "direction": "input",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "in1_ready",
+        "width": 1,
+        "direction": "output",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "out_data",
+        "width": 8,
+        "direction": "output",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "out_valid",
+        "width": 1,
+        "direction": "output",
+        "protocol": "ready_valid"
+      },
+      {
+        "name": "out_ready",
+        "width": 1,
+        "direction": "input",
+        "protocol": "ready_valid"
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "acc_reg",
+        "width": 8,
+        "description": "Accumulator register holding running sum."
+      }
+    ],
+    "counters": [
+      {
+        "name": "join_count",
+        "width": 8,
+        "description": "Count of successfully joined sample pairs."
+      }
+    ],
+    "fsms": [
+      {
+        "name": "join_fsm",
+        "states": [
+          "IDLE",
+          "WAIT_IN0",
+          "WAIT_IN1",
+          "JOIN",
+          "OUTPUT"
+        ],
+        "description": "State machine to orchestrate joining."
+      }
+    ],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "ready_in",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8
+        }
+      ],
+      "state": [
+        {
+          "name": "buffer_reg",
+          "width": 8,
+          "description": "Internal skid register."
+        },
+        {
+          "name": "full",
+          "width": 1,
+          "description": "Indicates buffer full."
+        }
+      ]
+    },
+    {
+      "name": "stream_join",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in0_data",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "in0_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in0_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "in1_data",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "in1_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in1_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "width": 16
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8
+        }
+      ],
+      "state": [
+        {
+          "name": "join_valid",
+          "width": 1,
+          "description": "Indicates valid joined data."
+        },
+        {
+          "name": "join_reg",
+          "width": 16,
+          "description": "Concatenation of two input samples."
+        }
+      ]
+    },
+    {
+      "name": "accumulator_core",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": 16
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "ready_in",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8
+        }
+      ],
+      "state": [
+        {
+          "name": "acc_reg",
+          "width": 8,
+          "description": "Accumulator register (defined globally, but here for completeness)."
+        }
+      ]
+    },
+    {
+      "name": "stream_stage",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "ready_in",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8
+        }
+      ],
+      "state": [
+        {
+          "name": "pipeline_reg",
+          "width": 8,
+          "description": "Pipeline register for output."
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "in0_buffer",
+      "component": "skid_buffer",
+      "owns_state": [],
+      "parameters": {
+        "WIDTH": 8
+      }
+    },
+    {
+      "name": "in1_buffer",
+      "component": "skid_buffer",
+      "owns_state": [],
+      "parameters": {
+        "WIDTH": 8
+      }
+    },
+    {
+      "name": "join_core",
+      "component": "stream_join",
+      "owns_state": [],
+      "parameters": {
+        "WIDTH": 8
+      }
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "owns_state": [
+        "acc_reg"
+      ],
+      "parameters": {
+        "WIDTH": 8
+      }
+    },
+    {
+      "name": "out_stage",
+      "component": "stream_stage",
+      "owns_state": [],
+      "parameters": {
+        "WIDTH": 8
+      }
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "in0_data_stream",
+      "path": [
+        "top.in0_data",
+        "in0_buffer.data_in",
+        "in0_buffer.data_out",
+        "join_core.in0_data"
+      ],
+      "description": "Input stream 0 data path through buffer to join."
+    },
+    {
+      "name": "in1_data_stream",
+      "path": [
+        "top.in1_data",
+        "in1_buffer.data_in",
+        "in1_buffer.data_out",
+        "join_core.in1_data"
+      ],
+      "description": "Input stream 1 data path through buffer to join."
+    },
+    {
+      "name": "join_data_stream",
+      "path": [
+        "join_core.out_data",
+        "accumulator.data_in"
+      ],
+      "description": "Joined 16-bit data to accumulator."
+    },
+    {
+      "name": "accum_data_stream",
+      "path": [
+        "accumulator.data_out",
+        "out_stage.data_in"
+      ],
+      "description": "Accumulated 8-bit data to output stage."
+    },
+    {
+      "name": "out_data_stream",
+      "path": [
+        "out_stage.data_out",
+        "top.out_data"
+      ],
+      "description": "Final output data to top-level port."
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_all",
+      "kind": "reset_rule",
+      "condition": "top.rst_n == 0",
+      "effects": "All registers and state machines reset to initial values.",
+      "related_state": [
+        "acc_reg",
+        "join_count",
+        "join_fsm"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "in0_handshake",
+      "kind": "handshake_rule",
+      "condition": "in0_buffer.valid_out and join_core.in0_ready",
+      "effects": "in0_buffer data transferred to join_core.",
+      "related_state": [],
+      "related_flows": [
+        "in0_data_stream"
+      ]
+    },
+    {
+      "name": "in1_handshake",
+      "kind": "handshake_rule",
+      "condition": "in1_buffer.valid_out and join_core.in1_ready",
+      "effects": "in1_buffer data transferred to join_core.",
+      "related_state": [],
+      "related_flows": [
+        "in1_data_stream"
+      ]
+    },
+    {
+      "name": "join_condition",
+      "kind": "enable_rule",
+      "condition": "in0_buffer.valid_out and in1_buffer.valid_out and join_core.out_ready",
+      "effects": "Join operation produces output.",
+      "related_state": [
+        "join_fsm"
+      ],
+      "related_flows": [
+        "join_data_stream"
+      ]
+    },
+    {
+      "name": "accum_update",
+      "kind": "counter_update",
+      "condition": "accumulator.valid_in and accumulator.ready_out",
+      "effects": "Accumulator adds incoming data to acc_reg; join_count increments.",
+      "related_state": [
+        "acc_reg",
+        "join_count"
+      ],
+      "related_flows": [
+        "accum_data_stream"
+      ]
+    },
+    {
+      "name": "out_handshake",
+      "kind": "handshake_rule",
+      "condition": "out_stage.valid_out and top.out_ready",
+      "effects": "Output data transferred to top-level.",
+      "related_state": [],
+      "related_flows": [
+        "out_data_stream"
+      ]
+    },
+    {
+      "name": "stall_propagation",
+      "kind": "stall_rule",
+      "condition": "not out_stage.ready_in",
+      "effects": "Backpressure propagates through accumulator and join.",
+      "related_state": [],
+      "related_flows": [
+        "out_data_stream",
+        "accum_data_stream",
+        "join_data_stream"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_join_and_accumulate",
+        "description": "Drive two input streams with fixed values, observe output accumulation.",
+        "pass_condition": "Output equals expected accumulated sum after each join."
+      },
+      {
+        "name": "backpressure_stall",
+        "description": "Assert out_ready low intermittently to verify stall and resume.",
+        "pass_condition": "No data loss and correct final value."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/stream_join.v",
+      "rtl/accumulator_core.v",
+      "rtl/stream_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}
