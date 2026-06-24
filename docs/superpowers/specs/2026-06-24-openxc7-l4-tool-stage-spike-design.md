@@ -43,6 +43,14 @@ stage**, the same way Verilator/Icarus/Yosys are wired as L1–L3 stages.
 - **Mac:** development/orchestration only; never touches the toolchain or board.
 - **Authoring vs execution:** this spec and its plan are documents; **execution
   (install, run, board) happens on the Windows+WSL2 box** by the user or codex.
+- **Where data generation runs (division of labor):** the L4 stage degrades to
+  `missing_tool` on any machine without OpenXC7 (the existing `CommandRunner`
+  contract — no crash). So the **batch data generation that produces L3/L4 labels
+  runs on the WSL2 host** (Verilator/Icarus/Yosys/OpenXC7 installed); the **Mac is
+  development/orchestration only** (L0, or L0–L3 if the open-source L1–L3 tools are
+  brew-installed, but never L4). The same agent code runs on both — only the label
+  level produced differs. Moving batch generation to WSL2 is a host change, not a
+  code change.
 
 ## Scope
 
