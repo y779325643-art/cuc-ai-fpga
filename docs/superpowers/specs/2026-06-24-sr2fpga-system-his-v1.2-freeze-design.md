@@ -2,13 +2,26 @@
 
 ## Status
 
-Approved (2026-06-24). Freezes `system-his-v1.2` as the single canonical
-System-HIS schema before the first clean training split. Supersedes the
-prototype `system-his-v1.2-topdown`
+**Approved direction (2026-06-24); freeze ratified when the success criteria
+pass.** This document commits `system-his-v1.2` as the single canonical
+direction and stops the dual-schema (v1.1 + v1.2-topdown) drift — that decision
+is in force now. The *freeze itself* (lock the fields and generate clean training
+data at scale against them) is **ratified only after implementation validates the
+schema**, because parts of it have not yet been run (see "Freeze ratification
+gate"). Supersedes the prototype `system-his-v1.2-topdown`
 (`docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`)
 and the inline `system-his-v1.1` schema in
 `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md`. Where
-they differ, this freeze governs.
+they differ, this document governs.
+
+> **Why not "frozen now":** the structural core (top/components/instances/
+> data_flow/state/artifacts + cross-check) mirrors what v1.1 already runs, but the
+> **new fields** — `data_flow.timing`, structured `control_flow`
+> (`fsm_transition`/`enable_rule`), and the guard grammar — were designed in
+> review and have **never been generated, checked, or exercised by any sample**.
+> v1.1's flaws only surfaced when run (the T4 dual-instance failure); the same
+> will hold here. So those fields are **provisional** until a real task exercises
+> them. Freezing an unrun grammar is design-in-a-vacuum.
 
 ## Why freeze now
 
@@ -36,6 +49,39 @@ generation runs against a stable target.
 6. Guard expressions use a **shallow structured grammar (depth ≤ 2)**.
 7. Legacy + v1.1 data is **quarantined** (labeled, kept for traceability, not
    mixed into the clean REQ2HIS training split).
+
+## Freeze ratification gate
+
+The freeze is staged, not declared all at once. Two tiers, each ratified by
+evidence from implementation (the plan
+`docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`):
+
+- **Tier 1 — structural core** (`schema_version`, `intent`, `top`, `components`,
+  `instances`, `data_flow` path/endpoints, `state` (non-FSM), `timing`,
+  `resources`, `verification`, `artifacts`) + the HIS↔RTL cross-check. This
+  mirrors what the v1.1 checker already runs, so it is the low-risk part.
+  **Ratified when:** the deterministic generator emits valid `system-his-v1.2`
+  for **all** current task families and they pass the extended L0 checker
+  (plan Task 7a/7b), and the cross-check reports a cross-file-consistency error
+  rate (plan Task 5/6).
+
+- **Tier 2 — provisional new fields** (`data_flow.timing` latency/II/throughput;
+  structured `control_flow` `fsm_transition`/`enable_rule`; the guard grammar;
+  `state.fsms`). These were designed in review and have never been generated or
+  checked. They stay **provisional**: implemented and validated by the checker,
+  but **not required in the REQ2HIS training target** until a real task exercises
+  each one end-to-end. **Ratified when:** a pipelined task carries a
+  `data_flow.timing` contract checkable at L2 (latency/II measured), and an
+  FSM-bearing task (the RL agent FSM is the reference) round-trips through
+  `state.fsms` + structured `control_flow` with auto-derived testbench
+  liveness/stall scenarios. Until ratified, the guard grammar and FSM/timing
+  shapes may still be revised based on what running them reveals — that is the
+  point of keeping them provisional rather than frozen.
+
+**Consequence for data collection:** the first clean training split may begin on
+the **Tier-1 core** once Tier 1 is ratified, without waiting for Tier 2. REQ2HIS
+targets do not depend on the provisional fields until Tier 2 ratifies, so
+unvalidated grammar never pollutes the training target.
 
 ## Canonical schema and migration
 
