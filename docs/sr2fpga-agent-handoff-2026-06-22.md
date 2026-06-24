@@ -8,13 +8,27 @@ requirement -> System-HIS -> multi-file Verilog RTL project -> open-source EDA t
 
 The important research asset is not only passing RTL, but also failed attempts with tool logs, diagnosis, and locally computed `patch.diff`.
 
-## Current Handoff Update - 2026-06-23
+## Current Status - 2026-06-23
 
 Branch:
 
 `codex/sr2fpga-data-agent`
 
-Latest relevant commits:
+Read first:
+
+- `docs/README.md` - documentation map.
+- `docs/current-status.md` - short living status page.
+- `README.md` - repository-level overview.
+- `CLAUDE.md` - agent instructions and invariants.
+
+Current engineering slice:
+
+- autonomous runner hardening;
+- natural LLM failure collection for repair-trajectory learning;
+- synthetic failure injection as pipeline test and controlled-ablation support;
+- deliberate dataset hygiene.
+
+Latest relevant committed milestones:
 
 - `5042bed Update project README for SR2FPGA` - root README is now the project
   entry point and reflects SR2FPGA, System-HIS, tool-verified trajectories,
@@ -34,57 +48,69 @@ Latest relevant commits:
 - `2157d1c update 2026.06.23 agent` - later workspace update adding Claude
   context files, report PDFs, temporary PDF renders, and smoke data.
 
-Current verification:
+Current uncommitted implementation work:
+
+- `LLM/src/sr2fpga_agent/failure_injector.py`
+- `LLM/tests/test_sr2fpga_agent_failure_injector.py`
+- `LLM/src/sr2fpga_agent/runner.py`
+- `LLM/tests/test_sr2fpga_agent_runner.py`
+- `configs/sr2fpga_agent.example.yaml`
+- `LLM/README.md`
+- docs/index/status cleanup files
+
+Current failure injector support:
+
+- `rename_reset_port`
+- `missing_manifest_source`
+- `wrong_top_module`
+- `width_mismatch`
+- `testbench_expected_value_mismatch`
+- `constraint_missing_clock`
+- `multimodule_connection_mismatch`
+- `FailureInjectingProjectGenerator` wrapper around a base project generator
+
+Current verification from the latest implementation pass:
 
 ```bash
-python3 -m unittest LLM.tests.test_sr2fpga_agent_failure_injector -q
-# Ran 3 tests - OK
+python3 -m unittest LLM.tests.test_sr2fpga_agent_failure_injector LLM.tests.test_sr2fpga_agent_runner -q
+# Ran 23 tests - OK
 
 python3 -m unittest discover -s LLM/tests -q
-# Ran 78 tests - OK
+# Ran 85 tests - OK
 ```
 
-Current uncommitted work observed after the latest commits:
+## Known Issues And Next Work
 
-- New untracked files:
-  - `LLM/src/sr2fpga_agent/failure_injector.py`
-  - `LLM/tests/test_sr2fpga_agent_failure_injector.py`
-- The failure injector currently supports:
-  - `rename_reset_port`
-  - `missing_manifest_source`
-  - `wrong_top_module`
-  - `FailureInjectingProjectGenerator` wrapper around a base project generator
-- There are also tracked dataset deletions in the working tree, affecting:
-  - parts of `sample_llm_repair_forced_minpatch_000011`
-  - parts of `sample_llm_repair_forced_minpatch_000012`
-  - `sample_llm_uart_tx_000001/attempt_001/rtl/uart_tx_core.v`
-  - selected generated files under `sample_multimodule_000005` and
-    `sample_multimodule_000010`
-- Do not revert those deletions automatically. They may be intentional cleanup
-  from Claude/user work. Confirm before staging or restoring dataset files.
+1. Continue hardening the autonomous runner.
+   - Current command: `python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_agent.example.yaml --run-id <run-id>`.
+   - Run state and logs live under `tmp/sr2fpga_runs/<run-id>/`.
+   - Default research runs should prioritize natural LLM failures.
+   - Optional synthetic failure injection is configured per task through
+     `failure_injectors` and should be used mainly for smoke tests and ablation.
 
-Recommended immediate next step:
+2. Add failure-source metadata.
+   - Record `failure_origin`, `generator`, `repair_provider`, and task
+     difficulty so natural LLM failures can be separated from synthetic or
+     mutation-derived failures in exports and analysis.
 
-1. Decide whether the uncommitted dataset deletions should be kept, restored, or
-   replaced by a cleaner dataset-snapshot commit.
-2. Integrate `failure_injector.py` into the autonomous runner as an optional
-   configured project-generator wrapper.
-3. Add runner config fields for synthetic failure injection only after the
-   dataset deletion question is resolved.
+3. Extend first-class failure injector coverage.
+   - Current injector code covers reset-port rename, missing manifest source,
+     wrong top module, width mismatch, testbench expected-value mismatch,
+     constraint references missing clock, and multi-module connection mismatch.
+   - Runner configs can apply those injectors per planned task.
+   - Next useful injector work: make width/testbench mismatch patterns cover
+     more task families beyond counter-style self-checks.
 
-## Current Branch And Code State
+4. Improve DeepSeek repair for real LLM failures.
+   - `sample_llm_batch_000002` stopped at L1 after repair.
+   - Inspect its attempt logs and patch before changing prompts.
 
-- Branch: `codex/sr2fpga-data-agent`
-- Latest committed repair optimization before this note: `d272dd2 Minimize DeepSeek repair patch noise`
-- Current source changes in progress:
-  - `LLM/src/sr2fpga_agent/recorder.py`
-  - `LLM/tests/test_sr2fpga_agent_recorder.py`
-- Reason: `export_training_views()` failed when a macOS `.DS_Store` file appeared under a generated project directory. The fix skips hidden files while exporting project files.
-- Verification after the fix:
-  - `python3 -m unittest LLM.tests.test_sr2fpga_agent_recorder.DatasetRecorderTest.test_export_training_views_ignores_hidden_project_files -q`
-  - `python3 -m unittest discover -s LLM/tests -q`
+5. Treat dataset commits deliberately.
+   - The repo already contains a milestone dataset snapshot.
+   - Do not stage generated dataset deletions or additions casually.
+   - Never commit model weights, LoRA outputs, or API keys.
 
-## Data Generated In This Run
+## Historical Run Notes
 
 Dataset root:
 
@@ -94,90 +120,31 @@ Export root:
 
 `datasets/sr2fpga_rtl_v1_exports`
 
-New forced repair samples:
+Earlier forced repair samples generated in this workstream:
 
-- `sample_llm_repair_forced_minpatch_000005` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000006` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000007` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000008` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000009` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000010` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000011` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000012` - L3, one failure, one repair patch
+- `sample_llm_repair_forced_minpatch_000005` through
+  `sample_llm_repair_forced_minpatch_000012` - L3, one failure, one repair
+  patch each.
 
-All eight forced repair patches are RTL-only and do not rewrite `manifest.json`.
+Earlier direct DeepSeek generation samples:
 
-New direct DeepSeek generation samples:
+- `sample_llm_batch_000001` - L3, no repair needed.
+- `sample_llm_batch_000002` - L1, two failed attempts, one repair patch.
+- `sample_llm_batch_000003` - L3, no repair needed.
+- `sample_llm_batch_000004` - L3, no repair needed.
 
-- `sample_llm_batch_000001` - L3, no repair needed
-- `sample_llm_batch_000002` - L1, two failed attempts, one repair patch
-- `sample_llm_batch_000003` - L3, no repair needed
-- `sample_llm_batch_000004` - L3, no repair needed
+Keep `sample_llm_batch_000002`: it is a useful real LLM boundary case where the
+current repair loop did not reach simulation/synthesis.
 
-Keep `sample_llm_batch_000002`: it is a useful real LLM boundary case where the current repair loop did not reach simulation/synthesis.
+Previously recorded export counts after refresh:
 
-Current export counts after refresh:
-
-- `failure_to_diagnosis.jsonl`: 16
-- `failure_to_patch.jsonl`: 14
-- `requirement_to_his.jsonl`: 33
-- `his_to_project.jsonl`: 33
-- `requirement_to_project.jsonl`: 33
-- `project_to_predicted_qor.jsonl`: 33
-- `project_to_measured_qor.jsonl`: 33
-
-## Commands Used
-
-Run tests:
-
-```bash
-python3 -m unittest discover -s LLM/tests -q
-```
-
-Refresh training views:
-
-```bash
-python3 - <<'PY'
-from pathlib import Path
-from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
-DatasetRecorder(Path("datasets/sr2fpga_rtl_v1")).export_training_views(
-    Path("datasets/sr2fpga_rtl_v1_exports")
-)
-PY
-```
-
-Count export rows:
-
-```bash
-python3 - <<'PY'
-from pathlib import Path
-root = Path("datasets/sr2fpga_rtl_v1_exports")
-for path in sorted(root.glob("*.jsonl")):
-    print(path.name, sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip()))
-PY
-```
-
-## Known Issues And Next Work
-
-1. Continue hardening the autonomous runner.
-   - Current command: `python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_agent.example.yaml --run-id <run-id>`.
-   - Run state and logs live under `tmp/sr2fpga_runs/<run-id>/`.
-   - Next useful runner feature is optional synthetic failure injection.
-
-2. Finish first-class failure injector integration.
-   - Current untracked injector code already covers reset-port rename, missing
-     manifest source, and wrong top module.
-   - Next useful injectors: width mismatch, testbench expected-value mismatch,
-     constraint references missing clock, and multi-module connection mismatch.
-
-3. Improve DeepSeek repair for real LLM failures.
-   - `sample_llm_batch_000002` stopped at L1 after repair.
-   - Inspect its attempt logs and patch before changing prompts.
-
-4. Treat dataset commits deliberately.
-   - The repo already contains a milestone dataset snapshot.
-   - Do not stage generated dataset deletions or additions casually.
-   - Never commit model weights, LoRA outputs, or API keys.
+- `failure_to_diagnosis.jsonl`: 21
+- `failure_to_patch.jsonl`: 17
+- `his_to_project.jsonl`: 47
+- `project_to_measured_qor.jsonl`: 47
+- `project_to_predicted_qor.jsonl`: 47
+- `requirement_to_his.jsonl`: 47
+- `requirement_to_project.jsonl`: 47
 
 ## Multi-Module Task Family Implementation
 

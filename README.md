@@ -42,6 +42,8 @@ Core ideas:
 
 Important project documents:
 
+- `docs/README.md` - documentation map and recommended reading order.
+- `docs/current-status.md` - living current engineering status.
 - `docs/research-objective-sr2fpga-tcad.md` - project-level research objective.
 - `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md` -
   TCAD/TRETS research reframe and paper program.
@@ -93,6 +95,10 @@ Current task families include single-module and multi-module RTL projects:
 - `fir_filter`
 - `streaming_valid_ready`
 - `matrix_vector_mac`
+- `composed_event_counter`
+- `composed_stream_accumulator`
+- `composed_stream_fork`
+- `composed_dual_stream_join`
 
 The multi-module families are expected to emit `rtl/top.v` plus task-specific
 submodule `.v` files. The DeepSeek path rejects single-file responses for these
@@ -117,23 +123,62 @@ python3 -m LLM.src.sr2fpga_agent.cli \
   --project-name local_counter_8bit
 ```
 
-Run the autonomous batch runner with the example config:
+Run baseline (a), first attempt with no tool-loop repair, across the current
+T1-T4 component-topology tasks:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_baseline_a.example.yaml \
+  --run-id deepseek-baseline-a \
+  --preflight
+
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_baseline_a.example.yaml \
+  --run-id deepseek-baseline-a
+```
+
+The preflight command prints JSON with tool readiness, API-key readiness, run
+directory status, and a planned sample preview for the T1-T4 topology set. Each
+preview includes the exact requirement text that will be sent to the generator,
+including topology nodes, edges, difficulty tier, and expected behavior.
+Baseline (a) uses the `natural_component` requirement style: a deterministic
+surface rewrite that makes component-topology prompts read like engineering
+requirements while preserving the same audited contracts.
+
+Run the autonomous batch runner with the tool-loop example config:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
   --config configs/sr2fpga_agent.example.yaml \
-  --run-id deepseek-multimodule-smoke
+  --run-id deepseek-tool-loop-smoke
 ```
 
 The example runner config uses DeepSeek by default. Set the API key through the
-environment, never in tracked files:
+environment or the ignored local `.env` file, never in tracked files. The
+baseline (a) config declares `env_file: .env`, so the runner will load it
+automatically when present:
 
 ```bash
 cp .env.example .env
 # edit .env locally
-set -a
-source .env
-set +a
+```
+
+On macOS/Python.org installs, if HTTPS verification fails with
+`CERTIFICATE_VERIFY_FAILED`, set `SSL_CERT_FILE=/etc/ssl/cert.pem` in the local
+ignored `.env` file.
+
+The runner preflight reports whether `DEEPSEEK_API_KEY` is present, where it
+was loaded from (`environment` or `.env`), and a short non-secret fingerprint so
+you can confirm that a local key update took effect before launching a run.
+Add `--validate-provider` to make a minimal DeepSeek authentication request
+before generation:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_baseline_a.example.yaml \
+  --run-id deepseek-baseline-a \
+  --preflight \
+  --validate-provider
 ```
 
 For a no-network deterministic smoke run, create a temporary JSON config with
@@ -146,18 +191,32 @@ The runner is the preferred control entry for producing more than one sample:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_agent.example.yaml \
+  --config configs/sr2fpga_baseline_a.example.yaml \
   --run-id <run-id>
 ```
 
 It provides:
 
 - config-driven task planning;
-- resumable `run_state.json`;
+- resumable `run_state.json` with a config fingerprint; resume rejects runs
+  when the same run ID is reused with a different config;
 - `events.jsonl` for compact run events;
 - `summary.json` with bucket counts and failure histograms;
+- `baseline_report.md` with source, failure-origin, requirement-style,
+  difficulty-tier, topology, and measurement-point calibration rows plus the
+  first pass-rate knee under the default 80% L3 threshold;
 - `success_l3`, `repair_trajectory`, and `rejected` sample buckets;
 - automatic refresh of training exports.
+
+The runner writes `baseline_report.md` automatically. Regenerate it manually if
+you edit or copy a `summary.json`:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.baseline_report \
+  --summary tmp/sr2fpga_runs/<run-id>/summary.json \
+  --knee-threshold 0.8 \
+  --output tmp/sr2fpga_runs/<run-id>/baseline_report.md
+```
 
 Full run logs live under `tmp/sr2fpga_runs/<run-id>/` and should remain local
 by default. Commit compact summaries only when they are useful for research
@@ -250,8 +309,10 @@ L3 samples.
 
 ## Secrets And Git Hygiene
 
-- Do not commit real API keys.
-- `.env` is ignored and should stay local.
+- Do not commit real API keys, including in README, specs, handoff notes,
+  configs, shell history snippets, or run summaries.
+- `.env` is ignored and should stay local; put the real
+  `DEEPSEEK_API_KEY` there or export it only in the current shell.
 - `.env.example` documents the expected environment variable names.
 - Large model weights, LoRA outputs, server-local caches, and temporary run logs
   should remain outside Git or under ignored directories.

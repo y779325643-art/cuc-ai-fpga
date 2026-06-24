@@ -79,10 +79,30 @@ V1 generates a small Verilog project package with:
 - `sim/tb_top.v`
 - `reports/predicted_qor.json`
 
+`system_his.json` uses the current `system-his-v1.1` shape with explicit
+`project`, `clocks`, `resets`, `modules`, `connections`, `top_ports`, and
+`qor_intent` records. The L0 checker validates those records against
+`manifest.json` and the emitted RTL before HDL tools run. Module records also
+include clock/reset domain names, one-line intent strings, spec-style `params`,
+and top-level instance parameter overrides when a submodule is instantiated with
+`#(...)`. The `verification` record includes the expected L0-L3 checks and
+`test_pass_means` acceptance text for the self-checking testbench.
+L0 also checks that System-HIS port directions and widths match RTL module
+declarations, `top_ports` matches the manifest top module, the testbench
+instantiates the manifest top module, verification acceptance fields are
+present, `clocks`/`resets`/`qor_intent.resources` are structurally valid, and
+connection `protocol`/`width`/`cdc` fields and timing constraints reference real
+top-level ports. Connection widths may be positive integers or non-empty
+parameterized width expressions.
+
 Current deterministic V1 task types are `counter`, `fifo`, `simple_fsm`,
 `ram_read_write`, `uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`,
-`streaming_valid_ready`, and `matrix_vector_mac`. The last six are multi-module
-families that generate `rtl/top.v` plus task-specific submodule `.v` files.
+`streaming_valid_ready`, `matrix_vector_mac`, `composed_event_counter`, and
+`composed_stream_accumulator`, `composed_stream_fork`, and
+`composed_dual_stream_join`. The multi-module families generate `rtl/top.v`
+plus task-specific submodule `.v` files. The
+`composed_*` task family is the first deterministic component-topology benchmark
+set and records its component-library topology in System-HIS.
 
 It can then run a command-line pipeline:
 
@@ -169,6 +189,22 @@ python3 -m LLM.src.sr2fpga_agent.cli \
 Use the runner when generating more than one sample. The runner reads a config,
 creates sample IDs, runs the existing `DataGenerationAgent`, records a resumable
 run state, refreshes training exports, and prints a compact summary.
+Each task can declare its data source, difficulty tier, failure origin, and
+measurement point; these fields are persisted as sample metadata and copied into
+exported JSONL rows.
+Supported measurement points are `a_first_attempt_no_tools`,
+`b_tool_in_loop_repair`, and `c_finetuned_first_attempt_no_tools`, matching the
+reframe spec's (a)/(b)/(c) comparison structure.
+For compositional deterministic samples, use `task_type: component_topology`
+with `topology_ids` such as `t1_event_counter`, `t2_stream_accumulator`, and
+`t3_stream_fork`, and `t4_dual_stream_join`; the runner expands them into the
+corresponding `composed_*` task packages and records the selected topology ID in
+sample metadata.
+The run summary also reports metadata breakdowns, pass-level breakdowns, and a
+calibration matrix with per-group L3 pass rates, L0 contract-failure counts, and
+cross-file consistency error rates for natural LLM failure collection. It also
+reports global contract metrics, including the cross-file consistency error
+rate derived from L0 System-HIS/manifest failures.
 
 ```bash
 set -a
@@ -176,16 +212,63 @@ source .env
 set +a
 
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_agent.example.yaml \
-  --run-id deepseek-multimodule-smoke
+  --config configs/sr2fpga_baseline_a.example.yaml \
+  --run-id deepseek-baseline-a \
+  --preflight
+
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_baseline_a.example.yaml \
+  --run-id deepseek-baseline-a
 ```
 
-Run state and full logs live under `tmp/sr2fpga_runs/<run-id>/`. Keep those logs
-local by default. Commit only milestone dataset snapshots or compact summaries
-when they are useful for research traceability.
+Use `configs/sr2fpga_baseline_a.example.yaml` for measurement point (a): a
+frontier-model first attempt with `repair_provider: none`, `max_attempts: 1`,
+synthetic failure injection disabled, and `env_file: .env` so the runner can
+load the local ignored DeepSeek key file automatically. Use
+`configs/sr2fpga_agent.example.yaml` for the tool-loop repair smoke path,
+measurement point (b). The preflight output includes a planned sample preview
+with `sample_id`, source, task type, requirement style, requirement text,
+difficulty tier, topology ID, failure origin, and measurement point. Baseline
+(a) sets `requirement_style: natural_component`, which deterministically
+surface-rewrites component-topology prompts into more natural engineering
+language while preserving the same topology contracts for prompt audit before
+API calls. It also reports the `DEEPSEEK_API_KEY` source and a short non-secret
+fingerprint so local `.env` key updates are visible without printing the key.
+Use `--preflight --validate-provider` to make a minimal DeepSeek authentication
+request before launching generation; this catches invalid keys before any RTL
+sample is attempted.
+
+Run state, `summary.json`, and the automatically generated
+`baseline_report.md` live under `tmp/sr2fpga_runs/<run-id>/`. The report also
+groups source, failure origin, requirement style, difficulty tier, topology ID,
+and measurement point, then flags the first difficulty tier whose L3 pass rate
+drops below the knee threshold, defaulting to 80%. Keep those logs local by
+default. Commit only milestone dataset snapshots or compact summaries when they
+are useful for research traceability.
+`run_state.json` records a config fingerprint, and resume rejects a run when
+the same run ID is reused with a different config.
+
+Regenerate the compact baseline table manually if you edit or copy a
+`summary.json`:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.baseline_report \
+  --summary tmp/sr2fpga_runs/deepseek-baseline-a/summary.json \
+  --knee-threshold 0.8 \
+  --output tmp/sr2fpga_runs/deepseek-baseline-a/baseline_report.md
+```
+
+To intentionally collect repair trajectories, add task-level
+`failure_injectors`. Supported injectors are `rename_reset_port`,
+`missing_manifest_source`, `wrong_top_module`, `width_mismatch`,
+`testbench_expected_value_mismatch`, `constraint_missing_clock`, and
+`multimodule_connection_mismatch`; omit the field or use an empty list for
+normal generation.
 
 Each sample records generated project files under `attempts/` and `final/`,
-plus labels and measured QoR under `eval/`.
+plus metadata, labels, and measured QoR. Before Verilator/Icarus/Yosys run, the
+agent performs an L0 System-HIS/manifest consistency check so packaging and
+cross-file contract errors are recorded as first-class failures.
 
 ## Quick Workflow: Deploy First
 
@@ -377,4 +460,8 @@ For a 24GB RTX 4090, start with QLoRA, `per_device_train_batch_size: 1`, and gra
 
 ## Git Hygiene
 
-Do commit source code, scripts, configs, and small documentation. Do not commit model weights, raw datasets, trained adapters, merged models, virtual environments, or server-specific `.env` files.
+Do commit source code, scripts, configs, and small documentation. Do not commit
+model weights, raw datasets, trained adapters, merged models, virtual
+environments, server-specific `.env` files, or real API keys. Keep the real
+`DEEPSEEK_API_KEY` only in a local ignored `.env` file or in the current shell;
+tracked docs and configs should mention only the variable name.

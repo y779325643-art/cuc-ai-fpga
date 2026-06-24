@@ -1,11 +1,11 @@
 # SR2FPGA TCAD Research Objective
 
-> **Note (2026-06-22):** This document records the early-form research objective and is superseded
-> on most design decisions by the approved reframe spec:
+> **Positioning note (2026-06-23):** This document is a concise project-level
+> objective summary. The primary research framing is the approved reframe spec:
 > `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md`.
-> Where the two differ (measurement structure (a)/(b)/(c), toolchain hierarchy,
-> program decomposition into Paper ①/②, benchmark difficulty tiers T1–T4, AC820-ZYNQ +
-> OpenXC7 as L4 primary), the reframe spec governs. This file is kept as historical context.
+> Where this summary and the reframe spec differ, the reframe spec governs.
+> Keep this file aligned with that spec rather than treating it as a competing
+> source of truth.
 
 ## Purpose
 
@@ -131,6 +131,19 @@ trajectory.json
 
 The project should not keep only final successful code. Failed attempts are research assets.
 
+The primary failure source should be **natural LLM-generated RTL project
+failures**, not hand-injected toy bugs. The preferred trajectory is:
+
+```text
+hard system requirement
+-> LLM-generated multi-file RTL project
+-> real tool failure from Verilator / Icarus / Yosys / later implementation
+-> structured diagnosis
+-> LLM or agent repair
+-> rerun tools
+-> recorded repair trajectory
+```
+
 The repair trajectory must preserve:
 
 ```text
@@ -147,6 +160,26 @@ This supports training:
 - `LOG2DIAG`
 - `FAILURE2PATCH`
 - `PROJECT_CRITIC`
+
+Synthetic failure injection is still useful, but only as a secondary control
+mechanism:
+
+- pipeline and exporter smoke tests;
+- controlled repair ablations;
+- failure-taxonomy coverage checks;
+- small balanced evaluation slices.
+
+Synthetic injected failures must be labeled separately from natural LLM
+failures. They should not become the main training or paper narrative.
+
+Recommended failure-origin labels:
+
+```text
+natural_llm
+synthetic_injected
+mutation
+tool_or_environment
+```
 
 ### 5. QoR Prediction
 
@@ -214,7 +247,8 @@ L5 with sparse representative board validation
 The paper should emphasize EDA method contributions:
 
 1. **System-HIS intermediate supervision** for system-requirement-to-RTL-project generation.
-2. **Tool-verified agent trajectory dataset** containing projects, logs, diagnoses, patches, pass levels, and measured QoR.
+2. **Tool-verified agent trajectory dataset** containing natural LLM failures,
+   projects, logs, diagnoses, patches, pass levels, and measured QoR.
 3. **Unified SR2FPGA model** for generation, diagnosis, repair, critique, and QoR prediction.
 4. **Project-level evaluation** using L0-L5 rather than single-file compile pass.
 5. **Failure taxonomy and repair learning** for hardware generation errors.
@@ -271,15 +305,21 @@ Avoid overclaiming:
 
 Near-term work should follow this order:
 
-1. Expand the data generation agent beyond `counter`. Current status:
-   `counter`, `fifo`, `simple_fsm`, and `ram_read_write` are implemented in
-   the deterministic V1 generator.
-2. Add remaining task families: valid-ready pipeline, vector add, and small AI kernels.
-3. Intentionally collect failures and repair trajectories, not only successful samples.
-4. Export stable JSONL views for each training task.
-5. Train or fine-tune first models on `REQ2HIS`, `LOG2DIAG`, `FAILURE2PATCH`, and small `HIS2FILES`.
-6. Add Vivado / Quartus evaluation only after the open-source L0-L3 flow is stable.
-7. Use representative board validation sparingly and honestly as L5 evidence.
+1. Keep the deterministic generator as a trusted reference and smoke-test
+   source, not the main source of repair-learning failures.
+2. Use frontier or local LLMs to generate harder multi-file RTL projects so
+   failures arise naturally from model limitations.
+3. Preserve every natural failure, tool log, diagnosis, patch, and rerun result
+   with explicit metadata for `failure_origin`, `generator`, `repair_provider`,
+   and task difficulty.
+4. Use synthetic failure injectors only for pipeline tests, controlled ablation,
+   and coverage balancing; never mix them silently with natural failures.
+5. Export stable JSONL views for `REQ2HIS`, `HIS2FILES`, `REQ2PROJECT`,
+   `LOG2DIAG`, `FAILURE2PATCH`, `PROJECT_CRITIC`, and `QOR_PRED`.
+6. Train or fine-tune first models after natural-failure volume is sufficient to
+   support diagnosis and repair learning.
+7. Add OpenXC7 / Vivado L4 and representative board L5 only after the open-source
+   L0-L3 flow and trajectory schema are stable.
 
 ## Current Repository Mapping
 
@@ -287,9 +327,14 @@ Current implementation assets:
 
 - Data generation agent: `LLM/src/sr2fpga_agent/`
 - Agent CLI: `python3 -m LLM.src.sr2fpga_agent.cli`
+- Autonomous runner: `python3 -m LLM.src.sr2fpga_agent.runner`
+- Runner config: `configs/sr2fpga_agent.example.yaml`
 - Dataset root: `datasets/sr2fpga_rtl_v1/`
 - Training exports: `datasets/sr2fpga_rtl_v1_exports/`
+- Current status: `docs/current-status.md`
+- Documentation index: `docs/README.md`
 - Generation boundary spec: `docs/superpowers/specs/2026-06-18-sr2fpga-generation-boundary-design.md`
 - Data generation agent spec: `docs/superpowers/specs/2026-06-18-sr2fpga-data-generation-agent-design.md`
+- Autonomous runner spec: `docs/superpowers/specs/2026-06-23-sr2fpga-autonomous-trajectory-runner-design.md`
 
 Future changes should update this document if the research objective changes.
