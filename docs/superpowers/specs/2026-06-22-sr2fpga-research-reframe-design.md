@@ -229,6 +229,7 @@ them as future work.
 | ChipSeek-R1 has **no reusable trajectory dataset** (per-attempt RL reward) | a persistent **tool-verified trajectory dataset** |
 | ResBench (2025): closest FPGA LLM benchmark, but single-module + stops at LUT resource estimation (no PnR / timing / board) | L3 measured QoR (Yosys) + L4 timing (OpenXC7/Vivado) + L5 on-board |
 | SynCircuit (2025, HKUST): synthetic RTL generation at circuit-graph level; no NL requirements, no testbench, no verifiable project structure | requirement-level compositional generation with machine-checked testbenches + tool trajectories |
+| All LLM-to-RTL works use black-box pass/fail; none categorize errors by **sequential vs combinational type** nor train with seq/comb-aware supervision (MeltRTL "hardware-specific inaccuracy" is closest but still uses simulation pass rate) | SR2FPGA failure taxonomy adds a **seq/comb axis** (multi_driven_net, latch_inference, blocking_in_sequential, cdc_missing_sync); System-HIS `modules[].timing_type` declares intent → future L0 checks RTL implementation matches |
 
 **Caveat (the honest catch):** these are *acknowledged* gaps, so the contribution
 is real only if execution actually reaches L4/on-board and a real trajectory
@@ -260,7 +261,8 @@ clocks:    [{name, target_fmax_mhz}]                # clock domains + target fre
 resets:    [{name, polarity: active_low|active_high, kind: sync|async}]
 modules:   [{
    name, role,                  # role = fifo|arbiter|pipeline|alu|regfile|cdc_sync|decoder|…
-   clock, reset,                # which clock/reset domain this module belongs to
+   timing_type: combinational|sequential|mixed,  # declared intent; L0 can check vs RTL always-block structure
+   clock, reset,                # which clock/reset domain this module belongs to (absent when combinational)
    ports:  [{name, dir: in|out|inout, width}],  # width = resolved integer (or "PARAM" ref) so L0 can compare
    params: [{name, value}],
    intent: "<one-line behavior intent, tag-level, not executable>"
@@ -376,6 +378,29 @@ will live here later.
 - **Candidate sources for inputs:** prefer the compositional component library
   (free, controllable, large, leakage-safe) + a small amount of DeepSeek/local
   candidates. **All labels come from tools** (tool-distillation purity).
+- **Failure taxonomy — sequential/combinational axis (mid-level contribution):**
+  LLMs pre-trained on software code systematically confuse hardware's
+  sequential/combinational boundary; all existing works use black-box pass/fail
+  with no per-error-type breakdown. SR2FPGA's failure taxonomy adds a
+  **seq/comb axis** as a named sub-category of `failure_to_diagnosis`:
+
+  | Failure type label | Root cause |
+  |---|---|
+  | `multi_driven_net` | same signal driven by both `always @(posedge clk)` and `always @(*)` |
+  | `latch_inference` | `always @(*)` with incomplete if/case branches → unintended latch |
+  | `blocking_in_sequential` | `=` (blocking) inside `always @(posedge clk)` instead of `<=` |
+  | `cdc_missing_sync` | cross-domain signal without synchronizer |
+
+  These four types map directly to Verilator/Icarus/Yosys diagnostic messages, so
+  `classify_failure()` can detect them from tool logs without manual annotation.
+  Downstream: `LOG2DIAG` training samples tagged with these types teach the model
+  *why* the error occurred (not just *that* it occurred), making `FAILURE2PATCH`
+  repairs structurally more targeted.
+
+  The `System-HIS modules[].timing_type` field (`combinational|sequential|mixed`)
+  encodes the declared intent from requirements. A future L0 extension can flag
+  "System-HIS declares combinational but RTL contains `always @(posedge clk)`" —
+  a structural check EDA lint tools cannot surface before synthesis.
 
 ### Method (the model)
 
