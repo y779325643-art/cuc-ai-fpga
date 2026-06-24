@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from textwrap import dedent
 
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
@@ -19,6 +20,105 @@ SUPPORTED_TASK_TYPES = {
     "fir_filter",
     "streaming_valid_ready",
     "matrix_vector_mac",
+    "composed_event_counter",
+    "composed_stream_accumulator",
+    "composed_stream_fork",
+    "composed_dual_stream_join",
+}
+
+COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
+
+COMPONENT_TOPOLOGIES = {
+    "composed_event_counter": {
+        "topology_id": "t1_event_counter",
+        "difficulty_tier": "T1",
+        "submodules": ["event_gate", "counter_core"],
+        "nodes": [
+            {"id": "gate", "component": "event_gate"},
+            {"id": "counter", "component": "counter_core"},
+        ],
+        "edges": [
+            {"from": "top.event_valid", "to": "event_gate.event_valid"},
+            {"from": "event_gate.count_en", "to": "counter_core.en"},
+            {"from": "counter_core.count", "to": "top.count"},
+        ],
+    },
+    "composed_stream_accumulator": {
+        "topology_id": "t2_stream_accumulator",
+        "difficulty_tier": "T2",
+        "submodules": ["skid_buffer", "accumulator_core"],
+        "nodes": [
+            {"id": "skid", "component": "skid_buffer"},
+            {"id": "accum", "component": "accumulator_core"},
+        ],
+        "edges": [
+            {"from": "top.in_valid", "to": "skid_buffer.in_valid"},
+            {"from": "top.in_data", "to": "skid_buffer.in_data"},
+            {"from": "skid_buffer.out_valid", "to": "accumulator_core.sample_valid"},
+            {"from": "skid_buffer.out_data", "to": "accumulator_core.sample"},
+            {"from": "accumulator_core.sample_ready", "to": "skid_buffer.out_ready"},
+            {"from": "accumulator_core.sum", "to": "top.sum"},
+        ],
+    },
+    "composed_stream_fork": {
+        "topology_id": "t3_stream_fork",
+        "difficulty_tier": "T3",
+        "submodules": ["skid_buffer", "stream_fork", "stream_stage"],
+        "nodes": [
+            {"id": "skid", "component": "skid_buffer"},
+            {"id": "fork", "component": "stream_fork"},
+            {"id": "stage", "component": "stream_stage"},
+        ],
+        "edges": [
+            {"from": "top.in_valid", "to": "skid_buffer.in_valid"},
+            {"from": "top.in_data", "to": "skid_buffer.in_data"},
+            {"from": "skid_buffer.out_valid", "to": "stream_fork.in_valid"},
+            {"from": "skid_buffer.out_data", "to": "stream_fork.in_data"},
+            {"from": "stream_fork.in_ready", "to": "skid_buffer.out_ready"},
+            {"from": "stream_fork.out0_valid", "to": "stream_stage.in_valid"},
+            {"from": "stream_fork.out0_data", "to": "stream_stage.in_data"},
+            {"from": "stream_stage.in_ready", "to": "stream_fork.out0_ready"},
+            {"from": "stream_fork.out1_valid", "to": "stream_stage.in_valid"},
+            {"from": "stream_fork.out1_data", "to": "stream_stage.in_data"},
+            {"from": "stream_stage.in_ready", "to": "stream_fork.out1_ready"},
+            {"from": "stream_stage.out_valid", "to": "top.out0_valid"},
+            {"from": "stream_stage.out_data", "to": "top.out0_data"},
+            {"from": "stream_stage.out_valid", "to": "top.out1_valid"},
+            {"from": "stream_stage.out_data", "to": "top.out1_data"},
+        ],
+    },
+    "composed_dual_stream_join": {
+        "topology_id": "t4_dual_stream_join",
+        "difficulty_tier": "T4",
+        "submodules": ["skid_buffer", "stream_join", "accumulator_core", "stream_stage"],
+        "nodes": [
+            {"id": "skid_a", "component": "skid_buffer"},
+            {"id": "skid_b", "component": "skid_buffer"},
+            {"id": "join", "component": "stream_join"},
+            {"id": "accum", "component": "accumulator_core"},
+            {"id": "stage", "component": "stream_stage"},
+        ],
+        "edges": [
+            {"from": "top.in0_valid", "to": "skid_buffer.in_valid"},
+            {"from": "top.in0_data", "to": "skid_buffer.in_data"},
+            {"from": "top.in1_valid", "to": "skid_buffer.in_valid"},
+            {"from": "top.in1_data", "to": "skid_buffer.in_data"},
+            {"from": "skid_buffer.out_valid", "to": "stream_join.in0_valid"},
+            {"from": "skid_buffer.out_data", "to": "stream_join.in0_data"},
+            {"from": "skid_buffer.out_valid", "to": "stream_join.in1_valid"},
+            {"from": "skid_buffer.out_data", "to": "stream_join.in1_data"},
+            {"from": "stream_join.in0_ready", "to": "skid_buffer.out_ready"},
+            {"from": "stream_join.in1_ready", "to": "skid_buffer.out_ready"},
+            {"from": "stream_join.out_valid", "to": "accumulator_core.sample_valid"},
+            {"from": "stream_join.out_data", "to": "accumulator_core.sample"},
+            {"from": "accumulator_core.sample_ready", "to": "stream_join.out_ready"},
+            {"from": "accumulator_core.sample_valid", "to": "stream_stage.in_valid"},
+            {"from": "accumulator_core.sum", "to": "stream_stage.in_data"},
+            {"from": "stream_stage.in_ready", "to": "accumulator_core.sample_ready"},
+            {"from": "stream_stage.out_valid", "to": "top.out_valid"},
+            {"from": "stream_stage.out_data", "to": "top.out_data"},
+        ],
+    },
 }
 
 class ProjectGenerator:
@@ -32,7 +132,7 @@ class ProjectGenerator:
 
         rtl_files = _rtl_files(request)
         files = {
-            "system_his.json": _to_json(_system_his(request, platform)),
+            "system_his.json": _to_json(_system_his(request, platform, rtl_files)),
             "manifest.json": _to_json(_manifest(request, platform, rtl_files)),
             **rtl_files,
             "constraints/timing.sdc": _timing_sdc(platform),
@@ -46,16 +146,39 @@ def _to_json(payload: object) -> str:
     return json.dumps(payload, ensure_ascii=False, indent=2) + "\n"
 
 
-def _system_his(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
+def _system_his(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+    rtl_files: dict[str, str],
+) -> dict[str, object]:
+    interface = _interface(request, platform)
+    architecture = _architecture(request)
+    modules = _modules(interface, architecture, rtl_files)
+    description = request.description or _default_description(request)
+    predicted_resources = _resource_shape(request)
     return {
+        "schema_version": "system-his-v1.1",
+        "project": {
+            "name": request.project_name,
+            "description": description,
+            "top": architecture["top_module"],
+        },
+        "clocks": [{"name": interface["clock"], "target_fmax_mhz": platform.clock_hz / 1_000_000}],
+        "resets": [
+            {
+                "name": interface["reset"],
+                "polarity": platform.reset_polarity,
+                "kind": "async",
+            }
+        ],
         "project_name": request.project_name,
         "task_type": request.task_type,
-        "system": {
-            "description": request.description
-            or _default_description(request),
-        },
-        "interface": _interface(request, platform),
-        "architecture": _architecture(request),
+        "system": {"description": description},
+        "interface": interface,
+        "architecture": architecture,
+        "modules": modules,
+        "connections": _connections(architecture, rtl_files, modules),
+        "top_ports": _top_ports(interface),
         "platform": {
             "name": platform.name,
             "vendor": platform.vendor,
@@ -67,9 +190,302 @@ def _system_his(request: ProjectRequest, platform: PlatformProfile) -> dict[str,
         },
         "verification": {
             "testbench": "sim/tb_top.v",
-            "expected_behavior": _expected_behavior(request),
+            "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
+            "test_pass_means": _test_pass_means(request),
+            "expected_behavior": _test_pass_means(request),
         },
+        "qor_intent": {"resources": predicted_resources},
     }
+
+
+def _modules(
+    interface: dict[str, object],
+    architecture: dict[str, object],
+    rtl_files: dict[str, str],
+) -> list[dict[str, object]]:
+    module_sources = _module_sources(rtl_files)
+    module_ports = _module_ports(rtl_files)
+    module_parameters = _top_instance_parameters(rtl_files["rtl/top.v"], set(module_sources) - {str(architecture["top_module"])})
+    top_module = str(architecture["top_module"])
+    clock_name = str(interface["clock"])
+    reset_name = str(interface["reset"])
+    modules = [
+        {
+            "name": top_module,
+            "role": "top",
+            "source": module_sources[top_module],
+            "clock": clock_name,
+            "reset": reset_name,
+            "parameters": {},
+            "params": [],
+            "ports": _top_ports(interface),
+            "intent": "top-level integration wrapper for the generated RTL project",
+        }
+    ]
+    for submodule in architecture["submodules"]:
+        parameters = module_parameters.get(str(submodule), {})
+        modules.append(
+            {
+                "name": submodule,
+                "role": "submodule",
+                "source": module_sources[str(submodule)],
+                "clock": clock_name,
+                "reset": reset_name,
+                "parameters": parameters,
+                "params": _params_from_parameters(parameters),
+                "ports": module_ports[str(submodule)],
+                "intent": _module_intent(str(submodule)),
+            }
+        )
+    return modules
+
+
+def _params_from_parameters(parameters: dict[str, object]) -> list[dict[str, object]]:
+    return [{"name": name, "value": value} for name, value in parameters.items()]
+
+
+def _module_intent(module_name: str) -> str:
+    words = module_name.replace("_", " ")
+    return f"{words} component in the generated RTL project"
+
+
+def _top_ports(interface: dict[str, object]) -> list[dict[str, object]]:
+    ports: list[dict[str, object]] = []
+    for direction, his_direction in (("inputs", "input"), ("outputs", "output")):
+        for port in interface[direction]:
+            ports.append(
+                {
+                    "name": port["name"],
+                    "direction": his_direction,
+                    "width": port["width"],
+                }
+            )
+    return ports
+
+
+def _connections(
+    architecture: dict[str, object],
+    rtl_files: dict[str, str],
+    modules: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    top_module = str(architecture["top_module"])
+    ports_by_module = {
+        str(module["name"]): {str(port["name"]): str(port["direction"]) for port in module["ports"]}
+        for module in modules
+    }
+    widths_by_module = {
+        str(module["name"]): {str(port["name"]): port["width"] for port in module["ports"]}
+        for module in modules
+    }
+    top_ports = ports_by_module.get(top_module, {})
+    instance_ports = _top_instance_ports(rtl_files["rtl/top.v"], set(ports_by_module) - {top_module})
+    by_signal: dict[str, list[dict[str, str]]] = {}
+    for item in instance_ports:
+        by_signal.setdefault(item["signal"], []).append(item)
+
+    connections: list[dict[str, object]] = []
+    seen: set[tuple[str, str, str, str, str]] = set()
+    for signal, endpoints in by_signal.items():
+        top_direction = top_ports.get(signal)
+        sinks = [item for item in endpoints if ports_by_module[item["module"]].get(item["port"]) == "input"]
+        drivers = [item for item in endpoints if ports_by_module[item["module"]].get(item["port"]) == "output"]
+
+        if top_direction == "input":
+            for sink in sinks:
+                _append_connection(connections, seen, signal, {"module": top_module, "port": signal}, sink, widths_by_module)
+        for driver in drivers:
+            if top_direction == "output":
+                _append_connection(connections, seen, signal, driver, {"module": top_module, "port": signal}, widths_by_module)
+            for sink in sinks:
+                _append_connection(connections, seen, signal, driver, sink, widths_by_module)
+    return connections
+
+
+def _module_sources(rtl_files: dict[str, str]) -> dict[str, str]:
+    module_sources: dict[str, str] = {}
+    for source, content in rtl_files.items():
+        for line in content.splitlines():
+            stripped = line.strip()
+            if not stripped.startswith("module "):
+                continue
+            name = stripped.split()[1].split("(")[0]
+            module_sources[name] = source
+    return module_sources
+
+
+def _module_ports(rtl_files: dict[str, str]) -> dict[str, list[dict[str, object]]]:
+    ports: dict[str, list[dict[str, object]]] = {}
+    for content in rtl_files.values():
+        for module_name in re.findall(r"^\s*module\s+([A-Za-z_][A-Za-z0-9_$]*)\b", content, re.MULTILINE):
+            ports[module_name] = _parse_module_ports(content, module_name)
+    return ports
+
+
+def _parse_module_ports(content: str, module_name: str) -> list[dict[str, object]]:
+    body = _module_port_body(content, module_name)
+    if body is None:
+        return []
+    ports: list[dict[str, object]] = []
+    for declaration in _split_port_declarations(body):
+        match = re.search(
+            r"\b(input|output|inout)\b\s+(?:wire|reg\s+|reg|wire\s+)?\s*(\[[^\]]+\])?\s*([A-Za-z_][A-Za-z0-9_$]*)",
+            declaration,
+        )
+        if match is None:
+            continue
+        ports.append(
+            {
+                "name": match.group(3),
+                "direction": match.group(1),
+                "width": _port_width(match.group(2)),
+            }
+        )
+    return ports
+
+
+def _module_port_body(content: str, module_name: str) -> str | None:
+    match = re.search(rf"\bmodule\s+{re.escape(module_name)}\b", content)
+    if match is None:
+        return None
+    index = match.end()
+    while index < len(content) and content[index].isspace():
+        index += 1
+    if content.startswith("#", index):
+        hash_index = index + 1
+        while hash_index < len(content) and content[hash_index].isspace():
+            hash_index += 1
+        if hash_index < len(content) and content[hash_index] == "(":
+            index = _matching_paren(content, hash_index) + 1
+    while index < len(content) and content[index].isspace():
+        index += 1
+    if index >= len(content) or content[index] != "(":
+        return None
+    end = _matching_paren(content, index)
+    return content[index + 1 : end]
+
+
+def _matching_paren(text: str, open_index: int) -> int:
+    depth = 0
+    for index in range(open_index, len(text)):
+        if text[index] == "(":
+            depth += 1
+        elif text[index] == ")":
+            depth -= 1
+            if depth == 0:
+                return index
+    raise ValueError("unbalanced parentheses in generated Verilog")
+
+
+def _split_port_declarations(body: str) -> list[str]:
+    declarations: list[str] = []
+    for part in body.split(","):
+        stripped = " ".join(part.strip().split())
+        if stripped:
+            declarations.append(stripped)
+    return declarations
+
+
+def _port_width(range_text: str | None) -> int | str:
+    if range_text is None:
+        return 1
+    numeric = re.fullmatch(r"\[(\d+):0\]", range_text.strip())
+    if numeric is not None:
+        return int(numeric.group(1)) + 1
+    return range_text.strip()
+
+
+def _top_instance_ports(top_rtl: str, submodules: set[str]) -> list[dict[str, str]]:
+    endpoints: list[dict[str, str]] = []
+    pattern = re.compile(
+        r"\b(?P<module>[A-Za-z_][A-Za-z0-9_$]*)\b\s*(?:#\s*\(.*?\)\s*)?"
+        r"(?P<instance>u_[A-Za-z_][A-Za-z0-9_$]*)\s*\((?P<ports>.*?)\)\s*;",
+        re.DOTALL,
+    )
+    for match in pattern.finditer(top_rtl):
+        module_name = match.group("module")
+        if module_name not in submodules:
+            continue
+        instance = match.group("instance")
+        for port, signal in re.findall(r"\.([A-Za-z_][A-Za-z0-9_$]*)\s*\(\s*([A-Za-z_][A-Za-z0-9_$]*)\s*\)", match.group("ports")):
+            endpoints.append({"module": module_name, "instance": instance, "port": port, "signal": signal})
+    return endpoints
+
+
+def _top_instance_parameters(top_rtl: str, submodules: set[str]) -> dict[str, dict[str, object]]:
+    parameters: dict[str, dict[str, object]] = {}
+    pattern = re.compile(
+        r"\b(?P<module>[A-Za-z_][A-Za-z0-9_$]*)\b\s*"
+        r"(?:#\s*\((?P<params>.*?)\)\s*)?"
+        r"(?P<instance>u_[A-Za-z_][A-Za-z0-9_$]*)\s*\(",
+        re.DOTALL,
+    )
+    for match in pattern.finditer(top_rtl):
+        module_name = match.group("module")
+        if module_name not in submodules:
+            continue
+        raw_params = match.group("params") or ""
+        parsed: dict[str, object] = {}
+        for name, value in re.findall(r"\.([A-Za-z_][A-Za-z0-9_$]*)\s*\(\s*([^)]+?)\s*\)", raw_params):
+            parsed[name] = _parameter_value(value)
+        parameters[module_name] = parsed
+    return parameters
+
+
+def _parameter_value(value: str) -> object:
+    stripped = value.strip()
+    if re.fullmatch(r"\d+", stripped):
+        return int(stripped)
+    return stripped
+
+
+def _append_connection(
+    connections: list[dict[str, object]],
+    seen: set[tuple[str, str, str, str, str]],
+    signal: str,
+    source: dict[str, str],
+    target: dict[str, str],
+    widths_by_module: dict[str, dict[str, object]],
+) -> None:
+    key = (signal, source["module"], source["port"], target["module"], target["port"])
+    if key in seen:
+        return
+    seen.add(key)
+    connections.append(
+        {
+            "from": _connection_endpoint(source),
+            "to": _connection_endpoint(target),
+            "signal": signal,
+            "kind": "port_connection",
+            "protocol": _connection_protocol(source["port"], target["port"]),
+            "width": _connection_width(source, target, widths_by_module),
+            "cdc": False,
+        }
+    )
+
+
+def _connection_protocol(source_port: str, target_port: str) -> str:
+    port_text = f"{source_port} {target_port}"
+    if any(token in port_text for token in ("valid", "ready")):
+        return "valid_ready"
+    return "register"
+
+
+def _connection_width(
+    source: dict[str, str],
+    target: dict[str, str],
+    widths_by_module: dict[str, dict[str, object]],
+) -> object:
+    source_width = widths_by_module.get(source["module"], {}).get(source["port"])
+    if source_width is not None:
+        return source_width
+    return widths_by_module.get(target["module"], {}).get(target["port"], 1)
+
+
+def _connection_endpoint(endpoint: dict[str, str]) -> dict[str, str]:
+    payload = {"module": endpoint["module"], "port": endpoint["port"]}
+    if "instance" in endpoint:
+        payload["instance"] = endpoint["instance"]
+    return payload
 
 
 def _architecture(request: ProjectRequest) -> dict[str, object]:
@@ -85,11 +501,28 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
         "streaming_valid_ready": ["skid_buffer", "stream_stage"],
         "matrix_vector_mac": ["vector_rom", "mac_unit", "dot_product_engine"],
     }
-    return {
+    if request.task_type in COMPONENT_TOPOLOGIES:
+        submodules[request.task_type] = list(COMPONENT_TOPOLOGIES[request.task_type]["submodules"])
+    architecture = {
         "style": "multi_module" if submodules[request.task_type] else "single_module",
         "top_module": "top",
         "submodules": submodules[request.task_type],
     }
+    if request.task_type in COMPONENT_TOPOLOGIES:
+        topology = COMPONENT_TOPOLOGIES[request.task_type]
+        architecture.update(
+            {
+                "generator": "component_topology",
+                "topology_id": topology["topology_id"],
+                "difficulty_tier": topology["difficulty_tier"],
+                "component_library": COMPONENT_LIBRARY_ID,
+                "topology": {
+                    "nodes": topology["nodes"],
+                    "edges": topology["edges"],
+                },
+            }
+        )
+    return architecture
 
 
 def _manifest(
@@ -163,6 +596,14 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _streaming_valid_ready_rtl_files(request.width)
     if request.task_type == "matrix_vector_mac":
         return _matrix_vector_mac_rtl_files(request.width)
+    if request.task_type == "composed_event_counter":
+        return _composed_event_counter_rtl_files(request.width)
+    if request.task_type == "composed_stream_accumulator":
+        return _composed_stream_accumulator_rtl_files(request.width)
+    if request.task_type == "composed_stream_fork":
+        return _composed_stream_fork_rtl_files(request.width)
+    if request.task_type == "composed_dual_stream_join":
+        return _composed_dual_stream_join_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -196,6 +637,14 @@ def _testbench(request: ProjectRequest) -> str:
         return _streaming_valid_ready_testbench(request.width)
     if request.task_type == "matrix_vector_mac":
         return _matrix_vector_mac_testbench(request.width)
+    if request.task_type == "composed_event_counter":
+        return _composed_event_counter_testbench(request.width)
+    if request.task_type == "composed_stream_accumulator":
+        return _composed_stream_accumulator_testbench(request.width)
+    if request.task_type == "composed_stream_fork":
+        return _composed_stream_fork_testbench(request.width)
+    if request.task_type == "composed_dual_stream_join":
+        return _composed_dual_stream_join_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1135,6 +1584,299 @@ def _matrix_vector_mac_testbench(width: int) -> str:
     )
 
 
+def _composed_stream_accumulator_testbench(width: int) -> str:
+    msb = width - 1
+    sum_msb = width + 3
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg in_valid;
+          wire in_ready;
+          reg [{msb}:0] in_data;
+          wire sample_valid;
+          wire [{sum_msb}:0] sum;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .in_data(in_data),
+            .sample_valid(sample_valid),
+            .sum(sum)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task send_sample;
+            input [{msb}:0] value;
+            begin
+              @(negedge clk);
+              in_valid = 1'b1;
+              in_data = value;
+              @(negedge clk);
+              in_valid = 1'b0;
+              in_data = {width}'d0;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            in_valid = 1'b0;
+            in_data = {width}'d0;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            send_sample({width}'d3);
+            send_sample({width}'d4);
+            repeat (2) @(posedge clk);
+            #1;
+
+            if (sum !== {width + 4}'d7) begin
+              $display("TEST_FAIL expected sum=7 got %0d", sum);
+              $finish;
+            end
+            if (in_ready !== 1'b1) begin
+              $display("TEST_FAIL in_ready not asserted");
+              $finish;
+            end
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_event_counter_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg event_valid;
+          wire [{msb}:0] count;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .event_valid(event_valid),
+            .count(count)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task pulse_event;
+            begin
+              @(negedge clk);
+              event_valid = 1'b1;
+              @(negedge clk);
+              event_valid = 1'b0;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            event_valid = 1'b0;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            pulse_event();
+            pulse_event();
+            repeat (2) @(posedge clk);
+            #1;
+            if (count !== {width}'d2) begin
+              $display("TEST_FAIL expected count=2 got %0d", count);
+              $finish;
+            end
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_stream_fork_testbench(width: int) -> str:
+    msb = width - 1
+    first_value = min(0xA5, (1 << width) - 1)
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg in_valid;
+          wire in_ready;
+          reg [{msb}:0] in_data;
+          wire out0_valid;
+          reg out0_ready;
+          wire [{msb}:0] out0_data;
+          wire out1_valid;
+          reg out1_ready;
+          wire [{msb}:0] out1_data;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .in_data(in_data),
+            .out0_valid(out0_valid),
+            .out0_ready(out0_ready),
+            .out0_data(out0_data),
+            .out1_valid(out1_valid),
+            .out1_ready(out1_ready),
+            .out1_data(out1_data)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          initial begin
+            rst_n = 1'b0;
+            in_valid = 1'b0;
+            in_data = {width}'d0;
+            out0_ready = 1'b1;
+            out1_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            @(negedge clk);
+            in_valid = 1'b1;
+            in_data = {width}'d{first_value};
+            @(negedge clk);
+            in_valid = 1'b0;
+            in_data = {width}'d0;
+            repeat (3) @(posedge clk);
+            #1;
+
+            if (out0_valid !== 1'b1 || out1_valid !== 1'b1) begin
+              $display("TEST_FAIL fork outputs not valid");
+              $finish;
+            end
+            if (out0_data !== {width}'d{first_value} || out1_data !== {width}'d{first_value}) begin
+              $display("TEST_FAIL fork data mismatch out0=%0d out1=%0d", out0_data, out1_data);
+              $finish;
+            end
+            if (in_ready !== 1'b1) begin
+              $display("TEST_FAIL fork input not ready");
+              $finish;
+            end
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_dual_stream_join_testbench(width: int) -> str:
+    msb = width - 1
+    sum_width = width + 4
+    sum_msb = sum_width - 1
+    expected_pair_sum = 8
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg in0_valid;
+          wire in0_ready;
+          reg [{msb}:0] in0_data;
+          reg in1_valid;
+          wire in1_ready;
+          reg [{msb}:0] in1_data;
+          wire out_valid;
+          reg out_ready;
+          wire [{sum_msb}:0] out_data;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in0_valid(in0_valid),
+            .in0_ready(in0_ready),
+            .in0_data(in0_data),
+            .in1_valid(in1_valid),
+            .in1_ready(in1_ready),
+            .in1_data(in1_data),
+            .out_valid(out_valid),
+            .out_ready(out_ready),
+            .out_data(out_data)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          initial begin
+            rst_n = 1'b0;
+            in0_valid = 1'b0;
+            in0_data = {width}'d0;
+            in1_valid = 1'b0;
+            in1_data = {width}'d0;
+            out_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            @(negedge clk);
+            in0_valid = 1'b1;
+            in0_data = {width}'d3;
+            in1_valid = 1'b1;
+            in1_data = {width}'d5;
+            @(negedge clk);
+            in0_valid = 1'b0;
+            in1_valid = 1'b0;
+            in0_data = {width}'d0;
+            in1_data = {width}'d0;
+            wait_cycles = 0;
+            while (out_valid !== 1'b1 && wait_cycles < 8) begin
+              @(posedge clk);
+              #1;
+              wait_cycles = wait_cycles + 1;
+            end
+            #1;
+
+            if (out_valid !== 1'b1) begin
+              $display("TEST_FAIL joined output not valid");
+              $finish;
+            end
+            if (out_data !== {sum_width}'d{expected_pair_sum}) begin
+              $display("TEST_FAIL expected joined sum=%0d got %0d", {expected_pair_sum}, out_data);
+              $finish;
+            end
+            if (in0_ready !== 1'b1 || in1_ready !== 1'b1) begin
+              $display("TEST_FAIL joined inputs not ready");
+              $finish;
+            end
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
 def _simple_passthrough_multimodule(task_name: str, width: int, submodule_name: str) -> dict[str, str]:
     msb = width - 1
     top = dedent(
@@ -1960,6 +2702,613 @@ def _matrix_vector_mac_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_stream_accumulator_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    sum_msb = width + 3
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [{msb}:0] in_data,
+            output wire sample_valid,
+            output wire [{sum_msb}:0] sum
+        );
+
+          wire sample_ready;
+          wire [{msb}:0] sample_data;
+
+          skid_buffer #(
+            .WIDTH({width})
+          ) u_skid_buffer (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .in_data(in_data),
+            .out_valid(sample_valid),
+            .out_ready(sample_ready),
+            .out_data(sample_data)
+          );
+
+          accumulator_core #(
+            .WIDTH({width}),
+            .SUM_WIDTH({width + 4})
+          ) u_accumulator_core (
+            .clk(clk),
+            .rst_n(rst_n),
+            .sample_valid(sample_valid),
+            .sample_ready(sample_ready),
+            .sample(sample_data),
+            .sum(sum)
+          );
+
+        endmodule
+        """
+    )
+    skid_buffer = dedent(
+        """\
+        module skid_buffer #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [WIDTH-1:0] out_data
+        );
+
+          reg valid_r;
+          reg [WIDTH-1:0] data_r;
+
+          assign in_ready = !valid_r || out_ready;
+          assign out_valid = valid_r;
+          assign out_data = data_r;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              valid_r <= 1'b0;
+              data_r <= {WIDTH{1'b0}};
+            end else if (in_ready) begin
+              valid_r <= in_valid;
+              if (in_valid) begin
+                data_r <= in_data;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    accumulator_core = dedent(
+        """\
+        module accumulator_core #(
+            parameter WIDTH = 8,
+            parameter SUM_WIDTH = 12
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire sample_valid,
+            output wire sample_ready,
+            input wire [WIDTH-1:0] sample,
+            output reg [SUM_WIDTH-1:0] sum
+        );
+
+          assign sample_ready = 1'b1;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              sum <= {SUM_WIDTH{1'b0}};
+            end else if (sample_valid) begin
+              sum <= sum + {{(SUM_WIDTH-WIDTH){1'b0}}, sample};
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/skid_buffer.v": skid_buffer,
+        "rtl/accumulator_core.v": accumulator_core,
+    }
+
+
+def _composed_event_counter_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire event_valid,
+            output wire [{msb}:0] count
+        );
+
+          wire count_en;
+
+          event_gate u_event_gate (
+            .event_valid(event_valid),
+            .count_en(count_en)
+          );
+
+          counter_core #(
+            .WIDTH({width})
+          ) u_counter_core (
+            .clk(clk),
+            .rst_n(rst_n),
+            .en(count_en),
+            .count(count)
+          );
+
+        endmodule
+        """
+    )
+    event_gate = dedent(
+        """\
+        module event_gate (
+            input wire event_valid,
+            output wire count_en
+        );
+
+          assign count_en = event_valid;
+
+        endmodule
+        """
+    )
+    counter_core = dedent(
+        """\
+        module counter_core #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire en,
+            output reg [WIDTH-1:0] count
+        );
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              count <= {WIDTH{1'b0}};
+            end else if (en) begin
+              count <= count + {{(WIDTH-1){1'b0}}, 1'b1};
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/event_gate.v": event_gate,
+        "rtl/counter_core.v": counter_core,
+    }
+
+
+def _composed_stream_fork_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [{msb}:0] in_data,
+            output wire out0_valid,
+            input wire out0_ready,
+            output wire [{msb}:0] out0_data,
+            output wire out1_valid,
+            input wire out1_ready,
+            output wire [{msb}:0] out1_data
+        );
+
+          wire fork_valid;
+          wire fork_ready;
+          wire [{msb}:0] fork_data;
+          wire stage0_in_valid;
+          wire stage0_in_ready;
+          wire [{msb}:0] stage0_in_data;
+          wire stage1_in_valid;
+          wire stage1_in_ready;
+          wire [{msb}:0] stage1_in_data;
+
+          skid_buffer #(
+            .WIDTH({width})
+          ) u_skid_buffer (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .in_data(in_data),
+            .out_valid(fork_valid),
+            .out_ready(fork_ready),
+            .out_data(fork_data)
+          );
+
+          stream_fork #(
+            .WIDTH({width})
+          ) u_stream_fork (
+            .in_valid(fork_valid),
+            .in_ready(fork_ready),
+            .in_data(fork_data),
+            .out0_valid(stage0_in_valid),
+            .out0_ready(stage0_in_ready),
+            .out0_data(stage0_in_data),
+            .out1_valid(stage1_in_valid),
+            .out1_ready(stage1_in_ready),
+            .out1_data(stage1_in_data)
+          );
+
+          stream_stage #(
+            .WIDTH({width})
+          ) u_stage0 (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(stage0_in_valid),
+            .in_ready(stage0_in_ready),
+            .in_data(stage0_in_data),
+            .out_valid(out0_valid),
+            .out_ready(out0_ready),
+            .out_data(out0_data)
+          );
+
+          stream_stage #(
+            .WIDTH({width})
+          ) u_stage1 (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(stage1_in_valid),
+            .in_ready(stage1_in_ready),
+            .in_data(stage1_in_data),
+            .out_valid(out1_valid),
+            .out_ready(out1_ready),
+            .out_data(out1_data)
+          );
+
+        endmodule
+        """
+    )
+    skid_buffer = dedent(
+        """\
+        module skid_buffer #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [WIDTH-1:0] out_data
+        );
+
+          reg valid_r;
+          reg [WIDTH-1:0] data_r;
+
+          assign in_ready = !valid_r || out_ready;
+          assign out_valid = valid_r;
+          assign out_data = data_r;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              valid_r <= 1'b0;
+              data_r <= {WIDTH{1'b0}};
+            end else if (in_ready) begin
+              valid_r <= in_valid;
+              if (in_valid) begin
+                data_r <= in_data;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    stream_fork = dedent(
+        """\
+        module stream_fork #(
+            parameter WIDTH = 8
+        ) (
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output wire out0_valid,
+            input wire out0_ready,
+            output wire [WIDTH-1:0] out0_data,
+            output wire out1_valid,
+            input wire out1_ready,
+            output wire [WIDTH-1:0] out1_data
+        );
+
+          assign in_ready = out0_ready && out1_ready;
+          assign out0_valid = in_valid && out1_ready;
+          assign out1_valid = in_valid && out0_ready;
+          assign out0_data = in_data;
+          assign out1_data = in_data;
+
+        endmodule
+        """
+    )
+    stream_stage = dedent(
+        """\
+        module stream_stage #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output reg out_valid,
+            input wire out_ready,
+            output reg [WIDTH-1:0] out_data
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              out_data <= {WIDTH{1'b0}};
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                out_data <= in_data;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/skid_buffer.v": skid_buffer,
+        "rtl/stream_fork.v": stream_fork,
+        "rtl/stream_stage.v": stream_stage,
+    }
+
+
+def _composed_dual_stream_join_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    sum_width = width + 4
+    sum_msb = sum_width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire in0_valid,
+            output wire in0_ready,
+            input wire [{msb}:0] in0_data,
+            input wire in1_valid,
+            output wire in1_ready,
+            input wire [{msb}:0] in1_data,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [{sum_msb}:0] out_data
+        );
+
+          wire s0_valid;
+          wire s0_ready;
+          wire [{msb}:0] s0_data;
+          wire s1_valid;
+          wire s1_ready;
+          wire [{msb}:0] s1_data;
+          wire joined_valid;
+          wire joined_ready;
+          wire [{msb}:0] joined_data;
+          wire accum_valid;
+          wire accum_ready;
+          wire [{sum_msb}:0] accum_sum;
+
+          skid_buffer #(
+            .WIDTH({width})
+          ) u_skid0 (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in0_valid),
+            .in_ready(in0_ready),
+            .in_data(in0_data),
+            .out_valid(s0_valid),
+            .out_ready(s0_ready),
+            .out_data(s0_data)
+          );
+
+          skid_buffer #(
+            .WIDTH({width})
+          ) u_skid1 (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in1_valid),
+            .in_ready(in1_ready),
+            .in_data(in1_data),
+            .out_valid(s1_valid),
+            .out_ready(s1_ready),
+            .out_data(s1_data)
+          );
+
+          stream_join #(
+            .WIDTH({width})
+          ) u_stream_join (
+            .in0_valid(s0_valid),
+            .in0_ready(s0_ready),
+            .in0_data(s0_data),
+            .in1_valid(s1_valid),
+            .in1_ready(s1_ready),
+            .in1_data(s1_data),
+            .out_valid(joined_valid),
+            .out_ready(joined_ready),
+            .out_data(joined_data)
+          );
+
+          accumulator_core #(
+            .WIDTH({width})
+          ) u_accumulator_core (
+            .clk(clk),
+            .rst_n(rst_n),
+            .sample_valid(joined_valid),
+            .sample_ready(joined_ready),
+            .sample(joined_data),
+            .sum(accum_sum)
+          );
+
+          assign accum_valid = joined_valid && joined_ready;
+
+          stream_stage #(
+            .WIDTH({sum_width})
+          ) u_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(accum_valid),
+            .in_ready(accum_ready),
+            .in_data(accum_sum),
+            .out_valid(out_valid),
+            .out_ready(out_ready),
+            .out_data(out_data)
+          );
+
+        endmodule
+        """
+    )
+    skid_buffer = dedent(
+        """\
+        module skid_buffer #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [WIDTH-1:0] out_data
+        );
+
+          reg valid_r;
+          reg [WIDTH-1:0] data_r;
+
+          assign in_ready = !valid_r || out_ready;
+          assign out_valid = valid_r;
+          assign out_data = data_r;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              valid_r <= 1'b0;
+              data_r <= {WIDTH{1'b0}};
+            end else if (in_ready) begin
+              valid_r <= in_valid;
+              if (in_valid) begin
+                data_r <= in_data;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    stream_join = dedent(
+        """\
+        module stream_join #(
+            parameter WIDTH = 8
+        ) (
+            input wire in0_valid,
+            output wire in0_ready,
+            input wire [WIDTH-1:0] in0_data,
+            input wire in1_valid,
+            output wire in1_ready,
+            input wire [WIDTH-1:0] in1_data,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [WIDTH-1:0] out_data
+        );
+
+          assign out_valid = in0_valid && in1_valid;
+          assign in0_ready = out_ready && in1_valid;
+          assign in1_ready = out_ready && in0_valid;
+          assign out_data = in0_data + in1_data;
+
+        endmodule
+        """
+    )
+    accumulator_core = dedent(
+        """\
+        module accumulator_core #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire sample_valid,
+            output wire sample_ready,
+            input wire [WIDTH-1:0] sample,
+            output wire [WIDTH+3:0] sum
+        );
+
+          reg [WIDTH+3:0] sum_r;
+
+          assign sample_ready = 1'b1;
+          assign sum = sum_r + ((sample_valid && sample_ready) ? {{4{1'b0}}, sample} : {(WIDTH+4){1'b0}});
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              sum_r <= {(WIDTH+4){1'b0}};
+            end else if (sample_valid && sample_ready) begin
+              sum_r <= sum;
+            end
+          end
+
+        endmodule
+        """
+    )
+    stream_stage = dedent(
+        """\
+        module stream_stage #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output reg out_valid,
+            input wire out_ready,
+            output reg [WIDTH-1:0] out_data
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              out_data <= {WIDTH{1'b0}};
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                out_data <= in_data;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/skid_buffer.v": skid_buffer,
+        "rtl/stream_join.v": stream_join,
+        "rtl/accumulator_core.v": accumulator_core,
+        "rtl/stream_stage.v": stream_stage,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -2004,6 +3353,22 @@ def _default_description(request: ProjectRequest) -> str:
             f"Generate a {request.width}-bit valid-ready streaming pipeline with buffering."
         ),
         "matrix_vector_mac": f"Generate a {request.width}-bit fixed matrix-vector dot product engine.",
+        "composed_event_counter": (
+            f"Generate a {request.width}-bit component-composed event counter using "
+            "an event gate and counter core."
+        ),
+        "composed_stream_accumulator": (
+            f"Generate a {request.width}-bit component-composed streaming accumulator "
+            "using a skid buffer and accumulator core."
+        ),
+        "composed_stream_fork": (
+            f"Generate a {request.width}-bit component-composed valid-ready stream fork "
+            "using a skid buffer, fork, and two registered output stages."
+        ),
+        "composed_dual_stream_join": (
+            f"Generate a {request.width}-bit T4 component-composed dual-stream join "
+            "using two skid buffers, a join, an accumulator, and an output stage."
+        ),
     }
     return descriptions[request.task_type]
 
@@ -2163,6 +3528,73 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_event_counter":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "event_valid", "width": 1},
+                ],
+                "outputs": [{"name": "count", "width": request.width}],
+            }
+        )
+    elif request.task_type == "composed_stream_accumulator":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_data", "width": request.width},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "sample_valid", "width": 1},
+                    {"name": "sum", "width": request.width + 4},
+                ],
+            }
+        )
+    elif request.task_type == "composed_stream_fork":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_data", "width": request.width},
+                    {"name": "out0_ready", "width": 1},
+                    {"name": "out1_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out0_valid", "width": 1},
+                    {"name": "out0_data", "width": request.width},
+                    {"name": "out1_valid", "width": 1},
+                    {"name": "out1_data", "width": request.width},
+                ],
+            }
+        )
+    elif request.task_type == "composed_dual_stream_join":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in0_valid", "width": 1},
+                    {"name": "in0_data", "width": request.width},
+                    {"name": "in1_valid", "width": 1},
+                    {"name": "in1_data", "width": request.width},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in0_ready", "width": 1},
+                    {"name": "in1_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "out_data", "width": request.width + 4},
+                ],
+            }
+        )
     return common
 
 
@@ -2178,8 +3610,22 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "fir_filter": "valid input samples produce a three-tap [1, 2, 1] FIR result",
         "streaming_valid_ready": "valid-ready transfers preserve data order across stalls",
         "matrix_vector_mac": "start computes the fixed four-element dot product and pulses done",
+        "composed_event_counter": "event_valid pulses pass through an event gate and increment the counter core",
+        "composed_stream_accumulator": (
+            "valid input samples pass through a skid buffer and accumulate into the running sum"
+        ),
+        "composed_stream_fork": (
+            "valid input samples pass through a skid buffer and are duplicated to two output stages"
+        ),
+        "composed_dual_stream_join": (
+            "two valid-ready input streams are buffered, synchronized, joined, accumulated, and staged"
+        ),
     }
     return expectations[request.task_type]
+
+
+def _test_pass_means(request: ProjectRequest) -> str:
+    return f"Self-checking testbench prints TEST_PASS only when {_expected_behavior(request)}."
 
 
 def _resource_shape(request: ProjectRequest) -> dict[str, int]:
@@ -2203,4 +3649,12 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(10, request.width), "ff": request.width * 2 + 4, "bram": 0, "dsp": 0}
     if request.task_type == "matrix_vector_mac":
         return {"lut": max(24, request.width * 4), "ff": request.width * 4, "bram": 0, "dsp": 2}
+    if request.task_type == "composed_event_counter":
+        return {"lut": max(4, request.width // 2 + 2), "ff": request.width, "bram": 0, "dsp": 0}
+    if request.task_type == "composed_stream_accumulator":
+        return {"lut": max(16, request.width * 2), "ff": request.width * 3 + 8, "bram": 0, "dsp": 0}
+    if request.task_type == "composed_stream_fork":
+        return {"lut": max(18, request.width * 2 + 6), "ff": request.width * 3 + 6, "bram": 0, "dsp": 0}
+    if request.task_type == "composed_dual_stream_join":
+        return {"lut": max(32, request.width * 4 + 12), "ff": request.width * 5 + 18, "bram": 0, "dsp": 0}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

@@ -207,6 +207,142 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("result", project.files["rtl/top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
+    def test_generates_composed_stream_accumulator_from_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_stream_accumulator",
+                width=8,
+                project_name="composed_stream_accumulator_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_stream_accumulator",
+            {"rtl/top.v", "rtl/skid_buffer.v", "rtl/accumulator_core.v"},
+            ["skid_buffer", "accumulator_core", ".sample_valid(sample_valid)", ".sum(sum)"],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t2_stream_accumulator")
+        self.assertEqual(architecture["difficulty_tier"], "T2")
+        self.assertEqual(architecture["component_library"], "sr2fpga_deterministic_components_v1")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["skid_buffer", "accumulator_core"],
+        )
+        self.assertIn(
+            {"from": "skid_buffer.out_data", "to": "accumulator_core.sample"},
+            architecture["topology"]["edges"],
+        )
+        self.assertGreaterEqual(len(system_his["connections"]), 8)
+
+    def test_generates_composed_event_counter_from_t1_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_event_counter",
+                width=8,
+                project_name="composed_event_counter_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_event_counter",
+            {"rtl/top.v", "rtl/event_gate.v", "rtl/counter_core.v"},
+            ["event_gate", "counter_core", ".event_valid(event_valid)", ".count(count)"],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t1_event_counter")
+        self.assertEqual(architecture["difficulty_tier"], "T1")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["event_gate", "counter_core"],
+        )
+        self.assertIn({"from": "event_gate.count_en", "to": "counter_core.en"}, architecture["topology"]["edges"])
+        self.assertGreaterEqual(len(system_his["connections"]), 5)
+
+    def test_generates_composed_stream_fork_from_t3_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_stream_fork",
+                width=8,
+                project_name="composed_stream_fork_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_stream_fork",
+            {"rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_fork.v", "rtl/stream_stage.v"},
+            ["skid_buffer", "stream_fork", "stream_stage", ".out_valid(out0_valid)", ".out_valid(out1_valid)"],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t3_stream_fork")
+        self.assertEqual(architecture["difficulty_tier"], "T3")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["skid_buffer", "stream_fork", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "stream_fork.out1_data", "to": "stream_stage.in_data"},
+            architecture["topology"]["edges"],
+        )
+        self.assertGreaterEqual(len(system_his["connections"]), 18)
+
+    def test_generates_composed_dual_stream_join_from_t4_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_dual_stream_join",
+                width=8,
+                project_name="composed_dual_stream_join_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_dual_stream_join",
+            {
+                "rtl/top.v",
+                "rtl/skid_buffer.v",
+                "rtl/stream_join.v",
+                "rtl/accumulator_core.v",
+                "rtl/stream_stage.v",
+            },
+            ["skid_buffer", "stream_join", "accumulator_core", "stream_stage", ".out_valid(out_valid)"],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t4_dual_stream_join")
+        self.assertEqual(architecture["difficulty_tier"], "T4")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["skid_buffer", "skid_buffer", "stream_join", "accumulator_core", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "stream_join.out_data", "to": "accumulator_core.sample"},
+            architecture["topology"]["edges"],
+        )
+        self.assertGreaterEqual(len(system_his["connections"]), 24)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -236,6 +372,87 @@ class ProjectGeneratorTest(unittest.TestCase):
                 self.assertEqual(sorted(architecture["submodules"]), actual_submodules)
                 expected_style = "multi_module" if actual_submodules else "single_module"
                 self.assertEqual(architecture["style"], expected_style)
+
+    def test_system_his_v11_declares_modules_ports_and_connections(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        for task_type, width, project_name in _supported_task_cases():
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                system_his = _system_his(project)
+                manifest = _manifest(project)
+                actual_modules = set(_rtl_module_names(project))
+                declared_modules = {module["name"] for module in system_his["modules"]}
+
+                self.assertEqual(system_his["schema_version"], "system-his-v1.1")
+                self.assertEqual(
+                    system_his["project"],
+                    {
+                        "name": project_name,
+                        "description": system_his["system"]["description"],
+                        "top": manifest["top_module"],
+                    },
+                )
+                self.assertEqual(system_his["clocks"], [{"name": "clk", "target_fmax_mhz": 100.0}])
+                self.assertEqual(system_his["resets"], [{"name": "rst_n", "polarity": "active_low", "kind": "async"}])
+                self.assertEqual(system_his["top_ports"], _top_ports_from_interface(system_his["interface"]))
+                self.assertEqual(system_his["qor_intent"]["resources"], _predicted_resources(project))
+                self.assertEqual(system_his["verification"]["testbench"], "sim/tb_top.v")
+                self.assertEqual(
+                    system_his["verification"]["checks"],
+                    ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
+                )
+                self.assertIn("TEST_PASS", system_his["verification"]["test_pass_means"])
+                self.assertEqual(
+                    system_his["verification"]["test_pass_means"],
+                    system_his["verification"]["expected_behavior"],
+                )
+                self.assertEqual(declared_modules, actual_modules)
+                self.assertEqual(system_his["modules"][0]["name"], manifest["top_module"])
+                self.assertEqual(system_his["modules"][0]["role"], "top")
+                self.assertEqual(system_his["modules"][0]["source"], "rtl/top.v")
+                self.assertEqual(system_his["modules"][0]["ports"], _top_ports_from_interface(system_his["interface"]))
+                ports_by_module = {module["name"]: {port["name"] for port in module["ports"]} for module in system_his["modules"]}
+                for module in system_his["modules"]:
+                    self.assertIn(module["source"], manifest["sources"])
+                    self.assertIn(module["name"], actual_modules)
+                    self.assertIsInstance(module["parameters"], dict)
+                    self.assertEqual(module["params"], _params_from_parameters(module["parameters"]))
+                    self.assertEqual(module["clock"], "clk")
+                    self.assertEqual(module["reset"], "rst_n")
+                    self.assertIsInstance(module["intent"], str)
+                    self.assertTrue(module["intent"])
+                    self.assertIsInstance(module["ports"], list)
+                    self.assertGreater(len(module["ports"]), 0)
+                for connection in system_his["connections"]:
+                    self.assertIn(connection["from"]["module"], declared_modules)
+                    self.assertIn(connection["to"]["module"], declared_modules)
+                    self.assertIn("signal", connection)
+                    self.assertEqual(connection["kind"], "port_connection")
+                    self.assertIn(connection["protocol"], {"register", "valid_ready"})
+                    self.assertIn("width", connection)
+                    self.assertFalse(connection["cdc"])
+                    self.assertIn(connection["from"]["port"], ports_by_module[connection["from"]["module"]])
+                    self.assertIn(connection["to"]["port"], ports_by_module[connection["to"]["module"]])
+
+    def test_system_his_records_top_level_instance_parameter_overrides(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_stream_accumulator",
+                width=8,
+                project_name="composed_stream_accumulator_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        modules = {module["name"]: module for module in _system_his(project)["modules"]}
+
+        self.assertEqual(modules["top"]["parameters"], {})
+        self.assertEqual(modules["skid_buffer"]["parameters"], {"WIDTH": 8})
+        self.assertEqual(modules["accumulator_core"]["parameters"], {"WIDTH": 8, "SUM_WIDTH": 12})
 
     @unittest.skipUnless(shutil.which("iverilog") and shutil.which("vvp"), "iverilog/vvp are not installed")
     def test_multimodule_generated_testbenches_pass_under_icarus(self) -> None:
@@ -342,6 +559,11 @@ def _system_his(project) -> dict:
     return json.loads(project.files["system_his.json"])
 
 
+def _predicted_resources(project) -> dict:
+    predicted = json.loads(project.files["reports/predicted_qor.json"])["predicted"]
+    return {key: predicted[key] for key in ("lut", "ff", "bram", "dsp")}
+
+
 def _supported_task_cases() -> list[tuple[str, int, str]]:
     return [
         ("counter", 8, "counter_8bit"),
@@ -354,6 +576,10 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("fir_filter", 8, "fir_filter_8bit"),
         ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
         ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+        ("composed_event_counter", 8, "composed_event_counter_8bit"),
+        ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
+        ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
+        ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
     ]
 
 
@@ -364,6 +590,32 @@ def _non_top_rtl_module_names(project) -> list[str]:
             if match.group(1) != "top":
                 names.append(match.group(1))
     return names
+
+
+def _rtl_module_names(project) -> list[str]:
+    names = []
+    for source in _manifest(project)["sources"]:
+        for match in re.finditer(r"\bmodule\s+([a-zA-Z_][a-zA-Z0-9_$]*)\b", project.files[source]):
+            names.append(match.group(1))
+    return names
+
+
+def _top_ports_from_interface(interface: dict) -> list[dict[str, object]]:
+    ports = []
+    for direction in ("inputs", "outputs"):
+        for port in interface[direction]:
+            ports.append(
+                {
+                    "name": port["name"],
+                    "direction": "input" if direction == "inputs" else "output",
+                    "width": port["width"],
+                }
+            )
+    return ports
+
+
+def _params_from_parameters(parameters: dict[str, object]) -> list[dict[str, object]]:
+    return [{"name": name, "value": value} for name, value in parameters.items()]
 
 
 def _assert_manifest_sources_exist(testcase: unittest.TestCase, project) -> None:

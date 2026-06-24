@@ -39,6 +39,10 @@ class ToolingTest(unittest.TestCase):
         self.assertEqual(classify_failure("Port rst_n of module top is not declared"), "port_mismatch")
         self.assertEqual(classify_failure("Width mismatch in assignment"), "width_mismatch")
         self.assertEqual(classify_failure("syntax error, unexpected endmodule"), "syntax_error")
+        self.assertEqual(
+            classify_failure("%Warning-UNUSEDSIGNAL: Signal is not used\n%Error: Exiting due to 1 warning(s)"),
+            "lint_warning_as_error",
+        )
         self.assertEqual(classify_failure("no obvious pattern here"), "unknown")
 
     def test_parse_yosys_stats_extracts_resource_like_counts(self) -> None:

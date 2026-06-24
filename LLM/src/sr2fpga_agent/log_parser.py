@@ -9,6 +9,10 @@ from collections import defaultdict
 def classify_failure(log_text: str) -> str:
     """Classify a raw tool log into the V1 failure taxonomy."""
     text = log_text.lower()
+    if "verilog reserved keyword" in text:
+        return "rtl_reserved_identifier"
+    if "%warning-" in text and "exiting due to" in text and "warning" in text:
+        return "lint_warning_as_error"
     patterns = [
         ("syntax_error", ["syntax error", "parse error", "unexpected"]),
         ("module_not_found", ["unknown module type", "module not found", "can't resolve module"]),
