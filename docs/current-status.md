@@ -181,23 +181,32 @@ Implemented and under active review:
   L0 rejects missing module intent and parameters that are not declared by the
   RTL module. L0 also normalizes numeric range widths like `[7:0]` to `8` when
   comparing System-HIS against parsed RTL port widths.
-- A standalone System-HIS v1.2 top-down structural checker now exists for the
+- System-HIS v1.2 freeze Task 1 is implemented: shared RTL-introspection helpers
+  now live in `LLM/src/sr2fpga_agent/rtl_introspect.py`, and the v1.1
+  project-level L0 checker imports them instead of carrying private duplicate
+  parsing logic. This keeps the existing v1.1 checker behavior intact while
+  giving the upcoming canonical v1.2 cross-check a shared parser foundation.
+- A standalone System-HIS v1.2 structural checker now exists for the
   REQ2HIS stage: `LLM/src/sr2fpga_agent/system_his_v12_checker.py`. It validates
-  the prototype `system-his-v1.2-topdown` JSON shape independently of RTL files,
+  the canonical `system-his-v1.2` JSON shape independently of RTL files,
   including required sections, component-to-instance references, instance-owned
   state, data-flow endpoints, control-flow state/flow references, and artifact
   fields. It also rejects Verilog reserved keywords such as `fork` and `join`
   as concrete instance names, because those IR identifiers become illegal RTL
   identifiers during lowering.
+- System-HIS v1.2 freeze Task 2 is implemented: the canonical schema string is
+  now exactly `system-his-v1.2`; the retired `system-his-v1.2-topdown` suffix is
+  rejected by the v1.2 checker and should be treated as historical prototype
+  data.
 - The first DeepSeek REQ2HIS entry point now exists in
   `LLM/src/sr2fpga_agent/deepseek.py`: `DeepSeekSystemHisGenerator`,
   `parse_system_his_v12`, and `_system_his_v12_messages`. This stage asks
-  DeepSeek to produce only a `system-his-v1.2-topdown` architecture contract
+  DeepSeek to produce only a `system-his-v1.2` architecture contract
   from a short user prompt, validates it with the standalone checker before
   returning it, and feeds checker errors back to DeepSeek for bounded retry.
 - The matching DeepSeek HIS2PROJECT entry point also now exists:
   `DeepSeekHisProjectGenerator` and `_his_project_messages`. This stage takes a
-  checked `system-his-v1.2-topdown` contract, asks DeepSeek for a complete
+  checked `system-his-v1.2` contract, asks DeepSeek for a complete
   project package, validates the generated project files with the existing
   project parser, and additionally requires the returned `system_his.json` to
   remain valid v1.2.
@@ -207,7 +216,7 @@ Implemented and under active review:
   and auth diagnostics. A narrow T4 smoke config is available at
   `configs/sr2fpga_his_v12_smoke.example.yaml`.
 - The project-level L0 checker now dispatches
-  `schema_version: system-his-v1.2-topdown` files to the v1.2 checker and then
+  `schema_version: system-his-v1.2` files to the v1.2 checker and then
   verifies the basic project artifact contract. This lets the two-stage path
   reach RTL lint instead of being rejected by the older v1.1 schema checker.
 - Runner task requirements now support `requirement_style: simple_prompt`. This
@@ -250,7 +259,8 @@ Implemented and under active review:
   an unused/undriven `staged_ready` wire in `rtl/top.v`.
 - Runner metadata now derives `system_his_schema_version` from the sample
   source/provider, so `deepseek-his-v12` samples are labeled
-  `system-his-v1.2-topdown` instead of the older hard-coded v1.1 marker.
+  `system-his-v1.2` instead of the older hard-coded v1.1 marker. Earlier
+  `system-his-v1.2-topdown` smoke metadata is historical prototype data.
 - Tool-log classification now includes `lint_warning_as_error` for Verilator
   warning-only lint exits, while reserved-keyword syntax failures remain
   `syntax_error`.
@@ -283,7 +293,7 @@ Fresh verification from the latest implementation pass:
 
 ```bash
 python3 -m unittest discover -s LLM/tests -q
-# Ran 171 tests - OK
+# Ran 175 tests - OK
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok
@@ -413,7 +423,10 @@ Key summary:
    It makes `system-his-v1.2` canonical, migrates the deterministic generator off
    v1.1, gives the v1.2 checker HIS↔RTL cross-checks, adds `data_flow.timing` +
    structured `control_flow`, and quarantines legacy/v1.1 data. Highest-collision
-   files: `project_generator.py`, `system_his_v12_checker.py`.
+   files: `project_generator.py`, `system_his_v12_checker.py`. Task 1
+   (`rtl_introspect.py` extraction) and Task 2 (canonical schema string rename
+   to `system-his-v1.2`) are complete and verified; next freeze step is Task 3,
+   validating the optional `data_flow.timing` contract.
 1. Treat L0 project-package failures as first-class repair targets: missing or
    malformed `system_his.json`, manifest structure drift, missing source lists,
    missing constraints, incomplete reports, and cross-file inconsistency all
@@ -449,12 +462,23 @@ Key summary:
 13. Current data contains legacy/ad hoc `system_his.json` shapes as well as
     `system-his-v1.1`; keep legacy samples for traceability, but do not mix
     them with clean REQ-to-HIS training without migration labels.
+14. **Fix training-data-quality issues before the first clean training split**
+    (`docs/research-issues-training-data-quality-2026-06-24.md`). High priority:
+    (F) `classify_failure` broad `reset`/`clock` single-word patterns produce
+    noisy failure labels and make `synthesis_error`/`timing_risk` unreachable;
+    (E) reconcile the failure-taxonomy names between the reframe spec and
+    `log_parser.py` (spec should adopt existing `multiple_driver`/`latch_inferred`
+    and add the missing seq/comb + CDC + backpressure classes). Medium:
+    (G) L3 measured LUT is always 0 under the generic Yosys flow — use
+    `synth_xilinx` or defer LUT to L4 before QOR_PRED; (C) add `pass_level` to
+    QoR export rows so `project_to_measured_qor` can drop non-L3 partial rows.
 
 ## Important Pointers
 
 - Primary research framing: `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md`
 - Objective summary: `docs/research-objective-sr2fpga-tcad.md`
 - Failure-repair research issue log: `docs/research-issues-failure-repair-2026-06-24.md`
+- Training-data-quality issue log: `docs/research-issues-training-data-quality-2026-06-24.md`
 - System-HIS v1.2 FREEZE spec (approved, canonical): `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
 - System-HIS v1.2 FREEZE implementation plan (for codex): `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
 - System-HIS v1.2 top-down prototype spec (superseded by the freeze): `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
