@@ -1,4 +1,4 @@
-# SR2FPGA Current Status - 2026-06-24
+# SR2FPGA Current Status - 2026-06-26
 
 ## Current Branch
 
@@ -20,6 +20,39 @@ requirement
 The current engineering slice is autonomous runner hardening for natural LLM
 failure collection. Synthetic failure injection exists as a pipeline test and
 controlled-ablation aid, not as the main repair-learning data source.
+
+## Multi-Teacher Source (NEW, merged to `main` 2026-06-26)
+
+The runner can now draw candidate projects from several independent **teacher
+models** in one batch, so the trajectory dataset is not a single-model artifact.
+Spec/plan: `docs/superpowers/specs/2026-06-25-sr2fpga-multi-teacher-source-design.md`,
+`docs/superpowers/plans/2026-06-25-sr2fpga-multi-teacher-source.md`.
+
+- A `sources:` connection table in the runner config maps each task's `source`
+  to a `SourceConnection` (kind/model/base_url/api_key_env/generation_mode/
+  timeout_seconds). `resolve_source_connection` keeps the legacy
+  `deterministic`/`deepseek`/`deepseek-his-v12` paths working via fallback.
+- `build_project_generator_for_connection` reuses the existing OpenAI-compatible
+  client, so any OpenAI-API endpoint (Claude, GPT-5.x, Qwen/DashScope, ...) is a
+  teacher by config alone. New teachers run the validated two-stage
+  REQ2HIS → HIS2PROJECT path; `direct` mode is rejected for `openai_compat`.
+- Metadata (`failure_origin`/`system_his_schema_version`/`training_split`/`model`)
+  and preflight auth are connection-driven and reported per source via
+  `calibration_matrix["source"]`. Per-source `timeout_seconds` (default 120)
+  supports slow reasoning teachers. 255 unit tests pass.
+- Committed example: `configs/sr2fpga_multi_teacher.example.yaml`. Private gateway
+  keys/configs stay local: `.env` and `configs/*.local.yaml` are git-ignored.
+
+Live smoke findings (Qwen via DashScope, `qwen3-coder-plus`, T1-T4,
+`a_first_attempt_no_tools`): all four produced complete multi-file projects;
+tool labels caught natural failures — T1/T2/T3 `L0_FAIL`
+(`artifact_contract_failure`: instance-not-instantiated; `rtl_sources` `src/` vs
+`rtl/` path mismatch), T4 crossed L0 and hit `L1` Verilator lint
+(`wire x=x` circular logic + WIDTHTRUNC + UNUSEDSIGNAL). Reasoning teacher
+`qwen3.7-plus` works on T1 but its large HIS2PROJECT generations exceed the
+gateway's ~430s non-streaming connection limit (`RemoteDisconnected`) — needs
+streaming (see Next Recommended Work). Claude/GPT-5.5 wiring authenticates
+against their gateway but is currently blocked on gateway account balance.
 
 ## Current Code State
 
@@ -450,6 +483,22 @@ Key summary:
 
 ## Next Recommended Work
 
+00. **Streaming for reasoning teachers (multi-teacher follow-up).** The
+    OpenAI-compatible client is non-streaming (one POST, read full body). Large
+    HIS2PROJECT generations from reasoning teachers (e.g. `qwen3.7-plus`) run
+    past the gateway's ~430s connection limit and die with `RemoteDisconnected`.
+    Add `stream: true` + SSE parsing so reasoning teachers work end to end and
+    long generations survive slow/rate-limited gateways. Needs its own spec/TDD.
+00b. **Bring up Claude + GPT-5.5 teachers.** Wiring is verified; blocked on
+    `w.ciykj.cn` gateway balance. After top-up: `--validate-provider` to confirm
+    auth, confirm Claude's real model id via `GET /v1/models`, then run a
+    multi-teacher batch. No code change needed — config only.
+00c. **Multi-teacher baseline + per-teacher failure distribution.** Now that the
+    chain is live, run a larger batch across teachers (Qwen + DeepSeek +
+    deterministic control today; +Claude/GPT-5.5 after balance) and report the
+    `calibration_matrix["source"]` table — the reviewer-facing evidence that
+    addresses single-teacher bias. Also re-run T1 on `qwen3-coder-plus` so the
+    single-model distribution is consistent (T1 was `qwen3.7-plus`).
 0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).
