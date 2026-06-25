@@ -122,6 +122,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(requirement_row["sample_id"], "sample_000001")
             self.assertIn("system_his", requirement_row)
             self.assertEqual(requirement_row["metadata"]["failure_origin"], "natural_llm")
+            self.assertEqual(requirement_row["metadata"]["training_split"], "quarantine")
 
             patch_rows = (export_dir / "failure_to_patch.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(patch_rows), 1)
@@ -156,34 +157,15 @@ class DatasetRecorderTest(unittest.TestCase):
         result = check_project_l0(broken_project)
 
         self.assertFalse(result.passed)
-        self.assertIn("manifest.top_module 'missing_top' does not match System-HIS top_module 'top'", result.errors)
-
-    def test_l0_checker_accepts_system_his_v12_topdown_contract(self) -> None:
-        system_his = json.loads(
-            Path("docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json").read_text(encoding="utf-8")
+        self.assertIn(
+            "manifest.top_module 'missing_top' does not match System-HIS v1.2 artifacts.top_module 'top'",
+            result.errors,
         )
-        files = {
-            "system_his.json": json.dumps(system_his) + "\n",
-            "manifest.json": json.dumps(
-                {
-                    "project_name": "join_8bit",
-                    "top_module": "top",
-                    "sources": system_his["artifacts"]["rtl_sources"],
-                    "constraints": {"timing": "constraints/timing.sdc"},
-                    "simulation": {"testbench": "sim/tb_top.v"},
-                    "reports": ["reports/predicted_qor.json"],
-                }
-            )
-            + "\n",
-            "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
-            "sim/tb_top.v": "module tb_top; initial $display(\"TEST_PASS\"); endmodule\n",
-            "reports/predicted_qor.json": "{}\n",
-        }
-        for source in system_his["artifacts"]["rtl_sources"]:
-            module_name = Path(source).stem if source != "rtl/top.v" else "top"
-            files[source] = f"module {module_name}; endmodule\n"
 
-        result = check_project_l0(GeneratedProject(project_name="join_8bit", files=files))
+    def test_l0_checker_accepts_system_his_v12_cross_checked_project(self) -> None:
+        project = _minimal_v12_l0_project()
+
+        result = check_project_l0(project)
 
         self.assertTrue(result.passed, result.errors)
 
@@ -474,10 +456,112 @@ class DatasetRecorderTest(unittest.TestCase):
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
             diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(result["pass_level"], "L0")
+            self.assertEqual(result["pass_level"], "L0_FAIL")
             self.assertFalse(labels["checks"]["l0_complete"])
             self.assertEqual(labels["failure_count"], 1)
             self.assertEqual(diagnosis["stage"], "l0_consistency")
+            self.assertEqual(runner.calls, [])
+
+    def test_agent_records_repair_failure_without_crashing_batch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=BrokenManifestGenerator(),
+                repairer=FailingRepairer(),
+                max_attempts=2,
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="broken_counter")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_repair_fail",
+                requirement="Design an 8-bit counter with enable.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_repair_fail"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "L0_FAIL")
+            self.assertEqual(labels["failure_count"], 1)
+            self.assertEqual(diagnosis["stage"], "repair")
+            self.assertEqual(diagnosis["failure_type"], "repair_failed")
+            self.assertIn("DeepSeek repair system_his.json failed validation", diagnosis["root_cause"])
+            self.assertEqual(diagnosis["upstream_diagnosis"]["stage"], "l0_consistency")
+            self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["l0_consistency", "repair"])
+            self.assertFalse((sample_dir / "attempts/attempt_001").exists())
+            self.assertEqual(runner.calls, [])
+
+    def test_agent_records_repair_contract_regression_as_specific_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FailThenPassRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                repairer=ContractRegressionRepairer(),
+                max_attempts=2,
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_repair_contract_regression",
+                requirement="Design an 8-bit counter with enable.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_repair_contract_regression"
+            diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "L0")
+            self.assertEqual(diagnosis["stage"], "repair")
+            self.assertEqual(diagnosis["failure_type"], "repair_contract_regression")
+            self.assertIn("introduced L0 contract violations", diagnosis["root_cause"])
+            self.assertEqual(diagnosis["upstream_diagnosis"]["stage"], "lint")
+            self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["rtl_identifier_check", "lint", "repair"])
+            self.assertFalse((sample_dir / "attempts/attempt_001").exists())
+
+    def test_agent_records_generation_failure_before_project_exists(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=FailingProjectGenerator(),
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="broken_generation")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_generation_fail",
+                requirement="Generate an 8-bit FPGA RTL project.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_generation_fail"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "GEN_FAIL")
+            self.assertEqual(labels["pass_level"], "GEN_FAIL")
+            self.assertFalse(labels["checks"]["generation_complete"])
+            self.assertEqual(labels["failure_count"], 1)
+            self.assertEqual(diagnosis["stage"], "generation")
+            self.assertEqual(diagnosis["failure_type"], "generation_failed")
+            self.assertIn("DeepSeek System-HIS v1.2 failed validation", diagnosis["root_cause"])
+            self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["generation"])
             self.assertEqual(runner.calls, [])
 
     def test_agent_stops_before_verilator_when_rtl_identifier_is_reserved(self) -> None:
@@ -514,6 +598,75 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["rtl_identifier_check"])
             self.assertEqual(runner.calls, [])
 
+    def test_agent_stops_before_sim_compile_when_testbench_can_skip_output_transaction(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=ObservationRaceTestbenchGenerator(),
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="bad_observation_counter")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_testbench_observation_race",
+                requirement="Design an 8-bit counter with enable.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_testbench_observation_race"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertTrue(labels["checks"]["l1_lint_pass"])
+            self.assertFalse(labels["checks"]["l2_sim_pass"])
+            self.assertEqual(diagnosis["stage"], "testbench_static_check")
+            self.assertEqual(diagnosis["failure_type"], "testbench_observation_race")
+            self.assertIn("wait(out_valid)", diagnosis["root_cause"])
+            self.assertEqual(
+                [item["stage"] for item in trajectory["attempts"]],
+                ["rtl_identifier_check", "lint", "testbench_static_check"],
+            )
+            self.assertEqual([call["stage"] for call in runner.calls], ["lint"])
+
+    def test_agent_stops_before_sim_compile_when_testbench_can_reaccept_stimulus(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=StimulusReacceptTestbenchGenerator(),
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="bad_stimulus_counter")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_testbench_stimulus_reaccept",
+                requirement="Design an 8-bit counter with enable.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_testbench_stimulus_reaccept"
+            diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertEqual(diagnosis["stage"], "testbench_static_check")
+            self.assertEqual(diagnosis["failure_type"], "testbench_stimulus_reaccept_risk")
+            self.assertIn("same packet can be accepted repeatedly", diagnosis["root_cause"])
+            self.assertEqual(
+                [item["stage"] for item in trajectory["attempts"]],
+                ["rtl_identifier_check", "lint", "testbench_static_check"],
+            )
+            self.assertEqual([call["stage"] for call in runner.calls], ["lint"])
+
     def test_agent_run_one_records_l3_sample_with_fake_runner(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
@@ -542,7 +695,7 @@ class DatasetRecorderTest(unittest.TestCase):
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
             self.assertEqual(
                 [item["stage"] for item in trajectory["attempts"]],
-                ["rtl_identifier_check", "lint", "sim_compile", "sim_run", "synth"],
+                ["rtl_identifier_check", "lint", "testbench_static_check", "sim_compile", "sim_run", "synth"],
             )
             self.assertEqual([call["stage"] for call in runner.calls], ["lint", "sim_compile", "sim_run", "synth"])
 
@@ -659,7 +812,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertIn("TEST_FAIL", diagnosis["root_cause"])
             self.assertEqual(
                 [item["stage"] for item in trajectory["attempts"]],
-                ["rtl_identifier_check", "lint", "sim_compile", "sim_run"],
+                ["rtl_identifier_check", "lint", "testbench_static_check", "sim_compile", "sim_run"],
             )
 
     def test_repair_result_is_shared_model_and_agent_compatible(self) -> None:
@@ -838,6 +991,19 @@ class FakeRepairer:
         return RepairResult(generated_project=project, patch_diff="diff --git a/rtl/top.v b/rtl/top.v\n# fix reset port\n")
 
 
+class FailingRepairer:
+    def repair(self, project, diagnosis):
+        raise ValueError(
+            "DeepSeek repair system_his.json failed validation: "
+            "control_flow 'join_wait_both'.fsm 'join_fsm' is not declared"
+        )
+
+
+class ContractRegressionRepairer:
+    def repair(self, project, diagnosis):
+        raise ValueError("DeepSeek repair introduced L0 contract violations: stream_join.in1_data is not declared")
+
+
 class BrokenManifestGenerator:
     def generate(self, request, platform):
         project = ProjectGenerator().generate(request, platform)
@@ -848,12 +1014,168 @@ class BrokenManifestGenerator:
         return GeneratedProject(project_name=project.project_name, files=files)
 
 
+class FailingProjectGenerator:
+    def generate(self, request, platform):
+        raise ValueError("DeepSeek System-HIS v1.2 failed validation: instances[0].name is required")
+
+
 class ReservedIdentifierGenerator:
     def generate(self, request, platform):
         project = ProjectGenerator().generate(request, platform)
         files = dict(project.files)
         files["rtl/top.v"] = files["rtl/top.v"].replace(");\n\n  always", ");\n\n  reg [7:0] buf;\n\n  always")
         return GeneratedProject(project_name=project.project_name, files=files)
+
+
+class ObservationRaceTestbenchGenerator:
+    def generate(self, request, platform):
+        project = ProjectGenerator().generate(request, platform)
+        files = dict(project.files)
+        files["sim/tb_top.v"] = """
+module tb_top;
+  reg clk;
+  wire out_valid;
+  wire [7:0] out_data;
+  reg [7:0] expected;
+  top dut();
+  initial begin
+    wait(out_valid);
+    @(posedge clk) #1;
+    if (out_data !== expected) $display("TEST_FAIL");
+    $display("TEST_PASS");
+  end
+endmodule
+"""
+        return GeneratedProject(project_name=project.project_name, files=files)
+
+
+class StimulusReacceptTestbenchGenerator:
+    def generate(self, request, platform):
+        project = ProjectGenerator().generate(request, platform)
+        files = dict(project.files)
+        files["sim/tb_top.v"] = """
+module tb_top;
+  reg clk;
+  reg in0_valid;
+  reg in1_valid;
+  wire out_valid;
+  wire [7:0] out_data;
+  reg [7:0] expected;
+  top dut();
+  initial begin
+    in0_valid = 1;
+    in1_valid = 1;
+    @(posedge clk);
+    wait(out_valid);
+    #1;
+    if (out_data !== expected) $display("TEST_FAIL");
+    @(negedge clk);
+    in0_valid = 0;
+    in1_valid = 0;
+  end
+endmodule
+"""
+        return GeneratedProject(project_name=project.project_name, files=files)
+
+
+def _minimal_v12_l0_project() -> GeneratedProject:
+    system_his = {
+        "schema_version": "system-his-v1.2",
+        "intent": {"user_prompt": "Build an 8-bit counter.", "design_goal": "Counter project.", "assumptions": []},
+        "top": {
+            "name": "top",
+            "parameters": [],
+            "clocks": [{"name": "clk", "target_fmax_mhz": 100}],
+            "resets": [{"name": "rst_n", "polarity": "active_low", "kind": "sync"}],
+            "ports": [
+                {"name": "clk", "dir": "input", "width": 1},
+                {"name": "rst_n", "dir": "input", "width": 1},
+                {"name": "en", "dir": "input", "width": 1},
+                {"name": "count", "dir": "output", "width": 8},
+            ],
+            "interfaces": [],
+        },
+        "state": {
+            "registers": [{"name": "count_q", "owner": "u_counter", "width": 8}],
+            "counters": [],
+            "fsms": [],
+            "buffers": [],
+            "memories": [],
+        },
+        "components": [
+            {
+                "name": "counter_core",
+                "source": "rtl/counter_core.v",
+                "ports": [
+                    {"name": "clk", "dir": "input", "width": 1},
+                    {"name": "rst_n", "dir": "input", "width": 1},
+                    {"name": "en", "dir": "input", "width": 1},
+                    {"name": "count", "dir": "output", "width": 8},
+                ],
+            }
+        ],
+        "instances": [{"name": "u_counter", "component": "counter_core", "owns_state": ["u_counter.count_q"]}],
+        "data_flow": [
+            {
+                "name": "count_path",
+                "path": ["top.en", "u_counter.en", "u_counter.count", "top.count"],
+                "payload": {"name": "count_value", "width": 8},
+                "protocol": "register",
+            }
+        ],
+        "control_flow": [
+            {
+                "name": "increment_when_enabled",
+                "kind": "enable_rule",
+                "condition": "en",
+                "effects": ["count_q := count_q + 1"],
+                "related_state": ["u_counter.count_q"],
+                "related_flows": ["count_path"],
+            }
+        ],
+        "timing": {"primary_clock": "clk", "target_fmax_mhz": 100, "constraints": ["constraints/timing.sdc"]},
+        "resources": {"optimization_goal": "area_first", "expected": {"lut": "low", "ff": "low", "bram": 0, "dsp": 0}},
+        "verification": {"testbench": "sim/tb_top.v", "scenarios": [], "pass_condition": "TEST_PASS"},
+        "artifacts": {
+            "top_module": "top",
+            "rtl_sources": ["rtl/top.v", "rtl/counter_core.v"],
+            "testbench": "sim/tb_top.v",
+            "constraints": ["constraints/timing.sdc"],
+            "manifest": "manifest.json",
+            "predicted_qor": "reports/predicted_qor.json",
+        },
+    }
+    files = {
+        "system_his.json": json.dumps(system_his) + "\n",
+        "manifest.json": json.dumps(
+            {
+                "project_name": "counter8",
+                "top_module": "top",
+                "sources": ["rtl/top.v", "rtl/counter_core.v"],
+                "constraints": {"timing": "constraints/timing.sdc"},
+                "simulation": {"testbench": "sim/tb_top.v"},
+                "reports": ["reports/predicted_qor.json"],
+            }
+        )
+        + "\n",
+        "rtl/top.v": (
+            "module top(input clk, input rst_n, input en, output [7:0] count);\n"
+            "  counter_core u_counter(.clk(clk), .rst_n(rst_n), .en(en), .count(count));\n"
+            "endmodule\n"
+        ),
+        "rtl/counter_core.v": (
+            "module counter_core(input clk, input rst_n, input en, output reg [7:0] count);\n"
+            "  always @(posedge clk) begin\n"
+            "    if (!rst_n) count <= 8'd0;\n"
+            "    else if (en) count <= count + 8'd1;\n"
+            "  end\n"
+            "endmodule\n"
+        ),
+        "constraints/timing.sdc": "create_clock -period 10 [get_ports clk]\n",
+        "sim/tb_top.v": "module tb; reg clk, rst_n, en; wire [7:0] count; top dut(clk, rst_n, en, count); endmodule\n",
+        "reports/predicted_qor.json": "{}\n",
+    }
+    return GeneratedProject(project_name="counter8", files=files)
 
 
 if __name__ == "__main__":

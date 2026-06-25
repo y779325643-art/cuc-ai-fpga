@@ -12,6 +12,49 @@
 
 **Source spec:** `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
 
+## Execution Status - 2026-06-25
+
+The original freeze plan has been implemented and extended by the follow-up T4
+pilot work. The canonical schema is now `system-his-v1.2`; deterministic
+generation, DeepSeek prompts, runner metadata, recorder exports, and L0 project
+checking all route through the v1.2 contract.
+
+Completed beyond the original freeze checklist:
+
+- shared RTL introspection is available in `rtl_introspect.py`;
+- v1.2 L0 checking includes HIS↔RTL cross-file consistency, width candidate
+  equivalence, structured control-flow validation, and FSM owner inference for
+  instance-prefixed names;
+- generated samples are split into clean/quarantine training views by schema
+  version;
+- generation and repair failures are recorded as dataset events instead of
+  crashing the runner;
+- runner summaries include attempt stage transitions, contract metrics, and
+  latent generated-testbench issue summaries;
+- generated-testbench static checks now cover observation races and valid-held
+  reaccept risks;
+- semantic trace parsing is available for valid-ready mismatch diagnosis;
+- repair acceptance now rejects v1.2 repairs that introduce new L0 contract
+  regressions when the upstream failure was not already an L0 consistency
+  failure.
+
+Latest local evidence:
+
+- `pilot-his-v12-t4-fresh-l3h-20260625`: `L0_FAIL`, useful repair oscillation
+  and contract-regression signal.
+- `pilot-his-v12-t4-fresh-l3i-20260625`: official `L0_FAIL`, later shown to be
+  an evaluator false positive around FSM owner inference.
+- `pilot-his-v12-t4-fresh-l3j-20260625`: `L1`, semantic trace found a
+  generated-testbench valid reaccept/oracle bug.
+- `pilot-his-v12-t4-fresh-l3k-20260625`: `L1`, no latent testbench issues after
+  the checker/prompt fix; remaining mismatches are cleaner RTL/protocol
+  semantic repair targets.
+
+Current next step is no longer schema freeze itself. It is to freeze the current
+prompt/checker configuration for a small T3/T4 batch and decide whether the next
+milestone optimizes for L3 repair success or for a cleaner failure-repair
+dataset slice.
+
 ## Global Constraints
 
 - Run everything from the repo root; modules use absolute imports `from LLM.src.sr2fpga_agent...` (no `__init__.py` under `LLM/`).
@@ -25,7 +68,7 @@
 ## Current-state reconciliation (verified 2026-06-24, tip `bbf70af`)
 
 - `project_generator.py:160` emits `"schema_version": "system-his-v1.1"`.
-- `system_his_v12_checker.py:9` has `SCHEMA_VERSION = "system-his-v1.2-topdown"` and does **IR self-consistency only** — it never reads RTL (`GeneratedProject`/`.files`/module parsing absent).
+- At plan start, `system_his_v12_checker.py:9` had `SCHEMA_VERSION = "system-his-v1.2-topdown"` and did **IR self-consistency only** — it never read RTL (`GeneratedProject`/`.files`/module parsing absent).
 - `system_his_checker.py` (v1.1) **already implements** HIS↔RTL cross-checks and contains reusable helpers: `_parse_module_ports`, `_declared_module_ports`, `_module_port_body`, `_matching_paren`, `_port_width`, `_normalize_width`, `_declared_modules`. Reuse these; do not rewrite.
 - No uncommitted codex work; only `tmp/sr2fpga_runs/` is untracked.
 
@@ -53,7 +96,7 @@
 - Produces: `parse_module_ports(content: str, module_name: str) -> dict[str, dict]` (each value `{"direction": str, "width": int|str}`); `declared_modules(files: dict[str,str], sources: list[str]) -> set[str]`; `declared_module_ports(files, sources) -> dict[str, dict[str,dict]]`; `normalize_width(value) -> str`; `port_width(range_text: str|None) -> int|str`.
 - Consumes: nothing new.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 # test_sr2fpga_agent_rtl_introspect.py
@@ -70,15 +113,19 @@ def test_normalize_width_treats_range_and_int_equal():
     assert normalize_width("[7:0]") == normalize_width(8)
 ```
 
-- [ ] **Step 2: Run to verify it fails** — `python3 -m unittest LLM.tests.test_sr2fpga_agent_rtl_introspect -q` → FAIL (module not found).
+- [x] **Step 2: Run to verify it fails** — `python3 -m unittest LLM.tests.test_sr2fpga_agent_rtl_introspect -q` → FAIL (module not found).
 
-- [ ] **Step 3: Implement** — move `_parse_module_ports`, `_module_port_body`, `_matching_paren`, `_port_width`, `_normalize_width`, `_declared_modules`, `_declared_module_ports`, `_declared_module_parameters`, `_module_parameter_names`, `_split_port_declarations` from `system_his_checker.py` into `rtl_introspect.py` as public functions (drop leading underscore on the ones other modules need: `parse_module_ports`, `declared_modules`, `declared_module_ports`, `declared_module_parameters`, `normalize_width`, `port_width`). Keep `normalize_width` semantics: numeric `[N:0]` → `str(N+1)`, otherwise stripped string.
+- [x] **Step 3: Implement** — move `_parse_module_ports`, `_module_port_body`, `_matching_paren`, `_port_width`, `_normalize_width`, `_declared_modules`, `_declared_module_ports`, `_declared_module_parameters`, `_module_parameter_names`, `_split_port_declarations` from `system_his_checker.py` into `rtl_introspect.py` as public functions (drop leading underscore on the ones other modules need: `parse_module_ports`, `declared_modules`, `declared_module_ports`, `declared_module_parameters`, `normalize_width`, `port_width`). Keep `normalize_width` semantics: numeric `[N:0]` → `str(N+1)`, otherwise stripped string.
 
-- [ ] **Step 4: Update v1.1 checker to import them** — in `system_his_checker.py`, replace the moved local helpers with `from LLM.src.sr2fpga_agent.rtl_introspect import (...)`. Keep its public `check_project_l0` behavior identical.
+- [x] **Step 4: Update v1.1 checker to import them** — in `system_his_checker.py`, replace the moved local helpers with `from LLM.src.sr2fpga_agent.rtl_introspect import (...)`. Keep its public `check_project_l0` behavior identical.
 
-- [ ] **Step 5: Run full suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (v1.1 checker behavior unchanged).
+- [x] **Step 5: Run full suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (v1.1 checker behavior unchanged).
 
-- [ ] **Step 6: Commit** — `git add LLM/src/sr2fpga_agent/rtl_introspect.py LLM/src/sr2fpga_agent/system_his_checker.py LLM/tests/test_sr2fpga_agent_rtl_introspect.py && git commit -m "Extract shared RTL-introspection helpers"`
+- [x] **Step 6: Commit decision** — commit intentionally not created in this dirty workspace: `git add LLM/src/sr2fpga_agent/rtl_introspect.py LLM/src/sr2fpga_agent/system_his_checker.py LLM/tests/test_sr2fpga_agent_rtl_introspect.py && git commit -m "Extract shared RTL-introspection helpers"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -96,7 +143,7 @@ def test_normalize_width_treats_range_and_int_equal():
 **Interfaces:**
 - Produces: `SCHEMA_VERSION == "system-his-v1.2"` consumed by checker, deepseek parser, runner labels.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12, SCHEMA_VERSION
@@ -110,13 +157,19 @@ def test_checker_rejects_topdown_suffix(valid_v12_payload):
     assert not result.passed
 ```
 
-- [ ] **Step 2: Run to verify it fails** — FAIL on the assert.
+- [x] **Step 2: Run to verify it fails** — FAIL on the old
+  `SCHEMA_VERSION == "system-his-v1.2-topdown"` value and on acceptance of the
+  retired suffix.
 
-- [ ] **Step 3: Implement** — set `SCHEMA_VERSION = "system-his-v1.2"`; update the v1.1 checker's dispatch constant (`SYSTEM_HIS_V12_SCHEMA`), the deepseek prompt text + `parse_system_his_v12` expectation, `runner._sample_system_his_schema_version` (return `"system-his-v1.2"` for the two-stage source), and the example JSON `schema_version`.
+- [x] **Step 3: Implement** — set `SCHEMA_VERSION = "system-his-v1.2"`; update the v1.1 checker's dispatch constant (`SYSTEM_HIS_V12_SCHEMA`), the deepseek prompt text + `parse_system_his_v12` expectation, `runner._sample_system_his_schema_version` (return `"system-his-v1.2"` for the two-stage source), and the example JSON `schema_version`.
 
-- [ ] **Step 4: Run full suite** — all pass (update any existing test fixtures still using `-topdown`).
+- [x] **Step 4: Run full suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (175 tests).
 
-- [ ] **Step 5: Commit** — `git commit -am "Rename canonical System-HIS schema to system-his-v1.2"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Rename canonical System-HIS schema to system-his-v1.2"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -130,7 +183,7 @@ def test_checker_rejects_topdown_suffix(valid_v12_payload):
 - Consumes: existing `_data_flow_names` walk.
 - Produces: per-flow `timing` validation folded into the data_flow check.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 def test_data_flow_timing_optional_but_validated():
@@ -144,13 +197,17 @@ def test_data_flow_timing_optional_but_validated():
     assert any("initiation_interval" in e for e in res.errors)
 ```
 
-- [ ] **Step 2: Run to verify it fails.**
+- [x] **Step 2: Run to verify it fails** — malformed `timing` was accepted before implementation.
 
-- [ ] **Step 3: Implement** — when a `data_flow[i]` has a `timing` key: `latency_cycles` non-negative int; `initiation_interval` positive int; `throughput` (if present) non-empty string. Absent `timing` is valid (optional per spec).
+- [x] **Step 3: Implement** — when a `data_flow[i]` has a `timing` key: `latency_cycles` non-negative int; `initiation_interval` positive int; `throughput` (if present) non-empty string. Absent `timing` is valid (optional per spec).
 
-- [ ] **Step 4: Run suite → pass.**
+- [x] **Step 4: Run suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (176 tests).
 
-- [ ] **Step 5: Commit** — `git commit -am "Validate optional data_flow.timing contract in v1.2 checker"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Validate optional data_flow.timing contract in v1.2 checker"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -166,7 +223,7 @@ def test_data_flow_timing_optional_but_validated():
 
 Guard grammar (spec §control_flow): atom `{signal, op, value}` with `op ∈ {==,!=,<,>,&&,||}` and `signal` resolving to a declared port / state / flow / `fsm.state`; combinators `all_of`/`any_of` (lists); **max nesting depth 2**.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_fsm_structure_validated():
@@ -194,17 +251,22 @@ def test_guard_unknown_operator_rejected():
     assert not check_system_his_v12(bad).passed
 ```
 
-- [ ] **Step 2: Run to verify they fail.**
+- [x] **Step 2: Run to verify they fail** — FSM structure, transition endpoint,
+  guard depth, and guard operator tests failed before implementation.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
   - `state.fsms[]`: `states` non-empty list of strings; `initial` and `reset_state` ∈ `states`; `name` unique; record fsm names + `<fsm>.state` as referenceable signals.
   - `fsm_transition`: `fsm` ∈ declared fsm names; `from`/`to` ∈ that fsm's states; `when` passes `validate_guard`; optional `effect` target resolves to a declared instance/state/flow.
   - `enable_rule`: `when` passes `validate_guard`; `effect.target` resolves.
   - `validate_guard(when, valid_signals, depth)`: if `when` has `all_of`/`any_of` → must be a list, recurse with `depth+1`, and **error if depth+1 > 2**; else must be an atom `{signal, op, value}` with `op` in the allowed set and `signal` ∈ `valid_signals` (declared ports across instances/top, state names, flow names, `<fsm>.state`).
 
-- [ ] **Step 4: Run suite → pass.**
+- [x] **Step 4: Run suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (180 tests).
 
-- [ ] **Step 5: Commit** — `git commit -am "Validate structured control_flow, FSM, and guard grammar (depth<=2)"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Validate structured control_flow, FSM, and guard grammar (depth<=2)"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -222,7 +284,7 @@ Cross-checks (spec §L0 cross-check):
 - **Strict:** each `components[].name` is an RTL module in its `source`; each `instances[].component` resolves; each instance appears instantiated in `rtl/top.v`; for every component port, the RTL module has a port of the same name and **same direction**; `data_flow.path` endpoints (`top.<port>` / `<instance>.<port>`) exist in the resolved RTL ports; `artifacts` match `manifest.json`; testbench instantiates the top; SDC `get_ports` reference only real top ports; each `state.fsms[].states` name appears in the owner module RTL (name-level grep of state identifiers).
 - **Semantic:** port width compared via `normalize_width` (so `[7:0]` ≡ `8` ≡ a param resolving to 8) — never raw-string compare.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_cross_check_passes_for_consistent_project(consistent_v12_project):
@@ -246,13 +308,18 @@ def test_cross_check_width_semantic_equivalence_passes():
     assert res.passed
 ```
 
-- [ ] **Step 2: Run to verify they fail.**
+- [x] **Step 2: Run to verify they fail** — failed because
+  `check_system_his_v12_against_rtl` did not exist.
 
-- [ ] **Step 3: Implement** — `check_system_his_v12_against_rtl` first calls `check_system_his_v12(payload)` (IR self-check), then, using `rtl_introspect` helpers over `artifacts.rtl_sources`, applies the strict + semantic cross-checks above, appending errors. Mirror the v1.1 checker's existing cross-check logic but against the v1.2 `components`/`instances`/`data_flow` model.
+- [x] **Step 3: Implement** — `check_system_his_v12_against_rtl` first calls `check_system_his_v12(payload)` (IR self-check), then, using `rtl_introspect` helpers over `artifacts.rtl_sources`, applies the strict + semantic cross-checks above, appending errors. Mirror the v1.1 checker's existing cross-check logic but against the v1.2 `components`/`instances`/`data_flow` model.
 
-- [ ] **Step 4: Run suite → pass.**
+- [x] **Step 4: Run suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (184 tests).
 
-- [ ] **Step 5: Commit** — `git commit -am "Add HIS<->RTL cross-check to v1.2 checker (port/direction strict, width semantic)"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Add HIS<->RTL cross-check to v1.2 checker (port/direction strict, width semantic)"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -266,7 +333,7 @@ def test_cross_check_width_semantic_equivalence_passes():
 - Consumes: `check_system_his_v12_against_rtl` (Task 5).
 - Produces: `check_project_l0(project)` routes `schema_version == "system-his-v1.2"` to the cross-check and returns an `L0CheckResult` whose `errors` include cross-file consistency violations (feeding the metric).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 def test_l0_dispatch_runs_v12_cross_check_on_v12_project():
@@ -277,13 +344,18 @@ def test_l0_dispatch_runs_v12_cross_check_on_v12_project():
     assert any("instantiate" in e.lower() or "top" in e.lower() for e in result.errors)
 ```
 
-- [ ] **Step 2: Run to verify it fails.**
+- [x] **Step 2: Run to verify it fails** — v1.2 L0 accepted a project whose
+  testbench no longer instantiated the top module.
 
-- [ ] **Step 3: Implement** — in `check_project_l0`, when the parsed `system_his.json` has `schema_version == "system-his-v1.2"`, call `check_system_his_v12_against_rtl(payload, project)` and map its result into `L0CheckResult` (plus the existing basic project-artifact contract). Keep v1.1/legacy dispatch unchanged.
+- [x] **Step 3: Implement** — in `check_project_l0`, when the parsed `system_his.json` has `schema_version == "system-his-v1.2"`, call `check_system_his_v12_against_rtl(payload, project)` and map its result into `L0CheckResult` (plus the existing basic project-artifact contract). Keep v1.1/legacy dispatch unchanged.
 
-- [ ] **Step 4: Run suite → pass.**
+- [x] **Step 4: Run suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (185 tests).
 
-- [ ] **Step 5: Commit** — `git commit -am "Route system-his-v1.2 projects through cross-file L0 check"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Route system-his-v1.2 projects through cross-file L0 check"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -296,7 +368,7 @@ def test_l0_dispatch_runs_v12_cross_check_on_v12_project():
 **Interfaces:**
 - Produces: `ProjectGenerator.generate(...)` emits `system_his.json` with `schema_version == "system-his-v1.2"` and the full aspect structure (spec §schema shape) for `counter`, `fifo`, `simple_fsm`, `ram_read_write`.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
@@ -308,13 +380,18 @@ def test_counter_emits_valid_v12():
     assert check_project_l0(proj).passed
 ```
 
-- [ ] **Step 2: Run to verify it fails.**
+- [x] **Step 2: Run to verify it fails** — deterministic single-module families
+  still emitted `system-his-v1.1`.
 
-- [ ] **Step 3: Implement** — rewrite `_system_his()` to build the v1.2 aspects: `intent`, `top` (name/parameters/clocks/resets/ports/interfaces), `components`, `instances`, `data_flow` (with optional `timing` where a pipeline exists), `control_flow` (reset_rule + any FSM for `simple_fsm`), `state`, `timing`, `resources`, `verification`, `artifacts`. `simple_fsm` must declare its FSM in `state.fsms` + `fsm_transition` rules and pass the FSM cross-check. Reuse the deterministic RTL already produced so cross-check passes by construction.
+- [x] **Step 3: Implement** — rewrite `_system_his()` to build the v1.2 aspects: `intent`, `top` (name/parameters/clocks/resets/ports/interfaces), `components`, `instances`, `data_flow` (with optional `timing` where a pipeline exists), `control_flow` (reset_rule + any FSM for `simple_fsm`), `state`, `timing`, `resources`, `verification`, `artifacts`. `simple_fsm` must declare its FSM in `state.fsms` + `fsm_transition` rules and pass the FSM cross-check. Reuse the deterministic RTL already produced so cross-check passes by construction.
 
-- [ ] **Step 4: Run suite → pass for all four families.**
+- [x] **Step 4: Run suite** — single-module v1.2 L0 test passes; full suite passes (190 tests after Tasks 8/9).
 
-- [ ] **Step 5: Commit** — `git commit -am "Emit system-his-v1.2 from deterministic generator (single-module families)"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Emit system-his-v1.2 from deterministic generator (single-module families)"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -327,7 +404,7 @@ def test_counter_emits_valid_v12():
 **Interfaces:**
 - Produces: v1.2 output for `composed_event_counter` (T1), `composed_stream_accumulator` (T2), `composed_stream_fork` (T3), `composed_dual_stream_join` (T4), plus the other multi-module families (`uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`, `streaming_valid_ready`, `matrix_vector_mac`).
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 import pytest
@@ -340,13 +417,19 @@ def test_multimodule_emits_valid_v12(task):
     assert check_project_l0(proj).passed
 ```
 
-- [ ] **Step 2: Run to verify it fails.**
+- [x] **Step 2: Run to verify it fails** — covered by the deterministic
+  generator migration from v1.1 to v1.2 and then extended to all multi-module
+  families.
 
-- [ ] **Step 3: Implement** — map each topology's `COMPONENT_TOPOLOGIES` nodes/edges to v1.2 `components`/`instances`/`data_flow`. Streaming families (`composed_stream_*`, `streaming_valid_ready`, `matrix_vector_mac`) get `data_flow.timing` (latency/II) and `control_flow` `handshake_rule`/`stall_rule` where backpressure exists. Repeated instances (the two `skid_buffer` in T4) use distinct `instances[].name` referencing one `components[].name` — the v1.2 split that fixes the old ambiguity.
+- [x] **Step 3: Implement** — map each topology's `COMPONENT_TOPOLOGIES` nodes/edges to v1.2 `components`/`instances`/`data_flow`. Streaming families (`composed_stream_*`, `streaming_valid_ready`, `matrix_vector_mac`) get `data_flow.timing` (latency/II) and `control_flow` `handshake_rule`/`stall_rule` where backpressure exists. Repeated instances (the two `skid_buffer` in T4) use distinct `instances[].name` referencing one `components[].name` — the v1.2 split that fixes the old ambiguity.
 
-- [ ] **Step 4: Run suite → pass for all families.**
+- [x] **Step 4: Run suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (190 tests after Tasks 8/9).
 
-- [ ] **Step 5: Commit** — `git commit -am "Emit system-his-v1.2 from deterministic generator (multi-module/composed families)"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Emit system-his-v1.2 from deterministic generator (multi-module/composed families)"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -360,7 +443,7 @@ def test_multimodule_emits_valid_v12(task):
 - Consumes: `check_system_his_v12` (extended in Tasks 3–4).
 - Produces: `_system_his_v12_messages` requests `system-his-v1.2` with `data_flow.timing` (optional) and structured `control_flow`/guards; `parse_system_his_v12` validates against the extended checker.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 def test_parser_requires_canonical_v12_schema():
@@ -372,13 +455,18 @@ def test_parser_rejects_topdown_as_v12():
         parse_system_his_v12(topdown_json_text())
 ```
 
-- [ ] **Step 2: Run to verify it fails.**
+- [x] **Step 2: Run to verify it fails** — prompt did not yet mention
+  `data_flow.timing`, structured `when/effect`, guard grammar, or depth <= 2.
 
-- [ ] **Step 3: Implement** — update prompt strings and the example JSON inside `_system_his_v12_messages` to the canonical schema + new aspects (timing, structured control_flow with the guard grammar and depth-2 rule); keep the bounded checker-feedback retry. No live API call in tests — feed canned JSON to `parse_system_his_v12`.
+- [x] **Step 3: Implement** — update prompt strings and the example JSON inside `_system_his_v12_messages` to the canonical schema + new aspects (timing, structured control_flow with the guard grammar and depth-2 rule); keep the bounded checker-feedback retry. No live API call in tests — feed canned JSON to `parse_system_his_v12`.
 
-- [ ] **Step 4: Run suite → pass.**
+- [x] **Step 4: Run suite** — DeepSeek tests pass; full suite passes (190 tests after Task 9).
 
-- [ ] **Step 5: Commit** — `git commit -am "Update DeepSeek two-stage prompts/parser to canonical v1.2 contract"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Update DeepSeek two-stage prompts/parser to canonical v1.2 contract"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -391,7 +479,7 @@ def test_parser_rejects_topdown_as_v12():
 **Interfaces:**
 - Produces: each sample's `metadata.json` carries `system_his_schema_version` ∈ {`legacy`, `system-his-v1.1`, `system-his-v1.2`} and a derived `training_split` ∈ {`clean`, `quarantine`} where non-v1.2 → `quarantine`. Export views carry both fields.
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 def test_non_v12_sample_is_quarantined():
@@ -403,13 +491,18 @@ def test_v12_sample_is_clean():
     assert md["training_split"] == "clean"
 ```
 
-- [ ] **Step 2: Run to verify it fails.**
+- [x] **Step 2: Run to verify it fails** — metadata/export rows did not include
+  `training_split`, and deterministic samples were still labeled v1.1.
 
-- [ ] **Step 3: Implement** — derive `training_split` from the schema version when building sample metadata; propagate into `export_training_views` rows so a clean-split filter is a one-field query. Do not delete or migrate existing quarantined samples.
+- [x] **Step 3: Implement** — derive `training_split` from the schema version when building sample metadata; propagate into `export_training_views` rows so a clean-split filter is a one-field query. Do not delete or migrate existing quarantined samples.
 
-- [ ] **Step 4: Run suite → pass.**
+- [x] **Step 4: Run suite** — `python3 -m unittest discover -s LLM/tests -q` → all pass (190 tests).
 
-- [ ] **Step 5: Commit** — `git commit -am "Label legacy/v1.1 samples as quarantine, v1.2 as clean training split"`
+- [x] **Step 5: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Label legacy/v1.1 samples as quarantine, v1.2 as clean training split"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 
@@ -418,9 +511,13 @@ def test_v12_sample_is_clean():
 **Files:**
 - Modify: `docs/current-status.md`, `docs/sr2fpga-agent-handoff-2026-06-22.md`, `docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json`
 
-- [ ] **Step 1:** Update the example JSON to canonical `system-his-v1.2` with a `data_flow.timing` example and a structured `control_flow` FSM/guard example (it is the reference fixture).
-- [ ] **Step 2:** In `current-status.md` and the handoff, record: v1.2 frozen as canonical, deterministic generator migrated, v1.2 checker now does cross-file checks, legacy/v1.1 quarantined. Remove the "two schemas in parallel" framing.
-- [ ] **Step 3: Commit** — `git commit -am "Update status/handoff/example for System-HIS v1.2 freeze"`
+- [x] **Step 1:** Update the example JSON to canonical `system-his-v1.2` with a `data_flow.timing` example and a structured `control_flow` FSM/guard example (it is the reference fixture).
+- [x] **Step 2:** In `current-status.md` and the handoff, record: v1.2 frozen as canonical, deterministic generator migrated, v1.2 checker now does cross-file checks, legacy/v1.1 quarantined. Remove the "two schemas in parallel" framing.
+- [x] **Step 3: Commit decision** — commit intentionally not created in this dirty workspace: `git commit -am "Update status/handoff/example for System-HIS v1.2 freeze"`
+
+  Status note: implementation and verification are complete; commit was not
+  created because the current workspace already contains broader uncommitted
+  work and the user did not request a commit.
 
 ---
 

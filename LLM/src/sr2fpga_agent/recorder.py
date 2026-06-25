@@ -206,7 +206,11 @@ def _read_metadata(sample_dir: Path) -> dict[str, Any]:
     path = sample_dir / "metadata.json"
     if not path.exists():
         return {}
-    return json.loads(path.read_text(encoding="utf-8"))
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    if "training_split" not in metadata:
+        schema_version = str(metadata.get("system_his_schema_version", "legacy"))
+        metadata["training_split"] = "clean" if schema_version == "system-his-v1.2" else "quarantine"
+    return metadata
 
 
 def _read_project_files(project_dir: Path) -> list[dict[str, str]]:

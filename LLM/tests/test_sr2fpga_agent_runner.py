@@ -18,6 +18,7 @@ from LLM.src.sr2fpga_agent.runner import (
     runner_preflight,
     should_skip_sample,
     write_run_state,
+    _failure_family,
     _record_completed as _record_completed_for_test,
     _summary as run_batch_summary_for_test,
 )
@@ -205,7 +206,29 @@ class RunnerConfigTest(unittest.TestCase):
             "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
         )
         self.assertEqual(samples[0].metadata(config)["measurement_point"], "a_first_attempt_no_tools")
-        self.assertEqual(samples[0].metadata(config)["system_his_schema_version"], "system-his-v1.2-topdown")
+        self.assertEqual(samples[0].metadata(config)["system_his_schema_version"], "system-his-v1.2")
+        self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
+
+    def test_deterministic_samples_are_v12_clean_training_split(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            sample = planned_samples(config)[0]
+
+            metadata = sample.metadata(config)
+
+            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+            self.assertEqual(metadata["training_split"], "clean")
 
     def test_load_runner_config_parses_env_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -888,7 +911,21 @@ class RunnerConfigTest(unittest.TestCase):
     def test_classify_sample_bucket(self) -> None:
         self.assertEqual(classify_sample_bucket({"pass_level": "L3", "failure_count": 0}), "success_l3")
         self.assertEqual(classify_sample_bucket({"pass_level": "L1", "failure_count": 2}), "repair_trajectory")
+        self.assertEqual(classify_sample_bucket({"pass_level": "GEN_FAIL", "failure_count": 1}), "rejected")
         self.assertEqual(classify_sample_bucket({"pass_level": "L0", "failure_count": 0}), "rejected")
+
+    def test_generation_failures_have_dedicated_failure_family(self) -> None:
+        self.assertEqual(_failure_family("generation_failed", "generation"), "generation_failure")
+
+    def test_repair_failures_have_dedicated_failure_family(self) -> None:
+        self.assertEqual(_failure_family("repair_failed", "repair"), "repair_failure")
+
+    def test_testbench_static_check_has_dedicated_failure_family(self) -> None:
+        self.assertEqual(_failure_family("testbench_observation_race", "testbench_static_check"), "testbench_failure")
+        self.assertEqual(
+            _failure_family("testbench_stimulus_reaccept_risk", "testbench_static_check"),
+            "testbench_failure",
+        )
 
     def test_initial_run_state_defaults(self) -> None:
         state = initial_run_state("run_test", config_fingerprint="abc123")
@@ -1255,9 +1292,13 @@ class RunnerConfigTest(unittest.TestCase):
             )
 
             run_batch(config, run_id="run_unit")
+            config_path = root / "runs" / "run_unit" / "config.json"
+            original_config_json = config_path.read_text(encoding="utf-8")
 
             with self.assertRaises(SystemExit):
                 run_batch(changed_config, run_id="run_unit", resume=True)
+
+            self.assertEqual(config_path.read_text(encoding="utf-8"), original_config_json)
 
     def test_run_batch_applies_configured_failure_injectors(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1303,7 +1344,7 @@ class RunnerConfigTest(unittest.TestCase):
                 summary["calibration_matrix"]["failure_origin"]["synthetic_injected"],
                 {
                     "total": 1,
-                    "pass_levels": {"L0": 1},
+                    "pass_levels": {"L0_FAIL": 1},
                     "l3_pass_rate": 0.0,
                     "l0_contract_failures": 1,
                     "cross_file_consistency_error_rate": 1.0,
@@ -1314,13 +1355,13 @@ class RunnerConfigTest(unittest.TestCase):
                 summary["calibration_matrix"]["failure_family"]["artifact_contract_failure"],
                 {
                     "total": 1,
-                    "pass_levels": {"L0": 1},
+                    "pass_levels": {"L0_FAIL": 1},
                     "l3_pass_rate": 0.0,
                     "l0_contract_failures": 1,
                     "cross_file_consistency_error_rate": 1.0,
                 },
             )
-            self.assertEqual(labels["pass_level"], "L0")
+            self.assertEqual(labels["pass_level"], "L0_FAIL")
             self.assertFalse(labels["checks"]["l0_complete"])
             self.assertEqual(labels["failure_count"], 1)
             self.assertEqual(diagnosis["stage"], "l0_consistency")
@@ -1392,6 +1433,169 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(
                 summary["calibration_matrix"]["failure_family"]["rtl_compile_failure"]["pass_levels"],
                 {"L1": 1},
+            )
+
+    def test_run_batch_summary_counts_attempt_stage_transitions(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample_dir = root / "datasets/sample_stage_progress"
+            (sample_dir / "eval").mkdir(parents=True)
+            (sample_dir / "metadata.json").write_text(
+                json.dumps(
+                    {
+                        "source": "deepseek-his-v12",
+                        "failure_origin": "natural_llm",
+                        "requirement_style": "simple_prompt",
+                        "difficulty_tier": "T4",
+                        "topology_id": "t4_dual_stream_join",
+                        "measurement_point": "b_tool_in_loop_repair",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (sample_dir / "eval/labels.json").write_text(
+                json.dumps(
+                    {
+                        "pass_level": "L1",
+                        "checks": {
+                            "l0_complete": True,
+                            "l1_lint_pass": True,
+                            "l2_sim_pass": False,
+                            "l3_synth_pass": False,
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            for attempt_id, stage, failure_type in [
+                (0, "l0_consistency", "l0_contract_violation"),
+                (1, "lint", "lint_warning_as_error"),
+                (2, "sim_run", "functional_mismatch"),
+            ]:
+                attempt_dir = sample_dir / f"attempts/attempt_{attempt_id:03d}"
+                attempt_dir.mkdir(parents=True)
+                (attempt_dir / "diagnosis.json").write_text(
+                    json.dumps(
+                        {
+                            "stage": stage,
+                            "failure_type": failure_type,
+                            "root_cause": "unit test fixture",
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=3,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(state, "sample_stage_progress", 1, "repair_trajectory", sample_dir)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(
+                summary["attempt_stage_transition_breakdown"],
+                {
+                    "l0_consistency->lint": 1,
+                    "lint->sim_run": 1,
+                },
+            )
+
+    def test_run_batch_summary_counts_latent_testbench_issues(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample_dir = root / "datasets/sample_latent_testbench_race"
+            attempt_project = sample_dir / "attempts/attempt_000/generated_project"
+            (sample_dir / "eval").mkdir(parents=True)
+            (attempt_project / "sim").mkdir(parents=True)
+            (sample_dir / "metadata.json").write_text(
+                json.dumps(
+                    {
+                        "source": "deepseek-his-v12",
+                        "failure_origin": "natural_llm",
+                        "requirement_style": "simple_prompt",
+                        "difficulty_tier": "T4",
+                        "topology_id": "t4_dual_stream_join",
+                        "measurement_point": "b_tool_in_loop_repair",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (sample_dir / "eval/labels.json").write_text(
+                json.dumps(
+                    {
+                        "pass_level": "L0_FAIL",
+                        "checks": {
+                            "l0_complete": False,
+                            "l1_lint_pass": False,
+                            "l2_sim_pass": False,
+                            "l3_synth_pass": False,
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (sample_dir / "attempts/attempt_000/diagnosis.json").write_text(
+                json.dumps(
+                    {
+                        "stage": "l0_consistency",
+                        "failure_type": "l0_contract_violation",
+                        "root_cause": "unit test fixture",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (attempt_project / "sim/tb_top.v").write_text(
+                """
+module tb;
+  initial begin
+    wait(out_valid);
+    @(posedge clk) #1;
+    if (out_data !== expected) $display("TEST_FAIL");
+  end
+endmodule
+""",
+                encoding="utf-8",
+            )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(
+                state,
+                "sample_latent_testbench_race",
+                1,
+                "repair_trajectory",
+                sample_dir,
+            )
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["failure_family_breakdown"], {"artifact_contract_failure": 1})
+            self.assertEqual(
+                summary["latent_testbench_issue_breakdown"],
+                {"testbench_observation_race": 1},
             )
 
     def test_run_batch_groups_rtl_identifier_check_as_compile_family(self) -> None:

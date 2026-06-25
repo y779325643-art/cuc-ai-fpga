@@ -20,6 +20,7 @@ from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenera
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
+from LLM.src.sr2fpga_agent.testbench_checker import check_testbench_static_issues
 
 
 VALID_MEASUREMENT_POINTS = {
@@ -80,6 +81,7 @@ class PlannedSample:
     requirement_style: str = "contract"
 
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
+        schema_version = _sample_system_his_schema_version(self)
         return {
             "source": self.source,
             "generator_provider": self.source,
@@ -90,7 +92,8 @@ class PlannedSample:
             "failure_injectors": list(self.failure_injectors),
             "task_type": self.task_type,
             "width": self.width,
-            "system_his_schema_version": _sample_system_his_schema_version(self),
+            "system_his_schema_version": schema_version,
+            "training_split": _training_split(schema_version),
             "topology_id": self.topology_id,
             "requirement_style": self.requirement_style,
         }
@@ -231,7 +234,6 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     summary_path = run_dir / "summary.json"
     config_fingerprint = _config_fingerprint(config)
     run_dir.mkdir(parents=True, exist_ok=True)
-    _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
     if resume and state_path.exists():
         state = read_run_state(state_path)
@@ -243,6 +245,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     else:
         state = initial_run_state(run_id, config_fingerprint=config_fingerprint)
         write_run_state(state_path, state)
+
+    _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
     samples = planned_samples(config)
     project_generators: dict[str, object | None] = {}
@@ -316,7 +320,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     summary = _summary(config, state)
     _write_json(summary_path, summary)
     (run_dir / "baseline_report.md").write_text(
-        render_markdown(str(summary["run_id"]), baseline_rows(summary)),
+        render_markdown(str(summary["run_id"]), baseline_rows(summary), summary=summary),
         encoding="utf-8",
     )
     return summary
@@ -359,6 +363,8 @@ def should_skip_sample(state: RunState, sample_id: str) -> bool:
 def classify_sample_bucket(labels: dict[str, Any]) -> str:
     if labels.get("pass_level") == "L3":
         return "success_l3"
+    if labels.get("pass_level") == "GEN_FAIL":
+        return "rejected"
     if int(labels.get("failure_count", 0)) > 0:
         return "repair_trajectory"
     return "rejected"
@@ -554,15 +560,24 @@ def _sample_failure_types(sample_dir: Path) -> dict[str, int]:
 
 
 def _failure_family(failure_type: str, stage: str = "") -> str:
+    if failure_type == "generation_failed" or stage == "generation":
+        return "generation_failure"
+    if failure_type == "repair_failed" or stage == "repair":
+        return "repair_failure"
     if failure_type == "l0_contract_violation":
         return "artifact_contract_failure"
+    if stage == "testbench_static_check" or failure_type in {
+        "testbench_observation_race",
+        "testbench_stimulus_reaccept_risk",
+    }:
+        return "testbench_failure"
     if stage in {"rtl_identifier_check", "lint", "sim_compile"}:
         return "rtl_compile_failure"
     if stage == "sim_run":
         return "rtl_sim_failure"
     if stage == "synth":
         return "synth_failure"
-    if failure_type in {"syntax_error", "module_not_found", "port_mismatch", "width_mismatch"}:
+    if failure_type in {"syntax_error", "module_not_found", "parameter_mismatch", "port_mismatch", "width_mismatch"}:
         return "rtl_compile_failure"
     if failure_type == "sample_exists":
         return "sample_rejection"
@@ -585,6 +600,33 @@ def _sample_failure_families(sample_dir: Path) -> set[str]:
     return families
 
 
+def _sample_attempt_stage_transitions(sample_dir: Path) -> dict[str, int]:
+    stages: list[str] = []
+    attempts_dir = sample_dir / "attempts"
+    if not attempts_dir.exists():
+        return {}
+    for diagnosis_path in sorted(attempts_dir.glob("attempt_*/diagnosis.json")):
+        diagnosis = json.loads(diagnosis_path.read_text(encoding="utf-8"))
+        stage = str(diagnosis.get("stage", "")).strip()
+        if stage:
+            stages.append(stage)
+
+    transitions: dict[str, int] = {}
+    for from_stage, to_stage in zip(stages, stages[1:]):
+        transition = f"{from_stage}->{to_stage}"
+        transitions[transition] = transitions.get(transition, 0) + 1
+    return transitions
+
+
+def _sample_latent_testbench_issues(sample_dir: Path) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for testbench_path in sorted(sample_dir.glob("attempts/attempt_*/generated_project/sim/tb_top.v")):
+        issues = check_testbench_static_issues(testbench_path.read_text(encoding="utf-8"))
+        for issue in issues:
+            counts[issue.failure_type] = counts.get(issue.failure_type, 0) + 1
+    return counts
+
+
 def _summary(config: RunnerConfig, state: RunState) -> dict[str, Any]:
     calibration = _calibration_breakdown(config.dataset_root, state.completed_samples)
     return {
@@ -596,6 +638,8 @@ def _summary(config: RunnerConfig, state: RunState) -> dict[str, Any]:
         "buckets": state.buckets,
         "failure_types": state.failure_types,
         "failure_family_breakdown": calibration["failure_family_breakdown"],
+        "attempt_stage_transition_breakdown": calibration["attempt_stage_transition_breakdown"],
+        "latent_testbench_issue_breakdown": calibration["latent_testbench_issue_breakdown"],
         "metadata_breakdown": calibration["metadata_breakdown"],
         "pass_level_breakdown": calibration["pass_level_breakdown"],
         "calibration_matrix": calibration["calibration_matrix"],
@@ -616,6 +660,8 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
     )
     metadata_breakdown: dict[str, dict[str, int]] = {field: {} for field in metadata_fields}
     failure_family_breakdown: dict[str, int] = {}
+    attempt_stage_transition_breakdown: dict[str, int] = {}
+    latent_testbench_issue_breakdown: dict[str, int] = {}
     pass_level_breakdown: dict[str, int] = {}
     calibration_counts: dict[str, dict[str, dict[str, Any]]] = {
         field: {} for field in (*metadata_fields, "failure_family")
@@ -649,9 +695,17 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
                 pass_level,
                 l0_contract_failed,
             )
+        for transition, count in _sample_attempt_stage_transitions(sample_dir).items():
+            attempt_stage_transition_breakdown[transition] = (
+                attempt_stage_transition_breakdown.get(transition, 0) + count
+            )
+        for issue_type, count in _sample_latent_testbench_issues(sample_dir).items():
+            latent_testbench_issue_breakdown[issue_type] = latent_testbench_issue_breakdown.get(issue_type, 0) + count
     return {
         "metadata_breakdown": metadata_breakdown,
         "failure_family_breakdown": failure_family_breakdown,
+        "attempt_stage_transition_breakdown": attempt_stage_transition_breakdown,
+        "latent_testbench_issue_breakdown": latent_testbench_issue_breakdown,
         "pass_level_breakdown": pass_level_breakdown,
         "calibration_matrix": _calibration_rates(calibration_counts),
         "contract_metrics": {
@@ -951,9 +1005,13 @@ def _sample_failure_origin(sample: PlannedSample) -> str:
 
 
 def _sample_system_his_schema_version(sample: PlannedSample) -> str:
-    if sample.source == "deepseek-his-v12":
-        return "system-his-v1.2-topdown"
+    if sample.source in {"deepseek-his-v12", "deterministic"}:
+        return "system-his-v1.2"
     return "system-his-v1.1"
+
+
+def _training_split(schema_version: str) -> str:
+    return "clean" if schema_version == "system-his-v1.2" else "quarantine"
 
 
 def _measurement_point(config: RunnerConfig) -> str:

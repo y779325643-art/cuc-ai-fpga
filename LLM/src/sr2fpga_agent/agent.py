@@ -19,6 +19,10 @@ from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
 from LLM.src.sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers, rtl_identifier_tool_result
 from LLM.src.sr2fpga_agent.system_his_checker import L0CheckResult, check_project_l0
+from LLM.src.sr2fpga_agent.testbench_checker import (
+    check_testbench_static_issues,
+    testbench_observation_tool_result,
+)
 from LLM.src.sr2fpga_agent.tool_runner import CommandRunner
 
 
@@ -48,8 +52,11 @@ class DataGenerationAgent:
         platform: PlatformProfile,
         metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        project = self.project_generator.generate(request, platform)
         sample_dir = self.recorder.start_sample(sample_id, requirement, platform, metadata=metadata)
+        try:
+            project = self.project_generator.generate(request, platform)
+        except Exception as exc:
+            return self._record_generation_failure(sample_id, sample_dir, request, exc)
 
         all_stage_entries: list[dict[str, Any]] = []
         failure_count = 0
@@ -75,9 +82,17 @@ class DataGenerationAgent:
             if diagnosis is not None:
                 failure_count += 1
                 if self.repairer is not None and attempt_id + 1 < self.max_attempts:
-                    repair_result = self.repairer.repair(project, diagnosis)
-                    project = repair_result.generated_project
-                    patch_diff = repair_result.patch_diff
+                    try:
+                        repair_result = self.repairer.repair(project, diagnosis)
+                    except Exception as exc:
+                        tool_results = {
+                            **tool_results,
+                            "repair": _repair_failure_tool_result(exc),
+                        }
+                        diagnosis = _repair_failure_diagnosis(exc, upstream_diagnosis=diagnosis)
+                    else:
+                        project = repair_result.generated_project
+                        patch_diff = repair_result.patch_diff
 
             all_stage_entries.extend(_stage_entries(attempt_id, tool_results, diagnosis, bool(patch_diff)))
             self.recorder.write_attempt(
@@ -93,6 +108,8 @@ class DataGenerationAgent:
 
             if diagnosis is None:
                 break
+            if diagnosis.get("stage") == "repair":
+                break
 
         measured_qor = _measured_qor(final_tool_results)
         labels = _labels(final_tool_results, final_attempt_id=final_attempt_id, failure_count=failure_count)
@@ -102,6 +119,52 @@ class DataGenerationAgent:
             final_project,
             labels=labels,
             measured_qor=measured_qor,
+            tool_versions={"verilator": "unknown", "iverilog": "unknown", "yosys": "unknown"},
+            trajectory=trajectory,
+        )
+        return {"sample_dir": str(sample_dir), "pass_level": labels["pass_level"]}
+
+    def _record_generation_failure(
+        self,
+        sample_id: str,
+        sample_dir: Path,
+        request: ProjectRequest,
+        exc: Exception,
+    ) -> dict[str, Any]:
+        failed_project = GeneratedProject(project_name=request.project_name, files={})
+        tool_results = {
+            "generation": ToolResult(
+                stage="generation",
+                command=["project_generator"],
+                status="failed",
+                exit_code=1,
+                stdout="",
+                stderr=str(exc),
+                duration_seconds=0.0,
+            )
+        }
+        diagnosis = {
+            "failure_type": "generation_failed",
+            "stage": "generation",
+            "root_cause": str(exc),
+            "affected_files": _generation_failure_affected_files(exc),
+        }
+        self.recorder.write_attempt(
+            sample_id,
+            AttemptRecord(
+                attempt_id=0,
+                generated_project=failed_project,
+                tool_results=tool_results,
+                diagnosis=diagnosis,
+            ),
+        )
+        labels = _generation_failure_labels()
+        trajectory = _trajectory(sample_id, _stage_entries(0, tool_results, diagnosis, False))
+        self.recorder.write_final(
+            sample_id,
+            failed_project,
+            labels=labels,
+            measured_qor=_measured_qor(tool_results),
             tool_versions={"verilator": "unknown", "iverilog": "unknown", "yosys": "unknown"},
             trajectory=trajectory,
         )
@@ -125,6 +188,11 @@ class DataGenerationAgent:
             stage="lint",
         )
         if results["lint"].status != "passed":
+            return results
+
+        testbench_issues = check_testbench_static_issues(project.files.get(testbench, ""))
+        results["testbench_static_check"] = testbench_observation_tool_result(testbench_issues)
+        if results["testbench_static_check"].status != "passed":
             return results
 
         results["sim_compile"] = self.command_runner.run(
@@ -171,6 +239,42 @@ def _l0_tool_result(result: L0CheckResult) -> ToolResult:
         stderr="\n".join(result.errors) + ("\n" if result.errors else ""),
         duration_seconds=0.0,
     )
+
+
+def _repair_failure_tool_result(exc: Exception) -> ToolResult:
+    return ToolResult(
+        stage="repair",
+        command=["repairer"],
+        status="failed",
+        exit_code=1,
+        stdout="",
+        stderr=str(exc),
+        duration_seconds=0.0,
+    )
+
+
+def _repair_failure_diagnosis(exc: Exception, upstream_diagnosis: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "failure_type": _repair_failure_type(exc),
+        "stage": "repair",
+        "root_cause": str(exc),
+        "affected_files": _generation_failure_affected_files(exc),
+        "upstream_diagnosis": upstream_diagnosis,
+    }
+
+
+def _repair_failure_type(exc: Exception) -> str:
+    message = str(exc).lower()
+    if "introduced l0 contract violations" in message or "contract changed during rtl repair" in message:
+        return "repair_contract_regression"
+    return "repair_failed"
+
+
+def _generation_failure_affected_files(exc: Exception) -> list[str]:
+    message = str(exc).lower()
+    if "system-his" in message or "system_his" in message:
+        return ["system_his.json"]
+    return []
 
 
 def _diagnose_first_failure(
@@ -222,6 +326,22 @@ def _measured_qor(tool_results: dict[str, ToolResult]) -> dict[str, Any]:
     return parse_yosys_stats(f"{synth.stdout}\n{synth.stderr}")
 
 
+def _generation_failure_labels() -> dict[str, Any]:
+    return {
+        "pass_level": "GEN_FAIL",
+        "checks": {
+            "generation_complete": False,
+            "l0_complete": False,
+            "l1_lint_pass": False,
+            "l2_sim_pass": False,
+            "l3_synth_pass": False,
+            "l4_lite_timing_pass": False,
+        },
+        "final_attempt_id": 0,
+        "failure_count": 1,
+    }
+
+
 def _labels(tool_results: dict[str, ToolResult], final_attempt_id: int, failure_count: int) -> dict[str, Any]:
     l0_pass = not (
         tool_results.get("l0_consistency") is not None and tool_results["l0_consistency"].status != "passed"
@@ -233,7 +353,7 @@ def _labels(tool_results: dict[str, ToolResult], final_attempt_id: int, failure_
     sim_run_pass = tool_results.get("sim_run") is not None and tool_results["sim_run"].status == "passed"
     synth_pass = tool_results.get("synth") is not None and tool_results["synth"].status == "passed"
 
-    pass_level = "L0"
+    pass_level = "L0" if l0_pass else "L0_FAIL"
     if lint_pass:
         pass_level = "L1"
     if lint_pass and sim_compile_pass and sim_run_pass:

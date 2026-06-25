@@ -156,8 +156,15 @@ def _system_his(
     modules = _modules(interface, architecture, rtl_files)
     description = request.description or _default_description(request)
     predicted_resources = _resource_shape(request)
+    top_module = str(architecture["top_module"])
+    top_ports = _v12_ports(_top_ports(interface))
+    components = _v12_components(modules)
+    instances = _v12_instances(rtl_files, components, top_module)
+    data_flow = _v12_data_flow(request, top_ports, instances, components)
     return {
-        "schema_version": "system-his-v1.1",
+        "schema_version": "system-his-v1.2",
+        "task_type": request.task_type,
+        "project_name": request.project_name,
         "project": {
             "name": request.project_name,
             "description": description,
@@ -171,14 +178,69 @@ def _system_his(
                 "kind": "async",
             }
         ],
-        "project_name": request.project_name,
-        "task_type": request.task_type,
+        "intent": {
+            "user_prompt": description,
+            "design_goal": _expected_behavior(request),
+            "assumptions": ["single synchronous clock", "no vendor-specific IP"],
+        },
+        "top": {
+            "name": top_module,
+            "parameters": [],
+            "clocks": [{"name": interface["clock"], "target_fmax_mhz": platform.clock_hz / 1_000_000}],
+            "resets": [
+                {
+                    "name": interface["reset"],
+                    "polarity": platform.reset_polarity,
+                    "kind": "async",
+                }
+            ],
+            "ports": top_ports,
+            "interfaces": [],
+        },
+        "state": _v12_state(request, top_module, instances),
+        "components": components,
+        "instances": instances,
+        "data_flow": data_flow,
+        "control_flow": _v12_control_flow(request, data_flow),
+        "timing": {
+            "primary_clock": interface["clock"],
+            "target_fmax_mhz": platform.clock_hz / 1_000_000,
+            "constraints": ["constraints/timing.sdc"],
+        },
+        "resources": {
+            "optimization_goal": "area_first",
+            "expected": {
+                "lut": predicted_resources["lut"],
+                "ff": predicted_resources["ff"],
+                "bram": predicted_resources["bram"],
+                "dsp": predicted_resources["dsp"],
+            },
+        },
+        "verification": {
+            "testbench": "sim/tb_top.v",
+            "scenarios": ["reset", "nominal_operation"],
+            "pass_condition": _test_pass_means(request),
+            "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
+            "test_pass_means": _test_pass_means(request),
+            "expected_behavior": _test_pass_means(request),
+        },
+        "artifacts": {
+            "top_module": top_module,
+            "rtl_sources": list(rtl_files.keys()),
+            "testbench": "sim/tb_top.v",
+            "constraints": ["constraints/timing.sdc"],
+            "manifest": "manifest.json",
+            "predicted_qor": "reports/predicted_qor.json",
+        },
+        # Transitional metadata retained for runner/export compatibility while
+        # the canonical schema migrates from v1.1 to v1.2.
         "system": {"description": description},
         "interface": interface,
         "architecture": architecture,
         "modules": modules,
         "connections": _connections(architecture, rtl_files, modules),
         "top_ports": _top_ports(interface),
+        "qor_intent": {"resources": predicted_resources},
         "platform": {
             "name": platform.name,
             "vendor": platform.vendor,
@@ -188,14 +250,255 @@ def _system_his(
             "toolchain": platform.toolchain,
             "clock_hz": platform.clock_hz,
         },
-        "verification": {
-            "testbench": "sim/tb_top.v",
-            "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
-            "test_pass_means": _test_pass_means(request),
-            "expected_behavior": _test_pass_means(request),
-        },
-        "qor_intent": {"resources": predicted_resources},
     }
+
+
+def _v12_ports(ports: list[dict[str, object]]) -> list[dict[str, object]]:
+    return [
+        {
+            "name": port["name"],
+            "dir": port.get("direction", port.get("dir")),
+            "width": port["width"],
+        }
+        for port in ports
+    ]
+
+
+def _v12_components(modules: list[dict[str, object]]) -> list[dict[str, object]]:
+    return [
+        {
+            "name": module["name"],
+            "source": module["source"],
+            "ports": _v12_ports(module["ports"]),
+        }
+        for module in modules
+    ]
+
+
+def _v12_instances(
+    rtl_files: dict[str, str],
+    components: list[dict[str, object]],
+    top_module: str,
+) -> list[dict[str, object]]:
+    component_names = {str(component["name"]) for component in components if str(component["name"]) != top_module}
+    instance_ports = _top_instance_ports(rtl_files["rtl/top.v"], component_names)
+    instances: dict[str, dict[str, object]] = {}
+    for endpoint in instance_ports:
+        instance_name = endpoint["instance"]
+        instances.setdefault(
+            instance_name,
+            {
+                "name": instance_name,
+                "component": endpoint["module"],
+                "owns_state": [],
+            },
+        )
+    return list(instances.values())
+
+
+def _v12_state(
+    request: ProjectRequest,
+    top_module: str,
+    instances: list[dict[str, object]],
+) -> dict[str, list[dict[str, object]]]:
+    owner = str(instances[0]["name"]) if instances else top_module
+    registers: list[dict[str, object]] = []
+    counters: list[dict[str, object]] = []
+    fsms: list[dict[str, object]] = []
+    buffers: list[dict[str, object]] = []
+    memories: list[dict[str, object]] = []
+    if request.task_type == "counter":
+        counters.append({"name": "count", "owner": top_module, "width": request.width})
+    elif request.task_type == "fifo":
+        buffers.append({"name": "fifo_storage", "owner": top_module, "width": request.width, "depth": 4})
+        counters.extend(
+            [
+                {"name": "wr_ptr", "owner": top_module, "width": 2},
+                {"name": "rd_ptr", "owner": top_module, "width": 2},
+                {"name": "count", "owner": top_module, "width": 3},
+            ]
+        )
+    elif request.task_type == "simple_fsm":
+        fsms.append(
+            {
+                "name": "top_fsm",
+                "owner": owner,
+                "states": ["IDLE", "RUN", "DONE"],
+                "initial": "IDLE",
+                "reset_state": "IDLE",
+            }
+        )
+        registers.append({"name": "state_value", "owner": top_module, "width": max(2, request.width)})
+    elif request.task_type == "ram_read_write":
+        memories.append({"name": "mem", "owner": top_module, "width": request.width, "depth": 4})
+        registers.append({"name": "rdata", "owner": top_module, "width": request.width})
+    return {
+        "registers": registers,
+        "counters": counters,
+        "fsms": fsms,
+        "buffers": buffers,
+        "memories": memories,
+    }
+
+
+def _v12_data_flow(
+    request: ProjectRequest,
+    top_ports: list[dict[str, object]],
+    instances: list[dict[str, object]],
+    components: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    if instances:
+        instance_ports = _component_ports_by_instance(instances, components)
+        top_input = _primary_top_endpoint(top_ports, "input")
+        top_output = _primary_top_endpoint(top_ports, "output")
+        flows = []
+        for instance_name, ports in instance_ports.items():
+            input_ports = [name for name, direction in ports.items() if direction == "input" and name not in {"clk", "rst_n"}]
+            output_ports = [name for name, direction in ports.items() if direction == "output"]
+            if input_ports and output_ports:
+                protocol = "valid_ready" if any("valid" in name or "ready" in name for name in input_ports + output_ports) else "register"
+                path = [f"{instance_name}.{input_ports[0]}", f"{instance_name}.{output_ports[0]}"]
+                if top_input:
+                    path.insert(0, top_input)
+                if top_output:
+                    path.append(top_output)
+                flow: dict[str, object] = {
+                    "name": f"{instance_name}_primary_path",
+                    "path": path,
+                    "payload": {"name": "primary_payload", "width": request.width},
+                    "protocol": protocol,
+                }
+                if protocol == "valid_ready":
+                    flow["timing"] = {
+                        "latency_cycles": 1,
+                        "initiation_interval": 1,
+                        "throughput": "one transfer per cycle when ready is asserted",
+                    }
+                flows.append(flow)
+        return flows
+    inputs = [str(port["name"]) for port in top_ports if port.get("dir") == "input" and port["name"] not in {"clk", "rst_n"}]
+    outputs = [str(port["name"]) for port in top_ports if port.get("dir") == "output"]
+    if not inputs or not outputs:
+        return []
+    flow = {
+        "name": f"{request.task_type}_primary_path",
+        "path": [f"top.{inputs[0]}", f"top.{outputs[0]}"],
+        "payload": {"name": "primary_payload", "width": request.width},
+        "protocol": "valid_ready" if any("valid" in name or "ready" in name for name in inputs + outputs) else "register",
+    }
+    if request.task_type in {"fifo", "simple_fsm", "ram_read_write"}:
+        flow["timing"] = {"latency_cycles": 1, "initiation_interval": 1, "throughput": "one operation per cycle when enabled"}
+    return [flow]
+
+
+def _primary_top_endpoint(top_ports: list[dict[str, object]], direction: str) -> str:
+    candidates = [
+        str(port.get("name", ""))
+        for port in top_ports
+        if port.get("dir") == direction and str(port.get("name", "")) not in {"clk", "rst_n"}
+    ]
+    if not candidates:
+        return ""
+    preferred_terms = (
+        ("data", "payload", "sample", "din", "wdata", "a", "b", "start", "en", "valid")
+        if direction == "input"
+        else ("data", "payload", "result", "sum", "count", "rdata", "tx", "pwm", "valid", "ready")
+    )
+    for term in preferred_terms:
+        for name in candidates:
+            if term in name:
+                return f"top.{name}"
+    return f"top.{candidates[0]}"
+
+
+def _component_ports_by_instance(
+    instances: list[dict[str, object]],
+    components: list[dict[str, object]],
+) -> dict[str, dict[str, str]]:
+    components_by_name = {str(component["name"]): component for component in components}
+    ports_by_instance: dict[str, dict[str, str]] = {}
+    for instance in instances:
+        component = components_by_name.get(str(instance["component"]), {})
+        ports_by_instance[str(instance["name"])] = {
+            str(port["name"]): str(port.get("dir", port.get("direction", "")))
+            for port in component.get("ports", [])
+            if isinstance(port, dict)
+        }
+    return ports_by_instance
+
+
+def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]]) -> list[dict[str, object]]:
+    if request.task_type == "simple_fsm":
+        return [
+            {
+                "name": "reset_to_idle",
+                "kind": "fsm_transition",
+                "fsm": "top_fsm",
+                "from": "DONE",
+                "to": "IDLE",
+                "when": {"signal": "top.start", "op": "==", "value": 0},
+                "related_state": ["top_fsm.state"],
+                "related_flows": [],
+            },
+            {
+                "name": "start_run",
+                "kind": "fsm_transition",
+                "fsm": "top_fsm",
+                "from": "IDLE",
+                "to": "RUN",
+                "when": {"signal": "top.start", "op": "==", "value": 1},
+                "related_state": ["top_fsm.state"],
+                "related_flows": [],
+            },
+            {
+                "name": "run_done",
+                "kind": "fsm_transition",
+                "fsm": "top_fsm",
+                "from": "RUN",
+                "to": "DONE",
+                "when": {"signal": "top.state_value", "op": ">", "value": 2},
+                "related_state": ["top_fsm.state", "top.state_value"],
+                "related_flows": ["simple_fsm_primary_path"],
+            },
+        ]
+    rules: list[dict[str, object]] = [
+        {
+            "name": "reset_state",
+            "kind": "reset_rule",
+            "condition": "rst_n == 0",
+            "effects": ["reset architectural state"],
+            "related_state": [],
+            "related_flows": [],
+        }
+    ]
+    if request.task_type in {
+        "streaming_valid_ready",
+        "composed_stream_accumulator",
+        "composed_stream_fork",
+        "composed_dual_stream_join",
+    }:
+        flow_names = [str(flow["name"]) for flow in data_flow]
+        rules.extend(
+            [
+                {
+                    "name": "valid_ready_transfer",
+                    "kind": "handshake_rule",
+                    "condition": "valid && ready",
+                    "effects": ["advance each ready/valid flow by one payload"],
+                    "related_state": [],
+                    "related_flows": flow_names,
+                },
+                {
+                    "name": "backpressure_hold",
+                    "kind": "stall_rule",
+                    "condition": "valid && !ready",
+                    "effects": ["hold payload and valid state until downstream ready"],
+                    "related_state": [],
+                    "related_flows": flow_names,
+                },
+            ]
+        )
+    return rules
 
 
 def _modules(

@@ -40,8 +40,65 @@ class ToolingTest(unittest.TestCase):
         self.assertEqual(classify_failure("Width mismatch in assignment"), "width_mismatch")
         self.assertEqual(classify_failure("syntax error, unexpected endmodule"), "syntax_error")
         self.assertEqual(
+            classify_failure(
+                "%Error: rtl/top.v:50:19: Signal definition not found, and implicit disabled "
+                "with `default_nettype: 'join_core_ready0'"
+            ),
+            "undeclared_signal",
+        )
+        self.assertEqual(
+            classify_failure(
+                "%Warning-IMPLICIT: rtl/top.v:60:15: Signal definition not found, creating implicitly: "
+                "'buffer1_out_data'\n%Error: Exiting due to 14 warning(s)"
+            ),
+            "undeclared_signal",
+        )
+        self.assertEqual(
+            classify_failure("TEST_FAIL: Timeout waiting for outputs\nSimulation reported TEST_FAIL"),
+            "testbench_timeout",
+        )
+        self.assertEqual(
+            classify_failure("TEST_FAIL: timeout waiting for output at iteration 0"),
+            "testbench_handshake_timeout",
+        )
+        self.assertEqual(
+            classify_failure("TEST_FAIL: Timeout waiting for input handshake at i=2"),
+            "testbench_handshake_timeout",
+        )
+        self.assertEqual(
             classify_failure("%Warning-UNUSEDSIGNAL: Signal is not used\n%Error: Exiting due to 1 warning(s)"),
             "lint_warning_as_error",
+        )
+        self.assertEqual(
+            classify_failure(
+                "%Error-PINNOTFOUND: rtl/top.v:15:41: Parameter not found: 'DEPTH'\n"
+                "   15 | skid_buffer #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(2)) in0_buffer (\n"
+                "      |                                         ^~~~~\n"
+                "                                   : ... Location of instance's module declaration\n"
+                "    1 | module skid_buffer #(parameter DATA_WIDTH=8) (\n"
+                "      |        ^~~~~~~~~~~\n"
+                "%Error: Exiting due to 2 error(s)"
+            ),
+            "parameter_mismatch",
+        )
+        self.assertEqual(
+            classify_failure(
+                "sim/tb_top.v:14: internal error: I don't know how to elaborate(ivl_type_t) "
+                "this expression: {8'd1, 8'd2, 8'd3}\nElaboration failed"
+            ),
+            "testbench_simulator_compatibility",
+        )
+        self.assertEqual(
+            classify_failure(
+                "testbench_observation_race: line 12: wait(out_valid) is followed by @(posedge clk)"
+            ),
+            "testbench_observation_race",
+        )
+        self.assertEqual(
+            classify_failure(
+                "testbench_stimulus_reaccept_risk: line 42: in0_valid is asserted before wait(out_valid)"
+            ),
+            "testbench_stimulus_reaccept_risk",
         )
         self.assertEqual(classify_failure("no obvious pattern here"), "unknown")
 

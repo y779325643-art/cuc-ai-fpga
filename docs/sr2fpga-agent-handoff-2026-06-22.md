@@ -8,6 +8,96 @@ requirement -> System-HIS -> multi-file Verilog RTL project -> open-source EDA t
 
 The important research asset is not only passing RTL, but also failed attempts with tool logs, diagnosis, and locally computed `patch.diff`.
 
+## Current Status Update - 2026-06-25
+
+The project is now past the first System-HIS v1.2 freeze and is using fresh T4
+dual-stream-join pilots to separate three different phenomena:
+
+- real model/project failures in generated multi-file RTL packages;
+- evaluator or checker false positives that should not become dataset labels;
+- generated-testbench oracle bugs that can masquerade as RTL functional bugs.
+
+Current implementation state in the uncommitted workspace:
+
+- `system-his-v1.2` is the canonical clean schema, with HIS↔RTL L0 checking,
+  width-equivalence handling, structured `control_flow`, FSM validation, and
+  schema-derived clean/quarantine export metadata.
+- RTL introspection has been factored into `rtl_introspect.py` and reused by
+  the L0 checkers.
+- The runner records generation failures, repair failures, attempt stage
+  transitions, contract metrics, and latent generated-testbench issues.
+- DeepSeek project/HIS2PROJECT/repair prompts now include Icarus portability,
+  bounded-wait, anti-cheating, back-to-back valid-ready, observation-order, and
+  input-valid withdrawal rules.
+- `testbench_checker.py` now detects generated-testbench observation races and
+  stimulus reaccept risks before simulation.
+- `semantic_trace.py` parses `TRACE ...` simulation logs and summarizes
+  accepted input, join, accumulator, and output transactions for mismatch
+  diagnosis.
+- Repair acceptance now guards against contract regression: v1.2 RTL repairs
+  that introduce new L0 contract violations are rejected and classified
+  separately from ordinary repair failures.
+
+Latest T4 simple-prompt pilot sequence:
+
+| Run | Result | Main signal |
+| --- | --- | --- |
+| `pilot-his-v12-t4-fresh-l3h-20260625` | `L0_FAIL` | repair oscillated between lint fixes and broken System-HIS/RTL contract |
+| `pilot-his-v12-t4-fresh-l3i-20260625` | official `L0_FAIL`, offline L0 passes after checker fix | evaluator false positive from missing FSM owner inference |
+| `pilot-his-v12-t4-fresh-l3j-20260625` | `L1` | semantic trace found generated-testbench stimulus reaccept bug |
+| `pilot-his-v12-t4-fresh-l3k-20260625` | `L1` | no latent testbench issues; remaining failures are cleaner RTL/protocol semantic candidates |
+
+Most recent verified command before this handoff update:
+
+```bash
+python3 -m unittest discover -s LLM/tests -q
+# Ran 228 tests - OK
+python3 -m compileall -q LLM/src
+git diff --check
+# OK
+```
+
+Next engineering/research focus:
+
+1. Run a small fresh T4/T3 batch after the current prompt/checker freeze to
+   confirm the l3k pattern repeats.
+2. Add semantic side diagnostics automatically for `functional_mismatch`
+   attempts in valid-ready stream tasks.
+3. Decide whether the next target is an L3 repair success rate improvement or a
+   cleaner failure-repair dataset slice with preserved L1 semantic failures.
+4. Keep generated dataset additions deliberate; the workspace currently has many
+   local run artifacts and JSONL export changes.
+
+## Current Status Update - 2026-06-24
+
+System-HIS v1.2 is now the canonical clean schema. The retired
+`system-his-v1.2-topdown` suffix is historical prototype data, and legacy/v1.1
+metadata should be treated as `training_split: quarantine` unless explicitly
+migrated.
+
+Implemented in the current uncommitted workspace:
+
+- deterministic `ProjectGenerator` emits `system-his-v1.2` for all supported
+  task families;
+- v1.2 checker validates `data_flow.timing`, structured `control_flow`
+  `when/effect` guards, FSM declarations, guard depth <= 2, and HIS↔RTL
+  cross-file consistency;
+- project-level L0 routes v1.2 projects through the HIS↔RTL cross-check;
+- DeepSeek REQ2HIS prompt requests canonical v1.2, timing, structured guards,
+  and stable component/instance/data-flow names;
+- runner metadata adds `training_split` (`clean` for v1.2, `quarantine` for
+  legacy/v1.1), and recorder exports backfill this field for older samples;
+- reference T4 fixture
+  `docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json` now uses
+  canonical v1.2 with `data_flow.timing` and structured control-flow examples.
+
+Fresh verification:
+
+```bash
+python3 -m unittest discover -s LLM/tests -q
+# Ran 190 tests - OK
+```
+
 ## Current Status - 2026-06-23
 
 Branch:

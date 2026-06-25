@@ -110,6 +110,20 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("| difficulty_tier | T4 | 2 | L0:1, L3:1 | 50.0% | 1 | 50.0% |", markdown)
         self.assertTrue(markdown.endswith("\n"))
 
+    def test_render_markdown_includes_latent_testbench_issue_summary(self) -> None:
+        summary = _summary_fixture()
+        summary["latent_testbench_issue_breakdown"] = {"testbench_observation_race": 5}
+
+        markdown = render_markdown(
+            "deepseek-baseline-a",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## Latent Testbench Issues", markdown)
+        self.assertIn("| issue_type | count |", markdown)
+        self.assertIn("| testbench_observation_race | 5 |", markdown)
+
     def test_detect_pass_rate_knee_returns_first_tier_below_threshold(self) -> None:
         knee = detect_pass_rate_knee(baseline_rows(_summary_fixture()), threshold=0.8)
 

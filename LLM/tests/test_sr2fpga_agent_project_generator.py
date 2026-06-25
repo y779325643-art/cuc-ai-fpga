@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from LLM.src.sr2fpga_agent import PlatformProfile, ProjectGenerator, ProjectRequest
+from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 
 
 class ProjectGeneratorTest(unittest.TestCase):
@@ -105,6 +106,76 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("rdata", project.files["rtl/top.v"])
         self.assertIn("mem", project.files["rtl/top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_single_module_families_emit_valid_system_his_v12(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = [
+            ("counter", 8, "counter_8bit"),
+            ("fifo", 8, "fifo_8bit"),
+            ("simple_fsm", 4, "fsm_sequence_4bit"),
+            ("ram_read_write", 16, "ram_rw_16bit"),
+        ]
+
+        for task_type, width, project_name in cases:
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                system_his = _system_his(project)
+
+                self.assertEqual(system_his["schema_version"], "system-his-v1.2")
+                self.assertTrue(check_project_l0(project).passed, check_project_l0(project).errors)
+
+    def test_multimodule_families_emit_valid_system_his_v12(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = [
+            ("uart_tx", 8, "uart_tx_8bit"),
+            ("spi_master", 8, "spi_master_8bit"),
+            ("pwm_controller", 8, "pwm_controller_8bit"),
+            ("fir_filter", 8, "fir_filter_8bit"),
+            ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
+            ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("composed_event_counter", 8, "composed_event_counter_8bit"),
+            ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
+            ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
+            ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+        ]
+
+        for task_type, width, project_name in cases:
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                system_his = _system_his(project)
+
+                self.assertEqual(system_his["schema_version"], "system-his-v1.2")
+                self.assertTrue(check_project_l0(project).passed, check_project_l0(project).errors)
+
+    def test_streaming_multimodule_v12_records_timing_and_handshake_control(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = [
+            ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
+            ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
+            ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
+            ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+        ]
+
+        for task_type, width, project_name in cases:
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                system_his = _system_his(project)
+
+                self.assertTrue(any("timing" in flow for flow in system_his["data_flow"]))
+                self.assertIn("handshake_rule", {rule["kind"] for rule in system_his["control_flow"]})
+                self.assertIn("stall_rule", {rule["kind"] for rule in system_his["control_flow"]})
+                for flow in system_his["data_flow"]:
+                    self.assertTrue(flow["path"][0].startswith("top."), flow)
+                    self.assertTrue(flow["path"][-1].startswith("top."), flow)
 
     def test_generates_uart_tx_multimodule_project_package(self) -> None:
         project = ProjectGenerator().generate(
@@ -373,7 +444,7 @@ class ProjectGeneratorTest(unittest.TestCase):
                 expected_style = "multi_module" if actual_submodules else "single_module"
                 self.assertEqual(architecture["style"], expected_style)
 
-    def test_system_his_v11_declares_modules_ports_and_connections(self) -> None:
+    def test_system_his_v12_declares_modules_ports_and_connections(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         for task_type, width, project_name in _supported_task_cases():
@@ -387,7 +458,20 @@ class ProjectGeneratorTest(unittest.TestCase):
                 actual_modules = set(_rtl_module_names(project))
                 declared_modules = {module["name"] for module in system_his["modules"]}
 
-                self.assertEqual(system_his["schema_version"], "system-his-v1.1")
+                self.assertEqual(system_his["schema_version"], "system-his-v1.2")
+                for key in (
+                    "intent",
+                    "top",
+                    "state",
+                    "components",
+                    "instances",
+                    "data_flow",
+                    "control_flow",
+                    "timing",
+                    "resources",
+                    "artifacts",
+                ):
+                    self.assertIn(key, system_his)
                 self.assertEqual(
                     system_his["project"],
                     {

@@ -20,6 +20,7 @@ from LLM.src.sr2fpga_agent.deepseek import (
     parse_system_his_v12,
 )
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 
 
 class DeepSeekProviderTest(unittest.TestCase):
@@ -202,12 +203,12 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(client.call_count, 1)
         self.assertIn("counter_8bit", client.messages[1]["content"])
 
-    def test_parse_system_his_v12_accepts_topdown_his_object(self) -> None:
+    def test_parse_system_his_v12_accepts_canonical_his_object(self) -> None:
         payload = _system_his_v12_fixture()
 
         system_his = parse_system_his_v12(json.dumps(payload))
 
-        self.assertEqual(system_his["schema_version"], "system-his-v1.2-topdown")
+        self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(system_his["top"]["name"], "top")
 
     def test_parse_system_his_v12_accepts_wrapped_system_his_object(self) -> None:
@@ -215,7 +216,7 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         system_his = parse_system_his_v12(json.dumps(payload))
 
-        self.assertEqual(system_his["schema_version"], "system-his-v1.2-topdown")
+        self.assertEqual(system_his["schema_version"], "system-his-v1.2")
 
     def test_parse_system_his_v12_rejects_invalid_references(self) -> None:
         payload = _system_his_v12_fixture()
@@ -243,7 +244,7 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         system_his = DeepSeekSystemHisGenerator(client).generate(request, platform)
 
-        self.assertEqual(system_his["schema_version"], "system-his-v1.2-topdown")
+        self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 1)
         self.assertIn("生成一个 8-bit 双路数据流合并并累加", client.messages[1]["content"])
         self.assertIn("Return only System-HIS JSON", client.messages[1]["content"])
@@ -263,12 +264,44 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         system_his = DeepSeekSystemHisGenerator(client).generate(request, platform)
 
-        self.assertEqual(system_his["schema_version"], "system-his-v1.2-topdown")
+        self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 2)
         self.assertIn("previous System-HIS output failed validation", client.messages_history[1][-1]["content"])
         self.assertIn("missing component 'missing_component'", client.messages_history[1][-1]["content"])
 
-    def test_system_his_v12_prompt_requests_topdown_architecture_contract(self) -> None:
+    def test_system_his_retry_feedback_includes_previous_json_and_ir_repair_rules(self) -> None:
+        invalid = _system_his_v12_fixture()
+        invalid["instances"][0].pop("name")
+        invalid["data_flow"][0]["path"][1] = "skid_buffer.in_data"
+        invalid["control_flow"].append(
+            {
+                "name": "bad_effect",
+                "kind": "handshake_rule",
+                "when": {"signal": "top.in0_valid", "op": "==", "value": 1},
+                "effect": {"action": "assert", "target": "top.out_valid"},
+                "related_state": [],
+                "related_flows": [],
+            }
+        )
+        client = FakeDeepSeekClient([json.dumps(invalid), json.dumps(_system_his_v12_fixture())])
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Build a dual stream join accumulator.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        DeepSeekSystemHisGenerator(client).generate(request, platform)
+
+        retry_prompt = client.messages_history[1][-1]["content"]
+        self.assertIn("Previous invalid System-HIS JSON", retry_prompt)
+        self.assertIn('"component": "skid_buffer"', retry_prompt)
+        self.assertIn("Every instances[] object must include name", retry_prompt)
+        self.assertIn("data_flow.path endpoints must use top.<port> or <instance>.<port>", retry_prompt)
+        self.assertIn("effect.target must reference a declared data_flow name or state name", retry_prompt)
+
+    def test_system_his_v12_prompt_requests_canonical_architecture_contract(self) -> None:
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -280,7 +313,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         messages = _system_his_v12_messages(request, platform)
         user_prompt = messages[1]["content"]
 
-        self.assertIn("system-his-v1.2-topdown", user_prompt)
+        self.assertIn("system-his-v1.2", user_prompt)
+        self.assertNotIn("system-his-v1.2-topdown", user_prompt)
         self.assertIn("top", user_prompt)
         self.assertIn("state", user_prompt)
         self.assertIn("components", user_prompt)
@@ -293,6 +327,25 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("components: skid_buffer, stream_join, accumulator_core, stream_stage", user_prompt)
         self.assertIn("instances: in0_buffer, in1_buffer, join_core, accumulator, out_stage", user_prompt)
         self.assertIn("Do not collapse this topology into one fused component", user_prompt)
+        self.assertIn("Every clock and reset declared in top.clocks/top.resets must also appear in top.ports", user_prompt)
+
+    def test_system_his_v12_prompt_requests_timing_and_structured_control_contract(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        messages = _system_his_v12_messages(request, platform)
+        user_prompt = messages[1]["content"]
+
+        self.assertIn("data_flow.timing", user_prompt)
+        self.assertIn("when", user_prompt)
+        self.assertIn("effect", user_prompt)
+        self.assertIn("guard", user_prompt)
+        self.assertIn("depth <= 2", user_prompt)
 
     def test_deepseek_his_project_generator_uses_checked_his_contract(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -310,7 +363,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
         self.assertEqual(client.call_count, 1)
-        self.assertIn('"schema_version": "system-his-v1.2-topdown"', client.messages[1]["content"])
+        self.assertIn('"schema_version": "system-his-v1.2"', client.messages[1]["content"])
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", client.messages[1]["content"])
 
     def test_deepseek_his_project_generator_rejects_project_with_invalid_system_his(self) -> None:
@@ -328,6 +381,23 @@ class DeepSeekProviderTest(unittest.TestCase):
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         with self.assertRaisesRegex(ValueError, "DeepSeek HIS2PROJECT system_his.json failed validation"):
+            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+
+    def test_deepseek_his_project_generator_rejects_changed_his_contract(self) -> None:
+        system_his = _system_his_v12_fixture()
+        changed_system_his = _system_his_v12_fixture()
+        changed_system_his["components"][0]["intent"] = "silently changed component intent"
+        files = _project_files_for_system_his_v12(changed_system_his)
+        client = FakeDeepSeekClient(json.dumps({"files": files}))
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        with self.assertRaisesRegex(ValueError, "changed frozen System-HIS contract"):
             DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_his_project_prompt_requires_complete_project_without_changing_his_contract(self) -> None:
@@ -368,7 +438,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
         self.assertEqual(client.call_count, 2)
-        self.assertIn("Generate a System-HIS v1.2", client.messages_history[0][1]["content"])
+        self.assertIn("Generate a canonical System-HIS v1.2", client.messages_history[0][1]["content"])
         self.assertIn("Generate a complete SR2FPGA Verilog RTL project", client.messages_history[1][1]["content"])
 
     def test_deepseek_two_stage_project_generator_emits_stage_events(self) -> None:
@@ -403,6 +473,34 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual({event["project_name"] for event in events}, {"join_8bit"})
         self.assertEqual({event["task_type"] for event in events}, {"composed_dual_stream_join"})
         self.assertTrue(all("duration_seconds" in event for event in events if event["event"].endswith("finished")))
+
+    def test_deepseek_two_stage_project_generator_emits_req2his_retry_events(self) -> None:
+        invalid = _system_his_v12_fixture()
+        invalid["instances"][0]["component"] = "missing_component"
+        system_his = _system_his_v12_fixture()
+        client = FakeDeepSeekClient(
+            [
+                json.dumps(invalid),
+                json.dumps(system_his),
+                json.dumps({"files": _project_files_for_system_his_v12(system_his)}),
+            ]
+        )
+        events = []
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        DeepSeekTwoStageProjectGenerator(client, event_sink=events.append).generate(request, platform)
+
+        retry_events = [event for event in events if event["event"] == "generation_stage_retry"]
+        self.assertEqual(len(retry_events), 1)
+        self.assertEqual(retry_events[0]["stage"], "req2his")
+        self.assertEqual(retry_events[0]["attempt_id"], 0)
+        self.assertIn("missing component 'missing_component'", retry_events[0]["error"])
 
     def test_deepseek_project_generator_retries_after_invalid_response(self) -> None:
         client = FakeDeepSeekClient(
@@ -626,6 +724,78 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Preserve every file that is not needed", prompt)
         self.assertIn("syntax error", prompt)
 
+    def test_repair_prompt_preserves_v12_system_his_schema(self) -> None:
+        system_his = _system_his_v12_fixture()
+        project = GeneratedProject(
+            project_name="join_8bit",
+            files={
+                **_project_files_for_system_his_v12(system_his),
+                "rtl/top.v": "module top; endmodule\n",
+            },
+        )
+        diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "syntax error"}
+
+        messages = _repair_messages(project, diagnosis)
+        prompt = messages[1]["content"]
+
+        self.assertIn("system-his-v1.2", prompt)
+        self.assertIn("Preserve the existing canonical System-HIS v1.2 contract", prompt)
+        self.assertNotIn("system-his-v1.1 structure-contract schema", prompt)
+
+    def test_deepseek_repairer_rejects_v12_schema_downgrade(self) -> None:
+        system_his = _system_his_v12_fixture()
+        downgraded_his = {"schema_version": "system-his-v1.1", "project_name": "join_8bit"}
+        original = GeneratedProject(project_name="join_8bit", files=_project_files_for_system_his_v12(system_his))
+        repaired_files = {
+            **_project_files_for_system_his_v12(system_his),
+            "system_his.json": json.dumps(downgraded_his) + "\n",
+        }
+        client = FakeDeepSeekClient(json.dumps({"files": repaired_files}))
+        diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "syntax error"}
+
+        with self.assertRaisesRegex(ValueError, "DeepSeek repair system_his.json failed validation"):
+            DeepSeekRepairer(client, max_attempts=1).repair(original, diagnosis)
+
+    def test_deepseek_repairer_rejects_unrelated_v12_contract_mutation(self) -> None:
+        system_his = _system_his_v12_fixture()
+        mutated_his = json.loads(json.dumps(system_his))
+        mutated_his["components"][0]["intent"] = "silently rewritten architecture intent"
+        original = GeneratedProject(project_name="join_8bit", files=_project_files_for_system_his_v12(system_his))
+        repaired_files = {
+            **_project_files_for_system_his_v12(system_his),
+            "system_his.json": json.dumps(mutated_his, indent=2) + "\n",
+            "rtl/top.v": "module top; endmodule\n",
+        }
+        client = FakeDeepSeekClient(json.dumps({"files": repaired_files}))
+        diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "rtl/top.v syntax error"}
+
+        with self.assertRaisesRegex(ValueError, "System-HIS v1.2 contract changed during RTL repair"):
+            DeepSeekRepairer(client, max_attempts=1).repair(original, diagnosis)
+
+    def test_deepseek_repairer_rejects_lint_fix_that_breaks_v12_l0_contract(self) -> None:
+        original = ProjectGenerator().generate(
+            ProjectRequest(task_type="composed_dual_stream_join", width=8, project_name="join_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+        repaired_files = dict(original.files)
+        repaired_files["rtl/stream_join.v"] = repaired_files["rtl/stream_join.v"].replace(
+            "    input wire in1_valid,\n"
+            "    output wire in1_ready,\n"
+            "    input wire [WIDTH-1:0] in1_data,\n",
+            "",
+        )
+        self.assertNotEqual(repaired_files["rtl/stream_join.v"], original.files["rtl/stream_join.v"])
+        client = FakeDeepSeekClient(json.dumps({"files": repaired_files}))
+        diagnosis = {
+            "stage": "lint",
+            "failure_type": "lint_warning_as_error",
+            "root_cause": "%Warning-UNUSEDSIGNAL: rtl/stream_join.v: Signal is not used: 'in1_data'",
+            "affected_files": [],
+        }
+
+        with self.assertRaisesRegex(ValueError, "repair introduced L0 contract violations"):
+            DeepSeekRepairer(client, max_attempts=1).repair(original, diagnosis)
+
     def test_project_prompt_requests_agent_manifest_schema(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
@@ -637,6 +807,103 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn('"sources": ["rtl/top.v"]', user_prompt)
         self.assertIn('"constraints": {"timing": "constraints/timing.sdc"}', user_prompt)
         self.assertIn('"simulation": {"testbench": "sim/tb_top.v"}', user_prompt)
+
+    def test_project_prompt_requires_icarus_portable_testbench_arrays(self) -> None:
+        request = ProjectRequest(task_type="composed_dual_stream_join", width=8, project_name="join_8bit")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        prompt = _project_messages(request, platform)[1]["content"]
+
+        self.assertIn("Icarus Verilog", prompt)
+        self.assertIn("Do not initialize unpacked arrays with aggregate literals", prompt)
+        self.assertIn("initial block assignments", prompt)
+        self.assertIn("Every wait loop must be bounded", prompt)
+        self.assertIn("TEST_FAIL on timeout", prompt)
+        self.assertIn("Drive and withdraw valid-ready stimulus away from the DUT sampling edge", prompt)
+        self.assertIn("Observe outputs after nonblocking assignments have settled", prompt)
+        self.assertIn("After wait(out_valid), check the current transaction before advancing", prompt)
+        self.assertIn("Do not hold input valid high until out_valid", prompt)
+        self.assertIn("deassert or advance each input valid after its own input ready handshake", prompt)
+        self.assertIn("Exercise back-to-back valid-ready transfers", prompt)
+        self.assertIn("check each output transaction", prompt)
+
+    def test_his_project_prompt_requires_icarus_portable_testbench_arrays(self) -> None:
+        request = ProjectRequest(task_type="composed_dual_stream_join", width=8, project_name="join_8bit")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        system_his = _system_his_v12_fixture()
+
+        prompt = _his_project_messages(request, platform, system_his)[1]["content"]
+
+        self.assertIn("Icarus Verilog", prompt)
+        self.assertIn("Do not initialize unpacked arrays with aggregate literals", prompt)
+        self.assertIn("initial block assignments", prompt)
+        self.assertIn("Every wait loop must be bounded", prompt)
+        self.assertIn("TEST_FAIL on timeout", prompt)
+        self.assertIn("Drive and withdraw valid-ready stimulus away from the DUT sampling edge", prompt)
+        self.assertIn("Observe outputs after nonblocking assignments have settled", prompt)
+        self.assertIn("After wait(out_valid), check the current transaction before advancing", prompt)
+        self.assertIn("Do not hold input valid high until out_valid", prompt)
+        self.assertIn("deassert or advance each input valid after its own input ready handshake", prompt)
+        self.assertIn("Exercise back-to-back valid-ready transfers", prompt)
+        self.assertIn("check each output transaction", prompt)
+
+    def test_repair_prompt_requires_icarus_portable_testbench_arrays(self) -> None:
+        system_his = _system_his_v12_fixture()
+        project = GeneratedProject(project_name="join_8bit", files=_project_files_for_system_his_v12(system_his))
+        diagnosis = {
+            "stage": "sim_compile",
+            "failure_type": "testbench_simulator_compatibility",
+            "root_cause": "Icarus cannot elaborate unpacked array aggregate initialization",
+            "affected_files": ["sim/tb_top.v"],
+        }
+
+        prompt = _repair_messages(project, diagnosis)[1]["content"]
+
+        self.assertIn("Icarus Verilog", prompt)
+        self.assertIn("Do not initialize unpacked arrays with aggregate literals", prompt)
+        self.assertIn("initial block assignments", prompt)
+        self.assertIn("Every wait loop must be bounded", prompt)
+        self.assertIn("TEST_FAIL on timeout", prompt)
+        self.assertIn("Drive and withdraw valid-ready stimulus away from the DUT sampling edge", prompt)
+        self.assertIn("Observe outputs after nonblocking assignments have settled", prompt)
+        self.assertIn("After wait(out_valid), check the current transaction before advancing", prompt)
+        self.assertIn("Do not hold input valid high until out_valid", prompt)
+        self.assertIn("deassert or advance each input valid after its own input ready handshake", prompt)
+        self.assertIn("Exercise back-to-back valid-ready transfers", prompt)
+        self.assertIn("check each output transaction", prompt)
+
+    def test_repair_prompt_keeps_unused_parameter_fixes_interface_consistent(self) -> None:
+        system_his = _system_his_v12_fixture()
+        project = GeneratedProject(project_name="join_8bit", files=_project_files_for_system_his_v12(system_his))
+        diagnosis = {
+            "stage": "lint",
+            "failure_type": "lint_warning_as_error",
+            "root_cause": "%Warning-UNUSEDPARAM: rtl/skid_buffer.v:1:56: Parameter is not used: 'DEPTH'",
+            "affected_files": ["rtl/skid_buffer.v", "rtl/top.v"],
+        }
+
+        prompt = _repair_messages(project, diagnosis)[1]["content"]
+
+        self.assertIn("Unused parameter repair rules", prompt)
+        self.assertIn("module declaration and every instantiation must agree", prompt)
+        self.assertIn("remove the parameter override from all instantiations", prompt)
+
+    def test_repair_prompt_does_not_let_functional_mismatch_cheat_by_changing_expected_values(self) -> None:
+        system_his = _system_his_v12_fixture()
+        project = GeneratedProject(project_name="join_8bit", files=_project_files_for_system_his_v12(system_his))
+        diagnosis = {
+            "stage": "sim_run",
+            "failure_type": "functional_mismatch",
+            "root_cause": "TEST_FAIL: mismatch at 1, expected 12, got 10",
+            "affected_files": ["rtl/top.v", "sim/tb_top.v"],
+        }
+
+        prompt = _repair_messages(project, diagnosis)[1]["content"]
+
+        self.assertIn("Do not make the testbench pass by changing expected values", prompt)
+        self.assertIn("prefer fixing RTL behavior", prompt)
+        self.assertIn("lost or duplicated valid-ready transfer", prompt)
+        self.assertIn("Only change expected values when the diagnosis explicitly says the testbench expectation is wrong", prompt)
 
     def test_project_prompt_requests_true_multifile_rtl_for_multimodule_tasks(self) -> None:
         request = ProjectRequest(task_type="spi_master", width=8, project_name="spi_master_8bit")

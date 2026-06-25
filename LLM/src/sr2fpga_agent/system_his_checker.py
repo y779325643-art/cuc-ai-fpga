@@ -8,8 +8,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from LLM.src.sr2fpga_agent.models import GeneratedProject
+from LLM.src.sr2fpga_agent.rtl_introspect import (
+    declared_module_parameters,
+    declared_module_ports,
+    declared_modules,
+    normalize_width,
+)
 from LLM.src.sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
-from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12
+from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12_against_rtl
 
 
 @dataclass(frozen=True)
@@ -106,19 +112,19 @@ def check_project_l0(project: GeneratedProject) -> L0CheckResult:
     _validate_qor_intent(system_his.get("qor_intent"), errors)
     _validate_verification(system_his.get("verification"), errors)
 
-    declared_modules = _declared_modules(project, sources)
-    if manifest_top and manifest_top not in declared_modules:
+    rtl_modules = declared_modules(project.files, sources)
+    if manifest_top and manifest_top not in rtl_modules:
         errors.append(f"top module '{manifest_top}' is not declared in manifest sources")
     for submodule in _string_list(architecture.get("submodules", []), "system_his.architecture.submodules", errors):
-        if submodule not in declared_modules:
+        if submodule not in rtl_modules:
             errors.append(f"System-HIS submodule '{submodule}' is not declared in manifest sources")
 
-    declared_parameters = _declared_module_parameters(project, sources)
-    declared_ports = _declared_module_ports(project, sources)
+    declared_parameters = declared_module_parameters(project.files, sources)
+    declared_ports = declared_module_ports(project.files, sources)
     his_modules, ports_by_module = _validate_his_modules(
         system_his.get("modules"),
         set(sources),
-        declared_modules,
+        rtl_modules,
         declared_parameters,
         declared_ports,
         errors,
@@ -139,7 +145,7 @@ def _check_project_l0_v12(
 ) -> L0CheckResult:
     errors: list[str] = []
     warnings: list[str] = []
-    result = check_system_his_v12(system_his)
+    result = check_system_his_v12_against_rtl(system_his, project)
     errors.extend(result.errors)
     warnings.extend(result.warnings)
 
@@ -173,7 +179,48 @@ def _check_project_l0_v12(
     elif timing_constraint not in project.files:
         errors.append(f"manifest timing constraint '{timing_constraint}' is missing from project files")
 
+    _validate_v12_transitional_fields(system_his, manifest_sources, project, manifest_top, errors)
+
     return L0CheckResult(passed=not errors, errors=errors, warnings=warnings)
+
+
+def _validate_v12_transitional_fields(
+    system_his: dict[str, Any],
+    manifest_sources: list[str],
+    project: GeneratedProject,
+    manifest_top: str,
+    errors: list[str],
+) -> None:
+    """Validate deterministic v1.1-compat fields when a v1.2 payload still carries them."""
+
+    sources = set(manifest_sources)
+    declared = declared_modules(project.files, manifest_sources)
+    declared_parameters = declared_module_parameters(project.files, manifest_sources)
+    declared_ports = declared_module_ports(project.files, manifest_sources)
+    his_modules: set[str] = set()
+    ports_by_module: dict[str, set[str]] = {}
+    if "modules" in system_his:
+        his_modules, ports_by_module = _validate_his_modules(
+            system_his.get("modules"),
+            sources,
+            declared,
+            declared_parameters,
+            declared_ports,
+            errors,
+        )
+    if "connections" in system_his:
+        _validate_his_connections(system_his.get("connections"), his_modules, ports_by_module, errors)
+    if "top_ports" in system_his and manifest_top:
+        _validate_top_ports(system_his.get("top_ports"), manifest_top, declared_ports, errors)
+    if "clocks" in system_his:
+        _validate_clocks(system_his.get("clocks"), errors)
+    if "resets" in system_his:
+        _validate_resets(system_his.get("resets"), errors)
+    if "qor_intent" in system_his:
+        _validate_qor_intent(system_his.get("qor_intent"), errors)
+    verification = system_his.get("verification")
+    if isinstance(verification, dict) and any(key in verification for key in ("checks", "test_pass_means", "expected_behavior")):
+        _validate_verification(verification, errors)
 
 
 def _read_json_file(project: GeneratedProject, path: str, errors: list[str]) -> dict[str, Any] | None:
@@ -222,123 +269,6 @@ def _manifest_timing_constraint(manifest: dict[str, Any]) -> str:
     if isinstance(constraints, dict):
         return str(constraints.get("timing", "")).strip()
     return ""
-
-
-def _declared_modules(project: GeneratedProject, sources: list[str]) -> set[str]:
-    modules: set[str] = set()
-    pattern = re.compile(r"^\s*module\s+([A-Za-z_][A-Za-z0-9_$]*)\b", re.MULTILINE)
-    for source in sources:
-        modules.update(pattern.findall(project.files.get(source, "")))
-    return modules
-
-
-def _declared_module_parameters(project: GeneratedProject, sources: list[str]) -> dict[str, set[str]]:
-    parameters: dict[str, set[str]] = {}
-    for source in sources:
-        content = project.files.get(source, "")
-        for module_name in re.findall(r"^\s*module\s+([A-Za-z_][A-Za-z0-9_$]*)\b", content, re.MULTILINE):
-            parameters[module_name] = _module_parameter_names(content, module_name)
-    return parameters
-
-
-def _declared_module_ports(project: GeneratedProject, sources: list[str]) -> dict[str, dict[str, dict[str, Any]]]:
-    ports: dict[str, dict[str, dict[str, Any]]] = {}
-    for source in sources:
-        content = project.files.get(source, "")
-        for module_name in re.findall(r"^\s*module\s+([A-Za-z_][A-Za-z0-9_$]*)\b", content, re.MULTILINE):
-            ports[module_name] = _parse_module_ports(content, module_name)
-    return ports
-
-
-def _parse_module_ports(content: str, module_name: str) -> dict[str, dict[str, Any]]:
-    body = _module_port_body(content, module_name)
-    if body is None:
-        return {}
-    ports: dict[str, dict[str, Any]] = {}
-    for declaration in _split_port_declarations(body):
-        match = re.search(
-            r"\b(input|output|inout)\b\s+(?:(?:wire|reg|logic)\s+)?(\[[^\]]+\])?\s*"
-            r"([A-Za-z_][A-Za-z0-9_$]*)",
-            declaration,
-        )
-        if match is None:
-            continue
-        ports[match.group(3)] = {
-            "direction": match.group(1),
-            "width": _port_width(match.group(2)),
-        }
-    return ports
-
-
-def _module_port_body(content: str, module_name: str) -> str | None:
-    match = re.search(rf"\bmodule\s+{re.escape(module_name)}\b", content)
-    if match is None:
-        return None
-    index = match.end()
-    while index < len(content) and content[index].isspace():
-        index += 1
-    if index < len(content) and content[index] == "#":
-        index += 1
-        while index < len(content) and content[index].isspace():
-            index += 1
-        if index < len(content) and content[index] == "(":
-            index = _matching_paren(content, index) + 1
-    while index < len(content) and content[index].isspace():
-        index += 1
-    if index >= len(content) or content[index] != "(":
-        return None
-    end = _matching_paren(content, index)
-    return content[index + 1 : end]
-
-
-def _split_port_declarations(body: str) -> list[str]:
-    declarations: list[str] = []
-    for part in body.split(","):
-        stripped = " ".join(part.strip().split())
-        if stripped:
-            declarations.append(stripped)
-    return declarations
-
-
-def _port_width(range_text: str | None) -> int | str:
-    if range_text is None:
-        return 1
-    normalized = range_text.strip()
-    numeric = re.fullmatch(r"\[(\d+):0\]", normalized)
-    if numeric is not None:
-        return int(numeric.group(1)) + 1
-    return normalized
-
-
-def _module_parameter_names(content: str, module_name: str) -> set[str]:
-    match = re.search(rf"\bmodule\s+{re.escape(module_name)}\b", content)
-    if match is None:
-        return set()
-    index = match.end()
-    while index < len(content) and content[index].isspace():
-        index += 1
-    if index >= len(content) or content[index] != "#":
-        return set()
-    index += 1
-    while index < len(content) and content[index].isspace():
-        index += 1
-    if index >= len(content) or content[index] != "(":
-        return set()
-    end = _matching_paren(content, index)
-    parameter_body = content[index + 1 : end]
-    return set(re.findall(r"\bparameter\s+([A-Za-z_][A-Za-z0-9_$]*)\b", parameter_body))
-
-
-def _matching_paren(text: str, open_index: int) -> int:
-    depth = 0
-    for index in range(open_index, len(text)):
-        if text[index] == "(":
-            depth += 1
-        elif text[index] == ")":
-            depth -= 1
-            if depth == 0:
-                return index
-    return len(text)
 
 
 def _validate_his_modules(
@@ -441,20 +371,12 @@ def _port_names(
                     f"System-HIS module '{module_name}' port '{name}' direction '{direction}' "
                     f"does not match RTL '{rtl_port['direction']}'"
                 )
-            if "width" in item and _normalize_width(item["width"]) != _normalize_width(rtl_port["width"]):
+            if "width" in item and normalize_width(item["width"]) != normalize_width(rtl_port["width"]):
                 errors.append(
                     f"System-HIS module '{module_name}' port '{name}' width {item['width']} "
                     f"does not match RTL {rtl_port['width']}"
                 )
     return names
-
-
-def _normalize_width(value: Any) -> str:
-    text = str(value).strip()
-    numeric_range = re.fullmatch(r"\[(\d+):0\]", text)
-    if numeric_range is not None:
-        return str(int(numeric_range.group(1)) + 1)
-    return text
 
 
 def _validate_his_connections(
@@ -595,7 +517,7 @@ def _normalized_port_list(ports: dict[str, dict[str, Any]]) -> list[tuple[str, s
             direction = "input"
         elif direction == "out":
             direction = "output"
-        normalized.append((str(name), direction, _normalize_width(port.get("width", ""))))
+        normalized.append((str(name), direction, normalize_width(port.get("width", ""))))
     return sorted(normalized)
 
 

@@ -63,6 +63,7 @@ def render_markdown(
     run_id: str,
     rows: list[dict[str, Any]],
     knee_threshold: float = DEFAULT_KNEE_THRESHOLD,
+    summary: dict[str, Any] | None = None,
 ) -> str:
     """Render calibration rows as a compact experiment-note table."""
     knee = detect_pass_rate_knee(rows, threshold=knee_threshold)
@@ -86,6 +87,7 @@ def render_markdown(
                 l0_rate=_format_rate(row["cross_file_consistency_error_rate"]),
             )
         )
+    _append_latent_testbench_issue_section(lines, summary or {})
     return "\n".join(lines) + "\n"
 
 
@@ -103,7 +105,12 @@ def main(argv: list[str] | None = None) -> None:
 
     summary = json.loads(args.summary.read_text(encoding="utf-8"))
     run_id = str(summary.get("run_id", args.summary.parent.name))
-    markdown = render_markdown(run_id, baseline_rows(summary), knee_threshold=args.knee_threshold)
+    markdown = render_markdown(
+        run_id,
+        baseline_rows(summary),
+        knee_threshold=args.knee_threshold,
+        summary=summary,
+    )
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(markdown, encoding="utf-8")
@@ -144,6 +151,23 @@ def _knee_summary(knee: dict[str, Any], threshold: float) -> str:
             threshold=_format_rate(threshold),
         )
     )
+
+
+def _append_latent_testbench_issue_section(lines: list[str], summary: dict[str, Any]) -> None:
+    issues = summary.get("latent_testbench_issue_breakdown", {})
+    if not isinstance(issues, dict) or not issues:
+        return
+    lines.extend(
+        [
+            "",
+            "## Latent Testbench Issues",
+            "",
+            "| issue_type | count |",
+            "|---|---:|",
+        ]
+    )
+    for issue_type in sorted(issues):
+        lines.append(f"| {issue_type} | {int(issues[issue_type])} |")
 
 
 if __name__ == "__main__":
