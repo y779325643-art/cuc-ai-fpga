@@ -227,6 +227,61 @@ under a fixed iteration budget.
 评测 + 可复现 req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨迹微调一个
 模型，使其内化工具接受度、在固定迭代预算下提升生成与自修复。**
 
+### Research questions
+
+The thesis decomposes into five concrete, answerable questions. Each names how it
+is answered, the field gap it fills, and current status.
+
+- **RQ1 — Representation.** Does inserting a requirement-level IR (System-HIS)
+  between requirement and multi-file project improve cross-file consistency and
+  physical realizability over direct req→project?
+  *Answered by:* the System-HIS ablation (req→HIS→project vs req→project) on the
+  cross-file-consistency error rate + L1–L4 pass. *Gap:* Representation Bottleneck
+  (2026) shows IR choice > model and explicitly poses "an LLM-native IR separating
+  intent from implementation" as future work; TODAES'25 lists NL↔RTL IR as
+  unsolved; CPPL is circuit-level, not requirement-level. *Caveat:* the
+  accessibility–competence paradox means this must be *measured*, not assumed.
+  *Status:* needs the v1.2 generator/checker + a model; not yet run.
+- **RQ2 — Value of tool feedback (b−a).** How much does an EDA tool-in-the-loop
+  repair loop raise project-level tool acceptance over a no-tool first attempt, and
+  at which level / difficulty tier most?
+  *Answered by:* (b)−(a) under a fixed iteration budget, per tier. *Gap:* repair
+  loops are mature (AutoChip/MAGE/VerilogCoder/PEFA-AI) but single-module/sim, not
+  project-level/physical with a reusable trajectory. *Status:* baseline (a)/(b)
+  pilot ran (T1/T2→L3, knee at T3); needs scale + prompt freeze.
+- **RQ3 — Internalization (c−a, c vs b).** Can tool-verified fine-tuning
+  internalize tool acceptance so first-attempt-no-tool (c) approaches the
+  tool-in-loop (b)? And can a fine-tuned *small* model's (c) reach a *large*
+  frontier model's (a)/(b)?
+  *Answered by:* (c) vs (a)/(b) on the same swappable generator. *Gap:* ChipSeek-R1
+  internalizes via per-attempt RL, ASIC/single-module, no reusable dataset;
+  Representation Bottleneck argues "IR-aware training > model scaling." *Status:*
+  no model trained yet — the largest open piece, and the headline result.
+- **RQ4 — Failure structure / difficulty calibration.** At project scale, where do
+  frontier models start failing across (i) the difficulty axes and (ii) the L0–L5
+  verification depth / hardware-semantic gap (seq-comb, backpressure, memory, CDC,
+  timing)?
+  *Answered by:* baseline (a) across T1–T4 + the per-level failure taxonomy
+  (cross-file-consistency error rate + the hardware-semantic failure distribution).
+  *Gap:* Representation Bottleneck only tested tiny single-module on Lattice
+  (synthesis "transparent"); project-level/Zynq is the excluded regime where L4
+  binds; their seq (2.3×)/memory (43%) gradient backs our axes. *Status:* pilot +
+  taxonomy exist; needs the full-level diagnostic mode + scale.
+- **RQ5 — QoR prediction / shift-left.** Can the model predict QoR
+  (LUT/FF/BRAM/DSP/Fmax) before tool execution, and how well does predicted
+  correlate with tool-measured?
+  *Answered by:* predicted_qor vs measured_qor calibration. *Gap:* MasterRTL does
+  pre-synthesis PPA as a separate ASIC predictor; the shift-left survey names the
+  predicted↔physical correlation as the open challenge. *Status:* gated — needs
+  real measured QoR (OpenXC7 L4; Yosys L3 LUT is vacuous, Finding G); this
+  predictor is also Paper ②'s proxy fitness.
+
+**Core vs gated:** RQ1, RQ2, RQ4 are the must-answer minimum publishable core;
+RQ3 is the headline but needs a trained model; RQ5 is nice-to-have and gated on the
+OpenXC7 L4 spike. All five are operationalized by the enabling infrastructure
+contribution — the tool-verified project-trajectory dataset + L0–L5 benchmark +
+reproducible req→bitstream→board loop — which is what makes them measurable.
+
 ### Differentiation (related-work map; full lit-review in the author's vault)
 
 Three support points, stated honestly against the *current* field (not the

@@ -159,6 +159,41 @@ SR2FPGA 从系统需求出发，**经由 System-HIS 中间表示**，生成多�
 req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨迹微调一个模型，使其内化工具接受度、在固定
 迭代预算下提升生成与自修复。**
 
+### 研究问题（Research Questions）
+
+论点拆成五个具体、可回答的问题。每个标注：怎么答、填的领域 gap、当前状态。
+
+- **RQ1 — 表示。** 在需求与多文件工程之间插入需求级 IR（System-HIS），相比 req→project 直接生成，是否提升跨
+  文件一致性与物理可实现性？
+  *怎么答：* System-HIS 消融（req→HIS→project vs req→project），看 cross-file 一致性错误率 + L1–L4 通过率。
+  *gap：* Representation Bottleneck（2026）证明 IR 选择 > 模型，并显式把"分离意图/实现的 LLM 原生 IR"列为
+  future work；TODAES'25 把 NL↔RTL 中间表示列为未解；CPPL 是电路级、非需求级。*警示：* accessibility-competence
+  悖论意味着这必须*测*、不能假设。*状态：* 需 v1.2 generator/checker + 模型；未跑。
+- **RQ2 — 工具反馈的价值（b−a）。** EDA 工具在环修复回路，相比无工具首次尝试，把项目级工具接受度提升多少、在
+  哪一层/哪个难度档提升最多？
+  *怎么答：* 固定迭代预算下 (b)−(a)，按难度档。*gap：* 修复回路已成熟（AutoChip/MAGE/VerilogCoder/PEFA-AI）
+  但都在单模块/仿真层，无项目级物理 + 可复用轨迹。*状态：* baseline (a)/(b) pilot 已跑（T1/T2→L3，膝点 T3）；
+  需规模 + prompt 冻结。
+- **RQ3 — 内化（c−a, c vs b）。** 工具验证微调能否把工具接受度内化进权重，使"无工具首次"(c) 逼近"工具在环"
+  (b)？以及——微调的*小*模型的 (c) 能否追上*大*前沿模型的 (a)/(b)？
+  *怎么答：* 同一可替换生成器上 (c) vs (a)/(b)。*gap：* ChipSeek-R1 用 per-attempt RL 内化，ASIC/单模块、无可复用
+  数据集；Representation Bottleneck 主张"IR-aware training > 模型 scaling"。*状态：* **还没训练过任何模型——最大
+  开口，也是 headline 结果。**
+- **RQ4 — 失败结构 / 难度校准。** 在项目级尺度，前沿模型在 (i) 难度轴 和 (ii) L0–L5 验证深度 / 硬件语义鸿沟
+  （seq-comb、背压、memory、CDC、时序）的哪里开始失败？
+  *怎么答：* baseline (a) 跨 T1–T4 + 分层失败分类法（cross-file 一致性错误率 + 硬件语义失败分布）。*gap：*
+  Representation Bottleneck 只测了极小单模块 + Lattice（综合"透明"）；项目级/Zynq 正是它排除、L4 才成约束的区；
+  它的 seq(2.3×)/memory(43%) 梯度背书我们的轴。*状态：* pilot + 分类法在；需全层诊断模式 + 规模。
+- **RQ5 — QoR 预测 / shift-left。** 模型能否在工具执行前预测 QoR（LUT/FF/BRAM/DSP/Fmax），predicted 与
+  tool-measured 相关性如何？
+  *怎么答：* predicted_qor vs measured_qor 校准。*gap：* MasterRTL 做 pre-synth PPA 但是独立 ASIC 预测器；
+  shift-left 综述把"预测↔物理相关"列为核心难题。*状态：* 被卡——需真 measured QoR（OpenXC7 L4；Yosys L3 的 LUT
+  是假的，Finding G）；该预测器同时是 Paper ② 的代理适应度。
+
+**核心 vs 被卡：** RQ1、RQ2、RQ4 是必答的最小可发表核心；RQ3 是 headline 但需训练好的模型；RQ5 是 nice-to-have
+且卡在 OpenXC7 L4 spike。五个都由使能性基础设施贡献（工具验证项目轨迹数据集 + L0–L5 benchmark + 可复现
+req→bitstream→board 闭环）操作化——正是它让这些问题变得可测量。
+
 ### 差异化（相关工作地图；完整文献综述在作者 vault 中）
 
 三个支撑点，对照*当前*领域（不是 VerilogEval 时代的领域）诚实陈述：
