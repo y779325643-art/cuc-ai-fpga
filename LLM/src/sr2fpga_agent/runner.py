@@ -14,7 +14,10 @@ from typing import Any
 
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
 from LLM.src.sr2fpga_agent.baseline_report import baseline_rows, render_markdown
-from LLM.src.sr2fpga_agent.cli import build_project_generator, build_repairer
+from LLM.src.sr2fpga_agent.cli import (
+    build_project_generator_for_connection,
+    build_repairer,
+)
 from LLM.src.sr2fpga_agent.deepseek import DeepSeekClient, DeepSeekConfig
 from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
@@ -47,6 +50,17 @@ class TaskConfig:
 
 
 @dataclass(frozen=True)
+class SourceConnection:
+    name: str
+    kind: str
+    model: str = ""
+    base_url: str = ""
+    api_key_env: str = ""
+    generation_mode: str = ""
+    timeout_seconds: int = 120
+
+
+@dataclass(frozen=True)
 class RunnerConfig:
     dataset_root: Path
     export_root: Path
@@ -63,6 +77,7 @@ class RunnerConfig:
     platform: str = "generic_verilog"
     env_file: Path = Path("")
     sample_id_prefix: str = "runner"
+    sources: dict[str, "SourceConnection"] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -81,11 +96,13 @@ class PlannedSample:
     requirement_style: str = "contract"
 
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
-        schema_version = _sample_system_his_schema_version(self)
+        connection = resolve_source_connection(config, self.source)
+        schema_version = _sample_system_his_schema_version(self, config)
         return {
             "source": self.source,
             "generator_provider": self.source,
-            "failure_origin": _sample_failure_origin(self),
+            "model": connection.model,
+            "failure_origin": _sample_failure_origin(self, config),
             "difficulty_tier": self.difficulty_tier,
             "measurement_point": self.measurement_point or _measurement_point(config),
             "repair_provider": config.repair_provider,
@@ -128,6 +145,7 @@ def load_runner_config(path: Path) -> RunnerConfig:
         platform=str(raw.get("platform", "generic_verilog")),
         env_file=Path(str(raw.get("env_file", ""))),
         sample_id_prefix=str(raw.get("sample_id_prefix", "runner")),
+        sources=_load_sources(raw.get("sources", {})),
     )
 
 
@@ -173,11 +191,6 @@ def runner_preflight(
     errors: list[str] = []
     warnings: list[str] = []
 
-    providers = {config.provider, config.repair_provider}
-    providers.update(sample.source for sample in samples)
-    if _uses_deepseek_provider(providers) and not os.environ.get(config.api_key_env):
-        errors.append(f"{config.api_key_env} is not set")
-
     missing_tools = [tool for tool, status in tools.items() if status == "missing"]
     if missing_tools:
         warnings.append("missing HDL tools: " + ", ".join(missing_tools))
@@ -187,11 +200,11 @@ def runner_preflight(
 
     if not samples:
         errors.append("no planned samples")
-    provider_auth = _provider_auth_diagnostics(config, providers, validate_provider)
-    if validate_provider:
-        for provider, auth in provider_auth.items():
-            if auth.get("status") == "failed":
-                errors.append(f"{_provider_display_name(provider)} provider auth failed")
+    provider_auth, auth_errors = _source_auth_diagnostics(config, samples, validate_provider)
+    errors.extend(auth_errors)
+
+    providers = {sample.source for sample in samples}
+    providers.add(config.repair_provider)
 
     return {
         "ok": not errors,
@@ -294,7 +307,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 "event": "sample_completed",
                 "sample_id": sample.sample_id,
                 "source": sample.source,
-                "failure_origin": _sample_failure_origin(sample),
+                "failure_origin": _sample_failure_origin(sample, config),
                 "difficulty_tier": sample.difficulty_tier,
                 "task_type": sample.task_type,
                 "width": sample.width,
@@ -429,28 +442,51 @@ def _secret_fingerprint(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
 
 
-def _provider_auth_diagnostics(
+def _source_auth_diagnostics(
     config: RunnerConfig,
-    providers: set[str],
+    samples: list[PlannedSample],
     validate_provider: bool,
-) -> dict[str, dict[str, str]]:
+) -> tuple[dict[str, dict[str, str]], list[str]]:
     diagnostics: dict[str, dict[str, str]] = {}
-    if not _uses_deepseek_provider(providers):
-        return diagnostics
-    if not validate_provider:
-        diagnostics["deepseek"] = {"status": "not_checked", "detail": ""}
-        return diagnostics
+    errors: list[str] = []
+    seen: set[str] = set()
+    for sample in samples:
+        _check_source_auth(config, sample.source, seen, diagnostics, errors, validate_provider)
+    if config.repair_provider and config.repair_provider != "none":
+        _check_source_auth(config, config.repair_provider, seen, diagnostics, errors, validate_provider)
+    return diagnostics, errors
 
-    api_key = os.environ.get(config.api_key_env, "")
+
+def _check_source_auth(
+    config: RunnerConfig,
+    source: str,
+    seen: set[str],
+    diagnostics: dict[str, dict[str, str]],
+    errors: list[str],
+    validate_provider: bool,
+) -> None:
+    if source in seen:
+        return
+    seen.add(source)
+    connection = resolve_source_connection(config, source)
+    if connection.kind not in LLM_SOURCE_KINDS:
+        return
+    api_key = os.environ.get(connection.api_key_env, "")
     if not api_key:
-        diagnostics["deepseek"] = {"status": "skipped", "detail": f"{config.api_key_env} is not set"}
-        return diagnostics
-
+        diagnostics[source] = {
+            "status": "skipped",
+            "detail": f"{connection.api_key_env} is not set",
+        }
+        errors.append(f"{connection.api_key_env} is not set for source {source}")
+        return
+    if not validate_provider:
+        diagnostics[source] = {"status": "not_checked", "detail": ""}
+        return
     client = DeepSeekClient(
         DeepSeekConfig(
             api_key=api_key,
-            model=config.model,
-            base_url=config.base_url,
+            model=connection.model,
+            base_url=connection.base_url,
             timeout_seconds=20,
         )
     )
@@ -462,24 +498,13 @@ def _provider_auth_diagnostics(
             ]
         )
     except RuntimeError as exc:
-        diagnostics["deepseek"] = {"status": "failed", "detail": _sanitize_secret(str(exc), api_key)}
-        return diagnostics
-    diagnostics["deepseek"] = {"status": "ok", "detail": ""}
-    return diagnostics
-
-
-def _provider_display_name(provider: str) -> str:
-    if _is_deepseek_provider(provider):
-        return "DeepSeek"
-    return provider
-
-
-def _uses_deepseek_provider(providers: set[str]) -> bool:
-    return any(_is_deepseek_provider(provider) for provider in providers)
-
-
-def _is_deepseek_provider(provider: str) -> bool:
-    return provider == "deepseek" or provider.startswith("deepseek-")
+        diagnostics[source] = {
+            "status": "failed",
+            "detail": _sanitize_secret(str(exc), api_key),
+        }
+        errors.append(f"{source} provider auth failed")
+        return
+    diagnostics[source] = {"status": "ok", "detail": ""}
 
 
 def _sanitize_secret(text: str, secret: str) -> str:
@@ -808,6 +833,61 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     )
 
 
+LLM_SOURCE_KINDS = {"openai_compat", "deepseek", "deepseek-his-v12"}
+
+
+def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnection:
+    if source in config.sources:
+        return config.sources[source]
+    if source == "deterministic":
+        return SourceConnection(name="deterministic", kind="deterministic")
+    if source == "deepseek-his-v12":
+        kind, mode = "deepseek-his-v12", "two_stage"
+    elif source == "deepseek" or source.startswith("deepseek-"):
+        kind, mode = "deepseek", "direct"
+    else:
+        kind, mode = "openai_compat", "two_stage"
+    return SourceConnection(
+        name=source,
+        kind=kind,
+        model=config.model,
+        base_url=config.base_url,
+        api_key_env=config.api_key_env,
+        generation_mode=mode,
+    )
+
+
+_GENERATION_MODE_BY_KIND = {
+    "openai_compat": "two_stage",
+    "deepseek-his-v12": "two_stage",
+    "deepseek": "direct",
+    "deterministic": "",
+}
+
+
+def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
+    sources: dict[str, SourceConnection] = {}
+    for name, item in raw.items():
+        kind = str(item.get("kind", "openai_compat"))
+        generation_mode = str(item.get("generation_mode", ""))
+        if kind == "openai_compat" and generation_mode == "direct":
+            raise SystemExit(
+                f"Source {name!r}: generation_mode 'direct' is not supported for kind 'openai_compat'"
+            )
+        if not generation_mode:
+            generation_mode = _GENERATION_MODE_BY_KIND.get(kind, "")
+        sources[str(name)] = SourceConnection(
+            name=str(name),
+            kind=kind,
+            model=str(item.get("model", "")),
+            base_url=str(item.get("base_url", "")),
+            api_key_env=str(item.get("api_key_env", "")),
+            generation_mode=generation_mode,
+            timeout_seconds=int(item.get("timeout_seconds", 120)),
+        )
+    return sources
+
+
 def _load_mapping(path: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     if path.suffix == ".json":
@@ -992,20 +1072,22 @@ def _topology_expected_behavior(task_type: str) -> str:
     return behaviors[task_type]
 
 
-def _sample_failure_origin(sample: PlannedSample) -> str:
+def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
     if sample.failure_origin:
         return sample.failure_origin
     if sample.failure_injectors:
         return "synthetic_injected"
-    if _is_deepseek_provider(sample.source):
+    connection = resolve_source_connection(config, sample.source)
+    if connection.kind in LLM_SOURCE_KINDS:
         return "natural_llm"
-    if sample.source == "deterministic":
+    if connection.kind == "deterministic":
         return "deterministic_template"
     return sample.source
 
 
-def _sample_system_his_schema_version(sample: PlannedSample) -> str:
-    if sample.source in {"deepseek-his-v12", "deterministic"}:
+def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
+    connection = resolve_source_connection(config, sample.source)
+    if connection.kind == "deterministic" or connection.generation_mode == "two_stage":
         return "system-his-v1.2"
     return "system-his-v1.1"
 
@@ -1026,19 +1108,19 @@ def _project_generator_for_sample(
     sample: PlannedSample,
     events_path: Path,
 ) -> object | None:
+    connection = resolve_source_connection(config, sample.source)
     cache_key = sample.source
-    if sample.source == "deepseek-his-v12":
+    if connection.generation_mode == "two_stage":
         cache_key = f"{sample.source}:{sample.sample_id}"
     if cache_key not in project_generators:
-        kwargs: dict[str, Any] = {}
-        if sample.source == "deepseek-his-v12":
-            kwargs["event_sink"] = _generation_event_sink(events_path, sample)
-        project_generators[cache_key] = build_project_generator(
-            provider=sample.source,
-            model=config.model,
-            base_url=config.base_url,
-            api_key_env=config.api_key_env,
-            **kwargs,
+        event_sink = (
+            _generation_event_sink(events_path, sample, config)
+            if connection.generation_mode == "two_stage"
+            else None
+        )
+        project_generators[cache_key] = build_project_generator_for_connection(
+            connection,
+            event_sink=event_sink,
         )
     project_generator = project_generators[cache_key]
     if not sample.failure_injectors:
@@ -1047,7 +1129,7 @@ def _project_generator_for_sample(
     return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
 
 
-def _generation_event_sink(events_path: Path, sample: PlannedSample):
+def _generation_event_sink(events_path: Path, sample: PlannedSample, config: RunnerConfig):
     def emit(payload: dict[str, Any]) -> None:
         _append_event(
             events_path,
@@ -1055,7 +1137,7 @@ def _generation_event_sink(events_path: Path, sample: PlannedSample):
                 **payload,
                 "sample_id": sample.sample_id,
                 "source": sample.source,
-                "failure_origin": _sample_failure_origin(sample),
+                "failure_origin": _sample_failure_origin(sample, config),
                 "difficulty_tier": sample.difficulty_tier,
                 "topology_id": sample.topology_id,
                 "requirement_style": sample.requirement_style,

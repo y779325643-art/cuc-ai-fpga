@@ -537,3 +537,6 @@ Key summary:
 - Tool-loop runner config: `configs/sr2fpga_agent.example.yaml`
 - Baseline report renderer: `LLM/src/sr2fpga_agent/baseline_report.py`
 - Agent guidance: `CLAUDE.md`
+- Multi-teacher source spec: `docs/superpowers/specs/2026-06-25-sr2fpga-multi-teacher-source-design.md`
+- Multi-teacher source plan: `docs/superpowers/plans/2026-06-25-sr2fpga-multi-teacher-source.md`
+- Multi-teacher runner config: `configs/sr2fpga_multi_teacher.example.yaml`
