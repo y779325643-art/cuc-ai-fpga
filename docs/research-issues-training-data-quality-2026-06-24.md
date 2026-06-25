@@ -5,6 +5,36 @@ Findings from a review pass over the training-data contract (`recorder.py`,
 JSONL training views, so they should be fixed before the first clean training
 split. Code changes are codex's to make.
 
+## H0. Diagnosis under-extracts the structured tool signal (binarization) — added 2026-06-25
+
+The single highest-leverage data-quality gap, found while sharpening RQ3/RQ5.
+Raw per-stage logs ARE preserved (`eval/{stage}.log` / `.json`), but the
+**diagnosis record + training views reduce each rich log to one `failure_type`
+string + a `root_cause` snippet** — discarding the structured detail that makes
+`LOG2DIAG`/`FAILURE2PATCH` targeted. Enrich the extraction (not the storage):
+
+- **L2 sim:** extract the **mismatch detail** — signal name, expected vs actual,
+  cycle (ideally a VCD pointer) — not just `TEST_FAIL`. This is the core
+  diagnosis→patch signal (cf. VerilogCoder's AST waveform tracing).
+- **L4 P&R (OpenXC7/Vivado):** extract structured failure families
+  **`resource_overflow` / `routing_congestion` / `timing_violation` (with the
+  critical path) / `constraint_error`**, plus the success report's utilization +
+  Fmax/slack. The critical path tells the model *where* to pipeline.
+- **L3 synth:** capture Yosys synth-time diagnostics (inferred latch, comb loop,
+  multi-driven), not only the `stat` cell counts.
+- **Soft signal on *pass*:** record warnings emitted when a stage *passes*
+  (latch risk, width-extension, unused/undriven nets, BRAM-miss, timing-met-but-
+  tight) as a `warnings`/`soft_label` field — quality/risk signal currently
+  binarized away.
+- **predicted vs measured residual:** expose the per-resource residual as the RQ5
+  calibration signal.
+
+Why it matters: this both fixes label quality (cousin of F/E below) and *widens
+what is internalizable* — L2 mismatch, L3 soft warnings, and L4 failure
+diagnostics are all learnable diagnosis→patch signal once extracted, not just a
+binary verdict. See the reframe spec's "preserve the structured tool signal"
+principle and the L4 failure-family taxonomy rows.
+
 ## Positive baseline (no action)
 
 The `predicted_qor` / `measured_qor` separation holds in both code and data:

@@ -177,8 +177,11 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
 - **RQ3 — 内化（c−a, c vs b）。** 工具验证微调能否把工具接受度内化进权重，使"无工具首次"(c) 逼近"工具在环"
   (b)？以及——微调的*小*模型的 (c) 能否追上*大*前沿模型的 (a)/(b)？
   *怎么答：* 同一可替换生成器上 (c) vs (a)/(b)。*gap：* ChipSeek-R1 用 per-attempt RL 内化，ASIC/单模块、无可复用
-  数据集；Representation Bottleneck 主张"IR-aware training > 模型 scaling"。*状态：* **还没训练过任何模型——最大
-  开口，也是 headline 结果。**
+  数据集；Representation Bottleneck 主张"IR-aware training > 模型 scaling"。*内化的 scope：* 生成 + 修复，限于"判决是
+  模型产出的函数"的部分——**L0–L3，外加 L4 *失败* 诊断/修复**：nextpnr/Vivado 吐结构化 P&R 报错
+  （`resource_overflow`、`routing_congestion`、`timing_violation` 带关键路径、`constraint_error`），映射到可操作 patch
+  （降资源 / 重构 / 打拍 / 修 XDC）——和 L1–L3 同一 diagnosis→patch 形态。留在 RQ3 *之外*（由 RQ5 当预测处理）的，
+  是有时序压力设计的连续、seed 噪声的*精确* Fmax 余量。*状态：* **还没训练过任何模型——最大开口，也是 headline 结果。**
 - **RQ4 — 失败结构 / 难度校准。** 在项目级尺度，前沿模型在 (i) 难度轴 和 (ii) L0–L5 验证深度 / 硬件语义鸿沟
   （seq-comb、背压、memory、CDC、时序）的哪里开始失败？
   *怎么答：* baseline (a) 跨 T1–T4 + 分层失败分类法（cross-file 一致性错误率 + 硬件语义失败分布）。*gap：*
@@ -186,13 +189,29 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
   它的 seq(2.3×)/memory(43%) 梯度背书我们的轴。*状态：* pilot + 分类法在；需全层诊断模式 + 规模。
 - **RQ5 — QoR 预测 / shift-left。** 模型能否在工具执行前预测 QoR（LUT/FF/BRAM/DSP/Fmax），predicted 与
   tool-measured 相关性如何？
-  *怎么答：* predicted_qor vs measured_qor 校准。*gap：* MasterRTL 做 pre-synth PPA 但是独立 ASIC 预测器；
-  shift-left 综述把"预测↔物理相关"列为核心难题。*状态：* 被卡——需真 measured QoR（OpenXC7 L4；Yosys L3 的 LUT
-  是假的，Finding G）；该预测器同时是 Paper ② 的代理适应度。
+  *怎么答：* predicted_qor vs measured_qor 校准。*训练信号：* **OpenXC7 批量 L4 报告**（免授权 + 可批量正是让足够
+  L4 标签可收集的前提）。*可学性拆分：* 布线后**利用率（LUT/FF/BRAM/DSP）主要是 RTL × 综合的函数 → 较好学**；
+  **Fmax 取决于 seed 噪声、后端启发式的关键路径 → 能学成预测器但有噪声地板 / 校准 gap**（诚实报告）。*gap：*
+  MasterRTL 做 pre-synth PPA 但是独立 ASIC 预测器；shift-left 综述把"预测↔物理相关"列为核心难题。*状态：* 被卡——
+  需真 measured QoR（OpenXC7 L4；Yosys L3 的 LUT 是假的，Finding G）；该预测器同时是 Paper ② 的代理适应度。
 
 **核心 vs 被卡：** RQ1、RQ2、RQ4 是必答的最小可发表核心；RQ3 是 headline 但需训练好的模型；RQ5 是 nice-to-have
 且卡在 OpenXC7 L4 spike。五个都由使能性基础设施贡献（工具验证项目轨迹数据集 + L0–L5 benchmark + 可复现
 req→bitstream→board 闭环）操作化——正是它让这些问题变得可测量。
+
+**原则——保留结构化工具信号（不要二值化）。** 每个工具阶段吐的可学信号远比"通过/失败 + 粗标签"丰富，轨迹数据集
+必须保留*结构*、不要压扁：
+
+- **L2 仿真：** 不只 `TEST_FAIL`，而是**失配明细**（信号、expected vs actual、第几拍；最好连 VCD）——正是 diagnosis→patch
+  信号（VerilogCoder 的 AST 波形追踪就吃这个）。
+- **L1/L3/L4 *通过时*的警告：** "过了但带警告"是*软*信号（latch 风险、位宽扩展、未用/未驱动 net、BRAM-miss、时序勉强
+  达标）——是质量/风险标签，不能被二值化丢掉。
+- **L3 综合期诊断**（推断 latch、组合环、多驱动）与 **L4 关键路径明细**（哪些 net/cell，告诉模型该在*哪里*打拍）——
+  超出 headline 的 cell 数 / Fmax 数字。
+- **predicted vs measured 残差**本身就是 RQ5 校准信号。
+
+原始日志已按阶段保存；缺口在*抽取*——诊断记录与训练视图现在把丰富日志压成一个 `failure_type` 字符串（见
+training-data-quality issue 日志）。把这步抽取做厚，正是让 LOG2DIAG/FAILURE2PATCH 精准、并拓宽可内化范围的关键。
 
 ### 别人针对每个 RQ 怎么解决（以及留下什么）
 
@@ -426,6 +445,10 @@ qor_intent:  {resources: {lut?, ff?, bram?, dsp?}}      # 模型侧预测 → pr
   | 内部位宽截断 | **L2** sim | 能，**当 testbench 校验数值时** | golden-value testbench 抓 `8b×8b` 被静默留 8b |
   | 符号数错误 | **L2** sim | 能，**当 testbench 校验数值时** | golden-value testbench 抓 signed/unsigned 处理错误 |
   | 时序 / SDC 收敛 / 多周期 | **L4** P&R | 受 OpenXC7 spike 阻塞 | nextpnr/Vivado 时序报告（Fmax/slack） |
+  | resource_overflow（放不下） | **L4** P&R | 能（L4 跑起来时） | nextpnr "failed to place"：cell 超器件 |
+  | routing_congestion（布线拥塞） | **L4** P&R | 能（L4 跑起来时） | nextpnr 布线失败/拥塞 |
+  | timing_violation（slack 为负） | **L4** P&R | 能（L4 跑起来时） | nextpnr/Vivado slack + 关键路径 → 该在哪打拍 |
+  | constraint_error（未约束/非法 IO） | **L4** P&R | 能（L4 跑起来时） | nextpnr IO/约束错 vs XDC |
 
   （后六行是在用一份 practitioner 失败清单审计我们分类法后，对原三行的扩展——FPGA手记《AI写RTL》，2026-06，
   一篇非同行评审的行业博客，仅作完整性检查/motivation 佐证。只加了工具可检出的类，每类标注检出层。）

@@ -255,8 +255,16 @@ is answered, the field gap it fills, and current status.
   frontier model's (a)/(b)?
   *Answered by:* (c) vs (a)/(b) on the same swappable generator. *Gap:* ChipSeek-R1
   internalizes via per-attempt RL, ASIC/single-module, no reusable dataset;
-  Representation Bottleneck argues "IR-aware training > model scaling." *Status:*
-  no model trained yet — the largest open piece, and the headline result.
+  Representation Bottleneck argues "IR-aware training > model scaling." *Scope of
+  internalization:* generation + repair where the verdict is a function of what the
+  model produced — **L0–L3, plus L4 *failure* diagnosis/repair**: nextpnr/Vivado
+  emit structured P&R errors (`resource_overflow`, `routing_congestion`,
+  `timing_violation` with the critical path, `constraint_error`) that map to
+  actionable patches (reduce resource / restructure / add pipeline registers / fix
+  XDC) — the same diagnosis→patch shape as L1–L3. What stays *outside* RQ3 (handled
+  by RQ5 as prediction) is the continuous, seed-noisy *exact* Fmax margin for
+  timing-pressured designs. *Status:* no model trained yet — the largest open piece,
+  and the headline result.
 - **RQ4 — Failure structure / difficulty calibration.** At project scale, where do
   frontier models start failing across (i) the difficulty axes and (ii) the L0–L5
   verification depth / hardware-semantic gap (seq-comb, backpressure, memory, CDC,
@@ -270,7 +278,12 @@ is answered, the field gap it fills, and current status.
 - **RQ5 — QoR prediction / shift-left.** Can the model predict QoR
   (LUT/FF/BRAM/DSP/Fmax) before tool execution, and how well does predicted
   correlate with tool-measured?
-  *Answered by:* predicted_qor vs measured_qor calibration. *Gap:* MasterRTL does
+  *Answered by:* predicted_qor vs measured_qor calibration. *Training signal:* the
+  **OpenXC7 batch L4 reports** (license-free + batchable is what makes enough L4
+  labels collectable). *Learnability split:* post-P&R **utilization (LUT/FF/BRAM/DSP)
+  is largely a function of the RTL × synthesis → more learnable**; **Fmax depends on
+  the seed-noisy, backend-heuristic critical path → learnable as a predictor but with
+  a noise floor / calibration gap** (report it honestly). *Gap:* MasterRTL does
   pre-synthesis PPA as a separate ASIC predictor; the shift-left survey names the
   predicted↔physical correlation as the open challenge. *Status:* gated — needs
   real measured QoR (OpenXC7 L4; Yosys L3 LUT is vacuous, Finding G); this
@@ -281,6 +294,26 @@ RQ3 is the headline but needs a trained model; RQ5 is nice-to-have and gated on 
 OpenXC7 L4 spike. All five are operationalized by the enabling infrastructure
 contribution — the tool-verified project-trajectory dataset + L0–L5 benchmark +
 reproducible req→bitstream→board loop — which is what makes them measurable.
+
+**Principle — preserve the structured tool signal (do not binarize).** Every tool
+stage emits far richer learnable signal than pass/fail + a coarse label, and the
+trajectory dataset must capture the *structure*, not flatten it:
+
+- **L2 sim:** not just `TEST_FAIL` but the **mismatch detail** (signal, expected vs
+  actual, cycle; ideally the VCD) — exactly the diagnosis→patch signal (this is
+  what VerilogCoder's AST waveform tracing exploits).
+- **L1/L3/L4 warnings on *pass*:** "passed-but-warned" is *soft* signal (latch risk,
+  width-extension, unused/undriven nets, BRAM-miss, timing-met-but-tight) — quality/
+  risk labels we must not discard by binarizing.
+- **L3 synth-time diagnostics** (inferred latch, comb loop, multi-driven) and **L4
+  critical-path detail** (which nets/cells, telling the model *where* to pipeline) —
+  beyond the headline cell counts / Fmax number.
+- **predicted vs measured residual** is itself the RQ5 calibration signal.
+
+Raw logs are already persisted per stage; the gap is *extraction* — the diagnosis
+record and training views currently reduce rich logs to one `failure_type` string
+(see the training-data-quality issue log). Enriching that extraction is what makes
+LOG2DIAG/FAILURE2PATCH targeted and widens what is internalizable.
 
 ### How prior work addresses each RQ (and what it leaves open)
 
@@ -629,6 +662,10 @@ will live here later.
   | internal width truncation | **L2** sim | yes, **iff testbench checks values** | golden-value testbench catches `8b×8b` silently kept at 8b |
   | signedness error | **L2** sim | yes, **iff testbench checks values** | golden-value testbench catches signed/unsigned mishandling |
   | timing / SDC closure / multicycle | **L4** P&R | gated on OpenXC7 spike | nextpnr/Vivado timing report (Fmax/slack) |
+  | resource_overflow (placement fails) | **L4** P&R | yes (when L4 runs) | nextpnr "failed to place": cells exceed device |
+  | routing_congestion | **L4** P&R | yes (when L4 runs) | nextpnr routing failure / congestion |
+  | timing_violation (negative slack) | **L4** P&R | yes (when L4 runs) | nextpnr/Vivado slack + critical path → where to pipeline |
+  | constraint_error (unconstrained/illegal IO) | **L4** P&R | yes (when L4 runs) | nextpnr IO/constraint error vs XDC |
 
   (The last six rows extend the original three after auditing our taxonomy against
   a practitioner failure checklist — FPGA手记, "AI写RTL", 2026-06, a non-peer-reviewed
