@@ -286,3 +286,30 @@ class PreflightAuthTest(unittest.TestCase):
         self.assertFalse(any("ANTHROPIC_KEY_PRESENT" in e for e in report["errors"]))
         self.assertIn("gpt55", report["provider_auth"])
         self.assertEqual(report["provider_auth"]["claude"]["status"], "not_checked")
+
+
+from LLM.src.sr2fpga_agent.runner import _calibration_breakdown
+
+
+class PerTeacherReportingTest(unittest.TestCase):
+    def test_calibration_matrix_has_one_row_per_teacher(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dataset_root = Path(tmp)
+            for source, pass_level in (("claude", "L3"), ("gpt55", "L0")):
+                sample_id = f"sample_{source}"
+                sample_dir = dataset_root / sample_id
+                (sample_dir / "eval").mkdir(parents=True)
+                (sample_dir / "eval" / "labels.json").write_text(
+                    json.dumps({"pass_level": pass_level, "checks": {}, "failure_count": 0}),
+                    encoding="utf-8",
+                )
+                (sample_dir / "metadata.json").write_text(
+                    json.dumps({"source": source, "difficulty_tier": "T1"}),
+                    encoding="utf-8",
+                )
+            breakdown = _calibration_breakdown(dataset_root, ["sample_claude", "sample_gpt55"])
+            source_matrix = breakdown["calibration_matrix"]["source"]
+            self.assertIn("claude", source_matrix)
+            self.assertIn("gpt55", source_matrix)
+            self.assertEqual(source_matrix["claude"]["l3_pass_rate"], 1.0)
+            self.assertEqual(source_matrix["gpt55"]["l3_pass_rate"], 0.0)

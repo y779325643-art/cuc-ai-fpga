@@ -1,0 +1,67 @@
+# Multi-teacher trajectory batch: Claude + GPT-5.5 + DeepSeek + Qwen + deterministic control.
+# Keys come only from *_API_KEY env (optionally a local ignored .env). Never commit keys.
+dataset_root: datasets/sr2fpga_rtl_v1
+export_root: datasets/sr2fpga_rtl_v1_exports
+run_root: tmp/sr2fpga_runs
+provider: deterministic        # global fallback / control
+repair_provider: none
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: multi_teacher
+env_file: .env
+line_b_targets: {}
+
+sources:
+  claude:
+    kind: openai_compat
+    model: claude-opus-4-8
+    base_url: https://api.anthropic.com/v1
+    api_key_env: ANTHROPIC_API_KEY
+    generation_mode: two_stage
+  gpt55:
+    kind: openai_compat
+    model: gpt-5.5
+    base_url: https://api.openai.com/v1
+    api_key_env: OPENAI_API_KEY
+    generation_mode: two_stage
+  qwen:
+    kind: openai_compat
+    model: qwen2.5-coder-7b-instruct
+    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    api_key_env: DASHSCOPE_API_KEY
+    generation_mode: two_stage
+  deepseek-his-v12:
+    kind: deepseek-his-v12
+    model: deepseek-v4-flash
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    generation_mode: two_stage
+
+tasks:
+  - source: claude
+    task_type: component_topology
+    topology_ids: [t1_event_counter]
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    measurement_point: a_first_attempt_no_tools
+  - source: gpt55
+    task_type: component_topology
+    topology_ids: [t1_event_counter]
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    measurement_point: a_first_attempt_no_tools
+  - source: deepseek-his-v12
+    task_type: component_topology
+    topology_ids: [t1_event_counter]
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    measurement_point: a_first_attempt_no_tools
+  - source: deterministic
+    task_type: component_topology
+    topology_ids: [t1_event_counter]
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
