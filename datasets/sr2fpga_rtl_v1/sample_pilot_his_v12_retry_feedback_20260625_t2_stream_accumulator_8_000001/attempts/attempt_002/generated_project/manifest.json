@@ -1,0 +1,8 @@
+{
+  "project_name": "pilot_his_v12_retry_feedback_20260625_t2_stream_accumulator_8_000001",
+  "top_module": "top",
+  "sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/accumulator_core.v"],
+  "constraints": {"timing": "constraints/timing.sdc"},
+  "simulation": {"testbench": "sim/tb_top.v"},
+  "reports": ["reports/predicted_qor.json"]
+}

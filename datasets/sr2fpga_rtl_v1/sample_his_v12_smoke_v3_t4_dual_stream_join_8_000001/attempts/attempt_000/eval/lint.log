@@ -1,0 +1,15 @@
+%Warning-UNUSEDSIGNAL: rtl/stream_join.v:2:11: Signal is not used: 'clk'
+                                             : ... note: In instance 'top.join_core'
+    2 |     input clk, rst_n,
+      |           ^~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/stream_join.v:2:16: Signal is not used: 'rst_n'
+                                             : ... note: In instance 'top.join_core'
+    2 |     input clk, rst_n,
+      |                ^~~~~
+%Warning-UNUSEDSIGNAL: rtl/accumulator_core.v:8:11: Signal is not used: 'm_tready'
+                                                  : ... note: In instance 'top.accumulator'
+    8 |     input m_tready
+      |           ^~~~~~~~
+%Error: Exiting due to 3 warning(s)

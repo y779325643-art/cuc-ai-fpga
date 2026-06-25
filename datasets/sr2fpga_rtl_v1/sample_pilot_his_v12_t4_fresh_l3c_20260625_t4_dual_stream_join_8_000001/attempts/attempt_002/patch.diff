@@ -1,0 +1,63 @@
+--- a/sim/tb_top.v
++++ b/sim/tb_top.v
+@@ -68,15 +68,13 @@
+         // Send 5 pairs of data
+         for (i = 0; i < 5; i = i + 1) begin
+             // Wait until ready
+-            wait_for_ready: while (1) begin
++            cycle_count = 0;
++            while (!(in0_ready && in1_ready)) begin
++                @(posedge clk);
++                cycle_count = cycle_count + 1;
+                 if (cycle_count > 100) begin
+                     $display("TEST_FAIL: timeout waiting for ready at iteration %0d", i);
+                     $finish;
+-                end
+-                @(posedge clk);
+-                cycle_count = cycle_count + 1;
+-                if (in0_ready && in1_ready) begin
+-                    break;
+                 end
+             end
+             // Drive inputs
+@@ -90,26 +88,24 @@
+             in1_valid = 0;
+             expected_accum = expected_accum + (in0_vals[i] + in1_vals[i]);
+             // Wait for output to appear
+-            wait_for_out: while (1) begin
+-                if (cycle_count > 200) begin
++            cycle_count = 0;
++            while (!out_valid) begin
++                @(posedge clk);
++                cycle_count = cycle_count + 1;
++                if (cycle_count > 100) begin
+                     $display("TEST_FAIL: timeout waiting for output at iteration %0d", i);
+                     $finish;
+                 end
+-                @(posedge clk);
+-                cycle_count = cycle_count + 1;
+-                if (out_valid) begin
+-                    // Check output
+-                    if (out_data !== expected_accum) begin
+-                        $display("TEST_FAIL: mismatch at iteration %0d, expected %0d, got %0d", i, expected_accum, out_data);
+-                        $finish;
+-                    end
+-                    // Consume output
+-                    out_ready = 1;
+-                    @(posedge clk);
+-                    out_ready = 0;
+-                    break;
+-                end
+             end
++            // Check output
++            if (out_data !== expected_accum) begin
++                $display("TEST_FAIL: mismatch at iteration %0d, expected %0d, got %0d", i, expected_accum, out_data);
++                $finish;
++            end
++            // Consume output
++            out_ready = 1;
++            @(posedge clk);
++            out_ready = 0;
+         end
+ 
+         // Wait a few cycles to ensure no extra outputs

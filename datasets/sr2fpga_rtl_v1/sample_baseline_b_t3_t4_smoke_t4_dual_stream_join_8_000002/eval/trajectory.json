@@ -1,0 +1,100 @@
+{
+  "sample_id": "sample_baseline_b_t3_t4_smoke_t4_dual_stream_join_8_000002",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json",
+      "patch_path": "attempts/attempt_000/patch.diff"
+    },
+    {
+      "attempt_id": 1,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_001/diagnosis.json",
+      "patch_path": "attempts/attempt_001/patch.diff"
+    },
+    {
+      "attempt_id": 2,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "verilator",
+      "exit_code": 1,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_join.v",
+        "rtl/accumulator_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "failure_type": "unknown",
+      "diagnosis_path": "attempts/attempt_002/diagnosis.json",
+      "patch_path": "attempts/attempt_002/patch.diff"
+    },
+    {
+      "attempt_id": 3,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "verilator",
+      "exit_code": 0,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_join.v",
+        "rtl/accumulator_core.v",
+        "rtl/stream_stage.v"
+      ]
+    },
+    {
+      "attempt_id": 3,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "iverilog",
+      "exit_code": 0,
+      "command": [
+        "iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_join.v",
+        "rtl/accumulator_core.v",
+        "rtl/stream_stage.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 3,
+      "stage": "sim_run",
+      "status": "failed",
+      "tool": "vvp",
+      "exit_code": 0,
+      "command": [
+        "vvp",
+        "sim.out"
+      ],
+      "failure_type": "port_mismatch",
+      "diagnosis_path": "attempts/attempt_003/diagnosis.json"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+manifest.constraints.timing is required
+System-HIS module 'top' parameters must be an object
+System-HIS module 'skid_buffer' parameters must be an object
+System-HIS module 'skid_buffer' port 'in_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'skid_buffer' port 'out_data' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'accumulator_core' parameters must be an object
+System-HIS module 'accumulator_core' port 'sample' width 8 does not match RTL [WIDTH-1:0]
+System-HIS module 'accumulator_core' port 'sum' width 8 does not match RTL [WIDTH-1:0]
+System-HIS connection[0].protocol is invalid
+System-HIS connection[1].protocol is invalid
+System-HIS connection[2].protocol is invalid
+System-HIS connection[3].protocol is invalid
+System-HIS connection[4].protocol is invalid
+System-HIS connection[5].protocol is invalid
+System-HIS connection[6].protocol is invalid
+System-HIS connection[7].protocol is invalid
+System-HIS connection[8].protocol is invalid
+System-HIS connection[9].protocol is invalid

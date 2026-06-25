@@ -1,0 +1,8 @@
+{
+  "fmax_mhz": 100,
+  "lut_estimate": "low",
+  "ff_estimate": "low",
+  "bram_estimate": 0,
+  "dsp_estimate": 0,
+  "area_estimate": "small"
+}

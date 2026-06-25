@@ -1,0 +1,63 @@
+%Warning-IMPLICIT: rtl/top.v:60:15: Signal definition not found, creating implicitly: 'buffer1_out_data'
+                                  : ... Suggested alternative: 'buffer0_out_data'
+   60 |     .out_data(buffer1_out_data)
+      |               ^~~~~~~~~~~~~~~~
+                   ... For warning description see https://verilator.org/warn/IMPLICIT?v=5.048
+                   ... Use "/* verilator lint_off IMPLICIT */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: rtl/top.v:60:6: Output port connection 'out_data' expects 8 bits on the pin connection, but pin connection's VARREF 'buffer1_out_data' generates 1 bits.
+                                    : ... note: In instance 'top'
+   60 |     .out_data(buffer1_out_data)
+      |      ^~~~~~~~
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: rtl/top.v:74:6: Input port connection 'in1_data' expects 8 bits on the pin connection, but pin connection's VARREF 'buffer1_out_data' generates 1 bits.
+                                    : ... note: In instance 'top'
+   74 |     .in1_data(buffer1_out_data),
+      |      ^~~~~~~~
+%Warning-WIDTHEXPAND: rtl/top.v:77:6: Output port connection 'out_data' expects 8 bits on the pin connection, but pin connection's VARREF 'join_out_data' generates 1 bits.
+                                    : ... note: In instance 'top'
+   77 |     .out_data(join_out_data)
+      |      ^~~~~~~~
+%Warning-WIDTHEXPAND: rtl/top.v:88:6: Input port connection 'in_data' expects 8 bits on the pin connection, but pin connection's VARREF 'join_out_data' generates 1 bits.
+                                    : ... note: In instance 'top'
+   88 |     .in_data(join_out_data),
+      |      ^~~~~~~
+%Warning-WIDTHEXPAND: rtl/top.v:91:6: Output port connection 'out_data' expects 8 bits on the pin connection, but pin connection's VARREF 'acc_out_data' generates 1 bits.
+                                    : ... note: In instance 'top'
+   91 |     .out_data(acc_out_data)
+      |      ^~~~~~~~
+%Warning-WIDTHEXPAND: rtl/top.v:102:6: Input port connection 'in_data' expects 8 bits on the pin connection, but pin connection's VARREF 'acc_out_data' generates 1 bits.
+                                     : ... note: In instance 'top'
+  102 |     .in_data(acc_out_data),
+      |      ^~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:22:8: Signal is not driven, nor used: 'buffer0_in_ready'
+                                     : ... note: In instance 'top'
+   22 |   wire buffer0_in_ready;
+      |        ^~~~~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/top.v:23:8: Signal is not driven, nor used: 'buffer1_out_data_w'
+                                     : ... note: In instance 'top'
+   23 |   wire buffer1_out_data_w;
+      |        ^~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:25:8: Signal is not driven, nor used: 'buffer1_in_ready'
+                                     : ... note: In instance 'top'
+   25 |   wire buffer1_in_ready;
+      |        ^~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/skid_buffer.v:17:7: Signal is not driven, nor used: 'hold_valid'
+                                             : ... note: In instance 'top.in1_buffer'
+   17 |   reg hold_valid;
+      |       ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/skid_buffer.v:18:24: Signal is not driven, nor used: 'hold_data'
+                                              : ... note: In instance 'top.in1_buffer'
+   18 |   reg [DATA_WIDTH-1:0] hold_data;
+      |                        ^~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/skid_buffer.v:19:8: Signal is not driven, nor used: 'pass_through'
+                                             : ... note: In instance 'top.in1_buffer'
+   19 |   wire pass_through;
+      |        ^~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/skid_buffer.v:38:8: Signal is not driven, nor used: 'output_mux_sel'
+                                             : ... note: In instance 'top.in1_buffer'
+   38 |   wire output_mux_sel;
+      |        ^~~~~~~~~~~~~~
+%Error: Exiting due to 14 warning(s)

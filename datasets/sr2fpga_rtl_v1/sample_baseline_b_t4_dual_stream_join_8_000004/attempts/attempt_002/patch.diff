@@ -1,0 +1,173 @@
+--- a/manifest.json
++++ b/manifest.json
+@@ -2,7 +2,9 @@
+   "project_name": "baseline_b_t4_dual_stream_join_8_000004",
+   "top_module": "top",
+   "sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_join.v", "rtl/accumulator_core.v", "rtl/stream_stage.v"],
+-  "constraints": ["constraints/timing.sdc"],
++  "constraints": {
++    "timing": ["constraints/timing.sdc"]
++  },
+   "simulation": {"testbench": "sim/tb_top.v"},
+   "reports": ["reports/predicted_qor.json"]
+ }
+--- a/system_his.json
++++ b/system_his.json
+@@ -68,7 +68,8 @@
+         {"name": "out_data", "direction": "output", "width": 8},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+-      "params": {},
++      "parameters": {},
++      "params": [],
+       "clock": "clk",
+       "clock_domain": "clk",
+       "reset": "rst_n",
+@@ -88,7 +89,8 @@
+         {"name": "out_data", "direction": "output", "width": 8},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+-      "params": {},
++      "parameters": {},
++      "params": [],
+       "clock": "clk",
+       "clock_domain": "clk",
+       "reset": "rst_n",
+@@ -111,7 +113,8 @@
+         {"name": "out_data", "direction": "output", "width": 8},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+-      "params": {},
++      "parameters": {},
++      "params": [],
+       "clock": "clk",
+       "clock_domain": "clk",
+       "reset": "rst_n",
+@@ -131,7 +134,8 @@
+         {"name": "sum", "direction": "output", "width": 8},
+         {"name": "sum_ready", "direction": "input", "width": 1}
+       ],
+-      "params": {},
++      "parameters": {},
++      "params": [],
+       "clock": "clk",
+       "clock_domain": "clk",
+       "reset": "rst_n",
+@@ -151,7 +155,8 @@
+         {"name": "out_data", "direction": "output", "width": 8},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+-      "params": {},
++      "parameters": {},
++      "params": [],
+       "clock": "clk",
+       "clock_domain": "clk",
+       "reset": "rst_n",
+@@ -163,7 +168,7 @@
+       "from": {"module": "skid_buffer", "port": "out_valid"},
+       "to": {"module": "stream_join", "port": "in0_valid"},
+       "signal": "sb0_out_valid",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     },
+@@ -171,7 +176,7 @@
+       "from": {"module": "skid_buffer", "port": "out_data"},
+       "to": {"module": "stream_join", "port": "in0_data"},
+       "signal": "sb0_out_data",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 8,
+       "cdc": false
+     },
+@@ -179,7 +184,7 @@
+       "from": {"module": "stream_join", "port": "in0_ready"},
+       "to": {"module": "skid_buffer", "port": "out_ready"},
+       "signal": "sb0_out_ready",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     },
+@@ -187,7 +192,7 @@
+       "from": {"module": "skid_buffer", "port": "out_valid"},
+       "to": {"module": "stream_join", "port": "in1_valid"},
+       "signal": "sb1_out_valid",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     },
+@@ -195,7 +200,7 @@
+       "from": {"module": "skid_buffer", "port": "out_data"},
+       "to": {"module": "stream_join", "port": "in1_data"},
+       "signal": "sb1_out_data",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 8,
+       "cdc": false
+     },
+@@ -203,7 +208,7 @@
+       "from": {"module": "stream_join", "port": "in1_ready"},
+       "to": {"module": "skid_buffer", "port": "out_ready"},
+       "signal": "sb1_out_ready",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     },
+@@ -211,7 +216,7 @@
+       "from": {"module": "stream_join", "port": "out_valid"},
+       "to": {"module": "accumulator_core", "port": "sample_valid"},
+       "signal": "join_out_valid",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     },
+@@ -219,7 +224,7 @@
+       "from": {"module": "stream_join", "port": "out_data"},
+       "to": {"module": "accumulator_core", "port": "sample"},
+       "signal": "join_out_data",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 8,
+       "cdc": false
+     },
+@@ -227,7 +232,7 @@
+       "from": {"module": "accumulator_core", "port": "sample_ready"},
+       "to": {"module": "stream_join", "port": "out_ready"},
+       "signal": "join_out_ready",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     },
+@@ -235,7 +240,7 @@
+       "from": {"module": "accumulator_core", "port": "sum_valid"},
+       "to": {"module": "stream_stage", "port": "in_valid"},
+       "signal": "acc_out_valid",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     },
+@@ -243,7 +248,7 @@
+       "from": {"module": "accumulator_core", "port": "sum"},
+       "to": {"module": "stream_stage", "port": "in_data"},
+       "signal": "acc_sum",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 8,
+       "cdc": false
+     },
+@@ -251,7 +256,7 @@
+       "from": {"module": "stream_stage", "port": "in_ready"},
+       "to": {"module": "accumulator_core", "port": "sum_ready"},
+       "signal": "stage_in_ready",
+-      "protocol": "ready_valid",
++      "protocol": "ready-valid",
+       "width": 1,
+       "cdc": false
+     }

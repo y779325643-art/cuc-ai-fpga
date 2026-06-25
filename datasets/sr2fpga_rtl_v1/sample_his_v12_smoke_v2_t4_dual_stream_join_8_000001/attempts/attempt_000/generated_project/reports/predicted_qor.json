@@ -1,0 +1,9 @@
+{
+  "status": "estimated",
+  "fmax_mhz": 100,
+  "lut_count": 100,
+  "ff_count": 100,
+  "bram_count": 0,
+  "dsp_count": 0,
+  "notes": "Estimated from area-first synthesis of similar design."
+}

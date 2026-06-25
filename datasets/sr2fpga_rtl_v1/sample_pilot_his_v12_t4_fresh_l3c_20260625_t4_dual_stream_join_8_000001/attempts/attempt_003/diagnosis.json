@@ -1,0 +1,6 @@
+{
+  "failure_type": "testbench_timeout",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL: timeout waiting for output at iteration 0\nsim/tb_top.v:97: $finish called at 1045000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": []
+}

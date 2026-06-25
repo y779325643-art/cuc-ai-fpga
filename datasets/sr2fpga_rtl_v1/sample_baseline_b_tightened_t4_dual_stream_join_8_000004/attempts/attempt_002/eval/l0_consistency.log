@@ -1,0 +1,63 @@
+System-HIS module 'sb0' is not declared in manifest sources
+System-HIS module 'sb0' parameter 'DATA_WIDTH' is not declared in RTL
+System-HIS module 'sb0' port 'clk' is not declared in RTL
+System-HIS module 'sb0' port 'rst_n' is not declared in RTL
+System-HIS module 'sb0' port 'in_valid' is not declared in RTL
+System-HIS module 'sb0' port 'in_data' is not declared in RTL
+System-HIS module 'sb0' port 'in_ready' is not declared in RTL
+System-HIS module 'sb0' port 'out_valid' is not declared in RTL
+System-HIS module 'sb0' port 'out_data' is not declared in RTL
+System-HIS module 'sb0' port 'out_ready' is not declared in RTL
+System-HIS module 'sb1' is not declared in manifest sources
+System-HIS module 'sb1' parameter 'DATA_WIDTH' is not declared in RTL
+System-HIS module 'sb1' port 'clk' is not declared in RTL
+System-HIS module 'sb1' port 'rst_n' is not declared in RTL
+System-HIS module 'sb1' port 'in_valid' is not declared in RTL
+System-HIS module 'sb1' port 'in_data' is not declared in RTL
+System-HIS module 'sb1' port 'in_ready' is not declared in RTL
+System-HIS module 'sb1' port 'out_valid' is not declared in RTL
+System-HIS module 'sb1' port 'out_data' is not declared in RTL
+System-HIS module 'sb1' port 'out_ready' is not declared in RTL
+System-HIS module 'join' is not declared in manifest sources
+System-HIS module 'join' parameter 'DATA_WIDTH' is not declared in RTL
+System-HIS module 'join' port 'clk' is not declared in RTL
+System-HIS module 'join' port 'rst_n' is not declared in RTL
+System-HIS module 'join' port 'in0_valid' is not declared in RTL
+System-HIS module 'join' port 'in0_data' is not declared in RTL
+System-HIS module 'join' port 'in0_ready' is not declared in RTL
+System-HIS module 'join' port 'in1_valid' is not declared in RTL
+System-HIS module 'join' port 'in1_data' is not declared in RTL
+System-HIS module 'join' port 'in1_ready' is not declared in RTL
+System-HIS module 'join' port 'out_valid' is not declared in RTL
+System-HIS module 'join' port 'out_data' is not declared in RTL
+System-HIS module 'join' port 'out_ready' is not declared in RTL
+System-HIS module 'acc' is not declared in manifest sources
+System-HIS module 'acc' parameter 'DATA_WIDTH' is not declared in RTL
+System-HIS module 'acc' parameter 'SUM_WIDTH' is not declared in RTL
+System-HIS module 'acc' port 'clk' is not declared in RTL
+System-HIS module 'acc' port 'rst_n' is not declared in RTL
+System-HIS module 'acc' port 'sample_valid' is not declared in RTL
+System-HIS module 'acc' port 'sample' is not declared in RTL
+System-HIS module 'acc' port 'sample_ready' is not declared in RTL
+System-HIS module 'acc' port 'sum_valid' is not declared in RTL
+System-HIS module 'acc' port 'sum' is not declared in RTL
+System-HIS module 'acc' port 'sum_ready' is not declared in RTL
+System-HIS module 'stg' is not declared in manifest sources
+System-HIS module 'stg' parameter 'DATA_WIDTH' is not declared in RTL
+System-HIS module 'stg' port 'clk' is not declared in RTL
+System-HIS module 'stg' port 'rst_n' is not declared in RTL
+System-HIS module 'stg' port 'in_valid' is not declared in RTL
+System-HIS module 'stg' port 'in_data' is not declared in RTL
+System-HIS module 'stg' port 'in_ready' is not declared in RTL
+System-HIS module 'stg' port 'out_valid' is not declared in RTL
+System-HIS module 'stg' port 'out_data' is not declared in RTL
+System-HIS module 'stg' port 'out_ready' is not declared in RTL
+System-HIS module 'skid_buffer' port 'in_data' width 8 does not match RTL [DATA_WIDTH-1:0]
+System-HIS module 'skid_buffer' port 'out_data' width 8 does not match RTL [DATA_WIDTH-1:0]
+System-HIS module 'stream_join' port 'in0_data' width 8 does not match RTL [DATA_WIDTH-1:0]
+System-HIS module 'stream_join' port 'in1_data' width 8 does not match RTL [DATA_WIDTH-1:0]
+System-HIS module 'stream_join' port 'out_data' width 16 does not match RTL [2*DATA_WIDTH-1:0]
+System-HIS module 'accumulator_core' port 'sample' width 16 does not match RTL [2*DATA_WIDTH-1:0]
+System-HIS module 'accumulator_core' port 'sum' width 16 does not match RTL [SUM_WIDTH-1:0]
+System-HIS module 'stream_stage' port 'in_data' width 16 does not match RTL [DATA_WIDTH-1:0]
+System-HIS module 'stream_stage' port 'out_data' width 16 does not match RTL [DATA_WIDTH-1:0]

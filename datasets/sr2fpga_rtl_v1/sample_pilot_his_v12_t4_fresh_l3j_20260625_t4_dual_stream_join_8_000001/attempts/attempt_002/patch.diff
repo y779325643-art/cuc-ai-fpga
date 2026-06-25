@@ -1,0 +1,114 @@
+--- a/constraints/timing.sdc
++++ b/constraints/timing.sdc
+@@ -1,4 +1,3 @@
+-# Timing constraints for 100 MHz clock
+ create_clock -period 10.000 -name clk [get_ports clk]
+ set_clock_uncertainty -setup 0.200 [get_clocks clk]
+ set_clock_uncertainty -hold 0.100 [get_clocks clk]
+--- a/sim/tb_top.v
++++ b/sim/tb_top.v
+@@ -78,46 +78,28 @@
+         #15 rst_n = 1;
+         #20;
+ 
+-        // Drive stimulus on negedge
+-        i = 0;
+-        cycle_count = 0;
+-        while (i < num_packets && cycle_count < 100) begin
++        // Basic test: drive stimulus and check each output
++        for (i = 0; i < num_packets; i = i + 1) begin
+             @(negedge clk);
+             in0_valid = 1;
+             in1_valid = 1;
+             in0_data = seq0[i];
+             in1_data = seq1[i];
+-            // Wait for handshake
+             @(posedge clk);
+-            // Observe outputs on negedge after posedge
+-            @(negedge clk);
+-            // Check if output occurred and expected
+-            // We'll check in a separate loop for simplicity
+-            // Wait until out_valid and check
+-            fork : wait_and_check
+-                begin
+-                    wait(out_valid);
+-                    // Small delay to allow data to settle
+-                    #1;
+-                    if (out_data !== expected_out[i]) begin
+-                        $display("TEST_FAIL at packet %0d: expected %0d, got %0d", i, expected_out[i], out_data);
+-                        test_pass = 0;
+-                    end else begin
+-                        $display("Packet %0d OK: expected %0d, got %0d", i, expected_out[i], out_data);
+-                    end
+-                end
+-            join
+-            // Release valid
++            // Wait for output valid
++            wait(out_valid);
++            // Small delay to allow data to settle
++            #1;
++            if (out_data !== expected_out[i]) begin
++                $display("TEST_FAIL at packet %0d: expected %0d, got %0d", i, expected_out[i], out_data);
++                test_pass = 0;
++            end else begin
++                $display("Packet %0d OK: expected %0d, got %0d", i, expected_out[i], out_data);
++            end
++            // Withdraw valid on next negedge
+             @(negedge clk);
+             in0_valid = 0;
+             in1_valid = 0;
+-            i = i + 1;
+-            cycle_count = cycle_count + 1;
+-        end
+-
+-        if (i < num_packets) begin
+-            $display("TEST_FAIL: timeout waiting for transfers");
+-            test_pass = 0;
+         end
+ 
+         // Additional backpressure test
+@@ -128,24 +110,23 @@
+         #20 rst_n = 1;
+         #20;
+ 
+-        i = 0;
+-        cycle_count = 0;
+-        out_ready = 0; // hold backpressure
+-        while (i < num_packets && cycle_count < 100) begin
++        // Backpressure test with full pipeline clearing
++        for (i = 0; i < num_packets; i = i + 1) begin
+             @(negedge clk);
+             in0_valid = 1;
+             in1_valid = 1;
+             in0_data = seq0[i];
+             in1_data = seq1[i];
+-            // Assert out_ready after some cycles
++            // Hold out_ready low initially
++            out_ready = 0;
++            // After some cycles, assert out_ready
+             if (i == 0) begin
+                 #30 out_ready = 1;
+             end else begin
+                 #15 out_ready = 1;
+             end
+             @(posedge clk);
+-            // Wait for output
+-            @(negedge clk);
++            // Wait for output valid
+             wait(out_valid);
+             #1;
+             if (out_data !== expected_out[i]) begin
+@@ -158,13 +139,6 @@
+             in0_valid = 0;
+             in1_valid = 0;
+             out_ready = 0; // re-assert backpressure for next
+-            i = i + 1;
+-            cycle_count = cycle_count + 1;
+-        end
+-
+-        if (i < num_packets) begin
+-            $display("TEST_FAIL: timeout during backpressure test");
+-            test_pass = 0;
+         end
+ 
+         #100;

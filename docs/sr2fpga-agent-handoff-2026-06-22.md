@@ -8,19 +8,199 @@ requirement -> System-HIS -> multi-file Verilog RTL project -> open-source EDA t
 
 The important research asset is not only passing RTL, but also failed attempts with tool logs, diagnosis, and locally computed `patch.diff`.
 
-## Current Branch And Code State
+## Current Status Update - 2026-06-25
 
-- Branch: `codex/sr2fpga-data-agent`
-- Latest committed repair optimization before this note: `d272dd2 Minimize DeepSeek repair patch noise`
-- Current source changes in progress:
-  - `LLM/src/sr2fpga_agent/recorder.py`
-  - `LLM/tests/test_sr2fpga_agent_recorder.py`
-- Reason: `export_training_views()` failed when a macOS `.DS_Store` file appeared under a generated project directory. The fix skips hidden files while exporting project files.
-- Verification after the fix:
-  - `python3 -m unittest LLM.tests.test_sr2fpga_agent_recorder.DatasetRecorderTest.test_export_training_views_ignores_hidden_project_files -q`
-  - `python3 -m unittest discover -s LLM/tests -q`
+The project is now past the first System-HIS v1.2 freeze and is using fresh T4
+dual-stream-join pilots to separate three different phenomena:
 
-## Data Generated In This Run
+- real model/project failures in generated multi-file RTL packages;
+- evaluator or checker false positives that should not become dataset labels;
+- generated-testbench oracle bugs that can masquerade as RTL functional bugs.
+
+Current implementation state in the uncommitted workspace:
+
+- `system-his-v1.2` is the canonical clean schema, with HIS↔RTL L0 checking,
+  width-equivalence handling, structured `control_flow`, FSM validation, and
+  schema-derived clean/quarantine export metadata.
+- RTL introspection has been factored into `rtl_introspect.py` and reused by
+  the L0 checkers.
+- The runner records generation failures, repair failures, attempt stage
+  transitions, contract metrics, and latent generated-testbench issues.
+- DeepSeek project/HIS2PROJECT/repair prompts now include Icarus portability,
+  bounded-wait, anti-cheating, back-to-back valid-ready, observation-order, and
+  input-valid withdrawal rules.
+- `testbench_checker.py` now detects generated-testbench observation races and
+  stimulus reaccept risks before simulation.
+- `semantic_trace.py` parses `TRACE ...` simulation logs and summarizes
+  accepted input, join, accumulator, and output transactions for mismatch
+  diagnosis.
+- Repair acceptance now guards against contract regression: v1.2 RTL repairs
+  that introduce new L0 contract violations are rejected and classified
+  separately from ordinary repair failures.
+
+Latest T4 simple-prompt pilot sequence:
+
+| Run | Result | Main signal |
+| --- | --- | --- |
+| `pilot-his-v12-t4-fresh-l3h-20260625` | `L0_FAIL` | repair oscillated between lint fixes and broken System-HIS/RTL contract |
+| `pilot-his-v12-t4-fresh-l3i-20260625` | official `L0_FAIL`, offline L0 passes after checker fix | evaluator false positive from missing FSM owner inference |
+| `pilot-his-v12-t4-fresh-l3j-20260625` | `L1` | semantic trace found generated-testbench stimulus reaccept bug |
+| `pilot-his-v12-t4-fresh-l3k-20260625` | `L1` | no latent testbench issues; remaining failures are cleaner RTL/protocol semantic candidates |
+
+Most recent verified command before this handoff update:
+
+```bash
+python3 -m unittest discover -s LLM/tests -q
+# Ran 228 tests - OK
+python3 -m compileall -q LLM/src
+git diff --check
+# OK
+```
+
+Next engineering/research focus:
+
+1. Run a small fresh T4/T3 batch after the current prompt/checker freeze to
+   confirm the l3k pattern repeats.
+2. Add semantic side diagnostics automatically for `functional_mismatch`
+   attempts in valid-ready stream tasks.
+3. Decide whether the next target is an L3 repair success rate improvement or a
+   cleaner failure-repair dataset slice with preserved L1 semantic failures.
+4. Keep generated dataset additions deliberate; the workspace currently has many
+   local run artifacts and JSONL export changes.
+
+## Current Status Update - 2026-06-24
+
+System-HIS v1.2 is now the canonical clean schema. The retired
+`system-his-v1.2-topdown` suffix is historical prototype data, and legacy/v1.1
+metadata should be treated as `training_split: quarantine` unless explicitly
+migrated.
+
+Implemented in the current uncommitted workspace:
+
+- deterministic `ProjectGenerator` emits `system-his-v1.2` for all supported
+  task families;
+- v1.2 checker validates `data_flow.timing`, structured `control_flow`
+  `when/effect` guards, FSM declarations, guard depth <= 2, and HIS↔RTL
+  cross-file consistency;
+- project-level L0 routes v1.2 projects through the HIS↔RTL cross-check;
+- DeepSeek REQ2HIS prompt requests canonical v1.2, timing, structured guards,
+  and stable component/instance/data-flow names;
+- runner metadata adds `training_split` (`clean` for v1.2, `quarantine` for
+  legacy/v1.1), and recorder exports backfill this field for older samples;
+- reference T4 fixture
+  `docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json` now uses
+  canonical v1.2 with `data_flow.timing` and structured control-flow examples.
+
+Fresh verification:
+
+```bash
+python3 -m unittest discover -s LLM/tests -q
+# Ran 190 tests - OK
+```
+
+## Current Status - 2026-06-23
+
+Branch:
+
+`codex/sr2fpga-data-agent`
+
+Read first:
+
+- `docs/README.md` - documentation map.
+- `docs/current-status.md` - short living status page.
+- `README.md` - repository-level overview.
+- `CLAUDE.md` - agent instructions and invariants.
+
+Current engineering slice:
+
+- autonomous runner hardening;
+- natural LLM failure collection for repair-trajectory learning;
+- synthetic failure injection as pipeline test and controlled-ablation support;
+- deliberate dataset hygiene.
+
+Latest relevant committed milestones:
+
+- `5042bed Update project README for SR2FPGA` - root README is now the project
+  entry point and reflects SR2FPGA, System-HIS, tool-verified trajectories,
+  autonomous runner usage, dataset/export layout, deployment pointers, and
+  secret-handling rules.
+- `bb5d055 Document SR2FPGA autonomous runner` - `LLM/README.md` and this
+  handoff file document the runner.
+- `48a11b4 Add SR2FPGA runner CLI` - runner has a direct command-line entry:
+  `python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_agent.example.yaml --run-id <run-id>`.
+- `4da2e69 Fix SR2FPGA runner rejected sample cursor` - fixed resume/progress
+  behavior for pre-existing sample directories.
+- `1629619 Add autonomous SR2FPGA batch runner` - batch runner can plan samples,
+  call `DataGenerationAgent.run_one()`, write `run_state.json`, `events.jsonl`,
+  `summary.json`, and refresh exports.
+- `9007910 Add SR2FPGA runner state buckets` - runner state tracks
+  `success_l3`, `repair_trajectory`, and `rejected` buckets.
+- `2157d1c update 2026.06.23 agent` - later workspace update adding Claude
+  context files, report PDFs, temporary PDF renders, and smoke data.
+
+Current uncommitted implementation work:
+
+- `LLM/src/sr2fpga_agent/failure_injector.py`
+- `LLM/tests/test_sr2fpga_agent_failure_injector.py`
+- `LLM/src/sr2fpga_agent/runner.py`
+- `LLM/tests/test_sr2fpga_agent_runner.py`
+- `configs/sr2fpga_agent.example.yaml`
+- `LLM/README.md`
+- docs/index/status cleanup files
+
+Current failure injector support:
+
+- `rename_reset_port`
+- `missing_manifest_source`
+- `wrong_top_module`
+- `width_mismatch`
+- `testbench_expected_value_mismatch`
+- `constraint_missing_clock`
+- `multimodule_connection_mismatch`
+- `FailureInjectingProjectGenerator` wrapper around a base project generator
+
+Current verification from the latest implementation pass:
+
+```bash
+python3 -m unittest LLM.tests.test_sr2fpga_agent_failure_injector LLM.tests.test_sr2fpga_agent_runner -q
+# Ran 23 tests - OK
+
+python3 -m unittest discover -s LLM/tests -q
+# Ran 85 tests - OK
+```
+
+## Known Issues And Next Work
+
+1. Continue hardening the autonomous runner.
+   - Current command: `python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_agent.example.yaml --run-id <run-id>`.
+   - Run state and logs live under `tmp/sr2fpga_runs/<run-id>/`.
+   - Default research runs should prioritize natural LLM failures.
+   - Optional synthetic failure injection is configured per task through
+     `failure_injectors` and should be used mainly for smoke tests and ablation.
+
+2. Add failure-source metadata.
+   - Record `failure_origin`, `generator`, `repair_provider`, and task
+     difficulty so natural LLM failures can be separated from synthetic or
+     mutation-derived failures in exports and analysis.
+
+3. Extend first-class failure injector coverage.
+   - Current injector code covers reset-port rename, missing manifest source,
+     wrong top module, width mismatch, testbench expected-value mismatch,
+     constraint references missing clock, and multi-module connection mismatch.
+   - Runner configs can apply those injectors per planned task.
+   - Next useful injector work: make width/testbench mismatch patterns cover
+     more task families beyond counter-style self-checks.
+
+4. Improve DeepSeek repair for real LLM failures.
+   - `sample_llm_batch_000002` stopped at L1 after repair.
+   - Inspect its attempt logs and patch before changing prompts.
+
+5. Treat dataset commits deliberately.
+   - The repo already contains a milestone dataset snapshot.
+   - Do not stage generated dataset deletions or additions casually.
+   - Never commit model weights, LoRA outputs, or API keys.
+
+## Historical Run Notes
 
 Dataset root:
 
@@ -30,86 +210,31 @@ Export root:
 
 `datasets/sr2fpga_rtl_v1_exports`
 
-New forced repair samples:
+Earlier forced repair samples generated in this workstream:
 
-- `sample_llm_repair_forced_minpatch_000005` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000006` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000007` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000008` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000009` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000010` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000011` - L3, one failure, one repair patch
-- `sample_llm_repair_forced_minpatch_000012` - L3, one failure, one repair patch
+- `sample_llm_repair_forced_minpatch_000005` through
+  `sample_llm_repair_forced_minpatch_000012` - L3, one failure, one repair
+  patch each.
 
-All eight forced repair patches are RTL-only and do not rewrite `manifest.json`.
+Earlier direct DeepSeek generation samples:
 
-New direct DeepSeek generation samples:
+- `sample_llm_batch_000001` - L3, no repair needed.
+- `sample_llm_batch_000002` - L1, two failed attempts, one repair patch.
+- `sample_llm_batch_000003` - L3, no repair needed.
+- `sample_llm_batch_000004` - L3, no repair needed.
 
-- `sample_llm_batch_000001` - L3, no repair needed
-- `sample_llm_batch_000002` - L1, two failed attempts, one repair patch
-- `sample_llm_batch_000003` - L3, no repair needed
-- `sample_llm_batch_000004` - L3, no repair needed
+Keep `sample_llm_batch_000002`: it is a useful real LLM boundary case where the
+current repair loop did not reach simulation/synthesis.
 
-Keep `sample_llm_batch_000002`: it is a useful real LLM boundary case where the current repair loop did not reach simulation/synthesis.
+Previously recorded export counts after refresh:
 
-Current export counts after refresh:
-
-- `failure_to_diagnosis.jsonl`: 16
-- `failure_to_patch.jsonl`: 14
-- `requirement_to_his.jsonl`: 33
-- `his_to_project.jsonl`: 33
-- `requirement_to_project.jsonl`: 33
-- `project_to_predicted_qor.jsonl`: 33
-- `project_to_measured_qor.jsonl`: 33
-
-## Commands Used
-
-Run tests:
-
-```bash
-python3 -m unittest discover -s LLM/tests -q
-```
-
-Refresh training views:
-
-```bash
-python3 - <<'PY'
-from pathlib import Path
-from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
-DatasetRecorder(Path("datasets/sr2fpga_rtl_v1")).export_training_views(
-    Path("datasets/sr2fpga_rtl_v1_exports")
-)
-PY
-```
-
-Count export rows:
-
-```bash
-python3 - <<'PY'
-from pathlib import Path
-root = Path("datasets/sr2fpga_rtl_v1_exports")
-for path in sorted(root.glob("*.jsonl")):
-    print(path.name, sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip()))
-PY
-```
-
-## Known Issues And Next Work
-
-1. Add a formal batch data-generation runner instead of ad hoc Python snippets.
-   - Suggested command: `python3 -m LLM.src.sr2fpga_agent.batch_generate --mode forced-repair --count ...`
-   - It should write a JSON run summary under `tmp/data_generation_runs/` or another ignored run-log directory.
-
-2. Add a first-class failure injector.
-   - Current forced samples use only one injected error: rename RTL port `rst_n` to `reset_n`.
-   - Next useful injectors: width mismatch, testbench expected-value mismatch, missing manifest source, wrong top module, constraint references missing clock.
-
-3. Improve DeepSeek repair for real LLM failures.
-   - `sample_llm_batch_000002` stopped at L1 after repair.
-   - Inspect its attempt logs and patch before changing prompts.
-
-4. Keep generated datasets out of Git for now.
-   - Commit code, tests, docs, configs.
-   - Do not commit `datasets/`, model weights, LoRA outputs, or API keys.
+- `failure_to_diagnosis.jsonl`: 21
+- `failure_to_patch.jsonl`: 17
+- `his_to_project.jsonl`: 47
+- `project_to_measured_qor.jsonl`: 47
+- `project_to_predicted_qor.jsonl`: 47
+- `requirement_to_his.jsonl`: 47
+- `requirement_to_project.jsonl`: 47
 
 ## Multi-Module Task Family Implementation
 

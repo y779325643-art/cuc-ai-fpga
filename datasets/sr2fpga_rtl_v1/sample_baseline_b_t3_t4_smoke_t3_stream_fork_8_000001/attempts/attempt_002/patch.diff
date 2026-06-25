@@ -1,0 +1,126 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -27,13 +27,13 @@
+     "ports": [
+       {"name": "clk", "direction": "input", "width": 1},
+       {"name": "rst_n", "direction": "input", "width": 1},
+-      {"name": "in_data", "direction": "input", "width": 8},
++      {"name": "in_data", "direction": "input", "width": "[7:0]"},
+       {"name": "in_valid", "direction": "input", "width": 1},
+       {"name": "in_ready", "direction": "output", "width": 1},
+-      {"name": "out0_data", "direction": "output", "width": 8},
++      {"name": "out0_data", "direction": "output", "width": "[7:0]"},
+       {"name": "out0_valid", "direction": "output", "width": 1},
+       {"name": "out0_ready", "direction": "input", "width": 1},
+-      {"name": "out1_data", "direction": "output", "width": 8},
++      {"name": "out1_data", "direction": "output", "width": "[7:0]"},
+       {"name": "out1_valid", "direction": "output", "width": 1},
+       {"name": "out1_ready", "direction": "input", "width": 1}
+     ]
+@@ -65,13 +65,13 @@
+       "ports": [
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_data", "direction": "input", "width": "[7:0]"},
+         {"name": "in_valid", "direction": "input", "width": 1},
+         {"name": "in_ready", "direction": "output", "width": 1},
+-        {"name": "out0_data", "direction": "output", "width": 8},
++        {"name": "out0_data", "direction": "output", "width": "[7:0]"},
+         {"name": "out0_valid", "direction": "output", "width": 1},
+         {"name": "out0_ready", "direction": "input", "width": 1},
+-        {"name": "out1_data", "direction": "output", "width": 8},
++        {"name": "out1_data", "direction": "output", "width": "[7:0]"},
+         {"name": "out1_valid", "direction": "output", "width": 1},
+         {"name": "out1_ready", "direction": "input", "width": 1}
+       ],
+@@ -88,10 +88,10 @@
+       "ports": [
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "in_valid", "direction": "input", "width": 1},
+         {"name": "in_ready", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out_valid", "direction": "output", "width": 1},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+@@ -108,13 +108,13 @@
+       "ports": [
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "in_valid", "direction": "input", "width": 1},
+         {"name": "in_ready", "direction": "output", "width": 1},
+-        {"name": "out0_data", "direction": "output", "width": 8},
++        {"name": "out0_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out0_valid", "direction": "output", "width": 1},
+         {"name": "out0_ready", "direction": "input", "width": 1},
+-        {"name": "out1_data", "direction": "output", "width": 8},
++        {"name": "out1_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out1_valid", "direction": "output", "width": 1},
+         {"name": "out1_ready", "direction": "input", "width": 1}
+       ],
+@@ -131,10 +131,10 @@
+       "ports": [
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "in_valid", "direction": "input", "width": 1},
+         {"name": "in_ready", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out_valid", "direction": "output", "width": 1},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+@@ -146,26 +146,26 @@
+     }
+   ],
+   "connections": [
+-    {"from": {"module": "top", "port": "clk"}, "to": {"module": "skid", "port": "clk"}, "signal": "clk", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "top", "port": "rst_n"}, "to": {"module": "skid", "port": "rst_n"}, "signal": "rst_n", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "top", "port": "in_data"}, "to": {"module": "skid", "port": "in_data"}, "signal": "in_data", "protocol": "register", "width": 8, "cdc": false},
+-    {"from": {"module": "top", "port": "in_valid"}, "to": {"module": "skid", "port": "in_valid"}, "signal": "in_valid", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "skid", "port": "in_ready"}, "to": {"module": "top", "port": "in_ready"}, "signal": "in_ready", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "skid", "port": "out_data"}, "to": {"module": "fork_inst", "port": "in_data"}, "signal": "skid_out_data", "protocol": "register", "width": 8, "cdc": false},
+-    {"from": {"module": "skid", "port": "out_valid"}, "to": {"module": "fork_inst", "port": "in_valid"}, "signal": "skid_out_valid", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "fork_inst", "port": "in_ready"}, "to": {"module": "skid", "port": "out_ready"}, "signal": "skid_out_ready", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "fork_inst", "port": "out0_data"}, "to": {"module": "stage0", "port": "in_data"}, "signal": "fork_out0_data", "protocol": "register", "width": 8, "cdc": false},
+-    {"from": {"module": "fork_inst", "port": "out0_valid"}, "to": {"module": "stage0", "port": "in_valid"}, "signal": "fork_out0_valid", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "stage0", "port": "in_ready"}, "to": {"module": "fork_inst", "port": "out0_ready"}, "signal": "fork_out0_ready", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "fork_inst", "port": "out1_data"}, "to": {"module": "stage1", "port": "in_data"}, "signal": "fork_out1_data", "protocol": "register", "width": 8, "cdc": false},
+-    {"from": {"module": "fork_inst", "port": "out1_valid"}, "to": {"module": "stage1", "port": "in_valid"}, "signal": "fork_out1_valid", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "stage1", "port": "in_ready"}, "to": {"module": "fork_inst", "port": "out1_ready"}, "signal": "fork_out1_ready", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "stage0", "port": "out_data"}, "to": {"module": "top", "port": "out0_data"}, "signal": "out0_data", "protocol": "register", "width": 8, "cdc": false},
+-    {"from": {"module": "stage0", "port": "out_valid"}, "to": {"module": "top", "port": "out0_valid"}, "signal": "out0_valid", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "top", "port": "out0_ready"}, "to": {"module": "stage0", "port": "out_ready"}, "signal": "out0_ready", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "stage1", "port": "out_data"}, "to": {"module": "top", "port": "out1_data"}, "signal": "out1_data", "protocol": "register", "width": 8, "cdc": false},
+-    {"from": {"module": "stage1", "port": "out_valid"}, "to": {"module": "top", "port": "out1_valid"}, "signal": "out1_valid", "protocol": "register", "width": 1, "cdc": false},
+-    {"from": {"module": "top", "port": "out1_ready"}, "to": {"module": "stage1", "port": "out_ready"}, "signal": "out1_ready", "protocol": "register", "width": 1, "cdc": false}
++    {"from": {"module": "top", "port": "clk"}, "to": {"module": "skid_buffer", "port": "clk"}, "signal": "clk", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "rst_n"}, "to": {"module": "skid_buffer", "port": "rst_n"}, "signal": "rst_n", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "in_data"}, "to": {"module": "skid_buffer", "port": "in_data"}, "signal": "in_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "top", "port": "in_valid"}, "to": {"module": "skid_buffer", "port": "in_valid"}, "signal": "in_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "skid_buffer", "port": "in_ready"}, "to": {"module": "top", "port": "in_ready"}, "signal": "in_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "skid_buffer", "port": "out_data"}, "to": {"module": "stream_fork", "port": "in_data"}, "signal": "skid_out_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "skid_buffer", "port": "out_valid"}, "to": {"module": "stream_fork", "port": "in_valid"}, "signal": "skid_out_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stream_fork", "port": "in_ready"}, "to": {"module": "skid_buffer", "port": "out_ready"}, "signal": "skid_out_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stream_fork", "port": "out0_data"}, "to": {"module": "stream_stage", "port": "in_data"}, "signal": "fork_out0_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "stream_fork", "port": "out0_valid"}, "to": {"module": "stream_stage", "port": "in_valid"}, "signal": "fork_out0_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stream_stage", "port": "in_ready"}, "to": {"module": "stream_fork", "port": "out0_ready"}, "signal": "fork_out0_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stream_fork", "port": "out1_data"}, "to": {"module": "stream_stage", "port": "in_data"}, "signal": "fork_out1_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "stream_fork", "port": "out1_valid"}, "to": {"module": "stream_stage", "port": "in_valid"}, "signal": "fork_out1_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stream_stage", "port": "in_ready"}, "to": {"module": "stream_fork", "port": "out1_ready"}, "signal": "fork_out1_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stream_stage", "port": "out_data"}, "to": {"module": "top", "port": "out0_data"}, "signal": "out0_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "stream_stage", "port": "out_valid"}, "to": {"module": "top", "port": "out0_valid"}, "signal": "out0_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "out0_ready"}, "to": {"module": "stream_stage", "port": "out_ready"}, "signal": "out0_ready", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "stream_stage", "port": "out_data"}, "to": {"module": "top", "port": "out1_data"}, "signal": "out1_data", "protocol": "register", "width": 8, "cdc": false},
++    {"from": {"module": "stream_stage", "port": "out_valid"}, "to": {"module": "top", "port": "out1_valid"}, "signal": "out1_valid", "protocol": "register", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "out1_ready"}, "to": {"module": "stream_stage", "port": "out_ready"}, "signal": "out1_ready", "protocol": "register", "width": 1, "cdc": false}
+   ],
+   "top_ports": ["clk", "rst_n", "in_data", "in_valid", "in_ready", "out0_data", "out0_valid", "out0_ready", "out1_data", "out1_valid", "out1_ready"],
+   "platform": {

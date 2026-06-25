@@ -5,9 +5,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## What This Project Is
 
 This is **SR2FPGA**: a TCAD-oriented EDA research project on *tool-verified learning for
-system-requirement-to-FPGA RTL project generation*. The research objective in
-`docs/research-objective-sr2fpga-tcad.md` is the north star — read it before any
-engineering or writing work, and update it if the objective changes.
+system-requirement-to-FPGA RTL project generation*. The approved reframe spec in
+`docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md` is the
+primary research framing; `docs/research-objective-sr2fpga-tcad.md` is a concise
+objective summary aligned to that spec. Read both before major engineering or
+writing work, and keep the summary aligned with the reframe.
 
 The framing matters and shapes design decisions:
 - The problem is **NOT** `natural language -> Verilog`. It is
@@ -116,12 +118,14 @@ markdown before code:
 - `docs/superpowers/specs/` — approved designs (one per feature, dated).
 - `docs/superpowers/plans/` — implementation plans.
 
-When picking up in-progress work, check the newest dated spec/plan. The active thread on branch
-`codex/sr2fpga-data-agent` is the **DeepSeek repair loop**
-(`docs/superpowers/specs/2026-06-22-sr2fpga-deepseek-repair-loop-design.md`): a `DeepSeekRepairer`
-that takes a failed project + diagnosis, returns a complete repaired `GeneratedProject`, with
-`patch.diff` computed locally (not trusted from the model). It plugs into the existing
-`DataGenerationAgent(repairer=..., max_attempts=...)` hook.
+When picking up in-progress work, read `docs/current-status.md` first, then the
+detailed handoff in `docs/sr2fpga-agent-handoff-2026-06-22.md`, then only the
+directly relevant spec/plan. The current branch is `codex/sr2fpga-data-agent`.
+The active engineering slice is autonomous runner hardening and synthetic
+failure injection for repair-trajectory collection. The DeepSeek repair loop,
+LLM generation entry, multi-module tasks, and first runner shell are delivered
+historical slices; their specs/plans remain useful background, not the current
+task by default.
 
 ## Conventions
 

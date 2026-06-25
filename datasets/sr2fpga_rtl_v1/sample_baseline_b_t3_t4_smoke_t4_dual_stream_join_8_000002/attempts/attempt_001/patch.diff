@@ -1,0 +1,58 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -89,10 +89,10 @@
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+         {"name": "in_valid", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "in_ready", "direction": "output", "width": 1},
+         {"name": "out_valid", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {"WIDTH": 8},
+@@ -109,13 +109,13 @@
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+         {"name": "in0_valid", "direction": "input", "width": 1},
+-        {"name": "in0_data", "direction": "input", "width": 8},
++        {"name": "in0_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "in0_ready", "direction": "output", "width": 1},
+         {"name": "in1_valid", "direction": "input", "width": 1},
+-        {"name": "in1_data", "direction": "input", "width": 8},
++        {"name": "in1_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "in1_ready", "direction": "output", "width": 1},
+         {"name": "out_valid", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {"WIDTH": 8},
+@@ -132,10 +132,10 @@
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+         {"name": "sample_valid", "direction": "input", "width": 1},
+-        {"name": "sample", "direction": "input", "width": 8},
++        {"name": "sample", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "sample_ready", "direction": "output", "width": 1},
+         {"name": "out_valid", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {"WIDTH": 8},
+@@ -152,10 +152,10 @@
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+         {"name": "in_valid", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "in_ready", "direction": "output", "width": 1},
+         {"name": "out_valid", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8},
++        {"name": "out_data", "direction": "output", "width": "[WIDTH-1:0]"},
+         {"name": "out_ready", "direction": "input", "width": 1}
+       ],
+       "parameters": {"WIDTH": 8},

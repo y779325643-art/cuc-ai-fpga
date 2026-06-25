@@ -1,0 +1,21 @@
+{
+  "project_name": "baseline_b_smoke_t1_event_counter_8_000001",
+  "description": "8-bit event-counting subsystem with event gate and counter core",
+  "clock_hz": 100000000,
+  "reset_polarity": "active_low",
+  "modules": [
+    {
+      "name": "top",
+      "file": "rtl/top.v",
+      "instantiates": ["event_gate", "counter_core"]
+    },
+    {
+      "name": "event_gate",
+      "file": "rtl/event_gate.v"
+    },
+    {
+      "name": "counter_core",
+      "file": "rtl/counter_core.v"
+    }
+  ]
+}

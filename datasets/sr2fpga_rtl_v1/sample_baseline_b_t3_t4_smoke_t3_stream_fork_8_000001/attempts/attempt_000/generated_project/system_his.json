@@ -1,0 +1,7 @@
+{
+  "project_name": "baseline_b_t3_t4_smoke_t3_stream_fork_8_000001",
+  "generator": "SR2FPGA",
+  "topology": "t3_stream_fork",
+  "difficulty": "T3",
+  "width": 8
+}

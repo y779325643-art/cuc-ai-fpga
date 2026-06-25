@@ -1,0 +1,24 @@
+manifest.constraints.timing is required
+System-HIS module 'top' parameters must be an object
+System-HIS module 'top' params must be a list
+System-HIS module 'skid_buffer' parameters must be an object
+System-HIS module 'skid_buffer' params must be a list
+System-HIS module 'stream_join' parameters must be an object
+System-HIS module 'stream_join' params must be a list
+System-HIS module 'accumulator_core' parameters must be an object
+System-HIS module 'accumulator_core' params must be a list
+System-HIS module 'stream_stage' parameters must be an object
+System-HIS module 'stream_stage' params must be a list
+System-HIS connection[0].protocol is invalid
+System-HIS connection[1].protocol is invalid
+System-HIS connection[2].protocol is invalid
+System-HIS connection[3].protocol is invalid
+System-HIS connection[4].protocol is invalid
+System-HIS connection[5].protocol is invalid
+System-HIS connection[6].protocol is invalid
+System-HIS connection[7].protocol is invalid
+System-HIS connection[8].protocol is invalid
+System-HIS connection[9].protocol is invalid
+System-HIS connection[10].protocol is invalid
+System-HIS connection[11].protocol is invalid
+system_his.top_ports does not match top module RTL ports

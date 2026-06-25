@@ -1,0 +1,17 @@
+--- a/rtl/skid_buffer.v
++++ b/rtl/skid_buffer.v
+@@ -1,4 +1,4 @@
+-module skid_buffer #(parameter DATA_WIDTH=8, DEPTH=2) (
++module skid_buffer #(parameter DATA_WIDTH=8) (
+     input clk, rst_n,
+     input in_valid,
+     output reg in_ready,
+@@ -12,8 +12,6 @@
+ reg valid0, valid1;
+ wire push = in_valid && in_ready;
+ wire pop = out_ready && out_valid;
+-
+-integer i;
+ 
+ always @(posedge clk or negedge rst_n) begin
+     if (!rst_n) begin

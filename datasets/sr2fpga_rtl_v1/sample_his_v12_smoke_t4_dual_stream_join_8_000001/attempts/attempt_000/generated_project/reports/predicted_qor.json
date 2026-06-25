@@ -1,0 +1,9 @@
+{
+  "project": "his_v12_smoke_t4_dual_stream_join_8_000001",
+  "predicted_fmax_mhz": 100,
+  "predicted_lut": 50,
+  "predicted_ff": 40,
+  "predicted_bram": 0,
+  "predicted_dsp": 0,
+  "notes": "Small design, estimated low resource usage"
+}

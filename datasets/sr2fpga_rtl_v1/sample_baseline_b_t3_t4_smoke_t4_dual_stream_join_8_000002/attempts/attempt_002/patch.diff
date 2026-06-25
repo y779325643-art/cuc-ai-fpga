@@ -1,0 +1,12 @@
+--- a/rtl/top.v
++++ b/rtl/top.v
+@@ -18,9 +18,6 @@
+ wire join_out_valid;
+ wire [7:0] join_out_data;
+ wire join_out_ready;
+-wire acc_sample_valid;
+-wire [7:0] acc_sample;
+-wire acc_sample_ready;
+ wire acc_out_valid;
+ wire [7:0] acc_out_data;
+ wire acc_out_ready;

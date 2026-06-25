@@ -1,0 +1,6 @@
+{
+  "failure_type": "lint_warning_as_error",
+  "stage": "lint",
+  "root_cause": "%Warning-UNUSEDPARAM: rtl/skid_buffer.v:1:46: Parameter is not used: 'DEPTH'\n                                            : ... note: In instance 'top.in1_buffer'\n    1 | module skid_buffer #(parameter DATA_WIDTH=8, DEPTH=2) (\n      |                                              ^~~~~\n                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048\n                      ... Use \"/* verilator lint_off UNUSEDPARAM */\" and lint_on around source to disable this message.\n%Warning-UNUSEDSIGNAL: rtl/skid_buffer.v:16:9: Signal is not driven, nor used: 'i'\n                                             : ... note: In instance 'top.in1_buffer'\n   16 | integer i;\n      |         ^\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Error: Exiting due to 2 warning(s)",
+  "affected_files": []
+}

@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDSIGNAL: rtl/top.v:21:6: Signal is not driven, nor used: 'acc_sample_valid'\n                                     : ... note: In instance 'top'\n   21 | wire acc_sample_valid;\n      |      ^~~~~~~~~~~~~~~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Warning-UNUSEDSIGNAL: rtl/top.v:22:12: Signal is not driven, nor used: 'acc_sample'\n                                      : ... note: In instance 'top'\n   22 | wire [7:0] acc_sample;\n      |            ^~~~~~~~~~\n%Warning-UNUSEDSIGNAL: rtl/top.v:23:6: Signal is not driven, nor used: 'acc_sample_ready'\n                                     : ... note: In instance 'top'\n   23 | wire acc_sample_ready;\n      |      ^~~~~~~~~~~~~~~~\n%Error: Exiting due to 3 warning(s)\n",
+  "duration_seconds": 0.11843029200099409
+}

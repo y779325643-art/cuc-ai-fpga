@@ -1,0 +1,7 @@
+{
+  "fmax_mhz": 100,
+  "lut_usage": "low",
+  "ff_usage": "low",
+  "bram_usage": 0,
+  "dsp_usage": 0
+}

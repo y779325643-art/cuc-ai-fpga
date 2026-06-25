@@ -1,0 +1,9 @@
+{
+  "estimated_fmax_mhz": 100,
+  "estimated_lut_count": 200,
+  "estimated_register_count": 100,
+  "estimated_block_ram_bits": 0,
+  "estimated_dsp_count": 0,
+  "timing_met": true,
+  "warnings": []
+}

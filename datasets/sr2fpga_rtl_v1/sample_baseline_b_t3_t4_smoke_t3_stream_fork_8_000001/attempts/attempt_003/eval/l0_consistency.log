@@ -1,0 +1,4 @@
+System-HIS module 'top' port 'in_data' width [7:0] does not match RTL 8
+System-HIS module 'top' port 'out0_data' width [7:0] does not match RTL 8
+System-HIS module 'top' port 'out1_data' width [7:0] does not match RTL 8
+system_his.top_ports does not match top module RTL ports

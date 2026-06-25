@@ -4,12 +4,17 @@ from __future__ import annotations
 
 import difflib
 import json
+import ssl
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Callable
 
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
+from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
+from LLM.src.sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
+from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12
 
 
 REQUIRED_PROJECT_FILES = {
@@ -32,6 +37,21 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/vector_rom.v",
         "rtl/mac_unit.v",
         "rtl/dot_product_engine.v",
+    ],
+    "composed_event_counter": ["rtl/top.v", "rtl/event_gate.v", "rtl/counter_core.v"],
+    "composed_stream_accumulator": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/accumulator_core.v"],
+    "composed_stream_fork": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_fork.v",
+        "rtl/stream_stage.v",
+    ],
+    "composed_dual_stream_join": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_join.v",
+        "rtl/accumulator_core.v",
+        "rtl/stream_stage.v",
     ],
 }
 
@@ -70,11 +90,17 @@ class DeepSeekClient:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(request, timeout=self.config.timeout_seconds) as response:
+            with urllib.request.urlopen(
+                request,
+                timeout=self.config.timeout_seconds,
+                context=_default_ssl_context(),
+            ) as response:
                 data = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             raise RuntimeError(f"DeepSeek API request failed with HTTP {exc.code}: {body}") from exc
+        except TimeoutError as exc:
+            raise RuntimeError("DeepSeek API request timed out") from exc
         except urllib.error.URLError as exc:
             raise RuntimeError(f"DeepSeek API request failed: {exc.reason}") from exc
 
@@ -82,6 +108,14 @@ class DeepSeekClient:
             return str(data["choices"][0]["message"]["content"])
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError("DeepSeek API response did not contain choices[0].message.content") from exc
+
+
+def _default_ssl_context() -> ssl.SSLContext:
+    try:
+        import certifi
+    except ModuleNotFoundError:
+        return ssl.create_default_context()
+    return ssl.create_default_context(cafile=certifi.where())
 
 
 class DeepSeekProjectGenerator:
@@ -106,6 +140,151 @@ class DeepSeekProjectGenerator:
         raise RuntimeError("DeepSeek generator did not run")
 
 
+class DeepSeekSystemHisGenerator:
+    """Generate a System-HIS v1.2 architecture contract from a short request."""
+
+    def __init__(
+        self,
+        client: DeepSeekClient,
+        max_attempts: int = 3,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
+        self.client = client
+        self.max_attempts = max_attempts
+        self.event_sink = event_sink
+
+    def generate(self, request: ProjectRequest, platform: PlatformProfile) -> dict[str, Any]:
+        messages = _system_his_v12_messages(request, platform)
+        last_error: ValueError | None = None
+        for attempt_id in range(self.max_attempts):
+            content = self.client.chat(messages)
+            try:
+                return parse_system_his_v12(content)
+            except ValueError as exc:
+                last_error = exc
+                if attempt_id + 1 < self.max_attempts:
+                    self._emit_retry_event(request, attempt_id, exc)
+                messages = _with_system_his_retry_feedback(messages, str(exc), content)
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("DeepSeek System-HIS generator did not run")
+
+    def _emit_retry_event(self, request: ProjectRequest, attempt_id: int, exc: ValueError) -> None:
+        if self.event_sink is None:
+            return
+        self.event_sink(
+            {
+                "event": "generation_stage_retry",
+                "stage": "req2his",
+                "attempt_id": attempt_id,
+                "project_name": request.project_name,
+                "task_type": request.task_type,
+                "width": request.width,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            }
+        )
+
+
+class DeepSeekHisProjectGenerator:
+    """Generate a project package from a checked System-HIS v1.2 contract."""
+
+    def __init__(self, client: DeepSeekClient, max_attempts: int = 3) -> None:
+        self.client = client
+        self.max_attempts = max_attempts
+
+    def generate(
+        self,
+        request: ProjectRequest,
+        platform: PlatformProfile,
+        system_his: dict[str, Any],
+    ) -> GeneratedProject:
+        messages = _his_project_messages(request, platform, system_his)
+        last_error: ValueError | None = None
+        for _attempt in range(self.max_attempts):
+            content = self.client.chat(messages)
+            try:
+                files = parse_project_files(content, expected_task_type=request.task_type)
+                try:
+                    returned_system_his = parse_system_his_v12(files["system_his.json"])
+                    _validate_system_his_contract_unchanged(system_his, returned_system_his)
+                except ValueError as exc:
+                    raise ValueError(f"DeepSeek HIS2PROJECT system_his.json failed validation: {exc}") from exc
+                return GeneratedProject(project_name=request.project_name, files=files)
+            except ValueError as exc:
+                last_error = exc
+        if last_error is not None:
+            raise last_error
+        raise RuntimeError("DeepSeek HIS2PROJECT generator did not run")
+
+
+class DeepSeekTwoStageProjectGenerator:
+    """Generate a project through REQ2HIS followed by HIS2PROJECT."""
+
+    def __init__(
+        self,
+        client: DeepSeekClient,
+        max_attempts: int = 3,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
+        self.system_his_generator = DeepSeekSystemHisGenerator(
+            client,
+            max_attempts=max_attempts,
+            event_sink=event_sink,
+        )
+        self.his_project_generator = DeepSeekHisProjectGenerator(client, max_attempts=max_attempts)
+        self.event_sink = event_sink
+
+    def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
+        system_his = self._run_stage(
+            "req2his",
+            request,
+            lambda: self.system_his_generator.generate(request, platform),
+        )
+        return self._run_stage(
+            "his2project",
+            request,
+            lambda: self.his_project_generator.generate(request, platform, system_his),
+        )
+
+    def _run_stage(self, stage: str, request: ProjectRequest, action):
+        start = time.monotonic()
+        self._emit_stage_event("generation_stage_started", stage, request)
+        try:
+            result = action()
+        except Exception as exc:
+            self._emit_stage_event(
+                "generation_stage_failed",
+                stage,
+                request,
+                duration_seconds=time.monotonic() - start,
+                error_type=type(exc).__name__,
+                error=str(exc),
+            )
+            raise
+        self._emit_stage_event(
+            "generation_stage_finished",
+            stage,
+            request,
+            duration_seconds=time.monotonic() - start,
+        )
+        return result
+
+    def _emit_stage_event(self, event: str, stage: str, request: ProjectRequest, **extra: Any) -> None:
+        if self.event_sink is None:
+            return
+        self.event_sink(
+            {
+                "event": event,
+                "stage": stage,
+                "project_name": request.project_name,
+                "task_type": request.task_type,
+                "width": request.width,
+                **extra,
+            }
+        )
+
+
 class DeepSeekRepairer:
     """Repair a generated project package using DeepSeek and a tool diagnosis."""
 
@@ -120,11 +299,28 @@ class DeepSeekRepairer:
             content = self.client.chat(messages)
             try:
                 files = parse_project_files(content, expected_task_type=_project_task_type(project.files))
+                if _project_system_his_schema(project.files) == SYSTEM_HIS_V12_SCHEMA:
+                    original_system_his: dict[str, Any] | None = None
+                    try:
+                        original_system_his = parse_system_his_v12(project.files["system_his.json"])
+                    except ValueError:
+                        original_system_his = None
+                    try:
+                        repaired_system_his = parse_system_his_v12(files["system_his.json"])
+                    except ValueError as exc:
+                        raise ValueError(f"DeepSeek repair system_his.json failed validation: {exc}") from exc
+                    if original_system_his is not None and not _diagnosis_mentions_path(diagnosis, "system_his.json"):
+                        try:
+                            _validate_system_his_contract_unchanged(original_system_his, repaired_system_his)
+                        except ValueError as exc:
+                            raise ValueError(f"System-HIS v1.2 contract changed during RTL repair: {exc}") from exc
                 repaired_project = _minimize_repaired_project(
                     project,
                     GeneratedProject(project_name=project.project_name, files=files),
                     diagnosis,
                 )
+                if _project_system_his_schema(project.files) == SYSTEM_HIS_V12_SCHEMA:
+                    _validate_repair_preserves_l0_when_not_repairing_l0(repaired_project, diagnosis)
                 return RepairResult(
                     generated_project=repaired_project,
                     patch_diff=diff_projects(project, repaired_project),
@@ -159,6 +355,37 @@ def parse_project_files(content: str, expected_task_type: str | None = None) -> 
     _validate_manifest(files)
     _validate_expected_rtl_structure(files, expected_task_type)
     return files
+
+
+def parse_system_his_v12(content: str) -> dict[str, Any]:
+    """Parse and validate DeepSeek output as System-HIS v1.2 JSON."""
+    cleaned = _strip_markdown_fence(content)
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"DeepSeek System-HIS output is not valid JSON: {exc.msg}") from exc
+
+    if not isinstance(payload, dict):
+        raise ValueError("DeepSeek System-HIS output must be a JSON object")
+    system_his = payload.get("system_his", payload)
+    if not isinstance(system_his, dict):
+        raise ValueError("DeepSeek System-HIS output field system_his must be an object")
+
+    result = check_system_his_v12(system_his)
+    if not result.passed:
+        raise ValueError("DeepSeek System-HIS v1.2 failed validation: " + "; ".join(result.errors))
+    return system_his
+
+
+def _validate_system_his_contract_unchanged(expected: dict[str, Any], actual: dict[str, Any]) -> None:
+    frozen_keys = ("schema_version", "top", "state", "components", "instances", "data_flow", "control_flow", "artifacts")
+    for key in frozen_keys:
+        if _canonical_json(expected.get(key)) != _canonical_json(actual.get(key)):
+            raise ValueError(f"DeepSeek HIS2PROJECT changed frozen System-HIS contract section '{key}'")
+
+
+def _canonical_json(value: Any) -> str:
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def diff_projects(old: GeneratedProject, new: GeneratedProject) -> str:
@@ -201,6 +428,18 @@ def _manifest_is_valid_for_project(files: dict[str, str]) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _validate_repair_preserves_l0_when_not_repairing_l0(
+    repaired_project: GeneratedProject,
+    diagnosis: dict[str, object],
+) -> None:
+    if str(diagnosis.get("stage", "")) == "l0_consistency":
+        return
+    l0_result = check_project_l0(repaired_project)
+    if l0_result.passed:
+        return
+    raise ValueError("DeepSeek repair introduced L0 contract violations: " + "; ".join(l0_result.errors))
 
 
 def _diagnosis_mentions_path(diagnosis: dict[str, object], path: str) -> bool:
@@ -268,6 +507,15 @@ def _project_task_type(files: dict[str, str]) -> str | None:
     return task_type if isinstance(task_type, str) else None
 
 
+def _project_system_his_schema(files: dict[str, str]) -> str:
+    try:
+        system_his = json.loads(files.get("system_his.json", "{}"))
+    except json.JSONDecodeError:
+        return ""
+    schema_version = system_his.get("schema_version") if isinstance(system_his, dict) else ""
+    return schema_version if isinstance(schema_version, str) else ""
+
+
 def _files_from_list(raw_files: list[Any]) -> dict[str, str]:
     files: dict[str, str] = {}
     for item in raw_files:
@@ -287,6 +535,289 @@ def _strip_markdown_fence(content: str) -> str:
             lines = lines[:-1]
         return "\n".join(lines).strip()
     return stripped
+
+
+def _system_his_v12_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:
+    system = (
+        "You are an FPGA system architect. "
+        "Return only valid JSON. Do not include markdown. "
+        "Do not generate RTL, testbench code, constraints, bitstreams, or tool reports."
+    )
+    user = f"""
+Generate a canonical System-HIS v1.2 architecture contract for SR2FPGA.
+
+Project:
+- project_name: {request.project_name}
+- task_type: {request.task_type}
+- width: {request.width}
+- user_prompt: {request.description or "No extra user prompt provided."}
+
+Target platform:
+- name: {platform.name}
+- vendor: {platform.vendor}
+- family: {platform.family}
+- part: {platform.part}
+- board: {platform.board}
+- toolchain: {platform.toolchain}
+- clock_hz: {platform.clock_hz}
+- reset_polarity: {platform.reset_polarity}
+
+Return only System-HIS JSON with schema_version "system-his-v1.2".
+Do not generate RTL or project files in this step.
+
+Required top-level sections:
+- intent
+- top
+- state
+- components
+- instances
+- data_flow
+- control_flow
+- timing
+- resources
+- verification
+- artifacts
+
+Architectural rules:
+- Start from top-level ports, interfaces, clocks, resets, and parameters.
+- Every clock and reset declared in top.clocks/top.resets must also appear in top.ports.
+- Record architectural state, not incidental RTL temporaries.
+- Separate component definitions from concrete instances.
+- Every instance must reference a component.
+- Every data_flow endpoint must name top.<port> or <instance>.<port>.
+- data_flow.timing is optional, but when present it must include
+  latency_cycles >= 0, initiation_interval > 0, and optional non-empty throughput.
+- Separate data movement from control rules.
+- control_flow rules should use kinds such as reset_rule, handshake_rule,
+  enable_rule, stall_rule, counter_update, fsm_transition, or buffer_occupancy.
+- Structured control_flow rules should use when/effect objects when modeling
+  machine-checkable behavior. The guard grammar allows atoms {"signal","op","value"} or
+  all_of/any_of lists with depth <= 2; signal must reference a declared top port,
+  top clock/reset, instance port, state, data_flow name, or <fsm>.state.
+- fsm_transition rules must reference a declared state.fsms entry and use
+  from/to states declared by that FSM.
+- Use width objects with expr and resolved when a parameterized width is useful.
+- Keep verification as scenarios and pass_condition, not full testbench code.
+
+{_system_his_v12_task_guidance(request.task_type)}
+
+Return this JSON shape:
+{{
+  "schema_version": "system-his-v1.2",
+  "intent": {{
+    "user_prompt": "...",
+    "design_goal": "...",
+    "assumptions": []
+  }},
+  "top": {{
+    "name": "top",
+    "parameters": [],
+    "clocks": [],
+    "resets": [],
+    "ports": [],
+    "interfaces": []
+  }},
+  "state": {{
+    "registers": [],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  }},
+  "components": [],
+  "instances": [],
+  "data_flow": [
+    {{
+      "name": "...",
+      "path": ["top.input_port", "instance.input_port", "instance.output_port", "top.output_port"],
+      "payload": {{"name": "...", "width": {{"expr": "DATA_WIDTH", "resolved": 8}}}},
+      "protocol": "valid_ready",
+      "timing": {{"latency_cycles": 1, "initiation_interval": 1, "throughput": "one transfer per cycle when ready"}}
+    }}
+  ],
+  "control_flow": [
+    {{
+      "name": "...",
+      "kind": "enable_rule",
+      "when": {{"signal": "top.valid", "op": "==", "value": 1}},
+      "effect": {{"action": "assert", "target": "..."}},
+      "related_state": [],
+      "related_flows": []
+    }}
+  ],
+  "timing": {{
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": ["constraints/timing.sdc"]
+  }},
+  "resources": {{
+    "optimization_goal": "area_first",
+    "expected": {{"lut": "low", "ff": "low", "bram": 0, "dsp": 0}}
+  }},
+  "verification": {{
+    "testbench": "sim/tb_top.v",
+    "scenarios": [],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  }},
+  "artifacts": {{
+    "top_module": "top",
+    "rtl_sources": [],
+    "testbench": "sim/tb_top.v",
+    "constraints": ["constraints/timing.sdc"],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }}
+}}
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _with_system_his_retry_feedback(
+    messages: list[dict[str, str]],
+    error: str,
+    previous_content: str,
+) -> list[dict[str, str]]:
+    return [
+        *messages,
+        {
+            "role": "user",
+            "content": (
+                "Your previous System-HIS output failed validation. "
+                "Repair that JSON in place and return a corrected complete System-HIS JSON object only.\n\n"
+                "Validation error:\n"
+                f"{error}\n\n"
+                "System-HIS v1.2 IR repair checklist:\n"
+                "- Every instances[] object must include name, component, and owns_state.\n"
+                "- Every instance name must be unique and every component value must match a declared components[].name.\n"
+                "- Every top clock/reset should be listed in top.clocks/top.resets and also in top.ports.\n"
+                "- data_flow.path endpoints must use top.<port> or <instance>.<port>; do not use component names as endpoints.\n"
+                "- control_flow.when signal values must reference declared top ports, instance ports, state names, "
+                "data_flow names, or <fsm>.state.\n"
+                "- control_flow.effect.target must reference a declared data_flow name or state name; do not target "
+                "top ports, instance ports, all, or module names directly.\n"
+                "- FSMs must declare non-empty states, initial, and reset_state, and transitions must use those states.\n\n"
+                "Previous invalid System-HIS JSON:\n"
+                f"{previous_content.strip()}"
+            ),
+        },
+    ]
+
+
+def _system_his_v12_task_guidance(task_type: str) -> str:
+    if task_type == "composed_dual_stream_join":
+        return (
+            "Required architecture for composed_dual_stream_join:\n"
+            "- components: skid_buffer, stream_join, accumulator_core, stream_stage\n"
+            "- instances: in0_buffer, in1_buffer, join_core, accumulator, out_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- Do not use Verilog reserved keywords such as fork, join, or buf as instance names.\n"
+            "- in0_buffer and in1_buffer must both reference component skid_buffer.\n"
+            "- data_flow must use named path arrays, not from/to-only edges.\n"
+            "- control_flow entries must each include name, kind, when/effect for structured rules, related_state, and related_flows.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/skid_buffer.v, rtl/stream_join.v, "
+            "rtl/accumulator_core.v, and rtl/stream_stage.v."
+        )
+    if task_type == "composed_stream_fork":
+        return (
+            "Required architecture for composed_stream_fork:\n"
+            "- components: skid_buffer, stream_fork, stream_stage\n"
+            "- instances: input_buffer, fork_core, out0_stage, out1_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- Do not use Verilog reserved keywords such as fork, join, or buf as instance names.\n"
+            "- data_flow must use named path arrays and control_flow must reference existing state and flows."
+        )
+    if task_type == "composed_stream_accumulator":
+        return (
+            "Required architecture for composed_stream_accumulator:\n"
+            "- components: skid_buffer, accumulator_core\n"
+            "- instances: input_buffer, accumulator\n"
+            "- data_flow must use named path arrays and control_flow must reference existing state and flows."
+        )
+    if task_type == "composed_event_counter":
+        return (
+            "Required architecture for composed_event_counter:\n"
+            "- components: event_gate, counter_core\n"
+            "- instances: event_gate, counter\n"
+            "- data_flow must use named path arrays and control_flow must reference existing state and flows."
+        )
+    return ""
+
+
+def _his_project_messages(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+    system_his: dict[str, Any],
+) -> list[dict[str, str]]:
+    required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
+    system_his_text = json.dumps(system_his, ensure_ascii=False, indent=2)
+    sources = _artifact_sources_example(system_his, request.task_type)
+    extra_entries = _additional_file_entries(sources)
+    system = (
+        "You generate complete FPGA RTL project packages from checked System-HIS architecture contracts. "
+        "Return only valid JSON. Do not include markdown. "
+        "Do not generate vendor IP, HLS, bitstreams, or real tool reports."
+    )
+    user = f"""
+Generate a complete SR2FPGA Verilog RTL project from this checked System-HIS.
+
+Project:
+- project_name: {request.project_name}
+- task_type: {request.task_type}
+- width: {request.width}
+- user_prompt: {request.description or "No extra user prompt provided."}
+
+Platform:
+- name: {platform.name}
+- vendor: {platform.vendor}
+- toolchain: {platform.toolchain}
+- clock_hz: {platform.clock_hz}
+- reset_polarity: {platform.reset_polarity}
+
+Checked System-HIS v1.2:
+{system_his_text}
+
+Rules:
+- Treat the System-HIS as the frozen architecture contract.
+- Do not change component, instance, top port, data_flow, or control_flow names.
+- Generate RTL that implements the top-down architecture contract.
+- Do not use Verilog reserved keywords for any RTL identifier, including modules,
+  instances, regs, wires, arrays, blocks, and parameters. Avoid names such as
+  fork, join, buf, begin, end, module, wire, input, output, and reg.
+- Keep rtl/top.v as the integration wrapper.
+- Put reusable components in separate RTL files.
+- Include the same System-HIS JSON as system_his.json unless only formatting changes are needed.
+- Include a bounded self-checking testbench that prints TEST_PASS on success and TEST_FAIL on failure.
+{_icarus_testbench_rules()}
+
+Required files:
+{required_files}
+
+Return JSON in this exact shape. The value of each file must be a JSON string;
+escape newlines as \\n and escape any double quotes inside file contents:
+{{
+  "files": {{
+    "system_his.json": "...",
+    "manifest.json": "...",
+    "rtl/top.v": "...",
+{extra_entries}
+    "constraints/timing.sdc": "...",
+    "sim/tb_top.v": "...",
+    "reports/predicted_qor.json": "..."
+  }}
+}}
+
+The manifest.json file content must itself be JSON and must contain this tool
+pipeline schema:
+{{
+  "project_name": "{request.project_name}",
+  "top_module": "top",
+  "sources": {json.dumps(sources)},
+  "constraints": {{"timing": "constraints/timing.sdc"}},
+  "simulation": {{"testbench": "sim/tb_top.v"}},
+  "reports": ["reports/predicted_qor.json"]
+}}
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
 def _project_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:
@@ -339,12 +870,13 @@ pipeline schema:
   "project_name": "{request.project_name}",
   "top_module": "top",
   "sources": {_manifest_sources_example(request.task_type)},
-  "constraints": ["constraints/timing.sdc"],
+  "constraints": {{"timing": "constraints/timing.sdc"}},
   "simulation": {{"testbench": "sim/tb_top.v"}},
   "reports": ["reports/predicted_qor.json"]
 }}
 
 The Verilog must be synthesizable and the testbench must print TEST_PASS on success.
+{_icarus_testbench_rules()}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -357,6 +889,7 @@ def _repair_messages(project: GeneratedProject, diagnosis: dict[str, object]) ->
     required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
     task_type = _project_task_type(project.files)
     rtl_contract = _repair_rtl_contract(project.files, task_type)
+    system_his_prompt = _repair_system_his_prompt(project.files, project.project_name)
     system = (
         "You repair FPGA RTL project packages as JSON. "
         "Return only valid JSON. Do not include markdown. "
@@ -402,15 +935,67 @@ pipeline schema:
   "project_name": "{project.project_name}",
   "top_module": "top",
   "sources": {_repair_sources_example(project.files, task_type)},
-  "constraints": ["constraints/timing.sdc"],
+  "constraints": {{"timing": "constraints/timing.sdc"}},
   "simulation": {{"testbench": "sim/tb_top.v"}},
   "reports": ["reports/predicted_qor.json"]
 }}
 
+{system_his_prompt}
+
 Make the smallest practical fix for the failing tool log. Preserve pure
 Verilog RTL and ensure the testbench prints TEST_PASS on success.
+{_icarus_testbench_rules()}
+{_unused_parameter_repair_rules(diagnosis)}
+{_functional_mismatch_repair_rules(diagnosis)}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _icarus_testbench_rules() -> str:
+    return (
+        "Testbench portability rules:\n"
+        "- The testbench must compile with Icarus Verilog using iverilog -g2012.\n"
+        "- Do not initialize unpacked arrays with aggregate literals such as "
+        "`reg [7:0] seq [0:2] = {8'd1, 8'd2, 8'd3};`.\n"
+        "- Use initial block assignments instead, for example `seq[0] = 8'd1;`.\n"
+        "- Drive and withdraw valid-ready stimulus away from the DUT sampling edge, "
+        "for example on negedge clk for posedge-clocked RTL.\n"
+        "- Do not hold input valid high until out_valid; deassert or advance each "
+        "input valid after its own input ready handshake so one packet cannot be "
+        "accepted repeatedly while the testbench waits for output.\n"
+        "- Observe outputs after nonblocking assignments have settled, for example on "
+        "negedge clk or after an explicit small delay from posedge clk.\n"
+        "- After wait(out_valid), check the current transaction before advancing to another "
+        "active clock edge; use a small delay or negedge observation in the same valid cycle.\n"
+        "- Exercise back-to-back valid-ready transfers so stream buffers, joins, and "
+        "accumulators cannot drop a sample between consecutive handshakes.\n"
+        "- For streaming designs, check each output transaction against the expected "
+        "sequence; do not only check the final output value.\n"
+        "- Every wait loop must be bounded with a cycle counter and must print TEST_FAIL on timeout."
+    )
+
+
+def _functional_mismatch_repair_rules(diagnosis: dict[str, object]) -> str:
+    if str(diagnosis.get("failure_type", "")) != "functional_mismatch":
+        return ""
+    return (
+        "Functional mismatch repair rules:\n"
+        "- Do not make the testbench pass by changing expected values to match the observed wrong output.\n"
+        "- For functional mismatches, prefer fixing RTL behavior, handshake timing, state updates, or reset behavior.\n"
+        "- For valid-ready stream mismatches, check for each lost or duplicated valid-ready transfer before changing tests.\n"
+        "- Only change expected values when the diagnosis explicitly says the testbench expectation is wrong."
+    )
+
+
+def _unused_parameter_repair_rules(diagnosis: dict[str, object]) -> str:
+    if "unusedparam" not in str(diagnosis.get("root_cause", "")).lower():
+        return ""
+    return (
+        "Unused parameter repair rules:\n"
+        "- If you remove an unused parameter, the module declaration and every instantiation must agree.\n"
+        "- Either use the parameter in real RTL logic, or remove the parameter override from all instantiations.\n"
+        "- Do not silence a lint warning by creating a new PINNOTFOUND or parameter mismatch error."
+    )
 
 
 def _rtl_contract_for_task(task_type: str) -> str:
@@ -430,6 +1015,16 @@ def _rtl_contract_for_task(task_type: str) -> str:
 
 def _manifest_sources_example(task_type: str) -> str:
     return json.dumps(MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"]))
+
+
+def _artifact_sources_example(system_his: dict[str, Any], task_type: str) -> list[str]:
+    artifacts = system_his.get("artifacts")
+    if isinstance(artifacts, dict):
+        sources = artifacts.get("rtl_sources")
+        if isinstance(sources, list) and all(isinstance(source, str) for source in sources):
+            if "rtl/top.v" in sources:
+                return sources
+    return MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"])
 
 
 def _additional_project_file_entries(task_type: str) -> str:
@@ -486,3 +1081,91 @@ def _additional_repair_file_entries(files: dict[str, str], task_type: str | None
     if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
         sources = ["rtl/top.v"]
     return _additional_file_entries(sources)
+
+
+def _repair_system_his_prompt(files: dict[str, str], project_name: str) -> str:
+    if _project_system_his_schema(files) == SYSTEM_HIS_V12_SCHEMA:
+        return (
+            "The system_his.json file content must itself be JSON. Preserve the existing "
+            "canonical System-HIS v1.2 contract unless the diagnosis explicitly names system_his.json. "
+            "Keep schema_version system-his-v1.2 and do not change top, state, components, instances, "
+            "data_flow, control_flow, or artifacts.\n"
+            "Current canonical System-HIS v1.2 contract:\n"
+            f"{files.get('system_his.json', '{}').strip()}"
+        )
+    return (
+        "The system_his.json file content must itself be JSON and must follow this\n"
+        "system-his-v1.1 structure-contract schema:\n"
+        f"{_system_his_contract(project_name)}"
+    )
+
+
+def _system_his_contract(project_name: str) -> str:
+    return (
+        json.dumps(
+            {
+            "schema_version": "system-his-v1.1",
+            "project_name": project_name,
+            "project": {"name": project_name, "description": "short requirement summary", "top": "top"},
+            "clocks": [{"name": "clk", "target_fmax_mhz": 100}],
+            "resets": [{"name": "rst_n", "polarity": "active_low", "kind": "sync"}],
+            "system": {"description": "short black-box behavior summary"},
+            "interface": {"top_module": "top", "ports": []},
+            "architecture": {"top_module": "top", "topology": {"nodes": [], "edges": []}},
+            "modules": [
+                {
+                    "name": "top",
+                    "role": "top",
+                    "source": "rtl/top.v",
+                    "ports": [],
+                    "parameters": {},
+                    "params": [],
+                    "clock": "clk",
+                    "reset": "rst_n",
+                    "intent": "integrates submodules and exposes the top interface",
+                },
+                {
+                    "name": "submodule_name",
+                    "role": "submodule",
+                    "source": "rtl/submodule_name.v",
+                    "ports": [],
+                    "parameters": {"WIDTH": 8},
+                    "params": [{"name": "WIDTH", "value": 8}],
+                    "clock": "clk",
+                    "reset": "rst_n",
+                    "intent": "one-line module intent",
+                },
+            ],
+            "connections": [
+                {
+                    "from": {"module": "top", "port": "input_or_signal"},
+                    "to": {"module": "submodule_name", "port": "input_or_signal"},
+                    "signal": "signal_name",
+                    "protocol": "register",
+                    "width": 1,
+                    "cdc": False,
+                }
+            ],
+            "top_ports": [],
+            "platform": {"toolchain": "open_source"},
+            "verification": {
+                "testbench": "sim/tb_top.v",
+                "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
+                "test_pass_means": "testbench prints TEST_PASS and no TEST_FAIL",
+            },
+            "qor_intent": {"resources": {"lut": 0, "ff": 0, "bram": 0, "dsp": 0}},
+            },
+            indent=2,
+        )
+        + "\n\n"
+        + "Important System-HIS rules: role must be exactly top or submodule; use clock, not clock_domain; "
+        + "parameters must be an object of RTL-declared parameter names to values; params must be a list "
+        + "of {name, value} entries matching parameters exactly; omit undeclared RTL parameters; port widths "
+        + "must match the parsed RTL exactly, including expressions like [WIDTH-1:0]; width strings must "
+        + "match parsed RTL ranges exactly rather than simplified parameter names; connection protocol "
+        + "must be one of register, valid_ready, axi_lite, axi_stream; every connection needs from/to "
+        + "endpoint objects, signal, width, and boolean cdc; connection endpoint module values must use "
+        + "System-HIS module names, not instance aliases such as sb0, join, acc, or stg; Do not use "
+        + "Verilog reserved keywords as any RTL identifier, including instance, signal, register, array, "
+        + "block, and parameter names; avoid fork, join, buf, begin, end, module, wire, input, output, and reg."
+    )

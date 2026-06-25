@@ -1,0 +1,2 @@
+instance 'event_gate' of component 'event_gate' is not instantiated in top RTL
+instance 'counter' of component 'counter_core' is not instantiated in top RTL

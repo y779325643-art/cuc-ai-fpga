@@ -1,0 +1,25 @@
+{
+  "run_id": "deepseek-baseline-b",
+  "next_index": 4,
+  "completed_samples": [
+    "sample_baseline_b_t1_event_counter_8_000001",
+    "sample_baseline_b_t2_stream_accumulator_8_000002",
+    "sample_baseline_b_t3_stream_fork_8_000003",
+    "sample_baseline_b_t4_dual_stream_join_8_000004"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_baseline_b_t1_event_counter_8_000001",
+      "sample_baseline_b_t2_stream_accumulator_8_000002",
+      "sample_baseline_b_t3_stream_fork_8_000003",
+      "sample_baseline_b_t4_dual_stream_join_8_000004"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "l0_contract_violation": 16
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "d1c8fcb4c1f89f9cee37469b629408215ccfe8dc9b3abf70134bff92b32e727c"
+}

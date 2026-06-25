@@ -1,0 +1,8 @@
+{
+  "name": "baseline_b_t3_stream_fork_8_000003",
+  "type": "composed_stream_fork",
+  "width": 8,
+  "description": "8-bit valid-ready stream fork datapath with skid buffer and two output stages",
+  "clock_hz": 100000000,
+  "reset_polarity": "active_low"
+}

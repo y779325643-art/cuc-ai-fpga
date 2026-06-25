@@ -1,0 +1,13 @@
+%Warning-UNUSEDPARAM: rtl/skid_buffer.v:1:46: Parameter is not used: 'DEPTH'
+                                            : ... note: In instance 'top.in1_buffer'
+    1 | module skid_buffer #(parameter DATA_WIDTH=8, DEPTH=2) (
+      |                                              ^~~~~
+                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048
+                      ... Use "/* verilator lint_off UNUSEDPARAM */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/skid_buffer.v:16:9: Signal is not driven, nor used: 'i'
+                                             : ... note: In instance 'top.in1_buffer'
+   16 | integer i;
+      |         ^
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Error: Exiting due to 2 warning(s)

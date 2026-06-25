@@ -1,0 +1,6 @@
+{
+  "failure_type": "syntax_error",
+  "stage": "sim_compile",
+  "root_cause": "sim/tb_top.v:37: syntax error\nsim/tb_top.v:37: error: Malformed statement\nsim/tb_top.v:38: syntax error\nsim/tb_top.v:38: error: Malformed statement\nsim/tb_top.v:39: syntax error\nsim/tb_top.v:39: Syntax in assignment statement l-value.",
+  "affected_files": []
+}

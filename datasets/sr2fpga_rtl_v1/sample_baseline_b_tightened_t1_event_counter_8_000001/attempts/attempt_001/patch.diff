@@ -1,0 +1,20 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -81,7 +81,7 @@
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "reset_n", "direction": "input", "width": 1},
+         {"name": "en", "direction": "input", "width": 1},
+-        {"name": "count", "direction": "output", "width": 8}
++        {"name": "count", "direction": "output", "width": "[WIDTH-1:0]"}
+       ],
+       "parameters": {"WIDTH": 8},
+       "params": [{"name": "WIDTH", "value": 8}],
+@@ -112,7 +112,7 @@
+       "to": {"module": "top", "port": "count"},
+       "signal": "count",
+       "protocol": "register",
+-      "width": 8,
++      "width": "[WIDTH-1:0]",
+       "cdc": false
+     }
+   ],

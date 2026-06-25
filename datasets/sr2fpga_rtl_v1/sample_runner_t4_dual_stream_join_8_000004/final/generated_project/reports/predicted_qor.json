@@ -1,0 +1,14 @@
+{
+  "timing": {
+    "worst_slack": 0.2,
+    "frequency": 100.0
+  },
+  "area": {
+    "lut_count": 150,
+    "ff_count": 100
+  },
+  "power": {
+    "dynamic": 10.0,
+    "static": 0.5
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "project": "pilot_his_v12_repair_20260625_t1_event_counter_8_000001",
+  "predicted_fmax_mhz": 100,
+  "predicted_lut": 8,
+  "predicted_ff": 11,
+  "predicted_bram": 0,
+  "predicted_dsp": 0,
+  "optimization_goal": "area_first"
+}

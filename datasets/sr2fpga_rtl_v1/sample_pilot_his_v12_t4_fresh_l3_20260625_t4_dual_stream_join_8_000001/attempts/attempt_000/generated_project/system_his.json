@@ -1,0 +1,984 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
+    "design_goal": "Implement a pipelined dual-stream join with accumulation.",
+    "assumptions": [
+      "Clock frequency 100 MHz",
+      "Active-low synchronous reset",
+      "Valid-ready handshake for all interfaces",
+      "Data width 8 bits"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "freq_hz": 100000000,
+        "phase_deg": 0,
+        "duty_cycle": 50.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "async": false
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "in0_data",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "in0_valid",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "in0_ready",
+        "direction": "output",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "in1_data",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "in1_valid",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "in1_ready",
+        "direction": "output",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "out_data",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "in0_buffer_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "in0_buffer_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "in1_buffer_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "in1_buffer_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "accumulator_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "out_stage_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "out_stage_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_join",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_in0",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_in0",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_out0",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_in1",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_in1",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_out1",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "accumulator_core",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_stage",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "ready_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "in0_buffer",
+      "component": "skid_buffer",
+      "owns_state": [
+        "in0_buffer_data",
+        "in0_buffer_valid"
+      ],
+      "parameters": []
+    },
+    {
+      "name": "in1_buffer",
+      "component": "skid_buffer",
+      "owns_state": [
+        "in1_buffer_data",
+        "in1_buffer_valid"
+      ],
+      "parameters": []
+    },
+    {
+      "name": "join_core",
+      "component": "stream_join",
+      "owns_state": [],
+      "parameters": []
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "owns_state": [
+        "accumulator_reg"
+      ],
+      "parameters": []
+    },
+    {
+      "name": "out_stage",
+      "component": "stream_stage",
+      "owns_state": [
+        "out_stage_data",
+        "out_stage_valid"
+      ],
+      "parameters": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input0_buffer_flow",
+      "path": [
+        "top.in0_data",
+        "top.in0_valid",
+        "in0_buffer.data_in",
+        "in0_buffer.valid_in",
+        "in0_buffer.data_out",
+        "in0_buffer.valid_out",
+        "join_core.data_in0",
+        "join_core.valid_in0"
+      ],
+      "payload": {
+        "name": "in0_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "input1_buffer_flow",
+      "path": [
+        "top.in1_data",
+        "top.in1_valid",
+        "in1_buffer.data_in",
+        "in1_buffer.valid_in",
+        "in1_buffer.data_out",
+        "in1_buffer.valid_out",
+        "join_core.data_in1",
+        "join_core.valid_in1"
+      ],
+      "payload": {
+        "name": "in1_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "join_to_accum_flow",
+      "path": [
+        "join_core.data_out",
+        "join_core.valid_out",
+        "accumulator.data_in",
+        "accumulator.valid_in"
+      ],
+      "payload": {
+        "name": "join_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "accum_to_stage_flow",
+      "path": [
+        "accumulator.data_out",
+        "accumulator.valid_out",
+        "out_stage.data_in",
+        "out_stage.valid_in"
+      ],
+      "payload": {
+        "name": "accum_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "stage_to_output_flow",
+      "path": [
+        "out_stage.data_out",
+        "out_stage.valid_out",
+        "top.out_data",
+        "top.out_valid"
+      ],
+      "payload": {
+        "name": "out_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_in0_buffer_data",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in0_buffer_data"
+      },
+      "related_state": [
+        "in0_buffer_data"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_in0_buffer_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in0_buffer_valid"
+      },
+      "related_state": [
+        "in0_buffer_valid"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_in1_buffer_data",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in1_buffer_data"
+      },
+      "related_state": [
+        "in1_buffer_data"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_in1_buffer_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in1_buffer_valid"
+      },
+      "related_state": [
+        "in1_buffer_valid"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_accumulator_reg",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "accumulator_reg"
+      },
+      "related_state": [
+        "accumulator_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_out_stage_data",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "out_stage_data"
+      },
+      "related_state": [
+        "out_stage_data"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_out_stage_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "out_stage_valid"
+      },
+      "related_state": [
+        "out_stage_valid"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "input0_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in0_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.in0_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "input0_buffer_flow"
+      },
+      "related_state": [
+        "in0_buffer_data",
+        "in0_buffer_valid"
+      ],
+      "related_flows": [
+        "input0_buffer_flow"
+      ]
+    },
+    {
+      "name": "input1_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in1_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.in1_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "input1_buffer_flow"
+      },
+      "related_state": [
+        "in1_buffer_data",
+        "in1_buffer_valid"
+      ],
+      "related_flows": [
+        "input1_buffer_flow"
+      ]
+    },
+    {
+      "name": "join_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "join_core.valid_in0",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "join_core.valid_in1",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "join_core.ready_in",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "join_to_accum_flow"
+      },
+      "related_state": [],
+      "related_flows": [
+        "join_to_accum_flow"
+      ]
+    },
+    {
+      "name": "accumulate_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.valid_in",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.ready_in",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "accumulate",
+        "target": "accumulator_reg"
+      },
+      "related_state": [
+        "accumulator_reg"
+      ],
+      "related_flows": [
+        "accum_to_stage_flow"
+      ]
+    },
+    {
+      "name": "out_stage_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "out_stage.valid_in",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "out_stage.ready_in",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "out_stage_data"
+      },
+      "related_state": [
+        "out_stage_data",
+        "out_stage_valid"
+      ],
+      "related_flows": [
+        "stage_to_output_flow"
+      ]
+    },
+    {
+      "name": "output_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "stage_to_output_flow"
+      },
+      "related_state": [
+        "out_stage_data",
+        "out_stage_valid"
+      ],
+      "related_flows": [
+        "stage_to_output_flow"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_dual_join",
+        "stimulus": "Two independent streams with random data, verify output equals sum of joined pairs",
+        "expected": "Output stream matches cumulative sum after each join"
+      }
+    ],
+    "pass_condition": "All checks pass without errors, test prints TEST_PASS"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/stream_join.v",
+      "rtl/accumulator_core.v",
+      "rtl/stream_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

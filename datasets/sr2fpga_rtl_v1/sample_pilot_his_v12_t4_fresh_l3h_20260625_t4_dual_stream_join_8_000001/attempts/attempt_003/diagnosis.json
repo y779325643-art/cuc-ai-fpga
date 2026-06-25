@@ -1,0 +1,6 @@
+{
+  "failure_type": "lint_warning_as_error",
+  "stage": "lint",
+  "root_cause": "%Warning-UNUSEDSIGNAL: rtl/stream_join.v:11:34: Signal is not used: 'in1_data'\n                                              : ... note: In instance 'top.join_core'\n   11 |     input  wire [DATA_WIDTH-1:0] in1_data,\n      |                                  ^~~~~~~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)",
+  "affected_files": []
+}

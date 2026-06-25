@@ -1,0 +1,693 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
+    "design_goal": "Implement a dual-stream join with accumulation using a skid_buffer, stream_join, accumulator_core, and stream_stage topology.",
+    "assumptions": [
+      "All streams use valid-ready handshake.",
+      "Joining computes the sum of two input samples modulo 256.",
+      "Accumulator computes a running sum modulo 256.",
+      "Clock frequency is 100 MHz with active-low reset."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "description": "Primary clock"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "description": "Asynchronous reset"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "type": "wire"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "type": "wire"
+      },
+      {
+        "name": "in0_valid",
+        "direction": "input",
+        "type": "wire"
+      },
+      {
+        "name": "in0_ready",
+        "direction": "output",
+        "type": "wire"
+      },
+      {
+        "name": "in0_data",
+        "direction": "input",
+        "type": {
+          "name": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      },
+      {
+        "name": "in1_valid",
+        "direction": "input",
+        "type": "wire"
+      },
+      {
+        "name": "in1_ready",
+        "direction": "output",
+        "type": "wire"
+      },
+      {
+        "name": "in1_data",
+        "direction": "input",
+        "type": {
+          "name": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "type": "wire"
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "type": "wire"
+      },
+      {
+        "name": "out_data",
+        "direction": "output",
+        "type": {
+          "name": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "acc_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Accumulator register holding sum of joined samples"
+      },
+      {
+        "name": "out_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Output stage pipeline register"
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_join",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in0_valid",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in0_ready",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "in0_data",
+          "direction": "input",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        },
+        {
+          "name": "in1_valid",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in1_ready",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "in1_data",
+          "direction": "input",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "accumulator_core",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_stage",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "type": "wire"
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "type": "wire"
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "type": {
+            "name": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "in0_buffer",
+      "component": "skid_buffer",
+      "owns_state": []
+    },
+    {
+      "name": "in1_buffer",
+      "component": "skid_buffer",
+      "owns_state": []
+    },
+    {
+      "name": "join_core",
+      "component": "stream_join",
+      "owns_state": []
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "owns_state": []
+    },
+    {
+      "name": "out_stage",
+      "component": "stream_stage",
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "in0_stream",
+      "path": [
+        "top.in0_data",
+        "in0_buffer.in_data",
+        "in0_buffer.out_data",
+        "join_core.in0_data"
+      ],
+      "payload": {
+        "name": "in0_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "in1_stream",
+      "path": [
+        "top.in1_data",
+        "in1_buffer.in_data",
+        "in1_buffer.out_data",
+        "join_core.in1_data"
+      ],
+      "payload": {
+        "name": "in1_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "join_stream",
+      "path": [
+        "join_core.out_data",
+        "accumulator.in_data"
+      ],
+      "payload": {
+        "name": "join_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "acc_stream",
+      "path": [
+        "accumulator.out_data",
+        "out_stage.in_data"
+      ],
+      "payload": {
+        "name": "acc_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "out_stream",
+      "path": [
+        "out_stage.out_data",
+        "top.out_data"
+      ],
+      "payload": {
+        "name": "out_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_accumulator",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "acc_reg"
+      },
+      "related_state": [
+        "acc_reg"
+      ],
+      "related_flows": [
+        "acc_stream"
+      ]
+    },
+    {
+      "name": "reset_out_stage",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "out_reg"
+      },
+      "related_state": [
+        "out_reg"
+      ],
+      "related_flows": [
+        "out_stream"
+      ]
+    },
+    {
+      "name": "accumulator_enable",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "join_core.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "capture",
+        "target": "acc_reg"
+      },
+      "related_state": [
+        "acc_reg"
+      ],
+      "related_flows": [
+        "join_stream",
+        "acc_stream"
+      ]
+    },
+    {
+      "name": "out_stage_enable",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "out_stage.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "capture",
+        "target": "out_reg"
+      },
+      "related_state": [
+        "out_reg"
+      ],
+      "related_flows": [
+        "acc_stream",
+        "out_stream"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_join_accumulate",
+        "description": "Apply two input streams, verify accumulated output after several cycles."
+      },
+      {
+        "name": "reset_behavior",
+        "description": "Assert reset, verify accumulator clears."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/stream_join.v",
+      "rtl/accumulator_core.v",
+      "rtl/stream_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Error: rtl/top.v:52:7: syntax error, unexpected join\n   52 |     ) join (\n      |       ^~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: Exiting due to 1 error(s)\n",
+  "duration_seconds": 0.10308479101513512
+}

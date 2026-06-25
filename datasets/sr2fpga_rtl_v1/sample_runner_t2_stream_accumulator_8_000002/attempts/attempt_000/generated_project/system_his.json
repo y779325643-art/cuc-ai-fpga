@@ -1,0 +1,23 @@
+{
+  "project_name": "runner_t2_stream_accumulator_8_000002",
+  "version": "1.0",
+  "description": "8-bit streaming accumulator with skid buffer",
+  "top_module": "top",
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000,
+    "reset_polarity": "active_low"
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "file": "rtl/skid_buffer.v"
+    },
+    {
+      "name": "accumulator_core",
+      "file": "rtl/accumulator_core.v"
+    }
+  ]
+}

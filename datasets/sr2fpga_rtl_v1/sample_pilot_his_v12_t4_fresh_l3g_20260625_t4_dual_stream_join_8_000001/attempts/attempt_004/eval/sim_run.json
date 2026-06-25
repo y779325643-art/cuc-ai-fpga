@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out"
+  ],
+  "status": "failed",
+  "exit_code": 0,
+  "stdout": "TEST_FAIL: output mismatch at transfer 0: expected 3, got 6\nsim/tb_top.v:48: $finish called at 76000 (1ps)\n",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "duration_seconds": 0.010462125006597489
+}

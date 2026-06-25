@@ -1,0 +1,3 @@
+component 'stream_join' port 'in1_data' is not declared in RTL
+component 'stream_join' port 'in1_valid' is not declared in RTL
+data_flow 'input_b' endpoint 'join_core.in1_data' is not declared in RTL

@@ -1,0 +1,23 @@
+{
+  "failure_type": "repair_failed",
+  "stage": "repair",
+  "root_cause": "DeepSeek repair system_his.json failed validation: DeepSeek System-HIS v1.2 failed validation: instance 'join_core' owns missing state 'join_core.arb_fsm'; control_flow 'reset_join_core_arb_fsm' references missing state 'join_core.arb_fsm'; control_flow 'reset_join_core_arb_fsm'.effect.target 'join_core.arb_fsm' is not declared; control_flow 'join_send0'.when.all_of signal 'join_core.arb_fsm.state' is not declared; control_flow 'join_send1'.when.all_of signal 'join_core.arb_fsm.state' is not declared; control_flow 'transition_idle_to_send0' references missing state 'join_core.arb_fsm'; control_flow 'transition_idle_to_send0'.fsm 'join_core.arb_fsm' is not declared; control_flow 'transition_idle_to_send0'.from 'IDLE' is not a state of FSM 'join_core.arb_fsm'; control_flow 'transition_idle_to_send0'.to 'SEND_0' is not a state of FSM 'join_core.arb_fsm'; control_flow 'transition_idle_to_send1' references missing state 'join_core.arb_fsm'; control_flow 'transition_idle_to_send1'.fsm 'join_core.arb_fsm' is not declared; control_flow 'transition_idle_to_send1'.from 'IDLE' is not a state of FSM 'join_core.arb_fsm'; control_flow 'transition_idle_to_send1'.to 'SEND_1' is not a state of FSM 'join_core.arb_fsm'; control_flow 'transition_send0_to_idle' references missing state 'join_core.arb_fsm'; control_flow 'transition_send0_to_idle'.fsm 'join_core.arb_fsm' is not declared; control_flow 'transition_send0_to_idle'.from 'SEND_0' is not a state of FSM 'join_core.arb_fsm'; control_flow 'transition_send0_to_idle'.to 'IDLE' is not a state of FSM 'join_core.arb_fsm'; control_flow 'transition_send1_to_idle' references missing state 'join_core.arb_fsm'; control_flow 'transition_send1_to_idle'.fsm 'join_core.arb_fsm' is not declared; control_flow 'transition_send1_to_idle'.from 'SEND_1' is not a state of FSM 'join_core.arb_fsm'; control_flow 'transition_send1_to_idle'.to 'IDLE' is not a state of FSM 'join_core.arb_fsm'",
+  "affected_files": [
+    "system_his.json"
+  ],
+  "upstream_diagnosis": {
+    "failure_type": "l0_contract_violation",
+    "stage": "l0_consistency",
+    "root_cause": "state.fsms 'join_core.arb_fsm' state 'IDLE' is not found in RTL module 'top'\nstate.fsms 'join_core.arb_fsm' state 'SEND_0' is not found in RTL module 'top'\nstate.fsms 'join_core.arb_fsm' state 'SEND_1' is not found in RTL module 'top'",
+    "affected_files": [
+      "system_his.json",
+      "manifest.json"
+    ],
+    "l0_errors": [
+      "state.fsms 'join_core.arb_fsm' state 'IDLE' is not found in RTL module 'top'",
+      "state.fsms 'join_core.arb_fsm' state 'SEND_0' is not found in RTL module 'top'",
+      "state.fsms 'join_core.arb_fsm' state 'SEND_1' is not found in RTL module 'top'"
+    ],
+    "l0_warnings": []
+  }
+}

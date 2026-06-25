@@ -1,0 +1,19 @@
+{
+  "run_id": "his-v12-smoke-5",
+  "next_index": 1,
+  "completed_samples": [
+    "sample_his_v12_smoke_t4_dual_stream_join_8_000001"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [],
+    "rejected": [
+      "sample_his_v12_smoke_t4_dual_stream_join_8_000001"
+    ]
+  },
+  "failure_types": {
+    "sample_exists": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "5dfb9544748c89abfe80b4dd186e323ae88fe129253f37996fa1f89a934df32f"
+}

@@ -1,0 +1,18 @@
+{
+  "project": "pilot_his_v12_t4_fresh_l3h_20260625_t4_dual_stream_join_8_000001",
+  "top_module": "top",
+  "clock_period_ns": 10.0,
+  "target_fmax_mhz": 100,
+  "predicted_fmax_mhz": 150,
+  "resource_estimates": {
+    "LUTs": 64,
+    "FFs": 48,
+    "BRAMs": 0,
+    "DSPs": 0
+  },
+  "timing_closure": {
+    "setup_margin_ns": 2.5,
+    "hold_margin_ns": 0.3
+  },
+  "methodology": "Area-first synthesis with open-source tools."
+}

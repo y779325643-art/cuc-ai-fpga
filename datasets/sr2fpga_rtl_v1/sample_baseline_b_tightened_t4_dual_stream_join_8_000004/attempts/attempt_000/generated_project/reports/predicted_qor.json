@@ -1,0 +1,9 @@
+{
+  "project": "baseline_b_tightened_t4_dual_stream_join_8_000004",
+  "predicted_fmax_mhz": 200,
+  "predicted_area_luts": 120,
+  "predicted_area_registers": 80,
+  "predicted_power_mw": 10,
+  "predicted_worst_hold_slack_ns": 0.1,
+  "predicted_worst_setup_slack_ns": 2.5
+}

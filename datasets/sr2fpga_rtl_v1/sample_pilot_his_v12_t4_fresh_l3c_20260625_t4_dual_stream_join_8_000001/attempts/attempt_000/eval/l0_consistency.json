@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "state.fsms 'join_fsm' state 'IDLE' is not found in RTL module 'top'\nstate.fsms 'join_fsm' state 'JOIN' is not found in RTL module 'top'\n",
+  "duration_seconds": 0.0
+}

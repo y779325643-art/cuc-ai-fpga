@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDSIGNAL: rtl/stream_join.v:7:40: Signal is not used: 'clk'\n                                             : ... note: In instance 'top.join_core'\n    7 |     input  wire                        clk,\n      |                                        ^~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Warning-UNUSEDSIGNAL: rtl/stream_join.v:8:40: Signal is not used: 'reset_n'\n                                             : ... note: In instance 'top.join_core'\n    8 |     input  wire                        reset_n,\n      |                                        ^~~~~~~\n%Error: Exiting due to 2 warning(s)\n",
+  "duration_seconds": 0.1336025419877842
+}

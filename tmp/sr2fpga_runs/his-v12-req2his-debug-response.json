@@ -1,0 +1,172 @@
+{
+  "schema_version": "system-his-v1.2-topdown",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
+    "design_goal": "Design an 8-bit dual-stream join accumulator with handshake control.",
+    "assumptions": [
+      "Input streams are synchronous to the same clock and are independent.",
+      "Accumulator width is 16 bits to allow up to 256 additions without overflow."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {"name": "WIDTH_IN", "type": "int", "default": 8},
+      {"name": "WIDTH_ACCUM", "type": "int", "default": 16}
+    ],
+    "clocks": [
+      {"name": "clk", "frequency_hz": 100000000}
+    ],
+    "resets": [
+      {"name": "rst_n", "polarity": "active_low", "sync": "async"}
+    ],
+    "ports": [
+      {"name": "in0_data", "direction": "input", "width": {"expr": "WIDTH_IN"}},
+      {"name": "in0_valid", "direction": "input", "width": 1},
+      {"name": "in0_ready", "direction": "output", "width": 1},
+      {"name": "in1_data", "direction": "input", "width": {"expr": "WIDTH_IN"}},
+      {"name": "in1_valid", "direction": "input", "width": 1},
+      {"name": "in1_ready", "direction": "output", "width": 1},
+      {"name": "out_data", "direction": "output", "width": {"expr": "WIDTH_ACCUM"}},
+      {"name": "out_valid", "direction": "output", "width": 1},
+      {"name": "out_ready", "direction": "input", "width": 1}
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {"name": "accum_reg", "width": {"expr": "WIDTH_ACCUM"}, "default": 0}
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "join_accum",
+      "parameters": [
+        {"name": "WIDTH_IN", "type": "int"},
+        {"name": "WIDTH_ACCUM", "type": "int"}
+      ],
+      "clocks": [
+        {"name": "clk", "frequency_hz": 100000000}
+      ],
+      "resets": [
+        {"name": "rst_n", "polarity": "active_low", "sync": "async"}
+      ],
+      "ports": [
+        {"name": "in0_data", "direction": "input", "width": {"expr": "WIDTH_IN"}},
+        {"name": "in0_valid", "direction": "input", "width": 1},
+        {"name": "in0_ready", "direction": "output", "width": 1},
+        {"name": "in1_data", "direction": "input", "width": {"expr": "WIDTH_IN"}},
+        {"name": "in1_valid", "direction": "input", "width": 1},
+        {"name": "in1_ready", "direction": "output", "width": 1},
+        {"name": "out_data", "direction": "output", "width": {"expr": "WIDTH_ACCUM"}},
+        {"name": "out_valid", "direction": "output", "width": 1},
+        {"name": "out_ready", "direction": "input", "width": 1}
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_join_accum",
+      "component": "join_accum",
+      "parameters": {
+        "WIDTH_IN": 8,
+        "WIDTH_ACCUM": 16
+      },
+      "connections": {
+        "clk": "clk",
+        "rst_n": "rst_n",
+        "in0_data": "in0_data",
+        "in0_valid": "in0_valid",
+        "in0_ready": "in0_ready",
+        "in1_data": "in1_data",
+        "in1_valid": "in1_valid",
+        "in1_ready": "in1_ready",
+        "out_data": "out_data",
+        "out_valid": "out_valid",
+        "out_ready": "out_ready"
+      }
+    }
+  ],
+  "data_flow": [
+    {"from": "top.in0_data", "to": "u_join_accum.in0_data"},
+    {"from": "top.in0_valid", "to": "u_join_accum.in0_valid"},
+    {"from": "u_join_accum.in0_ready", "to": "top.in0_ready"},
+    {"from": "top.in1_data", "to": "u_join_accum.in1_data"},
+    {"from": "top.in1_valid", "to": "u_join_accum.in1_valid"},
+    {"from": "u_join_accum.in1_ready", "to": "top.in1_ready"},
+    {"from": "u_join_accum.out_data", "to": "top.out_data"},
+    {"from": "u_join_accum.out_valid", "to": "top.out_valid"},
+    {"from": "top.out_ready", "to": "u_join_accum.out_ready"}
+  ],
+  "control_flow": [
+    {
+      "kind": "reset_rule",
+      "trigger": "rst_n == 0",
+      "action": "accum_reg <= 0"
+    },
+    {
+      "kind": "handshake_rule",
+      "condition": "in0_valid & in1_valid & out_ready",
+      "actions": [
+        "accum_reg <= accum_reg + in0_data + in1_data",
+        "in0_ready <= 1",
+        "in1_ready <= 1"
+      ]
+    },
+    {
+      "kind": "handshake_rule",
+      "condition": "!(in0_valid & in1_valid & out_ready)",
+      "actions": [
+        "in0_ready <= 0",
+        "in1_ready <= 0"
+      ]
+    },
+    {
+      "kind": "enable_rule",
+      "description": "out_valid is always high",
+      "expression": "out_valid = 1"
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": ["constraints/timing.sdc"]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {"lut": "low", "ff": "low", "bram": 0, "dsp": 0}
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_accumulation",
+        "description": "Apply sequential valid input pairs and verify accumulator output after each step.",
+        "pass_condition": "Output matches expected accumulated sum sequence."
+      },
+      {
+        "name": "backpressure_on_output",
+        "description": "Assert out_ready low for some cycles and verify that inputs are stalled and accumulator holds previous value.",
+        "pass_condition": "Ready outputs stay low when out_ready low, and accumulator does not change."
+      },
+      {
+        "name": "reset_behavior",
+        "description": "Assert reset and verify accumulator resets to 0.",
+        "pass_condition": "After reset, out_data is 0."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": ["rtl/join_accum.v"],
+    "testbench": "sim/tb_top.v",
+    "constraints": ["constraints/timing.sdc"],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

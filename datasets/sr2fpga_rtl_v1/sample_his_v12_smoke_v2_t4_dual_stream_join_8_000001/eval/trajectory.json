@@ -1,0 +1,24 @@
+{
+  "sample_id": "sample_his_v12_smoke_v2_t4_dual_stream_join_8_000001",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "verilator",
+      "exit_code": 1,
+      "command": [
+        "verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_join.v",
+        "rtl/accumulator_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "failure_type": "syntax_error",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ]
+}

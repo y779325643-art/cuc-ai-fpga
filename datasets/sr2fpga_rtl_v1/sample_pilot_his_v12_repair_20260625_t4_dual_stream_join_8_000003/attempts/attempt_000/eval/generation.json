@@ -1,0 +1,11 @@
+{
+  "stage": "generation",
+  "command": [
+    "project_generator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "DeepSeek System-HIS v1.2 failed validation: state.fsms 'join_core.join_fsm'.initial '' is not declared in states; state.fsms 'join_core.join_fsm'.reset_state '' is not declared in states; control_flow 'global_reset'.when signal 'top.rst_n' is not declared; control_flow 'global_reset'.effect.target 'all' is not declared",
+  "duration_seconds": 0.0
+}

@@ -1,0 +1,1 @@
+Generate an 8-bit FPGA RTL project that accepts a valid-ready input stream and accumulates samples.

@@ -1,0 +1,27 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -83,10 +83,10 @@
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+         {"name": "in_valid", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
++        {"name": "in_data", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "out_ready", "direction": "input", "width": 1},
+         {"name": "out_valid", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8}
++        {"name": "out_data", "direction": "output", "width": "[WIDTH-1:0]"}
+       ],
+       "parameters": {"WIDTH": 8},
+       "params": [{"name": "WIDTH", "value": 8}],
+@@ -102,9 +102,9 @@
+         {"name": "clk", "direction": "input", "width": 1},
+         {"name": "rst_n", "direction": "input", "width": 1},
+         {"name": "sample_valid", "direction": "input", "width": 1},
+-        {"name": "sample", "direction": "input", "width": 8},
++        {"name": "sample", "direction": "input", "width": "[WIDTH-1:0]"},
+         {"name": "sample_ready", "direction": "output", "width": 1},
+-        {"name": "sum", "direction": "output", "width": 8}
++        {"name": "sum", "direction": "output", "width": "[WIDTH-1:0]"}
+       ],
+       "parameters": {"WIDTH": 8},
+       "params": [{"name": "WIDTH", "value": 8}],

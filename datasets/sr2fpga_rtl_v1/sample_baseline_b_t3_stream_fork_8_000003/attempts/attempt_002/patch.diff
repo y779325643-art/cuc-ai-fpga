@@ -1,0 +1,144 @@
+--- a/manifest.json
++++ b/manifest.json
+@@ -2,7 +2,7 @@
+   "project_name": "baseline_b_t3_stream_fork_8_000003",
+   "top_module": "top",
+   "sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_fork.v", "rtl/stream_stage.v"],
+-  "constraints": ["constraints/timing.sdc"],
++  "constraints": {"timing": ["constraints/timing.sdc"]},
+   "simulation": {"testbench": "sim/tb_top.v"},
+   "reports": ["reports/predicted_qor.json"]
+ }
+--- a/system_his.json
++++ b/system_his.json
+@@ -1,5 +1,6 @@
+ {
+   "schema_version": "system-his-v1.1",
++  "project_name": "baseline_b_t3_stream_fork_8_000003",
+   "project": {
+     "name": "baseline_b_t3_stream_fork_8_000003",
+     "description": "8-bit valid-ready stream fork datapath with skid buffer and two output stages",
+@@ -15,7 +16,7 @@
+     {
+       "name": "rst_n",
+       "polarity": "active_low",
+-      "kind": "async"
++      "kind": "sync"
+     }
+   ],
+   "system": {
+@@ -41,10 +42,10 @@
+     "top_module": "top",
+     "topology": {
+       "nodes": [
+-        {"name": "u_skid", "module": "skid_buffer", "params": {}},
+-        {"name": "u_fork", "module": "stream_fork", "params": {}},
+-        {"name": "u_stage0", "module": "stream_stage", "params": {}},
+-        {"name": "u_stage1", "module": "stream_stage", "params": {}}
++        {"name": "u_skid", "module": "skid_buffer", "parameters": {"WIDTH": 8}, "params": [{"name": "WIDTH", "value": 8}]},
++        {"name": "u_fork", "module": "stream_fork", "parameters": {"WIDTH": 8}, "params": [{"name": "WIDTH", "value": 8}]},
++        {"name": "u_stage0", "module": "stream_stage", "parameters": {"WIDTH": 8}, "params": [{"name": "WIDTH", "value": 8}]},
++        {"name": "u_stage1", "module": "stream_stage", "parameters": {"WIDTH": 8}, "params": [{"name": "WIDTH", "value": 8}]}
+       ],
+       "edges": [
+         {"from": "u_skid.out_valid", "to": "u_fork.in_valid"},
+@@ -77,7 +78,8 @@
+         {"name": "out1_ready", "direction": "input", "width": 1},
+         {"name": "out1_data", "direction": "output", "width": 8}
+       ],
+-      "params": {},
++      "parameters": {},
++      "params": [],
+       "clock": "clk",
+       "reset": "rst_n",
+       "intent": "integrates submodules and exposes top interface"
+@@ -96,7 +98,8 @@
+         {"name": "out_ready", "direction": "input", "width": 1},
+         {"name": "out_data", "direction": "output", "width": 8}
+       ],
+-      "params": {"WIDTH": 8},
++      "parameters": {"WIDTH": 8},
++      "params": [{"name": "WIDTH", "value": 8}],
+       "clock": "clk",
+       "reset": "rst_n",
+       "intent": "buffers input data when downstream is stalled"
+@@ -118,7 +121,8 @@
+         {"name": "out1_ready", "direction": "input", "width": 1},
+         {"name": "out1_data", "direction": "output", "width": 8}
+       ],
+-      "params": {"WIDTH": 8},
++      "parameters": {"WIDTH": 8},
++      "params": [{"name": "WIDTH", "value": 8}],
+       "clock": "clk",
+       "reset": "rst_n",
+       "intent": "forwards input to both outputs"
+@@ -137,31 +141,32 @@
+         {"name": "out_ready", "direction": "input", "width": 1},
+         {"name": "out_data", "direction": "output", "width": 8}
+       ],
+-      "params": {"WIDTH": 8},
++      "parameters": {"WIDTH": 8},
++      "params": [{"name": "WIDTH", "value": 8}],
+       "clock": "clk",
+       "reset": "rst_n",
+       "intent": "single-stage pipeline register with valid/ready handshake"
+     }
+   ],
+   "connections": [
+-    {"from": {"module": "top", "port": "in_valid"}, "to": {"module": "u_skid", "port": "in_valid"}, "signal": "in_valid", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_skid", "port": "in_ready"}, "to": {"module": "top", "port": "in_ready"}, "signal": "in_ready", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "top", "port": "in_data"}, "to": {"module": "u_skid", "port": "in_data"}, "signal": "in_data", "protocol": "data", "width": 8, "cdc": false},
+-    {"from": {"module": "u_skid", "port": "out_valid"}, "to": {"module": "u_fork", "port": "in_valid"}, "signal": "skid_out_valid", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_fork", "port": "in_ready"}, "to": {"module": "u_skid", "port": "out_ready"}, "signal": "skid_out_ready", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_skid", "port": "out_data"}, "to": {"module": "u_fork", "port": "in_data"}, "signal": "skid_out_data", "protocol": "data", "width": 8, "cdc": false},
+-    {"from": {"module": "u_fork", "port": "out0_valid"}, "to": {"module": "u_stage0", "port": "in_valid"}, "signal": "fork_out0_valid", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_stage0", "port": "in_ready"}, "to": {"module": "u_fork", "port": "out0_ready"}, "signal": "fork_out0_ready", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_fork", "port": "out0_data"}, "to": {"module": "u_stage0", "port": "in_data"}, "signal": "fork_out0_data", "protocol": "data", "width": 8, "cdc": false},
+-    {"from": {"module": "u_fork", "port": "out1_valid"}, "to": {"module": "u_stage1", "port": "in_valid"}, "signal": "fork_out1_valid", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_stage1", "port": "in_ready"}, "to": {"module": "u_fork", "port": "out1_ready"}, "signal": "fork_out1_ready", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_fork", "port": "out1_data"}, "to": {"module": "u_stage1", "port": "in_data"}, "signal": "fork_out1_data", "protocol": "data", "width": 8, "cdc": false},
+-    {"from": {"module": "u_stage0", "port": "out_valid"}, "to": {"module": "top", "port": "out0_valid"}, "signal": "out0_valid", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "top", "port": "out0_ready"}, "to": {"module": "u_stage0", "port": "out_ready"}, "signal": "out0_ready", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_stage0", "port": "out_data"}, "to": {"module": "top", "port": "out0_data"}, "signal": "out0_data", "protocol": "data", "width": 8, "cdc": false},
+-    {"from": {"module": "u_stage1", "port": "out_valid"}, "to": {"module": "top", "port": "out1_valid"}, "signal": "out1_valid", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "top", "port": "out1_ready"}, "to": {"module": "u_stage1", "port": "out_ready"}, "signal": "out1_ready", "protocol": "valid-ready", "width": 1, "cdc": false},
+-    {"from": {"module": "u_stage1", "port": "out_data"}, "to": {"module": "top", "port": "out1_data"}, "signal": "out1_data", "protocol": "data", "width": 8, "cdc": false}
++    {"from": {"module": "top", "port": "in_valid"}, "to": {"module": "u_skid", "port": "in_valid"}, "signal": "in_valid", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_skid", "port": "in_ready"}, "to": {"module": "top", "port": "in_ready"}, "signal": "in_ready", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "in_data"}, "to": {"module": "u_skid", "port": "in_data"}, "signal": "in_data", "protocol": "none", "width": 8, "cdc": false},
++    {"from": {"module": "u_skid", "port": "out_valid"}, "to": {"module": "u_fork", "port": "in_valid"}, "signal": "skid_out_valid", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_fork", "port": "in_ready"}, "to": {"module": "u_skid", "port": "out_ready"}, "signal": "skid_out_ready", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_skid", "port": "out_data"}, "to": {"module": "u_fork", "port": "in_data"}, "signal": "skid_out_data", "protocol": "none", "width": 8, "cdc": false},
++    {"from": {"module": "u_fork", "port": "out0_valid"}, "to": {"module": "u_stage0", "port": "in_valid"}, "signal": "fork_out0_valid", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_stage0", "port": "in_ready"}, "to": {"module": "u_fork", "port": "out0_ready"}, "signal": "fork_out0_ready", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_fork", "port": "out0_data"}, "to": {"module": "u_stage0", "port": "in_data"}, "signal": "fork_out0_data", "protocol": "none", "width": 8, "cdc": false},
++    {"from": {"module": "u_fork", "port": "out1_valid"}, "to": {"module": "u_stage1", "port": "in_valid"}, "signal": "fork_out1_valid", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_stage1", "port": "in_ready"}, "to": {"module": "u_fork", "port": "out1_ready"}, "signal": "fork_out1_ready", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_fork", "port": "out1_data"}, "to": {"module": "u_stage1", "port": "in_data"}, "signal": "fork_out1_data", "protocol": "none", "width": 8, "cdc": false},
++    {"from": {"module": "u_stage0", "port": "out_valid"}, "to": {"module": "top", "port": "out0_valid"}, "signal": "out0_valid", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "out0_ready"}, "to": {"module": "u_stage0", "port": "out_ready"}, "signal": "out0_ready", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_stage0", "port": "out_data"}, "to": {"module": "top", "port": "out0_data"}, "signal": "out0_data", "protocol": "none", "width": 8, "cdc": false},
++    {"from": {"module": "u_stage1", "port": "out_valid"}, "to": {"module": "top", "port": "out1_valid"}, "signal": "out1_valid", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "out1_ready"}, "to": {"module": "u_stage1", "port": "out_ready"}, "signal": "out1_ready", "protocol": "none", "width": 1, "cdc": false},
++    {"from": {"module": "u_stage1", "port": "out_data"}, "to": {"module": "top", "port": "out1_data"}, "signal": "out1_data", "protocol": "none", "width": 8, "cdc": false}
+   ],
+   "top_ports": [
+     "clk", "rst_n", "in_valid", "in_ready", "in_data",
+@@ -173,15 +178,12 @@
+   },
+   "verification": {
+     "testbench": "sim/tb_top.v",
+-    "checks": ["tb_top.v"],
+-    "test_pass_means": "prints TEST_PASS only on success"
++    "acceptance": "prints TEST_PASS only on success"
+   },
+   "qor_intent": {
+     "resources": {
+       "lut": 40,
+-      "ff": 30,
+-      "bram": 0,
+-      "dsp": 0
++      "ff": 30
+     },
+     "timing": {
+       "target_fmax_mhz": 100

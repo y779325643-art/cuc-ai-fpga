@@ -1,0 +1,8 @@
+{
+  "fmax_mhz": 100,
+  "lut_count": 50,
+  "ff_count": 40,
+  "bram_count": 0,
+  "dsp_count": 0,
+  "slack_ns": 2.0
+}

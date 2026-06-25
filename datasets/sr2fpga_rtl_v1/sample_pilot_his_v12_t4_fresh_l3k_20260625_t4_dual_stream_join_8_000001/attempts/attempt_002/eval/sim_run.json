@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out"
+  ],
+  "status": "failed",
+  "exit_code": 0,
+  "stdout": "Starting basic test...\nTEST_FAIL: Mismatch at transfer 2, expected 66, got 77\nTEST_FAIL: Mismatch at transfer 3, expected 110, got 143\nTEST_FAIL: Mismatch at transfer 4, expected 165, got 231\nStarting backpressure test...\nTEST_FAIL: Backpressure mismatch, expected 209, got 85\nStarting reset test...\nTEST_FAIL\nsim/tb_top.v:183: $finish called at 420000 (1ps)\n",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "duration_seconds": 0.011248499999055639
+}

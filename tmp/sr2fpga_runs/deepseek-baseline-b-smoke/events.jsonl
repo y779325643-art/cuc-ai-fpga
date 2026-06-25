@@ -1,0 +1,2 @@
+{"event": "sample_completed", "sample_id": "sample_baseline_b_smoke_t1_event_counter_8_000001", "source": "deepseek", "failure_origin": "natural_llm", "difficulty_tier": "T1", "task_type": "composed_event_counter", "width": 8, "pass_level": "L3", "bucket": "success_l3"}
+{"event": "sample_completed", "sample_id": "sample_baseline_b_smoke_t2_stream_accumulator_8_000002", "source": "deepseek", "failure_origin": "natural_llm", "difficulty_tier": "T2", "task_type": "composed_stream_accumulator", "width": 8, "pass_level": "L3", "bucket": "success_l3"}

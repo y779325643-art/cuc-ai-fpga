@@ -1,0 +1,175 @@
+--- a/manifest.json
++++ b/manifest.json
+@@ -2,7 +2,7 @@
+   "project_name": "baseline_b_t2_stream_accumulator_8_000002",
+   "top_module": "top",
+   "sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/accumulator_core.v"],
+-  "constraints": ["constraints/timing.sdc"],
++  "constraints": {"timing": ["constraints/timing.sdc"]},
+   "simulation": {"testbench": "sim/tb_top.v"},
+   "reports": ["reports/predicted_qor.json"]
+ }
+--- a/system_his.json
++++ b/system_his.json
+@@ -1,5 +1,6 @@
+ {
+   "schema_version": "system-his-v1.1",
++  "project_name": "baseline_b_t2_stream_accumulator_8_000002",
+   "project": {
+     "name": "baseline_b_t2_stream_accumulator_8_000002",
+     "description": "Build an 8-bit streaming accumulator datapath as a complete SR2FPGA Verilog RTL project. This is component topology t2_stream_accumulator, difficulty tier T2. Use a skid_buffer feeding an accumulator_core.",
+@@ -24,11 +25,11 @@
+   "interface": {
+     "top_module": "top",
+     "ports": [
+-      {"name": "clk", "direction": "input", "width": 1},
+-      {"name": "rst_n", "direction": "input", "width": 1},
+-      {"name": "in_valid", "direction": "input", "width": 1},
+-      {"name": "in_data", "direction": "input", "width": 8},
+-      {"name": "sum", "direction": "output", "width": 8}
++      {"name": "clk", "direction": "input", "width": "[0:0]"},
++      {"name": "rst_n", "direction": "input", "width": "[0:0]"},
++      {"name": "in_valid", "direction": "input", "width": "[0:0]"},
++      {"name": "in_data", "direction": "input", "width": "[7:0]"},
++      {"name": "sum", "direction": "output", "width": "[7:0]"}
+     ]
+   },
+   "architecture": {
+@@ -48,87 +49,91 @@
+   "modules": [
+     {
+       "name": "top",
+-      "role": "integration_wrapper",
++      "role": "top",
+       "source": "rtl/top.v",
+       "ports": [
+-        {"name": "clk", "direction": "input", "width": 1},
+-        {"name": "rst_n", "direction": "input", "width": 1},
+-        {"name": "in_valid", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
+-        {"name": "sum", "direction": "output", "width": 8}
++        {"name": "clk", "direction": "input", "width": "[0:0]"},
++        {"name": "rst_n", "direction": "input", "width": "[0:0]"},
++        {"name": "in_valid", "direction": "input", "width": "[0:0]"},
++        {"name": "in_data", "direction": "input", "width": "[7:0]"},
++        {"name": "sum", "direction": "output", "width": "[7:0]"}
+       ],
+-      "params": [],
+-      "clock_domain": "clk",
++      "parameters": {},
++      "clock": "clk",
+       "reset": "rst_n",
+       "intent": "integrates submodules and exposes the top interface"
+     },
+     {
+       "name": "skid_buffer",
+-      "role": "skid_buffer",
++      "role": "submodule",
+       "source": "rtl/skid_buffer.v",
+       "ports": [
+-        {"name": "clk", "direction": "input", "width": 1},
+-        {"name": "rst_n", "direction": "input", "width": 1},
+-        {"name": "in_valid", "direction": "input", "width": 1},
+-        {"name": "in_data", "direction": "input", "width": 8},
+-        {"name": "out_valid", "direction": "output", "width": 1},
+-        {"name": "out_data", "direction": "output", "width": 8},
+-        {"name": "out_ready", "direction": "input", "width": 1},
+-        {"name": "in_ready", "direction": "output", "width": 1}
++        {"name": "clk", "direction": "input", "width": "[0:0]"},
++        {"name": "rst_n", "direction": "input", "width": "[0:0]"},
++        {"name": "in_valid", "direction": "input", "width": "[0:0]"},
++        {"name": "in_data", "direction": "input", "width": "[7:0]"},
++        {"name": "out_valid", "direction": "output", "width": "[0:0]"},
++        {"name": "out_data", "direction": "output", "width": "[7:0]"},
++        {"name": "out_ready", "direction": "input", "width": "[0:0]"},
++        {"name": "in_ready", "direction": "output", "width": "[0:0]"}
+       ],
+-      "params": [{"name": "WIDTH", "value": 8}],
+-      "clock_domain": "clk",
++      "parameters": {"WIDTH": "8"},
++      "clock": "clk",
+       "reset": "rst_n",
+       "intent": "provides backpressure buffering"
+     },
+     {
+       "name": "accumulator_core",
+-      "role": "accumulator",
++      "role": "submodule",
+       "source": "rtl/accumulator_core.v",
+       "ports": [
+-        {"name": "clk", "direction": "input", "width": 1},
+-        {"name": "rst_n", "direction": "input", "width": 1},
+-        {"name": "sample_valid", "direction": "input", "width": 1},
+-        {"name": "sample", "direction": "input", "width": 8},
+-        {"name": "sum", "direction": "output", "width": 8},
+-        {"name": "sample_ready", "direction": "output", "width": 1}
++        {"name": "clk", "direction": "input", "width": "[0:0]"},
++        {"name": "rst_n", "direction": "input", "width": "[0:0]"},
++        {"name": "sample_valid", "direction": "input", "width": "[0:0]"},
++        {"name": "sample", "direction": "input", "width": "[7:0]"},
++        {"name": "sum", "direction": "output", "width": "[7:0]"},
++        {"name": "sample_ready", "direction": "output", "width": "[0:0]"}
+       ],
+-      "params": [{"name": "WIDTH", "value": 8}],
+-      "clock_domain": "clk",
++      "parameters": {"WIDTH": "8"},
++      "clock": "clk",
+       "reset": "rst_n",
+       "intent": "accumulates input samples"
+     }
+   ],
+   "connections": [
+-    {"from": "top.clk", "to": "skid_buffer.clk"},
+-    {"from": "top.rst_n", "to": "skid_buffer.rst_n"},
+-    {"from": "top.clk", "to": "accumulator_core.clk"},
+-    {"from": "top.rst_n", "to": "accumulator_core.rst_n"},
+-    {"from": "top.in_valid", "to": "skid_buffer.in_valid"},
+-    {"from": "top.in_data", "to": "skid_buffer.in_data"},
+-    {"from": "skid_buffer.out_valid", "to": "accumulator_core.sample_valid"},
+-    {"from": "skid_buffer.out_data", "to": "accumulator_core.sample"},
+-    {"from": "accumulator_core.sample_ready", "to": "skid_buffer.out_ready"},
+-    {"from": "accumulator_core.sum", "to": "top.sum"}
++    {"from": {"module": "top", "port": "clk"}, "to": {"module": "skid_buffer", "port": "clk"}, "signal": "clk", "protocol": "standard", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "rst_n"}, "to": {"module": "skid_buffer", "port": "rst_n"}, "signal": "rst_n", "protocol": "standard", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "clk"}, "to": {"module": "accumulator_core", "port": "clk"}, "signal": "clk", "protocol": "standard", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "rst_n"}, "to": {"module": "accumulator_core", "port": "rst_n"}, "signal": "rst_n", "protocol": "standard", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "in_valid"}, "to": {"module": "skid_buffer", "port": "in_valid"}, "signal": "in_valid", "protocol": "standard", "width": 1, "cdc": false},
++    {"from": {"module": "top", "port": "in_data"}, "to": {"module": "skid_buffer", "port": "in_data"}, "signal": "in_data", "protocol": "standard", "width": 8, "cdc": false},
++    {"from": {"module": "skid_buffer", "port": "out_valid"}, "to": {"module": "accumulator_core", "port": "sample_valid"}, "signal": "skid_out_valid", "protocol": "standard", "width": 1, "cdc": false},
++    {"from": {"module": "skid_buffer", "port": "out_data"}, "to": {"module": "accumulator_core", "port": "sample"}, "signal": "skid_out_data", "protocol": "standard", "width": 8, "cdc": false},
++    {"from": {"module": "accumulator_core", "port": "sample_ready"}, "to": {"module": "skid_buffer", "port": "out_ready"}, "signal": "acc_sample_ready", "protocol": "standard", "width": 1, "cdc": false},
++    {"from": {"module": "accumulator_core", "port": "sum"}, "to": {"module": "top", "port": "sum"}, "signal": "sum", "protocol": "standard", "width": 8, "cdc": false}
+   ],
+   "top_ports": [
+-    {"name": "clk", "direction": "input", "width": 1},
+-    {"name": "rst_n", "direction": "input", "width": 1},
+-    {"name": "in_valid", "direction": "input", "width": 1},
+-    {"name": "in_data", "direction": "input", "width": 8},
+-    {"name": "sum", "direction": "output", "width": 8}
++    {"name": "clk", "direction": "input", "width": "[0:0]"},
++    {"name": "rst_n", "direction": "input", "width": "[0:0]"},
++    {"name": "in_valid", "direction": "input", "width": "[0:0]"},
++    {"name": "in_data", "direction": "input", "width": "[7:0]"},
++    {"name": "sum", "direction": "output", "width": "[7:0]"}
+   ],
+   "platform": {
+     "toolchain": "open_source"
+   },
+   "verification": {
+     "testbench": "sim/tb_top.v",
+-    "acceptance": "prints TEST_PASS only on success"
++    "acceptance": "prints TEST_PASS only on success",
++    "checks": ["check_summation"],
++    "test_pass_means": "prints TEST_PASS"
+   },
+   "qor_intent": {
+     "resources": {
+-      "lut": "minimize",
+-      "ff": "minimize"
++      "lut": 30,
++      "ff": 20,
++      "bram": 0,
++      "dsp": 0
+     },
+     "timing": {
+       "target_fmax_mhz": 100

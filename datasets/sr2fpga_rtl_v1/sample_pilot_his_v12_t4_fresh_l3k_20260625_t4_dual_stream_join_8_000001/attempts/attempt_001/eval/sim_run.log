@@ -1,0 +1,12 @@
+Starting basic test...
+TEST_FAIL: Mismatch at transfer 0, expected 11, got 0
+TEST_FAIL: Mismatch at transfer 1, expected 33, got 22
+TEST_FAIL: Mismatch at transfer 3, expected 110, got 132
+TEST_FAIL: Mismatch at transfer 4, expected 165, got 220
+Starting backpressure test...
+TEST_FAIL: Backpressure mismatch, expected 209, got 74
+Starting reset test...
+TEST_FAIL: After reset expected 3, got 0
+TEST_FAIL
+sim/tb_top.v:183: $finish called at 400000 (1ps)
+Simulation reported TEST_FAIL

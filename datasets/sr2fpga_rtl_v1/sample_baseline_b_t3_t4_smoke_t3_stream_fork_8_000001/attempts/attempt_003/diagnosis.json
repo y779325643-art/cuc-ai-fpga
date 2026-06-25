@@ -1,0 +1,16 @@
+{
+  "failure_type": "l0_contract_violation",
+  "stage": "l0_consistency",
+  "root_cause": "System-HIS module 'top' port 'in_data' width [7:0] does not match RTL 8\nSystem-HIS module 'top' port 'out0_data' width [7:0] does not match RTL 8\nSystem-HIS module 'top' port 'out1_data' width [7:0] does not match RTL 8\nsystem_his.top_ports does not match top module RTL ports",
+  "affected_files": [
+    "system_his.json",
+    "manifest.json"
+  ],
+  "l0_errors": [
+    "System-HIS module 'top' port 'in_data' width [7:0] does not match RTL 8",
+    "System-HIS module 'top' port 'out0_data' width [7:0] does not match RTL 8",
+    "System-HIS module 'top' port 'out1_data' width [7:0] does not match RTL 8",
+    "system_his.top_ports does not match top module RTL ports"
+  ],
+  "l0_warnings": []
+}

@@ -1,0 +1,21 @@
+{
+  "project": "baseline_b_tightened_t1_event_counter_8_000001",
+  "top_module": "top",
+  "target_device": "generic",
+  "summary": {
+    "status": "pass",
+    "timing": {
+      "target_period_ns": 10.0,
+      "worst_negative_slack_ns": 1.5,
+      "total_negative_slack_ns": 0.0,
+      "number_failing_paths": 0
+    },
+    "resource_utilization": {
+      "logic_elements": 16,
+      "registers": 8,
+      "memory_bits": 0,
+      "dsp_blocks": 0
+    },
+    "power_estimation_mW": 0.5
+  }
+}

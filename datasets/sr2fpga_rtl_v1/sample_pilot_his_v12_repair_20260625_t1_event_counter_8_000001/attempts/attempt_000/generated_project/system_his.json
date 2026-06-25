@@ -1,0 +1,348 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that counts incoming event pulses.",
+    "design_goal": "Count incoming event pulses and output the count value with a valid strobe.",
+    "assumptions": [
+      "Input event_in is a single-cycle pulse synchronous to clk.",
+      "Clock frequency is 100 MHz.",
+      "Reset is active-low asynchronous."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "port": "clk",
+        "frequency_hz": 100000000
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "port": "rst_n",
+        "polarity": "active_low"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "description": "System clock"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "description": "Active low reset"
+      },
+      {
+        "name": "event_in",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "description": "Incoming event pulse"
+      },
+      {
+        "name": "count",
+        "direction": "output",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        },
+        "description": "Current event count"
+      },
+      {
+        "name": "count_valid",
+        "direction": "output",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "description": "Valid pulse for count output"
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "count_reg",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "description": "Event counter register"
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "event_gate",
+      "description": "Edge detector and synchronizer for incoming event pulses. Outputs a single-cycle pulse on event_pulse_out upon detecting a rising edge on event_in.",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "event_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "event_pulse_out",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "counter_core",
+      "description": "8-bit event counter that increments on a pulse input and outputs the count value with a valid strobe.",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "event_pulse_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": {
+            "expr": "8",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "count_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "event_gate",
+      "component": "event_gate",
+      "owns_state": [],
+      "description": "Instance of event gate"
+    },
+    {
+      "name": "counter",
+      "component": "counter_core",
+      "owns_state": [
+        "count_reg"
+      ],
+      "description": "Instance of counter core"
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "event_input",
+      "path": [
+        "top.event_in",
+        "event_gate.event_in"
+      ],
+      "payload": {
+        "name": "event_pulse",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "pulse",
+      "description": "Input event pulse from top to event gate"
+    },
+    {
+      "name": "gate_pulse",
+      "path": [
+        "event_gate.event_pulse_out",
+        "counter.event_pulse_in"
+      ],
+      "payload": {
+        "name": "gate_pulse",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "pulse",
+      "description": "Pulse from event gate to counter indicating detected event"
+    },
+    {
+      "name": "count_output",
+      "path": [
+        "counter.count",
+        "top.count"
+      ],
+      "payload": {
+        "name": "count",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "data",
+      "description": "Event count output"
+    },
+    {
+      "name": "count_valid_output",
+      "path": [
+        "counter.count_valid",
+        "top.count_valid"
+      ],
+      "payload": {
+        "name": "count_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "valid",
+      "description": "Valid pulse for count output"
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "system_reset",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "count_reg",
+        "value": 0
+      },
+      "related_state": [
+        "count_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "count_increment",
+      "kind": "counter_update",
+      "when": {
+        "signal": "event_gate.event_pulse_out",
+        "op": "==",
+        "value": 1
+      },
+      "effect": {
+        "action": "increment",
+        "target": "count_reg",
+        "value": 1
+      },
+      "related_state": [
+        "count_reg"
+      ],
+      "related_flows": [
+        "gate_pulse",
+        "count_output",
+        "count_valid_output"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_count",
+        "description": "Apply a sequence of event pulses and verify count increments and valid output.",
+        "pass_condition": "count matches expected value, count_valid pulses each time"
+      }
+    ],
+    "pass_condition": "All scenarios pass; testbench prints TEST_PASS"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/event_gate.v",
+      "rtl/counter_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

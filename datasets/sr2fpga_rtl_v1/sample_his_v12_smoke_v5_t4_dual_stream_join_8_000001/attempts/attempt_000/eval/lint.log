@@ -1,0 +1,7 @@
+%Warning-UNUSEDSIGNAL: rtl/top.v:55:6: Signal is not driven, nor used: 'out_ready_out'
+                                     : ... note: In instance 'top'
+   55 | wire out_ready_out;
+      |      ^~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Error: Exiting due to 1 warning(s)

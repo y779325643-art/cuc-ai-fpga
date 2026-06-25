@@ -9,10 +9,33 @@ from collections import defaultdict
 def classify_failure(log_text: str) -> str:
     """Classify a raw tool log into the V1 failure taxonomy."""
     text = log_text.lower()
+    if "verilog reserved keyword" in text:
+        return "rtl_reserved_identifier"
+    if "testbench_stimulus_reaccept_risk" in text or "stimulus reaccept" in text:
+        return "testbench_stimulus_reaccept_risk"
+    if "testbench_observation_race" in text or "testbench observation race" in text:
+        return "testbench_observation_race"
+    if "%error-pinnotfound" in text and "parameter not found" in text:
+        return "parameter_mismatch"
+    if "signal definition not found" in text or "implicit disabled" in text or "%warning-implicit" in text:
+        return "undeclared_signal"
+    if (
+        ("i don't know how to elaborate" in text or "elaboration failed" in text)
+        and "{" in text
+        and "}" in text
+    ):
+        return "testbench_simulator_compatibility"
+    if "%warning-" in text and "exiting due to" in text and "warning" in text:
+        return "lint_warning_as_error"
+    if (
+        ("timeout waiting for output" in text and "iteration" in text)
+        or "timeout waiting for input handshake" in text
+    ):
+        return "testbench_handshake_timeout"
     patterns = [
         ("syntax_error", ["syntax error", "parse error", "unexpected"]),
         ("module_not_found", ["unknown module type", "module not found", "can't resolve module"]),
-        ("port_mismatch", ["port", "not declared", "does not exist", "is not a port"]),
+        ("port_mismatch", [" port ", "not declared", "does not exist", "is not a port"]),
         ("width_mismatch", ["width mismatch", "different width", "size mismatch"]),
         ("multiple_driver", ["multiple driver", "multiple drivers", "conflicting drivers"]),
         ("latch_inferred", ["latch inferred", "inferred latch"]),

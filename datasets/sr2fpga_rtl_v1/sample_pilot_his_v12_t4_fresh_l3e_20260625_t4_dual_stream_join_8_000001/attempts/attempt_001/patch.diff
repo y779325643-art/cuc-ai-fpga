@@ -1,0 +1,99 @@
+--- a/sim/tb_top.v
++++ b/sim/tb_top.v
+@@ -77,10 +77,11 @@
+             in1_valid <= 1;
+             in0_data <= in0_seq[i];
+             in1_data <= in1_seq[i];
+-            // Wait for handshake
++            // Wait for handshake on posedge
++            @(posedge clk);
+             cycle_count = 0;
+-            while (!(in0_ready && in1_ready && in0_valid && in1_valid)) begin
+-                @(negedge clk);
++            while (!(in0_ready && in1_ready)) begin
++                @(posedge clk);
+                 cycle_count = cycle_count + 1;
+                 if (cycle_count > 100) begin
+                     $display("TEST_FAIL: Timeout waiting for input handshake at i=%0d", i);
+@@ -96,12 +97,9 @@
+         end
+ 
+         // Wait for all outputs to appear (allow pipeline to drain)
+-        // Instead of checking hierarchy, wait a fixed number of cycles
+-        #50;  // enough cycles for pipeline depth
++        #50;
+ 
+         // Check final output value
+-        // The output is valid when out_valid is high
+-        // Since out_ready is always 1, we can sample on posedge
+         @(posedge clk);
+         if (out_valid && out_data !== expected_sum[7:0]) begin
+             $display("TEST_FAIL: Expected %d but got %d", expected_sum[7:0], out_data);
+--- a/system_his.json
++++ b/system_his.json
+@@ -418,8 +418,8 @@
+       "payload": {
+         "name": "data",
+         "width": {
+-          "expr": "DATA_WIDTH",
+-          "resolved": 8
++            "expr": "DATA_WIDTH",
++            "resolved": 8
+         }
+       },
+       "protocol": "valid_ready",
+@@ -438,8 +438,8 @@
+       "payload": {
+         "name": "data",
+         "width": {
+-          "expr": "DATA_WIDTH",
+-          "resolved": 8
++            "expr": "DATA_WIDTH",
++            "resolved": 8
+         }
+       },
+       "protocol": "valid_ready",
+@@ -458,8 +458,8 @@
+       "payload": {
+         "name": "data",
+         "width": {
+-          "expr": "DATA_WIDTH",
+-          "resolved": 8
++            "expr": "DATA_WIDTH",
++            "resolved": 8
+         }
+       },
+       "protocol": "valid_ready",
+@@ -478,8 +478,8 @@
+       "payload": {
+         "name": "data",
+         "width": {
+-          "expr": "DATA_WIDTH",
+-          "resolved": 8
++            "expr": "DATA_WIDTH",
++            "resolved": 8
+         }
+       },
+       "protocol": "valid_ready",
+@@ -498,8 +498,8 @@
+       "payload": {
+         "name": "data",
+         "width": {
+-          "expr": "DATA_WIDTH",
+-          "resolved": 8
++            "expr": "DATA_WIDTH",
++            "resolved": 8
+         }
+       },
+       "protocol": "valid_ready",
+@@ -518,8 +518,8 @@
+       "payload": {
+         "name": "data",
+         "width": {
+-          "expr": "DATA_WIDTH",
+-          "resolved": 8
++            "expr": "DATA_WIDTH",
++            "resolved": 8
+         }
+       },
+       "protocol": "valid_ready",

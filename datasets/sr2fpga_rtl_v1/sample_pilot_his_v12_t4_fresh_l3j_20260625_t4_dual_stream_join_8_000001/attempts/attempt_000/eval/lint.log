@@ -1,0 +1,7 @@
+%Warning-UNUSEDSIGNAL: rtl/top.v:33:27: Signal is not used: 'accumulator_reg'
+                                      : ... note: In instance 'top'
+   33 |     wire [DATA_WIDTH-1:0] accumulator_reg;
+      |                           ^~~~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Error: Exiting due to 1 warning(s)

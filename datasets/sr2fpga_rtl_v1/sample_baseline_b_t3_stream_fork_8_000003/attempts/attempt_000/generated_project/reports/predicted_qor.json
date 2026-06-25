@@ -1,0 +1,7 @@
+{
+  "max_freq_mhz": 100,
+  "area_luts": 40,
+  "area_registers": 30,
+  "timing_wns_ns": 0.0,
+  "timing_tns_ns": 0.0
+}

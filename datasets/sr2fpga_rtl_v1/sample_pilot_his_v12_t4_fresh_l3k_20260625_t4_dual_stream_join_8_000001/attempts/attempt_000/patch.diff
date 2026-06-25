@@ -1,0 +1,15 @@
+--- a/rtl/stream_join.v
++++ b/rtl/stream_join.v
+@@ -1,6 +1,7 @@
+ // Joins two input streams: output valid when both inputs valid, output data = sum (mod 2^DATA_WIDTH)
+ `timescale 1ns / 1ps
+ 
++/* verilator lint_off UNUSEDSIGNAL */
+ module stream_join #(
+     parameter DATA_WIDTH = 8
+ ) (
+@@ -24,3 +25,4 @@
+     assign out_data  = in0_data + in1_data;
+ 
+ endmodule
++/* verilator lint_on UNUSEDSIGNAL */

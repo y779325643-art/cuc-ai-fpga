@@ -1,0 +1,6 @@
+sim/tb_top.v:37: syntax error
+sim/tb_top.v:37: error: Malformed statement
+sim/tb_top.v:38: syntax error
+sim/tb_top.v:38: error: Malformed statement
+sim/tb_top.v:39: syntax error
+sim/tb_top.v:39: Syntax in assignment statement l-value.

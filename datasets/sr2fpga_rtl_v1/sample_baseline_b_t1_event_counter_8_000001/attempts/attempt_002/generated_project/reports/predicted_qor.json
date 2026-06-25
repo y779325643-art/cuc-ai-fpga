@@ -1,0 +1,8 @@
+{
+  "design": "baseline_b_t1_event_counter_8_000001",
+  "clock_frequency": 100,
+  "slack": "1.2 ns (estimated)",
+  "area": "2 LUTs + 2 FFs (approximate)",
+  "power": "< 1 mW",
+  "comments": "Minimal design, no timing issues expected."
+}

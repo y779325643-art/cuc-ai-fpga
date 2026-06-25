@@ -1,0 +1,8 @@
+{
+  "predicted_fmax_mhz": 100,
+  "estimated_lut_count": "< 100",
+  "estimated_ff_count": "< 100",
+  "estimated_bram_18k": 0,
+  "estimated_dsp48e1": 0,
+  "comments": "Area-first design with simple control logic."
+}

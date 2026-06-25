@@ -1,0 +1,108 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -31,13 +31,13 @@
+       { "name": "rst_n", "direction": "input", "width": 1 },
+       { "name": "in0_valid", "direction": "input", "width": 1 },
+       { "name": "in0_ready", "direction": "output", "width": 1 },
+-      { "name": "in0_data", "direction": "input", "width": { "expr": "DATA_WIDTH-1:0", "resolved": 8 } },
++      { "name": "in0_data", "direction": "input", "width": { "expr": "[DATA_WIDTH-1:0]", "resolved": 8 } },
+       { "name": "in1_valid", "direction": "input", "width": 1 },
+       { "name": "in1_ready", "direction": "output", "width": 1 },
+-      { "name": "in1_data", "direction": "input", "width": { "expr": "DATA_WIDTH-1:0", "resolved": 8 } },
++      { "name": "in1_data", "direction": "input", "width": { "expr": "[DATA_WIDTH-1:0]", "resolved": 8 } },
+       { "name": "out_valid", "direction": "output", "width": 1 },
+       { "name": "out_ready", "direction": "input", "width": 1 },
+-      { "name": "out_data", "direction": "output", "width": { "expr": "DATA_WIDTH-1:0", "resolved": 8 } }
++      { "name": "out_data", "direction": "output", "width": { "expr": "[DATA_WIDTH-1:0]", "resolved": 8 } }
+     ],
+     "interfaces": []
+   },
+@@ -61,10 +61,10 @@
+         { "name": "rst_n", "direction": "input", "width": 1 },
+         { "name": "in_valid", "direction": "input", "width": 1 },
+         { "name": "in_ready", "direction": "output", "width": 1 },
+-        { "name": "in_data", "direction": "input", "width": { "expr": "DATA_WIDTH-1:0" } },
++        { "name": "in_data", "direction": "input", "width": { "expr": "[DATA_WIDTH-1:0]" } },
+         { "name": "out_valid", "direction": "output", "width": 1 },
+         { "name": "out_ready", "direction": "input", "width": 1 },
+-        { "name": "out_data", "direction": "output", "width": { "expr": "DATA_WIDTH-1:0" } }
++        { "name": "out_data", "direction": "output", "width": { "expr": "[DATA_WIDTH-1:0]" } }
+       ]
+     },
+     {
+@@ -77,13 +77,13 @@
+         { "name": "rst_n", "direction": "input", "width": 1 },
+         { "name": "in0_valid", "direction": "input", "width": 1 },
+         { "name": "in0_ready", "direction": "output", "width": 1 },
+-        { "name": "in0_data", "direction": "input", "width": { "expr": "DATA_WIDTH-1:0" } },
++        { "name": "in0_data", "direction": "input", "width": { "expr": "[DATA_WIDTH-1:0]" } },
+         { "name": "in1_valid", "direction": "input", "width": 1 },
+         { "name": "in1_ready", "direction": "output", "width": 1 },
+-        { "name": "in1_data", "direction": "input", "width": { "expr": "DATA_WIDTH-1:0" } },
++        { "name": "in1_data", "direction": "input", "width": { "expr": "[DATA_WIDTH-1:0]" } },
+         { "name": "out_valid", "direction": "output", "width": 1 },
+         { "name": "out_ready", "direction": "input", "width": 1 },
+-        { "name": "out_data", "direction": "output", "width": { "expr": "DATA_WIDTH-1:0" } }
++        { "name": "out_data", "direction": "output", "width": { "expr": "[DATA_WIDTH-1:0]" } }
+       ]
+     },
+     {
+@@ -96,10 +96,10 @@
+         { "name": "rst_n", "direction": "input", "width": 1 },
+         { "name": "in_valid", "direction": "input", "width": 1 },
+         { "name": "in_ready", "direction": "output", "width": 1 },
+-        { "name": "in_data", "direction": "input", "width": { "expr": "DATA_WIDTH-1:0" } },
++        { "name": "in_data", "direction": "input", "width": { "expr": "[DATA_WIDTH-1:0]" } },
+         { "name": "out_valid", "direction": "output", "width": 1 },
+         { "name": "out_ready", "direction": "input", "width": 1 },
+-        { "name": "out_data", "direction": "output", "width": { "expr": "DATA_WIDTH-1:0" } }
++        { "name": "out_data", "direction": "output", "width": { "expr": "[DATA_WIDTH-1:0]" } }
+       ]
+     },
+     {
+@@ -112,10 +112,10 @@
+         { "name": "rst_n", "direction": "input", "width": 1 },
+         { "name": "in_valid", "direction": "input", "width": 1 },
+         { "name": "in_ready", "direction": "output", "width": 1 },
+-        { "name": "in_data", "direction": "input", "width": { "expr": "DATA_WIDTH-1:0" } },
++        { "name": "in_data", "direction": "input", "width": { "expr": "[DATA_WIDTH-1:0]" } },
+         { "name": "out_valid", "direction": "output", "width": 1 },
+         { "name": "out_ready", "direction": "input", "width": 1 },
+-        { "name": "out_data", "direction": "output", "width": { "expr": "DATA_WIDTH-1:0" } }
++        { "name": "out_data", "direction": "output", "width": { "expr": "[DATA_WIDTH-1:0]" } }
+       ]
+     }
+   ],
+@@ -218,28 +218,28 @@
+     {
+       "name": "in0_path",
+       "path": ["top.in0_valid","top.in0_ready","top.in0_data","in0_buffer.in_valid","in0_buffer.in_ready","in0_buffer.in_data","in0_buffer.out_valid","in0_buffer.out_ready","in0_buffer.out_data","join_core.in0_valid","join_core.in0_ready","join_core.in0_data"],
+-      "payload": { "name": "data", "width": { "expr": "DATA_WIDTH-1:0", "resolved": 8 } },
++      "payload": { "name": "data", "width": { "expr": "[DATA_WIDTH-1:0]", "resolved": 8 } },
+       "protocol": "valid_ready",
+       "timing": { "latency_cycles": 1, "initiation_interval": 1, "throughput": "one transfer per cycle when ready" }
+     },
+     {
+       "name": "in1_path",
+       "path": ["top.in1_valid","top.in1_ready","top.in1_data","in1_buffer.in_valid","in1_buffer.in_ready","in1_buffer.in_data","in1_buffer.out_valid","in1_buffer.out_ready","in1_buffer.out_data","join_core.in1_valid","join_core.in1_ready","join_core.in1_data"],
+-      "payload": { "name": "data", "width": { "expr": "DATA_WIDTH-1:0", "resolved": 8 } },
++      "payload": { "name": "data", "width": { "expr": "[DATA_WIDTH-1:0]", "resolved": 8 } },
+       "protocol": "valid_ready",
+       "timing": { "latency_cycles": 1, "initiation_interval": 1, "throughput": "one transfer per cycle when ready" }
+     },
+     {
+       "name": "join_to_acc",
+       "path": ["join_core.out_valid","join_core.out_ready","join_core.out_data","accumulator.in_valid","accumulator.in_ready","accumulator.in_data"],
+-      "payload": { "name": "data", "width": { "expr": "DATA_WIDTH-1:0", "resolved": 8 } },
++      "payload": { "name": "data", "width": { "expr": "[DATA_WIDTH-1:0]", "resolved": 8 } },
+       "protocol": "valid_ready",
+       "timing": { "latency_cycles": 1, "initiation_interval": 1, "throughput": "one transfer per cycle when ready" }
+     },
+     {
+       "name": "acc_to_out",
+       "path": ["accumulator.out_valid","accumulator.out_ready","accumulator.out_data","out_stage.in_valid","out_stage.in_ready","out_stage.in_data","out_stage.out_valid","out_stage.out_ready","out_stage.out_data","top.out_valid","top.out_ready","top.out_data"],
+-      "payload": { "name": "data", "width": { "expr": "DATA_WIDTH-1:0", "resolved": 8 } },
++      "payload": { "name": "data", "width": { "expr": "[DATA_WIDTH-1:0]", "resolved": 8 } },
+       "protocol": "valid_ready",
+       "timing": { "latency_cycles": 2, "initiation_interval": 1, "throughput": "one transfer per cycle when ready" }
+     }

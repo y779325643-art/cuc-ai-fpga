@@ -1,0 +1,15 @@
+{
+  "failure_type": "l0_contract_violation",
+  "stage": "l0_consistency",
+  "root_cause": "top port 'in0_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8\ntop port 'in1_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8\ntop port 'out_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8",
+  "affected_files": [
+    "system_his.json",
+    "manifest.json"
+  ],
+  "l0_errors": [
+    "top port 'in0_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8",
+    "top port 'in1_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8",
+    "top port 'out_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8"
+  ],
+  "l0_warnings": []
+}

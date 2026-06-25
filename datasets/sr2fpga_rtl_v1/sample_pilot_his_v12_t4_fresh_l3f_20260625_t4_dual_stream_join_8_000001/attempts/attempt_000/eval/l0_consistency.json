@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "component 'stream_join' port 'in1_data' is not declared in RTL\ndata_flow 'in1_data_flow' endpoint 'join_core.in1_data' is not declared in RTL\n",
+  "duration_seconds": 0.0
+}

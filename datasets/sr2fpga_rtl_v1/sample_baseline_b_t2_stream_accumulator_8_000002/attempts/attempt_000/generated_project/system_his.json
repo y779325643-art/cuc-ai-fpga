@@ -1,0 +1,6 @@
+{
+  "project": "baseline_b_t2_stream_accumulator_8_000002",
+  "task_type": "composed_stream_accumulator",
+  "width": 8,
+  "description": "Build an 8-bit streaming accumulator datapath as a complete SR2FPGA Verilog RTL project. This is component topology t2_stream_accumulator, difficulty tier T2. Use a skid_buffer feeding an accumulator_core."
+}

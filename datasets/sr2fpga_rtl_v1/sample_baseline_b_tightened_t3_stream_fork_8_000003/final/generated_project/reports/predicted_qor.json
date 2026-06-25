@@ -1,0 +1,7 @@
+{
+  "worst_slack": 0.5,
+  "total_power": 0.1,
+  "lut_count": 50,
+  "ff_count": 30,
+  "bram_count": 0
+}

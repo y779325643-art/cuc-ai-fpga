@@ -1,0 +1,7 @@
+{
+  "fmax_mhz": 100,
+  "slack_ns": 5.0,
+  "area_ff": 20,
+  "area_lut": 30,
+  "power_mw": 10
+}

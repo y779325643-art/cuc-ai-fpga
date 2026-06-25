@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "System-HIS module 'counter_core' port 'count' width 8 does not match RTL [WIDTH-1:0]\n",
+  "duration_seconds": 0.0
+}

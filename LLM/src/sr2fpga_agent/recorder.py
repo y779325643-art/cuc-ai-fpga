@@ -27,11 +27,19 @@ class DatasetRecorder:
     def __init__(self, dataset_root: Path) -> None:
         self.dataset_root = dataset_root
 
-    def start_sample(self, sample_id: str, requirement: str, platform_profile: PlatformProfile) -> Path:
+    def start_sample(
+        self,
+        sample_id: str,
+        requirement: str,
+        platform_profile: PlatformProfile,
+        metadata: dict[str, Any] | None = None,
+    ) -> Path:
         sample_dir = self.dataset_root / sample_id
         sample_dir.mkdir(parents=True, exist_ok=True)
         (sample_dir / "requirement.txt").write_text(requirement.rstrip() + "\n", encoding="utf-8")
         _write_json(sample_dir / "platform_profile.json", asdict(platform_profile))
+        if metadata is not None:
+            _write_json(sample_dir / "metadata.json", metadata)
         return sample_dir
 
     def write_attempt(self, sample_id: str, attempt: AttemptRecord) -> Path:
@@ -88,6 +96,7 @@ class DatasetRecorder:
             his_path = final_project_dir / "system_his.json"
             predicted_qor_path = final_project_dir / "reports" / "predicted_qor.json"
             measured_qor_path = sample_dir / "eval" / "measured_qor.json"
+            metadata = _read_metadata(sample_dir)
             requirement = requirement_path.read_text(encoding="utf-8").strip() if requirement_path.exists() else ""
             system_his = json.loads(his_path.read_text(encoding="utf-8")) if his_path.exists() else None
             final_files = _read_project_files(final_project_dir) if final_project_dir.exists() else []
@@ -96,6 +105,7 @@ class DatasetRecorder:
                 requirement_rows.append(
                     {
                         "sample_id": sample_id,
+                        "metadata": metadata,
                         "requirement": requirement,
                         "system_his": system_his,
                     }
@@ -105,6 +115,7 @@ class DatasetRecorder:
                 his_project_rows.append(
                     {
                         "sample_id": sample_id,
+                        "metadata": metadata,
                         "system_his": system_his,
                         "files": final_files,
                     }
@@ -112,6 +123,7 @@ class DatasetRecorder:
                 requirement_project_rows.append(
                     {
                         "sample_id": sample_id,
+                        "metadata": metadata,
                         "requirement": requirement,
                         "files": final_files,
                     }
@@ -121,6 +133,7 @@ class DatasetRecorder:
                 predicted_qor_rows.append(
                     {
                         "sample_id": sample_id,
+                        "metadata": metadata,
                         "files": final_files,
                         "predicted_qor": json.loads(predicted_qor_path.read_text(encoding="utf-8")),
                     }
@@ -130,6 +143,7 @@ class DatasetRecorder:
                 measured_qor_rows.append(
                     {
                         "sample_id": sample_id,
+                        "metadata": metadata,
                         "files": final_files,
                         "measured_qor": json.loads(measured_qor_path.read_text(encoding="utf-8")),
                     }
@@ -145,6 +159,7 @@ class DatasetRecorder:
                         diagnosis_rows.append(
                             {
                                 "sample_id": sample_id,
+                                "metadata": metadata,
                                 "attempt_id": attempt_dir.name,
                                 "diagnosis": diagnosis,
                             }
@@ -153,6 +168,7 @@ class DatasetRecorder:
                         patch_rows.append(
                             {
                                 "sample_id": sample_id,
+                                "metadata": metadata,
                                 "attempt_id": attempt_dir.name,
                                 "diagnosis": json.loads(diagnosis_path.read_text(encoding="utf-8")),
                                 "patch": patch_path.read_text(encoding="utf-8"),
@@ -184,6 +200,17 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8") as output:
         for row in rows:
             output.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def _read_metadata(sample_dir: Path) -> dict[str, Any]:
+    path = sample_dir / "metadata.json"
+    if not path.exists():
+        return {}
+    metadata = json.loads(path.read_text(encoding="utf-8"))
+    if "training_split" not in metadata:
+        schema_version = str(metadata.get("system_his_schema_version", "legacy"))
+        metadata["training_split"] = "clean" if schema_version == "system-his-v1.2" else "quarantine"
+    return metadata
 
 
 def _read_project_files(project_dir: Path) -> list[dict[str, str]]:

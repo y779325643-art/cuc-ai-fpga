@@ -1,0 +1,12 @@
+{
+  "project": "pilot_his_v12_t4_fresh_l3b_20260625_t4_dual_stream_join_8",
+  "top_module": "top",
+  "status": "pre-route estimation",
+  "metrics": {
+    "fmax_mhz": 100,
+    "lut_count": 100,
+    "ff_count": 50,
+    "bram_count": 0,
+    "dsp_count": 0
+  }
+}

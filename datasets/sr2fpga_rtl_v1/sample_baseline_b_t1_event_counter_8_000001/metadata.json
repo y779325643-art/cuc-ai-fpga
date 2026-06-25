@@ -1,0 +1,14 @@
+{
+  "source": "deepseek",
+  "generator_provider": "deepseek",
+  "failure_origin": "natural_llm",
+  "difficulty_tier": "T1",
+  "measurement_point": "b_tool_in_loop_repair",
+  "repair_provider": "deepseek",
+  "failure_injectors": [],
+  "task_type": "composed_event_counter",
+  "width": 8,
+  "system_his_schema_version": "system-his-v1.1",
+  "topology_id": "t1_event_counter",
+  "requirement_style": "natural_component"
+}

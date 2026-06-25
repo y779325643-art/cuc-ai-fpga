@@ -1,0 +1,5 @@
+{
+  "project": "runner_t1_event_counter_8_000001",
+  "revision": "1",
+  "description": "8-bit event counting subsystem with event gate and counter core"
+}

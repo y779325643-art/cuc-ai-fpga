@@ -1,0 +1,5 @@
+%Error: rtl/top.v:35:30: syntax error, unexpected fork
+   35 | stream_fork #(.WIDTH(WIDTH)) fork (
+      |                              ^~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: Exiting due to 1 error(s)

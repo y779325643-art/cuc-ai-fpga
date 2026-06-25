@@ -1,0 +1,5 @@
+create_clock -period 10.000 -name sys_clk [get_ports clk]
+set_input_delay -clock sys_clk -max 2.0 [get_ports in_valid]
+set_input_delay -clock sys_clk -max 2.0 [get_ports in_data]
+set_output_delay -clock sys_clk -max 2.0 [get_ports sum]
+set_output_delay -clock sys_clk -max 2.0 [get_ports out_ready]

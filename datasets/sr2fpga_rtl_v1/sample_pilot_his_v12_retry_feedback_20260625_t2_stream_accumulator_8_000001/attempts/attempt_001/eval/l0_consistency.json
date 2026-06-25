@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "component 'skid_buffer' port 'in_data' width DATA_WIDTH does not match RTL 8\ncomponent 'skid_buffer' port 'out_data' width DATA_WIDTH does not match RTL 8\ncomponent 'accumulator_core' port 'in_data' width DATA_WIDTH does not match RTL 8\ncomponent 'accumulator_core' port 'out_data' width DATA_WIDTH does not match RTL 8\n",
+  "duration_seconds": 0.0
+}

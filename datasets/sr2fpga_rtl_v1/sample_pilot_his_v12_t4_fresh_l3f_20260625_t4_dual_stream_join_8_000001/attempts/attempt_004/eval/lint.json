@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDPARAM: rtl/skid_buffer.v:1:56: Parameter is not used: 'DEPTH'\n                                            : ... note: In instance 'top.in1_buffer'\n    1 | module skid_buffer #(parameter DATA_WIDTH=8, parameter DEPTH=2) (\n      |                                                        ^~~~~\n                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048\n                      ... Use \"/* verilator lint_off UNUSEDPARAM */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)\n",
+  "duration_seconds": 0.1226563329983037
+}

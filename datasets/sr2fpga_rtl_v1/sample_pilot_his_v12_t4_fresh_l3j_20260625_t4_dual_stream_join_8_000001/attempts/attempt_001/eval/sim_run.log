@@ -1,0 +1,11 @@
+Starting testbench...
+Packet 0 OK: expected 5, got 5
+TEST_FAIL at packet 1: expected 12, got 10
+TEST_FAIL at packet 2: expected 21, got 22
+Backpressure test...
+Backpressure packet 0 OK
+TEST_FAIL backpressure packet 1: expected 12, got 15
+TEST_FAIL backpressure packet 2: expected 21, got 29
+TEST_FAIL
+sim/tb_top.v:178: $finish called at 420000 (1ps)
+Simulation reported TEST_FAIL

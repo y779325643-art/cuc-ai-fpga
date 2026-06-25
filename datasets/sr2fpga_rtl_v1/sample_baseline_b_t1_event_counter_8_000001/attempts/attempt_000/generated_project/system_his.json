@@ -1,0 +1,12 @@
+{
+  "design": "baseline_b_t1_event_counter_8_000001",
+  "top": "top",
+  "modules": ["top", "event_gate", "counter_core"],
+  "interfaces": {
+    "top.event_valid": "event_gate.event_valid",
+    "event_gate.count_en": "counter_core.en",
+    "counter_core.count": "top.count"
+  },
+  "clock_hz": 100000000,
+  "reset_polarity": "active_low"
+}

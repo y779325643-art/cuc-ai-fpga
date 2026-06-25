@@ -1,0 +1,98 @@
+--- a/rtl/stream_join.v
++++ b/rtl/stream_join.v
+@@ -1,8 +1,10 @@
+ module stream_join #(parameter W=8) (
+   input clk, rst_n,
+-  input [W-1:0] input0_data, input0_valid,
++  input [W-1:0] input0_data,
++  input input0_valid,
+   output wire input0_ready,
+-  input [W-1:0] input1_data, input1_valid,
++  input [W-1:0] input1_data,
++  input input1_valid,
+   output wire input1_ready,
+   output reg [W-1:0] output_data,
+   output reg output_valid,
+--- a/system_his.json
++++ b/system_his.json
+@@ -171,7 +171,7 @@
+           "direction": "input",
+           "type": "wire",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -192,7 +192,7 @@
+           "direction": "output",
+           "type": "reg",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -231,7 +231,7 @@
+           "direction": "input",
+           "type": "wire",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -252,7 +252,7 @@
+           "direction": "input",
+           "type": "wire",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -273,7 +273,7 @@
+           "direction": "output",
+           "type": "reg",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -312,7 +312,7 @@
+           "direction": "input",
+           "type": "wire",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -333,7 +333,7 @@
+           "direction": "output",
+           "type": "reg",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -372,7 +372,7 @@
+           "direction": "input",
+           "type": "wire",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },
+@@ -393,7 +393,7 @@
+           "direction": "output",
+           "type": "reg",
+           "width": {
+-            "expr": "DATA_WIDTH",
++            "expr": "W",
+             "resolved": 8
+           }
+         },

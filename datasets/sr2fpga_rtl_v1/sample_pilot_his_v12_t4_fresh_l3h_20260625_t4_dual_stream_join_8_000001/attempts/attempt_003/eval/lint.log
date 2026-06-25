@@ -1,0 +1,7 @@
+%Warning-UNUSEDSIGNAL: rtl/stream_join.v:11:34: Signal is not used: 'in1_data'
+                                              : ... note: In instance 'top.join_core'
+   11 |     input  wire [DATA_WIDTH-1:0] in1_data,
+      |                                  ^~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Error: Exiting due to 1 warning(s)

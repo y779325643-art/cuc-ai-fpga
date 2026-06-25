@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "System-HIS module 'skid_buffer' port 'in_data' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'skid_buffer' port 'out_data' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'stream_join' port 'in0_data' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'stream_join' port 'in1_data' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'stream_join' port 'out_data' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'accumulator_core' port 'sample' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'accumulator_core' port 'out_data' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'stream_stage' port 'in_data' width 8 does not match RTL [WIDTH-1:0]\nSystem-HIS module 'stream_stage' port 'out_data' width 8 does not match RTL [WIDTH-1:0]\n",
+  "duration_seconds": 0.0
+}

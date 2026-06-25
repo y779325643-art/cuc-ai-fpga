@@ -1,0 +1,2 @@
+state.fsms 'join_fsm' state 'IDLE' is not found in RTL module 'top'
+state.fsms 'join_fsm' state 'JOIN' is not found in RTL module 'top'
