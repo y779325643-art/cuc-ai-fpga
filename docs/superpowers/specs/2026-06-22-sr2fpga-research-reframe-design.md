@@ -35,6 +35,49 @@ a small Lattice part. Emphasis:
 
 ## Motivation
 
+### Why this question matters (the external case)
+
+The driving question — *can the judgement of the EDA toolchain be internalized
+into a model so it generates, diagnoses, repairs, and predicts the quality of
+project-level, multi-file, physically-realizable FPGA RTL from a requirement,
+without calling the tools at inference?* — is worth asking for three compounding
+reasons:
+
+- **The tool is ground truth, but unusable at inference scale.** EDA tools
+  (Verilator/Yosys/nextpnr/board) give an *objective* pass/fail verdict, not
+  another model's opinion — but they are expensive, slow, external, and
+  non-differentiable. Today's LLM-RTL flows are therefore stuck between (a)
+  ignoring tools (generate + pass@k on simulation — but "sim-pass ≠ silicon":
+  Representation Bottleneck reports 48% unconditional end-to-end, and the field's
+  own practitioners note "fast isn't the skill, board-ready is") and (b) calling
+  tools in a loop every inference (mature but slow/costly, and **un-scalable for
+  L4 P&R at minutes/sample** — exactly Paper ②'s blocker). Internalizing the tool
+  verdict would give *tool-quality output at LLM speed/cost*, unblocking
+  large-scale QoR-proxy search, toolchain-free generation, and accessibility for
+  domain experts.
+- **It tests a genuine, measurable scientific claim.** "Is hardware
+  correctness/realizability a *learnable function* of the design, or does it
+  fundamentally require running the tool?" is a true/false question answerable
+  against objective ground truth (the tool), not self-reported quality.
+- **The field's easy region is saturated; the hard region is exactly this.**
+  Single-module simulation benchmarks (VerilogEval) are near ceiling; the unsolved
+  region is **cross-file consistency + physical realizability** — which the
+  TODAES'25 survey, the ChipSeek-R1/MasterRTL/POET future-work statements, and
+  Representation Bottleneck's explicit call for "an LLM-native IR separating intent
+  from implementation" all point to. Project-level + physical is where models
+  actually fail and where the science is.
+
+**Honest framing of the question (a threat-aware reformulation):** the right
+question is *how much* of the tool verdict is internalizable and *where it stops*
+— not whether the tool can be fully replaced. Some quantities are physics-bound
+and out of reach (CDC metastability, board signal integrity; see threats to
+validity). So success is **not** "replace the tool"; it is the measured deltas
+**(b−a)** and **(c−a)** — how much tool-in-the-loop feedback and tool-verified
+fine-tuning each add — plus mapping the L0–L5 boundary of what internalizes vs
+what must stay with the tool. A partial answer is still a result.
+
+### Why the reframe (the internal trigger)
+
 A harsh-reviewer pass over the current state found a real risk: the project has
 a high-quality data pipeline but **no scientific result yet**, and its initial
 tasks (`counter`, `fifo`, `simple_fsm`, `ram_read_write`) are too easy — strong
