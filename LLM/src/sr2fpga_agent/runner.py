@@ -820,6 +820,30 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     )
 
 
+LLM_SOURCE_KINDS = {"openai_compat", "deepseek", "deepseek-his-v12"}
+
+
+def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnection:
+    if source in config.sources:
+        return config.sources[source]
+    if source == "deterministic":
+        return SourceConnection(name="deterministic", kind="deterministic")
+    if source == "deepseek-his-v12":
+        kind, mode = "deepseek-his-v12", "two_stage"
+    elif source == "deepseek" or source.startswith("deepseek-"):
+        kind, mode = "deepseek", "direct"
+    else:
+        kind, mode = "openai_compat", "two_stage"
+    return SourceConnection(
+        name=source,
+        kind=kind,
+        model=config.model,
+        base_url=config.base_url,
+        api_key_env=config.api_key_env,
+        generation_mode=mode,
+    )
+
+
 def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
     sources: dict[str, SourceConnection] = {}
     for name, item in raw.items():

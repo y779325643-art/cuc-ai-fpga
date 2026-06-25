@@ -74,3 +74,56 @@ class SourcesParsingTest(unittest.TestCase):
             )
             config = load_runner_config(config_path)
             self.assertEqual(config.sources, {})
+
+
+from LLM.src.sr2fpga_agent.runner import resolve_source_connection
+
+
+def _base_config(**overrides) -> RunnerConfig:
+    base = dict(
+        dataset_root=Path("d"),
+        export_root=Path("e"),
+        run_root=Path("r"),
+        provider="deterministic",
+        repair_provider="none",
+        max_attempts=1,
+        refresh_exports=True,
+        line_b_targets={},
+        tasks=[],
+    )
+    base.update(overrides)
+    return RunnerConfig(**base)
+
+
+class ResolveSourceTest(unittest.TestCase):
+    def test_resolves_named_source_from_table(self) -> None:
+        conn = SourceConnection(
+            name="claude", kind="openai_compat", model="claude-opus-4-8",
+            base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_API_KEY",
+            generation_mode="two_stage",
+        )
+        config = _base_config(sources={"claude": conn})
+        self.assertIs(resolve_source_connection(config, "claude"), conn)
+
+    def test_deterministic_source_needs_no_entry(self) -> None:
+        config = _base_config()
+        conn = resolve_source_connection(config, "deterministic")
+        self.assertEqual(conn.kind, "deterministic")
+
+    def test_legacy_deepseek_his_v12_falls_back_to_global(self) -> None:
+        config = _base_config(
+            model="deepseek-v4-flash",
+            base_url="https://api.deepseek.com",
+            api_key_env="DEEPSEEK_API_KEY",
+        )
+        conn = resolve_source_connection(config, "deepseek-his-v12")
+        self.assertEqual(conn.kind, "deepseek-his-v12")
+        self.assertEqual(conn.generation_mode, "two_stage")
+        self.assertEqual(conn.model, "deepseek-v4-flash")
+        self.assertEqual(conn.api_key_env, "DEEPSEEK_API_KEY")
+
+    def test_legacy_deepseek_direct_falls_back_to_global(self) -> None:
+        config = _base_config(api_key_env="DEEPSEEK_API_KEY")
+        conn = resolve_source_connection(config, "deepseek")
+        self.assertEqual(conn.kind, "deepseek")
+        self.assertEqual(conn.generation_mode, "direct")
