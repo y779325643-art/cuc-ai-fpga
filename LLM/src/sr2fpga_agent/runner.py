@@ -450,47 +450,60 @@ def _source_auth_diagnostics(
     errors: list[str] = []
     seen: set[str] = set()
     for sample in samples:
-        if sample.source in seen:
-            continue
-        seen.add(sample.source)
-        connection = resolve_source_connection(config, sample.source)
-        if connection.kind not in LLM_SOURCE_KINDS:
-            continue
-        api_key = os.environ.get(connection.api_key_env, "")
-        if not api_key:
-            diagnostics[sample.source] = {
-                "status": "skipped",
-                "detail": f"{connection.api_key_env} is not set",
-            }
-            errors.append(f"{connection.api_key_env} is not set for source {sample.source}")
-            continue
-        if not validate_provider:
-            diagnostics[sample.source] = {"status": "not_checked", "detail": ""}
-            continue
-        client = DeepSeekClient(
-            DeepSeekConfig(
-                api_key=api_key,
-                model=connection.model,
-                base_url=connection.base_url,
-                timeout_seconds=20,
-            )
-        )
-        try:
-            client.chat(
-                [
-                    {"role": "system", "content": "Return a tiny JSON object for authentication preflight."},
-                    {"role": "user", "content": "Return {\"ok\": true}."},
-                ]
-            )
-        except RuntimeError as exc:
-            diagnostics[sample.source] = {
-                "status": "failed",
-                "detail": _sanitize_secret(str(exc), api_key),
-            }
-            errors.append(f"{sample.source} provider auth failed")
-            continue
-        diagnostics[sample.source] = {"status": "ok", "detail": ""}
+        _check_source_auth(config, sample.source, seen, diagnostics, errors, validate_provider)
+    if config.repair_provider and config.repair_provider != "none":
+        _check_source_auth(config, config.repair_provider, seen, diagnostics, errors, validate_provider)
     return diagnostics, errors
+
+
+def _check_source_auth(
+    config: RunnerConfig,
+    source: str,
+    seen: set[str],
+    diagnostics: dict[str, dict[str, str]],
+    errors: list[str],
+    validate_provider: bool,
+) -> None:
+    if source in seen:
+        return
+    seen.add(source)
+    connection = resolve_source_connection(config, source)
+    if connection.kind not in LLM_SOURCE_KINDS:
+        return
+    api_key = os.environ.get(connection.api_key_env, "")
+    if not api_key:
+        diagnostics[source] = {
+            "status": "skipped",
+            "detail": f"{connection.api_key_env} is not set",
+        }
+        errors.append(f"{connection.api_key_env} is not set for source {source}")
+        return
+    if not validate_provider:
+        diagnostics[source] = {"status": "not_checked", "detail": ""}
+        return
+    client = DeepSeekClient(
+        DeepSeekConfig(
+            api_key=api_key,
+            model=connection.model,
+            base_url=connection.base_url,
+            timeout_seconds=20,
+        )
+    )
+    try:
+        client.chat(
+            [
+                {"role": "system", "content": "Return a tiny JSON object for authentication preflight."},
+                {"role": "user", "content": "Return {\"ok\": true}."},
+            ]
+        )
+    except RuntimeError as exc:
+        diagnostics[source] = {
+            "status": "failed",
+            "detail": _sanitize_secret(str(exc), api_key),
+        }
+        errors.append(f"{source} provider auth failed")
+        return
+    diagnostics[source] = {"status": "ok", "detail": ""}
 
 
 def _sanitize_secret(text: str, secret: str) -> str:
@@ -843,16 +856,32 @@ def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnec
     )
 
 
+_GENERATION_MODE_BY_KIND = {
+    "openai_compat": "two_stage",
+    "deepseek-his-v12": "two_stage",
+    "deepseek": "direct",
+    "deterministic": "",
+}
+
+
 def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
     sources: dict[str, SourceConnection] = {}
     for name, item in raw.items():
+        kind = str(item.get("kind", "openai_compat"))
+        generation_mode = str(item.get("generation_mode", ""))
+        if kind == "openai_compat" and generation_mode == "direct":
+            raise SystemExit(
+                f"Source {name!r}: generation_mode 'direct' is not supported for kind 'openai_compat'"
+            )
+        if not generation_mode:
+            generation_mode = _GENERATION_MODE_BY_KIND.get(kind, "")
         sources[str(name)] = SourceConnection(
             name=str(name),
-            kind=str(item.get("kind", "openai_compat")),
+            kind=kind,
             model=str(item.get("model", "")),
             base_url=str(item.get("base_url", "")),
             api_key_env=str(item.get("api_key_env", "")),
-            generation_mode=str(item.get("generation_mode", "")),
+            generation_mode=generation_mode,
         )
     return sources
 

@@ -1,13 +1,25 @@
 import json
+import os
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
+from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
+from LLM.src.sr2fpga_agent.deepseek import (
+    DeepSeekProjectGenerator,
+    DeepSeekTwoStageProjectGenerator,
+)
 from LLM.src.sr2fpga_agent.runner import (
+    PlannedSample,
     RunnerConfig,
     SourceConnection,
     TaskConfig,
+    _calibration_breakdown,
+    _project_generator_for_sample,
     load_runner_config,
+    resolve_source_connection,
+    runner_preflight,
 )
 
 
@@ -76,8 +88,107 @@ class SourcesParsingTest(unittest.TestCase):
             config = load_runner_config(config_path)
             self.assertEqual(config.sources, {})
 
+    def test_openai_compat_without_generation_mode_defaults_to_two_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "claude": {
+                        "kind": "openai_compat",
+                        "model": "claude-opus-4-8",
+                        "base_url": "https://api.anthropic.com/v1",
+                        "api_key_env": "ANTHROPIC_API_KEY",
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            conn = config.sources["claude"]
+            self.assertEqual(conn.generation_mode, "two_stage")
+            metadata = PlannedSample(
+                sample_id="s_claude", source="claude", task_type="counter", width=8,
+                project_name="p", requirement="r",
+            ).metadata(config)
+            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+            self.assertEqual(metadata["training_split"], "clean")
 
-from LLM.src.sr2fpga_agent.runner import resolve_source_connection
+    def test_deepseek_his_v12_without_generation_mode_defaults_to_two_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "ds12": {
+                        "kind": "deepseek-his-v12",
+                        "model": "deepseek-v4-flash",
+                        "base_url": "https://api.deepseek.com",
+                        "api_key_env": "DEEPSEEK_API_KEY",
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["ds12"].generation_mode, "two_stage")
+
+    def test_deepseek_without_generation_mode_defaults_to_direct(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "ds": {
+                        "kind": "deepseek",
+                        "model": "deepseek-v4-flash",
+                        "base_url": "https://api.deepseek.com",
+                        "api_key_env": "DEEPSEEK_API_KEY",
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["ds"].generation_mode, "direct")
+
+    def test_deterministic_without_generation_mode_stays_empty(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "det": {
+                        "kind": "deterministic",
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["det"].generation_mode, "")
+
+    def test_explicit_two_stage_is_left_untouched(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "claude": {
+                        "kind": "openai_compat",
+                        "model": "claude-opus-4-8",
+                        "base_url": "https://api.anthropic.com/v1",
+                        "api_key_env": "ANTHROPIC_API_KEY",
+                        "generation_mode": "two_stage",
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["claude"].generation_mode, "two_stage")
+
+    def test_openai_compat_explicit_direct_mode_raises(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "claude": {
+                        "kind": "openai_compat",
+                        "model": "claude-opus-4-8",
+                        "base_url": "https://api.anthropic.com/v1",
+                        "api_key_env": "ANTHROPIC_API_KEY",
+                        "generation_mode": "direct",
+                    }
+                },
+            )
+            with self.assertRaises(SystemExit):
+                load_runner_config(path)
 
 
 def _base_config(**overrides) -> RunnerConfig:
@@ -130,16 +241,6 @@ class ResolveSourceTest(unittest.TestCase):
         self.assertEqual(conn.generation_mode, "direct")
 
 
-import os
-from unittest.mock import patch
-
-from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
-from LLM.src.sr2fpga_agent.deepseek import (
-    DeepSeekProjectGenerator,
-    DeepSeekTwoStageProjectGenerator,
-)
-
-
 class ConnectionBuilderTest(unittest.TestCase):
     def test_deterministic_connection_returns_none(self) -> None:
         conn = SourceConnection(name="deterministic", kind="deterministic")
@@ -177,9 +278,6 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with self.assertRaises(SystemExit):
             build_project_generator_for_connection(conn)
-
-
-from LLM.src.sr2fpga_agent.runner import PlannedSample, _project_generator_for_sample
 
 
 class PerSampleDispatchTest(unittest.TestCase):
@@ -255,9 +353,6 @@ class MetadataTest(unittest.TestCase):
         self.assertEqual(metadata["training_split"], "quarantine")
 
 
-from LLM.src.sr2fpga_agent.runner import runner_preflight
-
-
 class PreflightAuthTest(unittest.TestCase):
     def test_missing_key_for_one_source_only(self) -> None:
         claude = SourceConnection(
@@ -287,8 +382,35 @@ class PreflightAuthTest(unittest.TestCase):
         self.assertIn("gpt55", report["provider_auth"])
         self.assertEqual(report["provider_auth"]["claude"]["status"], "not_checked")
 
+    def test_repair_provider_missing_key_fails_preflight(self) -> None:
+        config = _base_config(
+            repair_provider="deepseek",
+            api_key_env="DEEPSEEK_API_KEY",
+            tasks=[
+                TaskConfig(source="deterministic", task_type="counter", widths=[8], count=1),
+            ],
+        )
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop("DEEPSEEK_API_KEY", None)
+            report = runner_preflight(config, run_id=None, validate_provider=False)
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("DEEPSEEK_API_KEY" in e for e in report["errors"]))
+        self.assertIn("deepseek", report["provider_auth"])
+        self.assertEqual(report["provider_auth"]["deepseek"]["status"], "skipped")
 
-from LLM.src.sr2fpga_agent.runner import _calibration_breakdown
+    def test_repair_provider_present_key_not_checked(self) -> None:
+        config = _base_config(
+            repair_provider="deepseek",
+            api_key_env="DEEPSEEK_API_KEY",
+            tasks=[
+                TaskConfig(source="deterministic", task_type="counter", widths=[8], count=1),
+            ],
+        )
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-repair"}, clear=False):
+            report = runner_preflight(config, run_id=None, validate_provider=False)
+        self.assertIn("deepseek", report["provider_auth"])
+        self.assertEqual(report["provider_auth"]["deepseek"]["status"], "not_checked")
+        self.assertFalse(any("DEEPSEEK_API_KEY" in e for e in report["errors"]))
 
 
 class PerTeacherReportingTest(unittest.TestCase):
