@@ -1,0 +1,170 @@
+# System-HIS-Constrained Generation Design
+
+## Status
+
+Proposed (2026-06-25). Expands method-novelty candidate (i) in the reframe spec
+(`2026-06-22-sr2fpga-research-reframe-design.md` → Method). This is the lever that
+upgrades SR2FPGA from a *new methodology* to a *new method* in the strong sense TCAD
+requires: a decode-time mechanism that makes cross-file structural consistency hold
+**by construction**, rather than only being checked after the fact. English-only,
+consistent with the other feature/design specs (the reframe spec is the only one
+with a Chinese companion).
+
+## Goal
+
+While an LLM generates the multi-file RTL project, **restrict / steer generation so
+the output satisfies the System-HIS structural contract by construction** —
+eliminating L0 cross-file-consistency failures at their source instead of repairing
+them. Turn "we have an L0 checker that *catches* inconsistency" (evaluation) into
+"we have a generation method that *prevents* it" (a method/technique).
+
+## Why this matters
+
+- **The method-novelty lever (TCAD).** The bare pipeline (SFT on tool-verified
+  data) is "known techniques in a new domain"; TCAD will not accept it as a method
+  contribution. Making L0 consistency hold by construction at decode time, driven by
+  a *requirement-level* contract, is a genuinely new technique — and distinct from
+  CPPL (which enforces consistency by *compile-time* width inference on a
+  *circuit-level* IR).
+- **Strengthens RQ1.** It is the strong form of the System-HIS ablation: not just
+  "req→HIS→project helps," but "HIS-constrained decoding makes L0 hold by
+  construction and improves downstream L1–L4."
+- **Strengthens RQ3.** Eliminating structural failures lets the model spend its
+  iteration budget on behavior/physics, plausibly improving (c) and reducing repair
+  rounds.
+- **Empirically targeted.** The baseline-run L0 failures were largely structural
+  (wrong port names, reserved-keyword instance names, width mismatch, instance
+  aliases) — exactly what this prevents.
+
+## What gets constrained
+
+System-HIS declares the top name, components (port names / directions / widths),
+instances, connections, top_ports, and artifacts. The structural emission points
+where consistency breaks map directly to the contract:
+
+| Emission point | Constraint from System-HIS |
+|---|---|
+| `module <name>(ports…)` | name = a declared component/top; ports = that component's declared name/dir/width |
+| top.v instantiation `<comp> <inst>(.port(net))` | comp / inst / port must be declared |
+| testbench instantiates top | uses declared `top_ports` |
+| SDC `get_ports` | only real top ports |
+| manifest sources / top | consistent with `artifacts` |
+
+The constraint is: **at each structural point, the legal identifier set is
+determined by System-HIS.**
+
+## Mechanism (three tiers, increasing power and cost)
+
+The hard problem: LLM tokens ≠ Verilog identifiers, and the constraint is
+context-sensitive (which module/instance we are inside). Three tiers:
+
+### Tier A — Structural skeleton generated deterministically from the contract (do first)
+
+Do **not** let the LLM author structure. Generate the "shell" — module headers,
+port lists, instantiations, wiring, manifest, SDC port list, testbench
+instantiation — **deterministically from System-HIS**. The LLM fills only the
+**behavioral bodies** (`always` blocks / combinational logic). Structural
+consistency then holds **by construction trivially** — the LLM never gets to write a
+port name. "Structure from the contract, behavior from the model." The existing
+deterministic `ProjectGenerator` already does part of this; Tier A generalizes it to
+the LLM path. This alone kills most observed L0 failures.
+
+### Tier B — System-HIS-derived constrained decoding (the novel method core)
+
+When the LLM fills behavioral bodies, every time it emits an **identifier reference**
+(port / signal / state), the decoder **masks the logits to only contract-declared
+names**. This is true constrained decoding: a **context-sensitive grammar derived
+dynamically from System-HIS** drives logit masking. Requires:
+
+- an **incremental Verilog parser** tracking position ("we are now in an
+  instantiation port-connection / an identifier-reference position");
+- a **System-HIS-indexed legal-token oracle** (per-module declared ports; global
+  declared modules/instances; per-scope local signals/state);
+- **logit masking** integrated into the inference stack.
+
+**Hard constraint:** this needs **logit access → only the local / fine-tuned
+model**; closed APIs cannot do it. This is consistent with "the model we fine-tune
+is local" — **constrained decoding is a property of our (c) model**, not of the
+large-frontier baselines (a)/(b). State this in the measurement (it is part of the
+(c) contribution, not a same-condition comparison).
+
+### Tier C — Verification-guided / lookahead decoding (future work)
+
+Use the L0 checker as a pruning/value function in beam search: prune branches that
+violate the contract. More expensive; handles cases hard to express as a grammar.
+Out of scope for the first cut.
+
+**Adopted design: Tier A as the backbone + Tier B as the method core.** Tier A kills
+the structural L0 failures observed in baseline (port names, reserved-keyword
+instance names, width, instance aliases); Tier B governs identifier references inside
+the model-authored behavioral bodies.
+
+## Decoder state
+
+Current file; current module context; the System-HIS-indexed legal-identifier sets
+(per-module declared ports, global declared modules/instances, per-scope local
+signals/state); and an incremental parse state to know which structural position is
+being emitted.
+
+## Reuse of the L0 checker (one source of truth)
+
+The constraint oracle **reuses the same contract representation as the v1.2 checker**
+(`rtl_introspect` + `system_his_v12_checker` declared-port/module logic) to define
+the legal sets. So the generator and the checker share **one source of truth** —
+which also removes the oracle-drift risk (failure-repair Issue 19). The checker thus
+becomes both the **constraint source** ("what is legal") and the **post-hoc
+verifier** ("the by-construction property actually holds; catch anything the
+constraint missed") and the **metric source** (cross-file-consistency error rate).
+
+## Evaluation and ablations
+
+1. **Primary:** cross-file-consistency error rate, **with vs without** the
+   constraint, same model/tasks — by construction it should approach 0 for the
+   constrained structural elements.
+2. **Research question:** does eliminating L0 failures by construction **improve
+   downstream L1–L4 pass rates and reduce repair rounds**? (The model no longer
+   wastes attempts on structural errors.) This is the constraint's (b−a)-style delta.
+3. **Quality ablation (honest):** does constraining **hurt functional correctness
+   (L2)**? (the accessibility–competence risk — over-constraint can push the model
+   off-distribution). Measure L2 pass with/without; report honestly.
+4. This is the **strong form of the System-HIS ablation** (RQ1): not only "the IR
+   helps" but "IR-constrained decoding makes L0 hold by construction and improves
+   L1–L4."
+
+## Scope and honest boundaries
+
+- **In scope:** L0 / structural consistency **by construction**.
+- **Out of scope:** functional (L2) and physical (L4) correctness — "the port exists"
+  ≠ "the logic is right." Those remain the testbench's / P&R's job.
+- **Logit access:** local model only; constrained decoding is part of the (c)
+  contribution, not a same-condition comparison with API baselines.
+- **Engineering cost:** the incremental parser + logit-masking integration is real
+  work (Tier B).
+- **Risk:** over-constraint can hurt fluency / functional quality — must be measured,
+  not assumed away.
+
+## Feasibility and sequencing
+
+- **Tier A is doable now** (deterministic shell on the LLM path), low risk, kills
+  most observed L0 failures, and partly exists in `ProjectGenerator`.
+- **Tier B is the new method core** — needs the local fine-tuned model + a
+  constrained-decoding engine (logit masking + incremental parser). Medium
+  engineering. This is the step that earns the TCAD "new method" claim.
+- **Dependency:** Tier B needs a local model under our control (the RQ3 model) and
+  the v1.2 contract representation (done). So Tier A first; Tier B after the first
+  local model exists.
+- **Honest claim:** "System-HIS-constrained generation makes cross-file structural
+  consistency hold by construction (demonstrable) and improves downstream repair
+  efficiency" — bounded, falsifiable, does not touch functional/physical.
+
+## Relationship to existing documents
+
+- Expands the reframe spec's method-novelty candidate (i); realizes the
+  "new method" path discussed in its Method statement.
+- Reuses the v1.2 freeze's checker/contract representation
+  (`2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`); shares one oracle,
+  removing failure-repair Issue 19's drift risk.
+- Distinct from CPPL (compile-time, circuit-level IR) — this acts at decode time
+  from a requirement-level contract.
+- Gated like RQ3: needs the first local fine-tuned model before Tier B; Tier A can
+  start independently.
