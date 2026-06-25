@@ -1,0 +1,26 @@
+{
+  "failure_type": "l0_contract_violation",
+  "stage": "l0_consistency",
+  "root_cause": "top port 'in0_data' width 8 does not match RTL [DATA_WIDTH-1:0]\ntop port 'in1_data' width 8 does not match RTL [DATA_WIDTH-1:0]\ntop port 'out_data' width 8 does not match RTL [DATA_WIDTH-1:0]\ncomponent 'skid_buffer' port 'data_in' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'skid_buffer' port 'data_out' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'stream_join' port 'input0_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'stream_join' port 'input0_valid' width 1 does not match RTL [W-1:0]\ncomponent 'stream_join' port 'input1_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'stream_join' port 'input1_valid' width 1 does not match RTL [W-1:0]\ncomponent 'stream_join' port 'output_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'accumulator_core' port 'data_in' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'accumulator_core' port 'data_out' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'stream_stage' port 'data_in' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]\ncomponent 'stream_stage' port 'data_out' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+  "affected_files": [
+    "system_his.json",
+    "manifest.json"
+  ],
+  "l0_errors": [
+    "top port 'in0_data' width 8 does not match RTL [DATA_WIDTH-1:0]",
+    "top port 'in1_data' width 8 does not match RTL [DATA_WIDTH-1:0]",
+    "top port 'out_data' width 8 does not match RTL [DATA_WIDTH-1:0]",
+    "component 'skid_buffer' port 'data_in' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'skid_buffer' port 'data_out' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'stream_join' port 'input0_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'stream_join' port 'input0_valid' width 1 does not match RTL [W-1:0]",
+    "component 'stream_join' port 'input1_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'stream_join' port 'input1_valid' width 1 does not match RTL [W-1:0]",
+    "component 'stream_join' port 'output_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'accumulator_core' port 'data_in' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'accumulator_core' port 'data_out' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'stream_stage' port 'data_in' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]",
+    "component 'stream_stage' port 'data_out' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL [W-1:0]"
+  ],
+  "l0_warnings": []
+}

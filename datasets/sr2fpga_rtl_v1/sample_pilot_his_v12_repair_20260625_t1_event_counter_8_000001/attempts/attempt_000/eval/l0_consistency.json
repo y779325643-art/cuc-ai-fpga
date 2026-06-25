@@ -1,0 +1,11 @@
+{
+  "stage": "l0_consistency",
+  "command": [
+    "system_his_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "instance 'event_gate' of component 'event_gate' is not instantiated in top RTL\ninstance 'counter' of component 'counter_core' is not instantiated in top RTL\n",
+  "duration_seconds": 0.0
+}

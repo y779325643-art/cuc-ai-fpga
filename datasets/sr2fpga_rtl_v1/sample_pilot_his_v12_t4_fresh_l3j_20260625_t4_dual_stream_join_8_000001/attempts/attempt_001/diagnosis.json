@@ -1,0 +1,6 @@
+{
+  "failure_type": "functional_mismatch",
+  "stage": "sim_run",
+  "root_cause": "Starting testbench...\nPacket 0 OK: expected 5, got 5\nTEST_FAIL at packet 1: expected 12, got 10\nTEST_FAIL at packet 2: expected 21, got 22\nBackpressure test...\nBackpressure packet 0 OK\nTEST_FAIL backpressure packet 1: expected 12, got 15\nTEST_FAIL backpressure packet 2: expected 21, got 29\nTEST_FAIL\nsim/tb_top.v:178: $finish called at 420000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": []
+}

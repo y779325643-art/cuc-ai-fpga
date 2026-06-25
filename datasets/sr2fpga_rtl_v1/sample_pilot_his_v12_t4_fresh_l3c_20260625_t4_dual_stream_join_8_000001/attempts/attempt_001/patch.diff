@@ -1,0 +1,19 @@
+--- a/rtl/skid_buffer.v
++++ b/rtl/skid_buffer.v
+@@ -15,11 +15,14 @@
+     input  wire                    ready_in
+ );
+ 
++    // Compute pointer width based on DEPTH
++    localparam PTR_WIDTH = $clog2(DEPTH);
++
+     // Internal registers and wires
+     reg [DATA_WIDTH-1:0] buffer [0:DEPTH-1];
+     reg [DEPTH-1:0] valid;
+-    reg [DEPTH-1:0] read_ptr;
+-    reg [DEPTH-1:0] write_ptr;
++    reg [PTR_WIDTH-1:0] read_ptr;
++    reg [PTR_WIDTH-1:0] write_ptr;
+     integer i;
+ 
+     // Combinational outputs

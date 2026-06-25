@@ -1,0 +1,268 @@
+--- a/rtl/accumulator_core.v
++++ b/rtl/accumulator_core.v
+@@ -1,116 +1,22 @@
+ `timescale 1ns / 1ps
+ module accumulator_core (
+-    clk,
+-    rst_n,
+-    in_valid,
+-    in_ready,
+-    in_data,
+-    out_valid,
+-    out_ready,
+-    out_data
++    input  wire        clk,
++    input  wire        rst_n,
++    input  wire        in_valid,
++    output wire        in_ready,
++    input  wire [7:0]  in_data,
++    output wire        out_valid,
++    input  wire        out_ready,
++    output wire [7:0]  out_data
+ );
+     parameter DATA_WIDTH = 8;
+-
+-    input  wire                clk;
+-    input  wire                rst_n;
+-    input  wire                in_valid;
+-    output reg                 in_ready;
+-    input  wire [DATA_WIDTH-1:0] in_data;
+-    output reg                 out_valid;
+-    input  wire                out_ready;
+-    output reg  [DATA_WIDTH-1:0] out_data;
+-
+     reg [DATA_WIDTH-1:0] accum_reg;
+-    reg                  have_output;
+-
+-    always @(posedge clk or negedge rst_n) begin
+-        if (!rst_n) begin
+-            accum_reg  <= {DATA_WIDTH{1'b0}};
+-            have_output <= 1'b0;
+-            out_valid   <= 1'b0;
+-            out_data    <= {DATA_WIDTH{1'b0}};
+-            in_ready    <= 1'b1;
+-        end else begin
+-            // Default: in_ready ready if we can accept (either not having output or output will be taken)
+-            in_ready <= ~have_output | out_ready;
+-
+-            // Input handshake
+-            if (in_valid && in_ready) begin
+-                accum_reg  <= accum_reg + in_data;
+-                have_output <= 1'b1;
+-            end
+-
+-            // Output handshake: out_data is always accum_reg when have_output
+-            out_valid <= have_output;
+-            out_data  <= accum_reg;
+-
+-            // If output transferred and no new input, have_output clears?
+-            // But if we didn't accept new input, have_output should remain because accum_reg still holds data.
+-            // So we need to keep have_output unless we accept a new input? Actually we want out_valid to be high as long as we have accumulated something.
+-            // The output data is always the current sum. So it's always valid after first accumulation.
+-            // But if out_ready is low, we cannot accept new input. So have_output stays high.
+-            // If out_ready is high and we transfer, the output data remains valid (unchanged). So have_output stays high.
+-            // However, to allow backpressure, we need to clear have_output only if we want to indicate we have nothing for output? But that would mean we lose the accumulated value.
+-            // The correct behavior: out_valid is always high after first accumulation until reset.
+-            // So we set have_output once and never clear.
+-            // But then in_ready would be out_ready after first input? That's correct.
+-            // So we simplify: have_output set on first valid input, and never cleared.
+-            // But what if we want to reset? Only on reset.
+-        end
+-    end
+-
+-    // Additionally, we need to handle the case where out_ready is low and we have output: we cannot accept new input.
+-    // So in_ready = ~have_output | out_ready works.
+-
+-    // However, we also need to update accum_reg only when input handshake occurs.
+-
+-    // Also, we need to update out_data (comb) but we already assign in clocked block. For comb, we can assign directly.
+-    // But out_data should reflect accum_reg continuously.
+-
+-    // Let's adjust: use always @* for out_data and out_valid.
+-    // But we used regs, so we can assign in always @* for out_data and out_valid.
+-    // Better: use comb for output.
+-
+-    // Redesign: Use always @* for output.
+-    // But we already have clocked block. Let's split.
+-
+-    // I'll rewrite cleaner.
+-
+-endmodule
+-
+-// Let's rewrite accumulator_core properly.
+-
+-module accumulator_core (
+-    clk,
+-    rst_n,
+-    in_valid,
+-    in_ready,
+-    in_data,
+-    out_valid,
+-    out_ready,
+-    out_data
+-);
+-    parameter DATA_WIDTH = 8;
+-
+-    input  wire                clk;
+-    input  wire                rst_n;
+-    input  wire                in_valid;
+-    output wire                in_ready;
+-    input  wire [DATA_WIDTH-1:0] in_data;
+-    output wire                out_valid;
+-    input  wire                out_ready;
+-    output wire [DATA_WIDTH-1:0] out_data;
+-
+-    reg [DATA_WIDTH-1:0] accum_reg;
+-    reg                  started;
+-
++    reg started;
+     wire accept_input = in_valid & in_ready;
+     wire transfer_out = out_valid & out_ready;
+-
+     assign in_ready = ~started | out_ready;
+     assign out_valid = started;
+     assign out_data = accum_reg;
+-
+     always @(posedge clk or negedge rst_n) begin
+         if (!rst_n) begin
+             accum_reg <= {DATA_WIDTH{1'b0}};
+@@ -122,5 +28,4 @@
+             end
+         end
+     end
+-
+ endmodule
+--- a/rtl/skid_buffer.v
++++ b/rtl/skid_buffer.v
+@@ -1,101 +1,49 @@
+ `timescale 1ns / 1ps
+ module skid_buffer (
+-    clk,
+-    rst_n,
+-    in_valid,
+-    in_ready,
+-    in_data,
+-    out_valid,
+-    out_ready,
+-    out_data
++    input  wire        clk,
++    input  wire        rst_n,
++    input  wire        in_valid,
++    output wire        in_ready,
++    input  wire [7:0]  in_data,
++    output wire        out_valid,
++    input  wire        out_ready,
++    output wire [7:0]  out_data
+ );
+     parameter DATA_WIDTH = 8;
+-
+-    input  wire                clk;
+-    input  wire                rst_n;
+-    input  wire                in_valid;
+-    output reg                 in_ready;
+-    input  wire [DATA_WIDTH-1:0] in_data;
+-    output reg                 out_valid;
+-    input  wire                out_ready;
+-    output reg  [DATA_WIDTH-1:0] out_data;
+-
+-    reg [DATA_WIDTH-1:0] buf0_data;
+-    reg                  buf0_valid;
+-    reg [DATA_WIDTH-1:0] buf1_data;
+-    reg                  buf1_valid;
+-    reg [1:0]            count;
+-
++    reg [DATA_WIDTH-1:0] buf0_data, buf1_data;
++    reg buf0_valid, buf1_valid;
++    wire [1:0] count = buf0_valid + buf1_valid;
++    assign in_ready = (count < 2);
++    assign out_valid = buf0_valid | buf1_valid;
++    assign out_data = buf0_valid ? buf0_data : buf1_data;
+     always @(posedge clk or negedge rst_n) begin
+         if (!rst_n) begin
+             buf0_valid <= 1'b0;
+             buf1_valid <= 1'b0;
+-            count      <= 2'b0;
+-            out_valid  <= 1'b0;
+-            out_data   <= {DATA_WIDTH{1'b0}};
+-            in_ready   <= 1'b1;
++            buf0_data <= {DATA_WIDTH{1'b0}};
++            buf1_data <= {DATA_WIDTH{1'b0}};
+         end else begin
+-            // Default assignments
+-            in_ready <= 1'b0;
+-            if (count < 2) begin
+-                in_ready <= 1'b1;
+-            end
+-
+-            // Output logic
+-            if (out_valid && out_ready) begin
+-                // Output transferred: shift buffer
+-                if (buf0_valid) begin
+-                    out_valid <= 1'b0;
+-                end else begin
+-                    // buf0 invalid, but buf1 valid? Actually out_valid requires at least one valid.
+-                    // We'll handle in combinational output
+-                end
+-            end
+-
+-            // Input acceptance
+-            if (in_valid && in_ready) begin
+-                if (!buf0_valid) begin
+-                    buf0_valid <= 1'b1;
+-                    buf0_data  <= in_data;
+-                end else if (!buf1_valid) begin
+-                    buf1_valid <= 1'b1;
+-                    buf1_data  <= in_data;
+-                end
+-            end
+-
+-            // Update count based on valid flags
+-            count = (buf0_valid + buf1_valid);
+-
+-            // Output mux
+-            if (buf0_valid) begin
+-                out_valid <= 1'b1;
+-                out_data  <= buf0_data;
+-            end else if (buf1_valid) begin
+-                out_valid <= 1'b1;
+-                out_data  <= buf1_data;
+-            end else begin
+-                out_valid <= 1'b0;
+-            end
+-
+-            // If output transferred, shift
+             if (out_valid && out_ready) begin
+                 if (buf0_valid) begin
+                     buf0_valid <= 1'b0;
+-                    buf0_data  <= {DATA_WIDTH{1'b0}};
++                    if (buf1_valid) begin
++                        buf0_data <= buf1_data;
++                        buf0_valid <= 1'b1;
++                        buf1_valid <= 1'b0;
++                    end
++                end else begin
++                    buf1_valid <= 1'b0;
+                 end
+-                // Shift buf1 to buf0 if buf0 was taken
+-                if (buf1_valid && !buf0_valid) begin
++            end
++            if (in_valid && in_ready) begin
++                if (!buf0_valid) begin
++                    buf0_data <= in_data;
+                     buf0_valid <= 1'b1;
+-                    buf0_data  <= buf1_data;
+-                    buf1_valid <= 1'b0;
++                end else if (!buf1_valid) begin
++                    buf1_data <= in_data;
++                    buf1_valid <= 1'b1;
+                 end
+             end
+         end
+     end
+-
+-    // Update count combinational (also in always block, but for simulation clock edge, we can use wire)
+-    always @* begin
+-        count = buf0_valid + buf1_valid;
+-    end
+-
+ endmodule

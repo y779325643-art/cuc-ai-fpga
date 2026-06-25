@@ -1,0 +1,17 @@
+{
+  "sample_id": "sample_pilot_his_v12_repair_20260625_t2_stream_accumulator_8_000002",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "generation",
+      "status": "failed",
+      "tool": "project_generator",
+      "exit_code": 1,
+      "command": [
+        "project_generator"
+      ],
+      "failure_type": "generation_failed",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ]
+}

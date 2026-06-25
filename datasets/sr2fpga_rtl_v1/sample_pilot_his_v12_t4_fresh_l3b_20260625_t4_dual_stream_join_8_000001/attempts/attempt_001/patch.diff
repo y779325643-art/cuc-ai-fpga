@@ -1,0 +1,11 @@
+--- a/rtl/top.v
++++ b/rtl/top.v
+@@ -19,7 +19,7 @@
+   // Internal wires
+   wire [DATA_WIDTH-1:0] buffer0_out_data;
+   wire buffer0_out_valid;
+-  wire buffer1_out_data;
++  wire [DATA_WIDTH-1:0] buffer1_out_data;
+   wire buffer1_out_valid;
+   wire [DATA_WIDTH-1:0] join_out_data;
+   wire join_out_valid;

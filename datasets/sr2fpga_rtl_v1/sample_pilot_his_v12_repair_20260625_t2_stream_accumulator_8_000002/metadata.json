@@ -1,0 +1,15 @@
+{
+  "source": "deepseek-his-v12",
+  "generator_provider": "deepseek-his-v12",
+  "failure_origin": "natural_llm",
+  "difficulty_tier": "T2",
+  "measurement_point": "b_tool_in_loop_repair",
+  "repair_provider": "deepseek",
+  "failure_injectors": [],
+  "task_type": "composed_stream_accumulator",
+  "width": 8,
+  "system_his_schema_version": "system-his-v1.2",
+  "training_split": "clean",
+  "topology_id": "t2_stream_accumulator",
+  "requirement_style": "simple_prompt"
+}

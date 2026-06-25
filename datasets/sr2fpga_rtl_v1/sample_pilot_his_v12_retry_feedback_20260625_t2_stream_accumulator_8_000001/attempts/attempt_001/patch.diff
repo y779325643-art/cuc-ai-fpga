@@ -1,0 +1,46 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -139,9 +139,7 @@
+         {
+           "name": "in_data",
+           "direction": "input",
+-          "width": {
+-            "expr": "DATA_WIDTH"
+-          }
++          "width": 8
+         },
+         {
+           "name": "out_valid",
+@@ -156,9 +154,7 @@
+         {
+           "name": "out_data",
+           "direction": "output",
+-          "width": {
+-            "expr": "DATA_WIDTH"
+-          }
++          "width": 8
+         }
+       ],
+       "protocol": "valid_ready",
+@@ -197,9 +193,7 @@
+         {
+           "name": "in_data",
+           "direction": "input",
+-          "width": {
+-            "expr": "DATA_WIDTH"
+-          }
++          "width": 8
+         },
+         {
+           "name": "out_valid",
+@@ -214,9 +208,7 @@
+         {
+           "name": "out_data",
+           "direction": "output",
+-          "width": {
+-            "expr": "DATA_WIDTH"
+-          }
++          "width": 8
+         }
+       ],
+       "protocol": "valid_ready",

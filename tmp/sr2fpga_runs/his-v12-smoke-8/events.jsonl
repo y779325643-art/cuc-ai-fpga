@@ -1,0 +1,1 @@
+{"event": "sample_completed", "sample_id": "sample_his_v12_smoke_v4_t4_dual_stream_join_8_000001", "source": "deepseek-his-v12", "failure_origin": "natural_llm", "difficulty_tier": "T4", "task_type": "composed_dual_stream_join", "width": 8, "pass_level": "L0", "bucket": "repair_trajectory"}

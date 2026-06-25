@@ -1,0 +1,1346 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
+    "design_goal": "Implement a dual stream join with accumulation and pipelined output using skid buffers, stream join, accumulator core, and output stage.",
+    "assumptions": [
+      "Clock is stable and reset is synchronous active-low.",
+      "Input streams use valid-ready handshake.",
+      "Output stream uses valid-ready handshake.",
+      "Accumulation wraps on overflow (8-bit).",
+      "Join arbitrates round-robin between input streams."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "phase": 0,
+        "duty_cycle": 50
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "type": "synchronous"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": {
+          "expr": "1"
+        }
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": {
+          "expr": "1"
+        }
+      },
+      {
+        "name": "in0_valid",
+        "direction": "input",
+        "width": {
+          "expr": "1"
+        }
+      },
+      {
+        "name": "in0_data",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "in0_ready",
+        "direction": "output",
+        "width": {
+          "expr": "1"
+        }
+      },
+      {
+        "name": "in1_valid",
+        "direction": "input",
+        "width": {
+          "expr": "1"
+        }
+      },
+      {
+        "name": "in1_data",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "in1_ready",
+        "direction": "output",
+        "width": {
+          "expr": "1"
+        }
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": {
+          "expr": "1"
+        }
+      },
+      {
+        "name": "out_data",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": {
+          "expr": "1"
+        }
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "in0_buffer.data_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "initial": 0
+      },
+      {
+        "name": "in0_buffer.valid_reg",
+        "width": {
+          "expr": "1"
+        },
+        "initial": 0
+      },
+      {
+        "name": "in1_buffer.data_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "initial": 0
+      },
+      {
+        "name": "in1_buffer.valid_reg",
+        "width": {
+          "expr": "1"
+        },
+        "initial": 0
+      },
+      {
+        "name": "accumulator.acc_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "initial": 0
+      },
+      {
+        "name": "out_stage.pipe_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "initial": 0
+      },
+      {
+        "name": "out_stage.pipe_valid",
+        "width": {
+          "expr": "1"
+        },
+        "initial": 0
+      }
+    ],
+    "counters": [],
+    "fsms": [
+      {
+        "name": "join_core.arb_fsm",
+        "states": [
+          "IDLE",
+          "SEND_0",
+          "SEND_1"
+        ],
+        "initial": "IDLE",
+        "reset_state": "IDLE"
+      }
+    ],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "state": {
+        "registers": [
+          {
+            "name": "data_reg",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            },
+            "initial": 0
+          },
+          {
+            "name": "valid_reg",
+            "width": {
+              "expr": "1"
+            },
+            "initial": 0
+          }
+        ],
+        "counters": [],
+        "fsms": [],
+        "buffers": [],
+        "memories": []
+      }
+    },
+    {
+      "name": "stream_join",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s0_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s0_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s0_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "s1_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s1_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s1_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "state": {
+        "registers": [],
+        "counters": [],
+        "fsms": [
+          {
+            "name": "arb_fsm",
+            "states": [
+              "IDLE",
+              "SEND_0",
+              "SEND_1"
+            ],
+            "initial": "IDLE"
+          }
+        ],
+        "buffers": [],
+        "memories": []
+      }
+    },
+    {
+      "name": "accumulator_core",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "state": {
+        "registers": [
+          {
+            "name": "acc_reg",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            },
+            "initial": 0
+          }
+        ],
+        "counters": [],
+        "fsms": [],
+        "buffers": [],
+        "memories": []
+      }
+    },
+    {
+      "name": "stream_stage",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": {
+            "expr": "1"
+          }
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "state": {
+        "registers": [
+          {
+            "name": "pipe_data",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            },
+            "initial": 0
+          },
+          {
+            "name": "pipe_valid",
+            "width": {
+              "expr": "1"
+            },
+            "initial": 0
+          }
+        ],
+        "counters": [],
+        "fsms": [],
+        "buffers": [],
+        "memories": []
+      }
+    }
+  ],
+  "instances": [
+    {
+      "name": "in0_buffer",
+      "component": "skid_buffer",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "owns_state": [
+        "in0_buffer.data_reg",
+        "in0_buffer.valid_reg"
+      ]
+    },
+    {
+      "name": "in1_buffer",
+      "component": "skid_buffer",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "owns_state": [
+        "in1_buffer.data_reg",
+        "in1_buffer.valid_reg"
+      ]
+    },
+    {
+      "name": "join_core",
+      "component": "stream_join",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "owns_state": [
+        "join_core.arb_fsm"
+      ]
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "owns_state": [
+        "accumulator.acc_reg"
+      ]
+    },
+    {
+      "name": "out_stage",
+      "component": "stream_stage",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "owns_state": [
+        "out_stage.pipe_data",
+        "out_stage.pipe_valid"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "in0_to_buffer",
+      "path": [
+        "top.in0_data",
+        "in0_buffer.s_data"
+      ],
+      "payload": {
+        "name": "in0_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "in1_to_buffer",
+      "path": [
+        "top.in1_data",
+        "in1_buffer.s_data"
+      ],
+      "payload": {
+        "name": "in1_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "buffer0_to_join",
+      "path": [
+        "in0_buffer.m_data",
+        "join_core.s0_data"
+      ],
+      "payload": {
+        "name": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "buffer1_to_join",
+      "path": [
+        "in1_buffer.m_data",
+        "join_core.s1_data"
+      ],
+      "payload": {
+        "name": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "join_to_accumulator",
+      "path": [
+        "join_core.m_data",
+        "accumulator.s_data"
+      ],
+      "payload": {
+        "name": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "accumulator_to_stage",
+      "path": [
+        "accumulator.m_data",
+        "out_stage.s_data"
+      ],
+      "payload": {
+        "name": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "stage_to_out",
+      "path": [
+        "out_stage.m_data",
+        "top.out_data"
+      ],
+      "payload": {
+        "name": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_in0_buffer_data",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in0_buffer.data_reg"
+      },
+      "related_state": [
+        "in0_buffer.data_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_in0_buffer_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in0_buffer.valid_reg"
+      },
+      "related_state": [
+        "in0_buffer.valid_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_in1_buffer_data",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in1_buffer.data_reg"
+      },
+      "related_state": [
+        "in1_buffer.data_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_in1_buffer_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "in1_buffer.valid_reg"
+      },
+      "related_state": [
+        "in1_buffer.valid_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_join_core_arb_fsm",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "join_core.arb_fsm"
+      },
+      "related_state": [
+        "join_core.arb_fsm"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_accumulator_acc_reg",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "accumulator.acc_reg"
+      },
+      "related_state": [
+        "accumulator.acc_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_out_stage_pipe_data",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "out_stage.pipe_data"
+      },
+      "related_state": [
+        "out_stage.pipe_data"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_out_stage_pipe_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "out_stage.pipe_valid"
+      },
+      "related_state": [
+        "out_stage.pipe_valid"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "in0_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in0_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "in0_buffer.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "in0_to_buffer"
+      },
+      "related_state": [
+        "in0_buffer.data_reg",
+        "in0_buffer.valid_reg"
+      ],
+      "related_flows": [
+        "in0_to_buffer"
+      ]
+    },
+    {
+      "name": "in1_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in1_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "in1_buffer.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "in1_to_buffer"
+      },
+      "related_state": [
+        "in1_buffer.data_reg",
+        "in1_buffer.valid_reg"
+      ],
+      "related_flows": [
+        "in1_to_buffer"
+      ]
+    },
+    {
+      "name": "buffer0_output_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "in0_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "join_core.s0_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "buffer0_to_join"
+      },
+      "related_state": [
+        "in0_buffer.valid_reg"
+      ],
+      "related_flows": [
+        "buffer0_to_join"
+      ]
+    },
+    {
+      "name": "buffer1_output_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "in1_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "join_core.s1_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "buffer1_to_join"
+      },
+      "related_state": [
+        "in1_buffer.valid_reg"
+      ],
+      "related_flows": [
+        "buffer1_to_join"
+      ]
+    },
+    {
+      "name": "join_send0",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "join_core.arb_fsm.state",
+            "op": "==",
+            "value": "SEND_0"
+          },
+          {
+            "signal": "in0_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "join_to_accumulator"
+      },
+      "related_state": [],
+      "related_flows": [
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "join_send1",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "join_core.arb_fsm.state",
+            "op": "==",
+            "value": "SEND_1"
+          },
+          {
+            "signal": "in1_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "join_to_accumulator"
+      },
+      "related_state": [],
+      "related_flows": [
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "transition_idle_to_send0",
+      "kind": "fsm_transition",
+      "fsm": "join_core.arb_fsm",
+      "from": "IDLE",
+      "to": "SEND_0",
+      "when": {
+        "all_of": [
+          {
+            "signal": "in0_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "related_state": [
+        "join_core.arb_fsm"
+      ],
+      "related_flows": [
+        "buffer0_to_join",
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "transition_idle_to_send1",
+      "kind": "fsm_transition",
+      "fsm": "join_core.arb_fsm",
+      "from": "IDLE",
+      "to": "SEND_1",
+      "when": {
+        "all_of": [
+          {
+            "signal": "in1_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "related_state": [
+        "join_core.arb_fsm"
+      ],
+      "related_flows": [
+        "buffer1_to_join",
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "transition_send0_to_idle",
+      "kind": "fsm_transition",
+      "fsm": "join_core.arb_fsm",
+      "from": "SEND_0",
+      "to": "IDLE",
+      "when": {
+        "all_of": [
+          {
+            "signal": "in0_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "join_core.s0_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "related_state": [
+        "join_core.arb_fsm"
+      ],
+      "related_flows": [
+        "buffer0_to_join",
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "transition_send1_to_idle",
+      "kind": "fsm_transition",
+      "fsm": "join_core.arb_fsm",
+      "from": "SEND_1",
+      "to": "IDLE",
+      "when": {
+        "all_of": [
+          {
+            "signal": "in1_buffer.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "join_core.s1_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "related_state": [
+        "join_core.arb_fsm"
+      ],
+      "related_flows": [
+        "buffer1_to_join",
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "accumulator_update",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.s_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "add",
+        "target": "accumulator.acc_reg",
+        "value": "accumulator.s_data"
+      },
+      "related_state": [
+        "accumulator.acc_reg"
+      ],
+      "related_flows": [
+        "join_to_accumulator"
+      ]
+    },
+    {
+      "name": "accumulator_output_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "out_stage.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "accumulator_to_stage"
+      },
+      "related_state": [],
+      "related_flows": [
+        "accumulator_to_stage"
+      ]
+    },
+    {
+      "name": "out_stage_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "out_stage.m_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "stage_to_out"
+      },
+      "related_state": [
+        "out_stage.pipe_valid"
+      ],
+      "related_flows": [
+        "stage_to_out"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_flow",
+        "description": "Drive valid inputs and verify output after accumulation",
+        "pass_condition": "Output data matches expected accumulated value"
+      },
+      {
+        "name": "backpressure",
+        "description": "Assert ready low intermittently and verify no data loss",
+        "pass_condition": "All input samples are eventually output in order"
+      },
+      {
+        "name": "reset",
+        "description": "Assert reset and verify all registers cleared",
+        "pass_condition": "Output valid is low after reset"
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/stream_join.v",
+      "rtl/accumulator_core.v",
+      "rtl/stream_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

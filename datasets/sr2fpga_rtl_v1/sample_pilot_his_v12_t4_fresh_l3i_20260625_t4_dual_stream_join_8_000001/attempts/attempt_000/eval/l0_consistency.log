@@ -1,0 +1,3 @@
+state.fsms 'join_core.arb_fsm' state 'IDLE' is not found in RTL module 'top'
+state.fsms 'join_core.arb_fsm' state 'SEND_0' is not found in RTL module 'top'
+state.fsms 'join_core.arb_fsm' state 'SEND_1' is not found in RTL module 'top'

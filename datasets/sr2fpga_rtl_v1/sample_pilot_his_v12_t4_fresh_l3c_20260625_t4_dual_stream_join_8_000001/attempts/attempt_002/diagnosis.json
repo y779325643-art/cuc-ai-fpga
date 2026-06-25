@@ -1,0 +1,6 @@
+{
+  "failure_type": "syntax_error",
+  "stage": "sim_compile",
+  "root_cause": "sim/tb_top.v:71: syntax error\nsim/tb_top.v:73: error: Malformed statement\nsim/tb_top.v:83: syntax error\nsim/tb_top.v:83: error: Invalid module instantiation\nsim/tb_top.v:84: error: Invalid module instantiation\nsim/tb_top.v:85: error: Invalid module instantiation\nsim/tb_top.v:86: error: Invalid module instantiation\nsim/tb_top.v:88: error: Invalid module item.\nsim/tb_top.v:89: syntax error\nsim/tb_top.v:89: error: Invalid module instantiation\nsim/tb_top.v:90: error: Invalid module instantiation\nsim/tb_top.v:91: error: Invalid module instantiation\nsim/tb_top.v:93: syntax error\nsim/tb_top.v:95: error: Invalid module item.\nsim/tb_top.v:97: syntax error\nsim/tb_top.v:98: error: Invalid module item.\nsim/tb_top.v:99: syntax error\nsim/tb_top.v:99: error: Invalid module instantiation\nsim/tb_top.v:107: syntax error\nsim/tb_top.v:107: error: Invalid module instantiation\nsim/tb_top.v:108: error: Invalid module item.\nsim/tb_top.v:109: syntax error\nsim/tb_top.v:109: error: Invalid module instantiation\nsim/tb_top.v:110: error: Invalid module item.\nsim/tb_top.v:112: syntax error\nsim/tb_top.v:116: error: Invalid module item.\nsim/tb_top.v:124: syntax error\nI give up.",
+  "affected_files": []
+}

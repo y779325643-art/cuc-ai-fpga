@@ -1,0 +1,23 @@
+top port 'in0_data' width 8 does not match RTL [DATA_WIDTH-1:0]
+top port 'in1_data' width 8 does not match RTL [DATA_WIDTH-1:0]
+top port 'out_data' width 8 does not match RTL [DATA_WIDTH-1:0]
+component 'skid_buffer' port 'in_valid' is not declared in RTL
+component 'skid_buffer' port 'out_valid' is not declared in RTL
+component 'stream_join' port 'in0_valid' is not declared in RTL
+component 'stream_join' port 'in1_valid' is not declared in RTL
+component 'stream_join' port 'out_valid' is not declared in RTL
+component 'accumulator_core' port 'in_valid' is not declared in RTL
+component 'accumulator_core' port 'out_valid' is not declared in RTL
+component 'stream_stage' port 'in_valid' is not declared in RTL
+component 'stream_stage' port 'out_valid' is not declared in RTL
+data_flow 'in0_path' endpoint 'in0_buffer.in_valid' is not declared in RTL
+data_flow 'in0_path' endpoint 'in0_buffer.out_valid' is not declared in RTL
+data_flow 'in0_path' endpoint 'join_core.in0_valid' is not declared in RTL
+data_flow 'in1_path' endpoint 'in1_buffer.in_valid' is not declared in RTL
+data_flow 'in1_path' endpoint 'in1_buffer.out_valid' is not declared in RTL
+data_flow 'in1_path' endpoint 'join_core.in1_valid' is not declared in RTL
+data_flow 'join_to_acc' endpoint 'join_core.out_valid' is not declared in RTL
+data_flow 'join_to_acc' endpoint 'accumulator.in_valid' is not declared in RTL
+data_flow 'acc_to_out' endpoint 'accumulator.out_valid' is not declared in RTL
+data_flow 'acc_to_out' endpoint 'out_stage.in_valid' is not declared in RTL
+data_flow 'acc_to_out' endpoint 'out_stage.out_valid' is not declared in RTL

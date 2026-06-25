@@ -1,0 +1,15 @@
+{
+  "failure_type": "l0_contract_violation",
+  "stage": "l0_consistency",
+  "root_cause": "component 'stream_join' port 'in1_data' is not declared in RTL\ncomponent 'stream_join' port 'in1_valid' is not declared in RTL\ndata_flow 'input_b' endpoint 'join_core.in1_data' is not declared in RTL",
+  "affected_files": [
+    "system_his.json",
+    "manifest.json"
+  ],
+  "l0_errors": [
+    "component 'stream_join' port 'in1_data' is not declared in RTL",
+    "component 'stream_join' port 'in1_valid' is not declared in RTL",
+    "data_flow 'input_b' endpoint 'join_core.in1_data' is not declared in RTL"
+  ],
+  "l0_warnings": []
+}

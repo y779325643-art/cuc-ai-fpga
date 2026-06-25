@@ -1,0 +1,16 @@
+{
+  "area": {
+    "lut": 100,
+    "ff": 100,
+    "bram": 0,
+    "dsp": 0
+  },
+  "timing": {
+    "fmax_mhz": 100,
+    "setup_slack_ns": 2.0,
+    "hold_slack_ns": 0.5
+  },
+  "power": {
+    "total_mw": 10
+  }
+}

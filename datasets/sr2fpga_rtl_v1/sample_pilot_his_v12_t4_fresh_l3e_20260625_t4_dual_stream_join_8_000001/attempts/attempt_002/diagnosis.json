@@ -1,0 +1,6 @@
+{
+  "failure_type": "functional_mismatch",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL: Expected 165 but got   0\nTEST_FAIL\nsim/tb_top.v:128: $finish called at 225 (1s)\n\nSimulation reported TEST_FAIL",
+  "affected_files": []
+}

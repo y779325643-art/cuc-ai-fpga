@@ -1,0 +1,182 @@
+{
+  "run_id": "pilot-his-v12-retry-feedback-20260625",
+  "config_fingerprint": "ecb38c841ae14ddafb8b6078350a94e5232cd0f71f201a832be45c4b088e480c",
+  "total_planned": 2,
+  "total_completed": 2,
+  "next_index": 2,
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_pilot_his_v12_retry_feedback_20260625_t2_stream_accumulator_8_000001"
+    ],
+    "rejected": [
+      "sample_pilot_his_v12_retry_feedback_20260625_t4_dual_stream_join_8_000002"
+    ]
+  },
+  "failure_types": {
+    "l0_contract_violation": 2,
+    "lint_warning_as_error": 1,
+    "generation_failed": 1
+  },
+  "failure_family_breakdown": {
+    "artifact_contract_failure": 1,
+    "rtl_compile_failure": 1,
+    "generation_failure": 1
+  },
+  "metadata_breakdown": {
+    "source": {
+      "deepseek-his-v12": 2
+    },
+    "failure_origin": {
+      "natural_llm": 2
+    },
+    "requirement_style": {
+      "simple_prompt": 2
+    },
+    "difficulty_tier": {
+      "T2": 1,
+      "T4": 1
+    },
+    "topology_id": {
+      "t2_stream_accumulator": 1,
+      "t4_dual_stream_join": 1
+    },
+    "measurement_point": {
+      "b_tool_in_loop_repair": 2
+    }
+  },
+  "pass_level_breakdown": {
+    "L0": 1,
+    "GEN_FAIL": 1
+  },
+  "calibration_matrix": {
+    "source": {
+      "deepseek-his-v12": {
+        "total": 2,
+        "pass_levels": {
+          "L0": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "failure_origin": {
+      "natural_llm": {
+        "total": 2,
+        "pass_levels": {
+          "L0": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "requirement_style": {
+      "simple_prompt": {
+        "total": 2,
+        "pass_levels": {
+          "L0": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "difficulty_tier": {
+      "T2": {
+        "total": 1,
+        "pass_levels": {
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "T4": {
+        "total": 1,
+        "pass_levels": {
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 1.0
+      }
+    },
+    "topology_id": {
+      "t2_stream_accumulator": {
+        "total": 1,
+        "pass_levels": {
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t4_dual_stream_join": {
+        "total": 1,
+        "pass_levels": {
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 1.0
+      }
+    },
+    "measurement_point": {
+      "b_tool_in_loop_repair": {
+        "total": 2,
+        "pass_levels": {
+          "L0": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "failure_family": {
+      "artifact_contract_failure": {
+        "total": 1,
+        "pass_levels": {
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "rtl_compile_failure": {
+        "total": 1,
+        "pass_levels": {
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "generation_failure": {
+        "total": 1,
+        "pass_levels": {
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 1.0
+      }
+    }
+  },
+  "contract_metrics": {
+    "total_labeled": 2,
+    "l0_contract_failures": 1,
+    "cross_file_consistency_error_rate": 0.5
+  },
+  "exports_refreshed": true,
+  "line_b_targets": {
+    "l3_success_ratio": 0.3,
+    "repair_trajectory_ratio": 0.7,
+    "max_samples": 2
+  }
+}

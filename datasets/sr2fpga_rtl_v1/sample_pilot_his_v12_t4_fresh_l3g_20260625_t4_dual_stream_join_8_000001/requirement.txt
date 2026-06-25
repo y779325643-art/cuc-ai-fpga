@@ -1,0 +1,1 @@
+Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.

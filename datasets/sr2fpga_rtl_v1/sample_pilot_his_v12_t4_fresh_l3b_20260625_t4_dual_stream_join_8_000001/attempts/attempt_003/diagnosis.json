@@ -1,0 +1,6 @@
+{
+  "failure_type": "port_mismatch",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL: Timeout waiting for outputs\nsim/tb_top.v:138: $finish called at 745000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": []
+}

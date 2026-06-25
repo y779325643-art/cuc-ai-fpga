@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Error: rtl/top.v:50:19: Signal definition not found, and implicit disabled with `default_nettype: 'join_core_ready0'\n                       : ... Suggested alternative: 'join_ready'\n   50 |         .ready_in(join_core_ready0)\n      |                   ^~~~~~~~~~~~~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: rtl/top.v:64:19: Signal definition not found, and implicit disabled with `default_nettype: 'join_core_ready1'\n                       : ... Suggested alternative: 'join_core_ready0'\n   64 |         .ready_in(join_core_ready1)\n      |                   ^~~~~~~~~~~~~~~~\n%Error: Exiting due to 2 error(s)\n",
+  "duration_seconds": 0.13239758301642723
+}

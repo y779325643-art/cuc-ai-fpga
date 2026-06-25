@@ -1,0 +1,6 @@
+{
+  "failure_type": "lint_warning_as_error",
+  "stage": "lint",
+  "root_cause": "%Warning-UNUSEDSIGNAL: rtl/accumulator_core.v:16:10: Signal is not used: 'transfer_out'\n                                                   : ... note: In instance 'top.accumulator'\n   16 |     wire transfer_out = out_valid & out_ready;\n      |          ^~~~~~~~~~~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)",
+  "affected_files": []
+}

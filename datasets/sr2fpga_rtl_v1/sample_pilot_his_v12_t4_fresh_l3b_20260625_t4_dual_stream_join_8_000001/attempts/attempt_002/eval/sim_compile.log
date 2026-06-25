@@ -1,0 +1,16 @@
+sim/tb_top.v:45: syntax error
+sim/tb_top.v:45: error: Malformed statement
+sim/tb_top.v:46: syntax error
+sim/tb_top.v:46: error: Malformed statement
+sim/tb_top.v:47: syntax error
+sim/tb_top.v:47: error: Malformed statement
+sim/tb_top.v:48: syntax error
+sim/tb_top.v:48: error: Malformed statement
+sim/tb_top.v:61: syntax error
+sim/tb_top.v:61: error: Malformed statement
+sim/tb_top.v:92: syntax error
+sim/tb_top.v:92: error: Malformed statement
+sim/tb_top.v:93: syntax error
+sim/tb_top.v:93: error: Malformed statement
+sim/tb_top.v:95: syntax error
+sim/tb_top.v:95: error: Malformed statement

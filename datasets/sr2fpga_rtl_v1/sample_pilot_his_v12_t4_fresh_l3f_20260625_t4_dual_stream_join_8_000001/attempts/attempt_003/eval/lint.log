@@ -1,0 +1,14 @@
+%Error-PINNOTFOUND: rtl/top.v:15:41: Parameter not found: 'DEPTH'
+   15 | skid_buffer #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(2)) in0_buffer (
+      |                                         ^~~~~
+                                   : ... Location of instance's module declaration
+    1 | module skid_buffer #(parameter DATA_WIDTH=8) (
+      |        ^~~~~~~~~~~
+                    ... For error description see https://verilator.org/warn/PINNOTFOUND?v=5.048
+%Error-PINNOTFOUND: rtl/top.v:21:41: Parameter not found: 'DEPTH'
+   21 | skid_buffer #(.DATA_WIDTH(DATA_WIDTH), .DEPTH(2)) in1_buffer (
+      |                                         ^~~~~
+                                   : ... Location of instance's module declaration
+    1 | module skid_buffer #(parameter DATA_WIDTH=8) (
+      |        ^~~~~~~~~~~
+%Error: Exiting due to 2 error(s)

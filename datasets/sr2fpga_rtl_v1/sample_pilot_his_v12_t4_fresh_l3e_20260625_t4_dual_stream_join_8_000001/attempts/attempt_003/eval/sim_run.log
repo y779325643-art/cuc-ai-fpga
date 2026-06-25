@@ -1,0 +1,4 @@
+TEST_FAIL: Expected 165 but got 162
+TEST_FAIL
+sim/tb_top.v:128: $finish called at 225 (1s)
+Simulation reported TEST_FAIL

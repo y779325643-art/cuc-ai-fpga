@@ -1,0 +1,3 @@
+TEST_FAIL: timeout waiting for output at iteration 0
+sim/tb_top.v:97: $finish called at 1045000 (1ps)
+Simulation reported TEST_FAIL

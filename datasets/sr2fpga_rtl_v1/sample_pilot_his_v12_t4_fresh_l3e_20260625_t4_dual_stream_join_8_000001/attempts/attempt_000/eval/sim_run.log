@@ -1,0 +1,3 @@
+TEST_FAIL: Timeout waiting for input handshake at i=2
+sim/tb_top.v:88: $finish called at 1090 (1s)
+Simulation reported TEST_FAIL

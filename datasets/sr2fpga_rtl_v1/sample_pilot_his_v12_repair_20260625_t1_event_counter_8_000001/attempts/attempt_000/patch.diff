@@ -1,0 +1,20 @@
+--- a/rtl/top.v
++++ b/rtl/top.v
+@@ -17,7 +17,7 @@
+     wire event_pulse;
+ 
+     // Instantiate event_gate
+-    event_gate u_event_gate (
++    event_gate event_gate (
+         .clk             (clk),
+         .rst_n           (rst_n),
+         .event_in        (event_in),
+@@ -25,7 +25,7 @@
+     );
+ 
+     // Instantiate counter_core
+-    counter_core u_counter (
++    counter_core counter (
+         .clk             (clk),
+         .rst_n           (rst_n),
+         .event_pulse_in  (event_pulse),

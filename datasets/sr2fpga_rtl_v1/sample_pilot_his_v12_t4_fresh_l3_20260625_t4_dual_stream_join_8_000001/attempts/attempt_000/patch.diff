@@ -1,0 +1,17 @@
+--- a/system_his.json
++++ b/system_his.json
+@@ -12,7 +12,13 @@
+   },
+   "top": {
+     "name": "top",
+-    "parameters": [],
++    "parameters": [
++      {
++        "name": "DATA_WIDTH",
++        "default": 8,
++        "type": "integer"
++      }
++    ],
+     "clocks": [
+       {
+         "name": "clk",

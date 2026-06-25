@@ -1,0 +1,36 @@
+--- a/sim/tb_top.v
++++ b/sim/tb_top.v
+@@ -11,12 +11,22 @@
+ 
+    always #5 clk = ~clk;
+ 
+-   reg [7:0] in0_seq [0:2] = {8'd1, 8'd2, 8'd3};
+-   reg [7:0] in1_seq [0:2] = {8'd4, 8'd5, 8'd6};
+-   reg [7:0] expected [0:2] = {8'd5, 8'd12, 8'd21};
++   reg [7:0] in0_seq [0:2];
++   reg [7:0] in1_seq [0:2];
++   reg [7:0] expected [0:2];
+    integer i;
+ 
+    initial begin
++      in0_seq[0] = 8'd1;
++      in0_seq[1] = 8'd2;
++      in0_seq[2] = 8'd3;
++      in1_seq[0] = 8'd4;
++      in1_seq[1] = 8'd5;
++      in1_seq[2] = 8'd6;
++      expected[0] = 8'd5;
++      expected[1] = 8'd12;
++      expected[2] = 8'd21;
++
+       clk = 0;
+       rst_n = 0;
+       in0_valid = 0;
+@@ -30,7 +40,6 @@
+          in0_data = in0_seq[i];
+          in1_valid = 1;
+          in1_data = in1_seq[i];
+-         // wait for output
+          while (!out_valid) @(posedge clk);
+          if (out_data !== expected[i]) begin
+             $display("TEST_FAIL: mismatch at %0d, expected %d, got %d", i, expected[i], out_data);

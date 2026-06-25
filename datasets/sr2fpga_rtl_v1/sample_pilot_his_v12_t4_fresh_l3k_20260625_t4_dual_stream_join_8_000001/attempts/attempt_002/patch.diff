@@ -1,0 +1,101 @@
+--- a/rtl/accumulator_core.v
++++ b/rtl/accumulator_core.v
+@@ -15,24 +15,29 @@
+ );
+ 
+     reg [DATA_WIDTH-1:0] acc_reg;
+-    reg                   out_valid_reg;
++    reg                   valid_reg;
+ 
+-    // ready_out: ready to accept new input when ready_in is high (no backpressure from output)
+-    assign ready_out = ready_in;
++    wire load   = valid_in && ready_out;
++    wire unload = ready_in && valid_reg;
+ 
+-    // valid_out: high only after first accumulation
+-    assign valid_out = out_valid_reg;
+-
+-    assign data_out = acc_reg;
++    assign ready_out = ~valid_reg || ready_in;
++    assign valid_out = valid_reg;
++    assign data_out  = acc_reg;
+ 
+     always @(posedge clk or negedge reset_n) begin
+         if (!reset_n) begin
+-            acc_reg <= {DATA_WIDTH{1'b0}};
+-            out_valid_reg <= 1'b0;
++            acc_reg   <= {DATA_WIDTH{1'b0}};
++            valid_reg <= 1'b0;
+         end else begin
+-            if (valid_in && ready_out) begin
+-                acc_reg <= acc_reg + data_in;
+-                out_valid_reg <= 1'b1;
++            if (load && unload) begin
++                // simultaneous: replace data and remain valid
++                acc_reg   <= acc_reg + data_in;
++                // valid_reg stays 1
++            end else if (load) begin
++                acc_reg   <= acc_reg + data_in;
++                valid_reg <= 1'b1;
++            end else if (unload) begin
++                valid_reg <= 1'b0;
+             end
+         end
+     end
+--- a/rtl/skid_buffer.v
++++ b/rtl/skid_buffer.v
+@@ -14,38 +14,34 @@
+     input  wire                        s_out_ready
+ );
+ 
+-    reg                  has_data;
+     reg [DATA_WIDTH-1:0] buf_data;
+     reg                  buf_valid;
+ 
+-    wire                 pass_through = s_out_ready || ~buf_valid;
+-    wire                 skid_load   = s_in_valid && s_in_ready;
++    wire pass_through = ~buf_valid;
+ 
+-    assign s_in_ready = pass_through;
++    assign s_in_ready = ~buf_valid || s_out_ready;
+     assign s_out_data = buf_valid ? buf_data : s_in_data;
+     assign s_out_valid = buf_valid || (s_in_valid && pass_through);
+ 
+     always @(posedge clk or negedge reset_n) begin
+         if (!reset_n) begin
+-            has_data  <= 1'b0;
++            buf_data  <= {DATA_WIDTH{1'b0}};
+             buf_valid <= 1'b0;
+         end else begin
+-            if (s_out_ready) begin
+-                // output consumed
+-                if (has_data) begin
+-                    has_data <= 1'b0;
+-                    buf_valid <= 1'b0;
+-                end else begin
+-                    // nothing in buffer
++            if (s_in_ready && s_in_valid) begin
++                if (s_out_ready && buf_valid) begin
++                    // simultaneous unload and load: output accepts previous buffer, load new
++                    buf_data <= s_in_data;
++                    // buf_valid stays 1
++                end else if (~s_out_ready && ~buf_valid) begin
++                    // store because output not ready
++                    buf_data <= s_in_data;
++                    buf_valid <= 1'b1;
+                 end
+-            end
+-            if (skid_load && ~pass_through) begin
+-                // load into skid buffer
+-                buf_data  <= s_in_data;
+-                has_data  <= 1'b1;
+-                buf_valid <= 1'b1;
+-            end else if (skid_load && pass_through) begin
+-                // pass-through, no skid
++                // else: pass-through (output ready and buffer empty), no storage needed
++            end else if (s_out_ready && buf_valid) begin
++                // unload only
++                buf_valid <= 1'b0;
+             end
+         end
+     end

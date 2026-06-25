@@ -1,0 +1,2 @@
+TEST_PASS
+sim/tb_top.v:100: $finish called at 10305000 (1ps)

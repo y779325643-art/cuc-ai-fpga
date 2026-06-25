@@ -1,0 +1,6 @@
+{
+  "failure_type": "lint_warning_as_error",
+  "stage": "lint",
+  "root_cause": "%Warning-WIDTHEXPAND: rtl/top.v:58:6: Output port connection 'out_data' expects 8 bits on the pin connection, but pin connection's VARREF 'buffer1_out_data' generates 1 bits.\n                                    : ... note: In instance 'top'\n   58 |     .out_data(buffer1_out_data)\n      |      ^~~~~~~~\n                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048\n                      ... Use \"/* verilator lint_off WIDTHEXPAND */\" and lint_on around source to disable this message.\n%Warning-WIDTHEXPAND: rtl/top.v:72:6: Input port connection 'in1_data' expects 8 bits on the pin connection, but pin connection's VARREF 'buffer1_out_data' generates 1 bits.\n                                    : ... note: In instance 'top'\n   72 |     .in1_data(buffer1_out_data),\n      |      ^~~~~~~~\n%Error: Exiting due to 2 warning(s)",
+  "affected_files": []
+}

@@ -1,0 +1,20 @@
+{
+  "run_id": "pilot-his-v12-t4-fresh-l3j-20260625",
+  "next_index": 1,
+  "completed_samples": [
+    "sample_pilot_his_v12_t4_fresh_l3j_20260625_t4_dual_stream_join_8_000001"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_pilot_his_v12_t4_fresh_l3j_20260625_t4_dual_stream_join_8_000001"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "lint_warning_as_error": 1,
+    "functional_mismatch": 4
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "2c95aa9b5d2870583bc60a0232ad90724bfec197c80a6af80363396aaee99727"
+}

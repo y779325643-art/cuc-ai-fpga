@@ -1,0 +1,20 @@
+{
+  "stage": "sim_compile",
+  "command": [
+    "iverilog",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v",
+    "sim/tb_top.v"
+  ],
+  "status": "failed",
+  "exit_code": 16,
+  "stdout": "",
+  "stderr": "sim/tb_top.v:45: syntax error\nsim/tb_top.v:45: error: Malformed statement\nsim/tb_top.v:46: syntax error\nsim/tb_top.v:46: error: Malformed statement\nsim/tb_top.v:47: syntax error\nsim/tb_top.v:47: error: Malformed statement\nsim/tb_top.v:48: syntax error\nsim/tb_top.v:48: error: Malformed statement\nsim/tb_top.v:61: syntax error\nsim/tb_top.v:61: error: Malformed statement\nsim/tb_top.v:92: syntax error\nsim/tb_top.v:92: error: Malformed statement\nsim/tb_top.v:93: syntax error\nsim/tb_top.v:93: error: Malformed statement\nsim/tb_top.v:95: syntax error\nsim/tb_top.v:95: error: Malformed statement\n",
+  "duration_seconds": 0.023951416980708018
+}

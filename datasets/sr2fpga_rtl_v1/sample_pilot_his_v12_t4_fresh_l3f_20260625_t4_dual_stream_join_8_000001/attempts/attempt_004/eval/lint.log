@@ -1,0 +1,7 @@
+%Warning-UNUSEDPARAM: rtl/skid_buffer.v:1:56: Parameter is not used: 'DEPTH'
+                                            : ... note: In instance 'top.in1_buffer'
+    1 | module skid_buffer #(parameter DATA_WIDTH=8, parameter DEPTH=2) (
+      |                                                        ^~~~~
+                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048
+                      ... Use "/* verilator lint_off UNUSEDPARAM */" and lint_on around source to disable this message.
+%Error: Exiting due to 1 warning(s)

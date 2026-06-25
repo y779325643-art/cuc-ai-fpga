@@ -1,0 +1,10 @@
+{
+  "project": "pilot_his_v12_retry_feedback_20260625_t2_stream_accumulator_8_000001",
+  "top": "top",
+  "fmax_mhz": 100,
+  "area_lut": 32,
+  "area_ff": 32,
+  "bram": 0,
+  "dsp": 0,
+  "power_mw": 5
+}

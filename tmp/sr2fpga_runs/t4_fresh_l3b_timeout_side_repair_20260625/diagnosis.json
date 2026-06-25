@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "failure_type": "testbench_timeout",
+  "root_cause": "vvp simulation compiles and runs but prints TEST_FAIL: Timeout waiting for outputs. The repair should debug the valid-ready stimulus and RTL handshake so each input pair is accepted and an output is produced. Do not remove bounded timeouts, do not change the intended cumulative join behavior, and do not change expected values merely to pass the test.",
+  "affected_files": [
+    "sim/tb_top.v",
+    "rtl/top.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ]
+}

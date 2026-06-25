@@ -1,0 +1,1 @@
+{"project":"pilot_his_v12_t4_fresh_l3c_20260625_t4_dual_stream_join_8_000001","predicted_qor":{"target_fmax_mhz":100,"estimated_fmax_mhz":200,"area":{"lut":120,"ff":80,"bram":0,"dsp":0},"timing_closure":"met"}}

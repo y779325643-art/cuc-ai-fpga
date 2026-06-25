@@ -1,0 +1,8 @@
+--- a/rtl/skid_buffer.v
++++ b/rtl/skid_buffer.v
+@@ -1,4 +1,4 @@
+-module skid_buffer #(parameter DATA_WIDTH=8) (
++module skid_buffer #(parameter DATA_WIDTH=8, parameter DEPTH=2) (
+     input clk, rst_n,
+     input in_valid,
+     output reg in_ready,

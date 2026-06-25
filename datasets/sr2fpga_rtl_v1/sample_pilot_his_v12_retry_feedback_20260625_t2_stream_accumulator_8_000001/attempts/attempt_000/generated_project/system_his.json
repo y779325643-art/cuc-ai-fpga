@@ -1,0 +1,470 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that accepts a valid-ready input stream and accumulates samples.",
+    "design_goal": "Implement a composed stream accumulator with an input skid buffer and an accumulator core that computes the running sum of 8-bit input samples, outputting the accumulated value as an 8-bit result.",
+    "assumptions": [
+      "Accumulator wraps on overflow since output width equals input width.",
+      "Input and output streams use valid-ready handshake.",
+      "System clock frequency is 100 MHz, reset is active low."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "description": "Data width for input and output"
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "description": "Primary system clock"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "description": "Asynchronous reset, active low"
+      }
+    ],
+    "ports": [
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": 1,
+        "description": "Input valid signal"
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": 1,
+        "description": "Input ready signal"
+      },
+      {
+        "name": "in_data",
+        "direction": "input",
+        "width": 8,
+        "description": "Input data bus"
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": 1,
+        "description": "Output valid signal"
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": 1,
+        "description": "Output ready signal"
+      },
+      {
+        "name": "out_data",
+        "direction": "output",
+        "width": 8,
+        "description": "Output accumulated data bus"
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "accum_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Accumulator register holding current sum"
+      }
+    ],
+    "counters": [
+      {
+        "name": "sample_count",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Count of samples accumulated (optional)"
+      }
+    ],
+    "fsms": [],
+    "buffers": [
+      {
+        "name": "skid_buffer_mem",
+        "depth": 2,
+        "width": 8,
+        "description": "Internal storage for skid buffer (one word plus pipeline)"
+      }
+    ],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "type": "stream_element",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH"
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH"
+          }
+        }
+      ],
+      "protocol": "valid_ready",
+      "description": "Skid buffer with single entry and pipeline stage for backpressure handling."
+    },
+    {
+      "name": "accumulator_core",
+      "type": "processing_element",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH"
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH"
+          }
+        }
+      ],
+      "protocol": "valid_ready",
+      "description": "Accumulator core that adds incoming data to internal register and outputs result."
+    }
+  ],
+  "instances": [
+    {
+      "name": "input_buffer",
+      "component": "skid_buffer",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "in_valid": "top.in_valid",
+        "in_ready": "top.in_ready",
+        "in_data": "top.in_data",
+        "out_valid": "accumulator.in_valid",
+        "out_ready": "accumulator.in_ready",
+        "out_data": "accumulator.in_data"
+      },
+      "owns_state": [
+        "skid_buffer_mem"
+      ],
+      "description": "Input skid buffer for valid-ready handshake and temporary storage."
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "in_valid": "input_buffer.out_valid",
+        "in_ready": "input_buffer.out_ready",
+        "in_data": "input_buffer.out_data",
+        "out_valid": "top.out_valid",
+        "out_ready": "top.out_ready",
+        "out_data": "top.out_data"
+      },
+      "owns_state": [
+        "accum_reg",
+        "sample_count"
+      ],
+      "description": "Core accumulator that accumulates input samples."
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input_stream",
+      "path": [
+        "top.in_valid",
+        "top.in_data",
+        "input_buffer.in_valid",
+        "input_buffer.in_data"
+      ],
+      "payload": {
+        "name": "input_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1
+      }
+    },
+    {
+      "name": "buffered_stream",
+      "path": [
+        "input_buffer.out_valid",
+        "input_buffer.out_data",
+        "accumulator.in_valid",
+        "accumulator.in_data"
+      ],
+      "payload": {
+        "name": "buffered_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1
+      }
+    },
+    {
+      "name": "output_stream",
+      "path": [
+        "accumulator.out_valid",
+        "accumulator.out_data",
+        "top.out_valid",
+        "top.out_data"
+      ],
+      "payload": {
+        "name": "accumulated_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "input_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "input_stream"
+      },
+      "related_state": [
+        "skid_buffer_mem"
+      ],
+      "related_flows": [
+        "input_stream"
+      ]
+    },
+    {
+      "name": "accumulate_enable",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "update",
+        "target": "accum_reg",
+        "value": "accum_reg + in_data"
+      },
+      "related_state": [
+        "accum_reg",
+        "sample_count"
+      ],
+      "related_flows": [
+        "buffered_stream"
+      ]
+    },
+    {
+      "name": "output_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "output_stream"
+      },
+      "related_state": [],
+      "related_flows": [
+        "output_stream"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_accumulation",
+        "description": "Send a sequence of values and verify accumulated output matches expected sum.",
+        "stimulus": "Drive in_valid and in_data, check out_valid and out_data.",
+        "pass_condition": "Accumulated output equals sum of inputs, handshake completes for all transfers."
+      },
+      {
+        "name": "backpressure",
+        "description": "Assert out_ready intermittent to verify skid buffer and backpressure handling.",
+        "stimulus": "Drive in_valid continuously, toggle out_ready, check internal state and output.",
+        "pass_condition": "No data loss, output valid only when ready, accumulated sum correct."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/accumulator_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

@@ -1,0 +1,11 @@
+--- a/rtl/top.v
++++ b/rtl/top.v
+@@ -35,6 +35,8 @@
+     wire [DATA_WIDTH-1:0] stage_data;
+     wire                  stage_valid;
+     wire                  stage_ready;
++    wire                  join_core_ready0;
++    wire                  join_core_ready1;
+ 
+     // Instantiate in0_buffer (skid_buffer)
+     skid_buffer #(

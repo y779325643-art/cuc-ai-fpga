@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out"
+  ],
+  "status": "failed",
+  "exit_code": 0,
+  "stdout": "TEST_FAIL: Expected 165 but got   0\nTEST_FAIL\nsim/tb_top.v:130: $finish called at 225 (1s)\n",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "duration_seconds": 0.01071962498826906
+}

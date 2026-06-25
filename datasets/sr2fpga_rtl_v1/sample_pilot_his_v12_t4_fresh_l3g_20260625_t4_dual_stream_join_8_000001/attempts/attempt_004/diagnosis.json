@@ -1,0 +1,6 @@
+{
+  "failure_type": "functional_mismatch",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL: output mismatch at transfer 0: expected 3, got 6\nsim/tb_top.v:48: $finish called at 76000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": []
+}

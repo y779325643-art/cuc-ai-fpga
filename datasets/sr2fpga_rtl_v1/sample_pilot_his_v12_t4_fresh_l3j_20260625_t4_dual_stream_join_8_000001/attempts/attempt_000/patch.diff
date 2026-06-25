@@ -1,0 +1,13 @@
+--- a/rtl/top.v
++++ b/rtl/top.v
+@@ -28,10 +28,6 @@
+     wire [DATA_WIDTH-1:0] acc_data;
+     wire acc_valid;
+     wire acc_ready;
+-
+-    // accumulator_reg wire for architecture compliance
+-    wire [DATA_WIDTH-1:0] accumulator_reg;
+-    assign accumulator_reg = acc_data;
+ 
+     // Input skid buffers
+     skid_buffer #(

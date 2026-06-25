@@ -1,0 +1,7 @@
+{
+  "estimated_lut": 64,
+  "estimated_ff": 96,
+  "estimated_bram": 0,
+  "estimated_dsp": 0,
+  "fmax_mhz": 100
+}

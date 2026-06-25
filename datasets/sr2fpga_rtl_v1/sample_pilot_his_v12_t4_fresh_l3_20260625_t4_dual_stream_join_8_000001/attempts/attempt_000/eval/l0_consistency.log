@@ -1,0 +1,3 @@
+top port 'in0_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8
+top port 'in1_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8
+top port 'out_data' width {'expr': 'DATA_WIDTH', 'resolved': 8} does not match RTL 8

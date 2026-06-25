@@ -1,0 +1,6 @@
+{
+  "failure_type": "unknown",
+  "stage": "lint",
+  "root_cause": "%Error: rtl/top.v:50:19: Signal definition not found, and implicit disabled with `default_nettype: 'join_core_ready0'\n                       : ... Suggested alternative: 'join_ready'\n   50 |         .ready_in(join_core_ready0)\n      |                   ^~~~~~~~~~~~~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: rtl/top.v:64:19: Signal definition not found, and implicit disabled with `default_nettype: 'join_core_ready1'\n                       : ... Suggested alternative: 'join_core_ready0'\n   64 |         .ready_in(join_core_ready1)\n      |                   ^~~~~~~~~~~~~~~~\n%Error: Exiting due to 2 error(s)",
+  "affected_files": []
+}

@@ -1,0 +1,8 @@
+{
+  "failure_type": "generation_failed",
+  "stage": "generation",
+  "root_cause": "DeepSeek System-HIS v1.2 failed validation: control_flow 'input_ready_rule'.effect.target 'input_buffer.in_ready' is not declared; control_flow 'output_valid_rule'.effect.target 'top.out_valid' is not declared",
+  "affected_files": [
+    "system_his.json"
+  ]
+}

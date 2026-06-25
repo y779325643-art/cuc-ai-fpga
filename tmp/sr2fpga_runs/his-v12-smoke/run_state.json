@@ -1,0 +1,13 @@
+{
+  "run_id": "his-v12-smoke",
+  "next_index": 0,
+  "completed_samples": [],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [],
+    "rejected": []
+  },
+  "failure_types": {},
+  "exports_refreshed": false,
+  "config_fingerprint": "5dfb9544748c89abfe80b4dd186e323ae88fe129253f37996fa1f89a934df32f"
+}

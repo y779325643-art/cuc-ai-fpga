@@ -1,0 +1,4 @@
+component 'skid_buffer' port 'in_data' width DATA_WIDTH does not match RTL 8
+component 'skid_buffer' port 'out_data' width DATA_WIDTH does not match RTL 8
+component 'accumulator_core' port 'in_data' width DATA_WIDTH does not match RTL 8
+component 'accumulator_core' port 'out_data' width DATA_WIDTH does not match RTL 8

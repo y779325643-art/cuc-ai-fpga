@@ -1,0 +1,24 @@
+--- a/sim/tb_top.v
++++ b/sim/tb_top.v
+@@ -7,6 +7,10 @@
+   wire [7:0] out_data;
+   wire out_valid;
+   reg out_ready;
++
++  integer i;
++  reg [7:0] expected;
++  integer timeout;
+ 
+   top #(.DATA_WIDTH(8)) dut (
+     .clk(clk), .rst_n(rst_n),
+@@ -34,9 +38,7 @@
+     in0_valid = 1;
+     in1_valid = 1;
+ 
+-    integer i;
+-    reg [7:0] expected;
+-    integer timeout = 0;
++    timeout = 0;
+     for (i = 0; i < 4; i = i + 1) begin
+       expected = 3 * (i + 1);
+       wait(out_valid);
