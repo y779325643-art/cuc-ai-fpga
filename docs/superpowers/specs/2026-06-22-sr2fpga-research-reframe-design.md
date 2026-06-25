@@ -180,7 +180,22 @@ Field map (what each line is, and why it is not us):
   *verification/physical depth* to P&R+board). Neither does physical closure or
   tool-verified trajectories.
 - **Tool-feedback / agentic:** AutoChip, RTLFixer, MAGE, **Spec2RTL-Agent**
-  (spec→C++→HLS→RTL) — repair loops are mature → not a selling point.
+  (spec→C++→HLS→RTL), **VerilogCoder** (AAAI'25, arXiv 2408.08927; autonomous
+  agents with graph-based planning + an AST-based waveform-tracing *tool*) —
+  repair/agent loops are mature → not a selling point.
+- **Representation-choice study (key motivation, not a competitor):**
+  **"From Natural Language to Silicon: The Representation Bottleneck in LLM
+  Hardware Design"** (2026, arXiv 2604.17097) — 3 frontier LLMs × 6 IRs
+  (Verilog/VHDL/Chisel/Bluespec/PyMTL3/HLS-C) over 202 tasks; finds **"IR choice,
+  not model choice, is the dominant factor"** (sim pass 3%→88% by IR; <1.25×
+  across models within an IR). **Empirically backs our premise that the lever is
+  representation, not the model** (hence frontier models = baselines). *Critical
+  distinction:* their "IR" = the **output HDL** (single-module, tiny Lattice
+  iCE40UP5K, no trajectory); System-HIS = a **requirement-level intermediate IR
+  above the HDL** (project-level, multi-file, XC7Z020) — an orthogonal,
+  complementary axis, not the same thing. Their **"accessibility–competence
+  paradox"** (friendlier IRs → worse LLM performance) is a design caution for
+  System-HIS, recorded under threats to validity.
 - **Hardware IRs:** FIRRTL / CIRCT / LLHD / HIR / Calyx, and **CPPL**
   (LLM→circuit-IR JSON→CIRCT→Verilog; input is a **Python DSL with fixed ports +
   docstrings, NOT natural language**; consistency by compile-time width
@@ -432,6 +447,13 @@ will live here later.
   - Detection ≠ prevention: the pipeline *labels* these as tool-verified failures
     and feeds repair trajectories; whether a trained model stops making them is the
     empirical (a)/(b)/(c) question, not a guarantee.
+  - **Accessibility–competence paradox (System-HIS design risk):** the
+    Representation-Bottleneck study (2026, arXiv 2604.17097) found that *friendlier*
+    representations can yield *worse* LLM performance. So a high-level System-HIS is
+    not automatically easier to generate — REQ→HIS and HIS→project difficulty
+    depends on the representation's design, and the System-HIS ablation must report
+    this honestly (it does not assume "add a higher-level IR ⇒ better" — it
+    *measures* it).
 
 - **Priority tiers for the hardware-semantic taxonomy:**
   - **Tier A (Paper ① core — observable now at L0–L3, low marginal cost):**

@@ -133,8 +133,17 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
 - **项目级 RTL benchmark：** **RTL-Repo**（仓库上下文 Verilog *补全*；无综合/物理、无轨迹）和 **ArchXBench**
   （MLCAD'25；**按*设计复杂度*分 6 级**，前沿模型从其 Level 4 起就失败——作为 motivation 引用；注意它的级
   ≠ 我们的 L0–L5，后者是到 P&R+board 的*验证/物理深度*）。两者都不做物理收敛或工具验证轨迹。
-- **工具反馈 / agentic：** AutoChip、RTLFixer、MAGE、**Spec2RTL-Agent**（spec→C++→HLS→RTL）——修复回路已
-  成熟 → 不是卖点。
+- **工具反馈 / agentic：** AutoChip、RTLFixer、MAGE、**Spec2RTL-Agent**（spec→C++→HLS→RTL）、**VerilogCoder**
+  （AAAI'25, arXiv 2408.08927；自主 agent + 图规划 + 基于 AST 的波形追踪*工具*）——修复/agent 回路已成熟 →
+  不是卖点。
+- **表示选择研究（关键 motivation，非竞争对手）：** **《From Natural Language to Silicon: The Representation
+  Bottleneck in LLM Hardware Design》**（2026, arXiv 2604.17097）——3 个前沿 LLM × 6 种 IR
+  （Verilog/VHDL/Chisel/Bluespec/PyMTL3/HLS-C），202 个任务；发现 **"IR choice, not model choice, is the
+  dominant factor"**（仿真通过率随 IR 从 3%→88%；同一 IR 内换模型只差 <1.25×）。**实证支撑了我们的前提：杠杆
+  在表示、不在模型**（因此前沿模型 = 基线）。*关键区分：* 他们的 "IR" = **输出 HDL**（单模块、极小的 Lattice
+  iCE40UP5K、无轨迹）；System-HIS = HDL **之上的需求级中间 IR**（项目级、多文件、XC7Z020）——是正交、互补的
+  轴，不是一回事。他们的 **"accessibility–competence 悖论"**（越友好的 IR → LLM 表现越差）对 System-HIS 是个
+  设计警示，记入 threats to validity。
 - **硬件 IR：** FIRRTL / CIRCT / LLHD / HIR / Calyx，以及 **CPPL**（LLM→电路 IR JSON→CIRCT→Verilog；输入
   是**带固定端口 + docstring 的 Python DSL，不是自然语言**；一致性靠编译期位宽推断；无物理/PnR）。CPPL 在
   电路结构层，System-HIS 在需求意图层（输入 = NL 需求，*下降到* CIRCT/CPPL）。
@@ -310,6 +319,10 @@ qor_intent:  {resources: {lut?, ff?, bram?, dsp?}}      # 模型侧预测 → pr
   - 板级信号完整性 / 上板"玄学"调试**不在范围内**——那是人类 L5 工作，不是流水线能检出的。
   - 检测 ≠ 预防：流水线把这些*标注*成工具验证的失败、喂修复轨迹；训练后的模型是否不再犯，是 (a)/(b)/(c)
     的经验问题，不是保证。
+  - **accessibility–competence 悖论（System-HIS 设计风险）：** Representation-Bottleneck 研究
+    （2026, arXiv 2604.17097）发现*越友好*的表示反而可能*降低* LLM 表现。所以高层 System-HIS 不会自动更易
+    生成——REQ→HIS 与 HIS→project 的难度取决于表示设计，System-HIS 消融必须诚实报告这点（不假设"加个更高层
+    IR ⇒ 更好"，而是去*测量*它）。
 
 - **硬件语义分类法的优先级分档：**
   - **Tier A（Paper ① 核心——现在 L0–L3 即可观测、边际成本低）：** seq/comb（L1）、memory/BRAM 推断（L3）、
