@@ -109,6 +109,27 @@ def build_project_generator(
     raise SystemExit(f"Unsupported provider: {provider}")
 
 
+def build_project_generator_for_connection(connection, event_sink=None):
+    kind = connection.kind
+    if kind == "deterministic":
+        return None
+    if kind not in {"openai_compat", "deepseek", "deepseek-his-v12"}:
+        raise SystemExit(f"Unsupported source kind: {kind}")
+    api_key = os.environ.get(connection.api_key_env)
+    if not api_key:
+        raise SystemExit(f"{connection.api_key_env} is not set")
+    client = DeepSeekClient(
+        DeepSeekConfig(
+            api_key=api_key,
+            model=connection.model,
+            base_url=connection.base_url,
+        )
+    )
+    if kind == "deepseek":
+        return DeepSeekProjectGenerator(client)
+    return DeepSeekTwoStageProjectGenerator(client, event_sink=event_sink)
+
+
 def build_repairer(
     provider: str,
     model: str,

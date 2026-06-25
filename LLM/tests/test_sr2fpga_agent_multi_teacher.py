@@ -127,3 +127,52 @@ class ResolveSourceTest(unittest.TestCase):
         conn = resolve_source_connection(config, "deepseek")
         self.assertEqual(conn.kind, "deepseek")
         self.assertEqual(conn.generation_mode, "direct")
+
+
+import os
+from unittest.mock import patch
+
+from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
+from LLM.src.sr2fpga_agent.deepseek import (
+    DeepSeekProjectGenerator,
+    DeepSeekTwoStageProjectGenerator,
+)
+
+
+class ConnectionBuilderTest(unittest.TestCase):
+    def test_deterministic_connection_returns_none(self) -> None:
+        conn = SourceConnection(name="deterministic", kind="deterministic")
+        self.assertIsNone(build_project_generator_for_connection(conn))
+
+    def test_openai_compat_builds_two_stage_with_resolved_endpoint(self) -> None:
+        conn = SourceConnection(
+            name="claude", kind="openai_compat", model="claude-opus-4-8",
+            base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_API_KEY",
+            generation_mode="two_stage",
+        )
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator, DeepSeekTwoStageProjectGenerator)
+        client_config = generator.his_project_generator.client.config
+        self.assertEqual(client_config.model, "claude-opus-4-8")
+        self.assertEqual(client_config.base_url, "https://api.anthropic.com/v1")
+        self.assertEqual(client_config.api_key, "sk-test")
+
+    def test_legacy_deepseek_kind_builds_single_stage(self) -> None:
+        conn = SourceConnection(
+            name="deepseek", kind="deepseek", model="deepseek-v4-flash",
+            base_url="https://api.deepseek.com", api_key_env="DEEPSEEK_API_KEY",
+            generation_mode="direct",
+        )
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-ds"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator, DeepSeekProjectGenerator)
+
+    def test_missing_key_raises(self) -> None:
+        conn = SourceConnection(
+            name="gpt55", kind="openai_compat", model="gpt-5.5",
+            base_url="https://api.openai.com/v1", api_key_env="OPENAI_API_KEY_ABSENT_FOR_TEST",
+            generation_mode="two_stage",
+        )
+        with self.assertRaises(SystemExit):
+            build_project_generator_for_connection(conn)
