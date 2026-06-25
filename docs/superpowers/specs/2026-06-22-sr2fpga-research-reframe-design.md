@@ -784,6 +784,45 @@ will live here later.
   Pick/deepen one for TCAD; if none lands, the (a)/(b)/(c) framework still
   carries a TRETS paper.
 
+### Method statement (how to articulate it; is it "new"?)
+
+**One-line answer ("what method did you use?"):** *tool-verified learning* — distil
+the EDA toolchain's objective judgement into a model, via a **System-HIS
+requirement-level IR** (REQ→HIS→multi-file project), with **L0–L5 tool feedback as
+supervision**, **structured diagnosis→patch** repair trajectories persisted as a
+reusable dataset, and an **(a)/(b)/(c)** measurement of how much tool feedback vs
+fine-tuning each add. Anchor: *distil the tool, not the LLM.*
+
+**Three registers (separate them when pressed):** (1) **data-generation method** —
+the tool-verified trajectory factory (done); (2) **evaluation method** — project-
+level L0–L5 + the L0 consistency checker + (a)/(b)/(c) (done); (3) **model-training
+method** — SFT on the trajectory tasks (REQ2HIS/HIS2PROJECT/LOG2DIAG/FAILURE2PATCH/
+QOR_PRED) (designed, not yet trained).
+
+**Is it a "new method"? — honest, granularity-dependent:**
+
+- **As a new technique/algorithm: no.** The optimizer is standard (SFT/QLoRA), the
+  repair loop is mature (AutoChip…), intermediate representations exist (HLS, CPPL,
+  FIRRTL), and distilling tool/test feedback exists (the RL cluster, ChipSeek-R1).
+  No single brick is invented here; a sharp reviewer will (correctly) say "known
+  techniques applied to a new domain," and TCAD will not accept "QLoRA + a tool
+  loop" as the method contribution.
+- **As a new methodology / framework: yes, defensibly.** The specific composition —
+  tool-oracle distillation + System-HIS *requirement-level* IR + *project-level*
+  L0–L5 + the (a)/(b)/(c) decomposition — has not been done; the bricks are old, the
+  construction is new. This is a new *way of doing it*, not a new *tool*.
+- **To be a "new method" in the strong (TCAD) sense:** one of the method-novelty
+  candidates above must be developed into a real technical contribution — best bet
+  **System-HIS-constrained / verification-guided decoding** (cross-file consistency
+  by *construction* at decode time, distinct from CPPL's compile-time circuit-IR
+  checks). That is genuinely new *if built*; today it is a candidate, not done.
+
+**Honest claim discipline (for the defense):** claim "a new **methodology** for
+project-level tool-verified RTL generation" and "the method novelty I am deepening
+is System-HIS-constrained generation"; do **not** claim "a new training algorithm."
+Venue calibration: TRETS rewards the framework + reproducibility + dataset (low
+novelty pressure); TCAD requires landing one method-novelty candidate.
+
 ### Measurement structure (the fair fights)
 
 The model is NOT sold as "generates better." Everything is measured as **tool
