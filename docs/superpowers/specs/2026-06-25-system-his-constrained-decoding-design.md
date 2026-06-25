@@ -36,6 +36,46 @@ them. Turn "we have an L0 checker that *catches* inconsistency" (evaluation) int
   (wrong port names, reserved-keyword instance names, width mismatch, instance
   aliases) — exactly what this prevents.
 
+## Background / provenance (the technique is established; our novelty is the constraint source)
+
+Constrained decoding is a mature, citable technique — we are **not** inventing a new
+primitive. The lineage (citations verified via OpenAlex unless flagged):
+
+- **Classic roots — lexically constrained decoding in machine translation:**
+  Hokamp & Liu, "Lexically Constrained Decoding for Sequence Generation Using Grid
+  Beam Search," ACL 2017 (doi 10.18653/v1/p17-1141); Post & Vilar, "Fast Lexically
+  Constrained Decoding with Dynamic Beam Allocation for NMT," NAACL 2018
+  (doi 10.18653/v1/n18-1119). Force/forbid tokens during beam search.
+- **Modern grammar/FSM-constrained generation (the LLM wave):** Willard & Louf,
+  "Efficient Guided Generation for Large Language Models," arXiv 2307.09702 (2023) —
+  the **Outlines** FSM-based logit-masking approach (the canonical recent reference);
+  Beurer-Kellner, Fischer & Vechev, "Prompting Is Programming: A Query Language for
+  LLMs" (LMQL), 2023 (doi 10.1145/3591300). Practical engines: Guidance, llama.cpp
+  GBNF grammars, SGLang.
+- **Incremental-parser-constrained decoding (closest precedent to our Tier B):**
+  **PICARD** — Scholak, Schucher & Bahdanau, "PICARD: Parsing Incrementally for
+  Constrained Auto-Regressive Decoding from Language Models," EMNLP 2021
+  (arXiv 2109.05093) — an incremental parser rejects invalid continuations during
+  beam search for SQL. *(Confidently known but not surfaced by the OpenAlex query;
+  verify the exact citation before formal writing.)*
+
+**Core principle:** at each step, intersect the model's distribution with the
+constraint automaton's allowed-token set (mask the rest to −∞) → the output lies in
+the constraint language **by construction**.
+
+**Our novelty positioning (honest):** the *technique* (constrained decoding) is
+established and citable; our contribution is the **constraint source and
+application** — using **System-HIS, a requirement-level contract**, as the
+decode-time constraint for **project-level cross-file RTL consistency**. A quick
+multi-source search found **no direct precedent for constrained decoding driven by a
+requirement-level contract over multi-file HDL/RTL** (not exhaustive — confirm in the
+formal related-work pass; the adjacent "LLMs + compilers" survey, Zhang et al. 2026,
+doi 10.1007/s42514-025-00270-x, is background). CPPL is the nearest neighbour but
+acts at *compile time* on a *circuit-level* IR, not at decode time from a
+requirement-level contract. This framing is a strength: a proven technique applied
+through a novel representation — consistent with the reframe spec's "technique
+standard, representation/application new."
+
 ## What gets constrained
 
 System-HIS declares the top name, components (port names / directions / widths),
