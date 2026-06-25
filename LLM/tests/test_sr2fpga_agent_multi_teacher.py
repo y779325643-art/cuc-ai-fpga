@@ -217,3 +217,38 @@ class PerSampleDispatchTest(unittest.TestCase):
             "https://api.anthropic.com/v1",
         )
         self.assertEqual(gen_gpt.his_project_generator.client.config.model, "gpt-5.5")
+
+
+class MetadataTest(unittest.TestCase):
+    def _sample(self, source: str) -> PlannedSample:
+        return PlannedSample(
+            sample_id=f"s_{source}", source=source, task_type="counter", width=8,
+            project_name="p", requirement="r", requirement_style="simple_prompt",
+            difficulty_tier="T1",
+        )
+
+    def test_openai_compat_two_stage_is_clean_v12_natural_llm(self) -> None:
+        claude = SourceConnection(
+            name="claude", kind="openai_compat", model="claude-opus-4-8",
+            base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_API_KEY",
+            generation_mode="two_stage",
+        )
+        config = _base_config(sources={"claude": claude})
+        metadata = self._sample("claude").metadata(config)
+        self.assertEqual(metadata["failure_origin"], "natural_llm")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+        self.assertEqual(metadata["training_split"], "clean")
+        self.assertEqual(metadata["model"], "claude-opus-4-8")
+
+    def test_deterministic_metadata_unchanged(self) -> None:
+        config = _base_config()
+        metadata = self._sample("deterministic").metadata(config)
+        self.assertEqual(metadata["failure_origin"], "deterministic_template")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+
+    def test_legacy_deepseek_direct_is_v11_quarantine(self) -> None:
+        config = _base_config(api_key_env="DEEPSEEK_API_KEY")
+        metadata = self._sample("deepseek").metadata(config)
+        self.assertEqual(metadata["failure_origin"], "natural_llm")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
+        self.assertEqual(metadata["training_split"], "quarantine")

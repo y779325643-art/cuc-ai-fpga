@@ -95,11 +95,13 @@ class PlannedSample:
     requirement_style: str = "contract"
 
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
-        schema_version = _sample_system_his_schema_version(self)
+        connection = resolve_source_connection(config, self.source)
+        schema_version = _sample_system_his_schema_version(self, config)
         return {
             "source": self.source,
             "generator_provider": self.source,
-            "failure_origin": _sample_failure_origin(self),
+            "model": connection.model,
+            "failure_origin": _sample_failure_origin(self, config),
             "difficulty_tier": self.difficulty_tier,
             "measurement_point": self.measurement_point or _measurement_point(config),
             "repair_provider": config.repair_provider,
@@ -309,7 +311,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 "event": "sample_completed",
                 "sample_id": sample.sample_id,
                 "source": sample.source,
-                "failure_origin": _sample_failure_origin(sample),
+                "failure_origin": _sample_failure_origin(sample, config),
                 "difficulty_tier": sample.difficulty_tier,
                 "task_type": sample.task_type,
                 "width": sample.width,
@@ -1045,20 +1047,22 @@ def _topology_expected_behavior(task_type: str) -> str:
     return behaviors[task_type]
 
 
-def _sample_failure_origin(sample: PlannedSample) -> str:
+def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
     if sample.failure_origin:
         return sample.failure_origin
     if sample.failure_injectors:
         return "synthetic_injected"
-    if _is_deepseek_provider(sample.source):
+    connection = resolve_source_connection(config, sample.source)
+    if connection.kind in LLM_SOURCE_KINDS:
         return "natural_llm"
-    if sample.source == "deterministic":
+    if connection.kind == "deterministic":
         return "deterministic_template"
     return sample.source
 
 
-def _sample_system_his_schema_version(sample: PlannedSample) -> str:
-    if sample.source in {"deepseek-his-v12", "deterministic"}:
+def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
+    connection = resolve_source_connection(config, sample.source)
+    if connection.kind == "deterministic" or connection.generation_mode == "two_stage":
         return "system-his-v1.2"
     return "system-his-v1.1"
 
@@ -1085,7 +1089,7 @@ def _project_generator_for_sample(
         cache_key = f"{sample.source}:{sample.sample_id}"
     if cache_key not in project_generators:
         event_sink = (
-            _generation_event_sink(events_path, sample)
+            _generation_event_sink(events_path, sample, config)
             if connection.generation_mode == "two_stage"
             else None
         )
@@ -1100,7 +1104,7 @@ def _project_generator_for_sample(
     return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
 
 
-def _generation_event_sink(events_path: Path, sample: PlannedSample):
+def _generation_event_sink(events_path: Path, sample: PlannedSample, config: RunnerConfig):
     def emit(payload: dict[str, Any]) -> None:
         _append_event(
             events_path,
@@ -1108,7 +1112,7 @@ def _generation_event_sink(events_path: Path, sample: PlannedSample):
                 **payload,
                 "sample_id": sample.sample_id,
                 "source": sample.source,
-                "failure_origin": _sample_failure_origin(sample),
+                "failure_origin": _sample_failure_origin(sample, config),
                 "difficulty_tier": sample.difficulty_tier,
                 "topology_id": sample.topology_id,
                 "requirement_style": sample.requirement_style,
