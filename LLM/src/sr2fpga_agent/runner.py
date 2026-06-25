@@ -14,7 +14,10 @@ from typing import Any
 
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
 from LLM.src.sr2fpga_agent.baseline_report import baseline_rows, render_markdown
-from LLM.src.sr2fpga_agent.cli import build_project_generator, build_repairer
+from LLM.src.sr2fpga_agent.cli import (
+    build_project_generator_for_connection,
+    build_repairer,
+)
 from LLM.src.sr2fpga_agent.deepseek import DeepSeekClient, DeepSeekConfig
 from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
@@ -1076,19 +1079,19 @@ def _project_generator_for_sample(
     sample: PlannedSample,
     events_path: Path,
 ) -> object | None:
+    connection = resolve_source_connection(config, sample.source)
     cache_key = sample.source
-    if sample.source == "deepseek-his-v12":
+    if connection.generation_mode == "two_stage":
         cache_key = f"{sample.source}:{sample.sample_id}"
     if cache_key not in project_generators:
-        kwargs: dict[str, Any] = {}
-        if sample.source == "deepseek-his-v12":
-            kwargs["event_sink"] = _generation_event_sink(events_path, sample)
-        project_generators[cache_key] = build_project_generator(
-            provider=sample.source,
-            model=config.model,
-            base_url=config.base_url,
-            api_key_env=config.api_key_env,
-            **kwargs,
+        event_sink = (
+            _generation_event_sink(events_path, sample)
+            if connection.generation_mode == "two_stage"
+            else None
+        )
+        project_generators[cache_key] = build_project_generator_for_connection(
+            connection,
+            event_sink=event_sink,
         )
     project_generator = project_generators[cache_key]
     if not sample.failure_injectors:

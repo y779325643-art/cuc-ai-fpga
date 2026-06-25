@@ -176,3 +176,44 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with self.assertRaises(SystemExit):
             build_project_generator_for_connection(conn)
+
+
+from LLM.src.sr2fpga_agent.runner import PlannedSample, _project_generator_for_sample
+
+
+class PerSampleDispatchTest(unittest.TestCase):
+    def test_two_different_teachers_resolve_to_different_endpoints(self) -> None:
+        claude = SourceConnection(
+            name="claude", kind="openai_compat", model="claude-opus-4-8",
+            base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_API_KEY",
+            generation_mode="two_stage",
+        )
+        gpt = SourceConnection(
+            name="gpt55", kind="openai_compat", model="gpt-5.5",
+            base_url="https://api.openai.com/v1", api_key_env="OPENAI_API_KEY",
+            generation_mode="two_stage",
+        )
+        config = _base_config(sources={"claude": claude, "gpt55": gpt})
+
+        def make_sample(source: str) -> PlannedSample:
+            return PlannedSample(
+                sample_id=f"sample_{source}", source=source, task_type="counter",
+                width=8, project_name=source, requirement="r",
+                requirement_style="simple_prompt",
+            )
+
+        cache: dict = {}
+        events = Path("ignored")
+        with patch.dict(
+            os.environ,
+            {"ANTHROPIC_API_KEY": "sk-a", "OPENAI_API_KEY": "sk-o"},
+            clear=False,
+        ):
+            gen_claude = _project_generator_for_sample(cache, config, make_sample("claude"), events)
+            gen_gpt = _project_generator_for_sample(cache, config, make_sample("gpt55"), events)
+
+        self.assertEqual(
+            gen_claude.his_project_generator.client.config.base_url,
+            "https://api.anthropic.com/v1",
+        )
+        self.assertEqual(gen_gpt.his_project_generator.client.config.model, "gpt-5.5")

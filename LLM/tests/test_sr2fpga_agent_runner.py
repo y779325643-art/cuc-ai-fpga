@@ -1138,11 +1138,13 @@ class RunnerConfigTest(unittest.TestCase):
                 tasks=[TaskConfig(source="deepseek", task_type="counter", widths=[4], count=1)],
             )
 
-            with patch("LLM.src.sr2fpga_agent.runner.build_project_generator") as build_generator:
+            with patch(
+                "LLM.src.sr2fpga_agent.runner.build_project_generator_for_connection"
+            ) as build_generator:
                 build_generator.return_value = None
                 run_batch(config, run_id="run_unit")
 
-            self.assertEqual(build_generator.call_args.kwargs["provider"], "deepseek")
+            self.assertEqual(build_generator.call_args.args[0].name, "deepseek")
 
     def test_run_batch_writes_two_stage_generation_events(self) -> None:
         from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
@@ -1161,9 +1163,7 @@ class RunnerConfigTest(unittest.TestCase):
                 tasks=[TaskConfig(source="deepseek-his-v12", task_type="counter", widths=[4], count=1)],
             )
 
-            def fake_build_project_generator(**kwargs):
-                event_sink = kwargs["event_sink"]
-
+            def fake_build_project_generator(connection, event_sink=None):
                 class FakeTwoStageGenerator:
                     def generate(self, request, platform):
                         event_sink(
@@ -1189,7 +1189,10 @@ class RunnerConfigTest(unittest.TestCase):
 
                 return FakeTwoStageGenerator()
 
-            with patch("LLM.src.sr2fpga_agent.runner.build_project_generator", side_effect=fake_build_project_generator):
+            with patch(
+                "LLM.src.sr2fpga_agent.runner.build_project_generator_for_connection",
+                side_effect=fake_build_project_generator,
+            ):
                 run_batch(config, run_id="run_unit")
 
             events = [
