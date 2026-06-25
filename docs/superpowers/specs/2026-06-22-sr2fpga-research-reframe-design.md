@@ -282,6 +282,51 @@ OpenXC7 L4 spike. All five are operationalized by the enabling infrastructure
 contribution — the tool-verified project-trajectory dataset + L0–L5 benchmark +
 reproducible req→bitstream→board loop — which is what makes them measurable.
 
+### How prior work addresses each RQ (and what it leaves open)
+
+A view organized by RQ (complementary to the work-type field map below). Per RQ:
+how the field solves it, and the opening we take.
+
+- **RQ1 (representation).** *Field:* direct req→code with no IR (VerilogEval,
+  RTLLM, RTLCoder, OpenLLM-RTL); circuit-level IR (CPPL: Python-DSL→circuit-JSON,
+  consistency by compile-time width inference); software-level intermediate
+  (Spec2RTL-Agent via HLS C); compiler hardware IRs not meant as NL targets
+  (FIRRTL/CIRCT/LLHD/HIR/Calyx); output-HDL-as-IR study (Representation
+  Bottleneck). *Open:* none learns/evaluates a **requirement-intent IR** with an
+  ablation; Representation Bottleneck explicitly poses it as future work →
+  System-HIS. **Status: open.**
+- **RQ2 (tool feedback, b−a).** *Field (mature):* compile/sim feedback loops —
+  AutoChip (+24.2%), RTLFixer (syntax), MAGE (multi-agent), VerilogCoder (graph
+  planning + AST waveform tool), PEFA-AI (progressive error feedback). *Open:* all
+  single-module / functional / sim; none isolate a clean (b−a) delta on the same
+  generator across difficulty tiers at **project/physical** level. **Status:
+  crowded — differentiate by level + clean measurement.**
+- **RQ3 (internalization, c−a / c vs b).** *Field (most crowded):* RL with tool
+  reward — ChipSeek-R1 (hierarchical syntax→sim→synth-PPA reward, ASIC),
+  VeriRL (trace-back rescore), VeriReason (RL+testbench+reasoning), RTLSeek; SFT
+  (RTLCoder, Veribench-53K); inference-time steering (MeltRTL, CASS-RTL). *Open:*
+  per-attempt reward, **no reusable trajectory dataset**, single-module, ASIC/sim;
+  none frame "(c) without tools matches (b)" or "small model reaches large model."
+  Representation Bottleneck's "IR-aware training > model scaling" supports us.
+  **Status: most crowded — our moat is project-level + physical + reusable
+  tool-verified trajectory + (a)/(b)/(c) + swappable generator. (Highest risk; no
+  model trained yet.)**
+- **RQ4 (failure structure / difficulty).** *Field:* pass-rate-by-complexity
+  benchmarks (ArchXBench's 6 levels, RTL-Repo, ResBench, CVDP); failure-mode
+  analysis (Representation Bottleneck: combinational 1.3–1.4× / sequential 2.3× /
+  memory 43%; RTLFixer on syntax). *Open:* no **L0–L5 verification-depth ×
+  hardware-semantic** cross-index at project scale; their seq/memory gradient backs
+  our axes. **Status: half-open.**
+- **RQ5 (QoR prediction / shift-left).** *Field:* dedicated pre-synthesis PPA
+  predictors, usually a separate GNN, mostly ASIC — MasterRTL, DeepCircuitX,
+  self-supervised circuit encoder; HLS DSE predictors (IronMan, Chimera, AutoHLS,
+  Intelligent4DSE); POET. *Open:* our predictor is **part of the same tool-distilled
+  model** (not a separate GNN), on **FPGA physical (L4)**, and feeds Paper ② as
+  proxy fitness, with strict predicted/measured separation. **Status: half-open.**
+
+**Crowding summary:** RQ1 open; RQ2 crowded (loops are mature); **RQ3 most crowded
+(the RL cluster) — the differentiation must be sharpest here**; RQ4/RQ5 half-open.
+
 ### Differentiation (related-work map; full lit-review in the author's vault)
 
 Three support points, stated honestly against the *current* field (not the

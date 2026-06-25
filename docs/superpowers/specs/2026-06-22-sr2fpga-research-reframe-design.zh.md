@@ -194,6 +194,34 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
 且卡在 OpenXC7 L4 spike。五个都由使能性基础设施贡献（工具验证项目轨迹数据集 + L0–L5 benchmark + 可复现
 req→bitstream→board 闭环）操作化——正是它让这些问题变得可测量。
 
+### 别人针对每个 RQ 怎么解决（以及留下什么）
+
+按 RQ 组织的视角（与下文按"工作类型"的 field map 互补）。每个 RQ：领域怎么解、我们占的空位。
+
+- **RQ1（表示）。** *领域：* 无 IR 的 req→code 直生成（VerilogEval、RTLLM、RTLCoder、OpenLLM-RTL）；电路级 IR
+  （CPPL：Python-DSL→电路 JSON，靠编译期位宽推断保一致）；软件级中间（Spec2RTL-Agent 走 HLS C）；非 NL 目标的
+  编译器硬件 IR（FIRRTL/CIRCT/LLHD/HIR/Calyx）；把输出 HDL 当 IR 研究（Representation Bottleneck）。*留白：* 没人把
+  **需求意图级 IR** 做成带消融的可学习/可评测对象；Representation Bottleneck 显式把它列为 future work → System-HIS。
+  **状态：开放。**
+- **RQ2（工具反馈，b−a）。** *领域（成熟）：* 编译/仿真反馈回路——AutoChip（+24.2%）、RTLFixer（语法）、MAGE
+  （多 agent）、VerilogCoder（图规划 + AST 波形工具）、PEFA-AI（渐进式错误反馈）。*留白：* 全在单模块/功能/仿真层；
+  没人在**项目级/物理**层、同一生成器、跨难度档隔离出干净的 (b−a) 差值。**状态：拥挤——靠层级 + 干净测量区分。**
+- **RQ3（内化，c−a / c vs b）。** *领域（最拥挤）：* RL + 工具奖励——ChipSeek-R1（分层 syntax→sim→synth-PPA reward，
+  ASIC）、VeriRL（trace-back rescore）、VeriReason（RL+testbench+reasoning）、RTLSeek；SFT（RTLCoder、Veribench-53K）；
+  推理时 steering（MeltRTL、CASS-RTL）。*留白：* per-attempt reward、**无可复用轨迹数据集**、单模块、ASIC/仿真；没人把
+  "(c) 不调工具能否匹配 (b)"或"小模型追大模型"框成问题。Representation Bottleneck 的"IR-aware training > 模型 scaling"
+  支持我们。**状态：最拥挤——护城河 = 项目级 + 物理 + 可复用工具验证轨迹 + (a)/(b)/(c) + 可替换生成器。（最高风险；
+  模型还没训。）**
+- **RQ4（失败结构 / 难度）。** *领域：* 按复杂度报通过率的 benchmark（ArchXBench 6 级、RTL-Repo、ResBench、CVDP）；
+  失败模式分析（Representation Bottleneck：组合 1.3–1.4× / 时序 2.3× / memory 43%；RTLFixer 语法）。*留白：* 没有
+  **L0–L5 验证深度 × 硬件语义**的项目级交叉索引；它的 seq/memory 梯度背书我们的轴。**状态：半开放。**
+- **RQ5（QoR 预测 / shift-left）。** *领域：* 专用 pre-synthesis PPA 预测器，多为独立 GNN、多为 ASIC——MasterRTL、
+  DeepCircuitX、自监督电路 encoder；HLS DSE 预测器（IronMan、Chimera、AutoHLS、Intelligent4DSE）；POET。*留白：* 我们的
+  预测器是**同一个工具蒸馏模型的一部分**（非独立 GNN），在 **FPGA 物理（L4）**，且喂 Paper ② 当代理适应度，带严格
+  predicted/measured 分离。**状态：半开放。**
+
+**拥挤度总结：** RQ1 开放；RQ2 拥挤（回路已成熟）；**RQ3 最拥挤（RL 簇）——差异化必须在这里最锋利**；RQ4/RQ5 半开放。
+
 ### 差异化（相关工作地图；完整文献综述在作者 vault 中）
 
 三个支撑点，对照*当前*领域（不是 VerilogEval 时代的领域）诚实陈述：
