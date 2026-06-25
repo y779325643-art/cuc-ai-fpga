@@ -47,6 +47,16 @@ class TaskConfig:
 
 
 @dataclass(frozen=True)
+class SourceConnection:
+    name: str
+    kind: str
+    model: str = ""
+    base_url: str = ""
+    api_key_env: str = ""
+    generation_mode: str = ""
+
+
+@dataclass(frozen=True)
 class RunnerConfig:
     dataset_root: Path
     export_root: Path
@@ -63,6 +73,7 @@ class RunnerConfig:
     platform: str = "generic_verilog"
     env_file: Path = Path("")
     sample_id_prefix: str = "runner"
+    sources: dict[str, "SourceConnection"] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -128,6 +139,7 @@ def load_runner_config(path: Path) -> RunnerConfig:
         platform=str(raw.get("platform", "generic_verilog")),
         env_file=Path(str(raw.get("env_file", ""))),
         sample_id_prefix=str(raw.get("sample_id_prefix", "runner")),
+        sources=_load_sources(raw.get("sources", {})),
     )
 
 
@@ -806,6 +818,20 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
         measurement_point=measurement_point,
         requirement_style=requirement_style,
     )
+
+
+def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
+    sources: dict[str, SourceConnection] = {}
+    for name, item in raw.items():
+        sources[str(name)] = SourceConnection(
+            name=str(name),
+            kind=str(item.get("kind", "openai_compat")),
+            model=str(item.get("model", "")),
+            base_url=str(item.get("base_url", "")),
+            api_key_env=str(item.get("api_key_env", "")),
+            generation_mode=str(item.get("generation_mode", "")),
+        )
+    return sources
 
 
 def _load_mapping(path: Path) -> dict[str, Any]:
