@@ -461,7 +461,7 @@ class RunnerConfigTest(unittest.TestCase):
                 report = runner_preflight(config, run_id="baseline_a")
 
             self.assertFalse(report["ok"])
-            self.assertIn("DEEPSEEK_API_KEY is not set", report["errors"])
+            self.assertIn("DEEPSEEK_API_KEY is not set for source deepseek", report["errors"])
             self.assertIn("run directory already exists: " + str(run_dir), report["warnings"])
             self.assertEqual(report["planned_samples"], 1)
             self.assertEqual(
@@ -543,7 +543,7 @@ class RunnerConfigTest(unittest.TestCase):
                 report = runner_preflight(config, run_id="his_v12_preflight")
 
             self.assertFalse(report["ok"])
-            self.assertIn("DEEPSEEK_API_KEY is not set", report["errors"])
+            self.assertIn("DEEPSEEK_API_KEY is not set for source deepseek-his-v12", report["errors"])
             self.assertIn("deepseek-his-v12", report["providers"])
 
     def test_runner_preflight_reports_shell_api_key_source_without_reporting_secret(self) -> None:
@@ -627,7 +627,7 @@ class RunnerConfigTest(unittest.TestCase):
 
             self.assertFalse(report["ok"])
             self.assertEqual(report["provider_auth"]["deepseek"]["status"], "failed")
-            self.assertIn("DeepSeek provider auth failed", report["errors"])
+            self.assertIn("deepseek provider auth failed", report["errors"])
             self.assertNotIn("shell-fake-key", json.dumps(report))
 
     def test_runner_preflight_passes_for_deterministic_no_network_config(self) -> None:

@@ -6,6 +6,7 @@ from pathlib import Path
 from LLM.src.sr2fpga_agent.runner import (
     RunnerConfig,
     SourceConnection,
+    TaskConfig,
     load_runner_config,
 )
 
@@ -252,3 +253,36 @@ class MetadataTest(unittest.TestCase):
         self.assertEqual(metadata["failure_origin"], "natural_llm")
         self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
         self.assertEqual(metadata["training_split"], "quarantine")
+
+
+from LLM.src.sr2fpga_agent.runner import runner_preflight
+
+
+class PreflightAuthTest(unittest.TestCase):
+    def test_missing_key_for_one_source_only(self) -> None:
+        claude = SourceConnection(
+            name="claude", kind="openai_compat", model="claude-opus-4-8",
+            base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_KEY_PRESENT",
+            generation_mode="two_stage",
+        )
+        gpt = SourceConnection(
+            name="gpt55", kind="openai_compat", model="gpt-5.5",
+            base_url="https://api.openai.com/v1", api_key_env="OPENAI_KEY_ABSENT",
+            generation_mode="two_stage",
+        )
+        config = _base_config(
+            sources={"claude": claude, "gpt55": gpt},
+            tasks=[
+                TaskConfig(source="claude", task_type="counter", widths=[8], count=1),
+                TaskConfig(source="gpt55", task_type="counter", widths=[8], count=1),
+            ],
+        )
+        env = {"ANTHROPIC_KEY_PRESENT": "sk-a"}
+        with patch.dict(os.environ, env, clear=False):
+            os.environ.pop("OPENAI_KEY_ABSENT", None)
+            report = runner_preflight(config, run_id=None, validate_provider=False)
+        self.assertFalse(report["ok"])
+        self.assertTrue(any("OPENAI_KEY_ABSENT" in e for e in report["errors"]))
+        self.assertFalse(any("ANTHROPIC_KEY_PRESENT" in e for e in report["errors"]))
+        self.assertIn("gpt55", report["provider_auth"])
+        self.assertEqual(report["provider_auth"]["claude"]["status"], "not_checked")

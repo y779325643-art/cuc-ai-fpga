@@ -190,11 +190,6 @@ def runner_preflight(
     errors: list[str] = []
     warnings: list[str] = []
 
-    providers = {config.provider, config.repair_provider}
-    providers.update(sample.source for sample in samples)
-    if _uses_deepseek_provider(providers) and not os.environ.get(config.api_key_env):
-        errors.append(f"{config.api_key_env} is not set")
-
     missing_tools = [tool for tool, status in tools.items() if status == "missing"]
     if missing_tools:
         warnings.append("missing HDL tools: " + ", ".join(missing_tools))
@@ -204,11 +199,11 @@ def runner_preflight(
 
     if not samples:
         errors.append("no planned samples")
-    provider_auth = _provider_auth_diagnostics(config, providers, validate_provider)
-    if validate_provider:
-        for provider, auth in provider_auth.items():
-            if auth.get("status") == "failed":
-                errors.append(f"{_provider_display_name(provider)} provider auth failed")
+    provider_auth, auth_errors = _source_auth_diagnostics(config, samples, validate_provider)
+    errors.extend(auth_errors)
+
+    providers = {sample.source for sample in samples}
+    providers.add(config.repair_provider)
 
     return {
         "ok": not errors,
@@ -446,57 +441,56 @@ def _secret_fingerprint(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
 
 
-def _provider_auth_diagnostics(
+def _source_auth_diagnostics(
     config: RunnerConfig,
-    providers: set[str],
+    samples: list[PlannedSample],
     validate_provider: bool,
-) -> dict[str, dict[str, str]]:
+) -> tuple[dict[str, dict[str, str]], list[str]]:
     diagnostics: dict[str, dict[str, str]] = {}
-    if not _uses_deepseek_provider(providers):
-        return diagnostics
-    if not validate_provider:
-        diagnostics["deepseek"] = {"status": "not_checked", "detail": ""}
-        return diagnostics
-
-    api_key = os.environ.get(config.api_key_env, "")
-    if not api_key:
-        diagnostics["deepseek"] = {"status": "skipped", "detail": f"{config.api_key_env} is not set"}
-        return diagnostics
-
-    client = DeepSeekClient(
-        DeepSeekConfig(
-            api_key=api_key,
-            model=config.model,
-            base_url=config.base_url,
-            timeout_seconds=20,
+    errors: list[str] = []
+    seen: set[str] = set()
+    for sample in samples:
+        if sample.source in seen:
+            continue
+        seen.add(sample.source)
+        connection = resolve_source_connection(config, sample.source)
+        if connection.kind not in LLM_SOURCE_KINDS:
+            continue
+        api_key = os.environ.get(connection.api_key_env, "")
+        if not api_key:
+            diagnostics[sample.source] = {
+                "status": "skipped",
+                "detail": f"{connection.api_key_env} is not set",
+            }
+            errors.append(f"{connection.api_key_env} is not set for source {sample.source}")
+            continue
+        if not validate_provider:
+            diagnostics[sample.source] = {"status": "not_checked", "detail": ""}
+            continue
+        client = DeepSeekClient(
+            DeepSeekConfig(
+                api_key=api_key,
+                model=connection.model,
+                base_url=connection.base_url,
+                timeout_seconds=20,
+            )
         )
-    )
-    try:
-        client.chat(
-            [
-                {"role": "system", "content": "Return a tiny JSON object for authentication preflight."},
-                {"role": "user", "content": "Return {\"ok\": true}."},
-            ]
-        )
-    except RuntimeError as exc:
-        diagnostics["deepseek"] = {"status": "failed", "detail": _sanitize_secret(str(exc), api_key)}
-        return diagnostics
-    diagnostics["deepseek"] = {"status": "ok", "detail": ""}
-    return diagnostics
-
-
-def _provider_display_name(provider: str) -> str:
-    if _is_deepseek_provider(provider):
-        return "DeepSeek"
-    return provider
-
-
-def _uses_deepseek_provider(providers: set[str]) -> bool:
-    return any(_is_deepseek_provider(provider) for provider in providers)
-
-
-def _is_deepseek_provider(provider: str) -> bool:
-    return provider == "deepseek" or provider.startswith("deepseek-")
+        try:
+            client.chat(
+                [
+                    {"role": "system", "content": "Return a tiny JSON object for authentication preflight."},
+                    {"role": "user", "content": "Return {\"ok\": true}."},
+                ]
+            )
+        except RuntimeError as exc:
+            diagnostics[sample.source] = {
+                "status": "failed",
+                "detail": _sanitize_secret(str(exc), api_key),
+            }
+            errors.append(f"{sample.source} provider auth failed")
+            continue
+        diagnostics[sample.source] = {"status": "ok", "detail": ""}
+    return diagnostics, errors
 
 
 def _sanitize_secret(text: str, secret: str) -> str:
