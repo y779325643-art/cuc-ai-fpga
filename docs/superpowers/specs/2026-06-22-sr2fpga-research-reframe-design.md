@@ -89,6 +89,43 @@ This reframe keeps the author's true goal — **a model that generates a complet
 RTL project from a natural-language requirement and repairs it from tool
 feedback** — but makes it defensible and feasible under the real resource budget.
 
+## Practical significance (real-world impact)
+
+Distinct from the academic "why this question" above — who benefits, concretely:
+
+- **Lowers the FPGA barrier for domain experts.** Fewer than 100k hardware
+  designers exist, yet the people who best understand the workload (robotics,
+  signal processing, embedded, edge-AI) mostly cannot write HDL. A reliable
+  requirement→board-ready-project path lets them get custom hardware *without HDL
+  fluency* — concrete targets: edge IoT, medical wearables, robotics control,
+  small AI kernels, where ASICs are too costly and general-purpose processors too
+  slow.
+- **Time and license cost for teams already doing FPGA.** EDA flows are slow
+  (sim minutes, P&R minutes–hours) and licensed (per-seat Vivado). Internalizing
+  the tool verdict means *fewer tool iterations*, no license/compute at inference,
+  and shorter design cycles — and if (c) approaches (b), tool-quality output
+  without the expensive loop.
+- **PPA optimization at small-team scale (Paper ②).** Searching architecture
+  params (pipeline depth, parallelism, memory banks) for best power/area/Fmax today
+  needs thousands of slow tool runs. A distilled fast QoR proxy makes that search
+  feasible on one GPU — better-optimized, lower-power edge designs reachable
+  without large compute.
+- **Public goods that survive even if the model under-delivers.** A tool-verified
+  project-trajectory dataset + L0–L5 benchmark + an **all-open, license-free
+  req→bitstream→board flow** on a cheap real device (OpenXC7 on the AC820-ZYNQ)
+  democratizes FPGA EDA for researchers and small companies that cannot afford
+  commercial tools.
+- **A concrete application anchor.** The edge-RL accelerator flagship on the
+  AC820-ZYNQ lands the full chain on a real control/robotics workload.
+
+**Honest ceiling (do not overclaim):** this does **not** replace FPGA engineers —
+the realistic role is assistant + automated verification + first draft, not
+autonomous tape-out. Physics-bound work (large-design timing closure, CDC
+metastability, board signal integrity) stays with the tools/humans (see threats
+to validity). Real-world reach at PhD scope = **small/medium designs + an assisted
+workflow + the dataset/benchmark/open-flow as public goods**, not a deployed
+product.
+
 ## Hard Constraints (shape every decision below)
 
 - **Compute:** single RTX 4090 24 GB for any local fine-tuning. **Not feasible:**
