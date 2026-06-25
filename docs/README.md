@@ -60,6 +60,11 @@ Read these first:
   - Living issue log for training-data-contract quality (failure-label noise,
     taxonomy drift, QoR signal validity) found while reviewing recorder/log_parser.
 
+- `research-threats-to-validity-2026-06-25.md` (+ `.zh.md`)
+  - Referee-side review of the research plan (3 reviewers + synthesis). The three
+    gates to a defensible TCAD method paper: train a model (scaled, frozen
+    protocol) + build constrained decoding + land one physical L4/L5 result.
+
 ## Engineering Docs
 
 - `current-status.md`

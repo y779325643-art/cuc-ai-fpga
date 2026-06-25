@@ -595,6 +595,23 @@ LOG2DIAG/FAILURE2PATCH/QOR_PRED）（设计了，还没训）。
 **不在范围（YAGNI）：** 重训大生成模型（算力不足）；GA/RL / 重 QoR 优化（Paper ②，需 QoR 预测器当代理适应度）；
 商业规模大器件结果。
 
+### Threats to validity 与三道闸门（referee-aware）
+
+一次审稿人视角模拟评审（`docs/research-threats-to-validity-2026-06-25.md` + `.zh.md`）认定：本计划目前是强、诚实的
+**计划 + 基础设施 + discovery pilot，还不是带证据的贡献**。三个侧重不同的审稿人（证据/严谨；新颖性；方法学/可复现）
+**收敛到三道闸门**，是站得住的 TCAD 方法论文必须过的——每道正是 spec 已标为 gated 的事：
+
+1. **冻结协议下、规模化训练一个模型**——(c)/RQ3 headline 还不存在（没训模型）；pilot 是 N≈1/档、单模型、探索性。
+   按档报 (a)/(b)/(c) 带置信区间；冻结 prompt（prompt 泄漏已观察到，failure-repair Issue 4）。
+2. **把约束解码做出来并验证**——方法新颖性核（`2026-06-25-system-his-constrained-decoding-design.md`）只有设计；
+   没有它，贡献是*方法学*不是*方法*。证明它让 L0 按构造→~0 且不伤 L2。
+3. **拿到一个验证过的物理 L4/L5 结果**——TCAD 核心卖点卡在未验证的 OpenXC7 spike（XC7Z020 chipdb = 单点失败）；
+   当前 measured QoR 是假的（Finding G）。锁工具版本；一个设计到 bitstream + 上板。
+
+外加审稿人会要的使能性修复：数据质量（噪声标签、假 LUT——F/E/G/H0）+ 全层诊断模式，使 L0 短路不审查掉 L1–L4 分布
+（Issue 5）。**要保留的诚实优点：** 该计划不过度声称——区分 discovery vs evidence、把物理本质限制划在范围外；
+manuscript 里保持这股纪律。
+
 ## Paper ②（简述）
 
 工具在环 QoR 优化（LUT / 性能 / 功耗）：在架构/System-HIS 参数上做 GA 和/或用工具导出奖励做 RL，用 Paper ①

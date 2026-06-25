@@ -888,6 +888,34 @@ call this "just distilling an LLM."
 compute); GA/RL / heavy QoR optimization (Paper ②, needs the QoR predictor as
 proxy fitness); commercial-scale large-device results.
 
+### Threats to validity & the three gates (referee-aware)
+
+A simulated referee-side review (`docs/research-threats-to-validity-2026-06-25.md`,
++ `.zh.md`) found the program is currently a strong, honest **plan + infrastructure +
+discovery pilots, not yet an evidence-bearing contribution**. Three reviewers with
+different emphasis (evidence/rigor; originality; methodology/reproducibility)
+converge on **three gates** that must be cleared for a defensible TCAD method paper —
+each is exactly an item the spec already marks as gated:
+
+1. **Train a model under a frozen protocol, at scale** — the (c) / RQ3 headline does
+   not exist yet (no model trained); pilots are N≈1/tier, single model, exploratory.
+   Report (a)/(b)/(c) per tier with confidence intervals; freeze the prompt
+   (prompt-leakage already observed, failure-repair Issue 4).
+2. **Build and validate constrained decoding** — the method-novelty core
+   (`2026-06-25-system-his-constrained-decoding-design.md`) is design-only; without
+   it the contribution is a *methodology*, not a *method*. Show it drives L0→~0 by
+   construction without hurting L2.
+3. **Land one verified physical L4/L5 result** — the core TCAD selling point is gated
+   on the unverified OpenXC7 spike (XC7Z020 chipdb = single point of failure); current
+   measured QoR is vacuous (Finding G). Pin tool versions; one design to bitstream +
+   board.
+
+Plus the enabling fixes referees will require: data-quality (noisy labels, vacuous
+LUT — F/E/G/H0) and a full-level diagnostic mode so L0 short-circuit does not censor
+the L1–L4 distribution (Issue 5). **Honest strength to preserve:** the program does
+not overclaim — it labels discovery vs evidence and scopes physics-bound limits out;
+keep that discipline in the manuscript.
+
 ## Paper ② (brief)
 
 Tool-in-the-loop QoR optimization (LUT / performance / power): GA over
