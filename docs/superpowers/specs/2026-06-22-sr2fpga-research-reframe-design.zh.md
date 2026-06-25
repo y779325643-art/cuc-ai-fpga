@@ -142,8 +142,17 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
   dominant factor"**（仿真通过率随 IR 从 3%→88%；同一 IR 内换模型只差 <1.25×）。**实证支撑了我们的前提：杠杆
   在表示、不在模型**（因此前沿模型 = 基线）。*关键区分：* 他们的 "IR" = **输出 HDL**（单模块、极小的 Lattice
   iCE40UP5K、无轨迹）；System-HIS = HDL **之上的需求级中间 IR**（项目级、多文件、XC7Z020）——是正交、互补的
-  轴，不是一回事。他们的 **"accessibility–competence 悖论"**（越友好的 IR → LLM 表现越差）对 System-HIS 是个
-  设计警示，记入 threats to validity。
+  轴，不是一回事。**最强定位（来自它自己的 Discussion）：** 它显式呼唤"一个**分离意图与实现的 LLM 原生 IR**"
+  作为进一步缓解瓶颈的方向，并把其框架作为评估此类未来 IR 的基础设施——**即 System-HIS 正是它写成 future work
+  的那个 IR。** 它另有两个发现实证背书我们的设计：瓶颈在**时序设计（2.3×）和 memory 设计（43% 总体）远大于组合
+  逻辑（1.3–1.4×）**——背书我们 seq/comb + memory 难度轴；且结论是改进应来自 **IR-aware training 而非模型
+  scaling**——背书"前沿模型=基线、在工具验证数据上微调"。它的 **"accessibility–competence 悖论"**（越友好的
+  IR → LLM 越差）对 System-HIS 是设计警示，记入 threats to validity。**要正面回应、不回避的威胁：** 它发现 FPGA
+  **综合"几乎透明"**——过了仿真就有 83–100% 映射到硅，瓶颈在*前端*——这表面上质疑我们对 L4 物理的强调。回答在
+  regime：它的设计是**教学级、单模块、中位数<50 行、5280-LUT 的 Lattice iCE40**，且它自己承认"工业级复杂层级/
+  IP 集成可能改排名""商用 Xilinx/Intel 数值可能不同"。综合透明是*设计太小*的结果，非普适真理。**我们的项目级
+  多模块 regime（XC7Z020 53K LUT、真时序收敛）正是它排除的那一档——在那里 L4 才成为约束滤网。**（它 86.5% 的
+  iCE40 通过率是**条件**于仿真通过；无条件端到端仅 48.1%。）
 - **硬件 IR：** FIRRTL / CIRCT / LLHD / HIR / Calyx，以及 **CPPL**（LLM→电路 IR JSON→CIRCT→Verilog；输入
   是**带固定端口 + docstring 的 Python DSL，不是自然语言**；一致性靠编译期位宽推断；无物理/PnR）。CPPL 在
   电路结构层，System-HIS 在需求意图层（输入 = NL 需求，*下降到* CIRCT/CPPL）。

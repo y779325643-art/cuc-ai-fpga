@@ -193,9 +193,30 @@ Field map (what each line is, and why it is not us):
   distinction:* their "IR" = the **output HDL** (single-module, tiny Lattice
   iCE40UP5K, no trajectory); System-HIS = a **requirement-level intermediate IR
   above the HDL** (project-level, multi-file, XC7Z020) — an orthogonal,
-  complementary axis, not the same thing. Their **"accessibility–competence
-  paradox"** (friendlier IRs → worse LLM performance) is a design caution for
-  System-HIS, recorded under threats to validity.
+  complementary axis, not the same thing. **Strongest positioning (their own
+  Discussion):** they explicitly call for "an **LLM-native IR that explicitly
+  separates intent from implementation**" as the way to further reduce the
+  bottleneck, and offer their framework as the infrastructure to assess such
+  future IRs — i.e. **System-HIS is the IR their paper poses as future work.**
+  Two of their findings also empirically back our design: the bottleneck widens
+  for **sequential (2.3×) and memory (43% aggregate) designs vs combinational
+  (1.3–1.4×)** — backing our seq/comb + memory difficulty axes — and they conclude
+  improvement should come from **IR-aware training, not model scaling** — backing
+  "frontier model = baseline, fine-tune on tool-verified data." Their
+  **"accessibility–competence paradox"** (friendlier IRs → worse LLM performance)
+  is a design caution for System-HIS, recorded under threats to validity.
+  **Honest threat to address (not bury):** they find FPGA **synthesis "nearly
+  transparent"** — once a design passes simulation, it maps to silicon at 83–100% —
+  so the bottleneck is a *frontend* problem, which on its face questions our
+  L4-physical emphasis. The answer is regime: their designs are **educational-scale,
+  single-module, median <50 lines, on a 5,280-LUT Lattice iCE40**, and they concede
+  "industrial designs with complex hierarchies / IP integration may shift the
+  ranking" and "commercial Xilinx/Intel flows may yield different numbers."
+  Synthesis transparency is a consequence of *tiny design size*, not a general
+  truth. **Our project-level multi-module regime on the XC7Z020 (53k LUT, real
+  timing closure) is exactly the regime they excluded — where L4 becomes the
+  binding filter.** (Their headline 86.5% iCE40 pass is *conditional* on sim
+  success; unconditional end-to-end is 48.1%.)
 - **Hardware IRs:** FIRRTL / CIRCT / LLHD / HIR / Calyx, and **CPPL**
   (LLM→circuit-IR JSON→CIRCT→Verilog; input is a **Python DSL with fixed ports +
   docstrings, NOT natural language**; consistency by compile-time width
