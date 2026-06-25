@@ -123,6 +123,7 @@ def build_project_generator_for_connection(connection, event_sink=None):
             api_key=api_key,
             model=connection.model,
             base_url=connection.base_url,
+            timeout_seconds=getattr(connection, "timeout_seconds", 120),
         )
     )
     if kind == "deepseek":

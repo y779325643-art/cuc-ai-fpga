@@ -57,6 +57,7 @@ class SourceConnection:
     base_url: str = ""
     api_key_env: str = ""
     generation_mode: str = ""
+    timeout_seconds: int = 120
 
 
 @dataclass(frozen=True)
@@ -882,6 +883,7 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             base_url=str(item.get("base_url", "")),
             api_key_env=str(item.get("api_key_env", "")),
             generation_mode=generation_mode,
+            timeout_seconds=int(item.get("timeout_seconds", 120)),
         )
     return sources
 

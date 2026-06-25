@@ -435,3 +435,52 @@ class PerTeacherReportingTest(unittest.TestCase):
             self.assertIn("gpt55", source_matrix)
             self.assertEqual(source_matrix["claude"]["l3_pass_rate"], 1.0)
             self.assertEqual(source_matrix["gpt55"]["l3_pass_rate"], 0.0)
+
+
+class TimeoutConfigTest(unittest.TestCase):
+    def test_load_sources_parses_timeout_seconds(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "slow": {
+                        "kind": "openai_compat",
+                        "model": "qwen3.7-plus",
+                        "base_url": "https://example/v1",
+                        "api_key_env": "X_API_KEY",
+                        "generation_mode": "two_stage",
+                        "timeout_seconds": 600,
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["slow"].timeout_seconds, 600)
+
+    def test_timeout_seconds_defaults_to_120_when_omitted(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "fast": {
+                        "kind": "openai_compat",
+                        "model": "qwen3.7-plus",
+                        "base_url": "https://example/v1",
+                        "api_key_env": "X_API_KEY",
+                        "generation_mode": "two_stage",
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["fast"].timeout_seconds, 120)
+
+    def test_builder_passes_timeout_to_client(self) -> None:
+        conn = SourceConnection(
+            name="slow", kind="openai_compat", model="qwen3.7-plus",
+            base_url="https://example/v1", api_key_env="X_API_KEY",
+            generation_mode="two_stage", timeout_seconds=600,
+        )
+        with patch.dict(os.environ, {"X_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertEqual(
+            generator.his_project_generator.client.config.timeout_seconds, 600
+        )
