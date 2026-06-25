@@ -2,10 +2,26 @@
 
 ## Status
 
-Proposed (2026-06-22). Refines and scopes the direction in
-`docs/research-objective-sr2fpga-tcad.md`. This document is the agreed research
-line after a critical review of the current data-agent work. It decomposes the
-vision into a publishable program and specifies Paper ① in detail.
+Approved direction; **originally 2026-06-22, last updated 2026-06-25.** The agreed
+research line, refining/scoping `docs/research-objective-sr2fpga-tcad.md`,
+decomposing the vision into a publishable program and specifying Paper ① in detail.
+A Chinese companion (`2026-06-22-sr2fpga-research-reframe-design.zh.md`) is kept in
+sync. Where this spec and the objective doc differ, this reframe governs near-term
+work.
+
+**Infrastructure & evidence state (2026-06-25):** the data-generation agent runs
+L0–L3 with an objective tool oracle; **System-HIS v1.2 is frozen and implemented**
+(deterministic generator emits v1.2 for all task families; the v1.2 L0 checker does
+HIS↔RTL cross-checks with verified teeth — it catches injected port/testbench
+mismatches; legacy/v1.1 quarantined) — **Tier-1 of the freeze ratification gate is
+met.** An extensive **exploratory experimental process is documented** — baseline
+(a)/(b) pilots, ~30 runs, and a 25-issue failure-repair research log with paper
+hooks — yielding **discovery-level findings**: cross-file consistency is the repair
+knee; the T4 failure frontier was pushed L0→lexical→lint→sim→functional;
+prompt-tightening can leak; L0 can mask deeper RTL failures. These are **discovery,
+not yet scaled evidence** (N≈1/tier, single model, exploratory protocol). **Not
+yet:** scaled trajectory data, the trained-model (c) point (RQ3), L4 physical
+(OpenXC7 spike), and the data-quality fixes (F/E/G).
 
 ## Target Venue
 
@@ -241,14 +257,17 @@ is answered, the field gap it fills, and current status.
   intent from implementation" as future work; TODAES'25 lists NL↔RTL IR as
   unsolved; CPPL is circuit-level, not requirement-level. *Caveat:* the
   accessibility–competence paradox means this must be *measured*, not assumed.
-  *Status:* needs the v1.2 generator/checker + a model; not yet run.
+  *Status:* the v1.2 generator + L0 HIS↔RTL cross-check are now implemented
+  (Tier-1 ratified); the ablation still needs a trained model + the req→project
+  arm; not yet run.
 - **RQ2 — Value of tool feedback (b−a).** How much does an EDA tool-in-the-loop
   repair loop raise project-level tool acceptance over a no-tool first attempt, and
   at which level / difficulty tier most?
   *Answered by:* (b)−(a) under a fixed iteration budget, per tier. *Gap:* repair
   loops are mature (AutoChip/MAGE/VerilogCoder/PEFA-AI) but single-module/sim, not
   project-level/physical with a reusable trajectory. *Status:* baseline (a)/(b)
-  pilot ran (T1/T2→L3, knee at T3); needs scale + prompt freeze.
+  pilot ran (T1/T2 repair→L3, knee at T3); prompt-leakage already observed
+  empirically (failure-repair Issue 4) → needs scale + a frozen prompt.
 - **RQ3 — Internalization (c−a, c vs b).** Can tool-verified fine-tuning
   internalize tool acceptance so first-attempt-no-tool (c) approaches the
   tool-in-loop (b)? And can a fine-tuned *small* model's (c) reach a *large*
@@ -274,7 +293,8 @@ is answered, the field gap it fills, and current status.
   *Gap:* Representation Bottleneck only tested tiny single-module on Lattice
   (synthesis "transparent"); project-level/Zynq is the excluded regime where L4
   binds; their seq (2.3×)/memory (43%) gradient backs our axes. *Status:* pilot +
-  taxonomy exist; needs the full-level diagnostic mode + scale.
+  taxonomy exist; the T4 failure frontier pushed L0→lexical→lint→sim→functional is
+  recorded as discovery; needs the full-level diagnostic mode + scale.
 - **RQ5 — QoR prediction / shift-left.** Can the model predict QoR
   (LUT/FF/BRAM/DSP/Fmax) before tool execution, and how well does predicted
   correlate with tool-measured?
@@ -286,8 +306,8 @@ is answered, the field gap it fills, and current status.
   a noise floor / calibration gap** (report it honestly). *Gap:* MasterRTL does
   pre-synthesis PPA as a separate ASIC predictor; the shift-left survey names the
   predicted↔physical correlation as the open challenge. *Status:* gated — needs
-  real measured QoR (OpenXC7 L4; Yosys L3 LUT is vacuous, Finding G); this
-  predictor is also Paper ②'s proxy fitness.
+  real measured QoR (OpenXC7 L4; Yosys L3 LUT is vacuous, Finding G); the OpenXC7
+  spike now has a spec + plan; this predictor is also Paper ②'s proxy fitness.
 
 **Core vs gated:** RQ1, RQ2, RQ4 are the must-answer minimum publishable core;
 RQ3 is the headline but needs a trained model; RQ5 is nice-to-have and gated on the
@@ -495,44 +515,55 @@ datapaths, storage, interfaces). Entry ticket: the generated object must be a
 with consistent ports/params across files), not a fixed 6-file template —
 otherwise "project-level" collapses.
 
-### System-HIS schema (v1.1 — structure-contract level; fields extended per task)
+### System-HIS schema (canonical: v1.2 — frozen; see the freeze spec)
+
+**The canonical schema is `system-his-v1.2`, frozen and implemented** (full field
+definitions in `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`;
+the prototype `-topdown` and the inline v1.1 below are superseded). This subsection
+keeps only the *argument* and the aspect skeleton; the freeze spec is the field
+authority.
 
 **Abstraction level (decided):** structure contract + coarse behavior tags, NOT
-a full behavioral spec. System-HIS captures modules / interfaces / connections /
-params plus a one-line behavior intent; **functional correctness is verified by
-the L2 testbench, not described in HIS**. This keeps HIS an *intent* abstraction
-(not another RTL), keeps REQ→HIS learnable, and lets the compositional generator
-emit it reliably. L0 checks structure against HIS; L2 checks function.
+a full behavioral spec. System-HIS captures components / instances / interfaces /
+connections / params plus a one-line behavior intent; **functional correctness is
+verified by the L2 testbench, not described in HIS**. This keeps HIS an *intent*
+abstraction (not another RTL), keeps REQ→HIS learnable, and lets the compositional
+generator emit it reliably. L0 checks structure against HIS; L2 checks function.
+
+**v1.2 aspect skeleton** (organized the way an FPGA architect reasons):
 
 ```
-project:   {name, description, top}                 # top = top-level module name
-clocks:    [{name, target_fmax_mhz}]                # clock domains + target freq (authoritative for L4/SDC)
-resets:    [{name, polarity: active_low|active_high, kind: sync|async}]
-modules:   [{
-   name, role,                  # role = fifo|arbiter|pipeline|alu|regfile|cdc_sync|decoder|…
-   clock, reset,                # which clock/reset domain this module belongs to
-   ports:  [{name, dir: in|out|inout, width}],  # width = resolved integer (or "PARAM" ref) so L0 can compare
-   params: [{name, value}],
-   intent: "<one-line behavior intent, tag-level, not executable>"
-}]
-# NOTE: the seq/comb distinction is NOT a separate field. In the v1.2 top-down
-# schema it is captured structurally — a combinational component owns no `state`,
-# has no `clock` domain, and has no `reset_rule` in `control_flow`. See the
-# "Hardware-semantic gap" subsection and the v1.2 spec
-# (2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md).
-connections: [{                 # cross-module contracts = the core of cross-file consistency
-   from: "mod.port" | "TOP.port", to: "mod.port" | "TOP.port",
-   protocol: register|valid_ready|axi_lite|axi_stream,
-   width, cdc: true|false       # cdc=true marks a clock-domain crossing (difficulty axis 4)
-}]
-top_ports: [{name, dir, width}]                     # top-level external IO
-verification: {checks: [...], test_pass_means: "..."}   # acceptance semantics guiding the auto testbench
-qor_intent:  {resources: {lut?, ff?, bram?, dsp?}}      # model-side prediction → predicted_qor.json (freq lives in clocks)
+schema_version: "system-his-v1.2"
+intent:       {user_prompt, design_goal, assumptions}      # preserve the request above the contract
+top:          {name, parameters, clocks, resets, ports, interfaces}   # design boundary first
+components:   [{name, semantic_kind, source, parameters, ports, intent}]   # reusable module definitions
+instances:    [{name, component, parameter_values, clock, reset, owns_state}]  # concrete blocks (repeated instances OK)
+data_flow:    [{name, path:[top.x|inst.port], width, protocol, cdc, timing:{latency_cycles, initiation_interval, throughput}?}]
+control_flow: [{kind, when:<guard depth≤2>, effect, related_state, related_flows}]  # fsm_transition / enable_rule / stall_rule …
+state:        {registers, counters, fsms:[{states, initial, reset_state}], buffers, memories}
+timing:       {primary_clock, target_fmax_mhz, constraints}
+resources:    {optimization_goal, expected:{lut?, ff?, bram?, dsp?}}    # model-side → predicted_qor.json
+verification: {testbench, scenarios, pass_condition}       # acceptance guiding the auto testbench
+artifacts:    {top_module, rtl_sources, testbench, constraints, manifest, predicted_qor}   # maps to the project package
 ```
+
+Key v1.2 properties (full rationale in the freeze spec): `components` vs
+`instances` resolves the repeated-instance ambiguity v1.1 had; the seq/comb
+distinction is **structural** (a combinational component owns no `state`/`clock`/
+`reset_rule`); `data_flow.timing` makes pipeline depth + throughput first-class
+(forward-compatible with Paper ②); `control_flow` is load-bearing, verified at L2,
+and drives testbench generation; guard nesting is capped at depth 2 (the intent/RTL
+line). **Provisional fields** (`data_flow.timing`, structured `control_flow`/FSM,
+guard grammar) are Tier-2 of the ratification gate — implemented and checked, but
+not required in the REQ2HIS target until a real task exercises each.
 
 **Dual use** (why System-HIS is a contribution, not a side artifact): it is the
 **intermediate supervision target** (REQ→HIS) for generation, AND the
 **ground-truth contract** the L0 checker validates generated RTL against.
+
+**Quarantine:** legacy / `system-his-v1.1` samples are labeled and kept for
+traceability, **excluded from the clean REQ2HIS training split** (no migration
+tool; re-generation under v1.2 is the path to clean data).
 
 Fields are extended per task as new design families are added — e.g. Paper ②'s
 searchable architecture params (parallelism / pipeline depth / memory banks)
@@ -790,10 +821,11 @@ call this "just distilling an LLM."
 
 - **System-HIS:** req→HIS→project vs req→project (proves System-HIS is a
   contribution, not decoration — this is what backs differentiation point 1).
-- **QoR prediction calibration:** predicted vs Yosys-measured correlation /
+- **QoR prediction calibration:** predicted vs tool-measured correlation /
   calibration curve (predicted QoR must stay model-only, never leak measured
   results — preserve the existing `predicted_qor.json` / `measured_qor.json`
-  separation).
+  separation). Note: generic Yosys-L3 LUT is vacuous (Finding G), so a real
+  resource/timing calibration needs `synth_xilinx` or the OpenXC7 L4 report.
 
 ### Scope (must-have core vs nice-to-have)
 
@@ -802,7 +834,8 @@ call this "just distilling an LLM."
 - compositional multi-module component library + topology generator with
   verification-based testbenches and System-HIS;
 - benchmark eval set (tens–hundreds of items, difficulty graded);
-- Yosys L0–L3 at scale + baseline (a) across difficulty tiers;
+- Yosys L0–L3 at scale + baseline (a) across difficulty tiers (real measured QoR
+  needs `synth_xilinx` / L4 — Finding G);
 - tool-verified QLoRA fine-tuning with the (a)/(b)/(c) measurement;
 - System-HIS ablation.
 
@@ -839,25 +872,28 @@ adopted.
 
 ## Immediate next step
 
-First, **reconcile with codex's in-flight work**: commit `6c7f273` ("Add
-control-oriented multi-module RTL tasks") already moves toward multi-module
-tasks, so the component-library slice must build on it — inspect it before
-writing code to avoid collisions.
+The framing premise and the component-library MVP are validated; the v1.2 freeze is
+implemented (Tier-1). Near-term, dependency-ordered:
 
-Then the first concrete experiment is **measuring baseline (a)**: run existing
-frontier/local LLMs over multiple difficulty tiers through the existing tool
-pipeline, recording cross-file consistency error rate and L3/L4 pass rates. It is
-the cheapest slice (API/inference + the tool flow that mostly exists), and it
-simultaneously (1) validates the framing premise (frontier models fail in the
-hard region), (2) calibrates where benchmark difficulty must sit (the pass-rate
-knee), and (3) becomes the paper's baseline + motivating experiment. Producing a
-small graded multi-module task set (the component-library MVP) is the prerequisite
-that feeds this measurement.
+1. **Finish + commit the v1.2 freeze** (codex). Tier-1 is met; ratify Tier-2 by
+   exercising the provisional fields (`data_flow.timing`, structured `control_flow`/
+   FSM, guard grammar) on a real FSM/pipeline task (the RL-agent FSM is the
+   reference).
+2. **Fix the data-quality debts before scaling** — F (noisy reset/clock labels),
+   E (taxonomy name drift), G (vacuous Yosys-L3 LUT → use `synth_xilinx` or defer
+   LUT to L4), H0 (extract structured tool signal: L2 mismatch detail, L4 failure
+   families, pass-time warnings). See the training-data-quality issue log.
+3. **Set the measurement discipline** — freeze the generation + repair prompt
+   (prompt-leakage was observed, failure-repair Issue 4) and add a full-level
+   diagnostic mode so an L0 failure does not mask the L1–L4 distribution (Issue 5).
+4. **Scale the trajectory data (Line B)** through L3 — the biggest blocker for RQ3;
+   current data is N≈1/tier (discovery, not evidence).
+5. **OpenXC7 spike** on the AC820-ZYNQ (Windows+WSL2; spec + plan ready) → unblocks
+   L4 + RQ5 (real measured QoR; the report becomes RQ5's training signal).
+6. **Train the first model** on the scaled tool-verified data → the (c) point /
+   RQ3 headline (start with L0–L3 generation + repair; SFT on one 4090).
 
-In parallel, run an **OpenXC7 spike** on the AC820-ZYNQ — push one
-representative multi-module design all the way to bitstream + on-board — to
-de-risk the all-open L4/L5 claim early, since the open-flow selling point rests
-on it (Vivado stays the fallback if the spike exposes gaps).
-
-Write the implementation plan for the chosen first slice with the writing-plans
-skill once this spec is approved.
+Steps 2–4 gate the official (a)/(b)/(c) measurement; the OpenXC7 spike (5) runs in
+parallel and is independent. Specs/plans for the schema freeze and the OpenXC7
+spike already exist (writing-plans done); the remaining gate is execution + scale,
+not more design.

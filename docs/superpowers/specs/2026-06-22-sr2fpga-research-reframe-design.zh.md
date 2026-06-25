@@ -7,9 +7,18 @@
 
 ## 状态
 
-提出于 2026-06-22。细化并界定 `docs/research-objective-sr2fpga-tcad.md` 的方向。本文是在对当前
-data-agent 工作做了一次批判性审查之后达成一致的研究路线，把愿景拆解为一个可发表的论文计划，并
-详细规定 Paper ①。
+已批准方向；**原始 2026-06-22，最后更新 2026-06-25。** 细化并界定
+`docs/research-objective-sr2fpga-tcad.md` 的方向，把愿景拆解为一个可发表的论文计划，并详细规定 Paper ①。
+英文权威版同步维护本中文版。两者与 objective 文档冲突时，以本重定向为准。
+
+**基础设施与证据状态（2026-06-25）：** data-generation agent 已能用客观工具预言机跑 L0–L3；
+**System-HIS v1.2 已冻结并实现**（确定性生成器对所有任务族发 v1.2；v1.2 L0 检查器做 HIS↔RTL 交叉检查且
+经验证有牙——能抓注入的端口/testbench 失配；legacy/v1.1 已隔离）——**freeze 批准闸门的 Tier-1 已达成。**
+已有丰富、**有记录的探索性实验过程**——baseline (a)/(b) pilot、约 30 个 run、一份 25 条 issue 的失败-修复
+研究日志（带 paper hooks）——产出 **discovery 级发现**：跨文件一致性是修复膝点；T4 失败前沿被系统推下
+L0→词法→lint→sim→功能；prompt 收紧会泄漏；L0 会掩盖更深的 RTL 失败。这些是 **discovery，还不是规模化证据**
+（N≈1/档、单一模型、探索性协议）。**尚未有：** 规模化轨迹数据、训练好的 (c) 点（RQ3）、L4 物理（OpenXC7
+spike）、以及数据质量修复（F/E/G）。
 
 ## 目标期刊
 
@@ -168,12 +177,13 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
   *怎么答：* System-HIS 消融（req→HIS→project vs req→project），看 cross-file 一致性错误率 + L1–L4 通过率。
   *gap：* Representation Bottleneck（2026）证明 IR 选择 > 模型，并显式把"分离意图/实现的 LLM 原生 IR"列为
   future work；TODAES'25 把 NL↔RTL 中间表示列为未解；CPPL 是电路级、非需求级。*警示：* accessibility-competence
-  悖论意味着这必须*测*、不能假设。*状态：* 需 v1.2 generator/checker + 模型；未跑。
+  悖论意味着这必须*测*、不能假设。*状态：* v1.2 生成器 + L0 HIS↔RTL 交叉检查已实现（Tier-1 已批准）；消融还需
+  训练好的模型 + req→project 对照臂；未跑。
 - **RQ2 — 工具反馈的价值（b−a）。** EDA 工具在环修复回路，相比无工具首次尝试，把项目级工具接受度提升多少、在
   哪一层/哪个难度档提升最多？
   *怎么答：* 固定迭代预算下 (b)−(a)，按难度档。*gap：* 修复回路已成熟（AutoChip/MAGE/VerilogCoder/PEFA-AI）
-  但都在单模块/仿真层，无项目级物理 + 可复用轨迹。*状态：* baseline (a)/(b) pilot 已跑（T1/T2→L3，膝点 T3）；
-  需规模 + prompt 冻结。
+  但都在单模块/仿真层，无项目级物理 + 可复用轨迹。*状态：* baseline (a)/(b) pilot 已跑（T1/T2 修复→L3，膝点 T3）；
+  prompt 泄漏已被经验观察到（failure-repair Issue 4）→ 需规模 + 冻结的 prompt。
 - **RQ3 — 内化（c−a, c vs b）。** 工具验证微调能否把工具接受度内化进权重，使"无工具首次"(c) 逼近"工具在环"
   (b)？以及——微调的*小*模型的 (c) 能否追上*大*前沿模型的 (a)/(b)？
   *怎么答：* 同一可替换生成器上 (c) vs (a)/(b)。*gap：* ChipSeek-R1 用 per-attempt RL 内化，ASIC/单模块、无可复用
@@ -186,14 +196,16 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
   （seq-comb、背压、memory、CDC、时序）的哪里开始失败？
   *怎么答：* baseline (a) 跨 T1–T4 + 分层失败分类法（cross-file 一致性错误率 + 硬件语义失败分布）。*gap：*
   Representation Bottleneck 只测了极小单模块 + Lattice（综合"透明"）；项目级/Zynq 正是它排除、L4 才成约束的区；
-  它的 seq(2.3×)/memory(43%) 梯度背书我们的轴。*状态：* pilot + 分类法在；需全层诊断模式 + 规模。
+  它的 seq(2.3×)/memory(43%) 梯度背书我们的轴。*状态：* pilot + 分类法在；T4 失败前沿被推下
+  L0→词法→lint→sim→功能已记录为 discovery；需全层诊断模式 + 规模。
 - **RQ5 — QoR 预测 / shift-left。** 模型能否在工具执行前预测 QoR（LUT/FF/BRAM/DSP/Fmax），predicted 与
   tool-measured 相关性如何？
   *怎么答：* predicted_qor vs measured_qor 校准。*训练信号：* **OpenXC7 批量 L4 报告**（免授权 + 可批量正是让足够
   L4 标签可收集的前提）。*可学性拆分：* 布线后**利用率（LUT/FF/BRAM/DSP）主要是 RTL × 综合的函数 → 较好学**；
   **Fmax 取决于 seed 噪声、后端启发式的关键路径 → 能学成预测器但有噪声地板 / 校准 gap**（诚实报告）。*gap：*
   MasterRTL 做 pre-synth PPA 但是独立 ASIC 预测器；shift-left 综述把"预测↔物理相关"列为核心难题。*状态：* 被卡——
-  需真 measured QoR（OpenXC7 L4；Yosys L3 的 LUT 是假的，Finding G）；该预测器同时是 Paper ② 的代理适应度。
+  需真 measured QoR（OpenXC7 L4；Yosys L3 的 LUT 是假的，Finding G）；OpenXC7 spike 现有 spec+plan；该预测器
+  同时是 Paper ② 的代理适应度。
 
 **核心 vs 被卡：** RQ1、RQ2、RQ4 是必答的最小可发表核心；RQ3 是 headline 但需训练好的模型；RQ5 是 nice-to-have
 且卡在 OpenXC7 L4 spike。五个都由使能性基础设施贡献（工具验证项目轨迹数据集 + L0–L5 benchmark + 可复现
@@ -329,39 +341,45 @@ training-data-quality issue 日志）。把这步抽取做厚，正是让 LOG2DI
 入场门票：生成对象必须是**可变拓扑的多模块设计**（一个 top 实例化若干子模块，端口/参数跨文件一致），而非
 固定 6 文件模板——否则"项目级"就塌了。
 
-### System-HIS schema（v1.1——结构契约层；字段按任务扩展）
+### System-HIS schema（canonical：v1.2——已冻结；见 freeze spec）
+
+**canonical schema = `system-his-v1.2`，已冻结并实现**（完整字段定义见
+`docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`；原型 `-topdown` 与下面的内联 v1.1
+已被取代）。本小节只保留*论证*和切面骨架；字段权威是 freeze spec。
 
 **抽象层级（已定）：** 结构契约 + 粗粒度行为标签，**不是**完整行为规格。System-HIS 描述
-modules / interfaces / connections / params 加一行行为意图；**功能正确性由 L2 testbench 验证，不在 HIS 中
-描述**。这让 HIS 保持*意图*抽象（不是又一份 RTL）、让 REQ→HIS 可学习、让组合式生成器能可靠产出。L0 对照
-HIS 检查结构；L2 检查功能。
+components / instances / interfaces / connections / params 加一行行为意图；**功能正确性由 L2 testbench 验证，
+不在 HIS 中描述**。这让 HIS 保持*意图*抽象（不是又一份 RTL）、让 REQ→HIS 可学习、让组合式生成器能可靠产出。
+L0 对照 HIS 检查结构；L2 检查功能。
+
+**v1.2 切面骨架**（按 FPGA 架构师推理的顺序组织）：
 
 ```
-project:   {name, description, top}                 # top = 顶层模块名
-clocks:    [{name, target_fmax_mhz}]                # 时钟域 + 目标频率（L4/SDC 的权威来源）
-resets:    [{name, polarity: active_low|active_high, kind: sync|async}]
-modules:   [{
-   name, role,                  # role = fifo|arbiter|pipeline|alu|regfile|cdc_sync|decoder|…
-   clock, reset,                # 本模块属于哪个时钟/复位域
-   ports:  [{name, dir: in|out|inout, width}],  # width = 解析后的整数（或 "PARAM" 引用）以便 L0 比较
-   params: [{name, value}],
-   intent: "<一行行为意图，标签级，不可执行>"
-}]
-# 注意：seq/comb 区分不是独立字段。在 v1.2 top-down schema 中它由结构表达——组合组件不拥有 `state`、
-# 无 `clock` 域、`control_flow` 中无 `reset_rule`。见"硬件语义鸿沟"小节与 v1.2 spec
-# (2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md)。
-connections: [{                 # 跨模块契约 = 跨文件一致性的核心
-   from: "mod.port" | "TOP.port", to: "mod.port" | "TOP.port",
-   protocol: register|valid_ready|axi_lite|axi_stream,
-   width, cdc: true|false       # cdc=true 标记一次跨时钟域（难度轴 4）
-}]
-top_ports: [{name, dir, width}]                     # 顶层外部 IO
-verification: {checks: [...], test_pass_means: "..."}   # 指导自动 testbench 的验收语义
-qor_intent:  {resources: {lut?, ff?, bram?, dsp?}}      # 模型侧预测 → predicted_qor.json（频率在 clocks 里）
+schema_version: "system-his-v1.2"
+intent:       {user_prompt, design_goal, assumptions}      # 把请求保留在契约之上
+top:          {name, parameters, clocks, resets, ports, interfaces}   # 先定设计边界
+components:   [{name, semantic_kind, source, parameters, ports, intent}]   # 可复用模块定义
+instances:    [{name, component, parameter_values, clock, reset, owns_state}]  # 具体块（允许重复实例）
+data_flow:    [{name, path:[top.x|inst.port], width, protocol, cdc, timing:{latency_cycles, initiation_interval, throughput}?}]
+control_flow: [{kind, when:<guard 深度≤2>, effect, related_state, related_flows}]  # fsm_transition / enable_rule / stall_rule …
+state:        {registers, counters, fsms:[{states, initial, reset_state}], buffers, memories}
+timing:       {primary_clock, target_fmax_mhz, constraints}
+resources:    {optimization_goal, expected:{lut?, ff?, bram?, dsp?}}    # 模型侧 → predicted_qor.json
+verification: {testbench, scenarios, pass_condition}       # 指导自动 testbench 的验收
+artifacts:    {top_module, rtl_sources, testbench, constraints, manifest, predicted_qor}   # 映射到工程包
 ```
+
+v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances` 解决 v1.1 的重复实例歧义；seq/comb 区分由
+**结构**表达（组合组件不拥有 `state`/`clock`/`reset_rule`）；`data_flow.timing` 让流水深度 + 吞吐成为一等
+（前向兼容 Paper ②）；`control_flow` 承重、在 L2 验证、并驱动 testbench 生成；guard 嵌套上限 2 层（意图/RTL 分界）。
+**暂定字段**（`data_flow.timing`、结构化 `control_flow`/FSM、guard 语法）是批准闸门的 Tier-2——已实现并校验，但在
+真实任务跑通各字段前不强制进 REQ2HIS 目标。
 
 **双重用途**（为什么 System-HIS 是贡献而非副产物）：它既是生成的**中间监督目标**（REQ→HIS），又是 L0
 检查器据以验证所生成 RTL 的**ground-truth 契约**。
+
+**隔离：** legacy / `system-his-v1.1` 样本打标保留作追溯，**排除在干净 REQ2HIS 训练集之外**（无迁移器；
+在 v1.2 下重新生成才是干净数据的路径）。
 
 字段随新设计族加入而按任务扩展——例如 Paper ② 的可搜索架构参数（并行度 / 流水深度 / memory banks）以后
 会放在这里。
@@ -528,7 +546,8 @@ qor_intent:  {resources: {lut?, ff?, bram?, dsp?}}      # 模型侧预测 → pr
 ### 计划的消融
 
 - **System-HIS：** req→HIS→project vs req→project（证明 System-HIS 是贡献而非装饰——这支撑差异化第 1 点）。
-- **QoR 预测校准：** 预测 vs Yosys 实测的相关性 / 校准曲线（预测 QoR 必须保持仅模型、绝不泄漏实测——保持现有
+- **QoR 预测校准：** 预测 vs 工具实测的相关性 / 校准曲线（通用 Yosys-L3 的 LUT 是假的，Finding G，所以真正的
+  资源/时序校准需 `synth_xilinx` 或 OpenXC7 L4 报告）（预测 QoR 必须保持仅模型、绝不泄漏实测——保持现有
   `predicted_qor.json` / `measured_qor.json` 分离）。
 
 ### 范围（必备核心 vs 可选）
@@ -537,7 +556,7 @@ qor_intent:  {resources: {lut?, ff?, bram?, dsp?}}      # 模型侧预测 → pr
 
 - 组合式多模块构件库 + 拓扑生成器，带基于验证的 testbench 和 System-HIS；
 - benchmark 评测集（几十到几百题，分难度）；
-- 大规模 Yosys L0–L3 + 跨难度档的 baseline (a)；
+- 大规模 Yosys L0–L3 + 跨难度档的 baseline (a)（真正的实测 QoR 需 `synth_xilinx` / L4——Finding G）；
 - 工具验证 QLoRA 微调 + (a)/(b)/(c) 测量；
 - System-HIS 消融。
 
@@ -565,15 +584,18 @@ QoR 预测器当代理适应度，带 CktEvo 没有的物理（L4）标签。
 
 ## 立即下一步
 
-首先，**与 codex 在途工作对账**：commit `6c7f273`（"Add control-oriented multi-module RTL tasks"）已经在往多
-模块任务走，所以构件库切片必须建立在它之上——写代码前先检查它以免冲突。
+框架前提与构件库 MVP 已验证；v1.2 freeze 已实现（Tier-1）。近期按依赖排序：
 
-然后第一个具体实验是**测量 baseline (a)**：让现有前沿/本地 LLM 在多个难度档上过现有工具流水线，记录跨文件一致性
-错误率和 L3/L4 通过率。这是最便宜的切片（API/推理 + 大体已有的工具流），并同时 (1) 验证框架前提（前沿模型在难区
-失败）、(2) 校准 benchmark 难度该落在哪（通过率膝点）、(3) 成为论文的基线 + motivation 实验。产出一小批分级多模块
-任务集（构件库 MVP）是喂这次测量的前提。
+1. **完成并提交 v1.2 freeze**（codex）。Tier-1 已达成；通过在真实 FSM/流水任务（RL-agent FSM 为参照）上跑通暂定字段
+   （`data_flow.timing`、结构化 `control_flow`/FSM、guard 语法）来批准 Tier-2。
+2. **规模化前先修数据质量债**——F（reset/clock 噪声标签）、E（分类法名漂移）、G（Yosys-L3 LUT 假 → 上 `synth_xilinx`
+   或把 LUT 推到 L4）、H0（抽结构化工具信号：L2 失配明细、L4 失败族、通过时警告）。见 training-data-quality issue 日志。
+3. **立测量纪律**——冻结生成 + 修复 prompt（prompt 泄漏已被观察到，failure-repair Issue 4），并加全层诊断模式，
+   使 L0 失败不掩盖 L1–L4 分布（Issue 5）。
+4. **规模化轨迹数据（Line B）** 跑到 L3——RQ3 最大阻塞；现有数据 N≈1/档（discovery，非 evidence）。
+5. **OpenXC7 spike**（AC820-ZYNQ，Windows+WSL2；spec+plan 就绪）→ 解锁 L4 + RQ5（真 measured QoR；报告成为 RQ5
+   训练信号）。
+6. **训练第一个模型**——在规模化工具验证数据上微调 → (c) 点 / RQ3 headline（先做 L0–L3 生成 + 修复；单卡 4090 SFT）。
 
-并行地，在 AC820-ZYNQ 上跑一个 **OpenXC7 spike**——把一个代表性多模块设计一路推到 bitstream + 上板——尽早为全
-开放 L4/L5 声明去风险，因为开放流卖点就压在它上面（若 spike 暴露缺口，Vivado 仍为退路）。
-
-本 spec 获批后，用 writing-plans skill 为所选第一个切片写实现计划。
+第 2–4 步是官方 (a)/(b)/(c) 测量的前置门；OpenXC7 spike（5）并行、独立。schema freeze 与 OpenXC7 spike 的 spec/plan
+均已存在（writing-plans 已完成）；剩下的门是执行 + 规模，不是更多设计。
