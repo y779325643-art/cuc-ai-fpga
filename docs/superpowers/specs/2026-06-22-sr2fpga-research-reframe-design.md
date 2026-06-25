@@ -309,6 +309,15 @@ will live here later.
     testbench gives a **machine-checked self-consistency** of the testbench — the
     load-bearing reason to prefer program generation over LLM-authored tests (no
     one can certify an LLM-written testbench).
+  - **Golden model for algorithm-family tasks:** self-consistency proves the RTL
+    reference and testbench *agree*, not that they compute the *right* math. For
+    algorithm modules (FIR, FFT, matrix-multiply, CORDIC, accumulators, MAC), the
+    generator must also emit a **software golden model** (Python/NumPy) that
+    produces the testbench's expected values, so L2 catches "runs but the numbers
+    are wrong" bugs (e.g. width truncation `8b×8b` kept at 8b, signedness errors).
+    Without a golden source, value-checking tasks degrade to self-consistency only
+    and miss exactly the silent-numeric failures the taxonomy's
+    `internal_width_truncation` / `signedness_error` classes target.
   - **(Distinction from SynCircuit, HKUST 2025):** SynCircuit generates synthetic
     RTL at the circuit-graph level (diffusion + MCTS) for ML4EDA data augmentation
     — no NL input, no testbench, no project structure. Our generation is at the
@@ -398,12 +407,31 @@ will live here later.
   | valid-ready backpressure | **L2** sim | yes, **iff our testbench applies backpressure** | we emit the testbench → controllable by design |
   | memory/BRAM inference miss | **L3** synth | yes (now) | Yosys `stat`: `$mem` mapped to BRAM vs flattened to FF/LUT |
   | CDC missing synchronizer | **L0** (structural) + L5 (metastability) | structural only | L0 checks a `cdc_sync` instance exists on a `cdc:true` path |
-  | timing / SDC closure | **L4** P&R | gated on OpenXC7 spike | nextpnr/Vivado timing report (Fmax/slack) |
+  | combinational loop | **L1** lint | yes (now) | Verilator `UNOPTFLAT` / Yosys (e.g. a ready/valid comb loop) |
+  | reset polarity/kind mismatch | **L0** | yes (now) | System-HIS `resets[].polarity/kind` vs RTL reset usage |
+  | FSM unreachable / no-safe-state | **L0** (structural) + L1 | partial | `state.fsms` reachability + lint default/full-case |
+  | internal width truncation | **L2** sim | yes, **iff testbench checks values** | golden-value testbench catches `8b×8b` silently kept at 8b |
+  | signedness error | **L2** sim | yes, **iff testbench checks values** | golden-value testbench catches signed/unsigned mishandling |
+  | timing / SDC closure / multicycle | **L4** P&R | gated on OpenXC7 spike | nextpnr/Vivado timing report (Fmax/slack) |
 
-  **Honest boundaries:** CDC we can check *structurally* (synchronizer present),
-  not *behaviorally* (metastability absent); backpressure and BRAM are vacuous
-  unless the testbench/QoR machinery actually stresses them; L4/timing is gated on
-  the OpenXC7 spike. State these limits in the paper rather than overclaiming.
+  (The last six rows extend the original three after auditing our taxonomy against
+  a practitioner failure checklist — FPGA手记, "AI写RTL", 2026-06, a non-peer-reviewed
+  industry blog used only as a completeness check / motivation corroboration. Only
+  tool-detectable classes were added; each carries its detection venue.)
+
+  **Honest boundaries (threats to validity — state in the paper, do not overclaim):**
+  - CDC: structural only (synchronizer present), **not** behavioral — metastability
+    is not verifiable in sim (aligned clocks) and only sparsely/nondeterministically
+    on-board.
+  - backpressure / BRAM / internal-width / signedness are vacuous **unless the
+    testbench (or QoR machinery) actually stresses them** — coverage is a
+    generator-quality property, not automatic.
+  - L4 timing/multicycle is gated on the OpenXC7 spike landing.
+  - Board-level signal integrity / on-board "玄学" debugging is **out of scope** —
+    that is human L5 work, not something the pipeline detects.
+  - Detection ≠ prevention: the pipeline *labels* these as tool-verified failures
+    and feeds repair trajectories; whether a trained model stops making them is the
+    empirical (a)/(b)/(c) question, not a guarantee.
 
 - **Priority tiers for the hardware-semantic taxonomy:**
   - **Tier A (Paper ① core — observable now at L0–L3, low marginal cost):**
