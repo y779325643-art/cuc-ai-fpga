@@ -322,8 +322,11 @@ training-data-quality issue 日志）。把这步抽取做厚，正是让 LOG2DI
 - **硬件 IR：** FIRRTL / CIRCT / LLHD / HIR / Calyx，以及 **CPPL**（LLM→电路 IR JSON→CIRCT→Verilog；输入
   是**带固定端口 + docstring 的 Python DSL，不是自然语言**；一致性靠编译期位宽推断；无物理/PnR）。CPPL 在
   电路结构层，System-HIS 在需求意图层（输入 = NL 需求，*下降到* CIRCT/CPPL）。**System-HIS 也不同于
-  IP-XACT / SysML / FuseSoC 式的工程元数据：** 它们描述 IP 封装、系统建模或构建集成，而 System-HIS 是面向
-  LLM 的需求级生成契约，带 REQ→HIS 监督、HIS↔RTL L0 交叉检查和工具轨迹学习。
+  IP-XACT / SysML / FuseSoC 式的工程元数据：** 它们描述 IP 封装、系统建模或构建集成，而
+  System-HIS 是面向 LLM 的需求级生成契约——以生成和验证结果来评价，而非以文档完整性来评价。
+  它同时扮演三个角色：(a) REQ→HIS 的监督目标，(b) L0 HIS↔RTL 交叉检查的 ground-truth
+  契约，(c) 工具轨迹学习的数据锚点。其评价标准是生成的工程能否通过 L0–L5，而非 HIS 文档
+  是否完整。
 - **仓库级 PPA 优化（最接近 Paper ②）：** **CktEvo**——闭环 LLM+工具链编辑，在已有仓库上保功能、改 PPA；
   无 L4/L5 物理标签。我们的区别：搜 System-HIS 架构参数空间（而非编辑仓库），用蒸馏 QoR 代理。
 - **HLS DSE：** NSGA-II、Chimera、IronMan、AutoHLS——优化给定设计点（与 Paper ② 直接相关，如预测器当代理
@@ -395,6 +398,87 @@ resources:    {optimization_goal, expected:{lut?, ff?, bram?, dsp?}}    # 模型
 verification: {testbench, scenarios, pass_condition}       # 指导自动 testbench 的验收
 artifacts:    {top_module, rtl_sources, testbench, constraints, manifest, predicted_qor}   # 映射到工程包
 ```
+
+#### System-HIS 作为类型化 IR——纪律与边界
+
+System-HIS v1.2 冻结的是**核心 schema 层**（字段名、必需顶层 aspect、JSON/YAML 结构和
+训练目标格式）。非破坏性验证扩展——well-formedness checks、枚举细化、可选 advisory 字段、
+lowering-time diagnostics——可以在不升版本号的情况下继续演进。
+
+**让 System-HIS 成为类型化 IR 而非结构化 prompt 的六条原则：**
+
+1. **类型化契约字段，而非 prose。** `intent`（user_prompt、design_goal、assumptions）
+   仅用于需求溯源和解释，**不作为 L0/L2 checker 的隐式语义来源**。所有机器可检查语义必须
+   出现在 typed fields 中：`top`、`interfaces`、`components`、`instances`、`data_flow`、
+   `control_flow`、`state`、`timing`、`resources`、`verification`、`artifacts`。
+
+2. **Well-formedness。** 每个 instance 必须解析到唯一的 component；每个 data-flow 端点
+   必须通过 symbol table 解析到 top port 或 instance port；width、direction、clock、reset、
+   protocol 必须兼容；CDC path 必须携带 synchronizer intent；memory/protocol intent 必须
+   被当前 lowerer 支持。（见以下 W1–W10。）
+
+3. **Interface-first FPGA 语义。** ports 是物理信号边界；interfaces 是语义 bundle。
+   valid-ready、AXI-stream、AXI-lite、BRAM、GPIO 等协议携带 role、channel、ordering、
+   backpressure、reset behavior 和 checker template。L0 检查端口；L2/L2-UVM/L5 依赖
+   interfaces 生成 stimulus、checker 和 host harness。
+
+4. **受限 control grammar。** `control_flow.when` 和 `control_flow.effect` 使用受限、
+   类型化的 guard/effect 语言（guard 嵌套上限 2 层）。自然语言 `intent` 可以解释规则，
+   但只有 typed guards/effects 会被 checker 或 lowerer 使用。
+
+5. **Contract-preserving lowering。** System-HIS lower 成：symbol table → project manifest
+   → top shell → module declarations → interface bundles → testbench scaffold →
+   assertion/checker templates → logical constraints → board-shell binding → model-fillable
+   behavior holes。它保证跨文件结构一致性 by construction；完整行为正确性是 L2 的职责。
+
+6. **Canonicalization。** 使用 canonical JSON serialization、stable IDs（独立于
+   human-readable 名称）、确定性字段顺序和标准化参数表达式，用于 hashing、diff、REQ→HIS
+   fidelity 评分、L0 checking 和训练目标。
+
+**Intent / Contract / Advisory 字段分类：**
+
+| 类 | 字段 | Checker 角色 |
+|---|---|---|
+| **Intent** | `intent.*`，解释性字符串 | 仅用于溯源——不参与 L0/L2 判定 |
+| **Contract** | `top`、`interfaces`、`components`、`instances`、`data_flow`、`control_flow`、`state`、`verification.pass_condition` | L0/L2 必须满足 |
+| **Advisory** | `resources.expected`、`timing.target_fmax_mhz`、`predicted_qor` | QoR/优化提示——不满足是软 budget miss，不是功能失败 |
+
+**Well-formedness 规则（W1–W10）：**
+
+- W1. 每个 `instance.component` 必须引用且只引用一个声明的 `component`。
+- W2. 每个 `data_flow.path` 端点必须通过 symbol table 解析到已存在的 top port 或 instance port。
+- W3. 每条连接上的端口 width 和 direction 必须类型兼容。
+- W4. 每个拥有 state 的 instance 必须绑定到声明的 clock 和 reset。
+- W5. 声明为 combinational 的 component 不得拥有 state、clock 或 reset。
+- W6. 每个 `cdc:true` data-flow 必须跨越两个不同的时钟域，并必须经过 synchronizer
+  component 或显式声明的 CDC primitive。
+- W7. 每个 memory intent 若评估 BRAM/distributed/register 映射，则必须声明 `depth`、
+  `width`、`read_latency`、`read_type` 和 `memory_style`。
+- W8. 每个 verification scenario 必须引用已存在的 interfaces/signals，并映射到
+  lowerer 支持的 stimulus/checker template。
+- W9. 每个 logical constraint 必须引用已声明的 clock/port，且不得覆盖 board constraint。
+- W10. `artifacts` 中列出的每个产物路径必须能从 `manifest.json` + `top_module` 复现。
+
+**H0/H1/H2 System-HIS 校验层级**（在 L0 RTL checker 运行之前执行）：
+
+- **H0** — schema 合法：JSON/YAML 结构、必需字段、枚举值。
+- **H1** — well-formed：symbol 解析通过，端点存在，width/type 兼容，W1–W10 通过。
+- **H2** — lowerable：所有 component/protocol/scenario 被当前 lowerer 和 testbench 生成器支持。
+
+REQ2HIS 模型输出在进入 L0–L3 流水线之前于 H0/H1/H2 层评估。H0/H1/H2 失败有
+独立的 `req_his_*` 诊断类，可由 FAILURE2PATCH Actor 修复而无需运行 EDA 工具。
+
+**REQ→HIS fidelity 失败模式：**
+
+`req_his_missing_requirement` | `req_his_wrong_width` | `req_his_wrong_protocol` |
+`req_his_wrong_reset_kind` | `req_his_wrong_latency` | `req_his_missing_corner_case` |
+`req_his_over_specified_behavior` | `req_his_under_specified_interface`
+
+**System-HIS v1.2 的非目标：**
+
+System-HIS **不**旨在：替代 FIRRTL/CIRCT/LLHD/Calyx 成为电路或编译器 IR；完整指定
+周期级行为；编码板级物理实现细节；作为 IP 封装标准（cf. IP-XACT）；使工具执行变得
+不必要；或在无 testbench/property 的情况下证明功能正确性。
 
 v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances` 解决 v1.1 的重复实例歧义；seq/comb 区分由
 **结构**表达（组合组件不拥有 `state`/`clock`/`reset_rule`）；`data_flow.timing` 让流水深度 + 吞吐成为一等
