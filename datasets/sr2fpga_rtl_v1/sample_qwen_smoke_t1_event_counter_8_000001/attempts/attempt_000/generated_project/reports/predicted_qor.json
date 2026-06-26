@@ -1,0 +1,17 @@
+{
+  "project_name": "qwen_smoke_t1_event_counter_8_000001",
+  "toolchain": "open_source",
+  "target_fmax_mhz": 100,
+  "predicted": {
+    "fmax_mhz": 250.0,
+    "lut_count": 12,
+    "ff_count": 8,
+    "bram_count": 0,
+    "dsp_count": 0,
+    "timing_met": true,
+    "setup_slack_ns": 6.2,
+    "hold_slack_ns": 0.1
+  },
+  "optimization_goal": "area_first",
+  "notes": "Simple 8-bit counter with combinational gate. Very low resource utilization. Timing easily met at 100 MHz target."
+}

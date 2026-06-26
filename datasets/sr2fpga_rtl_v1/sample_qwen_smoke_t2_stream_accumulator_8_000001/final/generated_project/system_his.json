@@ -1,0 +1,449 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that accepts a valid-ready input stream and accumulates samples.",
+    "design_goal": "Implement a streaming accumulator that processes 8-bit input samples with valid-ready protocol and maintains running sum",
+    "assumptions": [
+      "Input stream provides 8-bit samples with valid-ready protocol",
+      "Accumulation wraps on overflow",
+      "System operates at 100MHz clock frequency",
+      "Active-low reset initializes accumulator to zero"
+    ]
+  },
+  "top": {
+    "name": "qwen_smoke_t2_stream_accumulator_8_000001",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "description": "Width of input/output data streams"
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "domain": "main"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "associated_clock": "clk"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1,
+        "function": "clock"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1,
+        "function": "reset"
+      },
+      {
+        "name": "s_axis_valid",
+        "direction": "input",
+        "width": 1,
+        "function": "stream_valid"
+      },
+      {
+        "name": "s_axis_ready",
+        "direction": "output",
+        "width": 1,
+        "function": "stream_ready"
+      },
+      {
+        "name": "s_axis_data",
+        "direction": "input",
+        "width": 8,
+        "function": "stream_data"
+      },
+      {
+        "name": "m_axis_valid",
+        "direction": "output",
+        "width": 1,
+        "function": "stream_valid"
+      },
+      {
+        "name": "m_axis_ready",
+        "direction": "input",
+        "width": 1,
+        "function": "stream_ready"
+      },
+      {
+        "name": "m_axis_data",
+        "direction": "output",
+        "width": 8,
+        "function": "stream_data"
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "s_axis",
+        "type": "axis",
+        "data_width": 8,
+        "has_tvalid": true,
+        "has_tready": true,
+        "has_tdata": true
+      },
+      {
+        "name": "m_axis",
+        "type": "axis",
+        "data_width": 8,
+        "has_tvalid": true,
+        "has_tready": true,
+        "has_tdata": true
+      }
+    ]
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "accum_reg",
+        "width": 9,
+        "initial_value": 0,
+        "function": "running_sum_storage"
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [
+      {
+        "name": "input_skid_buffer",
+        "depth": 2,
+        "width": 8,
+        "function": "input_handshake_decoupling"
+      }
+    ],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer",
+          "default": 32
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": "WIDTH"
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": "WIDTH"
+        }
+      ]
+    },
+    {
+      "name": "accumulator_core",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": "WIDTH"
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": "WIDTH+1"
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "input_buffer",
+      "component": "skid_buffer",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_valid": "top.s_axis_valid",
+        "s_ready": "top.s_axis_ready",
+        "s_data": "top.s_axis_data",
+        "m_valid": "input_buffer_to_accum.m_axis_valid",
+        "m_ready": "input_buffer_to_accum.m_axis_ready",
+        "m_data": "input_buffer_to_accum.m_axis_data"
+      },
+      "owns_state": []
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_valid": "input_buffer_to_accum.m_axis_valid",
+        "s_ready": "input_buffer_to_accum.m_axis_ready",
+        "s_data": "input_buffer_to_accum.m_axis_data",
+        "m_valid": "top.m_axis_valid",
+        "m_ready": "top.m_axis_ready",
+        "m_data": "top.m_axis_data"
+      },
+      "owns_state": [
+        "accum_reg"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input_stream",
+      "path": [
+        "top.s_axis_valid",
+        "top.s_axis_data",
+        "input_buffer.s_valid",
+        "input_buffer.s_data",
+        "input_buffer.m_valid",
+        "input_buffer.m_data",
+        "accumulator.s_valid",
+        "accumulator.s_data",
+        "accumulator.m_valid",
+        "accumulator.m_data",
+        "top.m_axis_valid",
+        "top.m_axis_data"
+      ],
+      "payload": {
+        "name": "sample_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 4,
+        "initiation_interval": 1,
+        "throughput": "one sample per cycle when ready"
+      }
+    },
+    {
+      "name": "input_buffer_to_accum",
+      "path": [
+        "input_buffer.m_valid",
+        "input_buffer.m_data",
+        "accumulator.s_valid",
+        "accumulator.s_data"
+      ],
+      "payload": {
+        "name": "buffered_sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 2,
+        "initiation_interval": 1,
+        "throughput": "one sample per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "accumulator_reset",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "assign",
+        "target": "accum_reg",
+        "value": 0
+      },
+      "related_state": [
+        "accum_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "accumulator_update",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.s_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "update_register",
+        "target": "accum_reg",
+        "expression": "accum_reg + accumulator.s_data"
+      },
+      "related_state": [
+        "accum_reg"
+      ],
+      "related_flows": [
+        "input_stream"
+      ]
+    },
+    {
+      "name": "output_valid_control",
+      "kind": "enable_rule",
+      "when": {
+        "signal": "accum_reg",
+        "op": "!=",
+        "value": 0
+      },
+      "effect": {
+        "action": "assert",
+        "target": "input_stream"
+      },
+      "related_state": [
+        "accum_reg"
+      ],
+      "related_flows": [
+        "input_stream"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "medium",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "single_sample_accumulation",
+        "description": "Verify single sample accumulation works correctly",
+        "stimulus": "Apply one sample and verify output matches input",
+        "duration_cycles": 5
+      },
+      {
+        "name": "multiple_sample_accumulation",
+        "description": "Verify multiple samples accumulate correctly",
+        "stimulus": "Apply several samples and verify running sum",
+        "duration_cycles": 20
+      },
+      {
+        "name": "overflow_behavior",
+        "description": "Verify accumulator handles overflow correctly",
+        "stimulus": "Apply samples until overflow occurs",
+        "duration_cycles": 50
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "qwen_smoke_t2_stream_accumulator_8_000001",
+    "rtl_sources": [
+      "src/skid_buffer.v",
+      "src/accumulator_core.v",
+      "src/top.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

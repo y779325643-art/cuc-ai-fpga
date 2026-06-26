@@ -1,0 +1,17 @@
+{
+  "sample_id": "sample_qwen_smoke_t2_stream_accumulator_8_000001",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ]
+}

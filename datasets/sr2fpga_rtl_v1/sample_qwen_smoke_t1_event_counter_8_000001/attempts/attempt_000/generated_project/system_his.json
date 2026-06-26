@@ -1,0 +1,280 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that counts incoming event pulses.",
+    "design_goal": "Implement an 8-bit event counter that increments on valid input pulses, with synchronous active-low reset.",
+    "assumptions": [
+      "Input pulses are synchronous to the clock.",
+      "Counter wraps around on overflow."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "period_ns": 10,
+        "domain": "sys"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "domain": "sys"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "type": "clock"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "type": "reset"
+      },
+      {
+        "name": "event_in",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "count_out",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [
+      {
+        "name": "event_count",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0
+      }
+    ],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "event_gate",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input"
+        },
+        {
+          "name": "event_in",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "gated_event",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "counter_core",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input"
+        },
+        {
+          "name": "inc",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "event_gate",
+      "component": "event_gate",
+      "owns_state": []
+    },
+    {
+      "name": "counter",
+      "component": "counter_core",
+      "owns_state": [
+        "event_count"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "event_path",
+      "path": [
+        "top.event_in",
+        "event_gate.event_in",
+        "event_gate.gated_event",
+        "counter.inc"
+      ],
+      "payload": {
+        "name": "event_pulse",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "combinational"
+      }
+    },
+    {
+      "name": "count_path",
+      "path": [
+        "counter.count",
+        "top.count_out"
+      ],
+      "payload": {
+        "name": "count_value",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "none",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "combinational"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "increment_counter",
+      "kind": "counter_update",
+      "when": {
+        "signal": "event_gate.gated_event",
+        "op": "==",
+        "value": 1
+      },
+      "effect": {
+        "action": "increment",
+        "target": "event_count"
+      },
+      "related_state": [
+        "event_count"
+      ],
+      "related_flows": [
+        "event_path"
+      ]
+    },
+    {
+      "name": "sync_reset",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "event_count"
+      },
+      "related_state": [
+        "event_count"
+      ],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_count",
+        "description": "Send 5 pulses, verify count is 5"
+      },
+      {
+        "name": "reset_test",
+        "description": "Assert reset, verify count is 0"
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/event_gate.v",
+      "rtl/counter_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "run_id": "qwen-t234-coder",
+  "next_index": 3,
+  "completed_samples": [
+    "sample_qwen_smoke_t2_stream_accumulator_8_000001",
+    "sample_qwen_smoke_t3_stream_fork_8_000002",
+    "sample_qwen_smoke_t4_dual_stream_join_8_000003"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_qwen_smoke_t2_stream_accumulator_8_000001"
+    ],
+    "rejected": [
+      "sample_qwen_smoke_t3_stream_fork_8_000002",
+      "sample_qwen_smoke_t4_dual_stream_join_8_000003"
+    ]
+  },
+  "failure_types": {
+    "l0_contract_violation": 1,
+    "sample_exists": 2
+  },
+  "exports_refreshed": false,
+  "config_fingerprint": "0fe9e21ef3294d0dc30ef6f9e39234c7734b86fa729a4fa8489888ad725f12ba"
+}

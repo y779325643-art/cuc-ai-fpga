@@ -1,0 +1,704 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that duplicates one valid-ready input stream to two output streams.",
+    "design_goal": "Implement a stream fork that duplicates input data to two independent output streams while maintaining valid-ready handshaking protocol",
+    "assumptions": [
+      "Input stream provides valid data with ready acknowledgment",
+      "Output streams consume data independently",
+      "Both outputs must receive identical data",
+      "System operates at 100MHz clock frequency"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "description": "Width of the data bus in bits"
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "domain": "main"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "associated_clock": "clk"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1,
+        "function": "clock"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1,
+        "function": "reset"
+      },
+      {
+        "name": "s_valid",
+        "direction": "input",
+        "width": 1,
+        "function": "stream_valid"
+      },
+      {
+        "name": "s_ready",
+        "direction": "output",
+        "width": 1,
+        "function": "stream_ready"
+      },
+      {
+        "name": "s_data",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "function": "stream_data"
+      },
+      {
+        "name": "m0_valid",
+        "direction": "output",
+        "width": 1,
+        "function": "stream_valid"
+      },
+      {
+        "name": "m0_ready",
+        "direction": "input",
+        "width": 1,
+        "function": "stream_ready"
+      },
+      {
+        "name": "m0_data",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "function": "stream_data"
+      },
+      {
+        "name": "m1_valid",
+        "direction": "output",
+        "width": 1,
+        "function": "stream_valid"
+      },
+      {
+        "name": "m1_ready",
+        "direction": "input",
+        "width": 1,
+        "function": "stream_ready"
+      },
+      {
+        "name": "m1_data",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "function": "stream_data"
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_fork",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m0_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m0_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "m0_data",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m1_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m1_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "m1_data",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_stage",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_data",
+          "direction": "input",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "m_data",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "input_buffer",
+      "component": "skid_buffer",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_valid": "top.s_valid",
+        "s_ready": "top.s_ready",
+        "s_data": "top.s_data",
+        "m_valid": "fork_core.s_valid",
+        "m_ready": "fork_core.s_ready",
+        "m_data": "fork_core.s_data"
+      },
+      "owns_state": []
+    },
+    {
+      "name": "fork_core",
+      "component": "stream_fork",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_valid": "input_buffer.m_valid",
+        "s_ready": "input_buffer.m_ready",
+        "s_data": "input_buffer.m_data",
+        "m0_valid": "out0_stage.s_valid",
+        "m0_ready": "out0_stage.s_ready",
+        "m0_data": "out0_stage.s_data",
+        "m1_valid": "out1_stage.s_valid",
+        "m1_ready": "out1_stage.s_ready",
+        "m1_data": "out1_stage.s_data"
+      },
+      "owns_state": []
+    },
+    {
+      "name": "out0_stage",
+      "component": "stream_stage",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_valid": "fork_core.m0_valid",
+        "s_ready": "fork_core.m0_ready",
+        "s_data": "fork_core.m0_data",
+        "m_valid": "top.m0_valid",
+        "m_ready": "top.m0_ready",
+        "m_data": "top.m0_data"
+      },
+      "owns_state": []
+    },
+    {
+      "name": "out1_stage",
+      "component": "stream_stage",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "connections": {
+        "clk": "top.clk",
+        "rst_n": "top.rst_n",
+        "s_valid": "fork_core.m1_valid",
+        "s_ready": "fork_core.m1_ready",
+        "s_data": "fork_core.m1_data",
+        "m_valid": "top.m1_valid",
+        "m_ready": "top.m1_ready",
+        "m_data": "top.m1_data"
+      },
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input_to_buffer",
+      "path": [
+        "top.s_valid",
+        "top.s_data",
+        "input_buffer.s_valid",
+        "input_buffer.s_data",
+        "input_buffer.m_valid",
+        "input_buffer.m_data"
+      ],
+      "payload": {
+        "name": "input_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "buffer_to_fork",
+      "path": [
+        "input_buffer.m_valid",
+        "input_buffer.m_data",
+        "fork_core.s_valid",
+        "fork_core.s_data",
+        "fork_core.m0_valid",
+        "fork_core.m0_data",
+        "fork_core.m1_valid",
+        "fork_core.m1_data"
+      ],
+      "payload": {
+        "name": "forked_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "fork_to_out0",
+      "path": [
+        "fork_core.m0_valid",
+        "fork_core.m0_data",
+        "out0_stage.s_valid",
+        "out0_stage.s_data",
+        "out0_stage.m_valid",
+        "out0_stage.m_data",
+        "top.m0_valid",
+        "top.m0_data"
+      ],
+      "payload": {
+        "name": "output0_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "fork_to_out1",
+      "path": [
+        "fork_core.m1_valid",
+        "fork_core.m1_data",
+        "out1_stage.s_valid",
+        "out1_stage.s_data",
+        "out1_stage.m_valid",
+        "out1_stage.m_data",
+        "top.m1_valid",
+        "top.m1_data"
+      ],
+      "payload": {
+        "name": "output1_data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "input_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.s_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "input_to_buffer"
+      },
+      "related_state": [],
+      "related_flows": [
+        "input_to_buffer"
+      ]
+    },
+    {
+      "name": "fork_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "fork_core.s_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "fork_core.s_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "buffer_to_fork"
+      },
+      "related_state": [],
+      "related_flows": [
+        "buffer_to_fork"
+      ]
+    },
+    {
+      "name": "output0_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.m0_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.m0_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "fork_to_out0"
+      },
+      "related_state": [],
+      "related_flows": [
+        "fork_to_out0"
+      ]
+    },
+    {
+      "name": "output1_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.m1_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.m1_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "fork_to_out1"
+      },
+      "related_state": [],
+      "related_flows": [
+        "fork_to_out1"
+      ]
+    },
+    {
+      "name": "fork_stall_logic",
+      "kind": "stall_rule",
+      "when": {
+        "any_of": [
+          {
+            "all_of": [
+              {
+                "signal": "top.m0_ready",
+                "op": "==",
+                "value": 0
+              },
+              {
+                "signal": "top.m0_valid",
+                "op": "==",
+                "value": 1
+              }
+            ]
+          },
+          {
+            "all_of": [
+              {
+                "signal": "top.m1_ready",
+                "op": "==",
+                "value": 0
+              },
+              {
+                "signal": "top.m1_valid",
+                "op": "==",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "effect": {
+        "action": "assert",
+        "target": "buffer_to_fork",
+        "value": 0
+      },
+      "related_state": [],
+      "related_flows": [
+        "buffer_to_fork"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "single_transfer",
+        "description": "Transfer single data item through fork",
+        "stimulus": "Apply valid data for one cycle, assert both output readies",
+        "expected_behavior": "Data appears on both outputs simultaneously"
+      },
+      {
+        "name": "backpressure_test",
+        "description": "Test fork behavior under backpressure conditions",
+        "stimulus": "Apply continuous input stream while blocking one output",
+        "expected_behavior": "Input stalls when either output cannot accept data"
+      },
+      {
+        "name": "burst_transfer",
+        "description": "Transfer multiple data items in sequence",
+        "stimulus": "Apply valid data for multiple cycles with ready outputs",
+        "expected_behavior": "All data appears on both outputs in same order"
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "src/skid_buffer.v",
+      "src/stream_fork.v",
+      "src/stream_stage.v",
+      "src/top.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

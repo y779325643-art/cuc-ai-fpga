@@ -1,0 +1,52 @@
+system_his.artifacts.rtl_sources entry 'src/skid_buffer.v' is missing from project files
+system_his.artifacts.rtl_sources entry 'src/accumulator_core.v' is missing from project files
+system_his.artifacts.rtl_sources entry 'src/top.v' is missing from project files
+top module 'qwen_smoke_t2_stream_accumulator_8_000001' is not declared in System-HIS v1.2 RTL sources
+manifest.top_module 'top' does not match System-HIS v1.2 artifacts.top_module 'qwen_smoke_t2_stream_accumulator_8_000001'
+manifest.sources does not match System-HIS v1.2 artifacts.rtl_sources
+manifest timing constraint 'constraints/timing.sdc' references unknown top port 'clk'
+manifest timing constraint 'constraints/timing.sdc' references unknown top port 'rst_n'
+top port 'clk' is not declared in RTL
+top port 'rst_n' is not declared in RTL
+top port 's_axis_valid' is not declared in RTL
+top port 's_axis_ready' is not declared in RTL
+top port 's_axis_data' is not declared in RTL
+top port 'm_axis_valid' is not declared in RTL
+top port 'm_axis_ready' is not declared in RTL
+top port 'm_axis_data' is not declared in RTL
+component 'skid_buffer' is not declared in System-HIS v1.2 RTL sources
+component 'skid_buffer' port 'clk' is not declared in RTL
+component 'skid_buffer' port 'rst_n' is not declared in RTL
+component 'skid_buffer' port 's_valid' is not declared in RTL
+component 'skid_buffer' port 's_ready' is not declared in RTL
+component 'skid_buffer' port 's_data' is not declared in RTL
+component 'skid_buffer' port 'm_valid' is not declared in RTL
+component 'skid_buffer' port 'm_ready' is not declared in RTL
+component 'skid_buffer' port 'm_data' is not declared in RTL
+component 'accumulator_core' is not declared in System-HIS v1.2 RTL sources
+component 'accumulator_core' port 'clk' is not declared in RTL
+component 'accumulator_core' port 'rst_n' is not declared in RTL
+component 'accumulator_core' port 's_valid' is not declared in RTL
+component 'accumulator_core' port 's_ready' is not declared in RTL
+component 'accumulator_core' port 's_data' is not declared in RTL
+component 'accumulator_core' port 'm_valid' is not declared in RTL
+component 'accumulator_core' port 'm_ready' is not declared in RTL
+component 'accumulator_core' port 'm_data' is not declared in RTL
+data_flow 'input_stream' endpoint 'top.s_axis_valid' is not declared in RTL
+data_flow 'input_stream' endpoint 'top.s_axis_data' is not declared in RTL
+data_flow 'input_stream' endpoint 'input_buffer.s_valid' is not declared in RTL
+data_flow 'input_stream' endpoint 'input_buffer.s_data' is not declared in RTL
+data_flow 'input_stream' endpoint 'input_buffer.m_valid' is not declared in RTL
+data_flow 'input_stream' endpoint 'input_buffer.m_data' is not declared in RTL
+data_flow 'input_stream' endpoint 'accumulator.s_valid' is not declared in RTL
+data_flow 'input_stream' endpoint 'accumulator.s_data' is not declared in RTL
+data_flow 'input_stream' endpoint 'accumulator.m_valid' is not declared in RTL
+data_flow 'input_stream' endpoint 'accumulator.m_data' is not declared in RTL
+data_flow 'input_stream' endpoint 'top.m_axis_valid' is not declared in RTL
+data_flow 'input_stream' endpoint 'top.m_axis_data' is not declared in RTL
+data_flow 'input_buffer_to_accum' endpoint 'input_buffer.m_valid' is not declared in RTL
+data_flow 'input_buffer_to_accum' endpoint 'input_buffer.m_data' is not declared in RTL
+data_flow 'input_buffer_to_accum' endpoint 'accumulator.s_valid' is not declared in RTL
+data_flow 'input_buffer_to_accum' endpoint 'accumulator.s_data' is not declared in RTL
+manifest.top_module 'top' does not match System-HIS v1.2 artifacts.top_module 'qwen_smoke_t2_stream_accumulator_8_000001'
+manifest.sources does not match System-HIS v1.2 artifacts.rtl_sources

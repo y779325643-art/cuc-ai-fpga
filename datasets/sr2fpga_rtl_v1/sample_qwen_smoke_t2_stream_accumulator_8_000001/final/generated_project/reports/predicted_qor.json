@@ -1,0 +1,17 @@
+{
+  "project_name": "qwen_smoke_t2_stream_accumulator_8_000001",
+  "estimated_resources": {
+    "lut": 45,
+    "ff": 25,
+    "bram": 0,
+    "dsp": 0,
+    "io": 18
+  },
+  "estimated_performance": {
+    "fmax_mhz": 125,
+    "latency_cycles": 4,
+    "throughput_samples_per_cycle": 1
+  },
+  "critical_path_ns": 7.2,
+  "power_estimate_mw": 12.5
+}

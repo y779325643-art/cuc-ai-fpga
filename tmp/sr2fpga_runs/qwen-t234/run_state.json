@@ -1,0 +1,23 @@
+{
+  "run_id": "qwen-t234",
+  "next_index": 3,
+  "completed_samples": [
+    "sample_qwen_smoke_t2_stream_accumulator_8_000001",
+    "sample_qwen_smoke_t3_stream_fork_8_000002",
+    "sample_qwen_smoke_t4_dual_stream_join_8_000003"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [],
+    "rejected": [
+      "sample_qwen_smoke_t2_stream_accumulator_8_000001",
+      "sample_qwen_smoke_t3_stream_fork_8_000002",
+      "sample_qwen_smoke_t4_dual_stream_join_8_000003"
+    ]
+  },
+  "failure_types": {
+    "generation_failed": 3
+  },
+  "exports_refreshed": false,
+  "config_fingerprint": "2a49fba34eaaa189f38db4ec17334f1382c7c4640318373635bc5f57377670c1"
+}
