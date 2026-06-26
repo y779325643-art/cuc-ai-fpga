@@ -1,0 +1,16 @@
+{
+  "project_name": "qwen_smoke_t4_dual_stream_join_8_000003",
+  "estimated_resources": {
+    "lut": 120,
+    "ff": 80,
+    "bram": 0,
+    "dsp": 0
+  },
+  "estimated_performance": {
+    "fmax_mhz": 125,
+    "latency_cycles": 5,
+    "throughput_gbps": 1.0
+  },
+  "critical_path_ns": 8.0,
+  "power_mw": 50
+}

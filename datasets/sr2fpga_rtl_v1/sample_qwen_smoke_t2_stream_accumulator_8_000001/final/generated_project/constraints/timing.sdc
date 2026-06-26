@@ -1,0 +1,6 @@
+create_clock -period 10.0 [get_ports clk]
+set_input_delay -clock clk -max 2.0 [get_ports {s_axis_valid s_axis_data}]
+set_input_delay -clock clk -min 1.0 [get_ports {s_axis_valid s_axis_data}]
+set_output_delay -clock clk -max 2.0 [get_ports {m_axis_valid m_axis_data}]
+set_output_delay -clock clk -min 1.0 [get_ports {m_axis_valid m_axis_data}]
+set_false_path -from [get_ports rst_n]

@@ -1,0 +1,14 @@
+{
+  "failure_type": "l0_contract_violation",
+  "stage": "l0_consistency",
+  "root_cause": "instance 'event_gate' of component 'event_gate' is not instantiated in top RTL\ninstance 'counter' of component 'counter_core' is not instantiated in top RTL",
+  "affected_files": [
+    "system_his.json",
+    "manifest.json"
+  ],
+  "l0_errors": [
+    "instance 'event_gate' of component 'event_gate' is not instantiated in top RTL",
+    "instance 'counter' of component 'counter_core' is not instantiated in top RTL"
+  ],
+  "l0_warnings": []
+}

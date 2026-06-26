@@ -23,6 +23,31 @@ not yet scaled evidence** (N≈1/tier, single model, exploratory protocol). **No
 yet:** scaled trajectory data, the trained-model (c) point (RQ3), L4 physical
 (OpenXC7 spike), and the data-quality fixes (F/E/G).
 
+**Reviewer-hardening update (2026-06-26):** this revision tightens the
+verification oracle, measurement protocol, physical-pass definition, data split
+policy, and claim discipline. The goal is to make every reported "pass"
+defensible to FPGA/DV/EDA reviewers: L2 must be coverage/stress-qualified, L3/L4
+QoR must use meaningful FPGA mapping, L4 pass requires explicit timing/constraint
+checks, L5 uses a fixed board shell, and System-HIS must be evaluated not only
+against RTL but also against the original requirement. It does not expand the
+vision — it hardens the oracle, measurement, physical-pass definition, data
+split, and claim discipline so that every "pass" survives a reviewer's
+follow-up.
+
+**Artifact/data-release/model-stack update (2026-06-26):** this revision adds
+(1) an explicit IP/licensing/data-release policy (open_public / restricted_reference
+/ internal_only tiers; Vivado raw artifacts are not used for public model training
+unless license-cleared); (2) the SR2FPGA tool-internalizing model stack definition
+(Actor / Critic / QoR-search head, with a rationale for why this is a model
+*stack*, not just an SFT task list); (3) a full trajectory episode schema; (4) an
+optional (c1)/(c2) measurement separating generation internalization from learned
+no-tool diagnosis; (5) a failure-injection suite and natural/injected/toolchain
+failure-origin field; (6) an L2F optional property-check layer; and (7) artifact
+reproducibility + dataset card checklists. Per-spec discipline: this document
+records the design; companion specs for data-release, trajectory schema,
+model-stack, and artifact reproducibility will be split out once the main sections
+stabilize (see "Relationship to existing documents").
+
 ## Target Venue
 
 **Primary target: IEEE TCAD**, with **ACM TRETS as the fallback** — aim high,
@@ -39,10 +64,22 @@ a small Lattice part. Emphasis:
   selling point TRETS rewards. The author's **AC820-ZYNQ board (chip
   XC7Z020CLG484-2) is in OpenXC7's support list**, so an all-open
   Yosys→nextpnr-xilinx (OpenXC7)→bitstream→board flow on a *real Xilinx device*
-  is feasible — pending a spike verification. **Vivado is kept as a
-  fallback/baseline**, and the **OpenXC7-vs-Vivado comparison is itself a bonus**
-  (usability/QoR of open tools on LLM-generated RTL). All code/data/scripts/
-  device public, tool versions pinned.
+  is feasible — pending a spike verification. All code/data/scripts/device public,
+  tool versions pinned.
+- **Open primary flow + commercial reference:** OpenXC7 remains the primary
+  reproducible open flow for the req→bitstream→board story. However, for the
+  **TCAD-strong** version, OpenXC7 alone is not enough as physical evidence: a
+  representative L4 subset must also be validated with **Vivado** as the
+  commercial Xilinx reference flow. Vivado is **not** used for every Line-B
+  training trajectory and does **not** replace the open flow; it is an industrial
+  sanity check for timing, QoR, DRC/methodology warnings, and constraint validity.
+  (For **TRETS-safe** work, Vivado stays an optional fallback/baseline; the deeper
+  OpenXC7-vs-Vivado comparison is nice-to-have, but the minimal commercial-reference
+  subset is required for TCAD-strong.)
+- **For TCAD, SR2FPGA should not claim physical FPGA realizability from an open
+  flow alone. The defensible position is: OpenXC7 provides the reproducible open
+  path; Vivado provides commercial reference validation on a representative L4
+  subset; L5 provides sparse end-to-end board feasibility evidence.**
 - **Method novelty is the gap to close for TCAD** (not relaxed): TCAD will not
   accept "QLoRA fine-tuning + a tool loop" as the method contribution — it needs
   a genuine methodological idea (see Method → "Method-novelty candidates"), plus
@@ -151,9 +188,14 @@ product.
   scale are chosen at the modeling stage from whatever compute is available then.
   **Current priority is building the dataset.**
 - **Data:** none exists; all trajectories are generated from scratch by running
-  tools locally. **Labels come entirely from tools** (open-source Yosys/Verilator/
-  Icarus for L0–L3, OpenXC7/Vivado for L4–L5), so "tool-verified learning" is literally
-  true — the supervision is the tool, not another LLM.
+  tools locally. **Public training labels come primarily from open-source tools**
+  (Verilator/Icarus/Yosys for L0–L3, OpenXC7 for L4-open), so "tool-verified
+  learning" is literally true — the supervision is the tool, not another LLM.
+  **Vivado labels are commercial-reference labels** on a representative L4 subset,
+  separated from the `open_public` training tier unless institutional license review
+  permits release. Labels are never sourced from another LLM. *Tool internalization
+  means learning from tool-verified labels under declared tool flows; it does not
+  mean reverse-engineering or reproducing proprietary EDA software.*
 - **Hardware:** on-board validation uses the author's **AC820-ZYNQ board** —
   chip **XC7Z020CLG484-2** (~53k LUT, 220 DSP, dual-core ARM; large enough for
   big designs and an RL flagship case). The device is **in OpenXC7's support
@@ -260,6 +302,19 @@ is answered, the field gap it fills, and current status.
   *Status:* the v1.2 generator + L0 HIS↔RTL cross-check are now implemented
   (Tier-1 ratified); the ablation still needs a trained model + the req→project
   arm; not yet run.
+  *REQ→HIS fidelity sub-metric (added):* System-HIS must be faithful to the
+  **original requirement**, not merely internally consistent with the generated
+  RTL — otherwise a model can misread the requirement, emit a wrong-but-coherent
+  HIS, and have RTL + testbench all follow the wrong HIS while L0/L2 still pass.
+  For synthetic tasks the generator-emitted oracle HIS enables field-level
+  comparison; for real/external tasks a small manually reviewed set is used.
+  **REQ-HIS fidelity metrics:**
+  - interface extraction accuracy: port names, directions, widths, protocols
+  - clock/reset fidelity: polarity, synchronous/asynchronous kind, deassertion rule
+  - parameter fidelity: width, depth, latency, parallelism, memory banking
+  - behavior-intent fidelity: FIFO / arbiter / MAC / pipeline / AXI-lite / stream semantics
+  - verification-intent fidelity: required scenarios and corner cases
+  - constraint fidelity: target Fmax, resource budget, board shell/profile
 - **RQ2 — Value of tool feedback (b−a).** How much does an EDA tool-in-the-loop
   repair loop raise project-level tool acceptance over a no-tool first attempt, and
   at which level / difficulty tier most?
@@ -308,6 +363,12 @@ is answered, the field gap it fills, and current status.
   predicted↔physical correlation as the open challenge. *Status:* gated — needs
   real measured QoR (OpenXC7 L4; Yosys L3 LUT is vacuous, Finding G); the OpenXC7
   spike now has a spec + plan; this predictor is also Paper ②'s proxy fitness.
+  *Tool-flow split (added):* RQ5 predicts tool-measured QoR **under a declared
+  tool flow** — **OpenXC7-QoR** and **Vivado-QoR** are separate labels. The
+  OpenXC7 label supports the reproducible open flow and potentially larger-scale
+  L4 labeling; the Vivado label is the commercial reference label on the
+  L4-commercial subset. Cross-tool transfer/calibration is reported on the
+  L4-agreement subset.
 
 **Core vs gated:** RQ1, RQ2, RQ4 are the must-answer minimum publishable core;
 RQ3 is the headline but needs a trained model; RQ5 is nice-to-have and gated on the
@@ -455,6 +516,10 @@ Field map (what each line is, and why it is not us):
   docstrings, NOT natural language**; consistency by compile-time width
   inference; no physical/PnR). CPPL is at circuit-structure level, System-HIS at
   requirement-intent level (input = NL requirement, lowers *to* CIRCT/CPPL).
+  **System-HIS is also distinct from IP-XACT / SysML / FuseSoC-style engineering
+  metadata:** those describe IP packaging, system models, or build integration,
+  whereas System-HIS is an LLM-facing requirement-level generation contract with
+  REQ→HIS supervision, HIS↔RTL L0 cross-checking, and tool-trajectory learning.
 - **Repo-level PPA optimization (closest to Paper ②):** **CktEvo** — closed-loop
   LLM+toolchain edits that preserve function while improving PPA on existing
   repos; no L4/L5 physical labels. We differ by searching the System-HIS
@@ -547,6 +612,106 @@ verification: {testbench, scenarios, pass_condition}       # acceptance guiding 
 artifacts:    {top_module, rtl_sources, testbench, constraints, manifest, predicted_qor}   # maps to the project package
 ```
 
+#### Full trajectory episode schema
+
+Each trajectory is an **episode**, not a single input-output pair. The unit of
+data is: requirement → generate → tool verdict → fail → diagnose → patch →
+re-verify → record outcome. The schema below is the canonical episode skeleton;
+the L4 cross-tool block is expanded separately.
+
+```json
+{
+  "sample_id": "string",
+  "requirement": "string",
+  "oracle_his": {},
+  "generated_his": {},
+  "req_his_fidelity": {
+    "interface_extraction": null,
+    "clock_reset_fidelity": null,
+    "parameter_fidelity": null,
+    "behavior_intent_fidelity": null,
+    "verification_intent_fidelity": null,
+    "constraint_fidelity": null
+  },
+  "project": {
+    "files": {},
+    "deterministic_artifacts": [],
+    "model_generated_artifacts": [],
+    "model_token_fraction": null,
+    "behavior_hole_count": null
+  },
+  "verification": {
+    "l0": {"status": "pass|fail", "errors": []},
+    "l1": {"status": "pass|fail|missing_tool", "warnings": [], "errors": []},
+    "l2_core": {
+      "status": "pass|fail|missing_tool",
+      "public": {"status": null, "mismatch_detail": []},
+      "hidden": {"status": null},
+      "stress": {"status": null},
+      "coverage": {"scenario_profile": null, "seeds": []}
+    },
+    "l2s": {"status": "pass|fail|not_run", "divergences": []},
+    "l3": {
+      "status": "pass|fail|missing_tool",
+      "lut": null, "ff": null, "bram": null, "dsp": null, "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "pass|fail|not_run",
+      "wns_ns": null, "fmax_mhz": null,
+      "lut": null, "ff": null, "bram": null, "dsp": null,
+      "drc_warnings": [], "critical_warnings": [],
+      "runtime_sec": null, "report_paths": []
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "pass|fail|not_run",
+      "wns_ns": null, "fmax_mhz": null,
+      "lut": null, "ff": null, "bram": null, "dsp": null,
+      "drc_warnings": [], "methodology_warnings": [], "critical_warnings": [],
+      "runtime_sec": null, "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "D0|D1|D2|D3|D4|not_applicable",
+      "reason": "synthesis_mapping_difference|BRAM_DSP_inference_difference|constraint_interpretation_difference|timing_model_difference|routing_heuristic_difference|unsupported_primitive|invalid_XDC_or_board_constraint|unconstrained_path_detected_by_one_tool|critical_warning_policy_difference|null"
+    },
+    "l5": {"status": "pass|fail|not_run", "log_path": null}
+  },
+  "diagnosis": {
+    "failure_level": "L0|L1|L2|L3|L4",
+    "failure_type": "string",
+    "failure_origin": "natural_model_failure|injected_mutation|toolchain_environment_failure",
+    "structured_diagnosis": {}
+  },
+  "patches": [
+    {
+      "patch": "string",
+      "diagnosis": {},
+      "result_after_patch": {"l0": {}, "l1": {}, "l2_core": {}, "l3": {}}
+    }
+  ],
+  "qor": {
+    "predicted": {},
+    "measured_open": {},
+    "measured_commercial": {}
+  },
+  "data_release": {
+    "tier": "open_public|restricted_reference|internal_only",
+    "license_notes": []
+  }
+}
+```
+
+`failure_origin` distinguishes: model-generated designs that failed naturally
+(`natural_model_failure`), designs produced by deliberate mutation for failure
+coverage (`injected_mutation`), and failures caused by the toolchain environment
+itself (`toolchain_environment_failure` — timeout, license unavailable, missing
+dependency, tool crash, OpenXC7 chipdb issue). Only `natural_model_failure` and
+`injected_mutation` samples count toward model pass/fail numerator/denominator;
+`toolchain_environment_failure` is reported separately and excluded from the model
+accuracy metric.
+
 Key v1.2 properties (full rationale in the freeze spec): `components` vs
 `instances` resolves the repeated-instance ambiguity v1.1 had; the seq/comb
 distinction is **structural** (a combinational component owns no `state`/`clock`/
@@ -556,6 +721,44 @@ and drives testbench generation; guard nesting is capped at depth 2 (the intent/
 line). **Provisional fields** (`data_flow.timing`, structured `control_flow`/FSM,
 guard grammar) are Tier-2 of the ratification gate — implemented and checked, but
 not required in the REQ2HIS target until a real task exercises each.
+
+**Default clock/reset discipline (pins the label semantics — Finding F):**
+- default task family is **single-clock**;
+- default reset is **synchronous, active-high**;
+- asynchronous reset appears only in explicitly labeled task families;
+- reset **deassertion must be synchronous**;
+- multi-clock / CDC tasks are **separate difficulty families**, not mixed into
+  normal tasks.
+
+This is the canonical shape in System-HIS:
+
+```
+clocks:
+  - name: clk
+    frequency_mhz: 100
+resets:
+  - name: rst
+    polarity: active_high
+    kind: synchronous
+    deassertion: synchronous
+```
+
+L0/L2 check that reset polarity/kind matches System-HIS and that valid/state
+outputs reach the declared reset state.
+
+**Memory intent fields (makes BRAM inference a checkable item, not a vibe):**
+- `memory_style: block | distributed | registers`
+- `depth`
+- `width`
+- `read_latency`
+- `read_type: sync | async`
+- `read_during_write` behavior
+- `byte_enable` (optional)
+
+L3 checks:
+- expected BRAM/DSP usage vs measured mapping;
+- unexpected FF/LUT memory expansion;
+- BRAM miss as a **soft QoR failure** even if function passes.
 
 **Dual use** (why System-HIS is a contribution, not a side artifact): it is the
 **intermediate supervision target** (REQ→HIS) for generation, AND the
@@ -627,18 +830,192 @@ will live here later.
   cross-module contracts, protocol class, and target Fmax (concrete thresholds
   fixed during the baseline (a) measurement). Pass rates are reported **per tier**
   so the knee where frontier models start failing is visible.
+  **Freeze protocol:** difficulty thresholds are calibrated once on a pilot set
+  (using baseline (a) frontier-model pass rates) and **frozen before the official
+  evaluation**. They are not tuned after seeing fine-tuned model results. The
+  calibration run records for each tier: expected submodule count, cross-file
+  contract count, protocol class, target Fmax range, and observed frontier
+  pass-rate range — to allow reviewers to verify the freeze was prior to the (c)
+  measurement.
 - **Scale:** thousands to ~10k samples, not millions (data-volume-realistic). Benchmark
   items are mostly small/medium multi-module designs (an RL-sized accelerator is
   a *flagship case*, not the body — see scope). The existing deterministic
   `ProjectGenerator` is the seed of the component library.
 
+#### L2 oracle hardening: coverage-qualified simulation
+
+L2 pass is **not** a bare "simulation finished" verdict. For benchmark/evaluation
+items, L2 is reported as **coverage-qualified functional acceptance**:
+- **L2a** directed smoke tests;
+- **L2b** randomized/stress scenarios;
+- **L2c** required protocol/value coverage.
+
+A design is syntactically and functionally accepted only **under the declared
+test contract**; we therefore report the scenario/coverage profile alongside the
+L2 pass/fail verdict.
+
+Minimum coverage targets by family:
+- **valid-ready / stream:** valid held while ready is low, randomized stalls,
+  bursts, idle cycles, reset during transaction;
+- **FIFO / skid buffer:** full, empty, almost_full/empty, simultaneous push-pop,
+  overflow/underflow attempts;
+- **pipeline:** different latency paths, stalls, flush/reset during in-flight data;
+- **arithmetic:** signed/unsigned, boundary values, overflow/truncation cases;
+- **memory/BRAM:** read-after-write, same-address conflict, sync vs async read
+  behavior;
+- **AXI-lite/stream subset:** ordering, WSTRB, response channel, back-to-back
+  transactions.
+
+#### Public/hidden/stress test split
+
+Each evaluation item may contain multiple scenario classes:
+- **public** scenarios: visible to the generation/repair loop;
+- **hidden** scenarios: used only for final acceptance;
+- **randomized** scenarios: fixed seeds, recorded in the trajectory;
+- **stress** scenarios: reset during transaction, backpressure, boundary values,
+  full/empty, resource/timing stress.
+
+Final **L2 acceptance is based on the hidden + stress suite**, not merely the
+public smoke tests — this prevents the model or the repair loop from "fixing to
+just pass the visible testbench." All seeds are recorded for reproducibility.
+
+#### Protocol assertion library
+
+For protocol-heavy designs the generator emits **assertions/checkers from
+System-HIS protocol intent** (`protocol_agents`; SVA or immediate assertions).
+These checks complement scoreboards. Examples:
+- valid high and ready low ⇒ payload must remain stable;
+- FIFO: no read when empty; no write when full;
+- reset clears valid/state outputs;
+- no data drop or duplication;
+- AXI-lite/stream ordering and response checks for the supported subset;
+- no combinational ready-valid loop, where structurally checkable.
+
+**Checker provenance:** assertions/checkers are **trusted verification artifacts
+generated from templates**, not model-authored oracle logic. The generator, not
+the LLM, owns checker correctness. This matches the principle that the testbench
+judges the model's RTL — not the other way around.
+
+#### L2F optional property checks
+
+For selected protocol-heavy task families, SR2FPGA can run **bounded formal /
+property sanity checks** generated from System-HIS protocol intent. This is an
+optional representative layer — not a full formal-verification scope expansion —
+providing a defensible hook for DV/formal reviewers:
+
+- FIFO: no overflow / underflow under any bounded sequence;
+- valid-ready: payload stability under stall for bounded transaction windows;
+- reset convergence within a bounded cycle count;
+- one-hot FSM invariant;
+- no data duplication / drop for bounded transaction windows;
+- AXI-lite response ordering for the supported subset.
+
+L2F is **not required for every Line-B trajectory** and does not gate L2 pass.
+It is run on benchmark/eval items and reported as a supplementary property
+acceptance score. "Coverage-qualified" in L2 does not require commercial SV
+functional coverage for all samples; coverage can be implemented as deterministic
+scenario counters, protocol-event counters, scoreboard-event bins, and optional
+simulator line/toggle coverage where supported by open tools.
+
+#### SR2FPGA synthesizable RTL subset
+
+All model-generated RTL is expected to follow a restricted synthesizable subset,
+so the benchmark does not reward RTL that simulates but does not synthesize (or
+behaves differently across tools).
+
+**Required:** `` `default_nettype none ``; explicit widths; explicit reset
+behavior for stateful modules; single-driver registers/nets; supported RAM/DSP
+inference templates for memory/arithmetic tasks.
+**Allowed:** parameter/localparam; generate blocks; `always_ff` / `always_comb`
+or strict `always @*` / `always @(posedge clk)`; packed arrays with documented
+restrictions; synchronous memories in supported templates.
+**Forbidden:** `#` delays; force/release; DPI; classes/dynamic arrays in
+synthesizable RTL; unsynthesizable `initial` blocks (except the explicitly
+supported ROM/init policy); implicit nets; intentional latches unless the task
+explicitly requires them; multiple drivers.
+
+#### Constraint classes: logical vs board
+
+Constraints are split into two classes:
+- **logical constraints:** `create_clock`, target period, generated clocks,
+  max delay, false paths, multicycle paths, timing intent;
+- **board constraints:** package pins, IOSTANDARD, physical clock source, reset
+  pin, board IO profile.
+
+The model / System-HIS may **select a board profile and emit logical timing
+intent**. Board constraints are generated from **trusted board profiles, not
+freely written by the LLM**. L0 checks that constraints reference real ports and
+that the selected board profile is compatible with the top-level shell, but does
+**not** treat arbitrary LLM-written board XDC as trusted.
+
+#### Split policy (generalization regimes S1–S5)
+
+Results are reported under multiple generalization regimes, not just
+parameter-heldout:
+- **S1 parameter-heldout:** same family/topology, unseen
+  width/depth/latency/parallelism;
+- **S2 topology-heldout:** unseen wiring/topology patterns;
+- **S3 component-combination-heldout:** unseen combinations of known components;
+- **S4 family-heldout:** entire design family held out from training;
+- **S5 real-IP external:** real open-source IP used only for external validation,
+  **never training**.
+
+Main results should at least separate in-distribution, parameter-heldout,
+topology-heldout, and family-heldout performance.
+
+#### Real-IP external anchor policy
+
+The real-IP set is a **small, curated set of 5–10 open-source IP cases**, used for
+**external validation only; not used for training**. Each case records license,
+repository URL, commit hash, modifications, wrapper changes, original testbench
+availability, and tool-compatibility patches.
+
+#### IP, licensing, and data-release discipline
+
+SR2FPGA generates its own RTL projects and uses EDA tools as objective oracles.
+The data-release policy separates what may be publicly released from what is
+restricted or internal-only.
+
+**Data-release tiers:**
+
+| Tier | Contents | Default disposition |
+|---|---|---|
+| `open_public` | generated requirements, System-HIS, RTL, testbenches; open-tool (Verilator/Icarus/Yosys/OpenXC7) logs and structured labels; L0–L4-open metadata; failure taxonomy | publicly released with the dataset |
+| `restricted_reference` | Vivado commercial-reference structured metadata (timing/utilization summaries normalized from reports); L4-commercial labels | released only if institutional license review and Xilinx/AMD EULA permit |
+| `internal_only` | raw Vivado timing/utilization/DRC/methodology reports; Vivado DCP / checkpoints; bitstreams; generated databases; LogiCORE artifacts; vendor IP; encrypted IP | archived for internal audit and paper-table derivation; **not publicly released** |
+
+**Principles:**
+- **Archiving ≠ public release.** Commercial-tool raw reports are archived for
+  internal audit and rebuttal; they are summarized into normalized metadata for
+  paper tables, subject to license review.
+- **Vivado raw artifacts are not used for public model training** unless the
+  applicable license and institutional legal review explicitly permit it.
+- **Public training data is based primarily on generated designs and open-source
+  tool labels.** Vivado is a commercial-reference validation flow, not the default
+  public training-label source.
+- Real open-source IP (S5 external-validation set) retains the license of the
+  original repository; the wrapper and tool-compatibility patches are open under
+  the project license. Real IP is not used for training.
+- The dataset card (see "Dataset / benchmark card") records the release tier for
+  every field of every trajectory version.
+
 ### Evaluation levels and toolchain
 
 - **L0** project contract + cross-file consistency; **L1** lint (Verilator);
   **L2** functional simulation (Icarus Verilog); **L3** synthesis + measured QoR
-  (Yosys); **L4** place-and-route timing closure (**OpenXC7 on the AC820-ZYNQ /
-  XC7Z020CLG484-2, Vivado as fallback/baseline**, report Fmax/slack); **L5**
-  sparse representative on-board runs (AC820-ZYNQ).
+  (Yosys); **L4** place-and-route timing closure (split into **L4-open /
+  L4-commercial / L4-agreement** below); **L5** sparse representative on-board
+  runs (AC820-ZYNQ).
+- **L4 is reported as three sub-verdicts:**
+  - **L4-open:** place-and-route timing closure with OpenXC7 / nextpnr-xilinx on
+    the AC820-ZYNQ (`XC7Z020CLG484-2`). This is the **primary reproducible open
+    physical flow**, subject to the board-specific OpenXC7 spike.
+  - **L4-commercial:** Vivado synthesis + implementation on the **same RTL, same
+    generated core, same fixed board shell, same part `XC7Z020CLG484-2`, and same
+    logical timing constraints**. L4-commercial is **required for the TCAD-strong
+    version on a representative subset**, but **not** for every Line-B trajectory.
+  - **L4-agreement:** report OpenXC7/Vivado agreement and disagreement on
+    pass/fail, utilization, WNS/Fmax, DRC/methodology warnings, and runtime.
 - **L0 consistency checker (a named component, not a side note):** validates the
   generated RTL against the System-HIS contract — top instantiates the declared
   modules; every port name/direction/width, parameter, and cross-module
@@ -653,9 +1030,136 @@ will live here later.
   the larger designs incl. an RL flagship case), giving an all-open
   req→bitstream→board loop — **subject to an early spike verification**.
   **Vivado is the fallback/baseline** so L4/L5 results are never lost to
-  open-tool immaturity, and **OpenXC7-vs-Vivado (usability/QoR) is a bonus
-  comparison** TRETS readers value. All code/data/scripts/device public, tool
-  versions pinned.
+  open-tool immaturity. For **TRETS-safe** work, Vivado remains optional; for
+  the **TCAD-strong** version, a minimal Vivado commercial-reference subset is
+  required. Deeper OpenXC7-vs-Vivado usability/QoR comparison is nice-to-have.
+  All code/data/scripts/device public, tool versions pinned.
+
+#### L1 lint checks (synthesizable-subset enforcement)
+
+L1 checks implicit nets, width truncation, unused/undriven signals, inferred
+latches, combinational loops, blocking assignment in sequential logic, and
+nonblocking assignment in combinational logic — enforcing the SR2FPGA
+synthesizable RTL subset defined under Benchmark design.
+
+#### L2S (optional) — post-synthesis netlist simulation / synthesis sanity
+
+**L2S** is an optional post-synthesis netlist simulation / synthesis-equivalence
+sanity stage: run the **same black-box testbench** on a synthesized netlist
+emitted by Yosys `synth_xilinx` / `write_verilog`, and compare RTL-sim vs
+netlist-sim behavior. This catches RTL constructs whose simulation behavior
+diverges after synthesis: incomplete `case`, latch inference, RAM read semantics,
+uninitialized state, X-optimism, blocking/nonblocking misuse, and memory-mapping
+differences. **L2S is not required for every large-scale Line-B trajectory**, but
+should be run on the benchmark/eval set and representative subsets.
+
+#### L4 pass definition
+
+**L4 pass requires all of the following, not merely bitstream generation:**
+1. place-and-route completed;
+2. target clock met: **WNS ≥ 0** under the declared target frequency;
+3. no unconstrained clocks;
+4. no unconstrained endpoints, unless explicitly justified and recorded;
+5. no black boxes;
+6. no critical warnings that invalidate implementation;
+7. post-P&R utilization fits the declared resource budget;
+8. the generated core is connected through the board shell and is **not optimized
+   away**;
+9. timing/utilization/DRC reports are archived.
+
+For **Vivado** runs, archive: `report_timing_summary`, `report_utilization`,
+`report_clock_utilization`, `report_drc`, `report_methodology`, `report_io`, and
+(optional) `report_power`. For **OpenXC7/nextpnr** runs, archive: placement/routing
+logs, timing summary, device utilization, constraint/IO errors, and bitstream
+generation status.
+
+L4 pass is reported separately as:
+- **L4-open-pass:** OpenXC7/nextpnr completes P&R and timing under the declared
+  constraints.
+- **L4-commercial-pass:** Vivado completes synthesis, implementation,
+  DRC/methodology checks, and timing under the declared target clock.
+- **L4-agreement:** OpenXC7 and Vivado agree on the physical verdict, or the
+  disagreement is explicitly classified and explained.
+
+A design is considered **commercially validated** only if Vivado completes:
+synthesis; opt/place/route; timing summary; utilization report; DRC report;
+methodology report; **no black boxes; no unconstrained clocks; no unjustified
+unconstrained endpoints; WNS ≥ 0 under the declared target clock**.
+
+#### OpenXC7: feasible, pending spike — not completed evidence
+
+OpenXC7 provides a **plausible all-open L4/L5 path** for the Zynq-7 target, but
+this is **not assumed as evidence until the board-specific spike lands**. Vivado
+is kept as a reference/fallback flow so physical results are not blocked by
+open-tool maturity. Nowhere in this spec should all-open L4/L5 be implied as
+already completed. The **OpenXC7 spike must validate**:
+- exact part/package/speed grade: **XC7Z020CLG484-2**;
+- board clock/reset/pin profile;
+- XDC/PCF constraint correctness;
+- bitstream generation;
+- bitstream loading;
+- a board-shell smoke test;
+- comparison against Vivado on the same RTL and logical constraints.
+
+#### Board-level validation discipline (L5)
+
+L5 uses a **fixed, manually reviewed board harness**. The model does **not**
+generate the entire board project — separating the three layers keeps board-level
+noise out of the pass-rate metric:
+- **generated core:** the RTL generated/repaired/evaluated by SR2FPGA;
+- **fixed board shell:** clock/reset, pin constraints, AXI-lite/BRAM/UART/GPIO
+  bridge, reset synchronizer, debug/status registers; **version-locked and
+  manually audited**;
+- **host harness:** Python/C script that writes input vectors, starts the core,
+  reads outputs/status/signature, and compares against a golden checksum/model.
+
+**L5 pass requires:** bitstream loaded successfully; host script completed without
+timeout; the generated core received inputs and produced outputs **through the
+fixed shell**; output signature/checksum matches the golden model; board log and
+host log archived.
+
+#### Verdict mode vs full-level diagnostic mode
+
+To stop an early L0 failure from censoring the L1–L4 hardware-semantic failure
+distribution (Issue 5), two evaluation modes are run:
+- **Official verdict mode:** the **first failing level** determines the official
+  `Lk` acceptance level.
+- **Full-level diagnostic mode:** best-effort continue after an early failure,
+  using wrappers/normalization where safe, to collect additional L1–L4 signals.
+
+Diagnostic signals **do not upgrade the official pass level**; they are used only
+for the failure taxonomy, LOG2DIAG, and deeper failure-distribution analysis.
+
+#### Commercial-tool reference validation
+
+For the **TCAD-strong** version, SR2FPGA includes Vivado as a commercial reference
+flow for a **representative L4 subset**. OpenXC7 remains the primary reproducible
+open flow and the scalable source of physical labels where feasible; Vivado is
+used to validate that SR2FPGA-generated projects are **accepted by a mainstream
+commercial Xilinx FPGA flow** and that timing/QoR conclusions are not merely
+artifacts of the open toolchain.
+
+This comparison is **not** a full commercial-scale benchmark. It uses the same
+RTL, same generated core, same fixed board shell, same Xilinx part
+`XC7Z020CLG484-2`, and the same logical timing constraints. The paper reports
+OpenXC7/Vivado agreement on pass/fail, utilization, WNS/Fmax, DRC/methodology
+warnings, and runtime, and explicitly analyzes disagreement cases.
+
+#### OpenXC7/Vivado disagreement taxonomy
+
+Disagreement cases are **not discarded** — they are labeled because they are
+useful tool-chain evidence:
+- **D0** both_pass;
+- **D1** OpenXC7_pass / Vivado_fail;
+- **D2** OpenXC7_fail / Vivado_pass;
+- **D3** both_fail_same_reason;
+- **D4** both_fail_different_reason.
+
+Reason labels: `synthesis_mapping_difference`, `BRAM/DSP_inference_difference`,
+`constraint_interpretation_difference`, `timing_model_difference`,
+`routing_heuristic_difference`, `unsupported_primitive`,
+`invalid_XDC_or_board_constraint`, `unconstrained_path_detected_by_one_tool`,
+`critical_warning_policy_difference`.
 
 ### Data engine (two production lines)
 
@@ -671,6 +1175,32 @@ will live here later.
 - **Candidate sources for inputs:** prefer the compositional component library
   (free, controllable, large, leakage-safe) + a small amount of DeepSeek/local
   candidates. **All labels come from tools** (tool-distillation purity).
+#### Failure-injection suite
+
+To ensure training coverage of rare but important failure classes, SR2FPGA
+deliberately **injects controlled mutations** into known-good projects. Injected
+failures are separated from natural model failures in all analysis (via the
+`failure_origin` field in the episode schema).
+
+Representative injected mutation classes:
+- port width mismatch (parameter value changed in one file, not propagated);
+- reset polarity mismatch (active-low RTL with active-high HIS declaration);
+- missing `ready` stall (valid-ready protocol: `ready` ignored in datapath);
+- async memory read in a BRAM template (forces LUT/FF mapping);
+- signedness cast removal (`$signed()` stripped, silent arithmetic error);
+- missing CDC synchronizer (crossing data_flow with `cdc:true` but no sync instance);
+- combinational ready-valid loop (ready depends on valid combinationally);
+- invalid logical constraint (wrong clock period, unconstrained path);
+- removed pipeline register (causes timing pressure at L4);
+- one-hot FSM corruption (encoding changed to binary in RTL).
+
+**Protocol:** injected failures are injected **after** the reference project
+passes L0–L3 (or L4 where applicable), ensuring the pre-mutation baseline is
+clean. The injection point, mutation type, and expected failure level are recorded
+in the episode. Injected samples are used for LOG2DIAG and FAILURE2PATCH training
+coverage; they are reported separately from natural failures in the failure
+heatmap.
+
 - **Hardware-semantic gap — failure taxonomy cross-indexed against L0–L5
   (a named contribution, not just "more error types"):** LLMs are pre-trained on
   software (sequential-execution) semantics and systematically fail at hardware's
@@ -702,6 +1232,14 @@ will live here later.
   a practitioner failure checklist — FPGA手记, "AI写RTL", 2026-06, a non-peer-reviewed
   industry blog used only as a completeness check / motivation corroboration. Only
   tool-detectable classes were added; each carries its detection venue.)
+
+  **Toolchain/environment failure category:** a separate class
+  `toolchain_environment_failure` covers: tool timeout; tool crash; missing
+  dependency; license unavailable (Vivado seat/server); filesystem or path error;
+  unsupported syntax due to tool version; OpenXC7 chipdb issue; Vivado
+  license/server issue. These are **excluded from model pass/fail numerator /
+  denominator** and reported as a separate infrastructure-health metric. High
+  rates indicate environment problems, not model quality.
 
   **Honest boundaries (threats to validity — state in the paper, do not overclaim):**
   - CDC: structural only (synchronizer present), **not** behavioral — metastability
@@ -741,6 +1279,15 @@ will live here later.
   `classify_failure()` detects the Tier-A classes from Verilator/Icarus/Yosys logs
   without manual annotation; the labels are recorded as named sub-categories of
   `failure_to_diagnosis`.
+
+  **Failure-label validation (the regex classifier must be calibrated, not
+  trusted):**
+  - sample 200–300 tool logs across L1/L2/L3/L4;
+  - manually label primary failure class, secondary class, tool stage, and patch
+    category;
+  - compare `classify_failure()` against the manual labels;
+  - report precision, recall, and a confusion matrix;
+  - optional: two annotators or adjudication for ambiguous logs.
 
 - **Where these land in System-HIS v1.2 (no schema redesign needed):**
   - seq/comb: captured **structurally** — a combinational component owns no
@@ -783,6 +1330,77 @@ will live here later.
   trajectories; (iii) **two-stage REQ→HIS→Project with consistency constraints**.
   Pick/deepen one for TCAD; if none lands, the (a)/(b)/(c) framework still
   carries a TRETS paper.
+
+#### SR2FPGA tool-internalizing model stack
+
+SR2FPGA trains a **project-level tool-internalizing model stack**, not just a
+collection of SFT tasks. The actor generates and repairs FPGA projects; the
+critic distills L0–L5 tool-acceptance boundaries into no-tool pass/risk/QoR
+predictions. This framing elevates the method from "we do SFT" to "we train an
+actor + critic to internalize the EDA toolchain."
+
+**Actor** (generation and repair, trained on tool-verified trajectories):
+- `REQ2HIS` — requirement → System-HIS (structured requirement understanding);
+- `HIS2PROJECT` — System-HIS → multi-file RTL project (skeleton-filling);
+- `LOG2DIAG` — tool log → structured diagnosis (internalizes tool error semantics);
+- `FAILURE2PATCH` — structured diagnosis → patch (internalizes repair heuristics);
+- `ARCH_MUTATE` — HIS architecture-parameter mutation (feeds Paper ② search).
+
+**Critic** (prediction and risk estimation, trained to internalize tool verdicts):
+- `PROJECT2RISK` — project → L0–L3 risk score (tool-acceptance prediction);
+- `PROJECT2LEVEL` — project → predicted highest passing level L0–L5;
+- `PATCH2VERIFY` — proposed patch → pass/fail prediction without running tools;
+- `PROJECT2QOR` — project → predicted LUT/FF/BRAM/DSP/Fmax (= `QOR_PRED`).
+
+**QoR-search head** (Paper ② prerequisite, designed now for continuity):
+- `HIS2QOR` — HIS architecture params → predicted QoR (fast proxy fitness);
+- `ARCH2RANK` — rank HIS variants by Pareto dominance on QoR axes;
+- Pareto/risk filtering to reduce expensive L4 tool calls during search.
+
+The critic tasks are what make internalization testable: if `PROJECT2LEVEL` is
+accurate, the model has internalized the tool's acceptance boundary; if
+`PROJECT2QOR` correlates with measured QoR, the model has internalized resource
+utilization. **This claim is valid only if the model-generated behavioral holes
+are non-trivial** — recorded by `behavior_hole_count` and
+`model_token_fraction`; otherwise the method degenerates into a deterministic
+generator with a trivial critic.
+
+#### Contract-preserving generation transparency
+
+To pre-empt "your deterministic generator builds the project and the LLM only
+fills trivial holes," **every sample/trajectory records which artifacts are
+deterministic and which are model-generated**:
+
+```
+{
+  "deterministic_artifacts": [
+    "manifest", "filelist", "top shell", "testbench scaffold",
+    "constraints from board profile"
+  ],
+  "model_generated_artifacts": [
+    "module internals", "control/datapath implementation", "patches"
+  ],
+  "model_token_fraction": 0.64,
+  "behavior_hole_count": 5
+}
+```
+
+Core statement: **cross-file structure is generated or constrained from
+System-HIS; behavioral RTL is generated by the model; tools judge both.** The
+method target is **cross-file consistency by construction, functional/physical
+correctness by verification**.
+
+#### TCAD-strong method claim (one hard technical point)
+
+The single sentence that must run through Method / Contributions / the abstract
+draft: **System-HIS-constrained project synthesis** — deterministic lowering
+guarantees cross-file consistency *by construction*, while model-generated
+behavioral holes are trained and repaired using **structured EDA-tool
+trajectories**. The experiments must show, against this claim:
+- L0 structural error rate decreases toward zero;
+- L2 functionality does not regress;
+- repair iterations decrease;
+- structured diagnosis→patch beats raw-log repair.
 
 ### Method statement (how to articulate it; is it "new"?)
 
@@ -856,6 +1474,60 @@ vs same-source un-filtered distillation trajectories** — does the tool filter
 itself add gain? A negative result is still reportable, and either way no one can
 call this "just distilling an LLM."
 
+**Optional learned-critic mode** — if the critic tasks are trained, the
+measurement can be extended with two additional points:
+
+- **(c1)** fine-tuned **actor**, first attempt, no real tools (= current (c));
+- **(c2)** fine-tuned **actor + learned critic** self-check / self-repair, no
+  real tools (critic judges the actor's output without calling the tool).
+
+Interpretation:
+- **c1 − a:** how much tool-verified fine-tuning improves generation;
+- **c2 − c1:** whether the learned critic adds no-tool self-diagnosis value;
+- **b − c2:** the gap that real tools still close that the learned critic cannot.
+
+This decomposition is not required for the TRETS-safe version; it is a
+TCAD-strong strengthening if the critic tasks are trained. The main (a)/(b)/(c)
+frame is unchanged; (c1)/(c2) are labeled as a critic-mode ablation, not
+replacing (c).
+
+#### Statistical measurement protocol
+
+All (a)/(b)/(c) comparisons use the **same** task set, split, hidden tests, repair
+budget, timeout, tool versions, prompt family (frozen before official evaluation),
+and random seeds where applicable. Report:
+- **pass@1**; **pass@k** where applicable;
+- repair success within N iterations; median repair iterations;
+- **L0/L1/L2/L3/L4 survival curve**;
+- per-tier T1–T4 results; per-family results;
+- paired comparison for **b−a** and **c−a**;
+- bootstrap **95% confidence intervals** where sample size permits.
+
+**Do not collapse L0–L5 into a single averaged ordinal score** — report per-level
+pass rates / survival curves instead.
+
+#### Baselines (B0–B6)
+
+- **B0** direct req→project;
+- **B1** req→HIS→project, no deterministic skeleton;
+- **B2** req→HIS→skeleton→model fills behavior holes;
+- **B3** AutoChip-style raw-log repair;
+- **B4** SR2FPGA structured LOG2DIAG→PATCH repair;
+- **B5** fine-tuned small model, first attempt;
+- **B6** fine-tuned small model + repair.
+
+**Non-LLM sanity baselines** (not compared as LLM baselines; used to validate
+the benchmark and anchor QoR targets):
+
+- **B_ref:** deterministic reference implementation emitted by the generator;
+  used to validate that the oracle HIS, testbench, and constraints are internally
+  consistent and that the task is actually implementable. B_ref passing L0–L3 (or
+  L4) is a prerequisite before the task enters the evaluation set.
+- **B_template:** deterministic skeleton + component-library composition without
+  model-generated behavioral holes; used to calibrate task feasibility and
+  establish the reference QoR (LUT/FF/BRAM/DSP/Fmax budgets). QoR reported for
+  model-generated designs is measured relative to B_template QoR.
+
 ### Planned ablations
 
 - **System-HIS:** req→HIS→project vs req→project (proves System-HIS is a
@@ -865,24 +1537,101 @@ call this "just distilling an LLM."
   results — preserve the existing `predicted_qor.json` / `measured_qor.json`
   separation). Note: generic Yosys-L3 LUT is vacuous (Finding G), so a real
   resource/timing calibration needs `synth_xilinx` or the OpenXC7 L4 report.
+- **REQ→HIS fidelity:** generated System-HIS vs oracle/manual System-HIS, so the
+  representation is evaluated as a **requirement-understanding target** rather
+  than only a self-consistency contract.
+- **Contract-preserving (L0-by-construction):** System-HIS-constrained skeleton
+  generation vs free generation — show it drives the L0 structural error rate
+  toward zero without hurting L2.
+- **OpenXC7 vs Vivado commercial-reference validation:** on the same
+  representative L4 subset, compare open-flow and commercial-flow pass/fail,
+  utilization, WNS/Fmax, DRC/methodology warnings, and runtime. Report
+  disagreement cases explicitly using the OpenXC7/Vivado disagreement taxonomy.
 
-### Scope (must-have core vs nice-to-have)
+**Full ablation list:**
+- with vs without System-HIS;
+- with vs without contract-preserving skeleton generation;
+- raw tool log vs structured diagnosis;
+- public-only tests vs hidden/random/stress tests;
+- tool-filtered trajectories vs unfiltered LLM trajectories;
+- L2-core vs L2-UVM on the protocol-heavy subset;
+- generic Yosys QoR vs `synth_xilinx`/L4 QoR where applicable.
 
-**Must-have core** (the minimum publishable paper):
+#### QoR results: budget / reference / ratio (not raw counts)
 
-- compositional multi-module component library + topology generator with
-  verification-based testbenches and System-HIS;
-- benchmark eval set (tens–hundreds of items, difficulty graded);
-- Yosys L0–L3 at scale + baseline (a) across difficulty tiers (real measured QoR
-  needs `synth_xilinx` / L4 — Finding G);
-- tool-verified QLoRA fine-tuning with the (a)/(b)/(c) measurement;
-- System-HIS ablation.
+QoR is reported **relative to task budgets and reference implementations**, not
+only as raw counts. **Do not use generic Yosys-L3 LUT as a strong QoR claim;
+meaningful FPGA QoR uses `synth_xilinx` and/or OpenXC7/Vivado L4 reports.** Each
+task may declare `resource_budget` (max_lut/ff/bram/dsp), `timing_budget`
+(target_fmax_mhz), and `reference_qor` (a deterministic reference implementation).
+Report: budget pass rate; generated/reference LUT, FF, BRAM/DSP, and Fmax ratios;
+and Pareto dominance / non-dominated count where applicable.
 
-**Nice-to-have** (only if time/compute allow):
+#### P&R noise and QoR calibration protocol
 
-- L4 timing at scale and L5 on-board beyond a few cases;
-- the RL-sized flagship case on the AC820-ZYNQ;
-- OpenXC7-vs-Vivado comparison depth; QoR calibration depth.
+Post-P&R **utilization is relatively stable** and may be reported from a single
+run. **Timing metrics (WNS/Fmax) are backend-heuristic and seed-sensitive**: for
+the representative L4 subset, run multiple seeds where supported and report
+**mean, std, best, worst**. QoR prediction is evaluated primarily as
+**ranking/filtering/risk estimation**: Spearman rank correlation, calibration
+error, top-k design-selection accuracy, bad-design filtering accuracy — with
+**MAPE only as a secondary metric**.
+
+#### L2-core vs optional L2-UVM
+
+UVM is an **optional L2-UVM strengthening layer, not the default scalable
+oracle**:
+- **L2-core:** deterministic black-box self-checking simulation — the default for
+  Line B;
+- **L2-UVM:** optional transaction-level UVM verification for selected
+  protocol-heavy tasks (valid-ready stream, FIFO/skid buffer, AXI-stream subset,
+  AXI-lite register block, RL-accelerator host interface).
+
+UVM environments are generated from **System-HIS + trusted templates**, not freely
+authored by LLMs. **L2-core vs L2-UVM stress ablation:** report cases where
+directed L2 passes but randomized/coverage-driven L2-UVM fails, plus coverage
+deltas.
+
+### Scope variants
+
+Two clean exits remove the internal inconsistency between "RQ1/RQ2/RQ4 are the
+minimum core" and "the (a)/(b)/(c) fine-tuning is must-have." The dataset +
+benchmark + trajectory factory carry a paper either way; what differs is whether
+the trained model and one physical result land.
+
+**TRETS-safe version:**
+- System-HIS;
+- L0–L5 benchmark definition;
+- tool-verified trajectory factory;
+- L0–L3 scaled results;
+- tool-in-loop repair **b−a**;
+- failure taxonomy / semantic-gap heatmap;
+- **OpenXC7 primary open flow; Vivado fallback optional**;
+- L4/L5-min representative physical evidence if available.
+
+**TCAD-strong version:**
+- all TRETS-safe components;
+- System-HIS-constrained / contract-preserving generation;
+- the trained model **(c)**;
+- System-HIS ablation;
+- structured diagnosis→patch ablation;
+- **OpenXC7 primary open flow + Vivado commercial-reference validation on a
+  representative L4 subset**;
+- at least one verified **L4 / L5-min** physical result;
+- **OpenXC7/Vivado agreement/disagreement analysis**.
+
+**RQ5 QoR prediction:** not a Paper ① must-have conclusion; can be reported as a
+calibration preview / Paper ② bridge **if L4 labels are available**.
+
+**L5-min (the on-board scope):**
+- 1–3 representative designs;
+- fixed board shell;
+- host script;
+- golden checksum/signature;
+- archived logs.
+
+**L5-scale is explicitly out of scope for Paper ①.** L5 is reported as end-to-end
+physical-feasibility evidence, **not** a large-scale pass-rate metric.
 
 **Out of scope (YAGNI):** retraining a large generation model (insufficient
 compute); GA/RL / heavy QoR optimization (Paper ②, needs the QoR predictor as
@@ -905,16 +1654,51 @@ each is exactly an item the spec already marks as gated:
    (`2026-06-25-system-his-constrained-decoding-design.md`) is design-only; without
    it the contribution is a *methodology*, not a *method*. Show it drives L0→~0 by
    construction without hurting L2.
-3. **Land one verified physical L4/L5 result** — the core TCAD selling point is gated
-   on the unverified OpenXC7 spike (XC7Z020 chipdb = single point of failure); current
-   measured QoR is vacuous (Finding G). Pin tool versions; one design to bitstream +
-   board.
+3. **Land verified physical L4/L5 evidence with commercial reference.** The TCAD
+   physical-realization claim cannot rely only on an unverified OpenXC7 spike.
+   The minimum TCAD-strong gate is: one OpenXC7 L4/L5-min result, plus Vivado
+   commercial-reference validation on a representative L4 subset using the same
+   RTL, same fixed board shell, same part, and same logical constraints. Pin tool
+   versions; archive timing/utilization/DRC/methodology reports; and explicitly
+   classify OpenXC7/Vivado disagreement cases.
 
 Plus the enabling fixes referees will require: data-quality (noisy labels, vacuous
 LUT — F/E/G/H0) and a full-level diagnostic mode so L0 short-circuit does not censor
 the L1–L4 distribution (Issue 5). **Honest strength to preserve:** the program does
 not overclaim — it labels discovery vs evidence and scopes physics-bound limits out;
 keep that discipline in the manuscript.
+
+### Claim discipline
+
+Use **"tool-accepted under the specified contract"**, **"functionally accepted by
+the generated golden-model testbench"**, **"physically implemented under the
+specified constraints"**, or **"Lk-pass"**. Avoid overclaiming: "correct design",
+"fully verified", "silicon-proven", "tool replacement". The tools and testbenches
+are **objective oracles under a declared contract, not complete proofs of
+correctness**.
+
+### Reviewer-question checklist
+
+The spec should be able to answer each of these directly:
+1. **Is System-HIS more than a prompt template?** → REQ→HIS fidelity + System-HIS
+   ablation.
+2. **Does contract-preserving generation make the task trivial?** → deterministic
+   vs model-generated artifact metadata + L2/L3/L4 results.
+3. **Is the testbench too weak?** → hidden/random/stress tests + coverage +
+   assertions + optional L2-UVM.
+4. **Does RTL simulation survive synthesis?** → L2S post-synthesis netlist
+   simulation.
+5. **Is L4 timing real?** → WNS ≥ 0, no unconstrained paths, no black boxes,
+   archived DRC/timing reports.
+6. **Does OpenXC7 actually work on this board?** → board-specific spike + Vivado
+   reference flow.
+7. **Is QoR meaningful?** → `synth_xilinx`/L4 QoR, budgets, reference ratios, P&R
+   noise protocol.
+8. **Is the data leaking generator templates?** → topology/family/component-heldout
+   splits (S1–S5).
+9. **Is the failure taxonomy real?** → manual log-label validation.
+10. **Is SFT merely distilling an LLM?** → multi-source inputs + tool-filtered vs
+    unfiltered ablation + tool-only labels.
 
 ## Paper ② (brief)
 
@@ -929,6 +1713,55 @@ by searching the System-HIS architecture-parameter space (not editing existing
 repos), using a distilled QoR predictor as proxy fitness, with physical (L4)
 labels CktEvo lacks.
 
+## Artifact and reproducibility checklist
+
+For artifact review (TCAD / TRETS / ACM artifact track), the public artifact
+should include or reference:
+
+**Environment:**
+- Docker / Nix environment reproducing L0–L3 (exact Verilator, Icarus, Yosys versions);
+- OpenXC7 / nextpnr-xilinx version for L4-open;
+- Vivado version recorded for the restricted commercial-reference subset;
+- board profile version (AC820-ZYNQ XC7Z020CLG484-2);
+- System-HIS schema version (`system-his-v1.2`);
+- generator commit hash and random seeds.
+
+**Data:**
+- task split manifest (S1–S5, T1–T4 assignments);
+- prompt versions (frozen before official evaluation);
+- repair budget, timeout, and tool-call accounting;
+- per-trajectory `data_release` tier markers;
+- dataset card (see below).
+
+**Reproducing results:**
+- command lines for L0–L3 evaluation on the eval set;
+- expected runtime per stage (L0/L1/L2/L3, typical);
+- representative L4-open (OpenXC7) and L4-commercial (Vivado) script;
+- L5 board-shell harness (fixed shell version-locked, host script, golden checksums).
+
+## Dataset / benchmark card
+
+For each released dataset version, report and archive:
+
+| Field | Required |
+|---|---|
+| Version | yes |
+| Number of tasks by family and difficulty tier | yes |
+| Number of trajectories by split S1–S5 | yes |
+| % generated vs real-IP external (S5) | yes |
+| Tool versions (Verilator/Icarus/Yosys/OpenXC7/Vivado) | yes |
+| L0–L4-open label availability | yes |
+| L4-commercial label availability | conditional (if license-cleared) |
+| Hidden-test policy | yes |
+| Coverage / scenario profile | yes |
+| Data-release tier per field | yes |
+| Known limitations | yes |
+| License of generated data and code | yes |
+| Citation | yes |
+
+The dataset card is a named deliverable, not an afterthought — it is what
+makes the data contribution reviewable and reproducible by others.
+
 ## Relationship to existing documents
 
 This document scopes and operationalizes `docs/research-objective-sr2fpga-tcad.md`.
@@ -937,30 +1770,67 @@ oracle as the explicit distillation target, Zynq reproducible flow) governs
 near-term work. Update the research-objective document if this direction is
 adopted.
 
+**Companion specs (to be split out once main sections stabilize):**
+This document currently serves as both design spec and paper-protocol reference.
+As sections stabilize, the following companion specs should be extracted to keep
+the main document executable:
+
+| Companion spec | Contents |
+|---|---|
+| `sr2fpga-data-release-and-licensing.md` | Full data-release policy, license review checklist, field-level tier assignments |
+| `sr2fpga-trajectory-schema.md` | Versioned full episode schema, field definitions, migration notes |
+| `sr2fpga-model-stack.md` | Actor/Critic/QoR-head architecture, training task definitions, loss formulations |
+| `sr2fpga-artifact-reproducibility.md` | Full artifact checklist, Docker/Nix environment spec, command-line reference |
+| `sr2fpga-l4-openxc7-vivado-protocol.md` | L4 run protocol, board shell spec, agreement taxonomy, report archive format |
+
+Until then, the main spec carries summary versions of all these topics (as above)
+and the companion specs are forward pointers, not blockers.
+
 ## Immediate next step
 
 The framing premise and the component-library MVP are validated; the v1.2 freeze is
-implemented (Tier-1). Near-term, dependency-ordered:
+implemented (Tier-1). Reordered so oracle hardening precedes scale, and scale
+precedes training:
 
-1. **Finish + commit the v1.2 freeze** (codex). Tier-1 is met; ratify Tier-2 by
-   exercising the provisional fields (`data_flow.timing`, structured `control_flow`/
-   FSM, guard grammar) on a real FSM/pipeline task (the RL-agent FSM is the
-   reference).
-2. **Fix the data-quality debts before scaling** — F (noisy reset/clock labels),
-   E (taxonomy name drift), G (vacuous Yosys-L3 LUT → use `synth_xilinx` or defer
-   LUT to L4), H0 (extract structured tool signal: L2 mismatch detail, L4 failure
-   families, pass-time warnings). See the training-data-quality issue log.
-3. **Set the measurement discipline** — freeze the generation + repair prompt
-   (prompt-leakage was observed, failure-repair Issue 4) and add a full-level
-   diagnostic mode so an L0 failure does not mask the L1–L4 distribution (Issue 5).
-4. **Scale the trajectory data (Line B)** through L3 — the biggest blocker for RQ3;
-   current data is N≈1/tier (discovery, not evidence).
-5. **OpenXC7 spike** on the AC820-ZYNQ (Windows+WSL2; spec + plan ready) → unblocks
-   L4 + RQ5 (real measured QoR; the report becomes RQ5's training signal).
-6. **Train the first model** on the scaled tool-verified data → the (c) point /
-   RQ3 headline (start with L0–L3 generation + repair; SFT on one 4090).
+1. **Measurement freeze** — freeze prompts, seeds, timeout, repair budget, tool
+   versions, hidden tests, split policy, and pass/warn/fail semantics. (Also ratify
+   v1.2 Tier-2 by exercising the provisional fields — `data_flow.timing`, structured
+   `control_flow`/FSM, guard grammar — on a real FSM/pipeline task; the RL-agent FSM
+   is the reference.)
+2. **Oracle hardening** — add REQ→HIS fidelity; add L2 hidden/random/stress tests +
+   coverage targets; add the assertion library; add optional L2S post-synthesis
+   netlist simulation; finalize the L2-core / optional L2-UVM split.
+2.5. **IP/data-release discipline** — finalize the open_public / restricted_reference /
+   internal_only tier assignment for each trajectory field; decide whether Vivado
+   structured metadata can be released under license; mark all episode schema fields
+   with their release tier; document institutional legal review status.
+3. **Data-quality fixes** — F (reset/clock label noise), E (taxonomy name drift),
+   G (vacuous Yosys-L3 LUT → use `synth_xilinx` or defer QoR to L4), H0 (structured
+   tool-signal extraction: L2 mismatch detail, L4 failure families, pass-time
+   warnings).
+4. **Contract-preserving generation** — System-HIS → deterministic project
+   skeleton; model fills behavior holes; record deterministic vs model-generated
+   artifact metadata; run the L0-by-construction ablation.
+5. **Full-level diagnostic mode** — official verdict mode stays first-failing-level;
+   diagnostic mode collects deeper L1–L4 signals (Issue 5).
+6. **Scale Line B through L3** — generate enough trajectories for RQ3; report under
+   split policy S1–S5. (Current data is N≈1/tier — discovery, not evidence.)
+7. **OpenXC7 + Vivado L4 reference spike**
+   - run one generated design through OpenXC7 to bitstream
+   - run the same RTL/core/board-shell/logical-constraints through Vivado
+   - verify exact part `XC7Z020CLG484-2`
+   - archive timing/utilization/DRC/methodology reports
+   - classify OpenXC7/Vivado agreement or disagreement
+   - use the result to define the first L4-open/L4-commercial labels
+8. **First SFT model** — produce the first (c) point; start with REQ2HIS,
+   HIS2PROJECT, LOG2DIAG, FAILURE2PATCH; evaluate under the frozen (a)/(b)/(c)
+   protocol (SFT on one 4090).
+8.5. **Artifact packaging** — create the dataset card (see "Dataset / benchmark card");
+   create the tool-version manifest; create reproduce-L0-L3 script with Docker/Nix
+   environment; create representative L4-open / L4-commercial evaluation script;
+   version-lock the board shell.
 
-Steps 2–4 gate the official (a)/(b)/(c) measurement; the OpenXC7 spike (5) runs in
-parallel and is independent. Specs/plans for the schema freeze and the OpenXC7
-spike already exist (writing-plans done); the remaining gate is execution + scale,
-not more design.
+Steps 1–6 gate the official (a)/(b)/(c) measurement; the OpenXC7/Vivado L4-min (7)
+runs in parallel and is independent. Specs/plans for the schema freeze and the
+OpenXC7 spike already exist (writing-plans done); the remaining gate is execution +
+scale, not more design.

@@ -20,6 +20,20 @@ L0→词法→lint→sim→功能；prompt 收紧会泄漏；L0 会掩盖更深�
 （N≈1/档、单一模型、探索性协议）。**尚未有：** 规模化轨迹数据、训练好的 (c) 点（RQ3）、L4 物理（OpenXC7
 spike）、以及数据质量修复（F/E/G）。
 
+**Reviewer-hardening update（2026-06-26）：** 本次修订收紧验证 oracle、测量协议、物理通过定义、数据切分
+策略和论文表述纪律。目标不是扩展愿景，而是加固 oracle、测量、物理通过定义、数据切分和表述纪律，使每一个
+"pass" 都能经受 FPGA/DV/EDA 审稿人的追问：L2 必须 coverage/stress 限定，L3/L4 QoR 必须用有意义的 FPGA
+映射，L4 pass 需要显式的时序/约束检查，L5 用固定 board shell，且 System-HIS 不仅对 RTL 评估、还要对原始需求
+评估其忠实度。
+
+**Artifact/data-release/model-stack update（2026-06-26）：** 本次修订新增：(1) 明确的 IP/许可/数据发布策略
+（open_public / restricted_reference / internal_only 三档；Vivado 原始产物未经许可审核不用于公开训练）；(2)
+SR2FPGA 工具内化模型栈定义（Actor / Critic / QoR-search head，并说明为什么这是模型*栈*而非 SFT 任务列表）；
+(3) 完整轨迹 episode schema；(4) 可选 (c1)/(c2) 测量点，将生成内化与无工具自诊断分开量化；(5) 失败注入套件
+与 natural/injected/toolchain failure_origin 字段；(6) L2F 可选形式化属性检查层；(7) artifact 可复现性 +
+数据集 card 清单。本文档记录设计；后续待主要小节稳定时，会把数据发布、轨迹 schema、模型栈、artifact
+可复现性各拆成独立 companion spec（见"与现有文档的关系"）。
+
 ## 目标期刊
 
 **主投：IEEE TCAD**，**ACM TRETS 作为退路**——目标定高，投稿时按实际做出来的成果再定。两者都看重
@@ -31,8 +45,8 @@ spike）、以及数据质量修复（F/E/G）。
 - **一个全开放、可复现的闭环**（req→bitstream→board）是 TRETS 看重的主卖点。作者的 **AC820-ZYNQ
   板（芯片 XC7Z020CLG484-2）在 OpenXC7 支持清单内**，所以在*真实 Xilinx 器件*上跑全开放的
   Yosys→nextpnr-xilinx（OpenXC7）→bitstream→board 流程是可行的——待 spike 验证。**Vivado 保留为
-  退路/基线**，而 **OpenXC7-vs-Vivado 对比本身是个加分项**（开放工具在 LLM 生成 RTL 上的可用性/QoR）。
-  所有 code/data/scripts/器件公开，工具版本锁定。
+  退路/基线**。对于 **TRETS-safe** 工作，Vivado 是可选的；对于 **TCAD-strong** 版本，必须在代表性
+  L4 子集上完成 Vivado 商业参考验证。所有 code/data/scripts/器件公开，工具版本锁定。
 - **方法新颖性是 TCAD 要补的缺口**（不放松）：TCAD 不会把"QLoRA 微调 + 一个工具回路"当作方法贡献——
   它需要一个真正的方法学想法（见 Method → "Method-novelty candidates"），外加超过 TRETS 下限的规模。
   若新颖性/规模没达到，就降投 TRETS（它对新颖性的门槛低得多）；论文其余部分不变。
@@ -98,9 +112,11 @@ spike）、以及数据质量修复（F/E/G）。
 - **算力：** 本地微调仅一块 RTX 4090 24GB。**不可行：** 预训练、或训练一个正面打赢 GPT-5 / DeepSeek 的
   生成模型——这个野心放弃。**模型规模刻意暂不固定：** 数据集和 benchmark 设计必须保持 model-agnostic；
   模型与规模到建模阶段再按当时可用算力选。**当前优先级是建数据集。**
-- **数据：** 没有现成数据；所有轨迹都是本地跑工具从零生成。**标签完全来自工具**（L0–L3 用开源
-  Yosys/Verilator/Icarus，L4–L5 用 OpenXC7/Vivado），所以"tool-verified learning"是字面属实——监督来自
-  工具，不是另一个 LLM。
+- **数据：** 没有现成数据；所有轨迹都是本地跑工具从零生成。**公开训练标签主要来自开源工具**
+  （L0–L3 用 Verilator/Icarus/Yosys，L4-open 用 OpenXC7），所以"tool-verified learning"是字面属实——
+  监督来自工具，不是另一个 LLM。**Vivado 标签是商业参考标签**，仅覆盖代表性 L4 子集，在机构许可审核
+  允许发布前，与 `open_public` 训练档分开管理。标签绝不来源于另一个 LLM。*工具内化是指在声明的工具流
+  程下、从工具验证标签中学习；不意味着逆向工程或复现专有 EDA 软件。*
 - **硬件：** 上板验证用作者的 **AC820-ZYNQ 板**——芯片 **XC7Z020CLG484-2**（约 53k LUT、220 DSP、双核
   ARM；大到能放大设计和一个 RL 旗舰案例）。该器件**在 OpenXC7 支持清单内**，使全开放
   req→bitstream→board 流程成为可能（待 spike 验证）；**Vivado 为退路/基线**。
@@ -179,6 +195,12 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
   future work；TODAES'25 把 NL↔RTL 中间表示列为未解；CPPL 是电路级、非需求级。*警示：* accessibility-competence
   悖论意味着这必须*测*、不能假设。*状态：* v1.2 生成器 + L0 HIS↔RTL 交叉检查已实现（Tier-1 已批准）；消融还需
   训练好的模型 + req→project 对照臂；未跑。
+  *新增 REQ→HIS fidelity 子指标：* System-HIS 必须忠实于**原始需求**，而非仅与所生成的 RTL 自洽——否则模型可
+  误解需求、生成"错误但自洽"的 HIS，使 RTL 与 testbench 都跟着错误 HIS，而 L0/L2 仍可能通过。合成任务用生成器
+  发出的 oracle HIS 做字段级比对；真实/外部任务用一小批人工审阅集。**REQ-HIS fidelity 指标：** 接口抽取准确度
+  （端口名/方向/位宽/协议）；clock/reset 忠实度（极性、同步/异步类型、deassertion）；参数忠实度（width/depth/
+  latency/parallelism/memory banking）；行为意图忠实度（FIFO/arbiter/MAC/pipeline/AXI-lite/stream 语义）；
+  验证意图忠实度（所需场景与 corner case）；约束忠实度（目标 Fmax、资源预算、board shell/profile）。
 - **RQ2 — 工具反馈的价值（b−a）。** EDA 工具在环修复回路，相比无工具首次尝试，把项目级工具接受度提升多少、在
   哪一层/哪个难度档提升最多？
   *怎么答：* 固定迭代预算下 (b)−(a)，按难度档。*gap：* 修复回路已成熟（AutoChip/MAGE/VerilogCoder/PEFA-AI）
@@ -206,6 +228,9 @@ req→bitstream→上板闭环（AC820-ZYNQ）为贡献，并以工具验证轨�
   MasterRTL 做 pre-synth PPA 但是独立 ASIC 预测器；shift-left 综述把"预测↔物理相关"列为核心难题。*状态：* 被卡——
   需真 measured QoR（OpenXC7 L4；Yosys L3 的 LUT 是假的，Finding G）；OpenXC7 spike 现有 spec+plan；该预测器
   同时是 Paper ② 的代理适应度。
+  *工具流切分（新增）：* RQ5 预测的是声明工具流下的工具测得 QoR——**OpenXC7-QoR** 和 **Vivado-QoR**
+  是独立标签。OpenXC7 标签支撑可复现开源流程和更可规模化的 L4 标签采集；Vivado 标签是 L4-commercial
+  子集上的商业参考标签。跨工具迁移/校准在 L4-agreement 子集上报告。
 
 **核心 vs 被卡：** RQ1、RQ2、RQ4 是必答的最小可发表核心；RQ3 是 headline 但需训练好的模型；RQ5 是 nice-to-have
 且卡在 OpenXC7 L4 spike。五个都由使能性基础设施贡献（工具验证项目轨迹数据集 + L0–L5 benchmark + 可复现
@@ -296,7 +321,9 @@ training-data-quality issue 日志）。把这步抽取做厚，正是让 LOG2DI
   iCE40 通过率是**条件**于仿真通过；无条件端到端仅 48.1%。）
 - **硬件 IR：** FIRRTL / CIRCT / LLHD / HIR / Calyx，以及 **CPPL**（LLM→电路 IR JSON→CIRCT→Verilog；输入
   是**带固定端口 + docstring 的 Python DSL，不是自然语言**；一致性靠编译期位宽推断；无物理/PnR）。CPPL 在
-  电路结构层，System-HIS 在需求意图层（输入 = NL 需求，*下降到* CIRCT/CPPL）。
+  电路结构层，System-HIS 在需求意图层（输入 = NL 需求，*下降到* CIRCT/CPPL）。**System-HIS 也不同于
+  IP-XACT / SysML / FuseSoC 式的工程元数据：** 它们描述 IP 封装、系统建模或构建集成，而 System-HIS 是面向
+  LLM 的需求级生成契约，带 REQ→HIS 监督、HIS↔RTL L0 交叉检查和工具轨迹学习。
 - **仓库级 PPA 优化（最接近 Paper ②）：** **CktEvo**——闭环 LLM+工具链编辑，在已有仓库上保功能、改 PPA；
   无 L4/L5 物理标签。我们的区别：搜 System-HIS 架构参数空间（而非编辑仓库），用蒸馏 QoR 代理。
 - **HLS DSE：** NSGA-II、Chimera、IronMan、AutoHLS——优化给定设计点（与 Paper ② 直接相关，如预测器当代理
@@ -375,6 +402,37 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
 **暂定字段**（`data_flow.timing`、结构化 `control_flow`/FSM、guard 语法）是批准闸门的 Tier-2——已实现并校验，但在
 真实任务跑通各字段前不强制进 REQ2HIS 目标。
 
+**默认 clock/reset 纪律（钉死标签语义——Finding F）：**
+- 默认任务族是**单时钟**；
+- 默认复位是**同步、active-high**；
+- 异步复位只出现在显式标注的任务族；
+- 复位 **deassertion 必须同步**；
+- 多时钟 / CDC 任务是**独立的难度族**，不混入普通任务。
+
+System-HIS 中的规范写法：
+
+```
+clocks:
+  - name: clk
+    frequency_mhz: 100
+resets:
+  - name: rst
+    polarity: active_high
+    kind: synchronous
+    deassertion: synchronous
+```
+
+L0/L2 检查复位极性/类型与 System-HIS 一致，且 valid/state 输出达到声明的复位态。
+
+**Memory 意图字段（让 BRAM 推断成为可检查项，而非凭感觉）：**
+- `memory_style: block | distributed | registers`
+- `depth`、`width`、`read_latency`
+- `read_type: sync | async`
+- `read_during_write` 行为
+- `byte_enable`（可选）
+
+L3 检查：意图 BRAM/DSP 用量 vs 实测映射；意外的 FF/LUT memory 膨胀；BRAM miss 即使功能通过也记为**软 QoR 失败**。
+
 **双重用途**（为什么 System-HIS 是贡献而非副产物）：它既是生成的**中间监督目标**（REQ→HIS），又是 L0
 检查器据以验证所生成 RTL 的**ground-truth 契约**。
 
@@ -383,6 +441,94 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
 
 字段随新设计族加入而按任务扩展——例如 Paper ② 的可搜索架构参数（并行度 / 流水深度 / memory banks）以后
 会放在这里。
+
+#### 完整轨迹 episode schema
+
+每条轨迹是一个 **episode**，不是单条输入输出对。数据单元是：requirement → generate → 工具裁决 → 失败
+→ 诊断 → 补丁 → 重新验证 → 记录结果。以下是规范的 episode 骨架：
+
+```json
+{
+  "sample_id": "string",
+  "requirement": "string",
+  "oracle_his": {},
+  "generated_his": {},
+  "req_his_fidelity": {
+    "interface_extraction": null,
+    "clock_reset_fidelity": null,
+    "parameter_fidelity": null,
+    "behavior_intent_fidelity": null,
+    "verification_intent_fidelity": null,
+    "constraint_fidelity": null
+  },
+  "project": {
+    "files": {},
+    "deterministic_artifacts": [],
+    "model_generated_artifacts": [],
+    "model_token_fraction": null,
+    "behavior_hole_count": null
+  },
+  "verification": {
+    "l0": {"status": "pass|fail", "errors": []},
+    "l1": {"status": "pass|fail|missing_tool", "warnings": [], "errors": []},
+    "l2_core": {
+      "status": "pass|fail|missing_tool",
+      "public": {"status": null, "mismatch_detail": []},
+      "hidden": {"status": null},
+      "stress": {"status": null},
+      "coverage": {"scenario_profile": null, "seeds": []}
+    },
+    "l2s": {"status": "pass|fail|not_run", "divergences": []},
+    "l3": {
+      "status": "pass|fail|missing_tool",
+      "lut": null, "ff": null, "bram": null, "dsp": null, "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr", "status": "pass|fail|not_run",
+      "wns_ns": null, "fmax_mhz": null,
+      "lut": null, "ff": null, "bram": null, "dsp": null,
+      "drc_warnings": [], "critical_warnings": [],
+      "runtime_sec": null, "report_paths": []
+    },
+    "l4_commercial": {
+      "tool": "vivado", "status": "pass|fail|not_run",
+      "wns_ns": null, "fmax_mhz": null,
+      "lut": null, "ff": null, "bram": null, "dsp": null,
+      "drc_warnings": [], "methodology_warnings": [], "critical_warnings": [],
+      "runtime_sec": null, "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "D0|D1|D2|D3|D4|not_applicable",
+      "reason": "..."
+    },
+    "l5": {"status": "pass|fail|not_run", "log_path": null}
+  },
+  "diagnosis": {
+    "failure_level": "L0|L1|L2|L3|L4",
+    "failure_type": "string",
+    "failure_origin": "natural_model_failure|injected_mutation|toolchain_environment_failure",
+    "structured_diagnosis": {}
+  },
+  "patches": [
+    {"patch": "string", "diagnosis": {}, "result_after_patch": {}}
+  ],
+  "qor": {
+    "predicted": {},
+    "measured_open": {},
+    "measured_commercial": {}
+  },
+  "data_release": {
+    "tier": "open_public|restricted_reference|internal_only",
+    "license_notes": []
+  }
+}
+```
+
+`failure_origin` 区分：模型生成的自然失败（`natural_model_failure`）、为覆盖率刻意注入的失败
+（`injected_mutation`）、工具链环境本身引起的失败（`toolchain_environment_failure`——超时、license 不可用、
+缺依赖、工具崩溃、OpenXC7 chipdb 问题）。只有前两类计入模型 pass/fail 分子/分母；`toolchain_environment_failure`
+单独报告，排除在模型准确度指标之外。
 
 ### Benchmark 设计
 
@@ -418,15 +564,137 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
   4. 结构规模（子模块数 / 层级深度）与 CDC——高难度档
 - **难度分级（用于报告前沿通过率膝点）：** 把上述轴映射到 **T1 Easy / T2 Medium / T3 Hard / T4 Stress**，依据
   子模块数、跨模块契约数、协议类、目标 Fmax（具体阈值在 baseline (a) 测量时确定）。通过率**按档**报告，让前沿
-  模型开始失败的膝点可见。
+  模型开始失败的膝点可见。**冻结协议：** 难度阈值在 pilot 集上校准一次（用 baseline (a) 前沿模型通过率），
+  **在官方评测开始前冻结**，不在看到微调模型结果后再调整。校准结果记录每档的预期子模块数、跨文件契约数、
+  协议类、目标 Fmax 范围和观测到的前沿通过率范围——以便审稿人确认冻结发生在 (c) 测量之前。
 - **规模：** 千到约 1 万样本，不是百万级（数据量现实）。benchmark 题目以中小多模块设计为主（RL 规模加速器是
   *旗舰案例*，不是主体——见 scope）。现有确定性 `ProjectGenerator` 是构件库的种子。
+
+#### L2 oracle 加固：coverage-qualified 仿真
+
+L2 pass **不是**"仿真跑完了"的裁决。对 benchmark/评测题，L2 按 **coverage-qualified 功能验收**报告：
+- **L2a** directed smoke 测试；
+- **L2b** randomized/stress 场景；
+- **L2c** 所需协议/数值覆盖。
+
+设计只在**声明的测试契约下**才被语法与功能接受；因此我们在 L2 pass/fail 旁同时报告场景/覆盖画像。
+
+各族最低覆盖目标：
+- **valid-ready / stream：** ready 拉低时保持 valid、随机 stall、burst、idle 周期、事务中复位；
+- **FIFO / skid buffer：** full、empty、almost_full/empty、同时 push-pop、overflow/underflow 尝试；
+- **pipeline：** 不同 latency 路径、stall、in-flight 数据中 flush/reset；
+- **arithmetic：** 有/无符号、边界值、overflow/截断；
+- **memory/BRAM：** read-after-write、同地址冲突、sync vs async 读行为；
+- **AXI-lite/stream 子集：** ordering、WSTRB、response channel、back-to-back 事务。
+
+#### Public/hidden/stress 测试切分
+
+每个评测题可含多种场景类：
+- **public：** 对生成/修复回路可见；
+- **hidden：** 仅用于最终验收；
+- **randomized：** 固定 seed，记录在轨迹中；
+- **stress：** 事务中复位、背压、边界值、full/empty、资源/时序压力。
+
+最终 **L2 验收基于 hidden + stress 套件**，而非仅 public smoke——防止模型或修复回路"修到刚好过可见
+testbench"。所有 seed 记录以便复现。
+
+#### 协议断言库（protocol assertion library）
+
+对协议密集设计，生成器从 **System-HIS 协议意图**（`protocol_agents`；SVA 或 immediate assertions）发出
+断言/checker，与 scoreboard 互补。例如：
+- valid 高且 ready 低 ⇒ payload 必须保持稳定；
+- FIFO：empty 时不读；full 时不写；
+- 复位清零 valid/state 输出；
+- 无数据丢失或重复；
+- 支持子集的 AXI-lite/stream ordering 与 response 检查；
+- 结构上可查时，无组合 ready-valid 环。
+
+**checker 来源声明：** 断言/checker 是**从模板生成的可信验证产物**，不是模型写的 oracle 逻辑。生成器（不是 LLM）
+负责 checker 的正确性。这与"testbench 裁决模型的 RTL，不是反过来"的原则一致。
+
+#### L2F 可选形式化属性检查
+
+对选定的协议密集任务族，SR2FPGA 可运行从 System-HIS 协议意图生成的**有界形式化/属性 sanity 检查**。这是可选的
+代表性层——不扩大 Paper ① 的主线范围——为 DV/formal 审稿人提供一个可防守的 hook：
+
+- FIFO：有界序列下无 overflow / underflow；
+- valid-ready：有界事务窗口内 payload 在 stall 时保持稳定；
+- 有界周期数内复位收敛；
+- one-hot FSM 不变式；
+- 有界事务窗口内无数据重复/丢失；
+- 支持子集的 AXI-lite response ordering。
+
+L2F **不要求覆盖每条 Line-B 轨迹**，不作为 L2 pass 的门。在 benchmark/eval 题上运行，作为补充属性验收分数。
+"coverage-qualified"不要求所有样本都有商业 SV functional coverage；覆盖可用确定性场景计数器、协议事件计数器、
+scoreboard 事件 bin、以及开源工具支持时的可选行/翻转覆盖来实现。
+
+#### SR2FPGA 可综合 RTL 子集
+
+所有模型生成的 RTL 应遵循受限可综合子集，使 benchmark 不奖励"能仿真但不能综合"（或跨工具行为不一致）的 RTL。
+
+**必需：** `` `default_nettype none ``；显式位宽；有状态模块显式复位行为；单驱动 register/net；memory/算术任务用
+支持的 RAM/DSP 推断模板。
+**允许：** parameter/localparam；generate 块；`always_ff`/`always_comb` 或严格 `always @*`/`always @(posedge clk)`；
+有文档限制的 packed array；支持模板内的同步 memory。
+**禁止：** `#` 延时；force/release；DPI；可综合 RTL 中的 class/动态数组；不可综合 `initial`（除显式支持的
+ROM/init 策略外）；隐式 net；非任务明确要求的故意 latch；多驱动。
+
+#### 约束分类：logical vs board
+
+约束分两类：
+- **logical 约束：** `create_clock`、目标周期、生成时钟、max delay、false path、multicycle path、时序意图；
+- **board 约束：** 封装 pin、IOSTANDARD、物理时钟源、复位 pin、板级 IO profile。
+
+模型 / System-HIS 可**选择 board profile 并发出 logical 时序意图**。board 约束从**受信任的 board profile 生成，
+不由 LLM 自由书写**。L0 检查约束引用真端口、且所选 board profile 与顶层 shell 兼容，但**不**把任意 LLM 写的
+board XDC 当作可信。
+
+#### 切分策略（泛化 regime S1–S5）
+
+结果按多种泛化 regime 报告，而非只 parameter-heldout：
+- **S1 parameter-heldout：** 同族/同拓扑，未见 width/depth/latency/parallelism；
+- **S2 topology-heldout：** 未见 wiring/拓扑模式；
+- **S3 component-combination-heldout：** 已知构件的未见组合；
+- **S4 family-heldout：** 整个设计族从训练中扣除；
+- **S5 real-IP external：** 真实开源 IP 仅作外部验证、**绝不训练**。
+
+主结果至少分离 in-distribution、parameter-heldout、topology-heldout、family-heldout 四种表现。
+
+#### Real-IP 外部锚点策略
+
+real-IP 集是**小而精的 5–10 个开源 IP 案例**，**仅外部验证、不训练**。每个案例记录 license、仓库 URL、commit
+hash、改动、wrapper 变更、原 testbench 可用性、工具兼容补丁。
+
+#### IP、许可与数据发布策略
+
+SR2FPGA 自行生成 RTL 工程，以 EDA 工具作为客观 oracle。数据发布策略区分可公开发布的、受限的和仅内部的内容。
+
+**数据发布档位：**
+
+| 档位 | 内容 | 默认处置 |
+|---|---|---|
+| `open_public` | 生成的 requirement、System-HIS、RTL、testbench；开源工具（Verilator/Icarus/Yosys/OpenXC7）日志和结构化标签；L0–L4-open 元数据；失败分类法 | 随数据集公开发布 |
+| `restricted_reference` | Vivado 商业参考结构化元数据（从报告规范化的时序/利用率摘要）；L4-commercial 标签 | 仅在机构许可审核和 Xilinx/AMD EULA 允许时发布 |
+| `internal_only` | Vivado 原始时序/利用率/DRC/methodology 报告；Vivado DCP/checkpoint；bitstream；生成数据库；LogiCORE 产物；vendor IP；加密 IP | 归档用于内部审计和论文答辩；**不公开发布** |
+
+**原则：**
+- **归档 ≠ 公开发布。** 商业工具原始报告归档用于内部审计和答辩；以规范化元数据形式写入论文表格，须经许可审核。
+- **Vivado 原始产物未经许可不用于公开模型训练。**
+- **公开训练数据主要基于生成设计和开源工具标签。** Vivado 是商业参考验证流程，不是默认的公开训练标签来源。
+- 真实开源 IP（S5 外部验证集）保留原仓库 license；wrapper 和工具兼容补丁在项目 license 下开源。真实 IP 不用于训练。
+- 数据集 card（见"数据集 / benchmark card"）记录每个轨迹版本每个字段的发布档位。
 
 ### 评测层级与工具链
 
 - **L0** 项目契约 + 跨文件一致性；**L1** lint（Verilator）；**L2** 功能仿真（Icarus Verilog）；**L3** 综合 +
-  实测 QoR（Yosys）；**L4** 布局布线时序收敛（**OpenXC7 跑在 AC820-ZYNQ / XC7Z020CLG484-2，Vivado 作退路/基线**，
-  报 Fmax/slack）；**L5** 稀疏代表性上板（AC820-ZYNQ）。
+  实测 QoR（Yosys）；**L4** 布局布线时序收敛（分为 **L4-open / L4-commercial / L4-agreement**）；**L5** 稀疏代表性上板（AC820-ZYNQ）。
+- **L4-open：** 使用 OpenXC7 / nextpnr-xilinx 在 AC820-ZYNQ (`XC7Z020CLG484-2`) 上进行布局布线和时序收敛。
+  这是主要的可复现开源物理流程，但仍依赖 board-specific OpenXC7 spike 验证。
+- **L4-commercial：** 使用 Vivado 对相同 RTL、相同 generated core、相同固定 board shell、相同器件
+  `XC7Z020CLG484-2` 和相同逻辑时序约束进行 synthesis + implementation。对于 **TCAD-strong** 版本，
+  L4-commercial 必须在代表性子集上完成，但不要求覆盖每个 Line-B 轨迹。
+- **L4-agreement：** 报告 OpenXC7/Vivado 在 pass/fail、资源、WNS/Fmax、DRC/methodology warning
+  和 runtime 上的一致与不一致。
 - **L0 一致性检查器（一个命名组件，不是脚注）：** 对照 System-HIS 契约验证所生成 RTL——top 实例化已声明的
   模块；每个端口名/方向/位宽、参数、跨模块连接都与 System-HIS 匹配；testbench 实例化真 top；约束引用真端口。
   这把跨文件一致性裁决自动化，并产出 **"cross-file consistency error rate"** 指标——单文件 benchmark 在结构上
@@ -434,8 +702,70 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
 - **工具链（全开放为主，Vivado 退路）：** 综合和大规模数据到 **L3 用 Yosys**（开源、快、免费——适合千级样本）；
   **L4 时序收敛 + L5 上板用 OpenXC7（nextpnr-xilinx）跑在 AC820-ZYNQ**（XC7Z020CLG484-2，在 OpenXC7 支持清单内；
   220 DSP / ARM 承载更大设计含 RL 旗舰案例），给出全开放 req→bitstream→board 闭环——**待早期 spike 验证**。
-  **Vivado 为退路/基线**，使 L4/L5 结果不会因开放工具不成熟而丢失，而 **OpenXC7-vs-Vivado（可用性/QoR）是 TRETS
-  读者看重的加分对比**。所有 code/data/scripts/器件公开，工具版本锁定。
+  **Vivado 为退路/基线**，使 L4/L5 结果不会因开放工具不成熟而丢失。对于 **TRETS-safe** 工作，Vivado 是可选的；
+  对于 **TCAD-strong** 版本，必须在代表性 L4 子集上完成 Vivado 商业参考验证。OpenXC7-vs-Vivado 的更深入
+  可用性/QoR对比是加分项。所有 code/data/scripts/器件公开，工具版本锁定。
+
+#### L1 lint 检查（可综合子集强制）
+
+L1 检查隐式 net、位宽截断、未用/未驱动信号、推断 latch、组合环、时序逻辑里的阻塞赋值、组合逻辑里的非阻塞
+赋值——强制 Benchmark 设计中定义的 SR2FPGA 可综合 RTL 子集。
+
+#### L2S（可选）——综合后网表仿真 / 综合 sanity
+
+**L2S** 是可选的综合后网表仿真 / 综合等价 sanity 阶段：在 Yosys `synth_xilinx` / `write_verilog` 产出的网表上
+跑**同一份黑盒 testbench**，对比 RTL-sim 与 netlist-sim 行为。它能抓住综合后仿真行为发散的 RTL 构造：不完整
+`case`、latch 推断、RAM 读语义、未初始化状态、X-optimism、阻塞/非阻塞误用、memory 映射差异。**L2S 不要求每条
+大规模 Line-B 轨迹都跑**，但应在 benchmark/eval 集和代表性子集上跑。
+
+#### L4 pass 定义
+
+**L4 pass 需满足全部以下，而非仅 bitstream 生成：**
+1. P&R 完成；
+2. 目标时钟达标：声明目标频率下 **WNS ≥ 0**；
+3. 无未约束时钟；
+4. 无未约束 endpoint（除非显式说明并记录）；
+5. 无 black box；
+6. 无使实现失效的 critical warning；
+7. 布线后利用率落在声明的资源预算内；
+8. 生成核通过 board shell 连接、**未被优化掉**；
+9. 时序/利用率/DRC 报告已归档。
+
+**Vivado** run 归档：`report_timing_summary`、`report_utilization`、`report_clock_utilization`、`report_drc`、
+`report_methodology`、`report_io`、（可选）`report_power`。**OpenXC7/nextpnr** run 归档：placement/routing 日志、
+时序摘要、器件利用率、constraint/IO 错误、bitstream 生成状态。
+
+#### OpenXC7：可行、待 spike——不是已完成证据
+
+OpenXC7 为 Zynq-7 目标提供一条**貌似可行的全开放 L4/L5 路径**，但**在 board 专属 spike 落地前不当作证据**。
+Vivado 保留为参考/退路流程，使物理结果不被开放工具成熟度阻塞。本 spec 任何地方都不得暗示全开放 L4/L5 已完成。
+**OpenXC7 spike 必须验证：**
+- 精确 part/package/speed grade：**XC7Z020CLG484-2**；
+- board clock/reset/pin profile；
+- XDC/PCF 约束正确性；
+- bitstream 生成；
+- bitstream 加载；
+- board-shell smoke 测试；
+- 在同一 RTL 和 logical 约束下与 Vivado 对比。
+
+#### 板级验证纪律（L5）
+
+L5 用**固定、人工审阅的 board harness**。模型**不**生成整个板级工程——三层分离把板级噪声挡在 pass-rate 指标外：
+- **生成核（generated core）：** SR2FPGA 生成/修复/评测的 RTL；
+- **固定 board shell：** clock/reset、pin 约束、AXI-lite/BRAM/UART/GPIO bridge、复位同步器、debug/status 寄存器；
+  **版本锁定、人工审计**；
+- **host harness：** 写输入向量、启动核、读输出/状态/signature、并与 golden checksum/model 比对的 Python/C 脚本。
+
+**L5 pass 需：** bitstream 成功加载；host 脚本无 timeout 完成；生成核**通过固定 shell**收到输入并产出输出；
+输出 signature/checksum 与 golden model 匹配；board 日志和 host 日志归档。
+
+#### Verdict 模式 vs 全层诊断模式
+
+为防早期 L0 失败审查掉 L1–L4 硬件语义失败分布（Issue 5），跑两种评测模式：
+- **官方 verdict 模式：** **首个失败层**决定官方 `Lk` 验收层级。
+- **全层诊断模式：** 早期失败后在安全处用 wrapper/normalization best-effort 续跑，收集额外 L1–L4 信号。
+
+诊断信号**不提升官方通过层级**；仅用于失败分类法、LOG2DIAG 和更深的失败分布分析。
 
 ### 数据引擎（两条生产线）
 
@@ -446,6 +776,27 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
   （Yosys，秒级/样本）**；把慢的 **L4（Vivado，分钟级/样本）**留给评测集和代表性子集，不是每个样本。
 - **输入候选来源：** 优先组合式构件库（免费、可控、量大、防泄漏）+ 少量 DeepSeek/本地候选。**所有标签来自工具**
   （工具蒸馏纯度）。
+#### 失败注入套件（failure-injection suite）
+
+为确保训练能覆盖罕见但重要的失败类型，SR2FPGA 向已知好的工程**刻意注入受控变异**。注入失败通过 episode
+schema 中的 `failure_origin` 字段与自然模型失败区分，所有分析中单独处理。
+
+代表性注入变异类型：
+- 端口位宽不符（一个文件改了 parameter，未传播）；
+- 复位极性不符（RTL active-low，HIS 声明 active-high）；
+- 缺 `ready` stall（valid-ready 协议：数据路径忽略 `ready`）；
+- BRAM 模板中异步读（强制 LUT/FF 映射）；
+- 符号数转换被删（`$signed()` 被去掉，产生静默算术错误）；
+- 缺 CDC 同步器（`cdc:true` 路径上无同步器实例）；
+- 组合 ready-valid 环（ready 组合依赖 valid）；
+- 非法逻辑约束（时钟周期错误、路径未约束）；
+- 删除流水寄存器（在 L4 产生时序压力）；
+- one-hot FSM 编码被改成二进制。
+
+**协议：** 注入在参考工程通过 L0–L3（或适用时 L4）**之后**进行，确保变异前基线是干净的。注入点、变异类型、
+预期失败层级记录在 episode 中。注入样本用于 LOG2DIAG 和 FAILURE2PATCH 训练覆盖；在失败热图中与自然失败
+单独报告。
+
 - **硬件语义鸿沟——按 L0–L5 交叉索引的失败分类法（一个命名贡献，不只是"更多错误类型"）：** LLM 在软件
   （顺序执行）语义上预训练，系统性地在硬件的并发/物理语义上失败。关键在于：**该鸿沟的每一类在不同验证深度
   显现**，所以 L0–L5 层级不只是"验证深度"，更是"所需硬件语义理解的深度"。这把失败分类法贡献从"我们有个分类
@@ -470,6 +821,11 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
 
   （后六行是在用一份 practitioner 失败清单审计我们分类法后，对原三行的扩展——FPGA手记《AI写RTL》，2026-06，
   一篇非同行评审的行业博客，仅作完整性检查/motivation 佐证。只加了工具可检出的类，每类标注检出层。）
+
+  **工具链/环境失败类别（toolchain_environment_failure）：** 单独的失败类 `toolchain_environment_failure`
+  覆盖：工具超时；工具崩溃；缺依赖项；license 不可用（Vivado seat/server）；文件系统或路径错误；工具版本不支持
+  的语法；OpenXC7 chipdb 问题；Vivado license/server 问题。这些**排除在模型 pass/fail 分子/分母之外**，
+  作为独立的基础设施健康指标报告。比例高说明是环境问题，不是模型质量问题。
 
   **诚实边界（threats to validity——论文中要陈述，不要过度声称）：**
   - CDC：仅结构（同步器在不在），**非**行为——亚稳态在仿真中不可验证（时钟对齐），上板只能稀疏/不确定地出现。
@@ -496,6 +852,13 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
   `classify_failure()` 从 Verilator/Icarus/Yosys 日志检出 Tier-A 类，无需人工标注；标签作为 `failure_to_diagnosis`
   的命名子类记录。
 
+  **Failure-label 校准（regex 分类器要校准，不能盲信）：**
+  - 跨 L1/L2/L3/L4 抽样 200–300 条工具日志；
+  - 人工标注主失败类、次类、工具阶段、patch 类别；
+  - 把 `classify_failure()` 与人工标签对比；
+  - 报告 precision、recall、混淆矩阵；
+  - 可选：对歧义日志用两名标注者或裁决。
+
 - **这些在 System-HIS v1.2 中的落点（无需 schema 重设计）：**
   - seq/comb：由结构表达——组合组件不拥有 `state`、无 `clock`、无 `reset_rule`；未来 L0 扩展可标"声明组合但
     RTL 含 `always @(posedge clk)`"。
@@ -520,6 +883,65 @@ v1.2 关键性质（完整理由见 freeze spec）：`components` vs `instances`
   *解码时*、从*需求级*契约作用）；(ii) **结构化工具反馈学习**——把工具诊断当结构化训练信号（diagnosis→patch），
   不是在轨迹上做普通 SFT；(iii) **带一致性约束的两阶段 REQ→HIS→Project**。为 TCAD 选/深化一个；若都没落地，
   (a)/(b)/(c) 框架仍足以撑一篇 TRETS。
+
+#### SR2FPGA 工具内化模型栈
+
+SR2FPGA 训练的是一个**项目级工具内化模型栈**，而非只是一个 SFT 任务集合。Actor 生成和修复 FPGA 工程；Critic
+把 L0–L5 工具接受边界蒸馏成无工具的通过/风险/QoR 预测。这个定位把方法从"我们做 SFT"升级为"我们训练
+Actor + Critic 来内化 EDA 工具链"。
+
+**Actor**（生成与修复，在工具验证轨迹上训练）：
+- `REQ2HIS` — requirement → System-HIS（结构化需求理解）；
+- `HIS2PROJECT` — System-HIS → 多文件 RTL 工程（skeleton 填充）；
+- `LOG2DIAG` — 工具日志 → 结构化诊断（内化工具错误语义）；
+- `FAILURE2PATCH` — 结构化诊断 → 补丁（内化修复启发式）；
+- `ARCH_MUTATE` — HIS 架构参数变异（为 Paper ② 搜索提供输入）。
+
+**Critic**（预测与风险估计，训练目标是内化工具裁决）：
+- `PROJECT2RISK` — 工程 → L0–L3 风险分（工具接受度预测）；
+- `PROJECT2LEVEL` — 工程 → 预测最高通过层级 L0–L5；
+- `PATCH2VERIFY` — 候选补丁 → 不调工具的通过/不通过预测；
+- `PROJECT2QOR` — 工程 → 预测 LUT/FF/BRAM/DSP/Fmax（即 `QOR_PRED`）。
+
+**QoR-search head**（Paper ② 的前置，现在就设计好以保持连贯性）：
+- `HIS2QOR` — HIS 架构参数 → 预测 QoR（快速代理适应度）；
+- `ARCH2RANK` — 按 QoR 轴 Pareto 排名 HIS 变体；
+- Pareto/风险过滤以减少搜索过程中昂贵的 L4 工具调用。
+
+Critic 任务是让"内化"可被测量的关键：若 `PROJECT2LEVEL` 准确，说明模型内化了工具的接受边界；若
+`PROJECT2QOR` 与实测 QoR 相关，说明模型内化了资源利用。**此 claim 仅在模型生成的行为 hole 非平凡时有效**
+——由 `behavior_hole_count` 和 `model_token_fraction` 记录；否则该方法退化为带平凡 Critic 的确定性生成器。
+
+#### Contract-preserving 生成透明度
+
+为预防"你的确定性生成器搭好工程、LLM 只填 trivial hole"的质疑，**每个样本/轨迹都记录哪些产物是确定性的、
+哪些是模型生成的**：
+
+```
+{
+  "deterministic_artifacts": [
+    "manifest", "filelist", "top shell", "testbench scaffold",
+    "constraints from board profile"
+  ],
+  "model_generated_artifacts": [
+    "module internals", "control/datapath implementation", "patches"
+  ],
+  "model_token_fraction": 0.64,
+  "behavior_hole_count": 5
+}
+```
+
+核心表述：**跨文件结构从 System-HIS 生成或受其约束；行为 RTL 由模型生成；工具对两者裁决。** 方法目标是
+**跨文件一致性按构造成立，功能/物理正确性靠验证**。
+
+#### TCAD-strong 方法 claim（一句硬技术点）
+
+必须贯穿 Method / Contributions / abstract draft 的一句：**System-HIS 约束的工程综合**——确定性 lowering 让
+跨文件一致性*按构造*成立，而模型生成的行为 hole 用**结构化 EDA 工具轨迹**训练与修复。实验要对应该 claim 给出：
+- L0 结构错误率趋零；
+- L2 功能不退化；
+- 修复迭代数下降；
+- 结构化 diagnosis→patch 优于 raw-log 修复。
 
 ### 方法陈述（怎么讲清楚；算不算"新方法"？）
 
@@ -569,28 +991,128 @@ LOG2DIAG/FAILURE2PATCH/QOR_PRED）（设计了，还没训）。
 外加一个化解 critique #3 的纯度消融：**工具验证轨迹 vs 同源未过滤蒸馏轨迹**——工具过滤本身加不加分？负结果也
 可报告，无论如何没人能说这是"只是蒸馏一个 LLM"。
 
+**可选 Critic 模式**——若 Critic 任务已训练，测量可扩展两个额外点：
+
+- **(c1)** 微调 **Actor**、首次尝试、不用真实工具（= 当前 (c) 点）；
+- **(c2)** 微调 **Actor + 学习 Critic** 自检/自修复、不用真实工具（Critic 在不调工具的情况下判断 Actor 输出）。
+
+解读：
+- **c1 − a：** 工具验证微调对生成的提升；
+- **c2 − c1：** 学习 Critic 是否有无工具自诊断价值；
+- **b − c2：** 真实工具仍然能弥合的差距（Critic 弥合不了的部分）。
+
+此分解不是 TRETS-safe 版的必需；若 Critic 任务已训练，则作为 TCAD-strong 加强项。主 (a)/(b)/(c) 框架不变；
+(c1)/(c2) 作为 Critic 模式消融标注，不替换 (c)。
+
+#### 统计测量协议
+
+所有 (a)/(b)/(c) 对比用**相同**的任务集、split、hidden 测试、修复预算、timeout、工具版本、prompt family
+（官方评测前冻结）、以及（适用时）随机 seed。报告：
+- **pass@1**；适用时 **pass@k**；
+- N 次迭代内修复成功率；修复迭代中位数；
+- **L0/L1/L2/L3/L4 survival curve**；
+- 分档 T1–T4 结果；分族结果；
+- **b−a** 与 **c−a** 的配对比较；
+- 样本量允许时 bootstrap **95% 置信区间**。
+
+**不要把 L0–L5 压成单一平均序数分**——按层报通过率 / survival curve。
+
+#### Baselines（B0–B6）
+
+- **B0** 直接 req→project；
+- **B1** req→HIS→project，无确定性 skeleton；
+- **B2** req→HIS→skeleton→模型填行为 hole；
+- **B3** AutoChip 式 raw-log 修复；
+- **B4** SR2FPGA 结构化 LOG2DIAG→PATCH 修复；
+- **B5** 微调小模型，首次尝试；
+- **B6** 微调小模型 + 修复。
+
+**非 LLM sanity baseline**（不作为 LLM baseline 对比；用于验证 benchmark、锚定 QoR 目标）：
+
+- **B_ref：** 确定性参考实现（生成器产出）；用于验证 oracle HIS、testbench 和约束内部自洽，并证明任务可实现。
+  B_ref 通过 L0–L3（或 L4）是任务进入评测集的前提。
+- **B_template：** 确定性 skeleton + 构件库组合，无模型生成行为 hole；用于校准任务可行性、建立参考 QoR（LUT/
+  FF/BRAM/DSP/Fmax budget）。模型生成设计的 QoR 相对于 B_template QoR 报告。
+
 ### 计划的消融
 
 - **System-HIS：** req→HIS→project vs req→project（证明 System-HIS 是贡献而非装饰——这支撑差异化第 1 点）。
 - **QoR 预测校准：** 预测 vs 工具实测的相关性 / 校准曲线（通用 Yosys-L3 的 LUT 是假的，Finding G，所以真正的
   资源/时序校准需 `synth_xilinx` 或 OpenXC7 L4 报告）（预测 QoR 必须保持仅模型、绝不泄漏实测——保持现有
   `predicted_qor.json` / `measured_qor.json` 分离）。
+- **REQ→HIS fidelity：** 生成的 System-HIS vs oracle/人工 System-HIS，使表示作为**需求理解目标**评估，而非仅
+  自洽契约。
+- **Contract-preserving（L0-by-construction）：** System-HIS 约束的 skeleton 生成 vs 自由生成——证明它把 L0
+  结构错误率推向零且不伤 L2。
 
-### 范围（必备核心 vs 可选）
+**完整消融表：**
+- 有/无 System-HIS；
+- 有/无 contract-preserving skeleton 生成；
+- raw 工具日志 vs 结构化诊断；
+- 仅 public 测试 vs hidden/random/stress 测试；
+- 工具过滤轨迹 vs 未过滤 LLM 轨迹；
+- 协议密集子集上 L2-core vs L2-UVM；
+- 适用处 generic Yosys QoR vs `synth_xilinx`/L4 QoR。
 
-**必备核心**（最小可发表论文）：
+#### QoR 结果：budget / reference / ratio（非裸计数）
 
-- 组合式多模块构件库 + 拓扑生成器，带基于验证的 testbench 和 System-HIS；
-- benchmark 评测集（几十到几百题，分难度）；
-- 大规模 Yosys L0–L3 + 跨难度档的 baseline (a)（真正的实测 QoR 需 `synth_xilinx` / L4——Finding G）；
-- 工具验证 QLoRA 微调 + (a)/(b)/(c) 测量；
-- System-HIS 消融。
+QoR **相对任务预算与参考实现**报告，而非只报裸计数。**不要把通用 Yosys-L3 LUT 当强 QoR 声明；有意义的 FPGA
+QoR 用 `synth_xilinx` 和/或 OpenXC7/Vivado L4 报告。** 每个任务可声明 `resource_budget`（max_lut/ff/bram/dsp）、
+`timing_budget`（target_fmax_mhz）、`reference_qor`（确定性参考实现）。报告：budget 通过率；generated/reference 的
+LUT、FF、BRAM/DSP、Fmax 比；以及适用处 Pareto dominance / non-dominated 数。
 
-**可选**（仅当时间/算力允许）：
+#### P&R 噪声与 QoR 校准协议
 
-- 大规模 L4 时序 和 几个之外的 L5 上板；
-- AC820-ZYNQ 上的 RL 规模旗舰案例；
-- OpenXC7-vs-Vivado 对比深度；QoR 校准深度。
+布线后**利用率相对稳定**，可单次 run 报告。**时序指标（WNS/Fmax）是后端启发式、seed 敏感**：对代表性 L4 子集，
+在支持处跑多 seed 并报 **mean、std、best、worst**。QoR 预测主要按 **ranking/filtering/risk estimation** 评估：
+Spearman rank correlation、calibration error、top-k 设计选择准确度、坏设计过滤准确度——**MAPE 仅作次要指标**。
+
+#### L2-core vs 可选 L2-UVM
+
+UVM 是**可选的 L2-UVM 加强层，不是默认可扩展 oracle**：
+- **L2-core：** 确定性黑盒自检仿真——Line B 的默认；
+- **L2-UVM：** 对选定协议密集任务（valid-ready stream、FIFO/skid buffer、AXI-stream 子集、AXI-lite 寄存器块、
+  RL 加速器 host 接口）的可选事务级 UVM 验证。
+
+UVM 环境从 **System-HIS + 受信任模板**生成，不由 LLM 自由编写。**L2-core vs L2-UVM stress 消融：** 报告 directed
+L2 通过但 randomized/coverage 驱动 L2-UVM 失败的案例，及覆盖差。
+
+### 范围变体（scope variants）
+
+两个干净出口，消除"RQ1/RQ2/RQ4 是最小核心"与"(a)/(b)/(c) 微调是必备"之间的内部不一致。数据集 + benchmark +
+轨迹工厂无论如何都撑得起一篇论文；区别在于训练好的模型和一个物理结果是否落地。
+
+**TRETS-safe 版：**
+- System-HIS；
+- L0–L5 benchmark 定义；
+- 工具验证轨迹工厂；
+- L0–L3 规模化结果；
+- 工具在环修复 **b−a**；
+- 失败分类法 / 语义鸿沟热图；
+- OpenXC7 作为主要开源流程；
+- Vivado 退路可选；
+- 如果条件允许，提供 L4/L5-min 代表性物理证据。
+
+**TCAD-strong 版：**
+- 全部 TRETS-safe 组件；
+- System-HIS 约束 / contract-preserving 生成；
+- 训练好的模型 **(c)**；
+- System-HIS 消融；
+- 结构化 diagnosis→patch 消融；
+- **在代表性 L4 子集上进行 Vivado 商业参考验证**；
+- 至少一个验证过的 **L4 / L5-min** 物理结果；
+- OpenXC7/Vivado 一致与不一致分析。
+
+**RQ5 QoR 预测：** 非 Paper ① 必备结论；**若有 L4 标签**，可作 calibration preview / Paper ② 桥接报告。
+
+**L5-min（上板范围）：**
+- 1–3 个代表性设计；
+- 固定 board shell；
+- host 脚本；
+- golden checksum/signature；
+- 归档日志。
+
+**L5-scale 明确不在 Paper ① 范围。** L5 作为端到端物理可行性证据报告，**不是**大规模 pass-rate 指标。
 
 **不在范围（YAGNI）：** 重训大生成模型（算力不足）；GA/RL / 重 QoR 优化（Paper ②，需 QoR 预测器当代理适应度）；
 商业规模大器件结果。
@@ -605,12 +1127,36 @@ LOG2DIAG/FAILURE2PATCH/QOR_PRED）（设计了，还没训）。
    按档报 (a)/(b)/(c) 带置信区间；冻结 prompt（prompt 泄漏已观察到，failure-repair Issue 4）。
 2. **把约束解码做出来并验证**——方法新颖性核（`2026-06-25-system-his-constrained-decoding-design.md`）只有设计；
    没有它，贡献是*方法学*不是*方法*。证明它让 L0 按构造→~0 且不伤 L2。
-3. **拿到一个验证过的物理 L4/L5 结果**——TCAD 核心卖点卡在未验证的 OpenXC7 spike（XC7Z020 chipdb = 单点失败）；
-   当前 measured QoR 是假的（Finding G）。锁工具版本；一个设计到 bitstream + 上板。
+3. **完成带商业参考的 L4/L5 物理证据。** TCAD 的物理实现 claim 不能只依赖尚未验证的
+   OpenXC7 spike。TCAD-strong 的最低门槛是：至少一个 OpenXC7 L4/L5-min 结果，
+   并在代表性 L4 子集上用 Vivado 作为商业参考流程验证相同 RTL、相同固定 board shell、
+   相同器件和相同逻辑约束。需要固定工具版本，保存 timing/utilization/DRC/methodology
+   reports，并明确分类 OpenXC7/Vivado 不一致案例。
 
 外加审稿人会要的使能性修复：数据质量（噪声标签、假 LUT——F/E/G/H0）+ 全层诊断模式，使 L0 短路不审查掉 L1–L4 分布
 （Issue 5）。**要保留的诚实优点：** 该计划不过度声称——区分 discovery vs evidence、把物理本质限制划在范围外；
 manuscript 里保持这股纪律。
+
+### Claim discipline（声称纪律）
+
+用 **"tool-accepted under the specified contract"**、**"functionally accepted by the generated golden-model
+testbench"**、**"physically implemented under the specified constraints"** 或 **"Lk-pass"**。避免过度声称：
+"correct design"、"fully verified"、"silicon-proven"、"tool replacement"。工具和 testbench 是**声明契约下的客观
+oracle，不是正确性的完整证明**。
+
+### 审稿人问题清单（reviewer-question checklist）
+
+spec 应能直接回答以下每一条：
+1. **System-HIS 不只是 prompt 模板吗？** → REQ→HIS fidelity + System-HIS 消融。
+2. **contract-preserving 生成会让任务变 trivial 吗？** → 确定性 vs 模型生成产物元数据 + L2/L3/L4 结果。
+3. **testbench 是否太弱？** → hidden/random/stress 测试 + 覆盖 + 断言 + 可选 L2-UVM。
+4. **RTL 仿真能挺过综合吗？** → L2S 综合后网表仿真。
+5. **L4 时序是真的吗？** → WNS ≥ 0、无未约束路径、无 black box、归档 DRC/时序报告。
+6. **OpenXC7 在这块板上真能跑吗？** → board 专属 spike + Vivado 参考流程。
+7. **QoR 有意义吗？** → `synth_xilinx`/L4 QoR、budget、reference 比、P&R 噪声协议。
+8. **数据是否泄漏生成器模板？** → topology/family/component-heldout 切分（S1–S5）。
+9. **失败分类法是真的吗？** → 人工日志标注校准。
+10. **SFT 是否只是蒸馏一个 LLM？** → 多源输入 + 工具过滤 vs 未过滤消融 + 仅工具标签。
 
 ## Paper ②（简述）
 
@@ -620,25 +1166,100 @@ research-objective 文档一致）。RL 旗舰案例自然落在这里，在 AC8
 **CktEvo**（仓库级闭环 LLM+工具链 PPA 优化）——区别在于搜 System-HIS 架构参数空间（而非编辑已有仓库），用蒸馏
 QoR 预测器当代理适应度，带 CktEvo 没有的物理（L4）标签。
 
+## Artifact 与可复现性清单
+
+用于 artifact review（TCAD / TRETS / ACM artifact track），公开 artifact 应包含或引用：
+
+**环境：**
+- 复现 L0–L3 的 Docker / Nix 环境（精确的 Verilator、Icarus、Yosys 版本）；
+- L4-open 用 OpenXC7 / nextpnr-xilinx 版本；
+- restricted 商业参考子集记录的 Vivado 版本；
+- board profile 版本（AC820-ZYNQ XC7Z020CLG484-2）；
+- System-HIS schema 版本（`system-his-v1.2`）；
+- 生成器 commit hash 与随机 seed。
+
+**数据：**
+- 任务切分清单（S1–S5、T1–T4 分配）；
+- prompt 版本（官方评测前冻结）；
+- 修复预算、timeout 和工具调用计账；
+- 各轨迹 `data_release` 档位标记；
+- 数据集 card（见下文）。
+
+**复现结果：**
+- 评测集 L0–L3 评测命令行；
+- 各阶段（L0/L1/L2/L3 典型）预期运行时间；
+- 代表性 L4-open（OpenXC7）和 L4-commercial（Vivado）评测脚本；
+- L5 board-shell harness（固定 shell 版本锁定、host 脚本、golden checksum）。
+
+## 数据集 / Benchmark Card
+
+每个发布的数据集版本，报告并归档：
+
+| 字段 | 是否必需 |
+|---|---|
+| 版本号 | 是 |
+| 按族和难度档的任务数 | 是 |
+| 按 split S1–S5 的轨迹数 | 是 |
+| 生成 vs 真实 IP 外部（S5）的比例 | 是 |
+| 工具版本（Verilator/Icarus/Yosys/OpenXC7/Vivado） | 是 |
+| L0–L4-open 标签可用性 | 是 |
+| L4-commercial 标签可用性 | 条件（若许可通过） |
+| Hidden 测试策略 | 是 |
+| 覆盖 / 场景画像 | 是 |
+| 每字段数据发布档位 | 是 |
+| 已知局限 | 是 |
+| 生成数据和代码的 license | 是 |
+| 引用格式 | 是 |
+
+数据集 card 是一个具名可交付物，不是事后补丁——它是让数据贡献可被他人审查和复现的保证。
+
 ## 与现有文档的关系
 
 本文界定并落地 `docs/research-objective-sr2fpga-tcad.md`。两者不一致时，本重定向（算力校准、拆成 ①/②、工具
 预言机作为显式蒸馏目标、Zynq 可复现流程）主导近期工作。若采纳本方向，请更新 research-objective 文档。
 
+**Companion specs（待主要小节稳定后拆出）：**
+本文目前同时承担设计 spec 和 paper 协议参考文档。待各节稳定后，以下 companion spec 应从主文档拆出，以保持主文档可执行：
+
+| Companion spec | 内容 |
+|---|---|
+| `sr2fpga-data-release-and-licensing.md` | 完整数据发布策略、许可审核清单、字段级档位分配 |
+| `sr2fpga-trajectory-schema.md` | 版本化完整 episode schema、字段定义、迁移说明 |
+| `sr2fpga-model-stack.md` | Actor/Critic/QoR-head 架构、训练任务定义、loss 形式 |
+| `sr2fpga-artifact-reproducibility.md` | 完整 artifact 清单、Docker/Nix 环境规范、命令行参考 |
+| `sr2fpga-l4-openxc7-vivado-protocol.md` | L4 运行协议、board shell 规范、一致性分类法、报告归档格式 |
+
+在此之前，主 spec 携带所有这些主题的摘要版（如上），companion spec 是前向指针，不是阻塞项。
+
 ## 立即下一步
 
-框架前提与构件库 MVP 已验证；v1.2 freeze 已实现（Tier-1）。近期按依赖排序：
+框架前提与构件库 MVP 已验证；v1.2 freeze 已实现（Tier-1）。已重排，使 oracle 加固先于规模、规模先于训练：
 
-1. **完成并提交 v1.2 freeze**（codex）。Tier-1 已达成；通过在真实 FSM/流水任务（RL-agent FSM 为参照）上跑通暂定字段
-   （`data_flow.timing`、结构化 `control_flow`/FSM、guard 语法）来批准 Tier-2。
-2. **规模化前先修数据质量债**——F（reset/clock 噪声标签）、E（分类法名漂移）、G（Yosys-L3 LUT 假 → 上 `synth_xilinx`
-   或把 LUT 推到 L4）、H0（抽结构化工具信号：L2 失配明细、L4 失败族、通过时警告）。见 training-data-quality issue 日志。
-3. **立测量纪律**——冻结生成 + 修复 prompt（prompt 泄漏已被观察到，failure-repair Issue 4），并加全层诊断模式，
-   使 L0 失败不掩盖 L1–L4 分布（Issue 5）。
-4. **规模化轨迹数据（Line B）** 跑到 L3——RQ3 最大阻塞；现有数据 N≈1/档（discovery，非 evidence）。
-5. **OpenXC7 spike**（AC820-ZYNQ，Windows+WSL2；spec+plan 就绪）→ 解锁 L4 + RQ5（真 measured QoR；报告成为 RQ5
-   训练信号）。
-6. **训练第一个模型**——在规模化工具验证数据上微调 → (c) 点 / RQ3 headline（先做 L0–L3 生成 + 修复；单卡 4090 SFT）。
+1. **测量冻结（measurement freeze）**——冻结 prompt、seed、timeout、修复预算、工具版本、hidden 测试、split 策略、
+   pass/warn/fail 语义。（同时在真实 FSM/流水任务上跑通暂定字段——`data_flow.timing`、结构化 `control_flow`/FSM、
+   guard 语法——以批准 v1.2 Tier-2；RL-agent FSM 为参照。）
+2. **Oracle 加固**——加 REQ→HIS fidelity；加 L2 hidden/random/stress 测试 + 覆盖目标；加断言库；加可选 L2S
+   综合后网表仿真；定稿 L2-core / 可选 L2-UVM 切分。
+2.5. **IP/数据发布策略落地**——确定 open_public / restricted_reference / internal_only 对每个轨迹字段的档位分配；
+   确认 Vivado 结构化元数据能否在许可下发布；给所有 episode schema 字段标注发布档位；记录机构法律审核状态。
+3. **数据质量修复**——F（reset/clock 标签噪声）、E（分类法名漂移）、G（Yosys-L3 LUT 假 → 上 `synth_xilinx` 或把
+   QoR 推到 L4）、H0（结构化工具信号抽取：L2 失配明细、L4 失败族、通过时警告）。
+4. **Contract-preserving 生成**——System-HIS → 确定性工程 skeleton；模型填行为 hole；记录确定性 vs 模型生成
+   产物元数据；跑 L0-by-construction 消融。
+5. **全层诊断模式**——官方 verdict 模式保持首失败层；诊断模式收集更深 L1–L4 信号（Issue 5）。
+6. **规模化 Line B 到 L3**——为 RQ3 生成足够轨迹；按 split 策略 S1–S5 报告。（现有数据 N≈1/档——discovery，非
+   evidence。）
+7. **OpenXC7 + Vivado L4 参考 spike**
+   - 将一个 generated design 通过 OpenXC7 跑到 bitstream
+   - 将相同 RTL/core/board-shell/logical constraints 通过 Vivado 跑一遍
+   - 确认器件为 `XC7Z020CLG484-2`
+   - 保存 timing/utilization/DRC/methodology reports
+   - 分类 OpenXC7/Vivado 一致或不一致
+   - 用该结果定义第一批 L4-open/L4-commercial 标签
+8. **第一个 SFT 模型**——产出第一个 (c) 点；先做 REQ2HIS、HIS2PROJECT、LOG2DIAG、FAILURE2PATCH；在冻结的
+   (a)/(b)/(c) 协议下评测（单卡 4090 SFT）。
+8.5. **Artifact 打包**——创建数据集 card（见"数据集 / Benchmark Card"）；创建工具版本清单；创建带 Docker/Nix 环境
+   的 L0–L3 复现脚本；创建代表性 L4-open / L4-commercial 评测脚本；版本锁定 board shell。
 
-第 2–4 步是官方 (a)/(b)/(c) 测量的前置门；OpenXC7 spike（5）并行、独立。schema freeze 与 OpenXC7 spike 的 spec/plan
-均已存在（writing-plans 已完成）；剩下的门是执行 + 规模，不是更多设计。
+第 1–6 步是官方 (a)/(b)/(c) 测量的前置门；OpenXC7/Vivado L4-min（7）并行、独立。schema freeze 与 OpenXC7 spike
+的 spec/plan 均已存在（writing-plans 已完成）；剩下的门是执行 + 规模，不是更多设计。

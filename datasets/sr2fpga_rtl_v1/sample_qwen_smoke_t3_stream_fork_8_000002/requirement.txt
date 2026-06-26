@@ -1,0 +1,1 @@
+Generate an 8-bit FPGA RTL project that duplicates one valid-ready input stream to two output streams.

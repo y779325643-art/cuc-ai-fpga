@@ -14,7 +14,8 @@
       "Bash(git add *)",
       "Bash(git commit *)",
       "Bash(python3 -m unittest LLM.tests.test_sr2fpga_agent_deepseek.DeepSeekProviderTest.test_diff_projects_outputs_unified_diff_for_changed_files LLM.tests.test_sr2fpga_agent_deepseek.DeepSeekProviderTest.test_diff_projects_includes_added_and_deleted_files -q)",
-      "Bash(python3 -m unittest LLM.tests.test_sr2fpga_agent_deepseek.DeepSeekProviderTest.test_diff_projects_outputs_unified_diff_for_changed_files -q)"
+      "Bash(python3 -m unittest LLM.tests.test_sr2fpga_agent_deepseek.DeepSeekProviderTest.test_diff_projects_outputs_unified_diff_for_changed_files -q)",
+      "Bash(xargs -0 rm -rf)"
     ]
   }
 }

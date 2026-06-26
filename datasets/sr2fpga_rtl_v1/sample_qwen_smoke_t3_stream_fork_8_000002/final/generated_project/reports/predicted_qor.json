@@ -1,0 +1,14 @@
+{
+  "tool": "qor_predictor",
+  "version": "1.0",
+  "estimates": {
+    "lut": 45,
+    "ff": 24,
+    "bram": 0,
+    "dsp": 0,
+    "max_frequency_mhz": 180,
+    "power_mw": 12.5
+  },
+  "confidence": "high",
+  "notes": "Estimates based on gate-level synthesis models for 7-series FPGA"
+}

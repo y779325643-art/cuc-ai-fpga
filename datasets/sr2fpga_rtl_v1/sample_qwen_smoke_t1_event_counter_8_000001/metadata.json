@@ -1,0 +1,16 @@
+{
+  "source": "qwen",
+  "generator_provider": "qwen",
+  "model": "qwen3.7-plus",
+  "failure_origin": "natural_llm",
+  "difficulty_tier": "T1",
+  "measurement_point": "a_first_attempt_no_tools",
+  "repair_provider": "none",
+  "failure_injectors": [],
+  "task_type": "composed_event_counter",
+  "width": 8,
+  "system_his_schema_version": "system-his-v1.2",
+  "training_split": "clean",
+  "topology_id": "t1_event_counter",
+  "requirement_style": "simple_prompt"
+}
