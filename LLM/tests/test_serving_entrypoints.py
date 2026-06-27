@@ -4,6 +4,8 @@ import subprocess
 import tempfile
 import unittest
 
+from LLM.src.sr2fpga_agent.local_tools import executable_env, resolve_executable
+
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
@@ -42,13 +44,13 @@ class ServingEntrypointsTest(unittest.TestCase):
             )
             fake_vllm.chmod(0o755)
 
-            env = os.environ.copy()
-            env["PATH"] = f"{temp_path}:{env['PATH']}"
+            env = executable_env(os.environ.copy())
+            env["PATH"] = os.pathsep.join([str(temp_path), env["PATH"]])
             env["CAPTURE_FILE"] = str(capture_file)
             if extra_env:
                 env.update(extra_env)
             subprocess.run(
-                ["bash", str(script)],
+                [_bash_executable(), str(script)],
                 cwd=REPO_ROOT,
                 env=env,
                 check=True,
@@ -95,9 +97,9 @@ class ServingEntrypointsTest(unittest.TestCase):
         env["QWEN_MODEL_PATH"] = missing_path
 
         result = subprocess.run(
-            ["bash", str(REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh")],
+            [_bash_executable(), str(REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh")],
             cwd=REPO_ROOT,
-            env=env,
+            env=executable_env(env),
             capture_output=True,
             text=True,
         )
@@ -124,6 +126,11 @@ class ServingEntrypointsTest(unittest.TestCase):
         self.assertIn("repetition_penalty=1.1", script)
         self.assertIn("eos_token_id=tokenizer.eos_token_id", script)
         self.assertIn("pad_token_id=tokenizer.eos_token_id", script)
+
+
+def _bash_executable() -> str:
+    bash = resolve_executable("bash")
+    return str(bash) if bash is not None else "bash"
 
 
 if __name__ == "__main__":

@@ -32,7 +32,7 @@ sources:
     generation_mode: two_stage
   deepseek-his-v12:
     kind: deepseek-his-v12
-    model: deepseek-v4-flash
+    model: deepseek-v4-pro
     base_url: https://api.deepseek.com
     api_key_env: DEEPSEEK_API_KEY
     generation_mode: two_stage

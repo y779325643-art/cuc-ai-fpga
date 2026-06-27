@@ -3,7 +3,7 @@ export_root: datasets/sr2fpga_rtl_v1_exports
 run_root: tmp/sr2fpga_runs
 provider: deepseek
 repair_provider: none
-model: deepseek-v4-flash
+model: deepseek-v4-pro
 base_url: https://api.deepseek.com
 api_key_env: DEEPSEEK_API_KEY
 env_file: .env

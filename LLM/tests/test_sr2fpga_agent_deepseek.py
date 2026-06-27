@@ -1,18 +1,22 @@
 import json
 import os
 import unittest
+import urllib.error
 from unittest import mock
 
 from LLM.src.sr2fpga_agent.deepseek import (
-    DeepSeekClient,
-    DeepSeekConfig,
+    AnthropicCompatibleClient,
+    AnthropicCompatibleConfig,
     DeepSeekHisProjectGenerator,
     DeepSeekProjectGenerator,
     DeepSeekRepairer,
     DeepSeekSystemHisGenerator,
     DeepSeekTwoStageProjectGenerator,
+    OpenAICompatibleClient,
+    OpenAICompatibleConfig,
     _his_project_messages,
     _system_his_v12_messages,
+    _with_system_his_retry_feedback,
     _project_messages,
     _repair_messages,
     diff_projects,
@@ -24,17 +28,51 @@ from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 
 
 class DeepSeekProviderTest(unittest.TestCase):
-    def test_deepseek_client_passes_ssl_context_to_urlopen(self) -> None:
+    def test_anthropic_compatible_client_uses_official_messages_headers(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps({"content": [{"type": "text", "text": "{\"ok\": true}"}]}).encode("utf-8")
+        )
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key="fake-key",
+                model="claude-opus-4-8",
+                base_url="https://w.ciykj.cn/v1",
+                timeout_seconds=7,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+        ):
+            content = client.chat(
+                [
+                    {"role": "system", "content": "Return strict JSON."},
+                    {"role": "user", "content": "Return ok."},
+                ]
+            )
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(request.full_url, "https://w.ciykj.cn/v1/messages")
+        self.assertEqual(request.headers["X-api-key"], "fake-key")
+        self.assertEqual(request.headers["Anthropic-version"], "2023-06-01")
+        self.assertEqual(payload["system"], "Return strict JSON.")
+        self.assertEqual(payload["messages"], [{"role": "user", "content": "Return ok."}])
+        self.assertEqual(content, '{"ok": true}')
+
+    def test_openai_compatible_client_passes_ssl_context_to_urlopen(self) -> None:
         ssl_context = object()
         response = FakeHTTPResponse(
             json.dumps({"choices": [{"message": {"content": "{\"files\": {}}"}}]}).encode("utf-8")
         )
-        client = DeepSeekClient(
-            DeepSeekConfig(
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
                 api_key="fake-key",
                 model="deepseek-test",
                 base_url="https://api.deepseek.example",
                 timeout_seconds=7,
+                transport_attempts=1,
             )
         )
 
@@ -48,9 +86,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIs(urlopen.call_args.kwargs["context"], ssl_context)
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 7)
 
-    def test_deepseek_client_wraps_timeout_errors(self) -> None:
-        client = DeepSeekClient(
-            DeepSeekConfig(
+    def test_openai_compatible_client_wraps_timeout_errors(self) -> None:
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
                 api_key="fake-key",
                 model="deepseek-test",
                 base_url="https://api.deepseek.example",
@@ -62,8 +100,158 @@ class DeepSeekProviderTest(unittest.TestCase):
             mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
             mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", side_effect=TimeoutError("timed out")),
         ):
-            with self.assertRaisesRegex(RuntimeError, "DeepSeek API request timed out"):
+            with self.assertRaisesRegex(RuntimeError, "OpenAI-compatible API request timed out"):
                 client.chat([{"role": "user", "content": "hello"}])
+
+    def test_openai_compatible_client_retries_transient_http_errors(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
+        )
+        transient_error = urllib.error.HTTPError(
+            url="https://api.deepseek.example/chat/completions",
+            code=502,
+            msg="Bad Gateway",
+            hdrs=None,
+            fp=FakeHTTPResponse(b'{"error":"upstream"}'),
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=7,
+                transport_attempts=2,
+                retry_backoff_seconds=0,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen",
+                side_effect=[transient_error, response],
+            ) as urlopen,
+        ):
+            content = client.chat([{"role": "user", "content": "hello"}])
+
+        self.assertEqual(content, '{"ok": true}')
+        self.assertEqual(urlopen.call_count, 2)
+
+    def test_openai_compatible_client_omits_response_format_for_claude_models(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="claude-opus-4-5-20251101",
+                base_url="https://api.claude.example",
+                timeout_seconds=7,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+        ):
+            content = client.chat([{"role": "user", "content": "hello"}])
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(content, '{"ok": true}')
+        self.assertNotIn("response_format", payload)
+
+    def test_openai_compatible_client_merges_system_messages_for_claude_models(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="claude-opus-4-8",
+                base_url="https://api.claude.example",
+                timeout_seconds=7,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+        ):
+            content = client.chat(
+                [
+                    {"role": "system", "content": "Use strict JSON."},
+                    {"role": "user", "content": "Return ok."},
+                ]
+            )
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(content, '{"ok": true}')
+        self.assertEqual(payload["messages"][0]["role"], "user")
+        self.assertIn("Use strict JSON.", payload["messages"][0]["content"])
+        self.assertIn("Return ok.", payload["messages"][0]["content"])
+        self.assertFalse(any(message["role"] == "system" for message in payload["messages"]))
+
+    def test_openai_compatible_client_stream_chat_parses_sse_delta_content(self) -> None:
+        ssl_context = object()
+        response = FakeStreamingHTTPResponse(
+            [
+                b": keep-alive\n",
+                b"\n",
+                b'data: {"choices":[{"delta":{"content":"{\\"files\\":"}}]}\n',
+                b'data: {"choices":[{"delta":{"content":" {}}"}}]}\n',
+                b"data: [DONE]\n",
+            ]
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=7,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=ssl_context),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+        ):
+            content = client.stream_chat([{"role": "user", "content": "hello"}])
+
+        self.assertEqual(content, '{"files": {}}')
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertTrue(payload["stream"])
+        self.assertIs(urlopen.call_args.kwargs["context"], ssl_context)
+        self.assertEqual(urlopen.call_args.kwargs["timeout"], 7)
+
+    def test_openai_compatible_client_stream_chat_ignores_metadata_chunks(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b'data: {"id":"chunk-1","object":"chat.completion.chunk","choices":[]}\n',
+                b'data: {"choices":[{"delta":{"content":"{\\"files\\":"}}]}\n',
+                b'data: {"usage":{"prompt_tokens":1,"completion_tokens":1}}\n',
+                b'data: {"choices":[{"delta":{"content":" {}}"}}]}\n',
+                b"data: [DONE]\n",
+            ]
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=7,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
+        ):
+            content = client.stream_chat([{"role": "user", "content": "hello"}])
+
+        self.assertEqual(content, '{"files": {}}')
 
     def test_parse_project_files_accepts_files_mapping(self) -> None:
         content = json.dumps(
@@ -179,7 +367,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("+++ b/new.v", patch)
 
     def test_deepseek_project_generator_uses_client_response(self) -> None:
-        client = FakeDeepSeekClient(
+        client = FakeChatClient(
             json.dumps(
                 {
                     "files": {
@@ -226,7 +414,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             parse_system_his_v12(json.dumps(payload))
 
     def test_deepseek_system_his_generator_uses_short_prompt_and_checker(self) -> None:
-        client = FakeDeepSeekClient(json.dumps(_system_his_v12_fixture()))
+        client = FakeChatClient(json.dumps(_system_his_v12_fixture()))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -253,7 +441,7 @@ class DeepSeekProviderTest(unittest.TestCase):
     def test_deepseek_system_his_generator_retries_after_invalid_his(self) -> None:
         invalid = _system_his_v12_fixture()
         invalid["instances"][0]["component"] = "missing_component"
-        client = FakeDeepSeekClient([json.dumps(invalid), json.dumps(_system_his_v12_fixture())])
+        client = FakeChatClient([json.dumps(invalid), json.dumps(_system_his_v12_fixture())])
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -269,6 +457,32 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("previous System-HIS output failed validation", client.messages_history[1][-1]["content"])
         self.assertIn("missing component 'missing_component'", client.messages_history[1][-1]["content"])
 
+    def test_deepseek_system_his_generator_retries_after_req_fidelity_mismatch(self) -> None:
+        mismatched_system_his = _system_his_v12_fixture()
+        corrected_system_his = _deterministic_system_his(
+            ProjectRequest(
+                task_type="composed_event_counter",
+                width=8,
+                project_name="event_counter_8bit",
+                description="Build an event counter.",
+            )
+        )
+        client = FakeChatClient([json.dumps(mismatched_system_his), json.dumps(corrected_system_his)])
+        request = ProjectRequest(
+            task_type="composed_event_counter",
+            width=8,
+            project_name="event_counter_8bit",
+            description="Build an event counter.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        system_his = DeepSeekSystemHisGenerator(client).generate(request, platform)
+
+        self.assertEqual(system_his["top"]["name"], "top")
+        self.assertEqual(client.call_count, 2)
+        self.assertIn("REQ2HIS fidelity", client.messages_history[1][-1]["content"])
+        self.assertIn("composed_event_counter requires component 'event_gate'", client.messages_history[1][-1]["content"])
+
     def test_system_his_retry_feedback_includes_previous_json_and_ir_repair_rules(self) -> None:
         invalid = _system_his_v12_fixture()
         invalid["instances"][0].pop("name")
@@ -283,7 +497,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 "related_flows": [],
             }
         )
-        client = FakeDeepSeekClient([json.dumps(invalid), json.dumps(_system_his_v12_fixture())])
+        client = FakeChatClient([json.dumps(invalid), json.dumps(_system_his_v12_fixture())])
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -347,9 +561,62 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("guard", user_prompt)
         self.assertIn("depth <= 2", user_prompt)
 
+    def test_system_his_v12_initial_prompt_keeps_composed_topology_entry_brief(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_stream_accumulator",
+            width=8,
+            project_name="accum_8bit",
+            description="Generate a stream accumulator.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_stream_accumulator", user_prompt)
+        self.assertIn("components: skid_buffer, accumulator_core", user_prompt)
+        self.assertNotIn("Required top ports:", user_prompt)
+        self.assertNotIn("Do not rename these ports to AXI-style names", user_prompt)
+        self.assertNotIn("s_axis_tvalid", user_prompt)
+        self.assertNotIn("m_axis_tdata", user_prompt)
+
+    def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_stream_fork",
+            width=8,
+            project_name="fork_8bit",
+            description="Generate a stream fork.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("fsm_transition rules must reference a declared state.fsms entry", user_prompt)
+        self.assertNotIn("Do not leave fsm, from, to, effect.action, or effect.target empty", user_prompt)
+        self.assertNotIn("If no FSM is needed, use handshake_rule, enable_rule, or stall_rule instead", user_prompt)
+
+    def test_system_his_retry_feedback_includes_task_specific_fidelity_guidance(self) -> None:
+        messages = [
+            {"role": "system", "content": "Return JSON."},
+            {"role": "user", "content": "Generate a System-HIS."},
+        ]
+
+        retry_messages = _with_system_his_retry_feedback(
+            messages,
+            "DeepSeek System-HIS REQ2HIS fidelity failed: missing top ports",
+            '{"schema_version":"system-his-v1.2"}',
+            task_type="composed_stream_accumulator",
+        )
+        retry_prompt = retry_messages[-1]["content"]
+
+        self.assertIn("Required top ports: clk, rst_n, in_valid, in_data, in_ready, sample_valid, sum", retry_prompt)
+        self.assertIn("Do not rename these ports to AXI-style names", retry_prompt)
+        self.assertIn("s_axis_tvalid", retry_prompt)
+        self.assertIn("Do not leave fsm, from, to, effect.action, or effect.target empty", retry_prompt)
+        self.assertIn("If no FSM is needed, use handshake_rule, enable_rule, or stall_rule instead", retry_prompt)
+
     def test_deepseek_his_project_generator_uses_checked_his_contract(self) -> None:
         system_his = _system_his_v12_fixture()
-        client = FakeDeepSeekClient(json.dumps({"files": _project_files_for_system_his_v12(system_his)}))
+        client = FakeChatClient(json.dumps({"files": _project_files_for_system_his_v12(system_his)}))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -363,6 +630,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
         self.assertEqual(client.call_count, 1)
+        self.assertEqual(client.stream_call_count, 1)
+        self.assertEqual(client.chat_call_count, 0)
         self.assertIn('"schema_version": "system-his-v1.2"', client.messages[1]["content"])
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", client.messages[1]["content"])
 
@@ -371,7 +640,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         invalid_system_his = _system_his_v12_fixture()
         invalid_system_his["instances"][0]["component"] = "missing_component"
         files = _project_files_for_system_his_v12(invalid_system_his)
-        client = FakeDeepSeekClient(json.dumps({"files": files}))
+        client = FakeChatClient(json.dumps({"files": files}))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -388,7 +657,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         changed_system_his = _system_his_v12_fixture()
         changed_system_his["components"][0]["intent"] = "silently changed component intent"
         files = _project_files_for_system_his_v12(changed_system_his)
-        client = FakeDeepSeekClient(json.dumps({"files": files}))
+        client = FakeChatClient(json.dumps({"files": files}))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -419,7 +688,7 @@ class DeepSeekProviderTest(unittest.TestCase):
 
     def test_deepseek_two_stage_project_generator_runs_req2his_then_his2project(self) -> None:
         system_his = _system_his_v12_fixture()
-        client = FakeDeepSeekClient(
+        client = FakeChatClient(
             [
                 json.dumps(system_his),
                 json.dumps({"files": _project_files_for_system_his_v12(system_his)}),
@@ -438,12 +707,14 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
         self.assertEqual(client.call_count, 2)
+        self.assertEqual(client.chat_call_count, 1)
+        self.assertEqual(client.stream_call_count, 1)
         self.assertIn("Generate a canonical System-HIS v1.2", client.messages_history[0][1]["content"])
         self.assertIn("Generate a complete SR2FPGA Verilog RTL project", client.messages_history[1][1]["content"])
 
     def test_deepseek_two_stage_project_generator_emits_stage_events(self) -> None:
         system_his = _system_his_v12_fixture()
-        client = FakeDeepSeekClient(
+        client = FakeChatClient(
             [
                 json.dumps(system_his),
                 json.dumps({"files": _project_files_for_system_his_v12(system_his)}),
@@ -478,7 +749,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         invalid = _system_his_v12_fixture()
         invalid["instances"][0]["component"] = "missing_component"
         system_his = _system_his_v12_fixture()
-        client = FakeDeepSeekClient(
+        client = FakeChatClient(
             [
                 json.dumps(invalid),
                 json.dumps(system_his),
@@ -503,7 +774,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("missing component 'missing_component'", retry_events[0]["error"])
 
     def test_deepseek_project_generator_retries_after_invalid_response(self) -> None:
-        client = FakeDeepSeekClient(
+        client = FakeChatClient(
             [
                 '{"files": {"system_his.json": "{}"',
                 json.dumps(
@@ -557,7 +828,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 }
             }
         )
-        client = FakeDeepSeekClient([single_file_payload, multi_file_payload])
+        client = FakeChatClient([single_file_payload, multi_file_payload])
         request = ProjectRequest(task_type="uart_tx", width=8, project_name="uart_tx_8bit")
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -612,7 +883,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 }
             }
         )
-        client = FakeDeepSeekClient(repaired_payload)
+        client = FakeChatClient(repaired_payload)
         diagnosis = {
             "stage": "lint",
             "failure_type": "port_mismatch",
@@ -665,7 +936,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 }
             }
         )
-        client = FakeDeepSeekClient(repaired_payload)
+        client = FakeChatClient(repaired_payload)
         diagnosis = {
             "stage": "lint",
             "failure_type": "reset_behavior_error",
@@ -750,7 +1021,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             **_project_files_for_system_his_v12(system_his),
             "system_his.json": json.dumps(downgraded_his) + "\n",
         }
-        client = FakeDeepSeekClient(json.dumps({"files": repaired_files}))
+        client = FakeChatClient(json.dumps({"files": repaired_files}))
         diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "syntax error"}
 
         with self.assertRaisesRegex(ValueError, "DeepSeek repair system_his.json failed validation"):
@@ -766,7 +1037,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             "system_his.json": json.dumps(mutated_his, indent=2) + "\n",
             "rtl/top.v": "module top; endmodule\n",
         }
-        client = FakeDeepSeekClient(json.dumps({"files": repaired_files}))
+        client = FakeChatClient(json.dumps({"files": repaired_files}))
         diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "rtl/top.v syntax error"}
 
         with self.assertRaisesRegex(ValueError, "System-HIS v1.2 contract changed during RTL repair"):
@@ -785,7 +1056,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             "",
         )
         self.assertNotEqual(repaired_files["rtl/stream_join.v"], original.files["rtl/stream_join.v"])
-        client = FakeDeepSeekClient(json.dumps({"files": repaired_files}))
+        client = FakeChatClient(json.dumps({"files": repaired_files}))
         diagnosis = {
             "stage": "lint",
             "failure_type": "lint_warning_as_error",
@@ -995,7 +1266,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         requirement = "Design an 8-bit counter with enable, reset, and a self-checking testbench."
         with (
             mock.patch.object(cli, "DataGenerationAgent", FakeAgent),
-            mock.patch.object(cli, "build_project_generator", return_value="fake-llm-generator"),
+            mock.patch.object(cli, "build_project_generator", return_value="fake-llm-generator") as build_generator,
             mock.patch.object(cli, "build_repairer", return_value="fake-repairer"),
             mock.patch("builtins.print"),
         ):
@@ -1023,6 +1294,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             )
 
         self.assertEqual(captured["requirement"], requirement)
+        self.assertEqual(build_generator.call_args.kwargs["model"], "deepseek-v4-pro")
         self.assertEqual(captured["request"].description, requirement)
         self.assertEqual(captured["request"].task_type, "counter")
         self.assertEqual(captured["request"].width, 8)
@@ -1080,14 +1352,24 @@ class DeepSeekProviderTest(unittest.TestCase):
             )
 
 
-class FakeDeepSeekClient:
+class FakeChatClient:
     def __init__(self, content) -> None:
         self.content = content
         self.call_count = 0
+        self.chat_call_count = 0
+        self.stream_call_count = 0
         self.messages = []
         self.messages_history = []
 
     def chat(self, messages):
+        self.chat_call_count += 1
+        return self._respond(messages)
+
+    def stream_chat(self, messages):
+        self.stream_call_count += 1
+        return self._respond(messages)
+
+    def _respond(self, messages):
         self.call_count += 1
         self.messages = messages
         self.messages_history.append(messages)
@@ -1108,6 +1390,25 @@ class FakeHTTPResponse:
 
     def read(self) -> bytes:
         return self.body
+
+    def close(self) -> None:
+        pass
+
+
+class FakeStreamingHTTPResponse:
+    def __init__(self, lines: list[bytes]) -> None:
+        self.lines = list(lines)
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def readline(self) -> bytes:
+        if not self.lines:
+            return b""
+        return self.lines.pop(0)
 
 
 def _valid_manifest(sources=None) -> str:
@@ -1131,6 +1432,12 @@ def _valid_manifest(sources=None) -> str:
 def _system_his_v12_fixture() -> dict[str, object]:
     with open("docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json", encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def _deterministic_system_his(request: ProjectRequest) -> dict[str, object]:
+    platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+    project = ProjectGenerator().generate(request, platform)
+    return json.loads(project.files["system_his.json"])
 
 
 def _project_files_for_system_his_v12(system_his: dict[str, object]) -> dict[str, str]:
@@ -1158,3 +1465,4 @@ def _project_files_for_system_his_v12(system_his: dict[str, object]) -> dict[str
 
 if __name__ == "__main__":
     unittest.main()
+
