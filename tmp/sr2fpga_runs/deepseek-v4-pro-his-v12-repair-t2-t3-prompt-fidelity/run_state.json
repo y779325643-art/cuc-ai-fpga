@@ -1,0 +1,24 @@
+{
+  "run_id": "deepseek-v4-pro-his-v12-repair-t2-t3-prompt-fidelity",
+  "next_index": 2,
+  "completed_samples": [
+    "sample_his_v12_pro_prompt_fidelity_t2_stream_accumulator_8_000001",
+    "sample_his_v12_pro_prompt_fidelity_t3_stream_fork_8_000002"
+  ],
+  "buckets": {
+    "success_l3": [
+      "sample_his_v12_pro_prompt_fidelity_t2_stream_accumulator_8_000001"
+    ],
+    "repair_trajectory": [
+      "sample_his_v12_pro_prompt_fidelity_t3_stream_fork_8_000002"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "lint_warning_as_error": 3,
+    "unknown": 1,
+    "testbench_timeout": 2
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "5efffe287ed84b3e94d698c9154fd25628a1a424856edc12efd8c7673a4d10e9"
+}

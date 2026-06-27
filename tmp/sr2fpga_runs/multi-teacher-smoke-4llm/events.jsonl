@@ -1,0 +1,3 @@
+{"event": "sample_exists", "sample_id": "sample_multi_teacher_smoke_t1_event_counter_8_000001"}
+{"event": "sample_exists", "sample_id": "sample_multi_teacher_smoke_t1_event_counter_8_000002"}
+{"event": "generation_stage_started", "stage": "req2his", "project_name": "multi_teacher_smoke_t1_event_counter_8_000003", "task_type": "composed_event_counter", "width": 8, "sample_id": "sample_multi_teacher_smoke_t1_event_counter_8_000003", "source": "deepseek-his-v12", "failure_origin": "natural_llm", "difficulty_tier": "T1", "topology_id": "t1_event_counter", "requirement_style": "simple_prompt", "measurement_point": "a_first_attempt_no_tools"}

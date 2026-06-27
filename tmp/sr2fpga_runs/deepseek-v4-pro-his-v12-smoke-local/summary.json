@@ -1,0 +1,135 @@
+{
+  "run_id": "deepseek-v4-pro-his-v12-smoke-local",
+  "config_fingerprint": "6c8a468eff5be7e27ea7914ba05763656e8c5f1e29991126a77af6d7fd280a2f",
+  "total_planned": 1,
+  "total_completed": 1,
+  "next_index": 1,
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_his_v12_pro_smoke_t4_dual_stream_join_8_000001"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "functional_mismatch": 1
+  },
+  "failure_family_breakdown": {
+    "rtl_sim_failure": 1
+  },
+  "attempt_stage_transition_breakdown": {},
+  "latent_testbench_issue_breakdown": {},
+  "metadata_breakdown": {
+    "source": {
+      "deepseek-his-v12": 1
+    },
+    "failure_origin": {
+      "natural_llm": 1
+    },
+    "requirement_style": {
+      "simple_prompt": 1
+    },
+    "difficulty_tier": {
+      "T4": 1
+    },
+    "topology_id": {
+      "t4_dual_stream_join": 1
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": 1
+    }
+  },
+  "pass_level_breakdown": {
+    "L1": 1
+  },
+  "calibration_matrix": {
+    "source": {
+      "deepseek-his-v12": {
+        "total": 1,
+        "pass_levels": {
+          "L1": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "failure_origin": {
+      "natural_llm": {
+        "total": 1,
+        "pass_levels": {
+          "L1": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "requirement_style": {
+      "simple_prompt": {
+        "total": 1,
+        "pass_levels": {
+          "L1": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "difficulty_tier": {
+      "T4": {
+        "total": 1,
+        "pass_levels": {
+          "L1": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "topology_id": {
+      "t4_dual_stream_join": {
+        "total": 1,
+        "pass_levels": {
+          "L1": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": {
+        "total": 1,
+        "pass_levels": {
+          "L1": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "failure_family": {
+      "rtl_sim_failure": {
+        "total": 1,
+        "pass_levels": {
+          "L1": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    }
+  },
+  "contract_metrics": {
+    "total_labeled": 1,
+    "l0_contract_failures": 0,
+    "cross_file_consistency_error_rate": 0.0
+  },
+  "exports_refreshed": true,
+  "line_b_targets": {
+    "l3_success_ratio": 0.0,
+    "repair_trajectory_ratio": 1.0,
+    "max_samples": 1
+  }
+}

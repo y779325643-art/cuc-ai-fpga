@@ -1,0 +1,160 @@
+{
+  "run_id": "multi-teacher-smoke-deepseek-deterministic",
+  "config_fingerprint": "41de2a9a20479ed3a613af0c80bd18f0b55d489057719ecfda55e2ccfd94020a",
+  "total_planned": 2,
+  "total_completed": 2,
+  "next_index": 2,
+  "buckets": {
+    "success_l3": [
+      "sample_multi_teacher_smoke_t1_event_counter_8_000002"
+    ],
+    "repair_trajectory": [
+      "sample_multi_teacher_smoke_t1_event_counter_8_000001"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "l0_contract_violation": 3
+  },
+  "failure_family_breakdown": {
+    "artifact_contract_failure": 1
+  },
+  "attempt_stage_transition_breakdown": {
+    "l0_consistency->l0_consistency": 2
+  },
+  "latent_testbench_issue_breakdown": {},
+  "metadata_breakdown": {
+    "source": {
+      "deepseek-his-v12": 1,
+      "deterministic": 1
+    },
+    "failure_origin": {
+      "natural_llm": 1,
+      "deterministic_template": 1
+    },
+    "requirement_style": {
+      "simple_prompt": 2
+    },
+    "difficulty_tier": {
+      "T1": 2
+    },
+    "topology_id": {
+      "t1_event_counter": 2
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": 2
+    }
+  },
+  "pass_level_breakdown": {
+    "L0_FAIL": 1,
+    "L3": 1
+  },
+  "calibration_matrix": {
+    "source": {
+      "deepseek-his-v12": {
+        "total": 1,
+        "pass_levels": {
+          "L0_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "deterministic": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "failure_origin": {
+      "natural_llm": {
+        "total": 1,
+        "pass_levels": {
+          "L0_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "deterministic_template": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "requirement_style": {
+      "simple_prompt": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "L3": 1
+        },
+        "l3_pass_rate": 0.5,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "difficulty_tier": {
+      "T1": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "L3": 1
+        },
+        "l3_pass_rate": 0.5,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "topology_id": {
+      "t1_event_counter": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "L3": 1
+        },
+        "l3_pass_rate": 0.5,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "L3": 1
+        },
+        "l3_pass_rate": 0.5,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      }
+    },
+    "failure_family": {
+      "artifact_contract_failure": {
+        "total": 1,
+        "pass_levels": {
+          "L0_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 1.0
+      }
+    }
+  },
+  "contract_metrics": {
+    "total_labeled": 2,
+    "l0_contract_failures": 1,
+    "cross_file_consistency_error_rate": 0.5
+  },
+  "exports_refreshed": true,
+  "line_b_targets": {}
+}
