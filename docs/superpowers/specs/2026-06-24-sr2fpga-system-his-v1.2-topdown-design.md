@@ -2,9 +2,11 @@
 
 ## Status
 
-Prototype design (2026-06-24), now under smoke-test implementation. This is a
-focused trial of a more engineer-like System-HIS shape before migrating the
-main clean training split.
+Historical prototype design (2026-06-24). This trial has been superseded by
+`2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`. The canonical schema string
+is now exactly `system-his-v1.2`; `system-his-v1.2-topdown` is retained here only
+as historical design context and should not be used for new samples or clean
+REQ2HIS training targets.
 
 ## Motivation
 
@@ -58,7 +60,7 @@ Design borrowings:
 - From FPGA architecture practice: clock/reset, protocols, CDC, timing, QoR,
   and testbench acceptance are first-class.
 
-## Scope For This Trial
+## Historical Scope For This Trial
 
 Included:
 
@@ -74,7 +76,10 @@ Excluded for now:
 - Replacing the project-level v1.1 L0 checker for legacy/v1.1 samples.
 - Full behavioral semantics or formal properties.
 
-Current implementation note:
+Historical implementation note:
+
+The items below describe the original prototype plan. Current implementation
+status is governed by the freeze spec and `docs/current-status.md`.
 
 - `LLM/src/sr2fpga_agent/system_his_v12_checker.py` implements a standalone
   v1.2 structural checker for REQ2HIS output.

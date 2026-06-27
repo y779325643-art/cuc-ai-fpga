@@ -42,6 +42,12 @@ Spec/plan: `docs/superpowers/specs/2026-06-25-sr2fpga-multi-teacher-source-desig
   supports slow reasoning teachers. 255 unit tests pass.
 - Committed example: `configs/sr2fpga_multi_teacher.example.yaml`. Private gateway
   keys/configs stay local: `.env` and `configs/*.local.yaml` are git-ignored.
+- Default DeepSeek model for CLI, runner, and example configs is now
+  `deepseek-v4-pro`. API keys must be supplied through `DEEPSEEK_API_KEY` or a
+  local ignored `.env`; do not write keys into tracked files.
+- Live auth/model preflight for `deepseek-v4-pro` against
+  `https://api.deepseek.com` returned `{"ok": true}` using the local
+  `DEEPSEEK_API_KEY` environment variable.
 
 Live smoke findings (Qwen via DashScope, `qwen3-coder-plus`, T1-T4,
 `a_first_attempt_no_tools`): all four produced complete multi-file projects;
@@ -359,7 +365,7 @@ Fresh verification from the latest implementation pass:
 
 ```bash
 python3 -m unittest discover -s LLM/tests -q
-# Ran 190 tests - OK
+# Ran 256 tests - OK
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok
@@ -412,6 +418,14 @@ python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_smoke.e
 # total_completed=1; success_l3=0; repair_trajectory=1; rejected=0
 # events: req2his 62.2s; his2project 70.7s
 # pass_level_breakdown: L0:1; l0_contract_failures=0; failure_types.lint_warning_as_error=1
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_pro_repair_t1_t4.local.yaml --run-id deepseek-v4-pro-his-v12-repair-t1-t4 --preflight --validate-provider
+# ok: true; planned_samples: 4; source: deepseek-his-v12; repair_provider: deepseek
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_pro_repair_t1_t4.local.yaml --run-id deepseek-v4-pro-his-v12-repair-t1-t4
+# total_completed=4; success_l3=2; repair_trajectory=1; rejected=1
+# pass_level_breakdown: L3:2, GEN_FAIL:1, L0:1
+# pass-rate knee: T2
 ```
 
 Latest baseline report:
@@ -446,6 +460,10 @@ Latest v1.2 two-stage smoke report with stage-level generation events:
 
 `tmp/sr2fpga_runs/his-v12-smoke-10/baseline_report.md`
 
+Latest `deepseek-v4-pro` v1.2 repair T1-T4 report:
+
+`tmp/sr2fpga_runs/deepseek-v4-pro-his-v12-repair-t1-t4/baseline_report.md`
+
 Key summary:
 
 - Pass-rate knee: T1, because L3 pass rate is 0%.
@@ -472,6 +490,45 @@ Key summary:
   RTL lint. The reserved-identifier precheck now catches lexical legality before
   Verilator; the newest observed failure is strict warning hygiene under
   Verilator `-Wall`.
+- HIS2PROJECT now uses OpenAI-compatible streaming (`stream: true` + SSE
+  `choices[].delta.content` assembly). REQ2HIS, direct generation, repair, and
+  provider preflight remain non-streaming. Unit coverage verifies streaming SSE
+  parsing and that two-stage generation calls REQ2HIS via `chat()` and
+  HIS2PROJECT via `stream_chat()`.
+- Live DeepSeek streaming smoke with `DEEPSEEK_API_KEY` confirmed the transport
+  path returns complete multi-file projects without `RemoteDisconnected`:
+  `live_streaming_event_counter_001` reached project L0 then failed Verilator
+  lint because the generated RTL used the Verilog reserved keyword `event` as a
+  port name; `live_streaming_accumulator_001` returned a project but ended
+  `L0_FAIL`. These are model-output quality failures, not streaming transport
+  failures.
+- Live `deepseek-v4-pro` v1.2 smoke using local `.env` and the ignored
+  `configs/sr2fpga_his_v12_pro_smoke.local.yaml` completed one T4 sample without
+  transport failure. REQ2HIS retried once, then finished in about 253.4 seconds;
+  streaming HIS2PROJECT finished in about 272.2 seconds. The generated project
+  reached `L1` and failed simulation with `functional_mismatch`, so the current
+  pro-model frontier is RTL behavior/testbench agreement rather than package
+  contract, reserved identifiers, or lint.
+- Live `deepseek-v4-pro` tool-loop repair smoke using local `.env` and the
+  ignored `configs/sr2fpga_his_v12_pro_repair_smoke.local.yaml` reached `L3` on
+  one T4 sample. The first attempt failed Verilator `-Wall` with
+  `lint_warning_as_error`; the repair attempt then passed RTL identifier check,
+  Verilator lint, testbench static check, Icarus simulation, and Yosys synth.
+  REQ2HIS needed two checker-feedback retries before succeeding; streaming
+  HIS2PROJECT took about 362.5 seconds. Future live repair runs should use a
+  command timeout above 15 minutes because the wrapper can time out even when
+  the runner has written a completed summary.
+- Live `deepseek-v4-pro` v1.2 tool-loop repair T1-T4 baseline using local
+  `.env` and the ignored
+  `configs/sr2fpga_his_v12_pro_repair_t1_t4.local.yaml` completed all four
+  samples: T1 `event_counter` reached L3, T2 `stream_accumulator` was rejected
+  at REQ2HIS validation (`GEN_FAIL`), T3 `stream_fork` stopped at L0 after a
+  repair-contract regression, and T4 `dual_stream_join` reached L3 after
+  traversing lint, simulation-compile, and simulation-run failures. Overall:
+  `success_l3=2`, `repair_trajectory=1`, `rejected=1`,
+  `pass_level_breakdown={L3:2, GEN_FAIL:1, L0:1}`. The current pro-model repair
+  knee is T2, with the next concrete blockers being T2's structured
+  control-flow/effect-target emission and T3's component/RTL endpoint alignment.
 
 ## Dataset Policy
 
@@ -483,30 +540,33 @@ Key summary:
 
 ## Next Recommended Work
 
-00. **Streaming for reasoning teachers (multi-teacher follow-up).** The
-    OpenAI-compatible client is non-streaming (one POST, read full body). Large
-    HIS2PROJECT generations from reasoning teachers (e.g. `qwen3.7-plus`) run
-    past the gateway's ~430s connection limit and die with `RemoteDisconnected`.
-    Add `stream: true` + SSE parsing so reasoning teachers work end to end and
-    long generations survive slow/rate-limited gateways. Needs its own spec/TDD.
-00b. **Bring up Claude + GPT-5.5 teachers.** Wiring is verified; blocked on
+00. **Bring up Claude + GPT-5.5 teachers.** Wiring is verified; blocked on
     `w.ciykj.cn` gateway balance. After top-up: `--validate-provider` to confirm
     auth, confirm Claude's real model id via `GET /v1/models`, then run a
     multi-teacher batch. No code change needed — config only.
-00c. **Multi-teacher baseline + per-teacher failure distribution.** Now that the
+00b. **Multi-teacher baseline + per-teacher failure distribution.** Now that the
     chain is live, run a larger batch across teachers (Qwen + DeepSeek +
     deterministic control today; +Claude/GPT-5.5 after balance) and report the
     `calibration_matrix["source"]` table — the reviewer-facing evidence that
     addresses single-teacher bias. Also re-run T1 on `qwen3-coder-plus` so the
     single-model distribution is consistent (T1 was `qwen3.7-plus`).
+00c. **DeepSeek v4 pro repair blockers.** Before scaling the pro-model v1.2
+     repair baseline, tighten REQ2HIS feedback for T2 structured FSM/effect
+     targets and tighten HIS2PROJECT/repair feedback for T3 component names and
+     RTL endpoint alignment. Then rerun the ignored local T1-T4 config and only
+     expand sample count after T2/T3 stop dominating the small baseline.
 0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).
    It makes `system-his-v1.2` canonical, migrates the deterministic generator off
    v1.1, gives the v1.2 checker HIS↔RTL cross-checks, adds `data_flow.timing` +
-   structured `control_flow`, and quarantines legacy/v1.1 data. The code path is
-   implemented and unit-verified; next work is to run a fresh deterministic and
-   DeepSeek v1.2 smoke after this freeze before generating a larger clean split.
+   structured `control_flow`, and quarantines legacy/v1.1 data. Tier-1 structural
+   freeze is implemented; Tier-2 timing/FSM fields still need a real pipelined/FSM
+   task with L2-measured behavior. Before a larger clean split, follow the reframe
+   hardening gates now recorded in the freeze spec: measurement freeze, REQ→HIS
+   fidelity scoring, hidden/random/stress L2-core plus optional L2S/L2-UVM,
+   contract-preserving skeleton generation with deterministic/model-generated
+   artifact metadata, and episode field data-release tiers.
 0b. **OpenXC7 L4 tool-stage spike (approved; run on the Windows+WSL2 box).**
    Plan `docs/superpowers/plans/2026-06-24-openxc7-l4-tool-stage-spike.md`
    (spec: `docs/superpowers/specs/2026-06-24-openxc7-l4-tool-stage-spike-design.md`).
