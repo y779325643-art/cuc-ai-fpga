@@ -1,0 +1,29 @@
+{
+  "run_id": "deepseek-v4-pro-his-v12-repair-t1-t4-fidelity-fresh",
+  "next_index": 4,
+  "completed_samples": [
+    "sample_his_v12_pro_repair_fidelity_t1_event_counter_8_000001",
+    "sample_his_v12_pro_repair_fidelity_t2_stream_accumulator_8_000002",
+    "sample_his_v12_pro_repair_fidelity_t3_stream_fork_8_000003",
+    "sample_his_v12_pro_repair_fidelity_t4_dual_stream_join_8_000004"
+  ],
+  "buckets": {
+    "success_l3": [
+      "sample_his_v12_pro_repair_fidelity_t1_event_counter_8_000001"
+    ],
+    "repair_trajectory": [
+      "sample_his_v12_pro_repair_fidelity_t4_dual_stream_join_8_000004"
+    ],
+    "rejected": [
+      "sample_his_v12_pro_repair_fidelity_t2_stream_accumulator_8_000002",
+      "sample_his_v12_pro_repair_fidelity_t3_stream_fork_8_000003"
+    ]
+  },
+  "failure_types": {
+    "l0_contract_violation": 2,
+    "generation_failed": 2,
+    "repair_failed": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "9cfb1455be38f84832f8f9866b6badc8f48240ec68a7446687976de79c73823e"
+}

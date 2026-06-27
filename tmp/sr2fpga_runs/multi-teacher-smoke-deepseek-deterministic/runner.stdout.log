@@ -1,0 +1,5 @@
+run_id=multi-teacher-smoke-deepseek-deterministic
+total_completed=2
+success_l3=1
+repair_trajectory=1
+rejected=0

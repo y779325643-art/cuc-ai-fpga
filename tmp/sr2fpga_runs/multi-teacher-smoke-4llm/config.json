@@ -1,0 +1,129 @@
+{
+  "dataset_root": "LLM\\runs\\live_multi_teacher_smoke",
+  "export_root": "LLM\\runs\\live_multi_teacher_smoke_exports",
+  "run_root": "tmp\\sr2fpga_runs",
+  "provider": "deterministic",
+  "repair_provider": "none",
+  "max_attempts": 3,
+  "refresh_exports": true,
+  "line_b_targets": {},
+  "tasks": [
+    {
+      "source": "gpt55",
+      "task_type": "component_topology",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T1",
+      "failure_origin": "",
+      "topology_ids": [
+        "t1_event_counter"
+      ],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "qwen",
+      "task_type": "component_topology",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T1",
+      "failure_origin": "",
+      "topology_ids": [
+        "t1_event_counter"
+      ],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deepseek-his-v12",
+      "task_type": "component_topology",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T1",
+      "failure_origin": "",
+      "topology_ids": [
+        "t1_event_counter"
+      ],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "component_topology",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T1",
+      "failure_origin": "",
+      "topology_ids": [
+        "t1_event_counter"
+      ],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    }
+  ],
+  "model": "deepseek-v4-pro",
+  "base_url": "https://api.deepseek.com",
+  "api_key_env": "DEEPSEEK_API_KEY",
+  "platform": "generic_verilog",
+  "env_file": ".env",
+  "sample_id_prefix": "multi_teacher_smoke",
+  "sources": {
+    "claude": {
+      "name": "claude",
+      "kind": "openai_compat",
+      "model": "claude-opus-4-8",
+      "base_url": "https://w.ciykj.cn/v1",
+      "api_key_env": "ANTHROPIC_API_KEY",
+      "generation_mode": "two_stage",
+      "timeout_seconds": 900
+    },
+    "gpt55": {
+      "name": "gpt55",
+      "kind": "openai_compat",
+      "model": "gpt-5.5",
+      "base_url": "https://w.ciykj.cn/v1",
+      "api_key_env": "OPENAI_API_KEY",
+      "generation_mode": "two_stage",
+      "timeout_seconds": 900
+    },
+    "qwen": {
+      "name": "qwen",
+      "kind": "openai_compat",
+      "model": "qwen3.7-plus",
+      "base_url": "https://dashscope.aliyuncs.com/compatible-mode/v1",
+      "api_key_env": "DASHSCOPE_API_KEY",
+      "generation_mode": "two_stage",
+      "timeout_seconds": 900
+    },
+    "deepseek-his-v12": {
+      "name": "deepseek-his-v12",
+      "kind": "deepseek-his-v12",
+      "model": "deepseek-v4-pro",
+      "base_url": "https://api.deepseek.com",
+      "api_key_env": "DEEPSEEK_API_KEY",
+      "generation_mode": "two_stage",
+      "timeout_seconds": 900
+    },
+    "deterministic": {
+      "name": "deterministic",
+      "kind": "deterministic",
+      "model": "",
+      "base_url": "",
+      "api_key_env": "",
+      "generation_mode": "",
+      "timeout_seconds": 120
+    }
+  }
+}

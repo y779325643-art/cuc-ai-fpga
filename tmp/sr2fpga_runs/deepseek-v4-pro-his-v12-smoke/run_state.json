@@ -1,0 +1,19 @@
+{
+  "run_id": "deepseek-v4-pro-his-v12-smoke",
+  "next_index": 1,
+  "completed_samples": [
+    "sample_his_v12_smoke_v6_t4_dual_stream_join_8_000001"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [],
+    "rejected": [
+      "sample_his_v12_smoke_v6_t4_dual_stream_join_8_000001"
+    ]
+  },
+  "failure_types": {
+    "sample_exists": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "35bf4c2ca13503a0450d6c72ea27a4d6c7509ce1bdf0df59c8d784a30f9265b8"
+}
