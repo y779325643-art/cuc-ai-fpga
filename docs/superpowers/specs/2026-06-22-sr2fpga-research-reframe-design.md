@@ -518,8 +518,12 @@ Field map (what each line is, and why it is not us):
   requirement-intent level (input = NL requirement, lowers *to* CIRCT/CPPL).
   **System-HIS is also distinct from IP-XACT / SysML / FuseSoC-style engineering
   metadata:** those describe IP packaging, system models, or build integration,
-  whereas System-HIS is an LLM-facing requirement-level generation contract with
-  REQ→HIS supervision, HIS↔RTL L0 cross-checking, and tool-trajectory learning.
+  whereas System-HIS is an LLM-facing requirement-level generation contract —
+  evaluated by generation and verification outcomes, not by documentation
+  completeness. It is used as (a) a supervised target for REQ→HIS, (b) the
+  ground-truth contract for L0 HIS↔RTL cross-checking, and (c) the data anchor
+  for tool-trajectory learning. Its evaluation criterion is whether the generated
+  project passes L0–L5, not whether the HIS document is complete.
 - **Repo-level PPA optimization (closest to Paper ②):** **CktEvo** — closed-loop
   LLM+toolchain edits that preserve function while improving PPA on existing
   repos; no L4/L5 physical labels. We differ by searching the System-HIS
@@ -611,6 +615,99 @@ resources:    {optimization_goal, expected:{lut?, ff?, bram?, dsp?}}    # model-
 verification: {testbench, scenarios, pass_condition}       # acceptance guiding the auto testbench
 artifacts:    {top_module, rtl_sources, testbench, constraints, manifest, predicted_qor}   # maps to the project package
 ```
+
+#### System-HIS as a typed IR — discipline and boundaries
+
+System-HIS v1.2 is frozen at the **core schema level** (field names, required
+top-level aspects, JSON/YAML shape, and training-target format). Non-breaking
+validation extensions — well-formedness checks, enum refinements, optional advisory
+fields, lowering-time diagnostics — may evolve without a schema version bump.
+
+**Six principles that make System-HIS a typed IR rather than a structured prompt:**
+
+1. **Typed contract fields, not prose.** `intent` (user_prompt, design_goal,
+   assumptions) is provenance and explanatory context only — it is **not used as an
+   implicit semantic source** by L0/L2 checkers. All machine-checkable semantics must
+   appear in typed fields: `top`, `interfaces`, `components`, `instances`,
+   `data_flow`, `control_flow`, `state`, `timing`, `resources`, `verification`, and
+   `artifacts`.
+
+2. **Well-formedness.** Every instance resolves to a component; every data-flow
+   endpoint resolves to a port or interface; widths, directions, clocks, resets, and
+   protocols are compatible; CDC paths carry synchronizer intent; memory and protocol
+   intents must be lowerer-supported. (See well-formedness rules W1–W10 below.)
+
+3. **Interface-first FPGA semantics.** Ports are physical signal boundaries;
+   interfaces are semantic bundles. Protocols (valid-ready, AXI-stream, AXI-lite,
+   BRAM, GPIO) carry role, channels, ordering, backpressure, reset behavior, and
+   checker templates. L0 checks ports; L2/L2-UVM/L5 depend on interfaces.
+
+4. **Bounded control grammar.** `control_flow.when` and `control_flow.effect` use a
+   bounded, typed guard/effect language (guard nesting ≤ depth 2). Free-text `intent`
+   may explain a rule, but only typed guards/effects are checked or lowered.
+
+5. **Contract-preserving lowering.** System-HIS lowers to: symbol table → project
+   manifest → top shell → module declarations → interface bundles → testbench scaffold
+   → assertion/checker templates → logical constraints → board-shell binding →
+   model-fillable behavior holes. It guarantees cross-file structural consistency by
+   construction; full behavioral correctness is L2's responsibility.
+
+6. **Canonicalization.** A canonical JSON serialization, stable IDs (independent of
+   human-readable names), deterministic field ordering, and normalized parameter
+   expressions are used for hashing, diffing, REQ→HIS fidelity scoring, L0 checking,
+   and training targets.
+
+**Intent / Contract / Advisory field classification:**
+
+| Class | Fields | Checker role |
+|---|---|---|
+| **Intent** | `intent.*`, explanatory strings | provenance only — not used by L0/L2 |
+| **Contract** | `top`, `interfaces`, `components`, `instances`, `data_flow`, `control_flow`, `state`, `verification.pass_condition` | L0/L2 must satisfy |
+| **Advisory** | `resources.expected`, `timing.target_fmax_mhz`, `predicted_qor` | QoR/optimization hints — failure is a soft budget miss, not a functional failure |
+
+**Well-formedness rules (W1–W10):**
+
+- W1. Every `instance.component` must reference exactly one declared `component`.
+- W2. Every `data_flow.path` endpoint must resolve through the symbol table to an
+  existing top port or instance port.
+- W3. Port widths and directions must be type-compatible along every connection.
+- W4. Every state-owning instance must bind to a declared clock and reset.
+- W5. A component declared combinational must not own state, clock, or reset.
+- W6. Every `cdc:true` data-flow must cross two distinct clock domains and must pass
+  through a synchronizer component or an explicitly declared CDC primitive.
+- W7. Every memory intent must declare `depth`, `width`, `read_latency`, `read_type`,
+  and `memory_style` if BRAM/distributed/register mapping is evaluated.
+- W8. Every verification scenario must reference existing interfaces/signals and map
+  to a lowerer-supported stimulus/checker template.
+- W9. Every logical constraint must reference declared clocks/ports and must not
+  override board constraints.
+- W10. Every artifact path listed in `artifacts` must be reproducible from
+  `manifest.json` + `top_module`.
+
+**H0/H1/H2 System-HIS validation levels** (evaluated before L0 RTL checker runs):
+
+- **H0** — schema-valid: JSON/YAML shape, required fields, enum values.
+- **H1** — well-formed: symbols resolve, endpoints exist, widths/types compatible,
+  W1–W10 pass.
+- **H2** — lowerable: all components/protocols/scenarios are supported by the current
+  lowerer and testbench generator.
+
+REQ2HIS model outputs are evaluated at H0/H1/H2 before entering the L0–L3 pipeline.
+Failures at H0/H1/H2 have their own `req_his_*` diagnosis class and can be repaired
+by the FAILURE2PATCH actor without running EDA tools.
+
+**REQ→HIS fidelity failure modes:**
+
+`req_his_missing_requirement` | `req_his_wrong_width` | `req_his_wrong_protocol` |
+`req_his_wrong_reset_kind` | `req_his_wrong_latency` | `req_his_missing_corner_case` |
+`req_his_over_specified_behavior` | `req_his_under_specified_interface`
+
+**Non-goals of System-HIS v1.2:**
+
+System-HIS does **not** aim to: replace FIRRTL/CIRCT/LLHD/Calyx as a circuit or
+compiler IR; fully specify cycle-accurate behavior; encode board-level physical
+implementation details; serve as an IP-packaging standard (cf. IP-XACT); make tool
+execution unnecessary; or prove functional correctness without testbenches/properties.
 
 #### Full trajectory episode schema
 
