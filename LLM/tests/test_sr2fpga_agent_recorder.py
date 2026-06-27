@@ -114,6 +114,8 @@ class DatasetRecorderTest(unittest.TestCase):
                 8,
             )
             self.assertTrue((sample_dir / "eval/trajectory.json").exists())
+            saved_trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertEqual(saved_trajectory["verification"]["l4_open"]["status"], "fail")
             self.assertEqual(json.loads((sample_dir / "metadata.json").read_text(encoding="utf-8")), metadata)
 
             requirement_rows = (export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8").splitlines()
@@ -815,6 +817,30 @@ class DatasetRecorderTest(unittest.TestCase):
                 ["rtl_identifier_check", "lint", "testbench_static_check", "sim_compile", "sim_run"],
             )
 
+    def test_agent_records_req_his_fidelity_metrics_for_supported_topology(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(dataset_root=root, command_runner=FakeRunner())
+            request = ProjectRequest(
+                task_type="composed_stream_accumulator",
+                width=8,
+                project_name="stream_accum_8bit",
+            )
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one(
+                sample_id="sample_000004",
+                requirement="Build a stream accumulator.",
+                request=request,
+                platform=platform,
+            )
+
+            trajectory = json.loads((root / "sample_000004/eval/trajectory.json").read_text(encoding="utf-8"))
+            fidelity = trajectory["req_his_fidelity"]
+            self.assertEqual(fidelity["interface_extraction"]["status"], "pass")
+            self.assertEqual(fidelity["parameter_fidelity"]["status"], "pass")
+            self.assertEqual(fidelity["behavior_intent_fidelity"]["status"], "pass")
+
     def test_repair_result_is_shared_model_and_agent_compatible(self) -> None:
         self.assertIs(RepairResult, ModelRepairResult)
 
@@ -847,6 +873,77 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(len(rows), 1)
             exported_paths = [item["path"] for item in json.loads(rows[0])["files"]]
             self.assertNotIn(".DS_Store", exported_paths)
+
+    def test_write_final_adds_system_his_episode_metadata_and_exports_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            recorder = DatasetRecorder(root)
+            requirement = "Design an 8-bit counter with enable and active-low reset."
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter_8bit"),
+                platform,
+            )
+            recorder.start_sample(
+                "sample_000001",
+                requirement,
+                platform,
+                metadata={"system_his_schema_version": "system-his-v1.2"},
+            )
+
+            recorder.write_final(
+                "sample_000001",
+                project,
+                labels={
+                    "pass_level": "L3",
+                    "checks": {
+                        "l0_complete": True,
+                        "l1_lint_pass": True,
+                        "l2_sim_pass": True,
+                        "l2_hidden_pass": False,
+                        "l2_stress_pass": True,
+                        "l2_coverage_profile": "counter_reset_enable_stress",
+                        "l2_coverage_seeds": [3, 17],
+                        "l2s_pass": False,
+                        "l2s_divergences": ["post-synth count output diverged at cycle 4"],
+                        "l3_synth_pass": True,
+                    },
+                },
+                measured_qor={"lut": 1, "ff": 8, "bram": 0, "dsp": 0},
+                tool_versions={"yosys": "unknown"},
+                trajectory={"sample_id": "sample_000001", "attempts": []},
+            )
+
+            trajectory = json.loads((root / "sample_000001/eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertEqual(trajectory["generated_his"]["schema_version"], "system-his-v1.2")
+            self.assertEqual(trajectory["req_his_fidelity"]["interface_extraction"], None)
+            self.assertIn("deterministic_artifacts", trajectory["project"])
+            self.assertIn("model_generated_artifacts", trajectory["project"])
+            self.assertEqual(trajectory["project"]["files"]["system_his.json"]["origin"], "deterministic")
+            self.assertEqual(trajectory["project"]["files"]["rtl/top.v"]["origin"], "model_generated")
+            self.assertEqual(trajectory["project"]["behavior_hole_count"], 0)
+            self.assertEqual(trajectory["verification"]["l2_core"]["public"]["status"], "pass")
+            self.assertEqual(trajectory["verification"]["l2_core"]["hidden"]["status"], "fail")
+            self.assertEqual(trajectory["verification"]["l2_core"]["stress"]["status"], "pass")
+            self.assertEqual(
+                trajectory["verification"]["l2_core"]["coverage"]["scenario_profile"],
+                "counter_reset_enable_stress",
+            )
+            self.assertEqual(trajectory["verification"]["l2_core"]["coverage"]["seeds"], [3, 17])
+            self.assertEqual(trajectory["verification"]["l2s"]["status"], "fail")
+            self.assertEqual(
+                trajectory["verification"]["l2s"]["divergences"],
+                ["post-synth count output diverged at cycle 4"],
+            )
+            self.assertEqual(trajectory["verification"]["l4_open"]["status"], "not_run")
+            self.assertEqual(trajectory["data_release"]["requirement"], "open_public")
+            self.assertEqual(trajectory["data_release"]["l4_commercial"], "restricted_reference")
+
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+            requirement_row = json.loads((export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8"))
+            self.assertEqual(requirement_row["episode"]["verification"]["l2_core"]["public"]["status"], "pass")
+            self.assertEqual(requirement_row["episode"]["data_release"]["vivado_raw_artifacts"], "internal_only")
 
 
 class FakeRunner:
@@ -1105,16 +1202,28 @@ def _minimal_v12_l0_project() -> GeneratedProject:
         "components": [
             {
                 "name": "counter_core",
+                "semantic_kind": "counter",
                 "source": "rtl/counter_core.v",
+                "parameters": [],
                 "ports": [
                     {"name": "clk", "dir": "input", "width": 1},
                     {"name": "rst_n", "dir": "input", "width": 1},
                     {"name": "en", "dir": "input", "width": 1},
                     {"name": "count", "dir": "output", "width": 8},
                 ],
+                "intent": "8-bit counter datapath and state update logic",
             }
         ],
-        "instances": [{"name": "u_counter", "component": "counter_core", "owns_state": ["u_counter.count_q"]}],
+        "instances": [
+            {
+                "name": "u_counter",
+                "component": "counter_core",
+                "parameter_values": {},
+                "clock": "clk",
+                "reset": "rst_n",
+                "owns_state": ["u_counter.count_q"],
+            }
+        ],
         "data_flow": [
             {
                 "name": "count_path",

@@ -19,6 +19,7 @@ from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
 from LLM.src.sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers, rtl_identifier_tool_result
 from LLM.src.sr2fpga_agent.system_his_checker import L0CheckResult, check_project_l0
+from LLM.src.sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
 from LLM.src.sr2fpga_agent.testbench_checker import (
     check_testbench_static_issues,
     testbench_observation_tool_result,
@@ -114,6 +115,9 @@ class DataGenerationAgent:
         measured_qor = _measured_qor(final_tool_results)
         labels = _labels(final_tool_results, final_attempt_id=final_attempt_id, failure_count=failure_count)
         trajectory = _trajectory(sample_id, all_stage_entries)
+        req_his_fidelity = _req_his_fidelity(request, final_project)
+        if req_his_fidelity is not None:
+            trajectory["req_his_fidelity"] = req_his_fidelity
         self.recorder.write_final(
             sample_id,
             final_project,
@@ -405,3 +409,16 @@ def _trajectory(sample_id: str, attempts: list[dict[str, Any]]) -> dict[str, Any
         "sample_id": sample_id,
         "attempts": attempts,
     }
+
+
+def _req_his_fidelity(request: ProjectRequest, project: GeneratedProject) -> dict[str, Any] | None:
+    content = project.files.get("system_his.json")
+    if content is None:
+        return None
+    try:
+        payload = json.loads(content)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(payload, dict):
+        return None
+    return check_system_his_req_fidelity(request, payload).metrics

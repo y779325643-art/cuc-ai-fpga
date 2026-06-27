@@ -28,6 +28,15 @@ REQUIRED_TOP_LEVEL_KEYS = (
 )
 STATE_GROUPS = ("registers", "counters", "fsms", "buffers", "memories")
 GUARD_OPERATORS = {"==", "!=", "<", ">", "&&", "||"}
+CONTROL_FLOW_KINDS = {
+    "reset_rule",
+    "handshake_rule",
+    "enable_rule",
+    "stall_rule",
+    "counter_update",
+    "fsm_transition",
+    "buffer_occupancy",
+}
 VERILOG_RESERVED_KEYWORDS = {
     "always",
     "assign",
@@ -81,14 +90,23 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
     if payload.get("schema_version") != SCHEMA_VERSION:
         errors.append(f"system_his.schema_version must be {SCHEMA_VERSION}")
 
+    intent = _mapping(payload.get("intent"), "system_his.intent", errors)
     top = _mapping(payload.get("top"), "system_his.top", errors)
     components = _list(payload.get("components"), "system_his.components", errors)
     instances = _list(payload.get("instances"), "system_his.instances", errors)
     state = _mapping(payload.get("state"), "system_his.state", errors)
     data_flow = _list(payload.get("data_flow"), "system_his.data_flow", errors)
     control_flow = _list(payload.get("control_flow"), "system_his.control_flow", errors)
+    timing = _mapping(payload.get("timing"), "system_his.timing", errors)
+    resources = _mapping(payload.get("resources"), "system_his.resources", errors)
+    verification = _mapping(payload.get("verification"), "system_his.verification", errors)
     artifacts = _mapping(payload.get("artifacts"), "system_his.artifacts", errors)
 
+    _validate_intent(intent, errors)
+    _validate_top_clock_reset(top, errors)
+    _validate_timing(timing, errors)
+    _validate_resources(resources, errors)
+    _validate_verification(verification, errors)
     top_ports = _top_ports(top, errors)
     top_control_signals = top_ports | _top_clock_reset_names(top)
     component_ports = _component_ports(components, errors)
@@ -162,6 +180,61 @@ def _validate_required_keys(payload: dict[str, Any], errors: list[str]) -> None:
             errors.append(f"system_his.{key} is required")
 
 
+def _validate_intent(intent: dict[str, Any], errors: list[str]) -> None:
+    for key in ("user_prompt", "design_goal"):
+        if not str(intent.get(key, "")).strip():
+            errors.append(f"system_his.intent.{key} is required")
+    _list(intent.get("assumptions"), "system_his.intent.assumptions", errors)
+
+
+def _validate_top_clock_reset(top: dict[str, Any], errors: list[str]) -> None:
+    clocks = _list(top.get("clocks"), "system_his.top.clocks", errors)
+    for index, clock in enumerate(clocks):
+        if not isinstance(clock, dict):
+            errors.append(f"system_his.top.clocks[{index}] must be an object")
+            continue
+        if not str(clock.get("name", "")).strip():
+            errors.append(f"system_his.top.clocks[{index}].name is required")
+        if not _is_positive_number(clock.get("target_fmax_mhz")):
+            errors.append(f"system_his.top.clocks[{index}].target_fmax_mhz must be positive")
+
+    resets = _list(top.get("resets"), "system_his.top.resets", errors)
+    for index, reset in enumerate(resets):
+        if not isinstance(reset, dict):
+            errors.append(f"system_his.top.resets[{index}] must be an object")
+            continue
+        if not str(reset.get("name", "")).strip():
+            errors.append(f"system_his.top.resets[{index}].name is required")
+        polarity = str(reset.get("polarity", "")).strip()
+        if polarity not in {"active_low", "active_high", "low", "high"}:
+            errors.append(f"system_his.top.resets[{index}].polarity is invalid")
+        kind = str(reset.get("kind", "")).strip()
+        if kind not in {"sync", "async", "synchronous", "asynchronous"}:
+            errors.append(f"system_his.top.resets[{index}].kind is invalid")
+
+
+def _validate_timing(timing: dict[str, Any], errors: list[str]) -> None:
+    if not str(timing.get("primary_clock", "")).strip():
+        errors.append("system_his.timing.primary_clock is required")
+    if not _is_positive_number(timing.get("target_fmax_mhz")):
+        errors.append("system_his.timing.target_fmax_mhz must be positive")
+    _list(timing.get("constraints"), "system_his.timing.constraints", errors)
+
+
+def _validate_resources(resources: dict[str, Any], errors: list[str]) -> None:
+    if not str(resources.get("optimization_goal", "")).strip():
+        errors.append("system_his.resources.optimization_goal is required")
+    _mapping(resources.get("expected"), "system_his.resources.expected", errors)
+
+
+def _validate_verification(verification: dict[str, Any], errors: list[str]) -> None:
+    if not str(verification.get("testbench", "")).strip():
+        errors.append("system_his.verification.testbench is required")
+    _list(verification.get("scenarios"), "system_his.verification.scenarios", errors)
+    if not str(verification.get("pass_condition", "")).strip():
+        errors.append("system_his.verification.pass_condition is required")
+
+
 def _mapping(value: Any, name: str, errors: list[str]) -> dict[str, Any]:
     if not isinstance(value, dict):
         errors.append(f"{name} must be an object")
@@ -223,6 +296,12 @@ def _component_ports(components: list[Any], errors: list[str]) -> dict[str, set[
             continue
         if name in component_ports:
             errors.append(f"components duplicate component '{name}'")
+        if not str(component.get("semantic_kind", "")).strip():
+            errors.append(f"components[{index}].semantic_kind is required")
+        if not str(component.get("source", "")).strip():
+            errors.append(f"components[{index}].source is required")
+        if not str(component.get("intent", "")).strip():
+            errors.append(f"components[{index}].intent is required")
         ports = _list(component.get("ports"), f"components[{index}].ports", errors)
         port_names: set[str] = set()
         for port_index, port in enumerate(ports):
@@ -261,6 +340,11 @@ def _instance_components(
             errors.append(f"instances[{index}].component is required")
         elif component not in component_ports:
             errors.append(f"instances[{index}] references missing component '{component}'")
+        if not str(instance.get("clock", "")).strip():
+            errors.append(f"instances[{index}].clock is required")
+        if not str(instance.get("reset", "")).strip():
+            errors.append(f"instances[{index}].reset is required")
+        _mapping(instance.get("parameter_values"), f"instances[{index}].parameter_values", errors)
         instance_components[name] = component
     return instance_components
 
@@ -341,6 +425,11 @@ def _data_flow_names(
         if name in names:
             errors.append(f"data_flow duplicate flow '{name}'")
         names.add(name)
+        if not str(flow.get("protocol", "")).strip():
+            errors.append(f"data_flow '{name}'.protocol is required")
+        payload = flow.get("payload")
+        if "payload" in flow:
+            _mapping(payload, f"data_flow '{name}'.payload", errors)
         path = _list(flow.get("path"), f"data_flow '{name}'.path", errors)
         for endpoint in path:
             endpoint_text = str(endpoint).strip() if isinstance(endpoint, str) else ""
@@ -367,6 +456,10 @@ def _validate_data_flow_timing(flow_name: str, timing: Any, errors: list[str]) -
 
 def _is_non_bool_int(value: Any) -> bool:
     return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _is_positive_number(value: Any) -> bool:
+    return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
 
 
 def _is_valid_endpoint(endpoint: str, top_ports: set[str], instance_ports: dict[str, set[str]]) -> bool:
@@ -420,6 +513,10 @@ def _validate_control_flow(
             if flow_text not in data_flow_names:
                 errors.append(f"control_flow '{name}' references missing data_flow '{flow_text}'")
         kind = str(rule.get("kind", "")).strip()
+        if not kind:
+            errors.append(f"control_flow '{name}'.kind is required")
+        elif kind not in CONTROL_FLOW_KINDS:
+            errors.append(f"control_flow '{name}'.kind '{kind}' is invalid")
         if kind == "fsm_transition":
             _validate_fsm_transition(rule, name, fsm_defs, guard_signals, effect_targets, errors)
         elif "when" in rule or "effect" in rule:
