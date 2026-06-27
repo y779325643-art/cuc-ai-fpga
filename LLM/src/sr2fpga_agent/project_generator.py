@@ -159,7 +159,13 @@ def _system_his(
     top_module = str(architecture["top_module"])
     top_ports = _v12_ports(_top_ports(interface))
     components = _v12_components(modules)
-    instances = _v12_instances(rtl_files, components, top_module)
+    instances = _v12_instances(
+        rtl_files,
+        components,
+        top_module,
+        clock_name=str(interface["clock"]),
+        reset_name=str(interface["reset"]),
+    )
     data_flow = _v12_data_flow(request, top_ports, instances, components)
     return {
         "schema_version": "system-his-v1.2",
@@ -268,32 +274,84 @@ def _v12_components(modules: list[dict[str, object]]) -> list[dict[str, object]]
     return [
         {
             "name": module["name"],
+            "semantic_kind": _v12_semantic_kind(str(module["name"]), str(module.get("role", ""))),
             "source": module["source"],
+            "parameters": [
+                {"name": name, "default": value}
+                for name, value in dict(module.get("parameters", {})).items()
+            ],
             "ports": _v12_ports(module["ports"]),
+            "intent": module.get("intent") or _module_intent(str(module["name"])),
         }
         for module in modules
     ]
+
+
+def _v12_semantic_kind(module_name: str, role: str) -> str:
+    if role == "top":
+        return "top_integration"
+    name = module_name.lower()
+    for term in (
+        "buffer",
+        "fifo",
+        "join",
+        "fork",
+        "accumulator",
+        "counter",
+        "fsm",
+        "ram",
+        "spi",
+        "pwm",
+        "mac",
+        "stage",
+        "gate",
+    ):
+        if term in name:
+            return term
+    return "rtl_component"
 
 
 def _v12_instances(
     rtl_files: dict[str, str],
     components: list[dict[str, object]],
     top_module: str,
+    *,
+    clock_name: str,
+    reset_name: str,
 ) -> list[dict[str, object]]:
     component_names = {str(component["name"]) for component in components if str(component["name"]) != top_module}
+    components_by_name = {str(component["name"]): component for component in components}
     instance_ports = _top_instance_ports(rtl_files["rtl/top.v"], component_names)
     instances: dict[str, dict[str, object]] = {}
     for endpoint in instance_ports:
         instance_name = endpoint["instance"]
+        component = components_by_name.get(str(endpoint["module"]), {})
         instances.setdefault(
             instance_name,
             {
                 "name": instance_name,
                 "component": endpoint["module"],
+                "parameter_values": _v12_component_parameter_values(component),
+                "clock": clock_name,
+                "reset": reset_name,
                 "owns_state": [],
             },
         )
     return list(instances.values())
+
+
+def _v12_component_parameter_values(component: dict[str, object]) -> dict[str, object]:
+    values: dict[str, object] = {}
+    parameters = component.get("parameters", [])
+    if not isinstance(parameters, list):
+        return values
+    for parameter in parameters:
+        if not isinstance(parameter, dict):
+            continue
+        name = str(parameter.get("name", "")).strip()
+        if name:
+            values[name] = parameter.get("default")
+    return values
 
 
 def _v12_state(

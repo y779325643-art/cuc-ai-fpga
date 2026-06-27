@@ -8,11 +8,13 @@ from pathlib import Path
 
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
 from LLM.src.sr2fpga_agent.deepseek import (
-    DeepSeekClient,
-    DeepSeekConfig,
+    AnthropicCompatibleClient,
+    AnthropicCompatibleConfig,
     DeepSeekTwoStageProjectGenerator,
     DeepSeekProjectGenerator,
     DeepSeekRepairer,
+    OpenAICompatibleClient,
+    OpenAICompatibleConfig,
 )
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
 
@@ -27,7 +29,7 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--requirement", default="")
     parser.add_argument("--platform", default="generic_verilog")
     parser.add_argument("--provider", choices=["deterministic", "deepseek", "deepseek-his-v12"], default="deterministic")
-    parser.add_argument("--model", default="deepseek-v4-flash")
+    parser.add_argument("--model", default="deepseek-v4-pro")
     parser.add_argument("--base-url", default="https://api.deepseek.com")
     parser.add_argument("--api-key-env", default="DEEPSEEK_API_KEY")
     parser.add_argument("--repair-provider", choices=["none", "deepseek"], default="none")
@@ -84,8 +86,8 @@ def build_project_generator(
         if not api_key:
             raise SystemExit(f"{api_key_env} is not set")
         return DeepSeekProjectGenerator(
-            DeepSeekClient(
-                DeepSeekConfig(
+            OpenAICompatibleClient(
+                OpenAICompatibleConfig(
                     api_key=api_key,
                     model=model,
                     base_url=base_url,
@@ -97,8 +99,8 @@ def build_project_generator(
         if not api_key:
             raise SystemExit(f"{api_key_env} is not set")
         return DeepSeekTwoStageProjectGenerator(
-            DeepSeekClient(
-                DeepSeekConfig(
+            OpenAICompatibleClient(
+                OpenAICompatibleConfig(
                     api_key=api_key,
                     model=model,
                     base_url=base_url,
@@ -113,13 +115,23 @@ def build_project_generator_for_connection(connection, event_sink=None):
     kind = connection.kind
     if kind == "deterministic":
         return None
-    if kind not in {"openai_compat", "deepseek", "deepseek-his-v12"}:
+    if kind not in {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}:
         raise SystemExit(f"Unsupported source kind: {kind}")
     api_key = os.environ.get(connection.api_key_env)
     if not api_key:
         raise SystemExit(f"{connection.api_key_env} is not set")
-    client = DeepSeekClient(
-        DeepSeekConfig(
+    if kind == "anthropic_compat":
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key=api_key,
+                model=connection.model,
+                base_url=connection.base_url,
+                timeout_seconds=getattr(connection, "timeout_seconds", 120),
+            )
+        )
+        return DeepSeekTwoStageProjectGenerator(client, event_sink=event_sink)
+    client = OpenAICompatibleClient(
+        OpenAICompatibleConfig(
             api_key=api_key,
             model=connection.model,
             base_url=connection.base_url,
@@ -144,8 +156,8 @@ def build_repairer(
         if not api_key:
             raise SystemExit(f"{api_key_env} is not set")
         return DeepSeekRepairer(
-            DeepSeekClient(
-                DeepSeekConfig(
+            OpenAICompatibleClient(
+                OpenAICompatibleConfig(
                     api_key=api_key,
                     model=model,
                     base_url=base_url,

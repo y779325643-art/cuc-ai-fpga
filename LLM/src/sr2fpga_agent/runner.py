@@ -18,8 +18,14 @@ from LLM.src.sr2fpga_agent.cli import (
     build_project_generator_for_connection,
     build_repairer,
 )
-from LLM.src.sr2fpga_agent.deepseek import DeepSeekClient, DeepSeekConfig
+from LLM.src.sr2fpga_agent.deepseek import (
+    AnthropicCompatibleClient,
+    AnthropicCompatibleConfig,
+    OpenAICompatibleClient,
+    OpenAICompatibleConfig,
+)
 from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
+from LLM.src.sr2fpga_agent.local_tools import resolve_executable
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
@@ -71,7 +77,7 @@ class RunnerConfig:
     refresh_exports: bool
     line_b_targets: dict[str, float | int]
     tasks: list[TaskConfig]
-    model: str = "deepseek-v4-flash"
+    model: str = "deepseek-v4-pro"
     base_url: str = "https://api.deepseek.com"
     api_key_env: str = "DEEPSEEK_API_KEY"
     platform: str = "generic_verilog"
@@ -139,7 +145,7 @@ def load_runner_config(path: Path) -> RunnerConfig:
         refresh_exports=_parse_bool(raw.get("refresh_exports", True), "refresh_exports"),
         line_b_targets=dict(raw.get("line_b_targets", {})),
         tasks=[_load_task_config(item, raw) for item in raw.get("tasks", [])],
-        model=str(raw.get("model", "deepseek-v4-flash")),
+        model=str(raw.get("model", "deepseek-v4-pro")),
         base_url=str(raw.get("base_url", "https://api.deepseek.com")),
         api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
         platform=str(raw.get("platform", "generic_verilog")),
@@ -187,7 +193,7 @@ def runner_preflight(
     samples = planned_samples(config)
     run_dir = config.run_root / run_id if run_id else None
     required_tools = ("verilator", "iverilog", "vvp", "yosys")
-    tools = {tool: ("found" if shutil.which(tool) else "missing") for tool in required_tools}
+    tools = _discover_tool_statuses(required_tools)
     errors: list[str] = []
     warnings: list[str] = []
 
@@ -235,6 +241,13 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
         "failure_origin": str(metadata["failure_origin"]),
         "measurement_point": str(metadata["measurement_point"]),
     }
+
+
+def _discover_tool_statuses(tools: tuple[str, ...]) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for tool in tools:
+        statuses[tool] = "found" if shutil.which(tool) or resolve_executable(tool) else "missing"
+    return statuses
 
 
 def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = True) -> dict[str, Any]:
@@ -482,14 +495,7 @@ def _check_source_auth(
     if not validate_provider:
         diagnostics[source] = {"status": "not_checked", "detail": ""}
         return
-    client = DeepSeekClient(
-        DeepSeekConfig(
-            api_key=api_key,
-            model=connection.model,
-            base_url=connection.base_url,
-            timeout_seconds=20,
-        )
-    )
+    client = _preflight_client(connection, api_key)
     try:
         client.chat(
             [
@@ -505,6 +511,31 @@ def _check_source_auth(
         errors.append(f"{source} provider auth failed")
         return
     diagnostics[source] = {"status": "ok", "detail": ""}
+
+
+def _provider_auth_timeout_seconds(connection: SourceConnection) -> int:
+    return max(20, min(connection.timeout_seconds, 120))
+
+
+def _preflight_client(connection: SourceConnection, api_key: str):
+    timeout_seconds = _provider_auth_timeout_seconds(connection)
+    if connection.kind == "anthropic_compat":
+        return AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key=api_key,
+                model=connection.model,
+                base_url=connection.base_url,
+                timeout_seconds=timeout_seconds,
+            )
+        )
+    return OpenAICompatibleClient(
+        OpenAICompatibleConfig(
+            api_key=api_key,
+            model=connection.model,
+            base_url=connection.base_url,
+            timeout_seconds=timeout_seconds,
+        )
+    )
 
 
 def _sanitize_secret(text: str, secret: str) -> str:
@@ -833,7 +864,7 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     )
 
 
-LLM_SOURCE_KINDS = {"openai_compat", "deepseek", "deepseek-his-v12"}
+LLM_SOURCE_KINDS = {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}
 
 
 def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnection:
@@ -859,6 +890,7 @@ def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnec
 
 _GENERATION_MODE_BY_KIND = {
     "openai_compat": "two_stage",
+    "anthropic_compat": "two_stage",
     "deepseek-his-v12": "two_stage",
     "deepseek": "direct",
     "deterministic": "",

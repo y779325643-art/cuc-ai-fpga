@@ -24,16 +24,20 @@ Use `../../current-status.md` for the current engineering state.
   - Autonomous batch runner design.
 
 - `2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
-  - Prototype top-down System-HIS v1.2 schema trial: top IO, architectural
-    state, components, instances, data flow, control flow, verification, and
-    implementation artifacts. **Superseded by the freeze spec below.**
+  - Historical prototype top-down System-HIS v1.2 schema trial. **Superseded by
+    the freeze spec below; `system-his-v1.2-topdown` is not a current clean-data
+    target.**
 
 - `2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
   - **Current schema-governing spec.** Freezes `system-his-v1.2` as the single
     canonical schema (migrate deterministic generator off v1.1, v1.2 checker
     gains HIS↔RTL cross-checks, data_flow.timing, structured control_flow/FSM,
-    quarantine legacy/v1.1). Staged behind a ratification gate (structural core
-    vs provisional new fields). Implementation plan:
+    quarantine legacy/v1.1). Tier-1 structural freeze is ratified; Tier-2 timing/
+    FSM fields remain provisional until real pipelined/FSM tasks exercise them.
+    Updated from the reframe hardening pass with REQ→HIS fidelity, measurement
+    freeze, oracle hardening, contract-preserving skeleton generation, trajectory
+    episode metadata, and data-release tier discipline.
+    Implementation plan:
     `../plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`.
 
 - `2026-06-24-openxc7-l4-tool-stage-spike-design.md`
@@ -45,8 +49,9 @@ Use `../../current-status.md` for the current engineering state.
 - `2026-06-25-system-his-constrained-decoding-design.md`
   - The TCAD method-novelty core: a decode-time mechanism making cross-file
     structural consistency hold **by construction** (Tier A deterministic shell
-    from the contract + Tier B System-HIS-derived constrained decoding). Expands
-    reframe method-novelty candidate (i); local-model-only (logit access).
+    from the contract + Tier B System-HIS-derived constrained decoding). Tier A
+    is the next implementable contract-preserving step; Tier B is local-model-only
+    because it needs logit access.
 
 ## Research Framing
 

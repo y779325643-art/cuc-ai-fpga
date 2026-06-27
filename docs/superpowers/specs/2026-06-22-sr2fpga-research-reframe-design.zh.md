@@ -7,7 +7,7 @@
 
 ## 状态
 
-已批准方向；**原始 2026-06-22，最后更新 2026-06-25。** 细化并界定
+已批准方向；**原始 2026-06-22，最后更新 2026-06-26。** 细化并界定
 `docs/research-objective-sr2fpga-tcad.md` 的方向，把愿景拆解为一个可发表的论文计划，并详细规定 Paper ①。
 英文权威版同步维护本中文版。两者与 objective 文档冲突时，以本重定向为准。
 
@@ -1217,7 +1217,7 @@ L2 通过但 randomized/coverage 驱动 L2-UVM 失败的案例，及覆盖差。
    相同器件和相同逻辑约束。需要固定工具版本，保存 timing/utilization/DRC/methodology
    reports，并明确分类 OpenXC7/Vivado 不一致案例。
 
-外加审稿人会要的使能性修复：数据质量（噪声标签、假 LUT——F/E/G/H0）+ 全层诊断模式，使 L0 短路不审查掉 L1–L4 分布
+外加审稿人会要的使能性修复：数据质量（噪声标签、假 LUT——F/E/G/DQ-H0）+ 全层诊断模式，使 L0 短路不审查掉 L1–L4 分布
 （Issue 5）。**要保留的诚实优点：** 该计划不过度声称——区分 discovery vs evidence、把物理本质限制划在范围外；
 manuscript 里保持这股纪律。
 
@@ -1327,7 +1327,7 @@ QoR 预测器当代理适应度，带 CktEvo 没有的物理（L4）标签。
 2.5. **IP/数据发布策略落地**——确定 open_public / restricted_reference / internal_only 对每个轨迹字段的档位分配；
    确认 Vivado 结构化元数据能否在许可下发布；给所有 episode schema 字段标注发布档位；记录机构法律审核状态。
 3. **数据质量修复**——F（reset/clock 标签噪声）、E（分类法名漂移）、G（Yosys-L3 LUT 假 → 上 `synth_xilinx` 或把
-   QoR 推到 L4）、H0（结构化工具信号抽取：L2 失配明细、L4 失败族、通过时警告）。
+   QoR 推到 L4）、DQ-H0（结构化工具信号抽取：L2 失配明细、L4 失败族、通过时警告）。
 4. **Contract-preserving 生成**——System-HIS → 确定性工程 skeleton；模型填行为 hole；记录确定性 vs 模型生成
    产物元数据；跑 L0-by-construction 消融。
 5. **全层诊断模式**——官方 verdict 模式保持首失败层；诊断模式收集更深 L1–L4 信号（Issue 5）。

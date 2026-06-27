@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved direction; **originally 2026-06-22, last updated 2026-06-25.** The agreed
+Approved direction; **originally 2026-06-22, last updated 2026-06-26.** The agreed
 research line, refining/scoping `docs/research-objective-sr2fpga-tcad.md`,
 decomposing the vision into a publishable program and specifying Paper ① in detail.
 A Chinese companion (`2026-06-22-sr2fpga-research-reframe-design.zh.md`) is kept in
@@ -1760,7 +1760,7 @@ each is exactly an item the spec already marks as gated:
    classify OpenXC7/Vivado disagreement cases.
 
 Plus the enabling fixes referees will require: data-quality (noisy labels, vacuous
-LUT — F/E/G/H0) and a full-level diagnostic mode so L0 short-circuit does not censor
+LUT — F/E/G/DQ-H0) and a full-level diagnostic mode so L0 short-circuit does not censor
 the L1–L4 distribution (Issue 5). **Honest strength to preserve:** the program does
 not overclaim — it labels discovery vs evidence and scopes physics-bound limits out;
 keep that discipline in the manuscript.
@@ -1902,7 +1902,7 @@ precedes training:
    structured metadata can be released under license; mark all episode schema fields
    with their release tier; document institutional legal review status.
 3. **Data-quality fixes** — F (reset/clock label noise), E (taxonomy name drift),
-   G (vacuous Yosys-L3 LUT → use `synth_xilinx` or defer QoR to L4), H0 (structured
+   G (vacuous Yosys-L3 LUT → use `synth_xilinx` or defer QoR to L4), DQ-H0 (structured
    tool-signal extraction: L2 mismatch detail, L4 failure families, pass-time
    warnings).
 4. **Contract-preserving generation** — System-HIS → deterministic project

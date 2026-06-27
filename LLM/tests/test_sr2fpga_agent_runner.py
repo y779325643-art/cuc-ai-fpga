@@ -8,6 +8,7 @@ from unittest.mock import patch
 from LLM.src.sr2fpga_agent.runner import (
     RunState,
     RunnerConfig,
+    SourceConnection,
     TaskConfig,
     classify_sample_bucket,
     initial_run_state,
@@ -63,6 +64,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(config.run_root, Path("tmp/sr2fpga_runs"))
             self.assertEqual(config.provider, "deterministic")
             self.assertEqual(config.repair_provider, "none")
+            self.assertEqual(config.model, "deepseek-v4-pro")
             self.assertEqual(config.max_attempts, 1)
             self.assertTrue(config.refresh_exports)
             self.assertEqual(config.env_file, Path(""))
@@ -592,7 +594,7 @@ class RunnerConfigTest(unittest.TestCase):
             with (
                 patch.dict(os.environ, {"DEEPSEEK_API_KEY": "shell-fake-key"}, clear=True),
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
-                patch("LLM.src.sr2fpga_agent.runner.DeepSeekClient") as client_cls,
+                patch("LLM.src.sr2fpga_agent.runner.OpenAICompatibleClient") as client_cls,
             ):
                 client_cls.return_value.chat.return_value = '{"ok": true}'
                 report = runner_preflight(config, run_id="auth_ok", validate_provider=True)
@@ -600,6 +602,84 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertTrue(report["ok"])
             self.assertEqual(report["provider_auth"]["deepseek"]["status"], "ok")
             self.assertNotIn("shell-fake-key", json.dumps(report))
+
+    def test_runner_preflight_validate_provider_uses_wider_auth_timeout(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="gpt55", task_type="counter", widths=[4], count=1)],
+                sources={
+                    "gpt55": SourceConnection(
+                        name="gpt55",
+                        kind="openai_compat",
+                        model="gpt-5.5",
+                        base_url="https://example/v1",
+                        api_key_env="OPENAI_API_KEY",
+                        generation_mode="two_stage",
+                        timeout_seconds=900,
+                    )
+                },
+            )
+
+            with (
+                patch.dict(os.environ, {"OPENAI_API_KEY": "shell-fake-key"}, clear=True),
+                patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
+                patch("LLM.src.sr2fpga_agent.runner.OpenAICompatibleClient") as client_cls,
+            ):
+                client_cls.return_value.chat.return_value = '{"ok": true}'
+                report = runner_preflight(config, run_id="auth_ok", validate_provider=True)
+
+            self.assertTrue(report["ok"])
+            client_config = client_cls.call_args.args[0]
+            self.assertEqual(client_config.timeout_seconds, 120)
+
+    def test_runner_preflight_validate_provider_uses_anthropic_client(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="claude", task_type="counter", widths=[4], count=1)],
+                sources={
+                    "claude": SourceConnection(
+                        name="claude",
+                        kind="anthropic_compat",
+                        model="claude-opus-4-8",
+                        base_url="https://w.ciykj.cn/v1",
+                        api_key_env="ANTHROPIC_API_KEY",
+                        generation_mode="two_stage",
+                        timeout_seconds=900,
+                    )
+                },
+            )
+
+            with (
+                patch.dict(os.environ, {"ANTHROPIC_API_KEY": "shell-fake-key"}, clear=True),
+                patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
+                patch("LLM.src.sr2fpga_agent.runner.AnthropicCompatibleClient") as client_cls,
+            ):
+                client_cls.return_value.chat.return_value = '{"ok": true}'
+                report = runner_preflight(config, run_id="auth_ok", validate_provider=True)
+
+            self.assertTrue(report["ok"])
+            client_config = client_cls.call_args.args[0]
+            self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
+            self.assertEqual(client_config.api_key, "shell-fake-key")
+            self.assertEqual(client_config.timeout_seconds, 120)
 
     def test_runner_preflight_validate_provider_reports_deepseek_auth_failure_without_secret(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -620,7 +700,7 @@ class RunnerConfigTest(unittest.TestCase):
             with (
                 patch.dict(os.environ, {"DEEPSEEK_API_KEY": "shell-fake-key"}, clear=True),
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
-                patch("LLM.src.sr2fpga_agent.runner.DeepSeekClient") as client_cls,
+                patch("LLM.src.sr2fpga_agent.runner.OpenAICompatibleClient") as client_cls,
             ):
                 client_cls.return_value.chat.side_effect = RuntimeError("auth failed for shell-fake-key")
                 report = runner_preflight(config, run_id="auth_fail", validate_provider=True)

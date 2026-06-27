@@ -7,8 +7,10 @@ from unittest.mock import patch
 
 from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
 from LLM.src.sr2fpga_agent.deepseek import (
+    AnthropicCompatibleConfig,
     DeepSeekProjectGenerator,
     DeepSeekTwoStageProjectGenerator,
+    OpenAICompatibleConfig,
 )
 from LLM.src.sr2fpga_agent.runner import (
     PlannedSample,
@@ -173,6 +175,23 @@ class SourcesParsingTest(unittest.TestCase):
             config = load_runner_config(path)
             self.assertEqual(config.sources["claude"].generation_mode, "two_stage")
 
+    def test_anthropic_compat_defaults_to_two_stage(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "claude": {
+                        "kind": "anthropic_compat",
+                        "model": "claude-opus-4-8",
+                        "base_url": "https://w.ciykj.cn/v1",
+                        "api_key_env": "ANTHROPIC_API_KEY",
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["claude"].kind, "anthropic_compat")
+            self.assertEqual(config.sources["claude"].generation_mode, "two_stage")
+
     def test_openai_compat_explicit_direct_mode_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
@@ -258,6 +277,21 @@ class ConnectionBuilderTest(unittest.TestCase):
         client_config = generator.his_project_generator.client.config
         self.assertEqual(client_config.model, "claude-opus-4-8")
         self.assertEqual(client_config.base_url, "https://api.anthropic.com/v1")
+        self.assertEqual(client_config.api_key, "sk-test")
+
+    def test_anthropic_compat_builds_two_stage_with_official_client(self) -> None:
+        conn = SourceConnection(
+            name="claude", kind="anthropic_compat", model="claude-opus-4-8",
+            base_url="https://w.ciykj.cn/v1", api_key_env="ANTHROPIC_API_KEY",
+            generation_mode="two_stage",
+        )
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator, DeepSeekTwoStageProjectGenerator)
+        client_config = generator.his_project_generator.client.config
+        self.assertIsInstance(client_config, AnthropicCompatibleConfig)
+        self.assertEqual(client_config.model, "claude-opus-4-8")
+        self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
         self.assertEqual(client_config.api_key, "sk-test")
 
     def test_legacy_deepseek_kind_builds_single_stage(self) -> None:
@@ -481,6 +515,7 @@ class TimeoutConfigTest(unittest.TestCase):
         )
         with patch.dict(os.environ, {"X_API_KEY": "sk-test"}, clear=False):
             generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
         self.assertEqual(
             generator.his_project_generator.client.config.timeout_seconds, 600
         )

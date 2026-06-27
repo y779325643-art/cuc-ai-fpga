@@ -89,6 +89,56 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertIn("data_flow 'input0_payload_to_join'.timing.initiation_interval must be a positive integer", result.errors)
         self.assertIn("data_flow 'input0_payload_to_join'.timing.throughput must be a non-empty string", result.errors)
 
+    def test_rejects_missing_intent_timing_resource_and_verification_details(self) -> None:
+        payload = _fixture()
+        payload["intent"]["design_goal"] = ""
+        payload["top"]["clocks"] = [{"name": "", "target_fmax_mhz": 0}]
+        payload["top"]["resets"] = [{"name": "rst_n", "polarity": "lowish", "kind": "maybe_sync"}]
+        payload["timing"] = {"primary_clock": "", "target_fmax_mhz": 0, "constraints": []}
+        payload["resources"] = {"optimization_goal": "", "expected": "low"}
+        payload["verification"] = {"testbench": "", "scenarios": "reset", "pass_condition": ""}
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("system_his.intent.design_goal is required", result.errors)
+        self.assertIn("system_his.top.clocks[0].name is required", result.errors)
+        self.assertIn("system_his.top.clocks[0].target_fmax_mhz must be positive", result.errors)
+        self.assertIn("system_his.top.resets[0].polarity is invalid", result.errors)
+        self.assertIn("system_his.top.resets[0].kind is invalid", result.errors)
+        self.assertIn("system_his.timing.primary_clock is required", result.errors)
+        self.assertIn("system_his.timing.target_fmax_mhz must be positive", result.errors)
+        self.assertIn("system_his.resources.optimization_goal is required", result.errors)
+        self.assertIn("system_his.resources.expected must be an object", result.errors)
+        self.assertIn("system_his.verification.testbench is required", result.errors)
+        self.assertIn("system_his.verification.scenarios must be a list", result.errors)
+        self.assertIn("system_his.verification.pass_condition is required", result.errors)
+
+    def test_rejects_missing_component_instance_flow_and_control_contract_details(self) -> None:
+        payload = _fixture()
+        payload["components"][0]["semantic_kind"] = ""
+        payload["components"][0]["source"] = ""
+        payload["components"][0]["intent"] = ""
+        payload["instances"][0]["clock"] = ""
+        payload["instances"][0]["reset"] = ""
+        payload["instances"][0]["parameter_values"] = "none"
+        payload["data_flow"][0]["protocol"] = ""
+        payload["data_flow"][0]["payload"] = "byte"
+        payload["control_flow"][0]["kind"] = "free_text_rule"
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("components[0].semantic_kind is required", result.errors)
+        self.assertIn("components[0].source is required", result.errors)
+        self.assertIn("components[0].intent is required", result.errors)
+        self.assertIn("instances[0].clock is required", result.errors)
+        self.assertIn("instances[0].reset is required", result.errors)
+        self.assertIn("instances[0].parameter_values must be an object", result.errors)
+        self.assertIn("data_flow 'input0_payload_to_join'.protocol is required", result.errors)
+        self.assertIn("data_flow 'input0_payload_to_join'.payload must be an object", result.errors)
+        self.assertIn("control_flow 'reset_all_state'.kind 'free_text_rule' is invalid", result.errors)
+
     def test_rejects_control_rule_references_to_missing_state_and_flow(self) -> None:
         payload = _fixture()
         payload["control_flow"][0]["related_state"].append("missing_state")
@@ -386,16 +436,28 @@ def _consistent_v12_project() -> tuple[dict[str, object], GeneratedProject]:
         "components": [
             {
                 "name": "counter_core",
+                "semantic_kind": "counter",
                 "source": "rtl/counter_core.v",
+                "parameters": [],
                 "ports": [
                     {"name": "clk", "dir": "input", "width": 1},
                     {"name": "rst_n", "dir": "input", "width": 1},
                     {"name": "en", "dir": "input", "width": 1},
                     {"name": "count", "dir": "output", "width": 8},
                 ],
+                "intent": "8-bit counter datapath and state update logic",
             }
         ],
-        "instances": [{"name": "u_counter", "component": "counter_core", "owns_state": ["u_counter.count_q"]}],
+        "instances": [
+            {
+                "name": "u_counter",
+                "component": "counter_core",
+                "parameter_values": {},
+                "clock": "clk",
+                "reset": "rst_n",
+                "owns_state": ["u_counter.count_q"],
+            }
+        ],
         "data_flow": [
             {
                 "name": "count_path",

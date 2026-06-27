@@ -6,6 +6,7 @@ import subprocess
 import time
 from pathlib import Path
 
+from LLM.src.sr2fpga_agent.local_tools import executable_env, resolve_executable
 from LLM.src.sr2fpga_agent.models import ToolResult
 
 
@@ -20,10 +21,15 @@ class CommandRunner:
         timeout_seconds: int = 30,
     ) -> ToolResult:
         start = time.monotonic()
+        resolved_command = list(command)
+        resolved_executable = resolve_executable(command[0])
+        if resolved_executable is not None:
+            resolved_command[0] = str(resolved_executable)
         try:
             completed = subprocess.run(
-                command,
+                resolved_command,
                 cwd=cwd,
+                env=executable_env(),
                 check=False,
                 capture_output=True,
                 text=True,
@@ -32,7 +38,7 @@ class CommandRunner:
         except FileNotFoundError:
             return ToolResult(
                 stage=stage,
-                command=command,
+                command=resolved_command,
                 status="missing_tool",
                 exit_code=None,
                 stdout="",
@@ -42,7 +48,7 @@ class CommandRunner:
         except subprocess.TimeoutExpired as exc:
             return ToolResult(
                 stage=stage,
-                command=command,
+                command=resolved_command,
                 status="timeout",
                 exit_code=None,
                 stdout=exc.stdout or "",
@@ -53,7 +59,7 @@ class CommandRunner:
         status = "passed" if completed.returncode == 0 else "failed"
         return ToolResult(
             stage=stage,
-            command=command,
+            command=resolved_command,
             status=status,
             exit_code=completed.returncode,
             stdout=completed.stdout,

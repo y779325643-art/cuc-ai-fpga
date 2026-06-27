@@ -2,13 +2,14 @@
 
 ## Status
 
-Proposed (2026-06-25). Expands method-novelty candidate (i) in the reframe spec
-(`2026-06-22-sr2fpga-research-reframe-design.md` → Method). This is the lever that
-upgrades SR2FPGA from a *new methodology* to a *new method* in the strong sense TCAD
+Proposed (2026-06-25); aligned with the 2026-06-26 reframe hardening pass. Expands
+the method-novelty candidate in the reframe spec
+(`2026-06-22-sr2fpga-research-reframe-design.md`). This is the lever that upgrades
+SR2FPGA from a *new methodology* to a *new method* in the strong sense TCAD
 requires: a decode-time mechanism that makes cross-file structural consistency hold
-**by construction**, rather than only being checked after the fact. English-only,
-consistent with the other feature/design specs (the reframe spec is the only one
-with a Chinese companion).
+**by construction**, rather than only being checked after the fact. It is currently
+**design-only**: Tier A is the immediate implementable step; Tier B is gated on a
+local fine-tuned model with logit access.
 
 ## Goal
 
@@ -78,20 +79,23 @@ standard, representation/application new."
 
 ## What gets constrained
 
-System-HIS declares the top name, components (port names / directions / widths),
-instances, connections, top_ports, and artifacts. The structural emission points
-where consistency breaks map directly to the contract:
+System-HIS v1.2 declares `top`, `components`, `instances`, `data_flow`,
+`control_flow`, `state`, `timing`, `resources`, `verification`, and `artifacts`.
+The structural emission points where consistency breaks map directly to the
+contract:
 
 | Emission point | Constraint from System-HIS |
 |---|---|
 | `module <name>(ports…)` | name = a declared component/top; ports = that component's declared name/dir/width |
 | top.v instantiation `<comp> <inst>(.port(net))` | comp / inst / port must be declared |
-| testbench instantiates top | uses declared `top_ports` |
+| testbench instantiates top | uses `top.name` and declared `top.ports` |
 | SDC `get_ports` | only real top ports |
 | manifest sources / top | consistent with `artifacts` |
 
 The constraint is: **at each structural point, the legal identifier set is
-determined by System-HIS.**
+determined by canonical `system-his-v1.2`.** Legacy fields such as v1.1
+`connections`/`top_ports` are historical inputs only; new constrained generation
+must read the v1.2 aspect fields.
 
 ## Mechanism (three tiers, increasing power and cost)
 
@@ -185,8 +189,10 @@ constraint missed") and the **metric source** (cross-file-consistency error rate
 
 ## Feasibility and sequencing
 
-- **Tier A is doable now** (deterministic shell on the LLM path), low risk, kills
-  most observed L0 failures, and partly exists in `ProjectGenerator`.
+- **Tier A is the next System-HIS implementation step** (deterministic shell on
+  the LLM path), low risk, kills most observed L0 failures, and partly exists in
+  `ProjectGenerator`. Artifact metadata must record deterministic vs
+  model-generated regions so the B2 ablation is auditable.
 - **Tier B is the new method core** — needs the local fine-tuned model + a
   constrained-decoding engine (logit masking + incremental parser). Medium
   engineering. This is the step that earns the TCAD "new method" claim.
@@ -203,7 +209,8 @@ constraint missed") and the **metric source** (cross-file-consistency error rate
   "new method" path discussed in its Method statement.
 - Reuses the v1.2 freeze's checker/contract representation
   (`2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`); shares one oracle,
-  removing failure-repair Issue 19's drift risk.
+  removing failure-repair Issue 19's drift risk. The freeze spec now records
+  Tier A contract-preserving generation as a post-ratification hardening gate.
 - Distinct from CPPL (compile-time, circuit-level IR) — this acts at decode time
   from a requirement-level contract.
 - Gated like RQ3: needs the first local fine-tuned model before Tier B; Tier A can

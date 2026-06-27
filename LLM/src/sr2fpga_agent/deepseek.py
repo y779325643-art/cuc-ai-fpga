@@ -1,4 +1,4 @@
-"""DeepSeek provider for SR2FPGA project generation."""
+"""OpenAI-compatible LLM providers for SR2FPGA project generation."""
 
 from __future__ import annotations
 
@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
+from LLM.src.sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
 from LLM.src.sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
 from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12
 
@@ -57,29 +58,68 @@ MULTIMODULE_RTL_EXAMPLES = {
 
 
 @dataclass(frozen=True)
-class DeepSeekConfig:
-    """OpenAI-compatible DeepSeek API configuration."""
+class OpenAICompatibleConfig:
+    """OpenAI-compatible chat completions API configuration."""
 
     api_key: str
-    model: str = "deepseek-v4-flash"
+    model: str = "deepseek-v4-pro"
     base_url: str = "https://api.deepseek.com"
     timeout_seconds: int = 120
+    transport_attempts: int = 3
+    retry_backoff_seconds: float = 0.5
 
 
-class DeepSeekClient:
-    """Small stdlib HTTP client for DeepSeek chat completions."""
+class OpenAICompatibleClient:
+    """Small stdlib HTTP client for OpenAI-compatible chat completions."""
 
-    def __init__(self, config: DeepSeekConfig) -> None:
+    def __init__(self, config: OpenAICompatibleConfig) -> None:
         self.config = config
 
     def chat(self, messages: list[dict[str, str]]) -> str:
-        url = self.config.base_url.rstrip("/") + "/chat/completions"
-        payload = {
+        payload = self._chat_payload(messages)
+        data = self._request_with_retries(payload, _read_chat_completion_json)
+
+        try:
+            return str(data["choices"][0]["message"]["content"])
+        except (KeyError, IndexError, TypeError) as exc:
+            raise RuntimeError(
+                "OpenAI-compatible API response did not contain choices[0].message.content"
+            ) from exc
+
+    def stream_chat(self, messages: list[dict[str, str]]) -> str:
+        payload = self._chat_payload(messages)
+        payload["stream"] = True
+        return self._request_with_retries(payload, _read_streaming_chat_content)
+
+    def _chat_payload(self, messages: list[dict[str, str]]) -> dict[str, Any]:
+        payload: dict[str, Any] = {
             "model": self.config.model,
-            "messages": messages,
+            "messages": _messages_for_model(self.config.model, messages),
             "temperature": 0.1,
-            "response_format": {"type": "json_object"},
         }
+        if _model_supports_json_response_format(self.config.model):
+            payload["response_format"] = {"type": "json_object"}
+        return payload
+
+    def _request_with_retries(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
+        last_error: _TransientOpenAICompatibleError | None = None
+        attempts = max(1, self.config.transport_attempts)
+        for attempt in range(attempts):
+            try:
+                return self._request_once(payload, reader)
+            except _TransientOpenAICompatibleError as exc:
+                last_error = exc
+                if attempt + 1 >= attempts:
+                    break
+                delay = self.config.retry_backoff_seconds * (attempt + 1)
+                if delay > 0:
+                    time.sleep(delay)
+        if last_error is not None:
+            raise RuntimeError(str(last_error)) from last_error
+        raise RuntimeError("OpenAI-compatible API request did not run")
+
+    def _request_once(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
+        url = self.config.base_url.rstrip("/") + "/chat/completions"
         request = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
@@ -95,19 +135,92 @@ class DeepSeekClient:
                 timeout=self.config.timeout_seconds,
                 context=_default_ssl_context(),
             ) as response:
-                data = json.loads(response.read().decode("utf-8"))
+                return reader(response)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
-            raise RuntimeError(f"DeepSeek API request failed with HTTP {exc.code}: {body}") from exc
+            message = f"OpenAI-compatible API request failed with HTTP {exc.code}: {body}"
+            if exc.code in TRANSIENT_HTTP_STATUS_CODES:
+                raise _TransientOpenAICompatibleError(message) from exc
+            raise RuntimeError(message) from exc
         except TimeoutError as exc:
-            raise RuntimeError("DeepSeek API request timed out") from exc
+            raise _TransientOpenAICompatibleError("OpenAI-compatible API request timed out") from exc
         except urllib.error.URLError as exc:
-            raise RuntimeError(f"DeepSeek API request failed: {exc.reason}") from exc
+            raise _TransientOpenAICompatibleError(f"OpenAI-compatible API request failed: {exc.reason}") from exc
 
+
+@dataclass(frozen=True)
+class AnthropicCompatibleConfig:
+    """Anthropic Messages API configuration."""
+
+    api_key: str
+    model: str = "claude-opus-4-8"
+    base_url: str = "https://api.anthropic.com/v1"
+    timeout_seconds: int = 120
+    max_tokens: int = 16384
+    anthropic_version: str = "2023-06-01"
+    transport_attempts: int = 3
+    retry_backoff_seconds: float = 0.5
+
+
+class AnthropicCompatibleClient:
+    """Small stdlib HTTP client for Anthropic-compatible Messages APIs."""
+
+    def __init__(self, config: AnthropicCompatibleConfig) -> None:
+        self.config = config
+
+    def chat(self, messages: list[dict[str, str]]) -> str:
+        data = self._request_with_retries(_anthropic_messages_payload(self.config, messages))
+        return _read_anthropic_message_text(data)
+
+    def stream_chat(self, messages: list[dict[str, str]]) -> str:
+        return self.chat(messages)
+
+    def _request_with_retries(self, payload: dict[str, Any]) -> Any:
+        last_error: _TransientOpenAICompatibleError | None = None
+        attempts = max(1, self.config.transport_attempts)
+        for attempt in range(attempts):
+            try:
+                return self._request_once(payload)
+            except _TransientOpenAICompatibleError as exc:
+                last_error = exc
+                if attempt + 1 >= attempts:
+                    break
+                delay = self.config.retry_backoff_seconds * (attempt + 1)
+                if delay > 0:
+                    time.sleep(delay)
+        if last_error is not None:
+            raise RuntimeError(str(last_error)) from last_error
+        raise RuntimeError("Anthropic-compatible API request did not run")
+
+    def _request_once(self, payload: dict[str, Any]) -> Any:
+        url = self.config.base_url.rstrip("/") + "/messages"
+        request = urllib.request.Request(
+            url,
+            data=json.dumps(payload).encode("utf-8"),
+            headers={
+                "x-api-key": self.config.api_key,
+                "anthropic-version": self.config.anthropic_version,
+                "Content-Type": "application/json",
+            },
+            method="POST",
+        )
         try:
-            return str(data["choices"][0]["message"]["content"])
-        except (KeyError, IndexError, TypeError) as exc:
-            raise RuntimeError("DeepSeek API response did not contain choices[0].message.content") from exc
+            with urllib.request.urlopen(
+                request,
+                timeout=self.config.timeout_seconds,
+                context=_default_ssl_context(),
+            ) as response:
+                return _read_chat_completion_json(response)
+        except urllib.error.HTTPError as exc:
+            body = exc.read().decode("utf-8", errors="replace")
+            message = f"Anthropic-compatible API request failed with HTTP {exc.code}: {body}"
+            if exc.code in TRANSIENT_HTTP_STATUS_CODES:
+                raise _TransientOpenAICompatibleError(message) from exc
+            raise RuntimeError(message) from exc
+        except TimeoutError as exc:
+            raise _TransientOpenAICompatibleError("Anthropic-compatible API request timed out") from exc
+        except urllib.error.URLError as exc:
+            raise _TransientOpenAICompatibleError(f"Anthropic-compatible API request failed: {exc.reason}") from exc
 
 
 def _default_ssl_context() -> ssl.SSLContext:
@@ -118,10 +231,126 @@ def _default_ssl_context() -> ssl.SSLContext:
     return ssl.create_default_context(cafile=certifi.where())
 
 
+TRANSIENT_HTTP_STATUS_CODES = {408, 429, 500, 502, 503, 504}
+
+
+class _TransientOpenAICompatibleError(RuntimeError):
+    pass
+
+
+def _model_supports_json_response_format(model: str) -> bool:
+    return not model.startswith("claude-")
+
+
+def _messages_for_model(model: str, messages: list[dict[str, str]]) -> list[dict[str, str]]:
+    if not model.startswith("claude-"):
+        return messages
+    system_parts: list[str] = []
+    rewritten: list[dict[str, str]] = []
+    for message in messages:
+        role = message.get("role", "")
+        content = str(message.get("content", ""))
+        if role == "system":
+            system_parts.append(content)
+            continue
+        rewritten.append({"role": role, "content": content})
+    if not system_parts:
+        return rewritten
+    system_text = "\n\n".join(system_parts)
+    if rewritten and rewritten[0].get("role") == "user":
+        first = rewritten[0]
+        rewritten[0] = {
+            "role": "user",
+            "content": f"System instructions:\n{system_text}\n\nUser request:\n{first.get('content', '')}",
+        }
+        return rewritten
+    return [{"role": "user", "content": f"System instructions:\n{system_text}"}] + rewritten
+
+
+def _read_chat_completion_json(response: Any) -> Any:
+    return json.loads(response.read().decode("utf-8"))
+
+
+def _anthropic_messages_payload(
+    config: AnthropicCompatibleConfig,
+    messages: list[dict[str, str]],
+) -> dict[str, Any]:
+    system_parts: list[str] = []
+    anthropic_messages: list[dict[str, str]] = []
+    for message in messages:
+        role = str(message.get("role", ""))
+        content = str(message.get("content", ""))
+        if role == "system":
+            system_parts.append(content)
+        elif role in {"user", "assistant"}:
+            anthropic_messages.append({"role": role, "content": content})
+    if not anthropic_messages:
+        anthropic_messages.append({"role": "user", "content": "Return a JSON object."})
+    payload: dict[str, Any] = {
+        "model": config.model,
+        "max_tokens": config.max_tokens,
+        "messages": anthropic_messages,
+        "temperature": 0.1,
+    }
+    if system_parts:
+        payload["system"] = "\n\n".join(system_parts)
+    return payload
+
+
+def _read_anthropic_message_text(data: Any) -> str:
+    try:
+        content = data["content"]
+    except (KeyError, TypeError) as exc:
+        raise RuntimeError("Anthropic-compatible API response did not contain content") from exc
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        chunks: list[str] = []
+        for item in content:
+            if isinstance(item, dict) and item.get("type") == "text" and item.get("text") is not None:
+                chunks.append(str(item["text"]))
+        if chunks:
+            return "".join(chunks)
+    raise RuntimeError("Anthropic-compatible API response did not contain text content")
+
+
+def _read_streaming_chat_content(response: Any) -> str:
+    chunks: list[str] = []
+    while True:
+        raw_line = response.readline()
+        if not raw_line:
+            break
+        line = raw_line.decode("utf-8", errors="replace").strip()
+        if not line or line.startswith(":"):
+            continue
+        if not line.startswith("data:"):
+            continue
+        data = line.removeprefix("data:").strip()
+        if data == "[DONE]":
+            break
+        try:
+            event = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("OpenAI-compatible streaming response contained invalid chat completion data") from exc
+        if isinstance(event, dict) and "error" in event:
+            raise RuntimeError(f"OpenAI-compatible streaming response error: {event['error']}")
+        choices = event.get("choices") if isinstance(event, dict) else None
+        if not choices:
+            continue
+        try:
+            delta = choices[0].get("delta", {})
+        except (AttributeError, IndexError, TypeError) as exc:
+            raise RuntimeError("OpenAI-compatible streaming response contained invalid chat completion data") from exc
+        content = delta.get("content")
+        if content is not None:
+            chunks.append(str(content))
+    return "".join(chunks)
+
+
 class DeepSeekProjectGenerator:
     """Generate a project package by asking DeepSeek for required files."""
 
-    def __init__(self, client: DeepSeekClient, max_attempts: int = 3) -> None:
+    def __init__(self, client: OpenAICompatibleClient, max_attempts: int = 3) -> None:
         self.client = client
         self.max_attempts = max_attempts
 
@@ -145,7 +374,7 @@ class DeepSeekSystemHisGenerator:
 
     def __init__(
         self,
-        client: DeepSeekClient,
+        client: OpenAICompatibleClient,
         max_attempts: int = 3,
         event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
@@ -159,12 +388,16 @@ class DeepSeekSystemHisGenerator:
         for attempt_id in range(self.max_attempts):
             content = self.client.chat(messages)
             try:
-                return parse_system_his_v12(content)
+                system_his = parse_system_his_v12(content)
+                fidelity = check_system_his_req_fidelity(request, system_his)
+                if not fidelity.passed:
+                    raise ValueError("DeepSeek System-HIS REQ2HIS fidelity failed: " + "; ".join(fidelity.errors))
+                return system_his
             except ValueError as exc:
                 last_error = exc
                 if attempt_id + 1 < self.max_attempts:
                     self._emit_retry_event(request, attempt_id, exc)
-                messages = _with_system_his_retry_feedback(messages, str(exc), content)
+                messages = _with_system_his_retry_feedback(messages, str(exc), content, task_type=request.task_type)
         if last_error is not None:
             raise last_error
         raise RuntimeError("DeepSeek System-HIS generator did not run")
@@ -189,7 +422,7 @@ class DeepSeekSystemHisGenerator:
 class DeepSeekHisProjectGenerator:
     """Generate a project package from a checked System-HIS v1.2 contract."""
 
-    def __init__(self, client: DeepSeekClient, max_attempts: int = 3) -> None:
+    def __init__(self, client: OpenAICompatibleClient, max_attempts: int = 3) -> None:
         self.client = client
         self.max_attempts = max_attempts
 
@@ -202,7 +435,7 @@ class DeepSeekHisProjectGenerator:
         messages = _his_project_messages(request, platform, system_his)
         last_error: ValueError | None = None
         for _attempt in range(self.max_attempts):
-            content = self.client.chat(messages)
+            content = self.client.stream_chat(messages)
             try:
                 files = parse_project_files(content, expected_task_type=request.task_type)
                 try:
@@ -223,7 +456,7 @@ class DeepSeekTwoStageProjectGenerator:
 
     def __init__(
         self,
-        client: DeepSeekClient,
+        client: OpenAICompatibleClient,
         max_attempts: int = 3,
         event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
@@ -288,7 +521,7 @@ class DeepSeekTwoStageProjectGenerator:
 class DeepSeekRepairer:
     """Repair a generated project package using DeepSeek and a tool diagnosis."""
 
-    def __init__(self, client: DeepSeekClient, max_attempts: int = 3) -> None:
+    def __init__(self, client: OpenAICompatibleClient, max_attempts: int = 3) -> None:
         self.client = client
         self.max_attempts = max_attempts
 
@@ -583,7 +816,8 @@ Architectural rules:
 - Every clock and reset declared in top.clocks/top.resets must also appear in top.ports.
 - Record architectural state, not incidental RTL temporaries.
 - Separate component definitions from concrete instances.
-- Every instance must reference a component.
+- Every component must include name, semantic_kind, source, ports, and intent.
+- Every instance must include name, component, parameter_values, clock, reset, and owns_state.
 - Every data_flow endpoint must name top.<port> or <instance>.<port>.
 - data_flow.timing is optional, but when present it must include
   latency_cycles >= 0, initiation_interval > 0, and optional non-empty throughput.
@@ -676,7 +910,9 @@ def _with_system_his_retry_feedback(
     messages: list[dict[str, str]],
     error: str,
     previous_content: str,
+    task_type: str = "",
 ) -> list[dict[str, str]]:
+    task_guidance = _system_his_v12_retry_guidance(task_type)
     return [
         *messages,
         {
@@ -687,7 +923,8 @@ def _with_system_his_retry_feedback(
                 "Validation error:\n"
                 f"{error}\n\n"
                 "System-HIS v1.2 IR repair checklist:\n"
-                "- Every instances[] object must include name, component, and owns_state.\n"
+                "- Every components[] object must include name, semantic_kind, source, ports, and intent.\n"
+                "- Every instances[] object must include name, component, parameter_values, clock, reset, and owns_state.\n"
                 "- Every instance name must be unique and every component value must match a declared components[].name.\n"
                 "- Every top clock/reset should be listed in top.clocks/top.resets and also in top.ports.\n"
                 "- data_flow.path endpoints must use top.<port> or <instance>.<port>; do not use component names as endpoints.\n"
@@ -696,6 +933,7 @@ def _with_system_his_retry_feedback(
                 "- control_flow.effect.target must reference a declared data_flow name or state name; do not target "
                 "top ports, instance ports, all, or module names directly.\n"
                 "- FSMs must declare non-empty states, initial, and reset_state, and transitions must use those states.\n\n"
+                f"{task_guidance}\n"
                 "Previous invalid System-HIS JSON:\n"
                 f"{previous_content.strip()}"
             ),
@@ -741,6 +979,41 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- data_flow must use named path arrays and control_flow must reference existing state and flows."
         )
     return ""
+
+
+def _system_his_v12_retry_guidance(task_type: str) -> str:
+    common = (
+        "Task-specific retry guidance after checker failure:\n"
+        "- Do not leave fsm, from, to, effect.action, or effect.target empty.\n"
+        "- Do not emit fsm_transition unless state.fsms declares that FSM and its states.\n"
+        "- If no FSM is needed, use handshake_rule, enable_rule, or stall_rule instead.\n"
+    )
+    if task_type == "composed_dual_stream_join":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in0_valid, in0_data, in1_valid, in1_data, out_ready, "
+            "in0_ready, in1_ready, out_valid, out_data\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_stream_fork":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, out0_ready, out1_ready, "
+            "in_ready, out0_valid, out0_data, out1_valid, out1_data\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_stream_accumulator":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, in_ready, sample_valid, sum\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_event_counter":
+        return common + "- Required top ports: clk, rst_n, event_valid, count\n"
+    return common
 
 
 def _his_project_messages(
