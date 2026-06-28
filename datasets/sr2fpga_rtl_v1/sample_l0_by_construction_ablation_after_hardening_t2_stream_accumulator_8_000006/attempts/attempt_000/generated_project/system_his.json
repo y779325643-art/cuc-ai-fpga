@@ -1,0 +1,525 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Build an 8-bit streaming accumulator datapath as a complete SR2FPGA Verilog RTL project. This is component topology t2_stream_accumulator, difficulty tier T2. Use a skid_buffer feeding an accumulator_core. The design must implement this black-box behavior: valid input samples pass through a skid buffer and accumulate into the running sum. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.in_valid -> skid_buffer.in_valid; top.in_data -> skid_buffer.in_data; skid_buffer.out_valid -> accumulator_core.sample_valid; skid_buffer.out_data -> accumulator_core.sample; accumulator_core.sample_ready -> skid_buffer.out_ready; accumulator_core.sum -> top.sum. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "design_goal": "Implement an 8-bit streaming accumulator with a skid buffer for flow control, targeting generic Verilog with open-source toolchain.",
+    "assumptions": [
+      "accumulator always ready (sample_ready = 1)",
+      "valid input only asserted when skid buffer can accept (no overflow)",
+      "8-bit accumulation wraps on overflow"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "target_fmax_mhz": 100
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_data",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sum",
+        "direction": "output",
+        "width": 8
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "skid_data",
+        "width": 8,
+        "owner": "input_buffer"
+      },
+      {
+        "name": "skid_valid",
+        "width": 1,
+        "owner": "input_buffer"
+      },
+      {
+        "name": "accumulated_sum",
+        "width": 8,
+        "owner": "accumulator"
+      },
+      {
+        "name": "sample_ready_reg",
+        "width": 1,
+        "owner": "accumulator"
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "semantic_kind": "skid_buffer",
+      "source": "rtl/skid_buffer.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": 1
+        }
+      ],
+      "intent": "Elastic buffer with single-entry skid for flow control."
+    },
+    {
+      "name": "accumulator_core",
+      "semantic_kind": "accumulator",
+      "source": "rtl/accumulator_core.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "sample",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "sample_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "sum",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "intent": "Accumulates incoming samples into a running sum."
+    }
+  ],
+  "instances": [
+    {
+      "name": "input_buffer",
+      "component": "skid_buffer",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "skid_data",
+        "skid_valid"
+      ]
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "accumulated_sum",
+        "sample_ready_reg"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "sample_data_path",
+      "path": [
+        "top.in_data",
+        "input_buffer.in_data",
+        "input_buffer.out_data",
+        "accumulator.sample",
+        "accumulator.sum",
+        "top.sum"
+      ],
+      "payload": {
+        "name": "sample_data",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 2,
+        "initiation_interval": 1,
+        "throughput": "one sample per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_skid_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "skid_valid",
+        "value": 0
+      },
+      "related_state": [
+        "skid_valid"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_skid_data",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "skid_data",
+        "value": 0
+      },
+      "related_state": [
+        "skid_data"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_accumulated_sum",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "accumulated_sum",
+        "value": 0
+      },
+      "related_state": [
+        "accumulated_sum"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_sample_ready_reg",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "sample_ready_reg",
+        "value": 0
+      },
+      "related_state": [
+        "sample_ready_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "latch_skid_data",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "skid_valid",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "skid_data",
+        "value": "top.in_data"
+      },
+      "related_state": [
+        "skid_data",
+        "skid_valid"
+      ],
+      "related_flows": [
+        "sample_data_path"
+      ]
+    },
+    {
+      "name": "set_skid_valid_high",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "skid_valid",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "skid_valid",
+        "value": 1
+      },
+      "related_state": [
+        "skid_valid"
+      ],
+      "related_flows": [
+        "sample_data_path"
+      ]
+    },
+    {
+      "name": "update_accumulated_sum",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "skid_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "sample_ready_reg",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "accumulated_sum",
+        "value": "accumulated_sum + skid_data"
+      },
+      "related_state": [
+        "accumulated_sum",
+        "skid_data",
+        "skid_valid"
+      ],
+      "related_flows": [
+        "sample_data_path"
+      ]
+    },
+    {
+      "name": "clear_skid_valid_after_transfer",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "skid_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "sample_ready_reg",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "skid_valid",
+        "value": 0
+      },
+      "related_state": [
+        "skid_valid"
+      ],
+      "related_flows": [
+        "sample_data_path"
+      ]
+    },
+    {
+      "name": "set_accumulator_ready",
+      "kind": "enable_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "!=",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "sample_ready_reg",
+        "value": 1
+      },
+      "related_state": [
+        "sample_ready_reg"
+      ],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "reset_behavior",
+        "description": "After reset, sum is zero, and the skid buffer is empty."
+      },
+      {
+        "name": "single_sample",
+        "description": "Send one sample; the accumulated sum should equal the sample after two cycles."
+      },
+      {
+        "name": "multiple_samples",
+        "description": "Send a sequence of samples; verify the running sum updates correctly, wrapping on 8-bit overflow."
+      },
+      {
+        "name": "back_to_back",
+        "description": "Provide valid on every cycle; confirm that all samples are accumulated without loss."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/accumulator_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

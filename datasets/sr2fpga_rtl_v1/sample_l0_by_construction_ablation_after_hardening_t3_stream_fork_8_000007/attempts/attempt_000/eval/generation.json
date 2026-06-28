@@ -1,0 +1,11 @@
+{
+  "stage": "generation",
+  "command": [
+    "project_generator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "DeepSeek System-HIS v1.2 failed validation: system_his.top.clocks[0].target_fmax_mhz must be positive",
+  "duration_seconds": 0.0
+}

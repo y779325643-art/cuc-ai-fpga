@@ -1,0 +1,886 @@
+{
+  "sample_id": "sample_l0_by_construction_ablation_after_hardening_t4_dual_stream_join_8_000008",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 1,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_join.v",
+        "rtl/accumulator_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "failure_type": "unknown",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Build an 8-bit dual-stream join datapath as a complete SR2FPGA Verilog RTL project. This is component topology t4_dual_stream_join, difficulty tier T4. Use two skid_buffer instances feeding stream_join, then accumulator_core, then stream_stage. The design must implement this black-box behavior: two valid-ready input streams are buffered, synchronized, joined, accumulated, and staged. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.in0_valid -> skid_buffer.in_valid; top.in0_data -> skid_buffer.in_data; top.in1_valid -> skid_buffer.in_valid; top.in1_data -> skid_buffer.in_data; skid_buffer.out_valid -> stream_join.in0_valid; skid_buffer.out_data -> stream_join.in0_data; skid_buffer.out_valid -> stream_join.in1_valid; skid_buffer.out_data -> stream_join.in1_data; stream_join.in0_ready -> skid_buffer.out_ready; stream_join.in1_ready -> skid_buffer.out_ready; stream_join.out_valid -> accumulator_core.sample_valid; stream_join.out_data -> accumulator_core.sample; accumulator_core.sample_ready -> stream_join.out_ready; accumulator_core.sample_valid -> stream_stage.in_valid; accumulator_core.sum -> stream_stage.in_data; stream_stage.in_ready -> accumulator_core.sample_ready; stream_stage.out_valid -> top.out_valid; stream_stage.out_data -> top.out_data. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "Implement an 8-bit dual-stream join datapath with skid buffers, stream join, accumulator, and output stage, adhering to strict interface contracts and achieving correct byte accumulation.",
+      "assumptions": [
+        "Synchronous design with a single 100 MHz clock domain.",
+        "Active-low synchronous reset (rst_n).",
+        "All valid-ready interfaces follow standard AXI-Stream handshake rules.",
+        "Data width is 8 bits for all streams.",
+        "Stream join outputs the data from input 0 when both inputs are valid.",
+        "Accumulator maintains a running sum of joined samples and outputs the sum with valid."
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8,
+          "description": "Bit width of all data streams."
+        }
+      ],
+      "clocks": [
+        {
+          "name": "clk",
+          "frequency_hz": 100000000,
+          "target_fmax_mhz": 100
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "in0_valid",
+          "direction": "input",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "in0_data",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "in0_ready",
+          "direction": "output",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "in1_valid",
+          "direction": "input",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "in1_data",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "in1_ready",
+          "direction": "output",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "type": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "type": "wire",
+          "width": 1
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "accumulator_sum",
+          "width": 8,
+          "owner": "accumulator"
+        }
+      ],
+      "counters": [],
+      "fsms": [
+        {
+          "name": "join_fsm",
+          "owner": "join_core",
+          "states": [
+            "IDLE",
+            "WAIT",
+            "JOINED"
+          ],
+          "initial": "IDLE",
+          "reset_state": "IDLE"
+        }
+      ],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "skid_buffer",
+        "semantic_kind": "skid_buffer",
+        "source": "rtl/skid_buffer.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "description": "Width of data ports."
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          }
+        ],
+        "intent": "Provides a two-entry skid buffer for pipelining and decoupling valid-ready streams."
+      },
+      {
+        "name": "stream_join",
+        "semantic_kind": "stream_join",
+        "source": "rtl/stream_join.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "description": "Width of each input and output data port."
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in0_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in0_data",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "in0_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "in1_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in1_data",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "in1_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          }
+        ],
+        "intent": "Synchronizes two input streams and outputs data from input 0 when both are valid."
+      },
+      {
+        "name": "accumulator_core",
+        "semantic_kind": "accumulator",
+        "source": "rtl/accumulator_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "description": "Width of sample and sum ports."
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_data",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "sample_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sum_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sum_data",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ],
+        "intent": "Accumulates incoming samples on valid and presents the running sum with valid."
+      },
+      {
+        "name": "stream_stage",
+        "semantic_kind": "pipeline_stage",
+        "source": "rtl/stream_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "description": "Width of data ports."
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          }
+        ],
+        "intent": "A single-register pipeline stage that adds one cycle of latency to the stream."
+      }
+    ],
+    "instances": [
+      {
+        "name": "in0_buffer",
+        "component": "skid_buffer",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "in1_buffer",
+        "component": "skid_buffer",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "join_core",
+        "component": "stream_join",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "accumulator",
+        "component": "accumulator_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "accumulator_sum"
+        ]
+      },
+      {
+        "name": "out_stage",
+        "component": "stream_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "main_data_path",
+        "path": [
+          "top.in0_data",
+          "in0_buffer.in_data",
+          "in0_buffer.out_data",
+          "join_core.in0_data",
+          "join_core.out_data",
+          "accumulator.sample_data",
+          "accumulator.sum_data",
+          "out_stage.in_data",
+          "out_stage.out_data",
+          "top.out_data"
+        ],
+        "payload": {
+          "name": "data",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 4,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when backpressure allows"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "join_fsm_reset",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "set_state",
+          "target": "join_fsm.state",
+          "value": "IDLE"
+        },
+        "related_state": [
+          "join_fsm"
+        ],
+        "related_flows": [
+          "main_data_path"
+        ]
+      },
+      {
+        "name": "join_idle_to_wait",
+        "kind": "fsm_transition",
+        "fsm": "join_fsm",
+        "from": "IDLE",
+        "to": "WAIT",
+        "when": {
+          "all_of": [
+            {
+              "signal": "join_fsm.state",
+              "op": "==",
+              "value": "IDLE"
+            },
+            {
+              "any_of": [
+                {
+                  "signal": "join_core.in0_valid",
+                  "op": "==",
+                  "value": 1
+                },
+                {
+                  "signal": "join_core.in1_valid",
+                  "op": "==",
+                  "value": 1
+                }
+              ]
+            }
+          ]
+        },
+        "effect": {
+          "action": "set_state",
+          "target": "join_fsm.state",
+          "value": "WAIT"
+        },
+        "related_state": [
+          "join_fsm"
+        ],
+        "related_flows": [
+          "main_data_path"
+        ]
+      },
+      {
+        "name": "join_wait_to_joined",
+        "kind": "fsm_transition",
+        "fsm": "join_fsm",
+        "from": "WAIT",
+        "to": "JOINED",
+        "when": {
+          "all_of": [
+            {
+              "signal": "join_fsm.state",
+              "op": "==",
+              "value": "WAIT"
+            },
+            {
+              "signal": "join_core.in0_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "join_core.in1_valid",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "set_state",
+          "target": "join_fsm.state",
+          "value": "JOINED"
+        },
+        "related_state": [
+          "join_fsm"
+        ],
+        "related_flows": [
+          "main_data_path"
+        ]
+      },
+      {
+        "name": "join_joined_to_idle",
+        "kind": "fsm_transition",
+        "fsm": "join_fsm",
+        "from": "JOINED",
+        "to": "IDLE",
+        "when": {
+          "all_of": [
+            {
+              "signal": "join_fsm.state",
+              "op": "==",
+              "value": "JOINED"
+            },
+            {
+              "signal": "join_core.out_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "set_state",
+          "target": "join_fsm.state",
+          "value": "IDLE"
+        },
+        "related_state": [
+          "join_fsm"
+        ],
+        "related_flows": [
+          "main_data_path"
+        ]
+      },
+      {
+        "name": "accumulator_update",
+        "kind": "enable_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "accumulator.sample_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "accumulator.sample_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "accumulate",
+          "target": "accumulator_sum"
+        },
+        "related_state": [
+          "accumulator_sum"
+        ],
+        "related_flows": [
+          "main_data_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "low",
+        "ff": "low",
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        {
+          "name": "single_transfer",
+          "description": "Send one valid transaction on both inputs and verify the correct accumulated sum appears at the output."
+        },
+        {
+          "name": "backpressure",
+          "description": "Apply backpressure via out_ready to verify handshake chains correctly stall and resume."
+        }
+      ],
+      "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_join.v",
+        "rtl/accumulator_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 622,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 88,
+        "behavior_holes": 0
+      },
+      "rtl/accumulator_core.v": {
+        "origin": "model_generated",
+        "bytes": 817,
+        "behavior_holes": 0
+      },
+      "rtl/skid_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 1279,
+        "behavior_holes": 0
+      },
+      "rtl/stream_join.v": {
+        "origin": "model_generated",
+        "bytes": 1408,
+        "behavior_holes": 0
+      },
+      "rtl/stream_stage.v": {
+        "origin": "model_generated",
+        "bytes": 911,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 3150,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 590,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 16731,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/accumulator_core.v",
+      "rtl/skid_buffer.v",
+      "rtl/stream_join.v",
+      "rtl/stream_stage.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.317983,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

@@ -1,0 +1,29 @@
+%Warning-UNUSEDSIGNAL: rtl/top.v:4:16: Signal is not used: 'event_valid'
+                                     : ... note: In instance 'top'
+    4 |     input wire event_valid,
+      |                ^~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNDRIVEN: rtl/top.v:5:29: Signal is not driven: 'count'
+                                 : ... note: In instance 'top'
+    5 |     output wire [WIDTH-1:0] count
+      |                             ^~~~~
+                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=5.048
+                   ... Use "/* verilator lint_off UNDRIVEN */" and lint_on around source to disable this message.
+%Warning-UNDRIVEN: rtl/top.v:8:8: Signal is not driven: 'event_gate__event_valid'
+                                : ... note: In instance 'top'
+    8 |   wire event_gate__event_valid;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:9:8: Signal is not used: 'event_gate__count_en'
+                                    : ... note: In instance 'top'
+    9 |   wire event_gate__count_en;
+      |        ^~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:10:8: Signal is not driven: 'counter__en'
+                                 : ... note: In instance 'top'
+   10 |   wire counter__en;
+      |        ^~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:11:20: Signal is not used: 'counter__count'
+                                      : ... note: In instance 'top'
+   11 |   wire [WIDTH-1:0] counter__count;
+      |                    ^~~~~~~~~~~~~~
+%Error: Exiting due to 6 warning(s)

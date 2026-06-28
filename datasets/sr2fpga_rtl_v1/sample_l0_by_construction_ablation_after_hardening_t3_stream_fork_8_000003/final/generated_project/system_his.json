@@ -1,0 +1,18 @@
+{
+  "project_name": "l0_by_construction_ablation_after_hardening_t3_stream_fork_8_000003",
+  "interface": {
+    "clk": "input",
+    "nreset": "input",
+    "in_valid": "input",
+    "in_data": "input [7:0]",
+    "in_ready": "output",
+    "out0_valid": "output",
+    "out0_data": "output [7:0]",
+    "out0_ready": "input",
+    "out1_valid": "output",
+    "out1_data": "output [7:0]",
+    "out1_ready": "input"
+  },
+  "clock_hz": 100000000,
+  "reset_polarity": "active_low"
+}

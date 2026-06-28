@@ -1,0 +1,6 @@
+{
+  "failure_type": "unknown",
+  "stage": "lint",
+  "root_cause": "%Error: rtl/stream_join.v:46:14: Duplicate declaration of signal: 'IDLE'\n   46 |   localparam IDLE = 0;\n      |              ^~~~\n        rtl/stream_join.v:14:22: ... Location of original declaration\n   14 |     localparam [1:0] IDLE = 2'd0;\n      |                      ^~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: rtl/stream_join.v:47:14: Duplicate declaration of signal: 'WAIT'\n   47 |   localparam WAIT = 0;\n      |              ^~~~\n        rtl/stream_join.v:15:22: ... Location of original declaration\n   15 |     localparam [1:0] WAIT = 2'd1;\n      |                      ^~~~\n%Error: rtl/stream_join.v:48:14: Duplicate declaration of signal: 'JOINED'\n   48 |   localparam JOINED = 0;\n      |              ^~~~~~\n        rtl/stream_join.v:16:22: ... Location of original declaration\n   16 |     localparam [1:0] JOINED = 2'd2;\n      |                      ^~~~~~\n%Error: Exiting due to 3 error(s)",
+  "affected_files": []
+}

@@ -1,0 +1,8 @@
+{
+  "project_name": "l0_by_construction_ablation_after_hardening_t1_event_counter_8_000001",
+  "fmax_mhz": 250,
+  "lut_utilization": 8,
+  "ff_utilization": 10,
+  "bram_utilization": 0,
+  "dsp_utilization": 0
+}

@@ -108,6 +108,15 @@ Implemented and under active review:
   missing FSM ownership, and repeated RTL range construction such as
   `[7:0-1:0]` / `[DATA_WIDTH-1:0-1:0]`. Compact write-up:
   `docs/sr2fpga-l0-by-construction-ablation-after-fixes-2026-06-28.md`.
+- The after-hardening rerun completed with run ID
+  `l0-by-construction-ablation-after-hardening` using another fresh sample
+  prefix: `total_completed=8`, `success_l3=0`, `repair_trajectory=7`,
+  `rejected=1`, and `exports_refreshed=true`. The behavior-files arm improved
+  from the after-fixes result `GEN_FAIL:3, L0:1` to `GEN_FAIL:1, L0:3`;
+  `legacy_full_project` remained `L0_FAIL:4`. Residual blockers are now mostly
+  T3 REQ2HIS state/control-flow validity and T4 RTL compile failure from
+  duplicate FSM localparams in `rtl/stream_join.v`. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-ablation-after-hardening-2026-06-28.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.

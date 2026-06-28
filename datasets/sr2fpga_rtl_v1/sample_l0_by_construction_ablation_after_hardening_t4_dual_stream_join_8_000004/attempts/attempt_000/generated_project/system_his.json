@@ -1,0 +1,6 @@
+{
+  "project": "l0_by_construction_ablation_after_hardening_t4_dual_stream_join_8_000004",
+  "description": "8-bit dual-stream join datapath with skid_buffers, join, accumulator, and stream_stage",
+  "created_by": "SR2FPGA",
+  "generation_parameters": { "tier": 4, "width": 8, "topology": "t4_dual_stream_join" }
+}

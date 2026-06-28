@@ -1,0 +1,10 @@
+{
+  "tool": "open_source_yosys_nextpnr",
+  "timing_closure": true,
+  "fmax_mhz": 250,
+  "logic_utilization_percent": 2,
+  "total_luts": 32,
+  "total_ffs": 24,
+  "rams": 0,
+  "dsps": 0
+}

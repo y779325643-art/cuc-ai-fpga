@@ -1,0 +1,7 @@
+{
+  "project_name": "l0_by_construction_ablation_after_hardening_t1_event_counter_8_000001",
+  "task_type": "composed_event_counter",
+  "width": 8,
+  "clock_hz": 100000000,
+  "reset_polarity": "active_low"
+}
