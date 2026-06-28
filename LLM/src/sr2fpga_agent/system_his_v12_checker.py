@@ -110,7 +110,8 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
     top_ports = _top_ports(top, errors)
     top_control_signals = top_ports | _top_clock_reset_names(top)
     component_ports = _component_ports(components, errors)
-    instance_components = _instance_components(instances, component_ports, errors)
+    component_parameters = _component_parameters(components)
+    instance_components = _instance_components(instances, component_ports, component_parameters, errors)
     instance_ports = {
         instance_name: component_ports.get(component_name, set())
         for instance_name, component_name in instance_components.items()
@@ -317,9 +318,27 @@ def _component_ports(components: list[Any], errors: list[str]) -> dict[str, set[
     return component_ports
 
 
+def _component_parameters(components: list[Any]) -> dict[str, set[str]]:
+    component_parameters: dict[str, set[str]] = {}
+    for component in components:
+        if not isinstance(component, dict):
+            continue
+        name = str(component.get("name", "")).strip()
+        parameters = component.get("parameters", [])
+        if not name or not isinstance(parameters, list):
+            continue
+        component_parameters[name] = {
+            str(parameter.get("name", "")).strip()
+            for parameter in parameters
+            if isinstance(parameter, dict) and str(parameter.get("name", "")).strip()
+        }
+    return component_parameters
+
+
 def _instance_components(
     instances: list[Any],
     component_ports: dict[str, set[str]],
+    component_parameters: dict[str, set[str]],
     errors: list[str],
 ) -> dict[str, str]:
     instance_components: dict[str, str] = {}
@@ -344,7 +363,14 @@ def _instance_components(
             errors.append(f"instances[{index}].clock is required")
         if not str(instance.get("reset", "")).strip():
             errors.append(f"instances[{index}].reset is required")
-        _mapping(instance.get("parameter_values"), f"instances[{index}].parameter_values", errors)
+        parameter_values = _mapping(instance.get("parameter_values"), f"instances[{index}].parameter_values", errors)
+        declared_parameters = component_parameters.get(component, set())
+        for parameter_name in parameter_values:
+            if parameter_name not in declared_parameters:
+                errors.append(
+                    f"instances[{index}].parameter_values.{parameter_name} "
+                    f"is not declared by component '{component}'"
+                )
         instance_components[name] = component
     return instance_components
 

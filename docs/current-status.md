@@ -195,6 +195,11 @@ Implemented and under active review:
   `top.resets[].kind` to `sync`/`async`, and the current `rst_n` contract to
   active-low sync unless a task says otherwise. This targets the T2
   L0-by-construction ablation reset enum failure in future reruns.
+- System-HIS v1.2 now rejects `instances[].parameter_values` keys that are not
+  declared in the target `components[].parameters`, and REQ2HIS prompt/retry
+  guidance states that rule. This targets the T3 skeleton lowerability failure
+  where top-level `DATA_WIDTH` overrides reached modules without a matching
+  parameter declaration.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:

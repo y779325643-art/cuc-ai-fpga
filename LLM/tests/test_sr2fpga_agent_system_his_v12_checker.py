@@ -139,6 +139,24 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertIn("data_flow 'input0_payload_to_join'.payload must be an object", result.errors)
         self.assertIn("control_flow 'reset_all_state'.kind 'free_text_rule' is invalid", result.errors)
 
+    def test_rejects_instance_parameter_value_not_declared_by_component(self) -> None:
+        payload, _ = _consistent_v12_project()
+        payload["instances"][0]["parameter_values"] = {"DATA_WIDTH": 8}
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "instances[0].parameter_values.DATA_WIDTH is not declared by component 'counter_core'",
+            result.errors,
+        )
+
+        payload["components"][0]["parameters"] = [{"name": "DATA_WIDTH", "default": 8, "type": "integer"}]
+
+        result = check_system_his_v12(payload)
+
+        self.assertTrue(result.passed, result.errors)
+
     def test_rejects_control_rule_references_to_missing_state_and_flow(self) -> None:
         payload = _fixture()
         payload["control_flow"][0]["related_state"].append("missing_state")

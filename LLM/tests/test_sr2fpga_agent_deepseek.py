@@ -543,6 +543,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("instances: in0_buffer, in1_buffer, join_core, accumulator, out_stage", user_prompt)
         self.assertIn("Do not collapse this topology into one fused component", user_prompt)
         self.assertIn("Every clock and reset declared in top.clocks/top.resets must also appear in top.ports", user_prompt)
+        self.assertIn("Every instances[].parameter_values key must be declared in that component's parameters", user_prompt)
 
     def test_system_his_v12_prompt_requests_timing_and_structured_control_contract(self) -> None:
         request = ProjectRequest(
@@ -632,6 +633,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("top.resets[].polarity must be active_low or active_high", retry_prompt)
         self.assertIn("top.resets[].kind must be sync or async", retry_prompt)
         self.assertIn('Use {"name": "rst_n", "polarity": "active_low"', retry_prompt)
+        self.assertIn("Every instances[].parameter_values key must be declared in that component's parameters", retry_prompt)
 
     def test_deepseek_his_project_generator_merges_behavior_into_checked_skeleton(self) -> None:
         system_his = _system_his_v12_fixture()

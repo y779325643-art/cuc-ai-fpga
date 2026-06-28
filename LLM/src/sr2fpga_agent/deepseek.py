@@ -842,6 +842,7 @@ Architectural rules:
 - Separate component definitions from concrete instances.
 - Every component must include name, semantic_kind, source, ports, and intent.
 - Every instance must include name, component, parameter_values, clock, reset, and owns_state.
+- Every instances[].parameter_values key must be declared in that component's parameters.
 - Every data_flow endpoint must name top.<port> or <instance>.<port>.
 - data_flow.timing is optional, but when present it must include
   latency_cycles >= 0, initiation_interval > 0, and optional non-empty throughput.
@@ -949,6 +950,7 @@ def _with_system_his_retry_feedback(
                 "System-HIS v1.2 IR repair checklist:\n"
                 "- Every components[] object must include name, semantic_kind, source, ports, and intent.\n"
                 "- Every instances[] object must include name, component, parameter_values, clock, reset, and owns_state.\n"
+                "- Every instances[].parameter_values key must be declared in that component's parameters.\n"
                 "- Every instance name must be unique and every component value must match a declared components[].name.\n"
                 "- Every top clock/reset should be listed in top.clocks/top.resets and also in top.ports.\n"
                 "- top.resets[].polarity must be active_low or active_high.\n"

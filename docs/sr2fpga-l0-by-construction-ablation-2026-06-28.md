@@ -72,6 +72,9 @@ Legacy direct full-project generation:
    enum values and the current `rst_n` active-low sync contract. This targets
    the T2 reset `kind`/`polarity` failure; rerun the ablation to measure the
    effect.
-3. Add a post-merge lowerability check or repair hint for missing module
-   parameters in `behavior_files`.
+3. Fixed after this run: System-HIS v1.2 now rejects instance parameter
+   overrides unless the target component declares that parameter, and REQ2HIS
+   prompt/retry guidance explains the rule. This targets the T3 missing
+   `DATA_WIDTH` component-parameter failure; rerun the ablation to measure the
+   effect.
 4. Add FSM-state lowerability guidance for T4 before scaling this ablation.
