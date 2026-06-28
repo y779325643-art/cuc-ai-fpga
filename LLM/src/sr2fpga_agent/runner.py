@@ -118,6 +118,7 @@ class PlannedSample:
             "width": self.width,
             "system_his_schema_version": schema_version,
             "training_split": _training_split(schema_version),
+            "contract_skeleton_mode": _contract_skeleton_mode(self, config),
             "topology_id": self.topology_id,
             "requirement_style": self.requirement_style,
         }
@@ -706,6 +707,7 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
         "source",
         "failure_origin",
         "requirement_style",
+        "contract_skeleton_mode",
         "difficulty_tier",
         "topology_id",
         "measurement_point",
@@ -1118,6 +1120,17 @@ def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfi
     if connection.kind == "deterministic" or connection.generation_mode == "two_stage":
         return "system-his-v1.2"
     return "system-his-v1.1"
+
+
+def _contract_skeleton_mode(sample: PlannedSample, config: RunnerConfig) -> str:
+    connection = resolve_source_connection(config, sample.source)
+    if connection.generation_mode == "two_stage":
+        return "behavior_files"
+    if connection.kind == "deterministic":
+        return "deterministic_template"
+    if connection.kind in LLM_SOURCE_KINDS:
+        return "legacy_full_project"
+    return connection.kind or sample.source
 
 
 def _training_split(schema_version: str) -> str:

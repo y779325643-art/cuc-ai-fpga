@@ -66,6 +66,15 @@ class BaselineReportTest(unittest.TestCase):
                     "cross_file_consistency_error_rate": 0.25,
                 },
                 {
+                    "group": "contract_skeleton_mode",
+                    "value": "behavior_files",
+                    "total": 4,
+                    "pass_levels": {"L0": 1, "L3": 3},
+                    "l3_pass_rate": 0.75,
+                    "l0_contract_failures": 1,
+                    "cross_file_consistency_error_rate": 0.25,
+                },
+                {
                     "group": "topology_id",
                     "value": "t1_event_counter",
                     "total": 2,
@@ -105,6 +114,7 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("Pass-rate knee: T4 (L3 pass rate 50.0% < 80.0%).", markdown)
         self.assertIn("| group | value | total | pass_levels | L3 pass rate | L0 contract failures | cross-file error rate |", markdown)
         self.assertIn("| requirement_style | natural_component | 4 | L0:1, L3:3 | 75.0% | 1 | 25.0% |", markdown)
+        self.assertIn("| contract_skeleton_mode | behavior_files | 4 | L0:1, L3:3 | 75.0% | 1 | 25.0% |", markdown)
         self.assertIn("| failure_family | artifact_contract_failure | 1 | L0:1 | 0.0% | 1 | 100.0% |", markdown)
         self.assertIn("| failure_origin | natural_llm | 4 | L0:1, L3:3 | 75.0% | 1 | 25.0% |", markdown)
         self.assertIn("| difficulty_tier | T4 | 2 | L0:1, L3:1 | 50.0% | 1 | 50.0% |", markdown)
@@ -192,6 +202,15 @@ def _summary_fixture() -> dict[str, object]:
             },
             "requirement_style": {
                 "natural_component": {
+                    "total": 4,
+                    "pass_levels": {"L0": 1, "L3": 3},
+                    "l3_pass_rate": 0.75,
+                    "l0_contract_failures": 1,
+                    "cross_file_consistency_error_rate": 0.25,
+                },
+            },
+            "contract_skeleton_mode": {
+                "behavior_files": {
                     "total": 4,
                     "pass_levels": {"L0": 1, "L3": 3},
                     "l3_pass_rate": 0.75,

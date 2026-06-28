@@ -210,6 +210,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["measurement_point"], "a_first_attempt_no_tools")
         self.assertEqual(samples[0].metadata(config)["system_his_schema_version"], "system-his-v1.2")
         self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
+        self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "behavior_files")
 
     def test_deterministic_samples_are_v12_clean_training_split(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -231,6 +232,7 @@ class RunnerConfigTest(unittest.TestCase):
 
             self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
             self.assertEqual(metadata["training_split"], "clean")
+            self.assertEqual(metadata["contract_skeleton_mode"], "deterministic_template")
 
     def test_load_runner_config_parses_env_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -927,7 +929,9 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["failure_origin"], "natural_llm")
         self.assertEqual(samples[0].metadata(config)["difficulty_tier"], "T2")
         self.assertEqual(samples[0].metadata(config)["measurement_point"], "b_tool_in_loop_repair")
+        self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "legacy_full_project")
         self.assertEqual(samples[1].metadata(config)["failure_origin"], "synthetic_injected")
+        self.assertEqual(samples[1].metadata(config)["contract_skeleton_mode"], "deterministic_template")
 
     def test_planned_samples_allow_task_measurement_point_override(self) -> None:
         config = RunnerConfig(
@@ -1105,6 +1109,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["metadata_breakdown"]["source"]["deterministic"], 1)
             self.assertEqual(summary["metadata_breakdown"]["failure_origin"]["deterministic_template"], 1)
             self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"]["T1"], 1)
+            self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"]["deterministic_template"], 1)
             self.assertEqual(summary["pass_level_breakdown"]["L3"], 1)
             self.assertEqual(
                 summary["contract_metrics"],
@@ -1145,6 +1150,7 @@ class RunnerConfigTest(unittest.TestCase):
             )
             self.assertEqual(metadata["failure_origin"], "deterministic_template")
             self.assertEqual(metadata["measurement_point"], "a_first_attempt_no_tools")
+            self.assertEqual(metadata["contract_skeleton_mode"], "deterministic_template")
             self.assertTrue((root / "exports/requirement_to_project.jsonl").exists())
 
     def test_run_batch_summary_groups_component_topology_metadata(self) -> None:
@@ -1177,6 +1183,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["metadata_breakdown"]["failure_origin"], {"compositional_assembly": 2})
             self.assertEqual(summary["metadata_breakdown"]["measurement_point"], {"a_first_attempt_no_tools": 2})
             self.assertEqual(summary["metadata_breakdown"]["requirement_style"], {"contract": 2})
+            self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"], {"deterministic_template": 2})
             self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"], {"T1": 1, "T2": 1})
             self.assertEqual(
                 summary["metadata_breakdown"]["topology_id"],
@@ -1225,6 +1232,16 @@ class RunnerConfigTest(unittest.TestCase):
             )
             self.assertEqual(
                 summary["calibration_matrix"]["requirement_style"]["contract"],
+                {
+                    "total": 2,
+                    "pass_levels": {"L3": 2},
+                    "l3_pass_rate": 1.0,
+                    "l0_contract_failures": 0,
+                    "cross_file_consistency_error_rate": 0.0,
+                },
+            )
+            self.assertEqual(
+                summary["calibration_matrix"]["contract_skeleton_mode"]["deterministic_template"],
                 {
                     "total": 2,
                     "pass_levels": {"L3": 2},

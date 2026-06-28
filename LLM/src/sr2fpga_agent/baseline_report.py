@@ -14,6 +14,7 @@ REPORT_GROUPS = (
     "failure_origin",
     "difficulty_tier",
     "requirement_style",
+    "contract_skeleton_mode",
     "topology_id",
     "measurement_point",
 )

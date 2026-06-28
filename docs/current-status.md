@@ -79,6 +79,9 @@ Implemented and under active review:
   SDC, testbench shell, predicted-QoR stub). HIS2PROJECT now asks the model for
   `behavior_files` only, merges those bodies into `BEHAVIOR_HOLE` markers, rejects
   full-project `files` responses, and then runs the v1.2 HIS↔RTL cross-check.
+  Runner metadata records `contract_skeleton_mode` (`behavior_files`,
+  `deterministic_template`, or `legacy_full_project`) so summaries can separate
+  the Tier A skeleton path from direct full-project generation.
   This is structural hardening only; Tier B logit-masked constrained decoding is
   still design-only.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
@@ -194,9 +197,10 @@ Implemented and under active review:
   and expected behavior for prompt audit.
 - Runner summaries now include `metadata_breakdown`, `pass_level_breakdown`,
   `failure_family_breakdown`, and `calibration_matrix` for source, failure
-  family, failure origin, requirement style, difficulty tier, topology ID,
-  measurement point, pass-level counts, L3 pass-rate calibration, L0
-  contract-failure counts, and grouped cross-file consistency error rates.
+  family, failure origin, requirement style, contract skeleton mode, difficulty
+  tier, topology ID, measurement point, pass-level counts, L3 pass-rate
+  calibration, L0 contract-failure counts, and grouped cross-file consistency
+  error rates.
   `l0_contract_violation` is reported as the first-class project-generation
   family `artifact_contract_failure`. Stage-aware family mapping now classifies
   unknown `lint` and `sim_compile` failures as `rtl_compile_failure`, `sim_run`
@@ -206,10 +210,10 @@ Implemented and under active review:
   samples, L0 contract failures, and cross-file consistency error rate.
 - `LLM/src/sr2fpga_agent/baseline_report.py` renders runner `summary.json`
   into a compact Markdown table for baseline (a), grouped by source, failure
-  origin, requirement style, difficulty tier, topology ID, and measurement
-  point. Runner now writes this table automatically as `baseline_report.md` in
-  each run directory and flags the first difficulty tier below the default 80%
-  L3 pass-rate knee threshold.
+  origin, requirement style, contract skeleton mode, difficulty tier, topology
+  ID, and measurement point. Runner now writes this table automatically as
+  `baseline_report.md` in each run directory and flags the first difficulty tier
+  below the default 80% L3 pass-rate knee threshold.
 - Sample metadata is written to `metadata.json` and copied into all exported
   JSONL training views.
 - L0 is now a real System-HIS/manifest consistency check before HDL tools run:
