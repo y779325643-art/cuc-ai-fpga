@@ -67,6 +67,53 @@ class ContractSkeletonTest(unittest.TestCase):
 
         self.assertTrue(result.passed, result.errors)
 
+    def test_top_skeleton_materializes_data_flow_connections(self) -> None:
+        system_his = _fixture()
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        top_rtl = skeleton.files["rtl/top.v"]
+        self.assertIn("assign in0_buffer__in_data = in0_data;", top_rtl)
+        self.assertIn("assign in0_buffer__in_valid = in0_valid;", top_rtl)
+        self.assertIn("assign in0_ready = in0_buffer__in_ready;", top_rtl)
+        self.assertIn("assign join_core__in0_data = in0_buffer__out_data;", top_rtl)
+        self.assertIn("assign join_core__in0_valid = in0_buffer__out_valid;", top_rtl)
+        self.assertIn("assign in0_buffer__out_ready = join_core__in0_ready;", top_rtl)
+        self.assertIn("assign accumulator__sample = join_core__out_data;", top_rtl)
+        self.assertIn("assign out_data = out_stage__out_data;", top_rtl)
+        self.assertIn("assign out_valid = out_stage__out_valid;", top_rtl)
+        self.assertIn("assign out_stage__out_ready = out_ready;", top_rtl)
+        self.assertNotIn("assign in0_buffer__out_data = in0_buffer__in_data;", top_rtl)
+        self.assertNotIn("assign out_stage__out_data = out_stage__in_data;", top_rtl)
+
+    def test_top_skeleton_handles_data_flow_without_source_handshake_companions(self) -> None:
+        system_his = _fixture()
+        for component in system_his["components"]:
+            if component["name"] == "accumulator_core":
+                component["ports"] = [
+                    port for port in component["ports"] if port["name"] not in {"sum_valid", "sum_ready"}
+                ]
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        top_rtl = skeleton.files["rtl/top.v"]
+        self.assertIn("assign out_stage__in_valid = 1'b1;", top_rtl)
+        self.assertIn("wire _unused_data_flow_signals = &{1'b0, out_stage__in_ready};", top_rtl)
+
     def test_rejects_behavior_for_files_without_behavior_holes(self) -> None:
         system_his = _fixture()
         request = ProjectRequest(
@@ -117,6 +164,34 @@ class ContractSkeletonTest(unittest.TestCase):
 
         self.assertIn("localparam SEND_0", skeleton.files["rtl/stream_join.v"])
         self.assertIn("localparam SEND_1", skeleton.files["rtl/stream_join.v"])
+
+    def test_component_skeleton_consumes_optional_clock_reset_inputs(self) -> None:
+        system_his = _fixture()
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        self.assertIn("wire _unused_clock_reset = &{1'b0, clk, rst_n};", skeleton.files["rtl/skid_buffer.v"])
+
+    def test_testbench_declares_top_parameters_used_in_port_ranges(self) -> None:
+        system_his = _fixture()
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        self.assertIn("localparam DATA_WIDTH = 8;", skeleton.files["sim/tb_top.v"])
 
     def test_merge_does_not_duplicate_fsm_localparams_from_behavior(self) -> None:
         system_his = _fixture()

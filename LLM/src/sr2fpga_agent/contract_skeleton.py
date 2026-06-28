@@ -150,6 +150,10 @@ def _top_module(
             lines.append(f"  wire{_range(port_map.get('width'))} {wire_name};")
     if declared_wires:
         lines.append("")
+    data_flow_assignments = _data_flow_assignment_lines(system_his)
+    if data_flow_assignments:
+        lines.extend(data_flow_assignments)
+        lines.append("")
     for instance in instances:
         instance_map = _mapping(instance)
         component = components_by_name.get(str(instance_map.get("component")), {})
@@ -166,8 +170,11 @@ def _component_module(component: dict[str, Any], system_his: dict[str, Any]) -> 
         f"module {name}{_parameter_block(_list(component.get('parameters')))} (",
         _port_block(_list(component.get("ports"))),
         ");",
-        "  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.",
     ]
+    unused_clock_reset = _unused_clock_reset_line(_list(component.get("ports")))
+    if unused_clock_reset:
+        lines.append(unused_clock_reset)
+    lines.append("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.")
     for state in states:
         lines.append(f"  localparam {state} = 0;")
     lines.append("endmodule")
@@ -197,9 +204,115 @@ def _instance_lines(instance: dict[str, Any], component: dict[str, Any]) -> list
     return lines
 
 
+def _data_flow_assignment_lines(system_his: dict[str, Any]) -> list[str]:
+    lines: list[str] = []
+    seen: set[tuple[str, str]] = set()
+    unused_signals: set[str] = set()
+    ports_by_owner = _ports_by_endpoint_owner(system_his)
+    for flow in _list(system_his.get("data_flow")):
+        path = _list(_mapping(flow).get("path"))
+        endpoints = [_parse_endpoint(endpoint) for endpoint in path]
+        endpoints = [endpoint for endpoint in endpoints if endpoint]
+        for source, sink in zip(endpoints, endpoints[1:]):
+            source_owner, source_port = source
+            sink_owner, sink_port = sink
+            if source_owner == sink_owner:
+                continue
+            _append_assignment(lines, seen, _endpoint_signal(source_owner, source_port), _endpoint_signal(sink_owner, sink_port))
+            source_valid = _companion_signal(source_owner, source_port, "valid", ports_by_owner)
+            sink_valid = _companion_signal(sink_owner, sink_port, "valid", ports_by_owner)
+            if source_valid and sink_valid:
+                _append_assignment(lines, seen, source_valid, sink_valid)
+            elif sink_valid:
+                _append_assignment(lines, seen, "1'b1", sink_valid)
+            elif source_valid:
+                unused_signals.add(source_valid)
+            source_ready = _companion_signal(source_owner, source_port, "ready", ports_by_owner)
+            sink_ready = _companion_signal(sink_owner, sink_port, "ready", ports_by_owner)
+            if source_ready and sink_ready:
+                _append_assignment(lines, seen, sink_ready, source_ready)
+            elif source_ready:
+                _append_assignment(lines, seen, "1'b1", source_ready)
+            elif sink_ready:
+                unused_signals.add(sink_ready)
+    if unused_signals:
+        lines.append(f"  wire _unused_data_flow_signals = &{{1'b0, {', '.join(sorted(unused_signals))}}};")
+    return lines
+
+
+def _append_assignment(lines: list[str], seen: set[tuple[str, str]], source: str, sink: str) -> None:
+    if source == sink or (source, sink) in seen:
+        return
+    seen.add((source, sink))
+    lines.append(f"  assign {sink} = {source};")
+
+
+def _ports_by_endpoint_owner(system_his: dict[str, Any]) -> dict[str, set[str]]:
+    ports_by_owner = {
+        "top": {
+            str(_mapping(port).get("name", "")).strip()
+            for port in _list(_mapping(system_his.get("top")).get("ports"))
+            if str(_mapping(port).get("name", "")).strip()
+        }
+    }
+    components_by_name = {
+        str(_mapping(component).get("name", "")).strip(): _mapping(component)
+        for component in _list(system_his.get("components"))
+    }
+    for instance in _list(system_his.get("instances")):
+        instance_map = _mapping(instance)
+        owner = str(instance_map.get("name", "")).strip()
+        component = components_by_name.get(str(instance_map.get("component", "")).strip(), {})
+        if owner:
+            ports_by_owner[owner] = {
+                str(_mapping(port).get("name", "")).strip()
+                for port in _list(component.get("ports"))
+                if str(_mapping(port).get("name", "")).strip()
+            }
+    return ports_by_owner
+
+
+def _parse_endpoint(endpoint: Any) -> tuple[str, str] | None:
+    text = str(endpoint).strip() if isinstance(endpoint, str) else ""
+    if "." not in text:
+        return None
+    owner, port = text.split(".", 1)
+    if not owner or not port:
+        return None
+    return owner, port
+
+
+def _endpoint_signal(owner: str, port: str) -> str:
+    if owner == "top":
+        return port
+    return _instance_wire(owner, port)
+
+
+def _companion_signal(owner: str, port: str, suffix: str, ports_by_owner: dict[str, set[str]]) -> str:
+    base = port.removesuffix("_data")
+    companion = f"{base}_{suffix}"
+    if companion not in ports_by_owner.get(owner, set()):
+        return ""
+    return _endpoint_signal(owner, companion)
+
+
+def _unused_clock_reset_line(ports: list[Any]) -> str:
+    names = []
+    for port in ports:
+        port_map = _mapping(port)
+        name = str(port_map.get("name", "")).strip()
+        direction = str(port_map.get("dir", port_map.get("direction", ""))).strip()
+        if direction == "input" and name in {"clk", "clock", "rst", "rst_n", "reset", "reset_n"}:
+            names.append(name)
+    if not names:
+        return ""
+    return f"  wire _unused_clock_reset = &{{1'b0, {', '.join(names)}}};"
+
+
 def _testbench(system_his: dict[str, Any], top_module: str) -> str:
-    ports = _list(_mapping(system_his.get("top")).get("ports"))
-    declarations = []
+    top = _mapping(system_his.get("top"))
+    ports = _list(top.get("ports"))
+    declarations = _testbench_parameter_lines(_list(top.get("parameters")))
     connections = []
     for port in ports:
         port_map = _mapping(port)
@@ -220,6 +333,17 @@ def _testbench(system_his: dict[str, Any], top_module: str) -> str:
         + "  end\n"
         + "endmodule\n"
     )
+
+
+def _testbench_parameter_lines(parameters: list[Any]) -> list[str]:
+    lines = []
+    for parameter in parameters:
+        parameter_map = _mapping(parameter)
+        name = str(parameter_map.get("name", "")).strip()
+        value = parameter_map.get("value", parameter_map.get("default", 0))
+        if name:
+            lines.append(f"  localparam {name} = {value};")
+    return lines
 
 
 def _timing_sdc(system_his: dict[str, Any]) -> str:

@@ -1,0 +1,6 @@
+{
+  "failure_type": "rtl_reserved_identifier",
+  "stage": "rtl_identifier_check",
+  "root_cause": "rtl/skid_buffer.v:14: Verilog reserved keyword 'buf' used as declared signal",
+  "affected_files": []
+}

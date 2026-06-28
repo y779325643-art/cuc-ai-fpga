@@ -1,0 +1,22 @@
+{
+  "run_id": "l0-by-construction-t3-t4-after-top-wiring",
+  "next_index": 2,
+  "completed_samples": [
+    "sample_l0_by_construction_t3_t4_after_top_wiring_t3_stream_fork_8_000001",
+    "sample_l0_by_construction_t3_t4_after_top_wiring_t4_dual_stream_join_8_000002"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_l0_by_construction_t3_t4_after_top_wiring_t3_stream_fork_8_000001",
+      "sample_l0_by_construction_t3_t4_after_top_wiring_t4_dual_stream_join_8_000002"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "rtl_reserved_identifier": 1,
+    "port_mismatch": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "589d5d48cc5ad3483d26887ec025e9fa5a60c37b3f2f33005f1bbde32400fd39"
+}

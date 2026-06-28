@@ -740,6 +740,48 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Your previous behavior_files output failed validation", retry_prompt)
         self.assertIn("must contain behavior body only", retry_prompt)
 
+    def test_deepseek_his_project_generator_rejects_reserved_identifier_behavior(self) -> None:
+        system_his = _system_his_v12_fixture()
+        behavior_files = _behavior_files_for_system_his_v12(system_his)
+        behavior_files["rtl/skid_buffer.v"] = "reg [DATA_WIDTH-1:0] buf [0:1];"
+        client = FakeChatClient(json.dumps({"behavior_files": behavior_files}))
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        with self.assertRaisesRegex(ValueError, "Verilog reserved keyword 'buf'"):
+            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+
+    def test_deepseek_his_project_generator_retries_after_reserved_identifier_behavior(self) -> None:
+        system_his = _system_his_v12_fixture()
+        invalid_behavior_files = _behavior_files_for_system_his_v12(system_his)
+        invalid_behavior_files["rtl/skid_buffer.v"] = "reg [DATA_WIDTH-1:0] buf [0:1];"
+        valid_behavior_files = _behavior_files_for_system_his_v12(system_his)
+        client = FakeChatClient(
+            [
+                json.dumps({"behavior_files": invalid_behavior_files}),
+                json.dumps({"behavior_files": valid_behavior_files}),
+            ]
+        )
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        project = DeepSeekHisProjectGenerator(client, max_attempts=2).generate(request, platform, system_his)
+
+        self.assertNotIn("reg [DATA_WIDTH-1:0] buf", project.files["rtl/skid_buffer.v"])
+        self.assertEqual(client.stream_call_count, 2)
+        retry_prompt = client.messages_history[1][-1]["content"]
+        self.assertIn("Verilog reserved keyword 'buf'", retry_prompt)
+
     def test_deepseek_his_project_generator_rejects_project_that_breaks_checked_contract(self) -> None:
         system_his = _system_his_v12_fixture()
         client = FakeChatClient(json.dumps({"behavior_files": {"rtl/missing.v": "assign x = y;"}}))

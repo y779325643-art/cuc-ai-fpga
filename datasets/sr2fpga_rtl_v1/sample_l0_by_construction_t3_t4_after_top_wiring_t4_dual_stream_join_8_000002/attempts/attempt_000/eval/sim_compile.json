@@ -1,0 +1,20 @@
+{
+  "stage": "sim_compile",
+  "command": [
+    "/opt/homebrew/bin/iverilog",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v",
+    "sim/tb_top.v"
+  ],
+  "status": "failed",
+  "exit_code": 6,
+  "stdout": "",
+  "stderr": "sim/tb_top.v:5: error: Unable to bind parameter `DATA_WIDTH' in `tb_top'\nsim/tb_top.v:5: error: Dimensions must be constant.\nsim/tb_top.v:5       : This MSB expression violates the rule: (DATA_WIDTH)-('sd1)\nsim/tb_top.v:7: error: Unable to bind parameter `DATA_WIDTH' in `tb_top'\nsim/tb_top.v:7: error: Dimensions must be constant.\nsim/tb_top.v:7       : This MSB expression violates the rule: (DATA_WIDTH)-('sd1)\nsim/tb_top.v:12: error: Unable to bind parameter `DATA_WIDTH' in `tb_top'\nsim/tb_top.v:12: error: Dimensions must be constant.\nsim/tb_top.v:12       : This MSB expression violates the rule: (DATA_WIDTH)-('sd1)\nsim/tb_top.v:13: warning: Port 4 (in0_data) of module top expects 8 bit(s), given 1.\nsim/tb_top.v:13:        : Padding 7 high bits of the port.\nsim/tb_top.v:13: warning: Port 6 (in1_data) of module top expects 8 bit(s), given 1.\nsim/tb_top.v:13:        : Padding 7 high bits of the port.\nsim/tb_top.v:13: warning: Port 11 (out_data) of module top expects 8 bit(s), given 1.\nsim/tb_top.v:13:        : Padding 7 high bits of the port.\n6 error(s) during elaboration.\n",
+  "duration_seconds": 0.022554374998435378
+}

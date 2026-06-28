@@ -141,6 +141,22 @@ Implemented and under active review:
   undriven/unused, so the next blocker is deterministic top/skeleton wiring
   materialization from System-HIS `data_flow`. Compact write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-behavior-retry-2026-06-28.md`.
+- Deterministic skeleton top generation now materializes System-HIS `data_flow`
+  paths into `rtl/top.v` assignments and derives valid/ready companion wiring
+  where matching ports exist. Component skeletons also consume optional
+  clock/reset inputs with `_unused_clock_reset` reduction wires, keeping
+  combinational components from failing Verilator solely because the contract
+  exposes `clk`/`rst_n`.
+- A follow-up narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-top-wiring`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:1, L1:1`. T4 crossed lint and reached sim compile; T3 now fails on a
+  generated behavior reserved identifier (`buf`) rather than top wiring.
+  Reading this run led to two additional hardening changes: testbench generation
+  now emits top parameter `localparam`s such as `DATA_WIDTH`, and HIS2PROJECT
+  now runs the RTL reserved-identifier checker before returning so those
+  behavior bodies can be retried. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-top-wiring-2026-06-28.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.

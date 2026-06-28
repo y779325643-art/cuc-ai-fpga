@@ -1,0 +1,995 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Build an 8-bit valid-ready stream fork datapath as a complete SR2FPGA Verilog RTL project. This is component topology t3_stream_fork, difficulty tier T3. Use a skid_buffer feeding a stream_fork and two stream_stage outputs. The design must implement this black-box behavior: valid input samples pass through a skid buffer and are duplicated to two output stages. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.in_valid -> skid_buffer.in_valid; top.in_data -> skid_buffer.in_data; skid_buffer.out_valid -> stream_fork.in_valid; skid_buffer.out_data -> stream_fork.in_data; stream_fork.in_ready -> skid_buffer.out_ready; stream_fork.out0_valid -> stream_stage.in_valid; stream_fork.out0_data -> stream_stage.in_data; stream_stage.in_ready -> stream_fork.out0_ready; stream_fork.out1_valid -> stream_stage.in_valid; stream_fork.out1_data -> stream_stage.in_data; stream_stage.in_ready -> stream_fork.out1_ready; stream_stage.out_valid -> top.out0_valid; stream_stage.out_data -> top.out0_data; stream_stage.out_valid -> top.out1_valid; stream_stage.out_data -> top.out1_data. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "design_goal": "Implement an 8-bit valid-ready stream fork with a skid buffer input stage and two pipeline stage outputs.",
+    "assumptions": []
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "posint",
+        "default": 8
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "domain": "primary",
+        "period_ns": 10,
+        "frequency_hz": 100000000,
+        "target_fmax_mhz": 100
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync",
+        "domain": "clk"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "in_data",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "out0_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out0_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "out0_data",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "out1_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out1_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "out1_data",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [
+      {
+        "name": "skid_items",
+        "width": 2,
+        "min_value": 0,
+        "max_value": 2,
+        "initial": 0,
+        "owner": "input_buffer"
+      }
+    ],
+    "fsms": [],
+    "buffers": [
+      {
+        "name": "skid_data_buf",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "depth": 2,
+        "semantic_kind": "fifo_sync",
+        "location": "input_buffer"
+      },
+      {
+        "name": "out0_data_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "depth": 1,
+        "semantic_kind": "register",
+        "location": "out0_stage"
+      },
+      {
+        "name": "out0_valid_reg",
+        "width": 1,
+        "depth": 1,
+        "semantic_kind": "register",
+        "location": "out0_stage"
+      },
+      {
+        "name": "out1_data_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "depth": 1,
+        "semantic_kind": "register",
+        "location": "out1_stage"
+      },
+      {
+        "name": "out1_valid_reg",
+        "width": 1,
+        "depth": 1,
+        "semantic_kind": "register",
+        "location": "out1_stage"
+      }
+    ],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "semantic_kind": "valid_ready_skid_buffer",
+      "source": "rtl/skid_buffer.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "posint",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "intent": "Provides full-throughput skid buffer to decouple input from backpressure"
+    },
+    {
+      "name": "stream_fork",
+      "semantic_kind": "stream_fork",
+      "source": "rtl/stream_fork.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "posint",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out0_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out0_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out0_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out1_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out1_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out1_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "intent": "Duplicates an input valid-ready stream to two independent outputs"
+    },
+    {
+      "name": "stream_stage",
+      "semantic_kind": "stream_stage",
+      "source": "rtl/stream_stage.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "posint",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "intent": "Adds a pipeline stage (register slice) to a valid-ready stream"
+    }
+  ],
+  "instances": [
+    {
+      "name": "input_buffer",
+      "component": "skid_buffer",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "skid_items",
+        "skid_data_buf"
+      ]
+    },
+    {
+      "name": "fork_core",
+      "component": "stream_fork",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "out0_stage",
+      "component": "stream_stage",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "out0_data_reg",
+        "out0_valid_reg"
+      ]
+    },
+    {
+      "name": "out1_stage",
+      "component": "stream_stage",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "out1_data_reg",
+        "out1_valid_reg"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "conn_in_valid",
+      "path": [
+        "top.in_valid",
+        "input_buffer.in_valid"
+      ],
+      "payload": {
+        "name": "in_valid_payload",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_in_data",
+      "path": [
+        "top.in_data",
+        "input_buffer.in_data"
+      ],
+      "payload": {
+        "name": "in_data_payload",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_skid_to_fork_valid",
+      "path": [
+        "input_buffer.out_valid",
+        "fork_core.in_valid"
+      ],
+      "payload": {
+        "name": "skid_fork_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_skid_to_fork_data",
+      "path": [
+        "input_buffer.out_data",
+        "fork_core.in_data"
+      ],
+      "payload": {
+        "name": "skid_fork_data",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_fork_ready_to_skid",
+      "path": [
+        "fork_core.in_ready",
+        "input_buffer.out_ready"
+      ],
+      "payload": {
+        "name": "fork_skid_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_fork_out0_valid",
+      "path": [
+        "fork_core.out0_valid",
+        "out0_stage.in_valid"
+      ],
+      "payload": {
+        "name": "fork0_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_fork_out0_data",
+      "path": [
+        "fork_core.out0_data",
+        "out0_stage.in_data"
+      ],
+      "payload": {
+        "name": "fork0_data",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_out0_ready_to_fork",
+      "path": [
+        "out0_stage.in_ready",
+        "fork_core.out0_ready"
+      ],
+      "payload": {
+        "name": "stage0_fork_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_fork_out1_valid",
+      "path": [
+        "fork_core.out1_valid",
+        "out1_stage.in_valid"
+      ],
+      "payload": {
+        "name": "fork1_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_fork_out1_data",
+      "path": [
+        "fork_core.out1_data",
+        "out1_stage.in_data"
+      ],
+      "payload": {
+        "name": "fork1_data",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_out1_ready_to_fork",
+      "path": [
+        "out1_stage.in_ready",
+        "fork_core.out1_ready"
+      ],
+      "payload": {
+        "name": "stage1_fork_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_out0_valid_top",
+      "path": [
+        "out0_stage.out_valid",
+        "top.out0_valid"
+      ],
+      "payload": {
+        "name": "out0_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_out0_data_top",
+      "path": [
+        "out0_stage.out_data",
+        "top.out0_data"
+      ],
+      "payload": {
+        "name": "out0_data",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_out1_valid_top",
+      "path": [
+        "out1_stage.out_valid",
+        "top.out1_valid"
+      ],
+      "payload": {
+        "name": "out1_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_out1_data_top",
+      "path": [
+        "out1_stage.out_data",
+        "top.out1_data"
+      ],
+      "payload": {
+        "name": "out1_data",
+        "width": {
+          "expr": "8",
+          "resolved": 8
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_skid_ready_to_top",
+      "path": [
+        "input_buffer.in_ready",
+        "top.in_ready"
+      ],
+      "payload": {
+        "name": "top_in_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_top0_ready_to_stage",
+      "path": [
+        "top.out0_ready",
+        "out0_stage.out_ready"
+      ],
+      "payload": {
+        "name": "out0_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    },
+    {
+      "name": "conn_top1_ready_to_stage",
+      "path": [
+        "top.out1_ready",
+        "out1_stage.out_ready"
+      ],
+      "payload": {
+        "name": "out1_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "none"
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_skid_items",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "skid_items",
+        "value": 0
+      },
+      "related_state": [
+        "skid_items"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_out0_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "out0_valid_reg"
+      },
+      "related_state": [
+        "out0_valid_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "reset_out1_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "out1_valid_reg"
+      },
+      "related_state": [
+        "out1_valid_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "skid_accept",
+      "kind": "enable_rule",
+      "when": {
+        "any_of": [
+          {
+            "all_of": [
+              {
+                "signal": "top.in_valid",
+                "op": "==",
+                "value": 1
+              },
+              {
+                "signal": "skid_items",
+                "op": "<",
+                "value": 2
+              }
+            ]
+          },
+          {
+            "all_of": [
+              {
+                "signal": "top.in_valid",
+                "op": "==",
+                "value": 1
+              },
+              {
+                "signal": "skid_items",
+                "op": "==",
+                "value": 2
+              },
+              {
+                "signal": "fork_core.in_ready",
+                "op": "==",
+                "value": 1
+              }
+            ]
+          }
+        ]
+      },
+      "effect": {
+        "action": "increment",
+        "target": "skid_items"
+      },
+      "related_state": [
+        "skid_items"
+      ],
+      "related_flows": [
+        "conn_in_valid",
+        "conn_in_data"
+      ]
+    },
+    {
+      "name": "skid_xmit",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "skid_items",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "signal": "fork_core.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "decrement",
+        "target": "skid_items"
+      },
+      "related_state": [
+        "skid_items"
+      ],
+      "related_flows": [
+        "conn_skid_to_fork_valid",
+        "conn_skid_to_fork_data"
+      ]
+    },
+    {
+      "name": "out0_load",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "fork_core.out0_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "out0_stage.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "out0_valid_reg",
+        "value": 1
+      },
+      "related_state": [
+        "out0_valid_reg"
+      ],
+      "related_flows": [
+        "conn_fork_out0_valid",
+        "conn_fork_out0_data"
+      ]
+    },
+    {
+      "name": "out0_drain",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "out0_valid_reg",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out0_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "fork_core.out0_valid",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "clear",
+        "target": "out0_valid_reg"
+      },
+      "related_state": [
+        "out0_valid_reg"
+      ],
+      "related_flows": [
+        "conn_out0_valid_top",
+        "conn_top0_ready_to_stage"
+      ]
+    },
+    {
+      "name": "out1_load",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "fork_core.out1_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "out1_stage.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "out1_valid_reg",
+        "value": 1
+      },
+      "related_state": [
+        "out1_valid_reg"
+      ],
+      "related_flows": [
+        "conn_fork_out1_valid",
+        "conn_fork_out1_data"
+      ]
+    },
+    {
+      "name": "out1_drain",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "out1_valid_reg",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out1_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "fork_core.out1_valid",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "clear",
+        "target": "out1_valid_reg"
+      },
+      "related_state": [
+        "out1_valid_reg"
+      ],
+      "related_flows": [
+        "conn_out1_valid_top",
+        "conn_top1_ready_to_stage"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_transfer",
+        "stimulus": "After reset, send 4 data samples (0xAA, 0xBB, 0xCC, 0xDD) on in_data with in_valid while exercising backpressure on outputs.",
+        "expected": "Both out0 and out1 replicate the input sequence with correct latency and no data loss.",
+        "pass_criteria": "Output data matches expected sequence."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/stream_fork.v",
+      "rtl/stream_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

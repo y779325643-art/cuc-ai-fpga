@@ -13,6 +13,7 @@ from typing import Any, Callable
 
 from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project, merge_behavior_files
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
+from LLM.src.sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 from LLM.src.sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
 from LLM.src.sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
@@ -442,6 +443,15 @@ class DeepSeekHisProjectGenerator:
             try:
                 behavior_files = parse_behavior_files(content)
                 project = merge_behavior_files(skeleton, behavior_files)
+                identifier_issues = check_rtl_identifiers(project, _project_rtl_sources(project))
+                if identifier_issues:
+                    raise ValueError(
+                        "HIS2PROJECT RTL failed identifier check: "
+                        + "; ".join(
+                            f"{issue.path}:{issue.line}: Verilog reserved keyword '{issue.identifier}' used as {issue.context}"
+                            for issue in identifier_issues
+                        )
+                    )
                 contract_result = check_system_his_v12_against_rtl(system_his, project)
                 if not contract_result.passed:
                     raise ValueError(
@@ -456,6 +466,17 @@ class DeepSeekHisProjectGenerator:
         if last_error is not None:
             raise last_error
         raise RuntimeError("DeepSeek HIS2PROJECT generator did not run")
+
+
+def _project_rtl_sources(project: GeneratedProject) -> list[str]:
+    try:
+        manifest = json.loads(project.files.get("manifest.json", "{}"))
+    except json.JSONDecodeError:
+        manifest = {}
+    sources = manifest.get("sources")
+    if isinstance(sources, list):
+        return [source for source in sources if isinstance(source, str) and source.endswith(".v")]
+    return sorted(path for path in project.files if path.endswith(".v"))
 
 
 class DeepSeekTwoStageProjectGenerator:
