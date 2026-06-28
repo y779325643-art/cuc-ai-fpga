@@ -167,5 +167,35 @@ def build_repairer(
     raise SystemExit(f"Unsupported repair provider: {provider}")
 
 
+def build_repairer_for_connection(connection):
+    kind = connection.kind
+    if kind == "deterministic":
+        return None
+    if kind not in {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}:
+        raise SystemExit(f"Unsupported repair source kind: {kind}")
+    api_key = os.environ.get(connection.api_key_env)
+    if not api_key:
+        raise SystemExit(f"{connection.api_key_env} is not set")
+    if kind == "anthropic_compat":
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key=api_key,
+                model=connection.model,
+                base_url=connection.base_url,
+                timeout_seconds=getattr(connection, "timeout_seconds", 120),
+            )
+        )
+        return DeepSeekRepairer(client)
+    client = OpenAICompatibleClient(
+        OpenAICompatibleConfig(
+            api_key=api_key,
+            model=connection.model,
+            base_url=connection.base_url,
+            timeout_seconds=getattr(connection, "timeout_seconds", 120),
+        )
+    )
+    return DeepSeekRepairer(client)
+
+
 if __name__ == "__main__":
     main()

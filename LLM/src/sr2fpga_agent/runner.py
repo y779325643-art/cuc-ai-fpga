@@ -17,6 +17,7 @@ from LLM.src.sr2fpga_agent.baseline_report import baseline_rows, render_markdown
 from LLM.src.sr2fpga_agent.cli import (
     build_project_generator_for_connection,
     build_repairer,
+    build_repairer_for_connection,
 )
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleClient,
@@ -276,12 +277,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
 
     samples = planned_samples(config)
     project_generators: dict[str, object | None] = {}
-    repairer = build_repairer(
-        provider=config.repair_provider,
-        model=config.model,
-        base_url=config.base_url,
-        api_key_env=config.api_key_env,
-    )
+    repairer = _repairer_for_config(config)
 
     for index, sample in enumerate(samples):
         if index < state.next_index or should_skip_sample(state, sample.sample_id):
@@ -1159,6 +1155,17 @@ def _project_generator_for_sample(
         return project_generator
     base_generator = project_generator or ProjectGenerator()
     return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
+
+
+def _repairer_for_config(config: RunnerConfig):
+    if config.repair_provider in config.sources:
+        return build_repairer_for_connection(resolve_source_connection(config, config.repair_provider))
+    return build_repairer(
+        provider=config.repair_provider,
+        model=config.model,
+        base_url=config.base_url,
+        api_key_env=config.api_key_env,
+    )
 
 
 def _generation_event_sink(events_path: Path, sample: PlannedSample, config: RunnerConfig):

@@ -681,6 +681,37 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(client_config.api_key, "shell-fake-key")
             self.assertEqual(client_config.timeout_seconds, 120)
 
+    def test_run_batch_accepts_named_source_repair_provider(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="claude-repair",
+                max_attempts=2,
+                refresh_exports=False,
+                line_b_targets={},
+                tasks=[],
+                sources={
+                    "claude-repair": SourceConnection(
+                        name="claude-repair",
+                        kind="anthropic_compat",
+                        model="claude-opus-4-8",
+                        base_url="https://w.ciykj.cn/v1",
+                        api_key_env="ANTHROPIC_API_KEY",
+                        generation_mode="two_stage",
+                    )
+                },
+            )
+
+            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "shell-fake-key"}, clear=False):
+                summary = run_batch(config, run_id="named_repair")
+
+            self.assertEqual(summary["total_planned"], 0)
+            self.assertEqual(summary["total_completed"], 0)
+
     def test_runner_preflight_validate_provider_reports_deepseek_auth_failure_without_secret(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

@@ -9,6 +9,7 @@ from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleConfig,
     DeepSeekProjectGenerator,
+    DeepSeekRepairer,
     DeepSeekTwoStageProjectGenerator,
     OpenAICompatibleConfig,
 )
@@ -192,6 +193,13 @@ class SourcesParsingTest(unittest.TestCase):
             self.assertEqual(config.sources["claude"].kind, "anthropic_compat")
             self.assertEqual(config.sources["claude"].generation_mode, "two_stage")
 
+    def test_multi_teacher_example_uses_anthropic_client_for_official_claude_endpoint(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_multi_teacher.example.yaml"))
+        claude = config.sources["claude"]
+
+        self.assertEqual(claude.kind, "anthropic_compat")
+        self.assertEqual(claude.base_url, "https://api.anthropic.com/v1")
+
     def test_openai_compat_explicit_direct_mode_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
@@ -312,6 +320,22 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with self.assertRaises(SystemExit):
             build_project_generator_for_connection(conn)
+
+    def test_anthropic_compat_builds_repairer_with_official_client(self) -> None:
+        from LLM.src.sr2fpga_agent.cli import build_repairer_for_connection
+
+        conn = SourceConnection(
+            name="claude-repair", kind="anthropic_compat", model="claude-opus-4-8",
+            base_url="https://w.ciykj.cn/v1", api_key_env="ANTHROPIC_API_KEY",
+            generation_mode="two_stage",
+        )
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
+            repairer = build_repairer_for_connection(conn)
+        self.assertIsInstance(repairer, DeepSeekRepairer)
+        client_config = repairer.client.config
+        self.assertIsInstance(client_config, AnthropicCompatibleConfig)
+        self.assertEqual(client_config.model, "claude-opus-4-8")
+        self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
 
 
 class PerSampleDispatchTest(unittest.TestCase):
