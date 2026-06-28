@@ -548,6 +548,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn('Do not use placeholder sources such as "library"', user_prompt)
         self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", user_prompt)
         self.assertIn("FSM owner must be top or an instances[].name", user_prompt)
+        self.assertIn("State names across registers, counters, fsms, buffers, and memories must be globally unique", user_prompt)
+        self.assertIn("control_flow.effect.target must reference a declared data_flow name or state name", user_prompt)
 
     def test_system_his_v12_prompt_requests_timing_and_structured_control_contract(self) -> None:
         request = ProjectRequest(
@@ -642,6 +644,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn('Do not use placeholder sources such as "library"', retry_prompt)
         self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", retry_prompt)
         self.assertIn("FSM owner must be top or an instances[].name", retry_prompt)
+        self.assertIn("State names across registers, counters, fsms, buffers, and memories must be globally unique", retry_prompt)
 
     def test_deepseek_his_project_generator_merges_behavior_into_checked_skeleton(self) -> None:
         system_his = _system_his_v12_fixture()

@@ -117,6 +117,12 @@ Implemented and under active review:
   T3 REQ2HIS state/control-flow validity and T4 RTL compile failure from
   duplicate FSM localparams in `rtl/stream_join.v`. Compact write-up:
   `docs/sr2fpga-l0-by-construction-ablation-after-hardening-2026-06-28.md`.
+- After that rerun, contract skeleton merge now drops deterministic placeholder
+  FSM localparams when the behavior body already declares the same state names,
+  preventing T4-style duplicate `IDLE`/`WAIT`/`JOINED` declarations. REQ2HIS
+  initial and retry prompts also now state that v1.2 state names must be
+  globally unique across state groups and that `control_flow.effect.target`
+  should target declared data-flow or state names rather than ports/modules.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.

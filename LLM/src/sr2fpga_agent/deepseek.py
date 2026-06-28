@@ -839,6 +839,7 @@ Architectural rules:
 - top.resets[].kind must be sync or async.
 - Use {{"name": "rst_n", "polarity": "active_low", "kind": "sync"}} unless the task explicitly says otherwise.
 - Record architectural state, not incidental RTL temporaries.
+- State names across registers, counters, fsms, buffers, and memories must be globally unique.
 - Separate component definitions from concrete instances.
 - Every component must include name, semantic_kind, source, ports, and intent.
 - Every components[].source must be one of artifacts.rtl_sources.
@@ -855,6 +856,8 @@ Architectural rules:
   machine-checkable behavior. The guard grammar allows atoms {"signal","op","value"} or
   all_of/any_of lists with depth <= 2; signal must reference a declared top port,
   top clock/reset, instance port, state, data_flow name, or <fsm>.state.
+- control_flow.effect.target must reference a declared data_flow name or state name; do not target
+  top ports, instance ports, all, or module names directly.
 - Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming.
 - FSM owner must be top or an instances[].name.
 - fsm_transition rules must reference a declared state.fsms entry and use
@@ -968,6 +971,8 @@ def _with_system_his_retry_feedback(
                 "data_flow names, or <fsm>.state.\n"
                 "- control_flow.effect.target must reference a declared data_flow name or state name; do not target "
                 "top ports, instance ports, all, or module names directly.\n"
+                "- State names across registers, counters, fsms, buffers, and memories must be globally unique; "
+                "prefix repeated per-instance state names such as out0_valid_reg and out1_valid_reg.\n"
                 "- Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming.\n"
                 "- FSM owner must be top or an instances[].name.\n"
                 "- FSMs must declare non-empty states, initial, and reset_state, and transitions must use those states.\n\n"

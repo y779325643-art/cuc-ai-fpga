@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from typing import Any
 
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
@@ -64,7 +65,27 @@ def merge_behavior_files(
 def _fill_behavior_hole(content: str, behavior: str) -> str:
     behavior_lines = behavior.strip("\n").splitlines() or ["// empty behavior body"]
     indented = "\n".join(f"  {line}" if line.strip() else "" for line in behavior_lines)
-    return content.replace("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.", indented, 1)
+    merged = content.replace("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.", indented, 1)
+    return _drop_duplicate_skeleton_localparams(merged, _declared_localparams(behavior))
+
+
+def _declared_localparams(verilog: str) -> set[str]:
+    return {
+        match.group(1)
+        for match in re.finditer(r"\blocalparam\b(?:\s+\[[^\]]+\])?\s+([A-Za-z_][A-Za-z0-9_$]*)\s*=", verilog)
+    }
+
+
+def _drop_duplicate_skeleton_localparams(content: str, declared: set[str]) -> str:
+    if not declared:
+        return content
+    lines = []
+    for line in content.splitlines():
+        match = re.fullmatch(r"\s*localparam\s+([A-Za-z_][A-Za-z0-9_$]*)\s*=\s*0\s*;", line)
+        if match and match.group(1) in declared:
+            continue
+        lines.append(line)
+    return "\n".join(lines) + ("\n" if content.endswith("\n") else "")
 
 
 def _manifest(

@@ -118,6 +118,48 @@ class ContractSkeletonTest(unittest.TestCase):
         self.assertIn("localparam SEND_0", skeleton.files["rtl/stream_join.v"])
         self.assertIn("localparam SEND_1", skeleton.files["rtl/stream_join.v"])
 
+    def test_merge_does_not_duplicate_fsm_localparams_from_behavior(self) -> None:
+        system_his = _fixture()
+        system_his["state"]["fsms"].append(
+            {
+                "name": "join_core.join_fsm",
+                "states": ["IDLE", "WAIT", "JOINED"],
+                "initial": "IDLE",
+                "reset_state": "IDLE",
+            }
+        )
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        project = merge_behavior_files(
+            skeleton,
+            {
+                "rtl/skid_buffer.v": "// no behavior needed for this structural unit test",
+                "rtl/stream_join.v": "\n".join(
+                    [
+                        "localparam [1:0] IDLE = 2'd0;",
+                        "localparam [1:0] WAIT = 2'd1;",
+                        "localparam [1:0] JOINED = 2'd2;",
+                        "assign out_valid = in0_valid && in1_valid;",
+                        "assign out_data = in0_data;",
+                    ]
+                ),
+                "rtl/accumulator_core.v": "assign sample_ready = sum_ready;\nassign sum_valid = sample_valid;\nassign sum = sample;",
+                "rtl/stream_stage.v": "// no behavior needed for this structural unit test",
+            },
+        )
+
+        stream_join = project.files["rtl/stream_join.v"]
+        self.assertNotIn("localparam IDLE = 0;", stream_join)
+        self.assertNotIn("localparam WAIT = 0;", stream_join)
+        self.assertNotIn("localparam JOINED = 0;", stream_join)
+
     def test_skeleton_preserves_complete_width_ranges(self) -> None:
         system_his = _fixture()
         for port in system_his["top"]["ports"]:
