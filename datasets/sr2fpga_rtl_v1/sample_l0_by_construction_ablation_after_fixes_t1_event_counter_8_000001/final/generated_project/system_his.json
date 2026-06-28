@@ -1,0 +1,21 @@
+{
+  "project_name": "l0_by_construction_ablation_after_fixes_t1_event_counter_8_000001",
+  "top_module": "top",
+  "hierarchy": [
+    {
+      "module": "top",
+      "instances": [
+        { "inst_name": "u_gate", "module": "event_gate" },
+        { "inst_name": "u_counter", "module": "counter_core" }
+      ]
+    }
+  ],
+  "ports": {
+    "input": ["clk", "reset_n", "event_valid"],
+    "output": ["count"]
+  },
+  "clock": "clk",
+  "reset": "reset_n",
+  "reset_polarity": "active_low",
+  "description": "8-bit event counter with event gate to enable counting on event_valid pulses."
+}

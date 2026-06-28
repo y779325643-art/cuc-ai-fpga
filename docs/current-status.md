@@ -98,6 +98,16 @@ Implemented and under active review:
   failures from 4/4 to 3/4 and produced one T3 sample that crossed L0, but did
   not yet reach L1/L2/L3. Compact write-up:
   `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`.
+- The after-fixes rerun completed with run ID
+  `l0-by-construction-ablation-after-fixes` using a fresh sample prefix:
+  `total_completed=8`, `success_l3=0`, `repair_trajectory=5`, `rejected=3`,
+  and `exports_refreshed=true`. The aggregate arm-level result stayed the same
+  (`legacy_full_project`: `L0_FAIL:4`; `behavior_files`: `GEN_FAIL:3, L0:1`),
+  but the `behavior_files` sample that crossed L0 moved from T3 to T1. Residual
+  blockers are now sharper: non-lowerable component sources such as `library`,
+  missing FSM ownership, and repeated RTL range construction such as
+  `[7:0-1:0]` / `[DATA_WIDTH-1:0-1:0]`. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-ablation-after-fixes-2026-06-28.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
@@ -709,6 +719,8 @@ Key summary:
 - Baseline (b) T3/T4 smoke config: `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
 - L0-by-construction ablation config: `configs/sr2fpga_l0_by_construction_ablation.example.yaml`
 - L0-by-construction ablation write-up: `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`
+- L0-by-construction after-fixes config: `configs/sr2fpga_l0_by_construction_ablation_after_fixes.example.yaml`
+- L0-by-construction after-fixes write-up: `docs/sr2fpga-l0-by-construction-ablation-after-fixes-2026-06-28.md`
 - System-HIS v1.2 two-stage smoke config: `configs/sr2fpga_his_v12_smoke.example.yaml`
 - Tool-loop runner config: `configs/sr2fpga_agent.example.yaml`
 - Baseline report renderer: `LLM/src/sr2fpga_agent/baseline_report.py`

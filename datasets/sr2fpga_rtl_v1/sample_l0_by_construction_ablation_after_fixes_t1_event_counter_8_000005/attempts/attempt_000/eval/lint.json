@@ -1,0 +1,16 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/event_gate.v",
+    "rtl/counter_core.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Error: rtl/top.v:11:9: Can't find definition of variable: 'WIDTH'\n   11 |   wire [WIDTH-1:0] counter__count;\n      |         ^~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: Exiting due to 1 error(s)\n",
+  "duration_seconds": 0.14007837499957532
+}

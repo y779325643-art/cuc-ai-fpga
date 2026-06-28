@@ -1,0 +1,5 @@
+create_clock -period 10.000 -name clk [get_ports clk]
+set_input_delay -clock clk -max 2.000 [get_ports event_valid]
+set_input_delay -clock clk -min 1.000 [get_ports event_valid]
+set_output_delay -clock clk -max 2.000 [get_ports count[*]]
+set_output_delay -clock clk -min 1.000 [get_ports count[*]]

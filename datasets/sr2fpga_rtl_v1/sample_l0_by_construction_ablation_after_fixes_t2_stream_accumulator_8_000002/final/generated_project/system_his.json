@@ -1,0 +1,14 @@
+{
+  "project_name": "l0_by_construction_ablation_after_fixes_t2_stream_accumulator_8_000002",
+  "task_type": "composed_stream_accumulator",
+  "width": 8,
+  "description": "8-bit streaming accumulator datapath with skid buffer and accumulator core.",
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000,
+    "reset_polarity": "active_low"
+  },
+  "interface_contract": "top.in_valid -> skid_buffer.in_valid; top.in_data -> skid_buffer.in_data; skid_buffer.out_valid -> accumulator_core.sample_valid; skid_buffer.out_data -> accumulator_core.sample; accumulator_core.sample_ready -> skid_buffer.out_ready; accumulator_core.sum -> top.sum"
+}

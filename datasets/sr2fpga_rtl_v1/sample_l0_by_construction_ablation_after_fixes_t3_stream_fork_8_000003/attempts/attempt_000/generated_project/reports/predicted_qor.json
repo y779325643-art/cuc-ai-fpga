@@ -1,0 +1,10 @@
+{
+  "tool": "predicted_qor_script",
+  "clock_frequency_mhz": 100,
+  "register_count": 12,
+  "lut_count": 30,
+  "fmax_mhz": 250,
+  "wns_ns": 0.0,
+  "tns_ns": 0.0,
+  "note": "Conservative estimate for simple 8-bit stream fork with skid buffer and two stages."
+}

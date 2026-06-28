@@ -1,0 +1,17 @@
+{
+  "project_name": "l0_by_construction_ablation_after_fixes_t4_dual_stream_join_8_000004",
+  "top_module": "top",
+  "clock": "clk",
+  "reset": "rst_n (active low)",
+  "interfaces": {
+    "input": ["in0_valid", "in0_data[7:0]", "in0_ready", "in1_valid", "in1_data[7:0]", "in1_ready"],
+    "output": ["out_valid", "out_data[15:0]", "out_ready"]
+  },
+  "hierarchy": {
+    "skid_buffer_0": {"module": "skid_buffer", "instance": "u_skid0"},
+    "skid_buffer_1": {"module": "skid_buffer", "instance": "u_skid1"},
+    "stream_join": {"module": "stream_join", "instance": "u_join"},
+    "accumulator_core": {"module": "accumulator_core", "instance": "u_acc"},
+    "stream_stage": {"module": "stream_stage", "instance": "u_stage"}
+  }
+}

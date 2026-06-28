@@ -1,0 +1,482 @@
+{
+  "sample_id": "sample_l0_by_construction_ablation_after_fixes_t1_event_counter_8_000005",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 1,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/event_gate.v",
+        "rtl/counter_core.v"
+      ],
+      "failure_type": "unknown",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Build an 8-bit event-counting subsystem as a complete SR2FPGA Verilog RTL project. This is component topology t1_event_counter, difficulty tier T1. Use an event_gate in front of a counter_core. The design must implement this black-box behavior: event_valid pulses pass through an event gate and increment the counter core. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.event_valid -> event_gate.event_valid; event_gate.count_en -> counter_core.en; counter_core.count -> top.count. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "8-bit event-counting subsystem comprising an event_gate and a counter_core.",
+      "assumptions": [
+        "event_valid is synchronous to clk and deasserted after one cycle",
+        "rst_n is active low and asserted for at least one cycle to clear the counter",
+        "the counter wraps when overflow occurs"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "frequency_hz": 100000000,
+          "target_fmax_mhz": 100,
+          "source": "top.clk"
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "associated_clock": "clk"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "associated_reset": "rst_n"
+        },
+        {
+          "name": "event_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": {
+            "expr": "8",
+            "resolved": 8
+          }
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "counter_count",
+          "width": {
+            "expr": "8",
+            "resolved": 8
+          },
+          "source": "counter.count"
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "event_gate",
+        "semantic_kind": "event_gate",
+        "source": "rtl/event_gate.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "event_valid",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "count_en",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          }
+        ],
+        "intent": "Produces a one-cycle pulse on count_en whenever event_valid is high, synchronized to clk, and gated by reset."
+      },
+      {
+        "name": "counter_core",
+        "semantic_kind": "counter",
+        "source": "rtl/counter_core.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8,
+            "type": "integer"
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "en",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "count",
+            "direction": "output",
+            "width": {
+              "expr": "WIDTH",
+              "resolved": 8
+            }
+          }
+        ],
+        "intent": "8-bit up counter that increments by one on cycles where en is high, synchronous to clk, reset to 0."
+      }
+    ],
+    "instances": [
+      {
+        "name": "event_gate",
+        "component": "event_gate",
+        "parameter_values": {},
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "counter",
+        "component": "counter_core",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "counter_count"
+        ]
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "event_count_flow",
+        "path": [
+          "top.event_valid",
+          "event_gate.event_valid",
+          "event_gate.count_en",
+          "counter.en",
+          "counter.count",
+          "top.count"
+        ],
+        "payload": {
+          "name": "count",
+          "width": {
+            "expr": "8",
+            "resolved": 8
+          }
+        },
+        "protocol": "wire",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one event per cycle"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_rule",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "reset",
+          "target": "counter_count"
+        },
+        "related_state": [],
+        "related_flows": []
+      },
+      {
+        "name": "event_enable_rule",
+        "kind": "enable_rule",
+        "when": {
+          "signal": "top.event_valid",
+          "op": "==",
+          "value": 1
+        },
+        "effect": {
+          "action": "enable",
+          "target": "event_count_flow"
+        },
+        "related_state": [],
+        "related_flows": [
+          "event_count_flow"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "low",
+        "ff": "low",
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        {
+          "name": "basic_counting",
+          "description": "After reset, apply a sequence of event_valid pulses and verify the count increments correctly.",
+          "steps": "Apply 10 pulses, expect count==10."
+        }
+      ],
+      "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/event_gate.v",
+        "rtl/counter_core.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 559,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 88,
+        "behavior_holes": 0
+      },
+      "rtl/counter_core.v": {
+        "origin": "model_generated",
+        "bytes": 390,
+        "behavior_holes": 0
+      },
+      "rtl/event_gate.v": {
+        "origin": "model_generated",
+        "bytes": 354,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 564,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 263,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 7147,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/counter_core.v",
+      "rtl/event_gate.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.166861,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

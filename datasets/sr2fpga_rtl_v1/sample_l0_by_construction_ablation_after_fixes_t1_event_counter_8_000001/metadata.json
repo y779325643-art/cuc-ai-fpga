@@ -1,0 +1,17 @@
+{
+  "source": "deepseek",
+  "generator_provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "failure_origin": "natural_llm",
+  "difficulty_tier": "T1",
+  "measurement_point": "a_first_attempt_no_tools",
+  "repair_provider": "none",
+  "failure_injectors": [],
+  "task_type": "composed_event_counter",
+  "width": 8,
+  "system_his_schema_version": "system-his-v1.1",
+  "training_split": "quarantine",
+  "contract_skeleton_mode": "legacy_full_project",
+  "topology_id": "t1_event_counter",
+  "requirement_style": "natural_component"
+}
