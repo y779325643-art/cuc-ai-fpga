@@ -40,6 +40,33 @@ def build_contract_skeleton_project(
     return GeneratedProject(project_name=request.project_name, files=files)
 
 
+def merge_behavior_files(
+    skeleton: GeneratedProject,
+    behavior_files: dict[str, str],
+) -> GeneratedProject:
+    """Fill BEHAVIOR_HOLE markers while preserving deterministic structure."""
+
+    files = dict(skeleton.files)
+    required_paths = {path for path, content in files.items() if "BEHAVIOR_HOLE" in content}
+    for path, behavior in behavior_files.items():
+        if path not in files:
+            raise ValueError(f"behavior file '{path}' is not part of the deterministic skeleton")
+        if "BEHAVIOR_HOLE" not in files[path]:
+            raise ValueError(f"behavior file '{path}' does not contain a BEHAVIOR_HOLE")
+    missing = sorted(required_paths - set(behavior_files))
+    if missing:
+        raise ValueError(f"missing behavior for: {', '.join(missing)}")
+    for path, behavior in behavior_files.items():
+        files[path] = _fill_behavior_hole(files[path], behavior)
+    return GeneratedProject(project_name=skeleton.project_name, files=files)
+
+
+def _fill_behavior_hole(content: str, behavior: str) -> str:
+    behavior_lines = behavior.strip("\n").splitlines() or ["// empty behavior body"]
+    indented = "\n".join(f"  {line}" if line.strip() else "" for line in behavior_lines)
+    return content.replace("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.", indented, 1)
+
+
 def _manifest(
     request: ProjectRequest,
     platform: PlatformProfile,

@@ -76,10 +76,11 @@ Implemented and under active review:
 - Contract-preserving generation Tier A has an initial implementation:
   `LLM/src/sr2fpga_agent/contract_skeleton.py` builds a deterministic
   System-HIS v1.2 project skeleton (module headers, top instances, manifest,
-  SDC, testbench shell, predicted-QoR stub) and HIS2PROJECT now includes that
-  skeleton in the prompt and rejects returned RTL that fails the v1.2
-  HIS↔RTL cross-check. This is structural hardening only; Tier B logit-masked
-  constrained decoding is still design-only.
+  SDC, testbench shell, predicted-QoR stub). HIS2PROJECT now asks the model for
+  `behavior_files` only, merges those bodies into `BEHAVIOR_HOLE` markers, rejects
+  full-project `files` responses, and then runs the v1.2 HIS↔RTL cross-check.
+  This is structural hardening only; Tier B logit-masked constrained decoding is
+  still design-only.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.

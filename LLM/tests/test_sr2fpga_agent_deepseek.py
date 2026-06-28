@@ -615,9 +615,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Do not leave fsm, from, to, effect.action, or effect.target empty", retry_prompt)
         self.assertIn("If no FSM is needed, use handshake_rule, enable_rule, or stall_rule instead", retry_prompt)
 
-    def test_deepseek_his_project_generator_uses_checked_his_contract(self) -> None:
+    def test_deepseek_his_project_generator_merges_behavior_into_checked_skeleton(self) -> None:
         system_his = _system_his_v12_fixture()
-        client = FakeChatClient(json.dumps({"files": _project_files_for_system_his_v12(system_his)}))
+        client = FakeChatClient(json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -630,18 +630,17 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
+        self.assertNotIn("BEHAVIOR_HOLE", project.files["rtl/stream_join.v"])
+        self.assertIn("assign out_valid", project.files["rtl/stream_join.v"])
         self.assertEqual(client.call_count, 1)
         self.assertEqual(client.stream_call_count, 1)
         self.assertEqual(client.chat_call_count, 0)
         self.assertIn('"schema_version": "system-his-v1.2"', client.messages[1]["content"])
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", client.messages[1]["content"])
 
-    def test_deepseek_his_project_generator_rejects_project_with_invalid_system_his(self) -> None:
+    def test_deepseek_his_project_generator_rejects_legacy_full_project_response(self) -> None:
         system_his = _system_his_v12_fixture()
-        invalid_system_his = _system_his_v12_fixture()
-        invalid_system_his["instances"][0]["component"] = "missing_component"
-        files = _project_files_for_system_his_v12(invalid_system_his)
-        client = FakeChatClient(json.dumps({"files": files}))
+        client = FakeChatClient(json.dumps({"files": _project_files_for_system_his_v12(system_his)}))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -650,15 +649,12 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        with self.assertRaisesRegex(ValueError, "DeepSeek HIS2PROJECT system_his.json failed validation"):
+        with self.assertRaisesRegex(ValueError, "HIS2PROJECT response must contain behavior_files"):
             DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
-    def test_deepseek_his_project_generator_rejects_changed_his_contract(self) -> None:
+    def test_deepseek_his_project_generator_rejects_behavior_for_structural_file(self) -> None:
         system_his = _system_his_v12_fixture()
-        changed_system_his = _system_his_v12_fixture()
-        changed_system_his["components"][0]["intent"] = "silently changed component intent"
-        files = _project_files_for_system_his_v12(changed_system_his)
-        client = FakeChatClient(json.dumps({"files": files}))
+        client = FakeChatClient(json.dumps({"behavior_files": {"rtl/top.v": "module top; endmodule"}}))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -667,14 +663,12 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        with self.assertRaisesRegex(ValueError, "changed frozen System-HIS contract"):
+        with self.assertRaisesRegex(ValueError, "does not contain a BEHAVIOR_HOLE"):
             DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_deepseek_his_project_generator_rejects_project_that_breaks_checked_contract(self) -> None:
         system_his = _system_his_v12_fixture()
-        files = _project_files_for_system_his_v12(system_his)
-        files["rtl/top.v"] = files["rtl/top.v"].replace("input wire in0_valid", "input wire renamed_valid")
-        client = FakeChatClient(json.dumps({"files": files}))
+        client = FakeChatClient(json.dumps({"behavior_files": {"rtl/missing.v": "assign x = y;"}}))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -683,10 +677,10 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        with self.assertRaisesRegex(ValueError, "HIS2PROJECT RTL failed System-HIS v1.2 cross-check"):
+        with self.assertRaisesRegex(ValueError, "is not part of the deterministic skeleton"):
             DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
-    def test_his_project_prompt_requires_complete_project_without_changing_his_contract(self) -> None:
+    def test_his_project_prompt_requires_behavior_only_response(self) -> None:
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -698,17 +692,19 @@ class DeepSeekProviderTest(unittest.TestCase):
         messages = _his_project_messages(request, platform, _system_his_v12_fixture())
         user_prompt = messages[1]["content"]
 
-        self.assertIn("Generate a complete SR2FPGA Verilog RTL project from this checked System-HIS", user_prompt)
+        self.assertIn("Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton", user_prompt)
+        self.assertIn('"behavior_files"', user_prompt)
+        self.assertIn("Do not return system_his.json, manifest.json, rtl/top.v", user_prompt)
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", user_prompt)
         self.assertIn('"rtl/stream_join.v"', user_prompt)
-        self.assertIn('"constraints": {"timing": "constraints/timing.sdc"}', user_prompt)
+        self.assertNotIn('"files"', user_prompt)
 
     def test_deepseek_two_stage_project_generator_runs_req2his_then_his2project(self) -> None:
         system_his = _system_his_v12_fixture()
         client = FakeChatClient(
             [
                 json.dumps(system_his),
-                json.dumps({"files": _project_files_for_system_his_v12(system_his)}),
+                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
             ]
         )
         request = ProjectRequest(
@@ -727,14 +723,17 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(client.chat_call_count, 1)
         self.assertEqual(client.stream_call_count, 1)
         self.assertIn("Generate a canonical System-HIS v1.2", client.messages_history[0][1]["content"])
-        self.assertIn("Generate a complete SR2FPGA Verilog RTL project", client.messages_history[1][1]["content"])
+        self.assertIn(
+            "Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton",
+            client.messages_history[1][1]["content"],
+        )
 
     def test_deepseek_two_stage_project_generator_emits_stage_events(self) -> None:
         system_his = _system_his_v12_fixture()
         client = FakeChatClient(
             [
                 json.dumps(system_his),
-                json.dumps({"files": _project_files_for_system_his_v12(system_his)}),
+                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
             ]
         )
         events = []
@@ -770,7 +769,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             [
                 json.dumps(invalid),
                 json.dumps(system_his),
-                json.dumps({"files": _project_files_for_system_his_v12(system_his)}),
+                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
             ]
         )
         events = []
@@ -1466,6 +1465,17 @@ def _project_files_for_system_his_v12(system_his: dict[str, object]) -> dict[str
     )
     platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
     return build_contract_skeleton_project(request, platform, system_his).files
+
+
+def _behavior_files_for_system_his_v12(system_his: dict[str, object]) -> dict[str, str]:
+    files: dict[str, str] = {}
+    for component in system_his["components"]:
+        source = str(component["source"])
+        if source == "rtl/stream_join.v":
+            files[source] = "assign out_valid = in0_valid && in1_valid;\nassign out_data = in0_data + in1_data;"
+        else:
+            files[source] = "// behavior intentionally omitted in unit-test fixture"
+    return files
 
 
 if __name__ == "__main__":

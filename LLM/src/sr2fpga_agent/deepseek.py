@@ -11,7 +11,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
-from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
+from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project, merge_behavior_files
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 from LLM.src.sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
@@ -435,17 +435,13 @@ class DeepSeekHisProjectGenerator:
         system_his: dict[str, Any],
     ) -> GeneratedProject:
         messages = _his_project_messages(request, platform, system_his)
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
         last_error: ValueError | None = None
         for _attempt in range(self.max_attempts):
             content = self.client.stream_chat(messages)
             try:
-                files = parse_project_files(content, expected_task_type=request.task_type)
-                try:
-                    returned_system_his = parse_system_his_v12(files["system_his.json"])
-                    _validate_system_his_contract_unchanged(system_his, returned_system_his)
-                except ValueError as exc:
-                    raise ValueError(f"DeepSeek HIS2PROJECT system_his.json failed validation: {exc}") from exc
-                project = GeneratedProject(project_name=request.project_name, files=files)
+                behavior_files = parse_behavior_files(content)
+                project = merge_behavior_files(skeleton, behavior_files)
                 contract_result = check_system_his_v12_against_rtl(system_his, project)
                 if not contract_result.passed:
                     raise ValueError(
@@ -597,6 +593,22 @@ def parse_project_files(content: str, expected_task_type: str | None = None) -> 
     _validate_manifest(files)
     _validate_expected_rtl_structure(files, expected_task_type)
     return files
+
+
+def parse_behavior_files(content: str) -> dict[str, str]:
+    """Parse HIS2PROJECT JSON output into behavior-only file bodies."""
+
+    cleaned = _strip_markdown_fence(content)
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"DeepSeek HIS2PROJECT behavior output is not valid JSON: {exc.msg}") from exc
+    if "files" in payload:
+        raise ValueError("HIS2PROJECT response must contain behavior_files, not files")
+    raw_behavior = payload.get("behavior_files")
+    if not isinstance(raw_behavior, dict):
+        raise ValueError("HIS2PROJECT response must contain behavior_files as an object")
+    return {str(path): str(body) for path, body in raw_behavior.items()}
 
 
 def parse_system_his_v12(content: str) -> dict[str, Any]:
@@ -1030,19 +1042,18 @@ def _his_project_messages(
     platform: PlatformProfile,
     system_his: dict[str, Any],
 ) -> list[dict[str, str]]:
-    required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
     system_his_text = json.dumps(system_his, ensure_ascii=False, indent=2)
     skeleton_files = build_contract_skeleton_project(request, platform, system_his).files
     skeleton_text = json.dumps(skeleton_files, ensure_ascii=False, indent=2)
-    sources = _artifact_sources_example(system_his, request.task_type)
-    extra_entries = _additional_file_entries(sources)
+    behavior_paths = [path for path, content in sorted(skeleton_files.items()) if "BEHAVIOR_HOLE" in content]
+    behavior_entries = "\n".join(f'    "{path}": "...",' for path in behavior_paths).rstrip(",")
     system = (
-        "You generate complete FPGA RTL project packages from checked System-HIS architecture contracts. "
+        "You generate behavioral RTL bodies for checked System-HIS architecture contracts. "
         "Return only valid JSON. Do not include markdown. "
         "Do not generate vendor IP, HLS, bitstreams, or real tool reports."
     )
     user = f"""
-Generate a complete SR2FPGA Verilog RTL project from this checked System-HIS.
+Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton.
 
 Project:
 - project_name: {request.project_name}
@@ -1076,38 +1087,22 @@ Rules:
 - Do not use Verilog reserved keywords for any RTL identifier, including modules,
   instances, regs, wires, arrays, blocks, and parameters. Avoid names such as
   fork, join, buf, begin, end, module, wire, input, output, and reg.
-- Keep rtl/top.v as the integration wrapper.
-- Put reusable components in separate RTL files.
-- Include the same System-HIS JSON as system_his.json unless only formatting changes are needed.
-- Include a bounded self-checking testbench that prints TEST_PASS on success and TEST_FAIL on failure.
+- Do not return system_his.json, manifest.json, rtl/top.v, constraints, testbench,
+  reports, complete modules, module headers, or endmodule lines.
+- The deterministic skeleton already supplies structure, constraints, manifest,
+  reports, and testbench. Your output supplies only replacement text for each
+  BEHAVIOR_HOLE marker.
 {_icarus_testbench_rules()}
 
-Required files:
-{required_files}
+Behavior files with BEHAVIOR_HOLE markers:
+{json.dumps(behavior_paths, ensure_ascii=False, indent=2)}
 
-Return JSON in this exact shape. The value of each file must be a JSON string;
-escape newlines as \\n and escape any double quotes inside file contents:
+Return JSON in this exact shape. The value of each behavior file must be a JSON
+string; escape newlines as \\n and escape any double quotes inside file contents:
 {{
-  "files": {{
-    "system_his.json": "...",
-    "manifest.json": "...",
-    "rtl/top.v": "...",
-{extra_entries}
-    "constraints/timing.sdc": "...",
-    "sim/tb_top.v": "...",
-    "reports/predicted_qor.json": "..."
+  "behavior_files": {{
+{behavior_entries}
   }}
-}}
-
-The manifest.json file content must itself be JSON and must contain this tool
-pipeline schema:
-{{
-  "project_name": "{request.project_name}",
-  "top_module": "top",
-  "sources": {json.dumps(sources)},
-  "constraints": {{"timing": "constraints/timing.sdc"}},
-  "simulation": {{"testbench": "sim/tb_top.v"}},
-  "reports": ["reports/predicted_qor.json"]
 }}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
