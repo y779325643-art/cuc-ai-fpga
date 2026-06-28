@@ -82,6 +82,10 @@ endmodule
         self.assertTrue(widths_equivalent({"expr": "1", "resolved": 1}, ports["clk"]["width"]))
         self.assertTrue(widths_equivalent({"expr": "8", "resolved": 8}, ports["data"]["width"]))
 
+    def test_widths_equivalent_accepts_complete_unbracketed_range_expr(self) -> None:
+        self.assertTrue(widths_equivalent({"expr": "DATA_WIDTH-1:0", "resolved": None}, "[DATA_WIDTH-1:0]"))
+        self.assertTrue(widths_equivalent({"expr": "2*DATA_WIDTH-1:0", "resolved": None}, "[2*DATA_WIDTH-1:0]"))
+
 
 if __name__ == "__main__":
     unittest.main()

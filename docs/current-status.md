@@ -215,6 +215,12 @@ Implemented and under active review:
   visible in the target component module. HIS2PROJECT prompt guidance also tells
   the model not to rename, omit, or replace System-HIS `state.fsms` states. This
   targets the T4 FSM-state lowerability failure in future reruns.
+- Contract skeleton width rendering now preserves complete range expressions
+  such as `7:0`, `DATA_WIDTH-1:0`, and `2*DATA_WIDTH-1:0` instead of appending a
+  second `-1:0` suffix. The shared width normalizer also compares complete range
+  expressions with and without brackets, so HIS widths like
+  `DATA_WIDTH-1:0` match parsed RTL widths like `[DATA_WIDTH-1:0]`. This targets
+  the after-fixes T4 repeated-range failure in future reruns.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:

@@ -178,6 +178,18 @@ def normalize_width(value: Any) -> str:
     symbolic_range = re.fullmatch(r"\[([A-Za-z_][A-Za-z0-9_$]*)\s*-\s*1\s*:\s*0\]", text)
     if symbolic_range is not None:
         return symbolic_range.group(1)
+    unbracketed_numeric_range = re.fullmatch(r"(\d+)\s*:\s*0", text)
+    if unbracketed_numeric_range is not None:
+        return str(int(unbracketed_numeric_range.group(1)) + 1)
+    unbracketed_concrete_minus_one_range = re.fullmatch(r"(\d+)\s*-\s*1\s*:\s*0", text)
+    if unbracketed_concrete_minus_one_range is not None:
+        return unbracketed_concrete_minus_one_range.group(1)
+    unbracketed_symbolic_range = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_$]*)\s*-\s*1\s*:\s*0", text)
+    if unbracketed_symbolic_range is not None:
+        return unbracketed_symbolic_range.group(1)
+    bracketed_range = re.fullmatch(r"\[(.+:.+)\]", text)
+    if bracketed_range is not None:
+        return bracketed_range.group(1).strip()
     return text
 
 

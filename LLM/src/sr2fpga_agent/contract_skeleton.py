@@ -241,8 +241,9 @@ def _parameter_override_block(values: dict[str, Any]) -> str:
 def _range(width: Any) -> str:
     if isinstance(width, dict):
         if width.get("expr"):
-            return f" [{width['expr']}-1:0]"
-        width = width.get("resolved", 1)
+            width = width["expr"]
+        else:
+            width = width.get("resolved", 1)
     if isinstance(width, int):
         return "" if width <= 1 else f" [{width - 1}:0]"
     text = str(width).strip()
@@ -250,6 +251,8 @@ def _range(width: Any) -> str:
         return ""
     if text.startswith("["):
         return f" {text}"
+    if ":" in text:
+        return f" [{text}]"
     return f" [{text}-1:0]"
 
 

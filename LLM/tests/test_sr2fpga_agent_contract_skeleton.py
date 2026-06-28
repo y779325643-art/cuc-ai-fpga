@@ -118,6 +118,32 @@ class ContractSkeletonTest(unittest.TestCase):
         self.assertIn("localparam SEND_0", skeleton.files["rtl/stream_join.v"])
         self.assertIn("localparam SEND_1", skeleton.files["rtl/stream_join.v"])
 
+    def test_skeleton_preserves_complete_width_ranges(self) -> None:
+        system_his = _fixture()
+        for port in system_his["top"]["ports"]:
+            if port["name"] in {"in0_data", "in1_data", "out_data"}:
+                port["width"] = {"expr": "7:0", "resolved": 8}
+        for component in system_his["components"]:
+            for port in component["ports"]:
+                if port["name"].endswith("_data") or port["name"] in {"sample", "sum"}:
+                    port["width"] = {"expr": "DATA_WIDTH-1:0", "resolved": None}
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        self.assertNotIn("[7:0-1:0]", skeleton.files["rtl/top.v"])
+        self.assertNotIn("[DATA_WIDTH-1:0-1:0]", "\n".join(skeleton.files.values()))
+        self.assertIn("input wire [7:0] in0_data", skeleton.files["rtl/top.v"])
+        self.assertIn("input wire [DATA_WIDTH-1:0] in_data", skeleton.files["rtl/skid_buffer.v"])
+        result = check_system_his_v12_against_rtl(system_his, skeleton)
+        self.assertTrue(result.passed, result.errors)
+
 
 def _fixture() -> dict[str, object]:
     return json.loads(FIXTURE.read_text(encoding="utf-8"))
