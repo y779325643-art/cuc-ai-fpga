@@ -11,11 +11,13 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 from LLM.src.sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
 from LLM.src.sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
 from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12
+from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12_against_rtl
 
 
 REQUIRED_PROJECT_FILES = {
@@ -443,7 +445,14 @@ class DeepSeekHisProjectGenerator:
                     _validate_system_his_contract_unchanged(system_his, returned_system_his)
                 except ValueError as exc:
                     raise ValueError(f"DeepSeek HIS2PROJECT system_his.json failed validation: {exc}") from exc
-                return GeneratedProject(project_name=request.project_name, files=files)
+                project = GeneratedProject(project_name=request.project_name, files=files)
+                contract_result = check_system_his_v12_against_rtl(system_his, project)
+                if not contract_result.passed:
+                    raise ValueError(
+                        "HIS2PROJECT RTL failed System-HIS v1.2 cross-check: "
+                        + "; ".join(contract_result.errors)
+                    )
+                return project
             except ValueError as exc:
                 last_error = exc
         if last_error is not None:
@@ -1023,6 +1032,8 @@ def _his_project_messages(
 ) -> list[dict[str, str]]:
     required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
     system_his_text = json.dumps(system_his, ensure_ascii=False, indent=2)
+    skeleton_files = build_contract_skeleton_project(request, platform, system_his).files
+    skeleton_text = json.dumps(skeleton_files, ensure_ascii=False, indent=2)
     sources = _artifact_sources_example(system_his, request.task_type)
     extra_entries = _additional_file_entries(sources)
     system = (
@@ -1049,8 +1060,17 @@ Platform:
 Checked System-HIS v1.2:
 {system_his_text}
 
+Contract-preserving deterministic skeleton:
+{skeleton_text}
+
 Rules:
 - Treat the System-HIS as the frozen architecture contract.
+- Use the deterministic skeleton as the structural source of truth.
+- Preserve module headers, top-level port lists, instance names, parameter
+  overrides, manifest sources, timing constraints, and testbench top instantiation
+  from the skeleton.
+- Fill BEHAVIOR_HOLE regions with behavioral RTL only; do not create structural
+  names that are absent from the checked System-HIS.
 - Do not change component, instance, top port, data_flow, or control_flow names.
 - Generate RTL that implements the top-down architecture contract.
 - Do not use Verilog reserved keywords for any RTL identifier, including modules,

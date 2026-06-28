@@ -73,6 +73,13 @@ Implemented and under active review:
   `c_finetuned_first_attempt_no_tools`.
 - Runner now dispatches each sample through its configured source instead of
   only the global provider.
+- Contract-preserving generation Tier A has an initial implementation:
+  `LLM/src/sr2fpga_agent/contract_skeleton.py` builds a deterministic
+  System-HIS v1.2 project skeleton (module headers, top instances, manifest,
+  SDC, testbench shell, predicted-QoR stub) and HIS2PROJECT now includes that
+  skeleton in the prompt and rejects returned RTL that fails the v1.2
+  HIS↔RTL cross-check. This is structural hardening only; Tier B logit-masked
+  constrained decoding is still design-only.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
@@ -565,8 +572,8 @@ Key summary:
    task with L2-measured behavior. Before a larger clean split, follow the reframe
    hardening gates now recorded in the freeze spec: measurement freeze, REQ→HIS
    fidelity scoring, hidden/random/stress L2-core plus optional L2S/L2-UVM,
-   contract-preserving skeleton generation with deterministic/model-generated
-   artifact metadata, and episode field data-release tiers.
+   contract-preserving skeleton body-merge + L0-by-construction ablation, and
+   episode field data-release tiers.
 0b. **OpenXC7 L4 tool-stage spike (approved; run on the Windows+WSL2 box).**
    Plan `docs/superpowers/plans/2026-06-24-openxc7-l4-tool-stage-spike.md`
    (spec: `docs/superpowers/specs/2026-06-24-openxc7-l4-tool-stage-spike-design.md`).

@@ -23,6 +23,7 @@ from LLM.src.sr2fpga_agent.deepseek import (
     parse_project_files,
     parse_system_his_v12,
 )
+from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 
@@ -667,6 +668,22 @@ class DeepSeekProviderTest(unittest.TestCase):
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         with self.assertRaisesRegex(ValueError, "changed frozen System-HIS contract"):
+            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+
+    def test_deepseek_his_project_generator_rejects_project_that_breaks_checked_contract(self) -> None:
+        system_his = _system_his_v12_fixture()
+        files = _project_files_for_system_his_v12(system_his)
+        files["rtl/top.v"] = files["rtl/top.v"].replace("input wire in0_valid", "input wire renamed_valid")
+        client = FakeChatClient(json.dumps({"files": files}))
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        with self.assertRaisesRegex(ValueError, "HIS2PROJECT RTL failed System-HIS v1.2 cross-check"):
             DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_his_project_prompt_requires_complete_project_without_changing_his_contract(self) -> None:
@@ -1441,26 +1458,14 @@ def _deterministic_system_his(request: ProjectRequest) -> dict[str, object]:
 
 
 def _project_files_for_system_his_v12(system_his: dict[str, object]) -> dict[str, str]:
-    return {
-        "system_his.json": json.dumps(system_his, indent=2) + "\n",
-        "manifest.json": _valid_manifest(
-            sources=[
-                "rtl/top.v",
-                "rtl/skid_buffer.v",
-                "rtl/stream_join.v",
-                "rtl/accumulator_core.v",
-                "rtl/stream_stage.v",
-            ]
-        ),
-        "rtl/top.v": "module top; skid_buffer in0_buffer(); stream_join join_core(); endmodule\n",
-        "rtl/skid_buffer.v": "module skid_buffer; endmodule\n",
-        "rtl/stream_join.v": "module stream_join; endmodule\n",
-        "rtl/accumulator_core.v": "module accumulator_core; endmodule\n",
-        "rtl/stream_stage.v": "module stream_stage; endmodule\n",
-        "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
-        "sim/tb_top.v": "module tb_top; initial $display(\"TEST_PASS\"); endmodule\n",
-        "reports/predicted_qor.json": "{}\n",
-    }
+    request = ProjectRequest(
+        task_type="composed_dual_stream_join",
+        width=8,
+        project_name="join_8bit",
+        description="Generate a dual-stream join and accumulator project.",
+    )
+    platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+    return build_contract_skeleton_project(request, platform, system_his).files
 
 
 if __name__ == "__main__":
