@@ -89,7 +89,15 @@ Implemented and under active review:
   runs the same T1-T4 component-topology task set twice: legacy DeepSeek
   full-project generation (`legacy_full_project`) and System-HIS v1.2 skeleton
   generation (`behavior_files`). Compare `calibration_matrix["contract_skeleton_mode"]`
-  and L0/L2 outcomes after the run; this config is not yet a reported result.
+  and L0/L2 outcomes after the run.
+- The first real L0-by-construction ablation run completed with run ID
+  `l0-by-construction-ablation`:
+  `total_completed=8`, `success_l3=0`, `repair_trajectory=5`, `rejected=3`.
+  Legacy full-project generation produced `L0_FAIL:4`; `behavior_files`
+  skeleton generation produced `GEN_FAIL:3, L0:1`. This reduced L0 contract
+  failures from 4/4 to 3/4 and produced one T3 sample that crossed L0, but did
+  not yet reach L1/L2/L3. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
@@ -393,6 +401,10 @@ python3 -m pytest LLM/tests -q
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
 # ok: true; planned_samples: 8; preview shows legacy_full_project/quarantine and behavior_files/clean arms; provider_auth: not_checked
 
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation
+# total_completed=8; success_l3=0; repair_trajectory=5; rejected=3
+# contract_skeleton_mode: legacy_full_project -> L0_FAIL:4; behavior_files -> GEN_FAIL:3, L0:1
+
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok
 
@@ -581,6 +593,12 @@ Key summary:
      targets and tighten HIS2PROJECT/repair feedback for T3 component names and
      RTL endpoint alignment. Then rerun the ignored local T1-T4 config and only
      expand sample count after T2/T3 stop dominating the small baseline.
+00d. **L0-by-construction ablation blockers.** The first paired ablation run
+     reduced L0 failures but still failed to reach L1/L2/L3. Fix the observed
+     blockers before rerunning at scale: single-bit width normalization
+     (`1` versus `[1-1:0]`) in HIS↔RTL comparison, canonical reset
+     `kind`/`polarity` guidance in REQ2HIS, missing module parameter
+     declarations in `behavior_files`, and T4 FSM-state lowerability.
 0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).
@@ -671,6 +689,7 @@ Key summary:
 - Baseline (b) full tightened config: `configs/sr2fpga_baseline_b_tightened.example.yaml`
 - Baseline (b) T3/T4 smoke config: `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
 - L0-by-construction ablation config: `configs/sr2fpga_l0_by_construction_ablation.example.yaml`
+- L0-by-construction ablation write-up: `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`
 - System-HIS v1.2 two-stage smoke config: `configs/sr2fpga_his_v12_smoke.example.yaml`
 - Tool-loop runner config: `configs/sr2fpga_agent.example.yaml`
 - Baseline report renderer: `LLM/src/sr2fpga_agent/baseline_report.py`

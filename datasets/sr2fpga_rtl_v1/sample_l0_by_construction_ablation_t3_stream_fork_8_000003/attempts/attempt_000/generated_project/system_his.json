@@ -1,0 +1,13 @@
+{
+  "project_name": "l0_by_construction_ablation_t3_stream_fork_8_000003",
+  "task_type": "composed_stream_fork",
+  "width": 8,
+  "description": "8-bit valid-ready stream fork with skid buffer and stream stages",
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000,
+    "reset_polarity": "active_low"
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "estimated_luts": 80,
+  "estimated_ffs": 120,
+  "estimated_fmax_mhz": 250,
+  "notes": "Prediction based on 8-bit datapath with minimal control logic."
+}

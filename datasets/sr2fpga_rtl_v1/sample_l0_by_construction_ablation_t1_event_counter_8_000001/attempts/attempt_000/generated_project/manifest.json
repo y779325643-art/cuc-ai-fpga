@@ -1,0 +1,8 @@
+{
+  "project_name": "l0_by_construction_ablation_t1_event_counter_8_000001",
+  "top_module": "top",
+  "sources": ["rtl/top.v", "rtl/event_gate.v", "rtl/counter_core.v"],
+  "constraints": {"timing": "constraints/timing.sdc"},
+  "simulation": {"testbench": "sim/tb_top.v"},
+  "reports": ["reports/predicted_qor.json"]
+}

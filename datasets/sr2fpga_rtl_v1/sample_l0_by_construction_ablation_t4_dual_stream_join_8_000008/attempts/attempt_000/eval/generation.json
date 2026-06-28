@@ -1,0 +1,11 @@
+{
+  "stage": "generation",
+  "command": [
+    "project_generator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "HIS2PROJECT RTL failed System-HIS v1.2 cross-check: state.fsms 'join_fsm' state 'IDLE' is not found in RTL module 'top'; state.fsms 'join_fsm' state 'OUTPUT' is not found in RTL module 'top'",
+  "duration_seconds": 0.0
+}

@@ -1,0 +1,23 @@
+system_his.schema_version is not system-his-v1.1
+system_his.project is required
+system_his.clocks is required
+system_his.resets is required
+system_his.project_name is required
+system_his.system is required
+system_his.interface is required
+system_his.architecture is required
+system_his.modules is required
+system_his.connections is required
+system_his.top_ports is required
+system_his.platform is required
+system_his.verification is required
+system_his.qor_intent is required
+system_his.architecture.top_module is required
+system_his.project.top is required
+system_his.clocks must be a non-empty list
+system_his.resets must be a non-empty list
+system_his.qor_intent must be an object
+system_his.verification must be an object
+system_his.modules must be a list
+system_his.connections must be a list
+system_his.top_ports must be a list

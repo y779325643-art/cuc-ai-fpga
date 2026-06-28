@@ -1,0 +1,8 @@
+{
+  "project_name": "l0_by_construction_ablation_t3_stream_fork_8_000003",
+  "top_module": "top",
+  "sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_fork.v", "rtl/stream_stage.v"],
+  "constraints": {"timing": "constraints/timing.sdc"},
+  "simulation": {"testbench": "sim/tb_top.v"},
+  "reports": ["reports/predicted_qor.json"]
+}

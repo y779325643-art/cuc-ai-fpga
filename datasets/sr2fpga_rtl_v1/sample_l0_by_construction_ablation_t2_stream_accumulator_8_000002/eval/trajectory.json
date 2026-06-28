@@ -1,0 +1,199 @@
+{
+  "sample_id": "sample_l0_by_construction_ablation_t2_stream_accumulator_8_000002",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: composed_stream_accumulator requires top port 'clk'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires top port 'rst_n'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires top port 'in_valid'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires top port 'in_data'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires top port 'in_ready'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires top port 'sample_valid'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires top port 'sum'"
+      ]
+    },
+    "clock_reset_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: clock clk is required",
+        "REQ2HIS fidelity: reset rst_n is required",
+        "REQ2HIS fidelity: timing.primary_clock is required"
+      ]
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: composed_stream_accumulator requires component 'skid_buffer'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires component 'accumulator_core'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires 1 instance(s) of component 'skid_buffer'",
+        "REQ2HIS fidelity: composed_stream_accumulator requires 1 instance(s) of component 'accumulator_core'"
+      ]
+    },
+    "verification_intent_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: verification.testbench is required",
+        "REQ2HIS fidelity: verification.scenarios must be a list",
+        "REQ2HIS fidelity: verification.pass_condition is required"
+      ]
+    },
+    "constraint_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: timing.target_fmax_mhz must be positive"
+      ]
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "project_name": "l0_by_construction_ablation_t2_stream_accumulator_8_000002",
+    "top_module": "top",
+    "clk_period_ns": 10.0,
+    "toolchain": "open_source"
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 324,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 368,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 176,
+        "behavior_holes": 0
+      },
+      "rtl/accumulator_core.v": {
+        "origin": "model_generated",
+        "bytes": 372,
+        "behavior_holes": 0
+      },
+      "rtl/skid_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 756,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 617,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 1501,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 161,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/accumulator_core.v",
+      "rtl/skid_buffer.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.759298,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "fail",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

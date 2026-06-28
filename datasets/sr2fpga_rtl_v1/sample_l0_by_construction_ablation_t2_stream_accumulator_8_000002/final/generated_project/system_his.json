@@ -1,0 +1,6 @@
+{
+  "project_name": "l0_by_construction_ablation_t2_stream_accumulator_8_000002",
+  "top_module": "top",
+  "clk_period_ns": 10.0,
+  "toolchain": "open_source"
+}

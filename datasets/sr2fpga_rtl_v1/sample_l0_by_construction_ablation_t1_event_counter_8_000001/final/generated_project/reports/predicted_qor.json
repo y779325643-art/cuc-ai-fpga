@@ -1,0 +1,10 @@
+{
+  "design": "top",
+  "clock": "clk",
+  "period_ns": 10,
+  "frequency_mhz": 100,
+  "timing_slack_ns": 9.5,
+  "area_luts": 10,
+  "area_ffs": 16,
+  "power_mw": 0.1
+}

@@ -1,0 +1,7 @@
+{
+  "clock_frequency_mhz": 100.0,
+  "worst_slack_ns": 5.0,
+  "total_luts": 50,
+  "total_registers": 100,
+  "fmax_mhz": 250.0
+}

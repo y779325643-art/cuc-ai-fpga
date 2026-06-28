@@ -1,0 +1,5 @@
+create_clock -name clk -period 10.000 [get_ports clk]
+set_input_delay -clock clk -max 2.000 [get_ports {in_data in_valid}]
+set_input_delay -clock clk -min 1.000 [get_ports {in_data in_valid}]
+set_output_delay -clock clk -max 2.000 [get_ports {in_ready sum}]
+set_output_delay -clock clk -min 1.000 [get_ports {in_ready sum}]
