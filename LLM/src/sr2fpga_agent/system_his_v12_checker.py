@@ -109,7 +109,8 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
     _validate_verification(verification, errors)
     top_ports = _top_ports(top, errors)
     top_control_signals = top_ports | _top_clock_reset_names(top)
-    component_ports = _component_ports(components, errors)
+    rtl_sources = _artifact_rtl_sources(artifacts, errors)
+    component_ports = _component_ports(components, set(rtl_sources), errors)
     component_parameters = _component_parameters(components)
     instance_components = _instance_components(instances, component_ports, component_parameters, errors)
     instance_ports = {
@@ -285,7 +286,7 @@ def _top_clock_reset_names(top: dict[str, Any]) -> set[str]:
     return names
 
 
-def _component_ports(components: list[Any], errors: list[str]) -> dict[str, set[str]]:
+def _component_ports(components: list[Any], rtl_sources: set[str], errors: list[str]) -> dict[str, set[str]]:
     component_ports: dict[str, set[str]] = {}
     for index, component in enumerate(components):
         if not isinstance(component, dict):
@@ -299,8 +300,11 @@ def _component_ports(components: list[Any], errors: list[str]) -> dict[str, set[
             errors.append(f"components duplicate component '{name}'")
         if not str(component.get("semantic_kind", "")).strip():
             errors.append(f"components[{index}].semantic_kind is required")
-        if not str(component.get("source", "")).strip():
+        source = str(component.get("source", "")).strip()
+        if not source:
             errors.append(f"components[{index}].source is required")
+        elif rtl_sources and source not in rtl_sources:
+            errors.append(f"components[{index}].source '{source}' is not in artifacts.rtl_sources")
         if not str(component.get("intent", "")).strip():
             errors.append(f"components[{index}].intent is required")
         ports = _list(component.get("ports"), f"components[{index}].ports", errors)
@@ -983,3 +987,16 @@ def _validate_artifacts(artifacts: dict[str, Any], errors: list[str]) -> None:
         values = _list(artifacts.get(key), f"system_his.artifacts.{key}", errors)
         if not values:
             errors.append(f"system_his.artifacts.{key} must be non-empty")
+
+
+def _artifact_rtl_sources(artifacts: dict[str, Any], errors: list[str]) -> list[str]:
+    values = artifacts.get("rtl_sources")
+    if not isinstance(values, list):
+        return []
+    sources: list[str] = []
+    for index, value in enumerate(values):
+        if isinstance(value, str) and value.strip():
+            sources.append(value)
+        else:
+            errors.append(f"system_his.artifacts.rtl_sources[{index}] must be a non-empty string")
+    return sources

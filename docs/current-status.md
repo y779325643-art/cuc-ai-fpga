@@ -221,6 +221,11 @@ Implemented and under active review:
   expressions with and without brackets, so HIS widths like
   `DATA_WIDTH-1:0` match parsed RTL widths like `[DATA_WIDTH-1:0]`. This targets
   the after-fixes T4 repeated-range failure in future reruns.
+- System-HIS v1.2 internal validation now rejects `components[].source` values
+  that are not listed in `artifacts.rtl_sources`, and REQ2HIS initial/retry
+  prompts explicitly forbid placeholder sources such as `library`. This moves
+  the after-fixes T2 component-source lowerability failure from HIS2PROJECT
+  cross-check into the earlier REQ2HIS repair loop.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:

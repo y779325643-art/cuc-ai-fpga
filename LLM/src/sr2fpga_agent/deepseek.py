@@ -841,6 +841,8 @@ Architectural rules:
 - Record architectural state, not incidental RTL temporaries.
 - Separate component definitions from concrete instances.
 - Every component must include name, semantic_kind, source, ports, and intent.
+- Every components[].source must be one of artifacts.rtl_sources.
+- Do not use placeholder sources such as "library"; use concrete RTL paths like rtl/top.v.
 - Every instance must include name, component, parameter_values, clock, reset, and owns_state.
 - Every instances[].parameter_values key must be declared in that component's parameters.
 - Every data_flow endpoint must name top.<port> or <instance>.<port>.
@@ -949,6 +951,8 @@ def _with_system_his_retry_feedback(
                 f"{error}\n\n"
                 "System-HIS v1.2 IR repair checklist:\n"
                 "- Every components[] object must include name, semantic_kind, source, ports, and intent.\n"
+                "- Every components[].source must be one of artifacts.rtl_sources.\n"
+                "- Do not use placeholder sources such as \"library\"; use concrete RTL paths like rtl/top.v.\n"
                 "- Every instances[] object must include name, component, parameter_values, clock, reset, and owns_state.\n"
                 "- Every instances[].parameter_values key must be declared in that component's parameters.\n"
                 "- Every instance name must be unique and every component value must match a declared components[].name.\n"

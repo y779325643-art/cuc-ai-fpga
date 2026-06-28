@@ -62,6 +62,15 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("instances[2].name 'buf' is a Verilog reserved keyword", result.errors)
 
+    def test_rejects_component_source_not_declared_in_artifacts(self) -> None:
+        payload = _fixture()
+        payload["components"][0]["source"] = "library"
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("components[0].source 'library' is not in artifacts.rtl_sources", result.errors)
+
     def test_rejects_data_flow_endpoint_that_uses_component_instead_of_instance(self) -> None:
         payload = _fixture()
         payload["data_flow"][0]["path"][1] = "skid_buffer.in_data"
