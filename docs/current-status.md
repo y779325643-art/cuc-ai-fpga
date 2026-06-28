@@ -84,6 +84,12 @@ Implemented and under active review:
   the Tier A skeleton path from direct full-project generation.
   This is structural hardening only; Tier B logit-masked constrained decoding is
   still design-only.
+- `configs/sr2fpga_l0_by_construction_ablation.example.yaml` is the paired
+  first-attempt/no-repair entry point for the L0-by-construction ablation. It
+  runs the same T1-T4 component-topology task set twice: legacy DeepSeek
+  full-project generation (`legacy_full_project`) and System-HIS v1.2 skeleton
+  generation (`behavior_files`). Compare `calibration_matrix["contract_skeleton_mode"]`
+  and L0/L2 outcomes after the run; this config is not yet a reported result.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
@@ -376,8 +382,11 @@ Supported failure injectors:
 Fresh verification from the latest implementation pass:
 
 ```bash
-python3 -m unittest discover -s LLM/tests -q
-# Ran 256 tests - OK
+python3 -m pytest LLM/tests -q
+# 295 passed
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
+# ok: true; planned_samples: 8; sources: deepseek + deepseek-his-v12; provider_auth: not_checked
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok
@@ -579,6 +588,8 @@ Key summary:
    fidelity scoring, hidden/random/stress L2-core plus optional L2S/L2-UVM,
    contract-preserving skeleton body-merge + L0-by-construction ablation, and
    episode field data-release tiers.
+   The new paired ablation entry point is:
+   `configs/sr2fpga_l0_by_construction_ablation.example.yaml`.
 0b. **OpenXC7 L4 tool-stage spike (approved; run on the Windows+WSL2 box).**
    Plan `docs/superpowers/plans/2026-06-24-openxc7-l4-tool-stage-spike.md`
    (spec: `docs/superpowers/specs/2026-06-24-openxc7-l4-tool-stage-spike-design.md`).
@@ -654,6 +665,7 @@ Key summary:
 - Baseline (b) smoke config: `configs/sr2fpga_baseline_b_smoke.example.yaml`
 - Baseline (b) full tightened config: `configs/sr2fpga_baseline_b_tightened.example.yaml`
 - Baseline (b) T3/T4 smoke config: `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
+- L0-by-construction ablation config: `configs/sr2fpga_l0_by_construction_ablation.example.yaml`
 - System-HIS v1.2 two-stage smoke config: `configs/sr2fpga_his_v12_smoke.example.yaml`
 - Tool-loop runner config: `configs/sr2fpga_agent.example.yaml`
 - Baseline report renderer: `LLM/src/sr2fpga_agent/baseline_report.py`

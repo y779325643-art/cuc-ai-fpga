@@ -212,6 +212,59 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
         self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "behavior_files")
 
+    def test_l0_by_construction_ablation_config_pairs_full_and_skeleton_generation(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_l0_by_construction_ablation.example.yaml"))
+        samples = planned_samples(config)
+
+        self.assertEqual(config.provider, "deepseek")
+        self.assertEqual(config.repair_provider, "none")
+        self.assertEqual(config.max_attempts, 1)
+        self.assertEqual(config.sample_id_prefix, "l0_by_construction_ablation")
+        self.assertEqual(len(samples), 8)
+        self.assertEqual(
+            [sample.topology_id for sample in samples],
+            [
+                "t1_event_counter",
+                "t2_stream_accumulator",
+                "t3_stream_fork",
+                "t4_dual_stream_join",
+                "t1_event_counter",
+                "t2_stream_accumulator",
+                "t3_stream_fork",
+                "t4_dual_stream_join",
+            ],
+        )
+        self.assertEqual({sample.width for sample in samples}, {8})
+        self.assertEqual({sample.requirement_style for sample in samples}, {"natural_component"})
+        self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"a_first_attempt_no_tools"})
+        self.assertEqual({sample.metadata(config)["failure_origin"] for sample in samples}, {"natural_llm"})
+        self.assertEqual(
+            [sample.metadata(config)["contract_skeleton_mode"] for sample in samples],
+            [
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+            ],
+        )
+        self.assertEqual(
+            [sample.metadata(config)["system_his_schema_version"] for sample in samples],
+            [
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+            ],
+        )
+
     def test_deterministic_samples_are_v12_clean_training_split(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
