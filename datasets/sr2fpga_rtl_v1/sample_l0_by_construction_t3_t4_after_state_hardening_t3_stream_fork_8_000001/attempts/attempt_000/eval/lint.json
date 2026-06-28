@@ -1,0 +1,17 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_fork.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Error-UNSUPPORTED: rtl/skid_buffer.v:41:1: Unsupported: module decls within module decls\n   41 | endmodule\n      | ^~~~~~~~~\n                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=5.048\n%Error-UNSUPPORTED: rtl/stream_fork.v:29:1: Unsupported: module decls within module decls\n   29 | endmodule\n      | ^~~~~~~~~\n%Error-UNSUPPORTED: rtl/stream_stage.v:41:1: Unsupported: module decls within module decls\n   41 | endmodule\n      | ^~~~~~~~~\n%Error: Exiting due to 3 error(s)\n",
+  "duration_seconds": 0.10560412500126404
+}

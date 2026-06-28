@@ -1,0 +1,21 @@
+{
+  "run_id": "l0-by-construction-t3-t4-after-state-hardening",
+  "next_index": 2,
+  "completed_samples": [
+    "sample_l0_by_construction_t3_t4_after_state_hardening_t3_stream_fork_8_000001",
+    "sample_l0_by_construction_t3_t4_after_state_hardening_t4_dual_stream_join_8_000002"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_l0_by_construction_t3_t4_after_state_hardening_t3_stream_fork_8_000001",
+      "sample_l0_by_construction_t3_t4_after_state_hardening_t4_dual_stream_join_8_000002"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "unknown": 2
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "8196367e276a28f827d4dceed91007204bc6bbe544458e7fe888af082d1fb1c5"
+}

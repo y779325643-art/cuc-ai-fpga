@@ -58,8 +58,14 @@ def merge_behavior_files(
     if missing:
         raise ValueError(f"missing behavior for: {', '.join(missing)}")
     for path, behavior in behavior_files.items():
+        _validate_behavior_body(path, behavior)
         files[path] = _fill_behavior_hole(files[path], behavior)
     return GeneratedProject(project_name=skeleton.project_name, files=files)
+
+
+def _validate_behavior_body(path: str, behavior: str) -> None:
+    if re.search(r"(?m)^\s*module\b|\bendmodule\b", behavior):
+        raise ValueError(f"behavior file '{path}' must contain behavior body only, not module declarations or endmodule")
 
 
 def _fill_behavior_hole(content: str, behavior: str) -> str:

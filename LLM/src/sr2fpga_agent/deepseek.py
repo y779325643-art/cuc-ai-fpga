@@ -451,6 +451,8 @@ class DeepSeekHisProjectGenerator:
                 return project
             except ValueError as exc:
                 last_error = exc
+                if _attempt + 1 < self.max_attempts:
+                    messages = _with_his_project_retry_feedback(messages, str(exc), content)
         if last_error is not None:
             raise last_error
         raise RuntimeError("DeepSeek HIS2PROJECT generator did not run")
@@ -1132,6 +1134,32 @@ string; escape newlines as \\n and escape any double quotes inside file contents
 }}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _with_his_project_retry_feedback(
+    messages: list[dict[str, str]],
+    error: str,
+    previous_content: str,
+) -> list[dict[str, str]]:
+    return [
+        *messages,
+        {
+            "role": "user",
+            "content": (
+                "Your previous behavior_files output failed validation. "
+                "Repair that JSON in place and return a corrected complete behavior_files JSON object only.\n\n"
+                "Validation error:\n"
+                f"{error}\n\n"
+                "HIS2PROJECT behavior repair checklist:\n"
+                "- Return behavior_files only, not files.\n"
+                "- Each behavior_files value must contain only the replacement body for one BEHAVIOR_HOLE.\n"
+                "- Do not include module declarations, module headers, port lists, or endmodule lines.\n"
+                "- Do not return system_his.json, manifest.json, rtl/top.v, constraints, testbench, or reports.\n\n"
+                "Previous invalid behavior_files JSON:\n"
+                f"{previous_content.strip()}"
+            ),
+        },
+    ]
 
 
 def _project_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:

@@ -697,6 +697,49 @@ class DeepSeekProviderTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not contain a BEHAVIOR_HOLE"):
             DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
+    def test_deepseek_his_project_generator_rejects_complete_module_behavior(self) -> None:
+        system_his = _system_his_v12_fixture()
+        behavior_files = _behavior_files_for_system_his_v12(system_his)
+        behavior_files["rtl/stream_join.v"] = "module stream_join; endmodule"
+        client = FakeChatClient(json.dumps({"behavior_files": behavior_files}))
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        with self.assertRaisesRegex(ValueError, "must contain behavior body only"):
+            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+
+    def test_deepseek_his_project_generator_retries_with_feedback_after_complete_module_behavior(self) -> None:
+        system_his = _system_his_v12_fixture()
+        invalid_behavior_files = _behavior_files_for_system_his_v12(system_his)
+        invalid_behavior_files["rtl/stream_join.v"] = "module stream_join; endmodule"
+        valid_behavior_files = _behavior_files_for_system_his_v12(system_his)
+        client = FakeChatClient(
+            [
+                json.dumps({"behavior_files": invalid_behavior_files}),
+                json.dumps({"behavior_files": valid_behavior_files}),
+            ]
+        )
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        project = DeepSeekHisProjectGenerator(client, max_attempts=2).generate(request, platform, system_his)
+
+        self.assertIn("rtl/stream_join.v", project.files)
+        self.assertEqual(client.stream_call_count, 2)
+        retry_prompt = client.messages_history[1][-1]["content"]
+        self.assertIn("Your previous behavior_files output failed validation", retry_prompt)
+        self.assertIn("must contain behavior body only", retry_prompt)
+
     def test_deepseek_his_project_generator_rejects_project_that_breaks_checked_contract(self) -> None:
         system_his = _system_his_v12_fixture()
         client = FakeChatClient(json.dumps({"behavior_files": {"rtl/missing.v": "assign x = y;"}}))

@@ -123,6 +123,16 @@ Implemented and under active review:
   initial and retry prompts also now state that v1.2 state names must be
   globally unique across state groups and that `control_flow.effect.target`
   should target declared data-flow or state names rather than ports/modules.
+- A narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-state-hardening`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:2`. This confirms the latest state/control-flow hardening moved T3 from
+  `GEN_FAIL` to `L0` and kept T4 at `L0`. The new shared blocker is
+  HIS2PROJECT returning complete module bodies inside behavior holes, producing
+  Verilator nested-module errors. `merge_behavior_files()` now rejects module
+  declarations/`endmodule` in behavior text and HIS2PROJECT appends retry
+  feedback for that validation error. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-state-hardening-2026-06-28.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
