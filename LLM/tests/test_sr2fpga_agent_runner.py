@@ -265,6 +265,52 @@ class RunnerConfigTest(unittest.TestCase):
             ],
         )
 
+    def test_l0_by_construction_preflight_preview_shows_ablation_arm_metadata(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_l0_by_construction_ablation.example.yaml"))
+
+        report = runner_preflight(config, run_id="l0-by-construction-ablation")
+
+        self.assertEqual(report["planned_samples"], 8)
+        self.assertEqual(
+            [sample["contract_skeleton_mode"] for sample in report["samples"]],
+            [
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+            ],
+        )
+        self.assertEqual(
+            [sample["system_his_schema_version"] for sample in report["samples"]],
+            [
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+            ],
+        )
+        self.assertEqual(
+            [sample["training_split"] for sample in report["samples"]],
+            [
+                "quarantine",
+                "quarantine",
+                "quarantine",
+                "quarantine",
+                "clean",
+                "clean",
+                "clean",
+                "clean",
+            ],
+        )
+
     def test_deterministic_samples_are_v12_clean_training_split(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -541,6 +587,9 @@ class RunnerConfigTest(unittest.TestCase):
                         "topology_id": "",
                         "failure_origin": "natural_llm",
                         "measurement_point": "a_first_attempt_no_tools",
+                        "system_his_schema_version": "system-his-v1.1",
+                        "training_split": "quarantine",
+                        "contract_skeleton_mode": "legacy_full_project",
                     }
                 ],
             )

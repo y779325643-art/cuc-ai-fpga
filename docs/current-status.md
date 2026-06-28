@@ -194,8 +194,9 @@ Implemented and under active review:
   environment readiness, HDL tool availability, and existing run-directory state
   before spending API calls on baseline (a). The preflight JSON also includes a
   planned sample preview with source, task type, requirement style, requirement
-  text, difficulty tier, topology ID, failure origin, and measurement point for
-  each sample. It reports the `DEEPSEEK_API_KEY` source and a short non-secret
+  text, difficulty tier, topology ID, failure origin, measurement point,
+  System-HIS schema version, training split, and contract skeleton mode for each
+  sample. It reports the `DEEPSEEK_API_KEY` source and a short non-secret
   fingerprint so local `.env` key updates can be confirmed before a DeepSeek
   run. With `--validate-provider`, preflight makes a minimal DeepSeek
   authentication request, catching invalid keys before any RTL sample is
@@ -387,10 +388,10 @@ Fresh verification from the latest implementation pass:
 
 ```bash
 python3 -m pytest LLM/tests -q
-# 296 passed
+# 297 passed
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
-# ok: true; planned_samples: 8; sources: deepseek + deepseek-his-v12; provider_auth: not_checked
+# ok: true; planned_samples: 8; preview shows legacy_full_project/quarantine and behavior_files/clean arms; provider_auth: not_checked
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok

@@ -242,6 +242,9 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
         "topology_id": str(metadata["topology_id"]),
         "failure_origin": str(metadata["failure_origin"]),
         "measurement_point": str(metadata["measurement_point"]),
+        "system_his_schema_version": str(metadata["system_his_schema_version"]),
+        "training_split": str(metadata["training_split"]),
+        "contract_skeleton_mode": str(metadata["contract_skeleton_mode"]),
     }
 
 
