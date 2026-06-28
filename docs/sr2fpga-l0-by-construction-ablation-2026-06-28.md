@@ -64,8 +64,10 @@ Legacy direct full-project generation:
 
 ## Next fix targets
 
-1. Normalize or reject single-bit RTL width strings like `[1-1:0]` before they
-   become false HIS↔RTL mismatches.
+1. Fixed after this run: RTL width normalization now treats concrete
+   minus-one ranges like `[1-1:0]` and `[8-1:0]` as integer widths for future
+   HIS↔RTL cross-checks. This does not change the recorded run result; rerun the
+   ablation to measure the effect.
 2. Tighten REQ2HIS retry guidance for canonical reset `kind`/`polarity`.
 3. Add a post-merge lowerability check or repair hint for missing module
    parameters in `behavior_files`.

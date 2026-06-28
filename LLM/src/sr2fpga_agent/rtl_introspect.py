@@ -119,6 +119,9 @@ def port_width(range_text: str | None) -> int | str:
     numeric = re.fullmatch(r"\[(\d+):0\]", normalized)
     if numeric is not None:
         return int(numeric.group(1)) + 1
+    concrete_minus_one = re.fullmatch(r"\[(\d+)\s*-\s*1\s*:\s*0\]", normalized)
+    if concrete_minus_one is not None:
+        return int(concrete_minus_one.group(1))
     return normalized
 
 
@@ -169,6 +172,9 @@ def normalize_width(value: Any) -> str:
     numeric_range = re.fullmatch(r"\[(\d+):0\]", text)
     if numeric_range is not None:
         return str(int(numeric_range.group(1)) + 1)
+    concrete_minus_one_range = re.fullmatch(r"\[(\d+)\s*-\s*1\s*:\s*0\]", text)
+    if concrete_minus_one_range is not None:
+        return concrete_minus_one_range.group(1)
     symbolic_range = re.fullmatch(r"\[([A-Za-z_][A-Za-z0-9_$]*)\s*-\s*1\s*:\s*0\]", text)
     if symbolic_range is not None:
         return symbolic_range.group(1)

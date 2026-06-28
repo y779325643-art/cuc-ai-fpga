@@ -186,6 +186,10 @@ Implemented and under active review:
 - L0 checker width normalization now treats numeric ranges like `[7:0]` as
   equivalent to integer width `8`. This addresses the T3 narrow-smoke residual
   failure without loosening parameterized ranges such as `[DATA_WIDTH-1:0]`.
+- The same normalization now also treats concrete minus-one RTL ranges such as
+  `[1-1:0]` and `[8-1:0]` as integer widths. This targets the T1
+  L0-by-construction ablation false mismatch while leaving symbolic parameter
+  ranges under exact symbolic/resolved comparison.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:
