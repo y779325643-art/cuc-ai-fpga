@@ -203,6 +203,24 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("state.fsms 'join_fsm'.initial 'BROKEN' is not declared in states", result.errors)
 
+    def test_rejects_fsm_without_explicit_or_instance_prefixed_owner(self) -> None:
+        payload = _fixture()
+        del payload["state"]["fsms"][0]["owner"]
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("state.fsms 'join_fsm' must declare owner or use <instance>.<fsm> name", result.errors)
+
+    def test_rejects_fsm_owner_that_is_not_top_or_instance(self) -> None:
+        payload = _fixture()
+        payload["state"]["fsms"][0]["owner"] = "missing_instance"
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("state.fsms 'join_fsm'.owner 'missing_instance' is not top or an instance", result.errors)
+
     def test_rejects_fsm_transition_to_missing_state(self) -> None:
         payload = _fixture_with_fsm()
         payload["control_flow"].append(
@@ -399,17 +417,21 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         payload = json.loads(project.files["system_his.json"])
         payload["state"]["fsms"].append(
             {
-                "name": "join_core.arb_fsm",
+                "name": "u_stream_join.arb_fsm",
                 "states": ["IDLE", "SEND_0", "SEND_1"],
                 "initial": "IDLE",
                 "reset_state": "IDLE",
             }
         )
         for instance in payload["instances"]:
-            if instance["name"] == "join_core":
-                instance["owns_state"] = ["join_core.arb_fsm"]
+            if instance["name"] == "u_stream_join":
+                instance["owns_state"] = ["u_stream_join.arb_fsm"]
         files = dict(project.files)
         files["system_his.json"] = json.dumps(payload) + "\n"
+        files["rtl/stream_join.v"] = files["rtl/stream_join.v"].replace(
+            "endmodule\n",
+            "  localparam IDLE = 0;\n  localparam SEND_0 = 1;\n  localparam SEND_1 = 2;\nendmodule\n",
+        )
         project_with_fsm = GeneratedProject(project_name=project.project_name, files=files)
 
         result = check_project_l0(project_with_fsm)

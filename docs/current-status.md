@@ -226,6 +226,11 @@ Implemented and under active review:
   prompts explicitly forbid placeholder sources such as `library`. This moves
   the after-fixes T2 component-source lowerability failure from HIS2PROJECT
   cross-check into the earlier REQ2HIS repair loop.
+- System-HIS v1.2 internal validation now requires every `state.fsms[]` entry
+  to either declare an `owner` or use `<instance>.<fsm>` naming, with the owner
+  constrained to `top` or an existing instance name. REQ2HIS initial/retry
+  prompts now state the same rule, targeting the after-fixes T3/T2 failure mode
+  where unowned FSMs were later checked against RTL module `top`.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:

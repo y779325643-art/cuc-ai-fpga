@@ -546,6 +546,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Every instances[].parameter_values key must be declared in that component's parameters", user_prompt)
         self.assertIn("Every components[].source must be one of artifacts.rtl_sources", user_prompt)
         self.assertIn('Do not use placeholder sources such as "library"', user_prompt)
+        self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", user_prompt)
+        self.assertIn("FSM owner must be top or an instances[].name", user_prompt)
 
     def test_system_his_v12_prompt_requests_timing_and_structured_control_contract(self) -> None:
         request = ProjectRequest(
@@ -638,6 +640,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Every instances[].parameter_values key must be declared in that component's parameters", retry_prompt)
         self.assertIn("Every components[].source must be one of artifacts.rtl_sources", retry_prompt)
         self.assertIn('Do not use placeholder sources such as "library"', retry_prompt)
+        self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", retry_prompt)
+        self.assertIn("FSM owner must be top or an instances[].name", retry_prompt)
 
     def test_deepseek_his_project_generator_merges_behavior_into_checked_skeleton(self) -> None:
         system_his = _system_his_v12_fixture()

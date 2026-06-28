@@ -118,7 +118,9 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
         for instance_name, component_name in instance_components.items()
     }
     state_names = _state_names(state, errors)
-    fsm_defs = _validate_fsms(state, state_names, errors)
+    valid_fsm_owners = {str(top.get("name", "")).strip()} | set(instance_components)
+    valid_fsm_owners.discard("")
+    fsm_defs = _validate_fsms(state, state_names, valid_fsm_owners, errors)
     data_flow_names = _data_flow_names(data_flow, top_ports, instance_ports, errors)
     _validate_instance_state_ownership(instances, state_names, errors)
     _validate_control_flow(
@@ -400,7 +402,12 @@ def _state_names(state: dict[str, Any], errors: list[str]) -> set[str]:
     return names
 
 
-def _validate_fsms(state: dict[str, Any], state_names: set[str], errors: list[str]) -> dict[str, set[str]]:
+def _validate_fsms(
+    state: dict[str, Any],
+    state_names: set[str],
+    valid_owners: set[str],
+    errors: list[str],
+) -> dict[str, set[str]]:
     fsm_defs: dict[str, set[str]] = {}
     fsms = state.get("fsms")
     if not isinstance(fsms, list):
@@ -413,6 +420,13 @@ def _validate_fsms(state: dict[str, Any], state_names: set[str], errors: list[st
             continue
         if name in fsm_defs:
             errors.append(f"state.fsms duplicate FSM '{name}'")
+        owner = str(fsm.get("owner", "")).strip()
+        if not owner and "." in name:
+            owner = name.split(".", 1)[0]
+        if not owner:
+            errors.append(f"state.fsms '{name}' must declare owner or use <instance>.<fsm> name")
+        elif owner not in valid_owners:
+            errors.append(f"state.fsms '{name}'.owner '{owner}' is not top or an instance")
         states_value = fsm.get("states")
         states: set[str] = set()
         if not isinstance(states_value, list):

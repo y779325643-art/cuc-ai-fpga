@@ -855,6 +855,8 @@ Architectural rules:
   machine-checkable behavior. The guard grammar allows atoms {"signal","op","value"} or
   all_of/any_of lists with depth <= 2; signal must reference a declared top port,
   top clock/reset, instance port, state, data_flow name, or <fsm>.state.
+- Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming.
+- FSM owner must be top or an instances[].name.
 - fsm_transition rules must reference a declared state.fsms entry and use
   from/to states declared by that FSM.
 - Use width objects with expr and resolved when a parameterized width is useful.
@@ -966,6 +968,8 @@ def _with_system_his_retry_feedback(
                 "data_flow names, or <fsm>.state.\n"
                 "- control_flow.effect.target must reference a declared data_flow name or state name; do not target "
                 "top ports, instance ports, all, or module names directly.\n"
+                "- Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming.\n"
+                "- FSM owner must be top or an instances[].name.\n"
                 "- FSMs must declare non-empty states, initial, and reset_state, and transitions must use those states.\n\n"
                 f"{task_guidance}\n"
                 "Previous invalid System-HIS JSON:\n"
