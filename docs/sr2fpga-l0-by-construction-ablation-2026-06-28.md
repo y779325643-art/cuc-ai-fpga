@@ -77,4 +77,9 @@ Legacy direct full-project generation:
    prompt/retry guidance explains the rule. This targets the T3 missing
    `DATA_WIDTH` component-parameter failure; rerun the ablation to measure the
    effect.
-4. Add FSM-state lowerability guidance for T4 before scaling this ablation.
+4. Fixed after this run: contract skeleton generation now infers FSM owners from
+   instance-prefixed names such as `join_core.arb_fsm`, preserving those state
+   localparams in the target component module; HIS2PROJECT prompt guidance also
+   tells the model to keep declared `state.fsms` names visible in RTL. This
+   targets the T4 FSM-state lowerability failure; rerun the ablation to measure
+   the effect.

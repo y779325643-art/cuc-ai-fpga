@@ -95,6 +95,29 @@ class ContractSkeletonTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing behavior for"):
             merge_behavior_files(skeleton, {"rtl/stream_join.v": "assign out_valid = in0_valid;"})
 
+    def test_component_skeleton_infers_fsm_owner_from_instance_prefixed_name(self) -> None:
+        system_his = _fixture()
+        system_his["state"]["fsms"].append(
+            {
+                "name": "join_core.arb_fsm",
+                "states": ["IDLE", "SEND_0", "SEND_1"],
+                "initial": "IDLE",
+                "reset_state": "IDLE",
+            }
+        )
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        self.assertIn("localparam SEND_0", skeleton.files["rtl/stream_join.v"])
+        self.assertIn("localparam SEND_1", skeleton.files["rtl/stream_join.v"])
+
 
 def _fixture() -> dict[str, object]:
     return json.loads(FIXTURE.read_text(encoding="utf-8"))

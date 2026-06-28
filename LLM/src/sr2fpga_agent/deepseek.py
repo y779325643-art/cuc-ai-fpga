@@ -1093,6 +1093,10 @@ Rules:
   names that are absent from the checked System-HIS.
 - Do not change component, instance, top port, data_flow, or control_flow names.
 - Generate RTL that implements the top-down architecture contract.
+- Use declared FSM state localparams from the deterministic skeleton when
+  implementing state machines.
+- Do not rename, omit, or replace System-HIS state.fsms states; every declared
+  state name must remain visible in the generated RTL module.
 - Do not use Verilog reserved keywords for any RTL identifier, including modules,
   instances, regs, wires, arrays, blocks, and parameters. Avoid names such as
   fork, join, buf, begin, end, module, wire, input, output, and reg.

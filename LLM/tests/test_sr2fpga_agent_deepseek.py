@@ -708,14 +708,27 @@ class DeepSeekProviderTest(unittest.TestCase):
             description="Generate a dual-stream join and accumulator project.",
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        system_his = _system_his_v12_fixture()
+        system_his["state"]["fsms"].append(
+            {
+                "name": "join_core.arb_fsm",
+                "states": ["IDLE", "SEND_0", "SEND_1"],
+                "initial": "IDLE",
+                "reset_state": "IDLE",
+            }
+        )
 
-        messages = _his_project_messages(request, platform, _system_his_v12_fixture())
+        messages = _his_project_messages(request, platform, system_his)
         user_prompt = messages[1]["content"]
 
         self.assertIn("Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton", user_prompt)
         self.assertIn('"behavior_files"', user_prompt)
         self.assertIn("Do not return system_his.json, manifest.json, rtl/top.v", user_prompt)
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", user_prompt)
+        self.assertIn("Use declared FSM state localparams from the deterministic skeleton", user_prompt)
+        self.assertIn("Do not rename, omit, or replace System-HIS state.fsms states", user_prompt)
+        self.assertIn("IDLE", user_prompt)
+        self.assertIn("SEND_0", user_prompt)
         self.assertIn('"rtl/stream_join.v"', user_prompt)
         self.assertNotIn('"files"', user_prompt)
 

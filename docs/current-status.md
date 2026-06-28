@@ -200,6 +200,11 @@ Implemented and under active review:
   guidance states that rule. This targets the T3 skeleton lowerability failure
   where top-level `DATA_WIDTH` overrides reached modules without a matching
   parameter declaration.
+- Contract skeleton generation now infers FSM owners from instance-prefixed
+  names such as `join_core.arb_fsm`, so declared FSM state localparams remain
+  visible in the target component module. HIS2PROJECT prompt guidance also tells
+  the model not to rename, omit, or replace System-HIS `state.fsms` states. This
+  targets the T4 FSM-state lowerability failure in future reruns.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:

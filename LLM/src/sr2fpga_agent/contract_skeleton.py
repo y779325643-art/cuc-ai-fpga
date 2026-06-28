@@ -259,16 +259,28 @@ def _fsm_states_for_component(component_name: str, system_his: dict[str, Any]) -
         for instance in _list(system_his.get("instances"))
     }
     states: list[str] = []
+    seen: set[str] = set()
     for fsm in _list(_mapping(system_his.get("state")).get("fsms")):
         fsm_map = _mapping(fsm)
-        owner = str(fsm_map.get("owner", "")).strip()
+        owner = _fsm_owner(fsm_map)
         if instances_by_name.get(owner, owner) != component_name:
             continue
         for state in _list(fsm_map.get("states")):
             state_name = str(state).strip()
-            if state_name:
+            if state_name and state_name not in seen:
+                seen.add(state_name)
                 states.append(state_name)
     return states
+
+
+def _fsm_owner(fsm: dict[str, Any]) -> str:
+    owner = str(fsm.get("owner", "")).strip()
+    if owner:
+        return owner
+    name = str(fsm.get("name", "")).strip()
+    if "." in name:
+        return name.split(".", 1)[0]
+    return ""
 
 
 def _is_top_passthrough(port_name: str, instance: dict[str, Any]) -> bool:
