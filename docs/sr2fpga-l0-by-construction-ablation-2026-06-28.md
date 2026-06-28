@@ -68,7 +68,10 @@ Legacy direct full-project generation:
    minus-one ranges like `[1-1:0]` and `[8-1:0]` as integer widths for future
    HIS↔RTL cross-checks. This does not change the recorded run result; rerun the
    ablation to measure the effect.
-2. Tighten REQ2HIS retry guidance for canonical reset `kind`/`polarity`.
+2. Fixed after this run: REQ2HIS initial and retry prompts now spell out reset
+   enum values and the current `rst_n` active-low sync contract. This targets
+   the T2 reset `kind`/`polarity` failure; rerun the ablation to measure the
+   effect.
 3. Add a post-merge lowerability check or repair hint for missing module
    parameters in `behavior_files`.
 4. Add FSM-state lowerability guidance for T4 before scaling this ablation.

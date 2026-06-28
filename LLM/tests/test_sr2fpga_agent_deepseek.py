@@ -562,6 +562,21 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("guard", user_prompt)
         self.assertIn("depth <= 2", user_prompt)
 
+    def test_system_his_v12_prompt_spells_out_reset_schema_enums(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_stream_accumulator",
+            width=8,
+            project_name="accum_8bit",
+            description="Generate a stream accumulator.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("top.resets[].polarity must be active_low or active_high", user_prompt)
+        self.assertIn("top.resets[].kind must be sync or async", user_prompt)
+        self.assertIn('Use {"name": "rst_n", "polarity": "active_low"', user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_composed_topology_entry_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_accumulator",
@@ -614,6 +629,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("s_axis_tvalid", retry_prompt)
         self.assertIn("Do not leave fsm, from, to, effect.action, or effect.target empty", retry_prompt)
         self.assertIn("If no FSM is needed, use handshake_rule, enable_rule, or stall_rule instead", retry_prompt)
+        self.assertIn("top.resets[].polarity must be active_low or active_high", retry_prompt)
+        self.assertIn("top.resets[].kind must be sync or async", retry_prompt)
+        self.assertIn('Use {"name": "rst_n", "polarity": "active_low"', retry_prompt)
 
     def test_deepseek_his_project_generator_merges_behavior_into_checked_skeleton(self) -> None:
         system_his = _system_his_v12_fixture()

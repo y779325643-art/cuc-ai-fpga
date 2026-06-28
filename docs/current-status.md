@@ -190,6 +190,11 @@ Implemented and under active review:
   `[1-1:0]` and `[8-1:0]` as integer widths. This targets the T1
   L0-by-construction ablation false mismatch while leaving symbolic parameter
   ranges under exact symbolic/resolved comparison.
+- REQ2HIS prompt and retry feedback now explicitly constrain
+  `top.resets[].polarity` to `active_low`/`active_high`,
+  `top.resets[].kind` to `sync`/`async`, and the current `rst_n` contract to
+  active-low sync unless a task says otherwise. This targets the T2
+  L0-by-construction ablation reset enum failure in future reruns.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:

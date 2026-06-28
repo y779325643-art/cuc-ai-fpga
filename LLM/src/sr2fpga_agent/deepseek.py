@@ -835,6 +835,9 @@ Required top-level sections:
 Architectural rules:
 - Start from top-level ports, interfaces, clocks, resets, and parameters.
 - Every clock and reset declared in top.clocks/top.resets must also appear in top.ports.
+- top.resets[].polarity must be active_low or active_high.
+- top.resets[].kind must be sync or async.
+- Use {{"name": "rst_n", "polarity": "active_low", "kind": "sync"}} unless the task explicitly says otherwise.
 - Record architectural state, not incidental RTL temporaries.
 - Separate component definitions from concrete instances.
 - Every component must include name, semantic_kind, source, ports, and intent.
@@ -948,6 +951,10 @@ def _with_system_his_retry_feedback(
                 "- Every instances[] object must include name, component, parameter_values, clock, reset, and owns_state.\n"
                 "- Every instance name must be unique and every component value must match a declared components[].name.\n"
                 "- Every top clock/reset should be listed in top.clocks/top.resets and also in top.ports.\n"
+                "- top.resets[].polarity must be active_low or active_high.\n"
+                "- top.resets[].kind must be sync or async.\n"
+                "- Use {\"name\": \"rst_n\", \"polarity\": \"active_low\", \"kind\": \"sync\"} unless the task "
+                "explicitly says otherwise.\n"
                 "- data_flow.path endpoints must use top.<port> or <instance>.<port>; do not use component names as endpoints.\n"
                 "- control_flow.when signal values must reference declared top ports, instance ports, state names, "
                 "data_flow names, or <fsm>.state.\n"
