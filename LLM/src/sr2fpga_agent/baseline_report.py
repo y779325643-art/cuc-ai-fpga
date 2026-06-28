@@ -88,6 +88,7 @@ def render_markdown(
                 l0_rate=_format_rate(row["cross_file_consistency_error_rate"]),
             )
         )
+    _append_contract_skeleton_ablation_section(lines, summary or {})
     _append_latent_testbench_issue_section(lines, summary or {})
     return "\n".join(lines) + "\n"
 
@@ -152,6 +153,64 @@ def _knee_summary(knee: dict[str, Any], threshold: float) -> str:
             threshold=_format_rate(threshold),
         )
     )
+
+
+def _append_contract_skeleton_ablation_section(lines: list[str], summary: dict[str, Any]) -> None:
+    matrix = summary.get("calibration_matrix", {})
+    if not isinstance(matrix, dict):
+        return
+    cells = matrix.get("contract_skeleton_mode", {})
+    if not isinstance(cells, dict) or not cells:
+        return
+    lines.extend(
+        [
+            "",
+            "## Contract Skeleton Ablation",
+            "",
+            "| mode | total | pass_levels | L3 pass rate | L0 contract failures | cross-file error rate |",
+            "|---|---:|---|---:|---:|---:|",
+        ]
+    )
+    for mode in sorted(cells, key=_contract_skeleton_sort_key):
+        cell = cells[mode]
+        if not isinstance(cell, dict):
+            continue
+        lines.append(
+            "| {mode} | {total} | {pass_levels} | {l3_rate} | {l0_failures} | {l0_rate} |".format(
+                mode=str(mode),
+                total=int(cell.get("total", 0)),
+                pass_levels=_format_pass_levels(_pass_levels(cell.get("pass_levels", {}))),
+                l3_rate=_format_rate(float(cell.get("l3_pass_rate", 0.0))),
+                l0_failures=int(cell.get("l0_contract_failures", 0)),
+                l0_rate=_format_rate(float(cell.get("cross_file_consistency_error_rate", 0.0))),
+            )
+        )
+    legacy = cells.get("legacy_full_project")
+    behavior = cells.get("behavior_files")
+    if isinstance(legacy, dict) and isinstance(behavior, dict):
+        l0_delta = int(behavior.get("l0_contract_failures", 0)) - int(legacy.get("l0_contract_failures", 0))
+        l3_delta = float(behavior.get("l3_pass_rate", 0.0)) - float(legacy.get("l3_pass_rate", 0.0))
+        lines.extend(
+            [
+                "",
+                f"L0 contract failure delta (behavior_files - legacy_full_project): {l0_delta:+d}",
+                f"L3 pass-rate delta (behavior_files - legacy_full_project): {_format_percentage_points(l3_delta)}",
+            ]
+        )
+
+
+def _contract_skeleton_sort_key(value: object) -> tuple[int, str]:
+    order = {
+        "legacy_full_project": 0,
+        "behavior_files": 1,
+        "deterministic_template": 2,
+    }
+    text = str(value)
+    return (order.get(text, 999), text)
+
+
+def _format_percentage_points(delta: float) -> str:
+    return f"{delta * 100:+.1f} pp"
 
 
 def _append_latent_testbench_issue_section(lines: list[str], summary: dict[str, Any]) -> None:

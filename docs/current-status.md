@@ -220,6 +220,10 @@ Implemented and under active review:
   ID, and measurement point. Runner now writes this table automatically as
   `baseline_report.md` in each run directory and flags the first difficulty tier
   below the default 80% L3 pass-rate knee threshold.
+  When `calibration_matrix["contract_skeleton_mode"]` is present, the report also
+  adds a dedicated contract-skeleton ablation section with mode-level rows and
+  `behavior_files - legacy_full_project` deltas for L0 contract failures and L3
+  pass rate.
 - Sample metadata is written to `metadata.json` and copied into all exported
   JSONL training views.
 - L0 is now a real System-HIS/manifest consistency check before HDL tools run:
@@ -383,7 +387,7 @@ Fresh verification from the latest implementation pass:
 
 ```bash
 python3 -m pytest LLM/tests -q
-# 295 passed
+# 296 passed
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
 # ok: true; planned_samples: 8; sources: deepseek + deepseek-his-v12; provider_auth: not_checked

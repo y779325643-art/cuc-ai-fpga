@@ -134,6 +134,29 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("| issue_type | count |", markdown)
         self.assertIn("| testbench_observation_race | 5 |", markdown)
 
+    def test_render_markdown_includes_contract_skeleton_ablation_summary(self) -> None:
+        summary = _summary_fixture()
+        summary["calibration_matrix"]["contract_skeleton_mode"]["legacy_full_project"] = {
+            "total": 4,
+            "pass_levels": {"L0_FAIL": 2, "L0": 1, "L3": 1},
+            "l3_pass_rate": 0.25,
+            "l0_contract_failures": 2,
+            "cross_file_consistency_error_rate": 0.5,
+        }
+
+        markdown = render_markdown(
+            "l0-by-construction-ablation",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## Contract Skeleton Ablation", markdown)
+        self.assertIn("| mode | total | pass_levels | L3 pass rate | L0 contract failures | cross-file error rate |", markdown)
+        self.assertIn("| legacy_full_project | 4 | L0:1, L0_FAIL:2, L3:1 | 25.0% | 2 | 50.0% |", markdown)
+        self.assertIn("| behavior_files | 4 | L0:1, L3:3 | 75.0% | 1 | 25.0% |", markdown)
+        self.assertIn("L0 contract failure delta (behavior_files - legacy_full_project): -1", markdown)
+        self.assertIn("L3 pass-rate delta (behavior_files - legacy_full_project): +50.0 pp", markdown)
+
     def test_detect_pass_rate_knee_returns_first_tier_below_threshold(self) -> None:
         knee = detect_pass_rate_knee(baseline_rows(_summary_fixture()), threshold=0.8)
 
