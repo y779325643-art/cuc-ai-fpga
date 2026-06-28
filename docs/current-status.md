@@ -133,6 +133,14 @@ Implemented and under active review:
   declarations/`endmodule` in behavior text and HIS2PROJECT appends retry
   feedback for that validation error. Compact write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-state-hardening-2026-06-28.md`.
+- A follow-up narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-behavior-retry`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:2`. The nested-module failure signature is gone. Both samples now fail as
+  `lint_warning_as_error` because `top.v` ports and internal wires are mostly
+  undriven/unused, so the next blocker is deterministic top/skeleton wiring
+  materialization from System-HIS `data_flow`. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-behavior-retry-2026-06-28.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
