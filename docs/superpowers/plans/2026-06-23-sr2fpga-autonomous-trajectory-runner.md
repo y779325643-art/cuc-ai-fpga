@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status (added 2026-06-27):** Delivered. Runner is implemented in `runner.py` and
+> extended by subsequent plans. **Post-delivery notes:** (1) Multi-teacher source support
+> was added later (`2026-06-25-sr2fpga-multi-teacher-source.md`) — the `source`-agnostic
+> architecture anticipated here is now fully realized. (2) System-HIS references in the
+> companion spec have been corrected from v1.1 to v1.2. (3) For current bucket
+> classification rules, runner config schema, and per-source calibration matrix, see
+> `docs/current-status.md`. This plan is historical execution record.
+
 **Goal:** Build a first autonomous SR2FPGA batch runner that can run existing deterministic and DeepSeek sources from a config file, record resumable run state, classify samples into success/repair/rejected buckets, refresh exports, and write compact research summaries.
 
 **Architecture:** Keep `DataGenerationAgent.run_one()` as the per-sample execution unit. Add a focused `runner.py` module for config loading, sample planning, resume state, bucket classification, batch orchestration, export refresh, and CLI entry. Do not implement the compositional component-library generator in this slice; keep it as a first-class future `source` value so the runner architecture does not become DeepSeek-specific.

@@ -2,6 +2,14 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status (added 2026-06-27):** Delivered. The `LLM/` workspace, serving scripts, and
+> LoRA training infrastructure are in place. **Post-delivery context:** this plan predates
+> the Actor/Critic model-stack definition in the reframe spec. The infrastructure here
+> supports Actor training tasks (`REQ2HIS`, `HIS2PROJECT`, `LOG2DIAG`, `FAILURE2PATCH`)
+> and Critic training tasks (`PROJECT2RISK`, `PROJECT2LEVEL`, `PROJECT2QOR`). Model size
+> is intentionally not fixed here — see the reframe spec "Method (the model)" section.
+> Preferred serving path is Qwen2.5-Coder-7B-Instruct via vLLM (see `LLM/README.md`).
+
 **Goal:** Build a GitHub-ready `LLM/` workspace for cloud-server LoRA/QLoRA fine-tuning and vLLM deployment.
 
 **Architecture:** The repository stores reproducible code, configs, scripts, and documentation only. Cloud servers clone the repo, install dependencies, prepare JSONL data, train LoRA adapters with Transformers/PEFT/TRL, optionally merge adapters, and serve the result with vLLM's OpenAI-compatible API.

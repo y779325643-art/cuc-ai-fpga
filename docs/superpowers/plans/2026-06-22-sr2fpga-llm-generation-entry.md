@@ -2,6 +2,12 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
+> **Status (added 2026-06-27):** Delivered. DeepSeek provider entry is implemented.
+> **Post-delivery note:** DeepSeek is the first provider example, not the only one.
+> The `--provider deepseek` flag introduced here became the seed for the multi-teacher
+> source architecture (`2026-06-25-sr2fpga-multi-teacher-source.md`), which generalizes
+> to any OpenAI-compatible endpoint. Read this plan as the proof-of-concept phase.
+
 **Goal:** Make the SR2FPGA data-generation CLI pass natural-language requirements into the DeepSeek-backed project generator and verify that LLM-generated project packages flow through the existing tool-recording pipeline.
 
 **Architecture:** Keep the existing provider boundary: `cli.py` chooses a generator, `deepseek.py` parses LLM project files, and `DataGenerationAgent` writes, verifies, and records the generated project. This plan changes only the CLI request plumbing and adds regression tests proving that injected LLM-style generators are used instead of deterministic templates.

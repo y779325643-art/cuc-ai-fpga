@@ -1,5 +1,21 @@
 # SR2FPGA Data Generation Agent V1 Design
 
+## Status
+
+Delivered (2026-06-18). V1 architecture is implemented and stable.
+
+**Post-delivery notes (do not rewrite — see current-status.md for live state):**
+- Task families have expanded beyond the original V1 set to include 6 additional
+  single-module families (`uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`,
+  `streaming_valid_ready`, `matrix_vector_mac`) and 4 composed topology families
+  (`composed_event_counter`, `composed_stream_accumulator`, `composed_stream_fork`,
+  `composed_dual_stream_join`). See `2026-06-22-sr2fpga-multimodule-task-families-design.md`.
+- Training task names are now standardized in the reframe spec as: `REQ2HIS`,
+  `HIS2PROJECT` (not `HIS2FILES`), `LOG2DIAG`, `FAILURE2PATCH`, `ARCH_MUTATE`
+  (actor) and `PROJECT2RISK`, `PROJECT2LEVEL`, `PROJECT2QOR` (critic).
+- System-HIS schema is now canonical `system-his-v1.2` (frozen). See
+  `2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`.
+
 ## Decision
 
 This document records the V1 design for the SR2FPGA data generation agent.

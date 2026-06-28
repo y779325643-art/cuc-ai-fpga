@@ -65,6 +65,17 @@ Read these first:
     gates to a defensible TCAD method paper: train a model (scaled, frozen
     protocol) + build constrained decoding + land one physical L4/L5 result.
 
+- `superpowers/specs/2026-06-25-system-his-constrained-decoding-design.md`
+  - TCAD method-novelty core: decode-time mechanism ensuring cross-file
+    structural consistency by construction (Tier A deterministic shell + Tier B
+    System-HIS-derived constrained decoding). Tier A is the next implementable
+    step; Tier B requires logit access (local model only).
+
+- `superpowers/specs/2026-06-25-sr2fpga-multi-teacher-source-design.md`
+  - Multi-teacher source design. Runner draws from several independent teacher
+    models in one batch so the dataset is not a single-model artifact. **Delivered
+    and merged to `main` 2026-06-26.**
+
 ## Engineering Docs
 
 - `current-status.md`

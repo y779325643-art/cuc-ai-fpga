@@ -2,7 +2,13 @@
 
 ## Status
 
-Proposed for user confirmation on 2026-06-23.
+Delivered and implemented (2026-06-23; runner merged to main). Two post-delivery
+corrections applied: (1) System-HIS schema references updated from `v1.1` to
+`v1.2` following the freeze ratified in
+`docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`;
+(2) training-view name `HIS2FILES` corrected to `HIS2PROJECT` to match the
+canonical name established in the reframe spec. Design decisions and component
+lists are historical — see `docs/current-status.md` for the current runner state.
 
 This document synchronizes the next engineering step with:
 
@@ -65,7 +71,7 @@ Inputs and outputs:
 ```text
 compositional generator
 -> requirement
--> System-HIS v1.1
+-> System-HIS v1.2
 -> contract
 -> reference multi-file RTL implementation
 -> black-box self-checking testbench
@@ -84,7 +90,7 @@ Purpose:
 
 - Produce successful L3 samples.
 - Produce real failure, diagnosis, repair, and retry trajectories.
-- Feed `REQ2HIS`, `HIS2FILES`, `REQ2PROJECT`, `LOG2DIAG`,
+- Feed `REQ2HIS`, `HIS2PROJECT`, `REQ2PROJECT`, `LOG2DIAG`,
   `FAILURE2PATCH`, `PROJECT_CRITIC`, and `QOR_PRED` views.
 
 Default target mix for Line B:
@@ -150,7 +156,7 @@ ports, widths, parameters, reset polarity, protocol timing, and module
 connections must be consistent across System-HIS, manifest, RTL, constraints,
 and testbench.
 
-### System-HIS v1.1 Output
+### System-HIS v1.2 Output
 
 Each generated item should emit System-HIS at the structure-contract level:
 

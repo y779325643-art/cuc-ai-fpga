@@ -9,19 +9,23 @@ Use `../../current-status.md` for the current engineering state.
   - Defines the generation/evaluation boundary.
 
 - `2026-06-18-sr2fpga-data-generation-agent-design.md`
-  - V1 data-generation agent architecture.
+  - V1 data-generation agent architecture. **Delivered.** Task families and training
+    task names have since expanded — status note added to the file.
 
 - `2026-06-22-sr2fpga-llm-generation-entry-design.md`
-  - DeepSeek project-generation entry.
+  - First LLM (DeepSeek) generation entry. **Delivered.** DeepSeek was the initial
+    provider example; the multi-teacher source spec generalized it — status note
+    added to the file.
 
 - `2026-06-22-sr2fpga-deepseek-repair-loop-design.md`
-  - DeepSeek repair loop and patch recording.
+  - DeepSeek repair loop and patch recording. **Delivered. Still accurate.**
 
 - `2026-06-22-sr2fpga-multimodule-task-families-design.md`
-  - Multi-module deterministic task families.
+  - Multi-module deterministic task families. **Delivered. Still accurate.**
 
 - `2026-06-23-sr2fpga-autonomous-trajectory-runner-design.md`
-  - Autonomous batch runner design.
+  - Autonomous batch runner design. **Delivered.** Two post-delivery corrections
+    applied: `v1.1`→`v1.2` and `HIS2FILES`→`HIS2PROJECT` — status note added.
 
 - `2026-06-24-sr2fpga-system-his-v1.2-topdown-design.md`
   - Historical prototype top-down System-HIS v1.2 schema trial. **Superseded by
@@ -52,6 +56,13 @@ Use `../../current-status.md` for the current engineering state.
     from the contract + Tier B System-HIS-derived constrained decoding). Tier A
     is the next implementable contract-preserving step; Tier B is local-model-only
     because it needs logit access.
+
+- `2026-06-25-sr2fpga-multi-teacher-source-design.md`
+  - Multi-teacher source design. Lets one runner batch draw from several
+    independent teacher models (Claude, GPT-5.5, DeepSeek, Qwen, deterministic)
+    so the trajectory dataset is not a single-model artifact. **Delivered and
+    merged to `main` 2026-06-26.** Plan:
+    `../plans/2026-06-25-sr2fpga-multi-teacher-source.md`.
 
 ## Research Framing
 
