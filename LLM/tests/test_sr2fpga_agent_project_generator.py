@@ -641,6 +641,64 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
         self.assertGreaterEqual(len(system_his["connections"]), 28)
 
+    def test_generates_composed_host_protocol_shell_from_t9_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_host_protocol_shell",
+                width=8,
+                project_name="composed_host_protocol_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_host_protocol_shell",
+            {
+                "rtl/top.v",
+                "rtl/axi_lite_write_ctrl.v",
+                "rtl/axi_lite_read_ctrl.v",
+                "rtl/control_reg_bank.v",
+                "rtl/sample_stream_adapter.v",
+                "rtl/irq_status.v",
+            },
+            [
+                "axi_lite_write_ctrl",
+                "axi_lite_read_ctrl",
+                "control_reg_bank",
+                "sample_stream_adapter",
+                "irq_status",
+                ".awvalid(s_axi_awvalid)",
+                ".write_valid(write_valid)",
+                ".read_valid(read_valid)",
+                ".tdata(m_axis_tdata)",
+                ".irq_out(irq)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t9_host_protocol_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T9")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["axi_lite_write_ctrl", "axi_lite_read_ctrl", "control_reg_bank", "sample_stream_adapter", "irq_status"],
+        )
+        self.assertIn(
+            {"from": "sample_stream_adapter.tvalid", "to": "top.m_axis_tvalid"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire s_axi_awvalid", project.files["rtl/top.v"])
+        self.assertIn("input wire [3:0] s_axi_awaddr", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] s_axi_wdata", project.files["rtl/top.v"])
+        self.assertIn("output wire s_axi_rvalid", project.files["rtl/top.v"])
+        self.assertIn("output wire [15:0] m_axis_tdata", project.files["rtl/top.v"])
+        self.assertIn("output wire irq", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 30)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -779,6 +837,7 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
             ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
             ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
+            ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -899,6 +958,7 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
         ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
         ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
+        ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
     ]
 
 

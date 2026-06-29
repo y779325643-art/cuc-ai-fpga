@@ -232,6 +232,14 @@ Implemented and under active review:
   topology expansion, REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt
   guidance. It is still synthetic and excludes random replay sampling, AXI/DMA,
   ARM software, board shell work, and real RL workload fidelity.
+- T9 `composed_host_protocol_shell` / `t9_host_protocol_shell` is now the
+  synthetic protocol-shaped host/fabric wrapper step. It exposes an
+  AXI-lite-style single-beat control/status subset, an AXI-stream-style one-beat
+  sample output, and an irq line. Unit coverage verifies deterministic
+  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
+  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
+  excludes full AXI compliance, DMA, ARM software, board shell work, and real RL
+  workload fidelity.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current T1-T4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
@@ -792,14 +800,16 @@ Key summary:
      declarations in `behavior_files`, and T4 FSM-state lowerability.
 00e. **Complex-task ladder toward the RL accelerator.** T5 is now the deterministic
      vector-MAC feature-pipeline bridge, T6 is the deterministic TD-error /
-     value-update bridge, T7 is the deterministic policy/value shell, and T8 is
-     the deterministic replay/sample host-fabric shell. Next steps should move
-     toward T9+ protocol-complete host/fabric wrapping or a real RL workload
-     reference that combines policy/value inference with sample storage. Before
-     claiming the full reinforcement-learning accelerator as realistic, request
-     or cite a real workload reference: RL algorithm family, observation vector
-     width, action count, replay schema, fixed-point format, batch/sample shape,
-     fabric/software split on AC820-ZYNQ, and clock/DSP/BRAM targets.
+     value-update bridge, T7 is the deterministic policy/value shell, T8 is the
+     deterministic replay/sample host-fabric shell, and T9 is the deterministic
+     host protocol shell. Next steps should move toward T10 by combining
+     policy/value inference, replay storage, and protocol wrapper behavior, or by
+     switching to a real RL workload reference. Before claiming the full
+     reinforcement-learning accelerator as realistic, request or cite a real
+     workload reference: RL algorithm family, observation vector width, action
+     count, replay schema, host register/stream packet map, fixed-point format,
+     batch/sample shape, fabric/software split on AC820-ZYNQ, and clock/DSP/BRAM
+     targets.
 0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).

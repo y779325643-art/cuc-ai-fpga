@@ -28,6 +28,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_td_update_core",
     "composed_policy_value_shell",
     "composed_replay_sample_shell",
+    "composed_host_protocol_shell",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -286,6 +287,56 @@ COMPONENT_TOPOLOGIES = {
             {"from": "sample_read_stage.sample_done_out", "to": "top.sample_done"},
             {"from": "replay_store.occupancy", "to": "occupancy_counter.occupancy_in"},
             {"from": "occupancy_counter.occupancy_out", "to": "top.occupancy"},
+        ],
+    },
+    "composed_host_protocol_shell": {
+        "topology_id": "t9_host_protocol_shell",
+        "difficulty_tier": "T9",
+        "submodules": [
+            "axi_lite_write_ctrl",
+            "axi_lite_read_ctrl",
+            "control_reg_bank",
+            "sample_stream_adapter",
+            "irq_status",
+        ],
+        "nodes": [
+            {"id": "write_ctrl", "component": "axi_lite_write_ctrl"},
+            {"id": "read_ctrl", "component": "axi_lite_read_ctrl"},
+            {"id": "regs", "component": "control_reg_bank"},
+            {"id": "stream", "component": "sample_stream_adapter"},
+            {"id": "irq", "component": "irq_status"},
+        ],
+        "edges": [
+            {"from": "top.s_axi_awvalid", "to": "axi_lite_write_ctrl.awvalid"},
+            {"from": "top.s_axi_awaddr", "to": "axi_lite_write_ctrl.awaddr"},
+            {"from": "top.s_axi_wvalid", "to": "axi_lite_write_ctrl.wvalid"},
+            {"from": "top.s_axi_wdata", "to": "axi_lite_write_ctrl.wdata"},
+            {"from": "top.s_axi_wstrb", "to": "axi_lite_write_ctrl.wstrb"},
+            {"from": "axi_lite_write_ctrl.awready", "to": "top.s_axi_awready"},
+            {"from": "axi_lite_write_ctrl.wready", "to": "top.s_axi_wready"},
+            {"from": "axi_lite_write_ctrl.bvalid", "to": "top.s_axi_bvalid"},
+            {"from": "top.s_axi_bready", "to": "axi_lite_write_ctrl.bready"},
+            {"from": "axi_lite_write_ctrl.write_valid", "to": "control_reg_bank.write_valid"},
+            {"from": "axi_lite_write_ctrl.write_addr", "to": "control_reg_bank.write_addr"},
+            {"from": "axi_lite_write_ctrl.write_data", "to": "control_reg_bank.write_data"},
+            {"from": "top.s_axi_arvalid", "to": "axi_lite_read_ctrl.arvalid"},
+            {"from": "top.s_axi_araddr", "to": "axi_lite_read_ctrl.araddr"},
+            {"from": "axi_lite_read_ctrl.arready", "to": "top.s_axi_arready"},
+            {"from": "axi_lite_read_ctrl.read_valid", "to": "control_reg_bank.read_valid"},
+            {"from": "axi_lite_read_ctrl.read_addr", "to": "control_reg_bank.read_addr"},
+            {"from": "control_reg_bank.read_data", "to": "top.s_axi_rdata"},
+            {"from": "axi_lite_read_ctrl.rvalid", "to": "top.s_axi_rvalid"},
+            {"from": "top.s_axi_rready", "to": "axi_lite_read_ctrl.rready"},
+            {"from": "control_reg_bank.start_pulse", "to": "sample_stream_adapter.start"},
+            {"from": "control_reg_bank.sample0", "to": "sample_stream_adapter.sample0"},
+            {"from": "control_reg_bank.sample1", "to": "sample_stream_adapter.sample1"},
+            {"from": "sample_stream_adapter.tvalid", "to": "top.m_axis_tvalid"},
+            {"from": "top.m_axis_tready", "to": "sample_stream_adapter.tready"},
+            {"from": "sample_stream_adapter.tdata", "to": "top.m_axis_tdata"},
+            {"from": "sample_stream_adapter.tlast", "to": "top.m_axis_tlast"},
+            {"from": "sample_stream_adapter.stream_done", "to": "control_reg_bank.stream_done"},
+            {"from": "control_reg_bank.irq_state", "to": "irq_status.irq_in"},
+            {"from": "irq_status.irq_out", "to": "top.irq"},
         ],
     },
 }
@@ -642,6 +693,21 @@ def _v12_state(
             ]
         )
         buffers.append({"name": "replay_entries", "owner": store_owner, "width": request.width * 3 + 2, "depth": 4})
+    elif request.task_type == "composed_host_protocol_shell":
+        reg_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "control_reg_bank"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "ctrl", "owner": reg_owner, "width": request.width},
+                {"name": "sample0", "owner": reg_owner, "width": request.width},
+                {"name": "sample1", "owner": reg_owner, "width": request.width},
+                {"name": "busy", "owner": reg_owner, "width": 1},
+                {"name": "done", "owner": reg_owner, "width": 1},
+                {"name": "irq_state", "owner": reg_owner, "width": 1},
+            ]
+        )
     return {
         "registers": registers,
         "counters": counters,
@@ -790,6 +856,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_td_update_core",
         "composed_policy_value_shell",
         "composed_replay_sample_shell",
+        "composed_host_protocol_shell",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -1229,6 +1296,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_policy_value_shell_rtl_files(request.width)
     if request.task_type == "composed_replay_sample_shell":
         return _composed_replay_sample_shell_rtl_files(request.width)
+    if request.task_type == "composed_host_protocol_shell":
+        return _composed_host_protocol_shell_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1278,6 +1347,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_policy_value_shell_testbench(request.width)
     if request.task_type == "composed_replay_sample_shell":
         return _composed_replay_sample_shell_testbench(request.width)
+    if request.task_type == "composed_host_protocol_shell":
+        return _composed_host_protocol_shell_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -3032,6 +3103,175 @@ def _composed_replay_sample_shell_testbench(width: int) -> str:
               $display("TEST_FAIL expected occupancy 0 got %0d", occupancy);
               $finish;
             end
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_host_protocol_shell_testbench(width: int) -> str:
+    msb = width - 1
+    stream_msb = width * 2 - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg s_axi_awvalid;
+          wire s_axi_awready;
+          reg [3:0] s_axi_awaddr;
+          reg s_axi_wvalid;
+          wire s_axi_wready;
+          reg [{msb}:0] s_axi_wdata;
+          reg s_axi_wstrb;
+          wire s_axi_bvalid;
+          reg s_axi_bready;
+          reg s_axi_arvalid;
+          wire s_axi_arready;
+          reg [3:0] s_axi_araddr;
+          wire s_axi_rvalid;
+          reg s_axi_rready;
+          wire [{msb}:0] s_axi_rdata;
+          wire m_axis_tvalid;
+          reg m_axis_tready;
+          wire [{stream_msb}:0] m_axis_tdata;
+          wire m_axis_tlast;
+          wire irq;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .s_axi_awvalid(s_axi_awvalid),
+            .s_axi_awready(s_axi_awready),
+            .s_axi_awaddr(s_axi_awaddr),
+            .s_axi_wvalid(s_axi_wvalid),
+            .s_axi_wready(s_axi_wready),
+            .s_axi_wdata(s_axi_wdata),
+            .s_axi_wstrb(s_axi_wstrb),
+            .s_axi_bvalid(s_axi_bvalid),
+            .s_axi_bready(s_axi_bready),
+            .s_axi_arvalid(s_axi_arvalid),
+            .s_axi_arready(s_axi_arready),
+            .s_axi_araddr(s_axi_araddr),
+            .s_axi_rvalid(s_axi_rvalid),
+            .s_axi_rready(s_axi_rready),
+            .s_axi_rdata(s_axi_rdata),
+            .m_axis_tvalid(m_axis_tvalid),
+            .m_axis_tready(m_axis_tready),
+            .m_axis_tdata(m_axis_tdata),
+            .m_axis_tlast(m_axis_tlast),
+            .irq(irq)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task axi_write;
+            input [3:0] addr_i;
+            input [{msb}:0] data_i;
+            begin
+              @(negedge clk);
+              s_axi_awvalid = 1'b1;
+              s_axi_awaddr = addr_i;
+              s_axi_wvalid = 1'b1;
+              s_axi_wdata = data_i;
+              s_axi_wstrb = 1'b1;
+              s_axi_bready = 1'b1;
+              while (!s_axi_awready || !s_axi_wready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              s_axi_awvalid = 1'b0;
+              s_axi_wvalid = 1'b0;
+              while (!s_axi_bvalid) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              s_axi_bready = 1'b0;
+            end
+          endtask
+
+          task axi_read_expect;
+            input [3:0] addr_i;
+            input [{msb}:0] mask_i;
+            input [{msb}:0] expected_i;
+            begin
+              @(negedge clk);
+              s_axi_arvalid = 1'b1;
+              s_axi_araddr = addr_i;
+              s_axi_rready = 1'b1;
+              while (!s_axi_arready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              s_axi_arvalid = 1'b0;
+              wait_cycles = 0;
+              while (!s_axi_rvalid && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (!s_axi_rvalid) begin
+                $display("TEST_FAIL read response did not become valid");
+                $finish;
+              end
+              if ((s_axi_rdata & mask_i) !== expected_i) begin
+                $display("TEST_FAIL expected read masked %0h got %0h", expected_i, s_axi_rdata & mask_i);
+                $finish;
+              end
+              @(negedge clk);
+              s_axi_rready = 1'b0;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            s_axi_awvalid = 1'b0;
+            s_axi_awaddr = 4'h0;
+            s_axi_wvalid = 1'b0;
+            s_axi_wdata = {width}'h00;
+            s_axi_wstrb = 1'b0;
+            s_axi_bready = 1'b0;
+            s_axi_arvalid = 1'b0;
+            s_axi_araddr = 4'h0;
+            s_axi_rready = 1'b0;
+            m_axis_tready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            axi_write(4'h4, {width}'h12);
+            axi_write(4'h8, {width}'h34);
+            axi_write(4'h0, {width}'h01);
+
+            wait_cycles = 0;
+            while (!m_axis_tvalid && wait_cycles < 16) begin
+              @(posedge clk);
+              #1;
+              wait_cycles = wait_cycles + 1;
+            end
+            if (!m_axis_tvalid || m_axis_tdata !== {width * 2}'h3412 || m_axis_tlast !== 1'b1) begin
+              $display("TEST_FAIL expected stream payload 0x3412 got valid=%0d data=%0h last=%0d",
+                       m_axis_tvalid, m_axis_tdata, m_axis_tlast);
+              $finish;
+            end
+            repeat (2) @(posedge clk);
+            #1;
+            if (irq !== 1'b1) begin
+              $display("TEST_FAIL expected irq set");
+              $finish;
+            end
+
+            axi_read_expect(4'hc, {width}'h06, {width}'h06);
+            axi_write(4'h0, {width}'h02);
+            axi_read_expect(4'hc, {width}'h04, {width}'h00);
 
             $display("TEST_PASS");
             $finish;
@@ -5629,6 +5869,336 @@ def _composed_replay_sample_shell_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_host_protocol_shell_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    stream_msb = width * 2 - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire s_axi_awvalid,
+            output wire s_axi_awready,
+            input wire [3:0] s_axi_awaddr,
+            input wire s_axi_wvalid,
+            output wire s_axi_wready,
+            input wire [{msb}:0] s_axi_wdata,
+            input wire s_axi_wstrb,
+            output wire s_axi_bvalid,
+            input wire s_axi_bready,
+            input wire s_axi_arvalid,
+            output wire s_axi_arready,
+            input wire [3:0] s_axi_araddr,
+            output wire s_axi_rvalid,
+            input wire s_axi_rready,
+            output wire [{msb}:0] s_axi_rdata,
+            output wire m_axis_tvalid,
+            input wire m_axis_tready,
+            output wire [{stream_msb}:0] m_axis_tdata,
+            output wire m_axis_tlast,
+            output wire irq
+        );
+
+          wire write_valid;
+          wire [3:0] write_addr;
+          wire [{msb}:0] write_data;
+          wire read_valid;
+          wire [3:0] read_addr;
+          wire start_pulse;
+          wire [{msb}:0] sample0;
+          wire [{msb}:0] sample1;
+          wire stream_done;
+          wire irq_state;
+
+          axi_lite_write_ctrl #(
+            .DATA_WIDTH({width})
+          ) u_axi_lite_write_ctrl (
+            .clk(clk),
+            .rst_n(rst_n),
+            .awvalid(s_axi_awvalid),
+            .awready(s_axi_awready),
+            .awaddr(s_axi_awaddr),
+            .wvalid(s_axi_wvalid),
+            .wready(s_axi_wready),
+            .wdata(s_axi_wdata),
+            .wstrb(s_axi_wstrb),
+            .bvalid(s_axi_bvalid),
+            .bready(s_axi_bready),
+            .write_valid(write_valid),
+            .write_addr(write_addr),
+            .write_data(write_data)
+          );
+
+          axi_lite_read_ctrl u_axi_lite_read_ctrl (
+            .clk(clk),
+            .rst_n(rst_n),
+            .arvalid(s_axi_arvalid),
+            .arready(s_axi_arready),
+            .araddr(s_axi_araddr),
+            .rvalid(s_axi_rvalid),
+            .rready(s_axi_rready),
+            .read_valid(read_valid),
+            .read_addr(read_addr)
+          );
+
+          control_reg_bank #(
+            .DATA_WIDTH({width})
+          ) u_control_reg_bank (
+            .clk(clk),
+            .rst_n(rst_n),
+            .write_valid(write_valid),
+            .write_addr(write_addr),
+            .write_data(write_data),
+            .read_valid(read_valid),
+            .read_addr(read_addr),
+            .read_data(s_axi_rdata),
+            .stream_done(stream_done),
+            .start_pulse(start_pulse),
+            .sample0(sample0),
+            .sample1(sample1),
+            .irq_state(irq_state)
+          );
+
+          sample_stream_adapter #(
+            .DATA_WIDTH({width})
+          ) u_sample_stream_adapter (
+            .clk(clk),
+            .rst_n(rst_n),
+            .start(start_pulse),
+            .sample0(sample0),
+            .sample1(sample1),
+            .tvalid(m_axis_tvalid),
+            .tready(m_axis_tready),
+            .tdata(m_axis_tdata),
+            .tlast(m_axis_tlast),
+            .stream_done(stream_done)
+          );
+
+          irq_status u_irq_status (
+            .irq_in(irq_state),
+            .irq_out(irq)
+          );
+
+        endmodule
+        """
+    )
+    axi_lite_write_ctrl = dedent(
+        """\
+        module axi_lite_write_ctrl #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire awvalid,
+            output wire awready,
+            input wire [3:0] awaddr,
+            input wire wvalid,
+            output wire wready,
+            input wire [DATA_WIDTH-1:0] wdata,
+            input wire wstrb,
+            output reg bvalid,
+            input wire bready,
+            output wire write_valid,
+            output wire [3:0] write_addr,
+            output wire [DATA_WIDTH-1:0] write_data
+        );
+
+          wire accept_write;
+
+          assign awready = !bvalid;
+          assign wready = !bvalid;
+          assign accept_write = awvalid && wvalid && awready && wready && wstrb;
+          assign write_valid = accept_write;
+          assign write_addr = awaddr;
+          assign write_data = wdata;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              bvalid <= 1'b0;
+            end else begin
+              if (accept_write) begin
+                bvalid <= 1'b1;
+              end else if (bvalid && bready) begin
+                bvalid <= 1'b0;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    axi_lite_read_ctrl = dedent(
+        """\
+        module axi_lite_read_ctrl (
+            input wire clk,
+            input wire rst_n,
+            input wire arvalid,
+            output wire arready,
+            input wire [3:0] araddr,
+            output reg rvalid,
+            input wire rready,
+            output wire read_valid,
+            output wire [3:0] read_addr
+        );
+
+          wire accept_read;
+
+          assign arready = !rvalid;
+          assign accept_read = arvalid && arready;
+          assign read_valid = accept_read;
+          assign read_addr = araddr;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              rvalid <= 1'b0;
+            end else begin
+              if (accept_read) begin
+                rvalid <= 1'b1;
+              end else if (rvalid && rready) begin
+                rvalid <= 1'b0;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    control_reg_bank = dedent(
+        """\
+        module control_reg_bank #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire write_valid,
+            input wire [3:0] write_addr,
+            input wire [DATA_WIDTH-1:0] write_data,
+            input wire read_valid,
+            input wire [3:0] read_addr,
+            output reg [DATA_WIDTH-1:0] read_data,
+            input wire stream_done,
+            output reg start_pulse,
+            output reg [DATA_WIDTH-1:0] sample0,
+            output reg [DATA_WIDTH-1:0] sample1,
+            output reg irq_state
+        );
+
+          reg [DATA_WIDTH-1:0] ctrl;
+          reg busy;
+          reg done;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              ctrl <= {DATA_WIDTH{1'b0}};
+              sample0 <= {DATA_WIDTH{1'b0}};
+              sample1 <= {DATA_WIDTH{1'b0}};
+              busy <= 1'b0;
+              done <= 1'b0;
+              irq_state <= 1'b0;
+              start_pulse <= 1'b0;
+              read_data <= {DATA_WIDTH{1'b0}};
+            end else begin
+              start_pulse <= 1'b0;
+              if (write_valid) begin
+                case (write_addr)
+                  4'h0: begin
+                    ctrl <= write_data;
+                    if (write_data[0]) begin
+                      start_pulse <= 1'b1;
+                      busy <= 1'b1;
+                      done <= 1'b0;
+                    end
+                    if (write_data[1]) begin
+                      irq_state <= 1'b0;
+                    end
+                  end
+                  4'h4: sample0 <= write_data;
+                  4'h8: sample1 <= write_data;
+                  default: ctrl <= ctrl;
+                endcase
+              end
+              if (stream_done) begin
+                busy <= 1'b0;
+                done <= 1'b1;
+                irq_state <= 1'b1;
+              end
+              if (read_valid) begin
+                case (read_addr)
+                  4'h0: read_data <= ctrl;
+                  4'h4: read_data <= sample0;
+                  4'h8: read_data <= sample1;
+                  4'hc: read_data <= {{(DATA_WIDTH-3){1'b0}}, irq_state, done, busy};
+                  default: read_data <= {DATA_WIDTH{1'b0}};
+                endcase
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    sample_stream_adapter = dedent(
+        """\
+        module sample_stream_adapter #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire start,
+            input wire [DATA_WIDTH-1:0] sample0,
+            input wire [DATA_WIDTH-1:0] sample1,
+            output reg tvalid,
+            input wire tready,
+            output reg [(2*DATA_WIDTH)-1:0] tdata,
+            output reg tlast,
+            output reg stream_done
+        );
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              tvalid <= 1'b0;
+              tdata <= {(2*DATA_WIDTH){1'b0}};
+              tlast <= 1'b0;
+              stream_done <= 1'b0;
+            end else begin
+              stream_done <= 1'b0;
+              if (start && !tvalid) begin
+                tvalid <= 1'b1;
+                tdata <= {sample1, sample0};
+                tlast <= 1'b1;
+              end else if (tvalid && tready) begin
+                tvalid <= 1'b0;
+                tlast <= 1'b0;
+                stream_done <= 1'b1;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    irq_status = dedent(
+        """\
+        module irq_status (
+            input wire irq_in,
+            output wire irq_out
+        );
+
+          assign irq_out = irq_in;
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/axi_lite_write_ctrl.v": axi_lite_write_ctrl,
+        "rtl/axi_lite_read_ctrl.v": axi_lite_read_ctrl,
+        "rtl/control_reg_bank.v": control_reg_bank,
+        "rtl/sample_stream_adapter.v": sample_stream_adapter,
+        "rtl/irq_status.v": irq_status,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -5704,6 +6274,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_replay_sample_shell": (
             f"Generate a {request.width}-bit T8 component-composed replay sample shell "
             "using host sample staging, a small replay store, sample packing, read staging, and occupancy reporting."
+        ),
+        "composed_host_protocol_shell": (
+            f"Generate a {request.width}-bit T9 component-composed host protocol shell "
+            "using AXI-lite-style control/status, AXI-stream-style output, and irq reporting."
         ),
     }
     return descriptions[request.task_type]
@@ -6023,6 +6597,37 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_host_protocol_shell":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "s_axi_awvalid", "width": 1},
+                    {"name": "s_axi_awaddr", "width": 4},
+                    {"name": "s_axi_wvalid", "width": 1},
+                    {"name": "s_axi_wdata", "width": request.width},
+                    {"name": "s_axi_wstrb", "width": 1},
+                    {"name": "s_axi_bready", "width": 1},
+                    {"name": "s_axi_arvalid", "width": 1},
+                    {"name": "s_axi_araddr", "width": 4},
+                    {"name": "s_axi_rready", "width": 1},
+                    {"name": "m_axis_tready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "s_axi_awready", "width": 1},
+                    {"name": "s_axi_wready", "width": 1},
+                    {"name": "s_axi_bvalid", "width": 1},
+                    {"name": "s_axi_arready", "width": 1},
+                    {"name": "s_axi_rvalid", "width": 1},
+                    {"name": "s_axi_rdata", "width": request.width},
+                    {"name": "m_axis_tvalid", "width": 1},
+                    {"name": "m_axis_tdata", "width": request.width * 2},
+                    {"name": "m_axis_tlast", "width": 1},
+                    {"name": "irq", "width": 1},
+                ],
+            }
+        )
     return common
 
 
@@ -6063,6 +6668,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "composed_replay_sample_shell": (
             "host-side transition samples are staged into a small replay store, then read back in FIFO order "
             "through a fabric-side valid-ready sample output with occupancy reporting"
+        ),
+        "composed_host_protocol_shell": (
+            "AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload "
+            "is emitted, status can be read back, and irq remains asserted until cleared"
         ),
     }
     return expectations[request.task_type]
@@ -6109,4 +6718,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(72, request.width * 9 + 32), "ff": request.width * 8 + 40, "bram": 0, "dsp": 2}
     if request.task_type == "composed_replay_sample_shell":
         return {"lut": max(88, request.width * 10 + 44), "ff": request.width * 12 + 64, "bram": 0, "dsp": 0}
+    if request.task_type == "composed_host_protocol_shell":
+        return {"lut": max(104, request.width * 12 + 64), "ff": request.width * 10 + 72, "bram": 0, "dsp": 0}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

@@ -676,6 +676,24 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("sample_read_stage", user_prompt)
         self.assertIn("rtl/replay_store.v", user_prompt)
 
+    def test_system_his_v12_prompt_includes_host_protocol_shell_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_host_protocol_shell",
+            width=8,
+            project_name="host_protocol_shell_8bit",
+            description="Generate a host protocol shell.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_host_protocol_shell", user_prompt)
+        self.assertIn("axi_lite_write_ctrl", user_prompt)
+        self.assertIn("axi_lite_read_ctrl", user_prompt)
+        self.assertIn("control_reg_bank", user_prompt)
+        self.assertIn("sample_stream_adapter", user_prompt)
+        self.assertIn("rtl/axi_lite_write_ctrl.v", user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",

@@ -86,6 +86,14 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/sample_read_stage.v",
         "rtl/occupancy_counter.v",
     ],
+    "composed_host_protocol_shell": [
+        "rtl/top.v",
+        "rtl/axi_lite_write_ctrl.v",
+        "rtl/axi_lite_read_ctrl.v",
+        "rtl/control_reg_bank.v",
+        "rtl/sample_stream_adapter.v",
+        "rtl/irq_status.v",
+    ],
 }
 
 
@@ -1113,6 +1121,21 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/host_sample_stage.v, rtl/replay_store.v, "
             "rtl/sample_pack_core.v, rtl/sample_read_stage.v, and rtl/occupancy_counter.v."
         )
+    if task_type == "composed_host_protocol_shell":
+        return (
+            "Required architecture for composed_host_protocol_shell:\n"
+            "- components: axi_lite_write_ctrl, axi_lite_read_ctrl, control_reg_bank, sample_stream_adapter, irq_status\n"
+            "- instances: write_ctrl, read_ctrl, regs, stream, irq\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include s_axi_awvalid, s_axi_awready, s_axi_awaddr, s_axi_wvalid, "
+            "s_axi_wready, s_axi_wdata, s_axi_wstrb, s_axi_bvalid, s_axi_bready, "
+            "s_axi_arvalid, s_axi_arready, s_axi_araddr, s_axi_rvalid, s_axi_rready, "
+            "s_axi_rdata, m_axis_tvalid, m_axis_tready, m_axis_tdata, m_axis_tlast, and irq.\n"
+            "- control_reg_bank owns ctrl, sample0, sample1, busy, done, and irq_state.\n"
+            "- data_flow must describe write capture, readback, stream output, stream_done feedback, and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/axi_lite_write_ctrl.v, rtl/axi_lite_read_ctrl.v, "
+            "rtl/control_reg_bank.v, rtl/sample_stream_adapter.v, and rtl/irq_status.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1190,6 +1213,17 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             "occupancy_counter as separate RTL modules.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_host_protocol_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, s_axi_awvalid, s_axi_awready, s_axi_awaddr, "
+            "s_axi_wvalid, s_axi_wready, s_axi_wdata, s_axi_wstrb, s_axi_bvalid, s_axi_bready, "
+            "s_axi_arvalid, s_axi_arready, s_axi_araddr, s_axi_rvalid, s_axi_rready, s_axi_rdata, "
+            "m_axis_tvalid, m_axis_tready, m_axis_tdata, m_axis_tlast, irq\n"
+            "- Keep axi_lite_write_ctrl, axi_lite_read_ctrl, control_reg_bank, sample_stream_adapter, "
+            "and irq_status as separate RTL modules.\n"
+            "- This task intentionally uses AXI-style signal names; preserve them exactly.\n"
         )
     if task_type == "composed_stream_fork":
         return (
