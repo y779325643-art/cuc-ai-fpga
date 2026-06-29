@@ -1,0 +1,19 @@
+{
+  "run_id": "l0-by-construction-t3-t4-after-width-parameters",
+  "next_index": 2,
+  "completed_samples": [
+    "sample_l0_by_construction_t3_t4_after_width_parameters_t3_stream_fork_8_000001",
+    "sample_l0_by_construction_t3_t4_after_width_parameters_t4_dual_stream_join_8_000002"
+  ],
+  "buckets": {
+    "success_l3": [
+      "sample_l0_by_construction_t3_t4_after_width_parameters_t3_stream_fork_8_000001",
+      "sample_l0_by_construction_t3_t4_after_width_parameters_t4_dual_stream_join_8_000002"
+    ],
+    "repair_trajectory": [],
+    "rejected": []
+  },
+  "failure_types": {},
+  "exports_refreshed": true,
+  "config_fingerprint": "e0531742dd75c60b316f95b12c651a9934047642d17c008a608368b774cb6b71"
+}

@@ -1,4 +1,4 @@
-# SR2FPGA Current Status - 2026-06-26
+# SR2FPGA Current Status - 2026-06-29
 
 ## Current Branch
 
@@ -170,6 +170,16 @@ Implemented and under active review:
   behavior-body lint cleanliness rather than top/skeleton wiring. Compact
   write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-identifier-testbench-2026-06-29.md`.
+- A fresh narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-width-parameters`: `total_completed=2`,
+  pass levels `L3:2`, `failure_types={}`, and `exports_refreshed=true`. This
+  verifies the width-parameter hardening on new DeepSeek samples: the previous
+  `[None-1:0]`, missing top-level width parameter, and duplicate
+  `_unused_clock_reset` signatures did not reappear. Both samples still needed
+  one REQ2HIS retry for schema details (`target_fmax_mhz` and list-valued
+  `owns_state`), so the next small hardening target is initial REQ2HIS prompt
+  specificity rather than deterministic skeleton wiring. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-width-parameters-2026-06-29.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
@@ -505,6 +515,12 @@ Fresh verification from the latest implementation pass:
 python3 -m pytest LLM/tests -q
 # 297 passed
 
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters --preflight --validate-provider
+# ok: true; planned_samples: 2; contract_skeleton_mode: behavior_files; provider_auth.deepseek-his-v12.status: ok
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters
+# total_completed=2; pass_level_breakdown: L3:2; failure_types: {}; exports_refreshed=true
+
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
 # ok: true; planned_samples: 8; preview shows legacy_full_project/quarantine and behavior_files/clean arms; provider_auth: not_checked
 
@@ -609,6 +625,10 @@ Latest `deepseek-v4-pro` v1.2 repair T1-T4 report:
 
 `tmp/sr2fpga_runs/deepseek-v4-pro-his-v12-repair-t1-t4/baseline_report.md`
 
+Latest T3/T4 behavior-files skeleton width-parameter rerun report:
+
+`tmp/sr2fpga_runs/l0-by-construction-t3-t4-after-width-parameters/baseline_report.md`
+
 Key summary:
 
 - Pass-rate knee: T1, because L3 pass rate is 0%.
@@ -635,6 +655,10 @@ Key summary:
   RTL lint. The reserved-identifier precheck now catches lexical legality before
   Verilator; the newest observed failure is strict warning hygiene under
   Verilator `-Wall`.
+- Latest T3/T4 behavior-files skeleton rerun result: both T3 `stream_fork` and
+  T4 `dual_stream_join` reached L3 on fresh samples after width-parameter
+  hardening. The remaining visible friction is retry dependence in REQ2HIS
+  schema details, not deterministic skeleton wiring.
 - HIS2PROJECT now uses OpenAI-compatible streaming (`stream: true` + SSE
   `choices[].delta.content` assembly). REQ2HIS, direct generation, repair, and
   provider preflight remain non-streaming. Unit coverage verifies streaming SSE
