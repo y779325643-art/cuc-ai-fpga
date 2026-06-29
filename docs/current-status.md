@@ -200,6 +200,14 @@ Implemented and under active review:
 - Runner supports `task_type: component_topology` with `topology_ids`, expanding
   topology selections into concrete `composed_*` tasks while preserving
   `topology_id` in sample metadata.
+- The deterministic component-topology ladder now includes T5
+  `composed_vector_mac_pipeline` / `t5_vector_mac_pipeline`, the first
+  RL-shaped intermediate task. It accepts paired feature/weight valid-ready
+  streams, applies a fixed-length vector MAC plus bias in `vector_mac_core`, and
+  emits a score stream through `stream_stage`. Unit coverage verifies generator
+  output, runner topology expansion, REQ->HIS top-port fidelity, and DeepSeek
+  System-HIS prompt guidance. This is still a synthetic bridge, not the full
+  reinforcement-learning accelerator.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current T1-T4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
@@ -758,6 +766,14 @@ Key summary:
      (`1` versus `[1-1:0]`) in HIS↔RTL comparison, canonical reset
      `kind`/`polarity` guidance in REQ2HIS, missing module parameter
      declarations in `behavior_files`, and T4 FSM-state lowerability.
+00e. **Complex-task ladder toward the RL accelerator.** T5 is now the deterministic
+     vector-MAC feature-pipeline bridge. Next, add T6 as a TD-error/value-update
+     core, then T7 as a policy/value accelerator shell with configuration
+     registers and a clearer FPGA/ARM boundary. Before claiming the full
+     reinforcement-learning accelerator as realistic, request or cite a real
+     workload reference: RL algorithm family, observation vector width, action
+     count, fixed-point format, batch/sample shape, fabric/software split on
+     AC820-ZYNQ, and clock/DSP/BRAM targets.
 0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).

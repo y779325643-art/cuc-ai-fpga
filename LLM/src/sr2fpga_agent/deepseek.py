@@ -57,6 +57,12 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/accumulator_core.v",
         "rtl/stream_stage.v",
     ],
+    "composed_vector_mac_pipeline": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/vector_mac_core.v",
+        "rtl/stream_stage.v",
+    ],
 }
 
 
@@ -1025,6 +1031,20 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/skid_buffer.v, rtl/stream_join.v, "
             "rtl/accumulator_core.v, and rtl/stream_stage.v."
         )
+    if task_type == "composed_vector_mac_pipeline":
+        return (
+            "Required architecture for composed_vector_mac_pipeline:\n"
+            "- components: skid_buffer, vector_mac_core, stream_stage\n"
+            "- instances: feature_buffer, weight_buffer, mac_core, score_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- feature_buffer and weight_buffer must both reference component skid_buffer.\n"
+            "- vector_mac_core owns vector_index, accumulator, and pending_score state.\n"
+            "- top ports must include feature_valid, feature_data, feature_ready, weight_valid, "
+            "weight_data, weight_ready, bias, score_valid, score_data, and score_ready.\n"
+            "- data_flow must pair feature and weight streams into vector_mac_core and stage score output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/skid_buffer.v, "
+            "rtl/vector_mac_core.v, and rtl/stream_stage.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1063,6 +1083,14 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             common
             + "- Required top ports: clk, rst_n, in0_valid, in0_data, in1_valid, in1_data, out_ready, "
             "in0_ready, in1_ready, out_valid, out_data\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_vector_mac_pipeline":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, feature_valid, feature_data, weight_valid, "
+            "weight_data, bias, score_ready, feature_ready, weight_ready, score_valid, score_data\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
         )

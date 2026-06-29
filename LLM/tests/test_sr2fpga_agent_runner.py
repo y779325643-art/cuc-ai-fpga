@@ -1071,18 +1071,19 @@ class RunnerConfigTest(unittest.TestCase):
             repair_provider="none",
             max_attempts=1,
             refresh_exports=True,
-            line_b_targets={"max_samples": 4},
+            line_b_targets={"max_samples": 5},
             tasks=[
                 TaskConfig(
                     source="deterministic",
                     task_type="component_topology",
                     widths=[8],
-                    count=4,
+                    count=5,
                     topology_ids=[
                         "t1_event_counter",
                         "t2_stream_accumulator",
                         "t3_stream_fork",
                         "t4_dual_stream_join",
+                        "t5_vector_mac_pipeline",
                     ],
                     failure_origin="compositional_assembly",
                 )
@@ -1108,12 +1109,19 @@ class RunnerConfigTest(unittest.TestCase):
                     "t4_dual_stream_join",
                     "T4",
                 ),
+                (
+                    "sample_runner_t5_vector_mac_pipeline_8_000005",
+                    "composed_vector_mac_pipeline",
+                    "t5_vector_mac_pipeline",
+                    "T5",
+                ),
             ],
         )
         self.assertEqual(samples[0].metadata(config)["topology_id"], "t1_event_counter")
         self.assertEqual(samples[1].metadata(config)["topology_id"], "t2_stream_accumulator")
         self.assertEqual(samples[2].metadata(config)["topology_id"], "t3_stream_fork")
         self.assertEqual(samples[3].metadata(config)["topology_id"], "t4_dual_stream_join")
+        self.assertEqual(samples[4].metadata(config)["topology_id"], "t5_vector_mac_pipeline")
         self.assertEqual(samples[3].metadata(config)["requirement_style"], "contract")
         self.assertIn("component topology t1_event_counter", samples[0].requirement)
         self.assertIn("event_gate", samples[0].requirement)
@@ -1123,6 +1131,8 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertIn("skid_a:skid_buffer", samples[3].requirement)
         self.assertIn("skid_b:skid_buffer", samples[3].requirement)
         self.assertIn("stream_join.out_data -> accumulator_core.sample", samples[3].requirement)
+        self.assertIn("component topology t5_vector_mac_pipeline", samples[4].requirement)
+        self.assertIn("vector_mac_core", samples[4].requirement)
         self.assertIn("Keep rtl/top.v as the integration wrapper", samples[3].requirement)
 
     def test_classify_sample_bucket(self) -> None:

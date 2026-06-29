@@ -414,6 +414,58 @@ class ProjectGeneratorTest(unittest.TestCase):
         )
         self.assertGreaterEqual(len(system_his["connections"]), 24)
 
+    def test_generates_composed_vector_mac_pipeline_from_t5_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_vector_mac_pipeline",
+                width=8,
+                project_name="composed_vector_mac_pipeline_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_vector_mac_pipeline",
+            {
+                "rtl/top.v",
+                "rtl/skid_buffer.v",
+                "rtl/vector_mac_core.v",
+                "rtl/stream_stage.v",
+            },
+            [
+                "skid_buffer",
+                "vector_mac_core",
+                "stream_stage",
+                ".in_valid(feature_valid)",
+                ".in_valid(weight_valid)",
+                ".feature_valid(feature_buf_valid)",
+                ".weight_valid(weight_buf_valid)",
+                ".out_valid(score_valid)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t5_vector_mac_pipeline")
+        self.assertEqual(architecture["difficulty_tier"], "T5")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["skid_buffer", "skid_buffer", "vector_mac_core", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "vector_mac_core.score_data", "to": "stream_stage.in_data"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire [7:0] feature_data", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] weight_data", project.files["rtl/top.v"])
+        self.assertIn("input wire [15:0] bias", project.files["rtl/top.v"])
+        self.assertIn("output wire [15:0] score_data", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 18)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -664,6 +716,7 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
         ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
         ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+        ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
     ]
 
 

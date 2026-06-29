@@ -24,6 +24,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_stream_accumulator",
     "composed_stream_fork",
     "composed_dual_stream_join",
+    "composed_vector_mac_pipeline",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -117,6 +118,36 @@ COMPONENT_TOPOLOGIES = {
             {"from": "stream_stage.in_ready", "to": "accumulator_core.sample_ready"},
             {"from": "stream_stage.out_valid", "to": "top.out_valid"},
             {"from": "stream_stage.out_data", "to": "top.out_data"},
+        ],
+    },
+    "composed_vector_mac_pipeline": {
+        "topology_id": "t5_vector_mac_pipeline",
+        "difficulty_tier": "T5",
+        "submodules": ["skid_buffer", "vector_mac_core", "stream_stage"],
+        "nodes": [
+            {"id": "feature_buffer", "component": "skid_buffer"},
+            {"id": "weight_buffer", "component": "skid_buffer"},
+            {"id": "mac", "component": "vector_mac_core"},
+            {"id": "score_stage", "component": "stream_stage"},
+        ],
+        "edges": [
+            {"from": "top.feature_valid", "to": "skid_buffer.in_valid"},
+            {"from": "top.feature_data", "to": "skid_buffer.in_data"},
+            {"from": "top.weight_valid", "to": "skid_buffer.in_valid"},
+            {"from": "top.weight_data", "to": "skid_buffer.in_data"},
+            {"from": "skid_buffer.out_valid", "to": "vector_mac_core.feature_valid"},
+            {"from": "skid_buffer.out_data", "to": "vector_mac_core.feature_data"},
+            {"from": "skid_buffer.out_valid", "to": "vector_mac_core.weight_valid"},
+            {"from": "skid_buffer.out_data", "to": "vector_mac_core.weight_data"},
+            {"from": "vector_mac_core.feature_ready", "to": "skid_buffer.out_ready"},
+            {"from": "vector_mac_core.weight_ready", "to": "skid_buffer.out_ready"},
+            {"from": "top.bias", "to": "vector_mac_core.bias"},
+            {"from": "vector_mac_core.score_valid", "to": "stream_stage.in_valid"},
+            {"from": "vector_mac_core.score_data", "to": "stream_stage.in_data"},
+            {"from": "stream_stage.in_ready", "to": "vector_mac_core.score_ready"},
+            {"from": "stream_stage.out_valid", "to": "top.score_valid"},
+            {"from": "stream_stage.out_data", "to": "top.score_data"},
+            {"from": "top.score_ready", "to": "stream_stage.out_ready"},
         ],
     },
 }
@@ -390,6 +421,18 @@ def _v12_state(
     elif request.task_type == "ram_read_write":
         memories.append({"name": "mem", "owner": top_module, "width": request.width, "depth": 4})
         registers.append({"name": "rdata", "owner": top_module, "width": request.width})
+    elif request.task_type == "composed_vector_mac_pipeline":
+        mac_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "vector_mac_core"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "accumulator", "owner": mac_owner, "width": request.width * 2},
+                {"name": "pending_score", "owner": mac_owner, "width": request.width * 2},
+            ]
+        )
+        counters.append({"name": "vector_index", "owner": mac_owner, "width": 2})
     return {
         "registers": registers,
         "counters": counters,
@@ -534,6 +577,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_stream_accumulator",
         "composed_stream_fork",
         "composed_dual_stream_join",
+        "composed_vector_mac_pipeline",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -965,6 +1009,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_stream_fork_rtl_files(request.width)
     if request.task_type == "composed_dual_stream_join":
         return _composed_dual_stream_join_rtl_files(request.width)
+    if request.task_type == "composed_vector_mac_pipeline":
+        return _composed_vector_mac_pipeline_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1006,6 +1052,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_stream_fork_testbench(request.width)
     if request.task_type == "composed_dual_stream_join":
         return _composed_dual_stream_join_testbench(request.width)
+    if request.task_type == "composed_vector_mac_pipeline":
+        return _composed_vector_mac_pipeline_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -2230,6 +2278,123 @@ def _composed_dual_stream_join_testbench(width: int) -> str:
               $display("TEST_FAIL joined inputs not ready");
               $finish;
             end
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_vector_mac_pipeline_testbench(width: int) -> str:
+    msb = width - 1
+    score_width = width * 2
+    score_msb = score_width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg feature_valid;
+          wire feature_ready;
+          reg [{msb}:0] feature_data;
+          reg weight_valid;
+          wire weight_ready;
+          reg [{msb}:0] weight_data;
+          reg [{score_msb}:0] bias;
+          wire score_valid;
+          reg score_ready;
+          wire [{score_msb}:0] score_data;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .feature_valid(feature_valid),
+            .feature_ready(feature_ready),
+            .feature_data(feature_data),
+            .weight_valid(weight_valid),
+            .weight_ready(weight_ready),
+            .weight_data(weight_data),
+            .bias(bias),
+            .score_valid(score_valid),
+            .score_ready(score_ready),
+            .score_data(score_data)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task send_pair;
+            input [{msb}:0] feature;
+            input [{msb}:0] weight;
+            begin
+              @(negedge clk);
+              feature_valid = 1'b1;
+              weight_valid = 1'b1;
+              feature_data = feature;
+              weight_data = weight;
+              while (!(feature_ready && weight_ready)) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              feature_valid = 1'b0;
+              weight_valid = 1'b0;
+              feature_data = {width}'d0;
+              weight_data = {width}'d0;
+            end
+          endtask
+
+          task expect_score;
+            input [{score_msb}:0] expected;
+            begin
+              wait_cycles = 0;
+              while (score_valid !== 1'b1 && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (score_valid !== 1'b1) begin
+                $display("TEST_FAIL score did not become valid");
+                $finish;
+              end
+              if (score_data !== expected) begin
+                $display("TEST_FAIL expected score=%0d got %0d", expected, score_data);
+                $finish;
+              end
+              @(negedge clk);
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            feature_valid = 1'b0;
+            feature_data = {width}'d0;
+            weight_valid = 1'b0;
+            weight_data = {width}'d0;
+            bias = {score_width}'d0;
+            score_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            bias = {score_width}'d3;
+            send_pair({width}'d1, {width}'d2);
+            send_pair({width}'d2, {width}'d3);
+            send_pair({width}'d3, {width}'d4);
+            send_pair({width}'d4, {width}'d5);
+            expect_score({score_width}'d43);
+
+            bias = {score_width}'d1;
+            send_pair({width}'d2, {width}'d1);
+            send_pair({width}'d1, {width}'d2);
+            send_pair({width}'d0, {width}'d3);
+            send_pair({width}'d3, {width}'d4);
+            expect_score({score_width}'d17);
+
             $display("TEST_PASS");
             $finish;
           end
@@ -3670,6 +3835,236 @@ def _composed_dual_stream_join_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_vector_mac_pipeline_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    score_width = width * 2
+    score_msb = score_width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire feature_valid,
+            output wire feature_ready,
+            input wire [{msb}:0] feature_data,
+            input wire weight_valid,
+            output wire weight_ready,
+            input wire [{msb}:0] weight_data,
+            input wire [{score_msb}:0] bias,
+            output wire score_valid,
+            input wire score_ready,
+            output wire [{score_msb}:0] score_data
+        );
+
+          wire feature_buf_valid;
+          wire feature_buf_ready;
+          wire [{msb}:0] feature_buf_data;
+          wire weight_buf_valid;
+          wire weight_buf_ready;
+          wire [{msb}:0] weight_buf_data;
+          wire mac_score_valid;
+          wire mac_score_ready;
+          wire [{score_msb}:0] mac_score_data;
+
+          skid_buffer #(
+            .WIDTH({width})
+          ) u_feature_buffer (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(feature_valid),
+            .in_ready(feature_ready),
+            .in_data(feature_data),
+            .out_valid(feature_buf_valid),
+            .out_ready(feature_buf_ready),
+            .out_data(feature_buf_data)
+          );
+
+          skid_buffer #(
+            .WIDTH({width})
+          ) u_weight_buffer (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(weight_valid),
+            .in_ready(weight_ready),
+            .in_data(weight_data),
+            .out_valid(weight_buf_valid),
+            .out_ready(weight_buf_ready),
+            .out_data(weight_buf_data)
+          );
+
+          vector_mac_core #(
+            .DATA_WIDTH({width}),
+            .SCORE_WIDTH({score_width}),
+            .VECTOR_LEN(4)
+          ) u_vector_mac_core (
+            .clk(clk),
+            .rst_n(rst_n),
+            .feature_valid(feature_buf_valid),
+            .feature_ready(feature_buf_ready),
+            .feature_data(feature_buf_data),
+            .weight_valid(weight_buf_valid),
+            .weight_ready(weight_buf_ready),
+            .weight_data(weight_buf_data),
+            .bias(bias),
+            .score_valid(mac_score_valid),
+            .score_ready(mac_score_ready),
+            .score_data(mac_score_data)
+          );
+
+          stream_stage #(
+            .WIDTH({score_width})
+          ) u_score_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(mac_score_valid),
+            .in_ready(mac_score_ready),
+            .in_data(mac_score_data),
+            .out_valid(score_valid),
+            .out_ready(score_ready),
+            .out_data(score_data)
+          );
+
+        endmodule
+        """
+    )
+    skid_buffer = dedent(
+        """\
+        module skid_buffer #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [WIDTH-1:0] out_data
+        );
+
+          reg valid_r;
+          reg [WIDTH-1:0] data_r;
+
+          assign in_ready = !valid_r || out_ready;
+          assign out_valid = valid_r;
+          assign out_data = data_r;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              valid_r <= 1'b0;
+              data_r <= {WIDTH{1'b0}};
+            end else if (in_ready) begin
+              valid_r <= in_valid;
+              if (in_valid) begin
+                data_r <= in_data;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    vector_mac_core = dedent(
+        """\
+        module vector_mac_core #(
+            parameter DATA_WIDTH = 8,
+            parameter SCORE_WIDTH = 16,
+            parameter VECTOR_LEN = 4
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire feature_valid,
+            output wire feature_ready,
+            input wire [DATA_WIDTH-1:0] feature_data,
+            input wire weight_valid,
+            output wire weight_ready,
+            input wire [DATA_WIDTH-1:0] weight_data,
+            input wire [SCORE_WIDTH-1:0] bias,
+            output reg score_valid,
+            input wire score_ready,
+            output reg [SCORE_WIDTH-1:0] score_data
+        );
+
+          reg [SCORE_WIDTH-1:0] accumulator;
+          reg [1:0] vector_index;
+          localparam [1:0] LAST_INDEX = VECTOR_LEN - 1;
+          wire accept_pair;
+          wire [SCORE_WIDTH-1:0] product;
+          wire [SCORE_WIDTH-1:0] next_accumulator;
+
+          assign feature_ready = weight_valid && !score_valid;
+          assign weight_ready = feature_valid && !score_valid;
+          assign accept_pair = feature_valid && feature_ready && weight_valid && weight_ready;
+          assign product = feature_data * weight_data;
+          assign next_accumulator = accumulator + product;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              accumulator <= {SCORE_WIDTH{1'b0}};
+              vector_index <= 2'd0;
+              score_valid <= 1'b0;
+              score_data <= {SCORE_WIDTH{1'b0}};
+            end else begin
+              if (score_valid && score_ready) begin
+                score_valid <= 1'b0;
+              end
+              if (accept_pair) begin
+                if (vector_index == LAST_INDEX) begin
+                  score_data <= next_accumulator + bias;
+                  score_valid <= 1'b1;
+                  accumulator <= {SCORE_WIDTH{1'b0}};
+                  vector_index <= 2'd0;
+                end else begin
+                  accumulator <= next_accumulator;
+                  vector_index <= vector_index + 2'd1;
+                end
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    stream_stage = dedent(
+        """\
+        module stream_stage #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [WIDTH-1:0] in_data,
+            output reg out_valid,
+            input wire out_ready,
+            output reg [WIDTH-1:0] out_data
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              out_data <= {WIDTH{1'b0}};
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                out_data <= in_data;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/skid_buffer.v": skid_buffer,
+        "rtl/vector_mac_core.v": vector_mac_core,
+        "rtl/stream_stage.v": stream_stage,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -3729,6 +4124,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_dual_stream_join": (
             f"Generate a {request.width}-bit T4 component-composed dual-stream join "
             "using two skid buffers, a join, an accumulator, and an output stage."
+        ),
+        "composed_vector_mac_pipeline": (
+            f"Generate a {request.width}-bit T5 component-composed vector MAC feature pipeline "
+            "using feature and weight skid buffers, a vector MAC core, and an output stage."
         ),
     }
     return descriptions[request.task_type]
@@ -3956,6 +4355,27 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_vector_mac_pipeline":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "feature_valid", "width": 1},
+                    {"name": "feature_data", "width": request.width},
+                    {"name": "weight_valid", "width": 1},
+                    {"name": "weight_data", "width": request.width},
+                    {"name": "bias", "width": request.width * 2},
+                    {"name": "score_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "feature_ready", "width": 1},
+                    {"name": "weight_ready", "width": 1},
+                    {"name": "score_valid", "width": 1},
+                    {"name": "score_data", "width": request.width * 2},
+                ],
+            }
+        )
     return common
 
 
@@ -3980,6 +4400,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
         ),
         "composed_dual_stream_join": (
             "two valid-ready input streams are buffered, synchronized, joined, accumulated, and staged"
+        ),
+        "composed_vector_mac_pipeline": (
+            "paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, "
+            "biased, and staged as score output"
         ),
     }
     return expectations[request.task_type]
@@ -4018,4 +4442,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(18, request.width * 2 + 6), "ff": request.width * 3 + 6, "bram": 0, "dsp": 0}
     if request.task_type == "composed_dual_stream_join":
         return {"lut": max(32, request.width * 4 + 12), "ff": request.width * 5 + 18, "bram": 0, "dsp": 0}
+    if request.task_type == "composed_vector_mac_pipeline":
+        return {"lut": max(48, request.width * 6 + 20), "ff": request.width * 6 + 24, "bram": 0, "dsp": 1}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

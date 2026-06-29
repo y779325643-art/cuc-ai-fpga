@@ -1031,6 +1031,10 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project that joins two input streams, accumulates joined samples, "
             "and exposes one output stream."
         ),
+        "composed_vector_mac_pipeline": (
+            f"Generate an {width}-bit FPGA RTL project that accepts paired feature and weight streams, "
+            "computes a fixed-length vector MAC score with bias, and exposes one score stream."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1058,6 +1062,7 @@ def _natural_component_title(task_type: str) -> str:
         "composed_stream_accumulator": "streaming accumulator datapath",
         "composed_stream_fork": "valid-ready stream fork datapath",
         "composed_dual_stream_join": "dual-stream join datapath",
+        "composed_vector_mac_pipeline": "vector MAC feature pipeline",
     }
     return titles[task_type]
 
@@ -1069,6 +1074,9 @@ def _natural_component_summary(task_type: str) -> str:
         "composed_stream_fork": "a skid_buffer feeding a stream_fork and two stream_stage outputs",
         "composed_dual_stream_join": (
             "two skid_buffer instances feeding stream_join, then accumulator_core, then stream_stage"
+        ),
+        "composed_vector_mac_pipeline": (
+            "feature and weight skid_buffer instances feeding vector_mac_core, then stream_stage"
         ),
     }
     return summaries[task_type]
@@ -1100,6 +1108,10 @@ def _topology_expected_behavior(task_type: str) -> str:
         ),
         "composed_dual_stream_join": (
             "two valid-ready input streams are buffered, synchronized, joined, accumulated, and staged"
+        ),
+        "composed_vector_mac_pipeline": (
+            "paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, "
+            "biased, and staged as score output"
         ),
     }
     return behaviors[task_type]

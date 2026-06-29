@@ -123,6 +123,29 @@ class SystemHisReqFidelityTest(unittest.TestCase):
             result.errors,
         )
 
+    def test_composed_vector_mac_pipeline_requires_feature_weight_and_score_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_vector_mac_pipeline",
+            width=8,
+            project_name="vector_mac_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"feature_data", "score_data"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_vector_mac_pipeline requires top port 'feature_data'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_vector_mac_pipeline requires top port 'score_data'",
+            result.errors,
+        )
+
     def test_unsupported_tasks_are_not_blocked_by_req_fidelity_gate(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         system_his = _deterministic_system_his(request)

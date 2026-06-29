@@ -73,6 +73,20 @@ _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
         "out_valid": {"direction": "output"},
         "out_data": {"direction": "output"},
     },
+    "composed_vector_mac_pipeline": {
+        "clk": {"direction": "input"},
+        "rst_n": {"direction": "input"},
+        "feature_valid": {"direction": "input"},
+        "feature_data": {"direction": "input", "width": "request"},
+        "weight_valid": {"direction": "input"},
+        "weight_data": {"direction": "input", "width": "request"},
+        "bias": {"direction": "input"},
+        "score_ready": {"direction": "input"},
+        "feature_ready": {"direction": "output"},
+        "weight_ready": {"direction": "output"},
+        "score_valid": {"direction": "output"},
+        "score_data": {"direction": "output"},
+    },
 }
 
 

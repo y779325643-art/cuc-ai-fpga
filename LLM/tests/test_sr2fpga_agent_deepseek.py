@@ -606,6 +606,23 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertNotIn("s_axis_tvalid", user_prompt)
         self.assertNotIn("m_axis_tdata", user_prompt)
 
+    def test_system_his_v12_prompt_includes_vector_mac_pipeline_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_vector_mac_pipeline",
+            width=8,
+            project_name="vector_mac_8bit",
+            description="Generate a vector MAC feature pipeline.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_vector_mac_pipeline", user_prompt)
+        self.assertIn("vector_mac_core", user_prompt)
+        self.assertIn("feature_buffer", user_prompt)
+        self.assertIn("weight_buffer", user_prompt)
+        self.assertIn("rtl/vector_mac_core.v", user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",
