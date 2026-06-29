@@ -732,6 +732,25 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("batch_result_stage", user_prompt)
         self.assertIn("rtl/batch_result_stage.v", user_prompt)
 
+    def test_system_his_v12_prompt_includes_replay_arbiter_shell_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_replay_arbiter_shell",
+            width=8,
+            project_name="replay_arbiter_shell_8bit",
+            description="Generate a replay arbiter shell.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_replay_arbiter_shell", user_prompt)
+        self.assertIn("host_transition_packetizer", user_prompt)
+        self.assertIn("replay_index_allocator", user_prompt)
+        self.assertIn("replay_request_arbiter", user_prompt)
+        self.assertIn("replay_memory_bank", user_prompt)
+        self.assertIn("sample_packet_stage", user_prompt)
+        self.assertIn("rtl/replay_memory_bank.v", user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",

@@ -258,6 +258,15 @@ Implemented and under active review:
   fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
   excludes stochastic replay, true neural-network layers, DMA/DDR, ARM software,
   board shell work, and real RL workload fidelity.
+- T12 `composed_replay_arbiter_shell` / `t12_replay_arbiter_shell` is now the
+  synthetic replay-memory arbitration and host-packetization step. It accepts
+  host transition packets, allocates depth-4 replay write indices, arbitrates
+  indexed fabric sample requests behind host writes, stages sample packets, and
+  reports occupancy, write index, and irq. Unit coverage verifies deterministic
+  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
+  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
+  excludes random/prioritized replay, DMA/DDR, ARM software, board shell work,
+  and real RL workload fidelity.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current T1-T4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
@@ -821,9 +830,10 @@ Key summary:
      value-update bridge, T7 is the deterministic policy/value shell, T8 is the
      deterministic replay/sample host-fabric shell, T9 is the deterministic
      host protocol shell, T10 is the deterministic integrated RL accelerator
-     shell, and T11 is the deterministic two-lane batch RL shell. Next steps
-     should either extend T11 with a real workload reference or add another
-     synthetic bridge for replay-memory arbitration / host packetization.
+     shell, T11 is the deterministic two-lane batch RL shell, and T12 is the
+     deterministic replay arbiter shell. Next steps should either extend T12
+     with a real workload reference or add another synthetic bridge for host
+     register-map packetization / software-visible command lifecycle.
      Before claiming the full
      reinforcement-learning accelerator as realistic, request or cite a real
      workload reference: RL algorithm family, observation vector width, action

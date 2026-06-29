@@ -1059,6 +1059,10 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project with shared host configuration, two-lane batch sample capture, "
             "dual-lane policy/value scoring, dual-lane TD update, result staging, and irq reporting."
         ),
+        "composed_replay_arbiter_shell": (
+            f"Generate an {width}-bit FPGA RTL project with host transition packetization, indexed replay sample "
+            "requests, read/write arbitration, sample packet output, occupancy status, and irq reporting."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1093,6 +1097,7 @@ def _natural_component_title(task_type: str) -> str:
         "composed_host_protocol_shell": "host protocol control and stream shell",
         "composed_rl_accelerator_shell": "synthetic RL accelerator shell",
         "composed_batch_rl_accelerator_shell": "two-lane batch RL accelerator shell",
+        "composed_replay_arbiter_shell": "replay arbiter host/fabric shell",
     }
     return titles[task_type]
 
@@ -1130,6 +1135,10 @@ def _natural_component_summary(task_type: str) -> str:
         "composed_batch_rl_accelerator_shell": (
             "batch_config_bank and batch_sample_buffer feeding dual_policy_value_core, then "
             "dual_td_update_core and batch_result_stage"
+        ),
+        "composed_replay_arbiter_shell": (
+            "host_transition_packetizer and replay_index_allocator feeding replay_request_arbiter, then "
+            "replay_memory_bank and sample_packet_stage"
         ),
     }
     return summaries[task_type]
@@ -1191,6 +1200,10 @@ def _topology_expected_behavior(task_type: str) -> str:
             "configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, "
             "each lane is scored and updated through duplicated policy/value and TD datapaths, "
             "and both lane results are staged with batch_done irq reporting"
+        ),
+        "composed_replay_arbiter_shell": (
+            "host transition packets are written into a depth-4 replay memory, indexed sample requests are "
+            "gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting"
         ),
     }
     return behaviors[task_type]

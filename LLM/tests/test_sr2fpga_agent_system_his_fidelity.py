@@ -310,6 +310,43 @@ class SystemHisReqFidelityTest(unittest.TestCase):
             result.errors,
         )
 
+    def test_composed_replay_arbiter_shell_requires_host_request_sample_status_and_irq_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_replay_arbiter_shell",
+            width=8,
+            project_name="replay_arbiter_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"host_valid", "sample_req_valid", "sample_state", "occupancy", "irq"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'host_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'sample_req_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'sample_state'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'occupancy'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'irq'",
+            result.errors,
+        )
+
     def test_unsupported_tasks_are_not_blocked_by_req_fidelity_gate(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         system_his = _deterministic_system_his(request)

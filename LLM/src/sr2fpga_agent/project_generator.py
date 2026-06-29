@@ -31,6 +31,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_host_protocol_shell",
     "composed_rl_accelerator_shell",
     "composed_batch_rl_accelerator_shell",
+    "composed_replay_arbiter_shell",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -470,6 +471,70 @@ COMPONENT_TOPOLOGIES = {
             {"from": "batch_result_stage.updated_value_b_out", "to": "top.updated_value_b"},
             {"from": "batch_result_stage.batch_done_out", "to": "top.batch_done"},
             {"from": "batch_result_stage.irq", "to": "top.irq"},
+        ],
+    },
+    "composed_replay_arbiter_shell": {
+        "topology_id": "t12_replay_arbiter_shell",
+        "difficulty_tier": "T12",
+        "submodules": [
+            "host_transition_packetizer",
+            "replay_index_allocator",
+            "replay_request_arbiter",
+            "replay_memory_bank",
+            "sample_packet_stage",
+        ],
+        "nodes": [
+            {"id": "packetizer", "component": "host_transition_packetizer"},
+            {"id": "allocator", "component": "replay_index_allocator"},
+            {"id": "arbiter", "component": "replay_request_arbiter"},
+            {"id": "memory", "component": "replay_memory_bank"},
+            {"id": "sample_stage", "component": "sample_packet_stage"},
+        ],
+        "edges": [
+            {"from": "top.host_valid", "to": "host_transition_packetizer.host_valid"},
+            {"from": "top.host_state", "to": "host_transition_packetizer.host_state"},
+            {"from": "top.host_action", "to": "host_transition_packetizer.host_action"},
+            {"from": "top.host_reward", "to": "host_transition_packetizer.host_reward"},
+            {"from": "top.host_next_state", "to": "host_transition_packetizer.host_next_state"},
+            {"from": "top.host_done", "to": "host_transition_packetizer.host_done"},
+            {"from": "host_transition_packetizer.host_ready", "to": "top.host_ready"},
+            {"from": "host_transition_packetizer.packet_valid", "to": "replay_request_arbiter.write_valid"},
+            {"from": "host_transition_packetizer.packet_state", "to": "replay_request_arbiter.write_state"},
+            {"from": "host_transition_packetizer.packet_action", "to": "replay_request_arbiter.write_action"},
+            {"from": "host_transition_packetizer.packet_reward", "to": "replay_request_arbiter.write_reward"},
+            {"from": "host_transition_packetizer.packet_next_state", "to": "replay_request_arbiter.write_next_state"},
+            {"from": "host_transition_packetizer.packet_done", "to": "replay_request_arbiter.write_done"},
+            {"from": "replay_index_allocator.write_index", "to": "replay_request_arbiter.write_index"},
+            {"from": "replay_index_allocator.occupancy", "to": "replay_request_arbiter.occupancy"},
+            {"from": "top.sample_req_valid", "to": "replay_request_arbiter.read_req_valid"},
+            {"from": "top.sample_index", "to": "replay_request_arbiter.sample_index"},
+            {"from": "replay_request_arbiter.sample_req_ready", "to": "top.sample_req_ready"},
+            {"from": "replay_request_arbiter.mem_write_valid", "to": "replay_memory_bank.write_valid"},
+            {"from": "replay_request_arbiter.mem_write_addr", "to": "replay_memory_bank.write_addr"},
+            {"from": "replay_request_arbiter.mem_write_state", "to": "replay_memory_bank.write_state"},
+            {"from": "replay_request_arbiter.mem_write_action", "to": "replay_memory_bank.write_action"},
+            {"from": "replay_request_arbiter.mem_write_reward", "to": "replay_memory_bank.write_reward"},
+            {"from": "replay_request_arbiter.mem_write_next_state", "to": "replay_memory_bank.write_next_state"},
+            {"from": "replay_request_arbiter.mem_write_done", "to": "replay_memory_bank.write_done"},
+            {"from": "replay_request_arbiter.mem_read_valid", "to": "replay_memory_bank.read_valid"},
+            {"from": "replay_request_arbiter.mem_read_addr", "to": "replay_memory_bank.read_addr"},
+            {"from": "replay_request_arbiter.write_accepted", "to": "replay_index_allocator.write_accepted"},
+            {"from": "replay_memory_bank.read_valid_out", "to": "sample_packet_stage.in_valid"},
+            {"from": "replay_memory_bank.read_state", "to": "sample_packet_stage.sample_state"},
+            {"from": "replay_memory_bank.read_action", "to": "sample_packet_stage.sample_action"},
+            {"from": "replay_memory_bank.read_reward", "to": "sample_packet_stage.sample_reward"},
+            {"from": "replay_memory_bank.read_next_state", "to": "sample_packet_stage.sample_next_state"},
+            {"from": "replay_memory_bank.read_done", "to": "sample_packet_stage.sample_done"},
+            {"from": "sample_packet_stage.sample_valid", "to": "top.sample_valid"},
+            {"from": "top.sample_ready", "to": "sample_packet_stage.sample_ready"},
+            {"from": "sample_packet_stage.sample_state_out", "to": "top.sample_state"},
+            {"from": "sample_packet_stage.sample_action_out", "to": "top.sample_action"},
+            {"from": "sample_packet_stage.sample_reward_out", "to": "top.sample_reward"},
+            {"from": "sample_packet_stage.sample_next_state_out", "to": "top.sample_next_state"},
+            {"from": "sample_packet_stage.sample_done_out", "to": "top.sample_done"},
+            {"from": "sample_packet_stage.irq", "to": "top.irq"},
+            {"from": "replay_index_allocator.occupancy", "to": "top.occupancy"},
+            {"from": "replay_index_allocator.write_index", "to": "top.write_index"},
         ],
     },
 }
@@ -915,6 +980,32 @@ def _v12_state(
                 {"name": "irq_state", "owner": result_owner, "width": 1},
             ]
         )
+    elif request.task_type == "composed_replay_arbiter_shell":
+        allocator_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "replay_index_allocator"),
+            owner,
+        )
+        memory_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "replay_memory_bank"),
+            owner,
+        )
+        sample_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "sample_packet_stage"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "write_index", "owner": allocator_owner, "width": 2},
+                {"name": "occupancy", "owner": allocator_owner, "width": 3},
+                {"name": "sample_state", "owner": sample_owner, "width": request.width},
+                {"name": "sample_reward", "owner": sample_owner, "width": request.width},
+                {"name": "sample_next_state", "owner": sample_owner, "width": request.width},
+                {"name": "sample_action", "owner": sample_owner, "width": 1},
+                {"name": "sample_done", "owner": sample_owner, "width": 1},
+                {"name": "irq_state", "owner": sample_owner, "width": 1},
+            ]
+        )
+        memories.append({"name": "replay_entries", "owner": memory_owner, "width": request.width * 3 + 2, "depth": 4})
     return {
         "registers": registers,
         "counters": counters,
@@ -1066,6 +1157,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_host_protocol_shell",
         "composed_rl_accelerator_shell",
         "composed_batch_rl_accelerator_shell",
+        "composed_replay_arbiter_shell",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -1511,6 +1603,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_rl_accelerator_shell_rtl_files(request.width)
     if request.task_type == "composed_batch_rl_accelerator_shell":
         return _composed_batch_rl_accelerator_shell_rtl_files(request.width)
+    if request.task_type == "composed_replay_arbiter_shell":
+        return _composed_replay_arbiter_shell_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1566,6 +1660,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_rl_accelerator_shell_testbench(request.width)
     if request.task_type == "composed_batch_rl_accelerator_shell":
         return _composed_batch_rl_accelerator_shell_testbench(request.width)
+    if request.task_type == "composed_replay_arbiter_shell":
+        return _composed_replay_arbiter_shell_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -3841,6 +3937,174 @@ def _composed_batch_rl_accelerator_shell_testbench(width: int) -> str:
 
             if (irq !== 1'b1) begin
               $display("TEST_FAIL expected irq after batch done result");
+              $finish;
+            end
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_replay_arbiter_shell_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg host_valid;
+          wire host_ready;
+          reg [{msb}:0] host_state;
+          reg host_action;
+          reg [{msb}:0] host_reward;
+          reg [{msb}:0] host_next_state;
+          reg host_done;
+          reg sample_req_valid;
+          wire sample_req_ready;
+          reg [1:0] sample_index;
+          wire sample_valid;
+          reg sample_ready;
+          wire [{msb}:0] sample_state;
+          wire sample_action;
+          wire [{msb}:0] sample_reward;
+          wire [{msb}:0] sample_next_state;
+          wire sample_done;
+          wire [2:0] occupancy;
+          wire [1:0] write_index;
+          wire irq;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .host_valid(host_valid),
+            .host_ready(host_ready),
+            .host_state(host_state),
+            .host_action(host_action),
+            .host_reward(host_reward),
+            .host_next_state(host_next_state),
+            .host_done(host_done),
+            .sample_req_valid(sample_req_valid),
+            .sample_req_ready(sample_req_ready),
+            .sample_index(sample_index),
+            .sample_valid(sample_valid),
+            .sample_ready(sample_ready),
+            .sample_state(sample_state),
+            .sample_action(sample_action),
+            .sample_reward(sample_reward),
+            .sample_next_state(sample_next_state),
+            .sample_done(sample_done),
+            .occupancy(occupancy),
+            .write_index(write_index),
+            .irq(irq)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task write_host_packet;
+            input [{msb}:0] state_i;
+            input action_i;
+            input [{msb}:0] reward_i;
+            input [{msb}:0] next_state_i;
+            input done_i;
+            begin
+              @(negedge clk);
+              host_valid = 1'b1;
+              host_state = state_i;
+              host_action = action_i;
+              host_reward = reward_i;
+              host_next_state = next_state_i;
+              host_done = done_i;
+              while (!host_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              host_valid = 1'b0;
+            end
+          endtask
+
+          task request_sample;
+            input [1:0] index_i;
+            begin
+              @(negedge clk);
+              sample_req_valid = 1'b1;
+              sample_index = index_i;
+              while (!sample_req_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              sample_req_valid = 1'b0;
+            end
+          endtask
+
+          task expect_sample;
+            input [{msb}:0] expected_state;
+            input expected_action;
+            input [{msb}:0] expected_reward;
+            input [{msb}:0] expected_next_state;
+            input expected_done;
+            begin
+              wait_cycles = 0;
+              while (!sample_valid && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (!sample_valid) begin
+                $display("TEST_FAIL sample did not become valid");
+                $finish;
+              end
+              if (sample_state !== expected_state ||
+                  sample_action !== expected_action ||
+                  sample_reward !== expected_reward ||
+                  sample_next_state !== expected_next_state ||
+                  sample_done !== expected_done) begin
+                $display("TEST_FAIL unexpected sample packet");
+                $finish;
+              end
+              @(posedge clk);
+              #1;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            host_valid = 1'b0;
+            host_state = {width}'h00;
+            host_action = 1'b0;
+            host_reward = {width}'h00;
+            host_next_state = {width}'h00;
+            host_done = 1'b0;
+            sample_req_valid = 1'b0;
+            sample_index = 2'd0;
+            sample_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            write_host_packet(8'h12, 1'b0, 8'h03, 8'h21, 1'b0);
+            write_host_packet(8'h34, 1'b1, 8'h05, 8'h43, 1'b1);
+
+            if (occupancy !== 3'd2 || write_index !== 2'd2) begin
+              $display("TEST_FAIL expected occupancy=2 write_index=2");
+              $finish;
+            end
+
+            request_sample(2'd0);
+            expect_sample(8'h12, 1'b0, 8'h03, 8'h21, 1'b0);
+
+            request_sample(2'd1);
+            expect_sample(8'h34, 1'b1, 8'h05, 8'h43, 1'b1);
+
+            if (irq !== 1'b1) begin
+              $display("TEST_FAIL expected irq after sample accepted");
               $finish;
             end
 
@@ -7591,6 +7855,392 @@ def _batch_config_bank_rtl() -> str:
     )
 
 
+def _composed_replay_arbiter_shell_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire host_valid,
+            output wire host_ready,
+            input wire [{msb}:0] host_state,
+            input wire host_action,
+            input wire [{msb}:0] host_reward,
+            input wire [{msb}:0] host_next_state,
+            input wire host_done,
+            input wire sample_req_valid,
+            output wire sample_req_ready,
+            input wire [1:0] sample_index,
+            output wire sample_valid,
+            input wire sample_ready,
+            output wire [{msb}:0] sample_state,
+            output wire sample_action,
+            output wire [{msb}:0] sample_reward,
+            output wire [{msb}:0] sample_next_state,
+            output wire sample_done,
+            output wire [2:0] occupancy,
+            output wire [1:0] write_index,
+            output wire irq
+        );
+
+          wire packet_valid;
+          wire packet_ready;
+          wire [{msb}:0] packet_state;
+          wire packet_action;
+          wire [{msb}:0] packet_reward;
+          wire [{msb}:0] packet_next_state;
+          wire packet_done;
+          wire mem_write_valid;
+          wire [1:0] mem_write_addr;
+          wire [{msb}:0] mem_write_state;
+          wire mem_write_action;
+          wire [{msb}:0] mem_write_reward;
+          wire [{msb}:0] mem_write_next_state;
+          wire mem_write_done;
+          wire mem_read_valid;
+          wire [1:0] mem_read_addr;
+          wire write_accepted;
+          wire read_valid_out;
+          wire [{msb}:0] read_state;
+          wire read_action;
+          wire [{msb}:0] read_reward;
+          wire [{msb}:0] read_next_state;
+          wire read_done;
+          wire sample_stage_ready;
+
+          host_transition_packetizer #(
+            .DATA_WIDTH({width})
+          ) u_host_transition_packetizer (
+            .host_valid(host_valid),
+            .host_ready(host_ready),
+            .host_state(host_state),
+            .host_action(host_action),
+            .host_reward(host_reward),
+            .host_next_state(host_next_state),
+            .host_done(host_done),
+            .packet_ready(packet_ready),
+            .packet_valid(packet_valid),
+            .packet_state(packet_state),
+            .packet_action(packet_action),
+            .packet_reward(packet_reward),
+            .packet_next_state(packet_next_state),
+            .packet_done(packet_done)
+          );
+
+          replay_index_allocator u_replay_index_allocator (
+            .clk(clk),
+            .rst_n(rst_n),
+            .write_accepted(write_accepted),
+            .write_index(write_index),
+            .occupancy(occupancy)
+          );
+
+          replay_request_arbiter #(
+            .DATA_WIDTH({width})
+          ) u_replay_request_arbiter (
+            .write_valid(packet_valid),
+            .write_ready(packet_ready),
+            .write_index(write_index),
+            .occupancy(occupancy),
+            .write_state(packet_state),
+            .write_action(packet_action),
+            .write_reward(packet_reward),
+            .write_next_state(packet_next_state),
+            .write_done(packet_done),
+            .read_req_valid(sample_req_valid),
+            .sample_index(sample_index),
+            .sample_stage_ready(sample_stage_ready),
+            .sample_req_ready(sample_req_ready),
+            .mem_write_valid(mem_write_valid),
+            .mem_write_addr(mem_write_addr),
+            .mem_write_state(mem_write_state),
+            .mem_write_action(mem_write_action),
+            .mem_write_reward(mem_write_reward),
+            .mem_write_next_state(mem_write_next_state),
+            .mem_write_done(mem_write_done),
+            .mem_read_valid(mem_read_valid),
+            .mem_read_addr(mem_read_addr),
+            .write_accepted(write_accepted)
+          );
+
+          replay_memory_bank #(
+            .DATA_WIDTH({width})
+          ) u_replay_memory_bank (
+            .clk(clk),
+            .rst_n(rst_n),
+            .write_valid(mem_write_valid),
+            .write_addr(mem_write_addr),
+            .write_state(mem_write_state),
+            .write_action(mem_write_action),
+            .write_reward(mem_write_reward),
+            .write_next_state(mem_write_next_state),
+            .write_done(mem_write_done),
+            .read_valid(mem_read_valid),
+            .read_addr(mem_read_addr),
+            .read_valid_out(read_valid_out),
+            .read_state(read_state),
+            .read_action(read_action),
+            .read_reward(read_reward),
+            .read_next_state(read_next_state),
+            .read_done(read_done)
+          );
+
+          sample_packet_stage #(
+            .DATA_WIDTH({width})
+          ) u_sample_packet_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(read_valid_out),
+            .in_ready(sample_stage_ready),
+            .sample_state(read_state),
+            .sample_action(read_action),
+            .sample_reward(read_reward),
+            .sample_next_state(read_next_state),
+            .sample_done(read_done),
+            .sample_valid(sample_valid),
+            .sample_ready(sample_ready),
+            .sample_state_out(sample_state),
+            .sample_action_out(sample_action),
+            .sample_reward_out(sample_reward),
+            .sample_next_state_out(sample_next_state),
+            .sample_done_out(sample_done),
+            .irq(irq)
+          );
+
+        endmodule
+        """
+    )
+    host_transition_packetizer = dedent(
+        """\
+        module host_transition_packetizer #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire host_valid,
+            output wire host_ready,
+            input wire [DATA_WIDTH-1:0] host_state,
+            input wire host_action,
+            input wire [DATA_WIDTH-1:0] host_reward,
+            input wire [DATA_WIDTH-1:0] host_next_state,
+            input wire host_done,
+            input wire packet_ready,
+            output wire packet_valid,
+            output wire [DATA_WIDTH-1:0] packet_state,
+            output wire packet_action,
+            output wire [DATA_WIDTH-1:0] packet_reward,
+            output wire [DATA_WIDTH-1:0] packet_next_state,
+            output wire packet_done
+        );
+
+          assign host_ready = packet_ready;
+          assign packet_valid = host_valid && packet_ready;
+          assign packet_state = host_state;
+          assign packet_action = host_action;
+          assign packet_reward = host_reward;
+          assign packet_next_state = host_next_state;
+          assign packet_done = host_done;
+
+        endmodule
+        """
+    )
+    replay_index_allocator = dedent(
+        """\
+        module replay_index_allocator (
+            input wire clk,
+            input wire rst_n,
+            input wire write_accepted,
+            output reg [1:0] write_index,
+            output reg [2:0] occupancy
+        );
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              write_index <= 2'd0;
+              occupancy <= 3'd0;
+            end else if (write_accepted) begin
+              write_index <= write_index + 2'd1;
+              if (occupancy < 3'd4) begin
+                occupancy <= occupancy + 3'd1;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    replay_request_arbiter = dedent(
+        """\
+        module replay_request_arbiter #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire write_valid,
+            output wire write_ready,
+            input wire [1:0] write_index,
+            input wire [2:0] occupancy,
+            input wire [DATA_WIDTH-1:0] write_state,
+            input wire write_action,
+            input wire [DATA_WIDTH-1:0] write_reward,
+            input wire [DATA_WIDTH-1:0] write_next_state,
+            input wire write_done,
+            input wire read_req_valid,
+            input wire [1:0] sample_index,
+            input wire sample_stage_ready,
+            output wire sample_req_ready,
+            output wire mem_write_valid,
+            output wire [1:0] mem_write_addr,
+            output wire [DATA_WIDTH-1:0] mem_write_state,
+            output wire mem_write_action,
+            output wire [DATA_WIDTH-1:0] mem_write_reward,
+            output wire [DATA_WIDTH-1:0] mem_write_next_state,
+            output wire mem_write_done,
+            output wire mem_read_valid,
+            output wire [1:0] mem_read_addr,
+            output wire write_accepted
+        );
+
+          wire read_index_valid;
+
+          assign write_ready = 1'b1;
+          assign write_accepted = write_valid && write_ready;
+          assign read_index_valid = {1'b0, sample_index} < occupancy;
+          assign sample_req_ready = !write_valid && read_index_valid && sample_stage_ready;
+          assign mem_write_valid = write_accepted;
+          assign mem_write_addr = write_index;
+          assign mem_write_state = write_state;
+          assign mem_write_action = write_action;
+          assign mem_write_reward = write_reward;
+          assign mem_write_next_state = write_next_state;
+          assign mem_write_done = write_done;
+          assign mem_read_valid = read_req_valid && sample_req_ready;
+          assign mem_read_addr = sample_index;
+
+        endmodule
+        """
+    )
+    replay_memory_bank = dedent(
+        """\
+        module replay_memory_bank #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire write_valid,
+            input wire [1:0] write_addr,
+            input wire [DATA_WIDTH-1:0] write_state,
+            input wire write_action,
+            input wire [DATA_WIDTH-1:0] write_reward,
+            input wire [DATA_WIDTH-1:0] write_next_state,
+            input wire write_done,
+            input wire read_valid,
+            input wire [1:0] read_addr,
+            output reg read_valid_out,
+            output reg [DATA_WIDTH-1:0] read_state,
+            output reg read_action,
+            output reg [DATA_WIDTH-1:0] read_reward,
+            output reg [DATA_WIDTH-1:0] read_next_state,
+            output reg read_done
+        );
+
+          reg [DATA_WIDTH-1:0] state_mem [0:3];
+          reg action_mem [0:3];
+          reg [DATA_WIDTH-1:0] reward_mem [0:3];
+          reg [DATA_WIDTH-1:0] next_state_mem [0:3];
+          reg done_mem [0:3];
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              read_valid_out <= 1'b0;
+              read_state <= {DATA_WIDTH{1'b0}};
+              read_action <= 1'b0;
+              read_reward <= {DATA_WIDTH{1'b0}};
+              read_next_state <= {DATA_WIDTH{1'b0}};
+              read_done <= 1'b0;
+            end else begin
+              read_valid_out <= read_valid;
+              if (write_valid) begin
+                state_mem[write_addr] <= write_state;
+                action_mem[write_addr] <= write_action;
+                reward_mem[write_addr] <= write_reward;
+                next_state_mem[write_addr] <= write_next_state;
+                done_mem[write_addr] <= write_done;
+              end
+              if (read_valid) begin
+                read_state <= state_mem[read_addr];
+                read_action <= action_mem[read_addr];
+                read_reward <= reward_mem[read_addr];
+                read_next_state <= next_state_mem[read_addr];
+                read_done <= done_mem[read_addr];
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    sample_packet_stage = dedent(
+        """\
+        module sample_packet_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [DATA_WIDTH-1:0] sample_state,
+            input wire sample_action,
+            input wire [DATA_WIDTH-1:0] sample_reward,
+            input wire [DATA_WIDTH-1:0] sample_next_state,
+            input wire sample_done,
+            output reg sample_valid,
+            input wire sample_ready,
+            output reg [DATA_WIDTH-1:0] sample_state_out,
+            output reg sample_action_out,
+            output reg [DATA_WIDTH-1:0] sample_reward_out,
+            output reg [DATA_WIDTH-1:0] sample_next_state_out,
+            output reg sample_done_out,
+            output reg irq
+        );
+
+          assign in_ready = !sample_valid || sample_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              sample_valid <= 1'b0;
+              sample_state_out <= {DATA_WIDTH{1'b0}};
+              sample_action_out <= 1'b0;
+              sample_reward_out <= {DATA_WIDTH{1'b0}};
+              sample_next_state_out <= {DATA_WIDTH{1'b0}};
+              sample_done_out <= 1'b0;
+              irq <= 1'b0;
+            end else begin
+              if (sample_valid && sample_ready) begin
+                irq <= 1'b1;
+                sample_valid <= 1'b0;
+              end
+              if (in_valid && in_ready) begin
+                sample_valid <= 1'b1;
+                sample_state_out <= sample_state;
+                sample_action_out <= sample_action;
+                sample_reward_out <= sample_reward;
+                sample_next_state_out <= sample_next_state;
+                sample_done_out <= sample_done;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/host_transition_packetizer.v": host_transition_packetizer,
+        "rtl/replay_index_allocator.v": replay_index_allocator,
+        "rtl/replay_request_arbiter.v": replay_request_arbiter,
+        "rtl/replay_memory_bank.v": replay_memory_bank,
+        "rtl/sample_packet_stage.v": sample_packet_stage,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -7678,6 +8328,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_batch_rl_accelerator_shell": (
             f"Generate a {request.width}-bit T11 component-composed batch RL accelerator shell "
             "using shared config, two-lane sample capture, dual-lane policy/value and TD update, result staging, and irq reporting."
+        ),
+        "composed_replay_arbiter_shell": (
+            f"Generate a {request.width}-bit T12 component-composed replay arbiter shell "
+            "using host transition packetization, indexed sample requests, replay memory arbitration, and irq reporting."
         ),
     }
     return descriptions[request.task_type]
@@ -8094,6 +8748,37 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_replay_arbiter_shell":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "host_valid", "width": 1},
+                    {"name": "host_state", "width": request.width},
+                    {"name": "host_action", "width": 1},
+                    {"name": "host_reward", "width": request.width},
+                    {"name": "host_next_state", "width": request.width},
+                    {"name": "host_done", "width": 1},
+                    {"name": "sample_req_valid", "width": 1},
+                    {"name": "sample_index", "width": 2},
+                    {"name": "sample_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "host_ready", "width": 1},
+                    {"name": "sample_req_ready", "width": 1},
+                    {"name": "sample_valid", "width": 1},
+                    {"name": "sample_state", "width": request.width},
+                    {"name": "sample_action", "width": 1},
+                    {"name": "sample_reward", "width": request.width},
+                    {"name": "sample_next_state", "width": request.width},
+                    {"name": "sample_done", "width": 1},
+                    {"name": "occupancy", "width": 3},
+                    {"name": "write_index", "width": 2},
+                    {"name": "irq", "width": 1},
+                ],
+            }
+        )
     return common
 
 
@@ -8149,6 +8834,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
             "each lane is scored and updated through duplicated policy/value and TD datapaths, "
             "and both lane results are staged with batch_done irq reporting"
         ),
+        "composed_replay_arbiter_shell": (
+            "host transition packets are written into a depth-4 replay memory, indexed sample requests are "
+            "gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting"
+        ),
     }
     return expectations[request.task_type]
 
@@ -8200,4 +8889,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(136, request.width * 16 + 80), "ff": request.width * 14 + 96, "bram": 0, "dsp": 2}
     if request.task_type == "composed_batch_rl_accelerator_shell":
         return {"lut": max(184, request.width * 24 + 112), "ff": request.width * 24 + 144, "bram": 0, "dsp": 4}
+    if request.task_type == "composed_replay_arbiter_shell":
+        return {"lut": max(160, request.width * 18 + 120), "ff": request.width * 18 + 128, "bram": 0, "dsp": 0}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

@@ -826,6 +826,70 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("expect_batch_result(1'b0, 8'd7, 8'd7, 1'b1, 8'd9, 8'd11, 1'b1)", project.files["sim/tb_top.v"])
         self.assertGreaterEqual(len(system_his["connections"]), 36)
 
+    def test_generates_composed_replay_arbiter_shell_from_t12_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_replay_arbiter_shell",
+                width=8,
+                project_name="composed_replay_arbiter_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_replay_arbiter_shell",
+            {
+                "rtl/top.v",
+                "rtl/host_transition_packetizer.v",
+                "rtl/replay_index_allocator.v",
+                "rtl/replay_request_arbiter.v",
+                "rtl/replay_memory_bank.v",
+                "rtl/sample_packet_stage.v",
+            },
+            [
+                "host_transition_packetizer",
+                "replay_index_allocator",
+                "replay_request_arbiter",
+                "replay_memory_bank",
+                "sample_packet_stage",
+                ".host_valid(host_valid)",
+                ".read_req_valid(sample_req_valid)",
+                ".sample_valid(sample_valid)",
+                ".sample_state_out(sample_state)",
+                ".irq(irq)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t12_replay_arbiter_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T12")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            [
+                "host_transition_packetizer",
+                "replay_index_allocator",
+                "replay_request_arbiter",
+                "replay_memory_bank",
+                "sample_packet_stage",
+            ],
+        )
+        self.assertIn(
+            {"from": "replay_request_arbiter.mem_read_valid", "to": "replay_memory_bank.read_valid"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire host_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire sample_req_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] sample_state", project.files["rtl/top.v"])
+        self.assertIn("output wire [2:0] occupancy", project.files["rtl/top.v"])
+        self.assertIn("output wire irq", project.files["rtl/top.v"])
+        self.assertIn("expect_sample(8'h12, 1'b0, 8'h03, 8'h21, 1'b0)", project.files["sim/tb_top.v"])
+        self.assertIn("expect_sample(8'h34, 1'b1, 8'h05, 8'h43, 1'b1)", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 34)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -967,6 +1031,7 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
             ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
             ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
+            ("composed_replay_arbiter_shell", 8, "composed_replay_arbiter_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -1090,6 +1155,7 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
         ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
         ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
+        ("composed_replay_arbiter_shell", 8, "composed_replay_arbiter_shell_8bit"),
     ]
 
 

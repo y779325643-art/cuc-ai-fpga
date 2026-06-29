@@ -110,6 +110,14 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/dual_td_update_core.v",
         "rtl/batch_result_stage.v",
     ],
+    "composed_replay_arbiter_shell": [
+        "rtl/top.v",
+        "rtl/host_transition_packetizer.v",
+        "rtl/replay_index_allocator.v",
+        "rtl/replay_request_arbiter.v",
+        "rtl/replay_memory_bank.v",
+        "rtl/sample_packet_stage.v",
+    ],
 }
 
 
@@ -1186,6 +1194,25 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/batch_config_bank.v, rtl/batch_sample_buffer.v, "
             "rtl/dual_policy_value_core.v, rtl/dual_td_update_core.v, and rtl/batch_result_stage.v."
         )
+    if task_type == "composed_replay_arbiter_shell":
+        return (
+            "Required architecture for composed_replay_arbiter_shell:\n"
+            "- components: host_transition_packetizer, replay_index_allocator, replay_request_arbiter, "
+            "replay_memory_bank, sample_packet_stage\n"
+            "- instances: packetizer, allocator, arbiter, memory, sample_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include host_valid, host_ready, host_state, host_action, host_reward, "
+            "host_next_state, host_done, sample_req_valid, sample_req_ready, sample_index, sample_valid, "
+            "sample_ready, sample_state, sample_action, sample_reward, sample_next_state, sample_done, "
+            "occupancy, write_index, and irq.\n"
+            "- replay_index_allocator owns write_index and occupancy; replay_memory_bank owns replay_entries; "
+            "sample_packet_stage owns staged sample outputs and irq.\n"
+            "- data_flow must describe host transition packetization, replay write allocation, read arbitration, "
+            "memory readback, sample packet staging, and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/host_transition_packetizer.v, "
+            "rtl/replay_index_allocator.v, rtl/replay_request_arbiter.v, rtl/replay_memory_bank.v, "
+            "and rtl/sample_packet_stage.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1297,6 +1324,18 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             "and batch_result_stage as separate RTL modules.\n"
             "- This is a synthetic two-lane batch RL accelerator shell; do not claim real DQN, PPO, SAC, DMA, "
             "or board-level semantics without reference inputs.\n"
+        )
+    if task_type == "composed_replay_arbiter_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, host_valid, host_ready, host_state, host_action, "
+            "host_reward, host_next_state, host_done, sample_req_valid, sample_req_ready, sample_index, "
+            "sample_valid, sample_ready, sample_state, sample_action, sample_reward, sample_next_state, "
+            "sample_done, occupancy, write_index, irq\n"
+            "- Keep host_transition_packetizer, replay_index_allocator, replay_request_arbiter, "
+            "replay_memory_bank, and sample_packet_stage as separate RTL modules.\n"
+            "- This is a synthetic replay arbiter shell; do not claim random replay, prioritized replay, DMA, "
+            "DDR, or board-level semantics without reference inputs.\n"
         )
     if task_type == "composed_stream_fork":
         return (
