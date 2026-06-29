@@ -102,6 +102,14 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/td_update_core.v",
         "rtl/result_stream_stage.v",
     ],
+    "composed_batch_rl_accelerator_shell": [
+        "rtl/top.v",
+        "rtl/batch_config_bank.v",
+        "rtl/batch_sample_buffer.v",
+        "rtl/dual_policy_value_core.v",
+        "rtl/dual_td_update_core.v",
+        "rtl/batch_result_stage.v",
+    ],
 }
 
 
@@ -1160,6 +1168,24 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/host_config_bank.v, rtl/sample_capture_stage.v, "
             "rtl/policy_value_core.v, rtl/td_update_core.v, and rtl/result_stream_stage.v."
         )
+    if task_type == "composed_batch_rl_accelerator_shell":
+        return (
+            "Required architecture for composed_batch_rl_accelerator_shell:\n"
+            "- components: batch_config_bank, batch_sample_buffer, dual_policy_value_core, "
+            "dual_td_update_core, batch_result_stage\n"
+            "- instances: config, batch, policy, update, result\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include cfg_valid, cfg_ready, cfg_addr, cfg_data, batch_valid, batch_ready, "
+            "obs0_a, obs1_a, reward_a, next_value_a, done_a, obs0_b, obs1_b, reward_b, next_value_b, "
+            "done_b, result_valid, result_ready, selected_action_a, value_estimate_a, updated_value_a, "
+            "selected_action_b, value_estimate_b, updated_value_b, batch_done, and irq.\n"
+            "- batch_config_bank owns shared weight0, bias0, weight1, bias1, alpha, and enable state.\n"
+            "- batch_sample_buffer owns captured lane sample state; batch_result_stage owns lane result and irq state.\n"
+            "- data_flow must describe config writes, two-lane batch capture, dual-lane policy/value scoring, "
+            "dual-lane TD update, result staging, and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/batch_config_bank.v, rtl/batch_sample_buffer.v, "
+            "rtl/dual_policy_value_core.v, rtl/dual_td_update_core.v, and rtl/batch_result_stage.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1258,6 +1284,18 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             "- Keep host_config_bank, sample_capture_stage, policy_value_core, td_update_core, and "
             "result_stream_stage as separate RTL modules.\n"
             "- This is a synthetic integrated RL accelerator shell; do not claim real DQN, PPO, SAC, DMA, "
+            "or board-level semantics without reference inputs.\n"
+        )
+    if task_type == "composed_batch_rl_accelerator_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, cfg_valid, cfg_ready, cfg_addr, cfg_data, batch_valid, "
+            "batch_ready, obs0_a, obs1_a, reward_a, next_value_a, done_a, obs0_b, obs1_b, reward_b, "
+            "next_value_b, done_b, result_valid, result_ready, selected_action_a, value_estimate_a, "
+            "updated_value_a, selected_action_b, value_estimate_b, updated_value_b, batch_done, irq\n"
+            "- Keep batch_config_bank, batch_sample_buffer, dual_policy_value_core, dual_td_update_core, "
+            "and batch_result_stage as separate RTL modules.\n"
+            "- This is a synthetic two-lane batch RL accelerator shell; do not claim real DQN, PPO, SAC, DMA, "
             "or board-level semantics without reference inputs.\n"
         )
     if task_type == "composed_stream_fork":

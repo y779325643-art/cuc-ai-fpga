@@ -30,6 +30,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_replay_sample_shell",
     "composed_host_protocol_shell",
     "composed_rl_accelerator_shell",
+    "composed_batch_rl_accelerator_shell",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -395,6 +396,80 @@ COMPONENT_TOPOLOGIES = {
             {"from": "result_stream_stage.updated_value_out", "to": "top.updated_value"},
             {"from": "result_stream_stage.episode_done_out", "to": "top.episode_done"},
             {"from": "result_stream_stage.irq", "to": "top.irq"},
+        ],
+    },
+    "composed_batch_rl_accelerator_shell": {
+        "topology_id": "t11_batch_rl_accelerator_shell",
+        "difficulty_tier": "T11",
+        "submodules": [
+            "batch_config_bank",
+            "batch_sample_buffer",
+            "dual_policy_value_core",
+            "dual_td_update_core",
+            "batch_result_stage",
+        ],
+        "nodes": [
+            {"id": "config", "component": "batch_config_bank"},
+            {"id": "batch", "component": "batch_sample_buffer"},
+            {"id": "policy", "component": "dual_policy_value_core"},
+            {"id": "update", "component": "dual_td_update_core"},
+            {"id": "result", "component": "batch_result_stage"},
+        ],
+        "edges": [
+            {"from": "top.cfg_valid", "to": "batch_config_bank.cfg_valid"},
+            {"from": "top.cfg_addr", "to": "batch_config_bank.cfg_addr"},
+            {"from": "top.cfg_data", "to": "batch_config_bank.cfg_data"},
+            {"from": "batch_config_bank.cfg_ready", "to": "top.cfg_ready"},
+            {"from": "top.batch_valid", "to": "batch_sample_buffer.in_valid"},
+            {"from": "batch_sample_buffer.in_ready", "to": "top.batch_ready"},
+            {"from": "top.obs0_a", "to": "batch_sample_buffer.obs0_a"},
+            {"from": "top.obs1_a", "to": "batch_sample_buffer.obs1_a"},
+            {"from": "top.reward_a", "to": "batch_sample_buffer.reward_a"},
+            {"from": "top.next_value_a", "to": "batch_sample_buffer.next_value_a"},
+            {"from": "top.done_a", "to": "batch_sample_buffer.done_a"},
+            {"from": "top.obs0_b", "to": "batch_sample_buffer.obs0_b"},
+            {"from": "top.obs1_b", "to": "batch_sample_buffer.obs1_b"},
+            {"from": "top.reward_b", "to": "batch_sample_buffer.reward_b"},
+            {"from": "top.next_value_b", "to": "batch_sample_buffer.next_value_b"},
+            {"from": "top.done_b", "to": "batch_sample_buffer.done_b"},
+            {"from": "batch_sample_buffer.out_valid", "to": "dual_policy_value_core.in_valid"},
+            {"from": "batch_sample_buffer.obs0_a_out", "to": "dual_policy_value_core.obs0_a"},
+            {"from": "batch_sample_buffer.obs1_a_out", "to": "dual_policy_value_core.obs1_a"},
+            {"from": "batch_sample_buffer.obs0_b_out", "to": "dual_policy_value_core.obs0_b"},
+            {"from": "batch_sample_buffer.obs1_b_out", "to": "dual_policy_value_core.obs1_b"},
+            {"from": "batch_config_bank.weight0", "to": "dual_policy_value_core.weight0"},
+            {"from": "batch_config_bank.bias0", "to": "dual_policy_value_core.bias0"},
+            {"from": "batch_config_bank.weight1", "to": "dual_policy_value_core.weight1"},
+            {"from": "batch_config_bank.bias1", "to": "dual_policy_value_core.bias1"},
+            {"from": "batch_config_bank.enable", "to": "dual_policy_value_core.enable"},
+            {"from": "dual_policy_value_core.out_valid", "to": "dual_td_update_core.in_valid"},
+            {"from": "dual_policy_value_core.value_estimate_a", "to": "dual_td_update_core.value_estimate_a"},
+            {"from": "dual_policy_value_core.value_estimate_b", "to": "dual_td_update_core.value_estimate_b"},
+            {"from": "batch_sample_buffer.reward_a_out", "to": "dual_td_update_core.reward_a"},
+            {"from": "batch_sample_buffer.next_value_a_out", "to": "dual_td_update_core.next_value_a"},
+            {"from": "batch_sample_buffer.reward_b_out", "to": "dual_td_update_core.reward_b"},
+            {"from": "batch_sample_buffer.next_value_b_out", "to": "dual_td_update_core.next_value_b"},
+            {"from": "batch_config_bank.alpha", "to": "dual_td_update_core.alpha"},
+            {"from": "dual_td_update_core.out_valid", "to": "batch_result_stage.in_valid"},
+            {"from": "dual_policy_value_core.selected_action_a", "to": "batch_result_stage.selected_action_a"},
+            {"from": "dual_policy_value_core.value_estimate_a", "to": "batch_result_stage.value_estimate_a"},
+            {"from": "dual_td_update_core.updated_value_a", "to": "batch_result_stage.updated_value_a"},
+            {"from": "dual_policy_value_core.selected_action_b", "to": "batch_result_stage.selected_action_b"},
+            {"from": "dual_policy_value_core.value_estimate_b", "to": "batch_result_stage.value_estimate_b"},
+            {"from": "dual_td_update_core.updated_value_b", "to": "batch_result_stage.updated_value_b"},
+            {"from": "batch_sample_buffer.done_a_out", "to": "batch_result_stage.done_a"},
+            {"from": "batch_sample_buffer.done_b_out", "to": "batch_result_stage.done_b"},
+            {"from": "batch_result_stage.out_ready", "to": "batch_sample_buffer.consume_ready"},
+            {"from": "batch_result_stage.result_valid", "to": "top.result_valid"},
+            {"from": "top.result_ready", "to": "batch_result_stage.result_ready"},
+            {"from": "batch_result_stage.selected_action_a_out", "to": "top.selected_action_a"},
+            {"from": "batch_result_stage.value_estimate_a_out", "to": "top.value_estimate_a"},
+            {"from": "batch_result_stage.updated_value_a_out", "to": "top.updated_value_a"},
+            {"from": "batch_result_stage.selected_action_b_out", "to": "top.selected_action_b"},
+            {"from": "batch_result_stage.value_estimate_b_out", "to": "top.value_estimate_b"},
+            {"from": "batch_result_stage.updated_value_b_out", "to": "top.updated_value_b"},
+            {"from": "batch_result_stage.batch_done_out", "to": "top.batch_done"},
+            {"from": "batch_result_stage.irq", "to": "top.irq"},
         ],
     },
 }
@@ -799,6 +874,47 @@ def _v12_state(
                 {"name": "irq_state", "owner": result_owner, "width": 1},
             ]
         )
+    elif request.task_type == "composed_batch_rl_accelerator_shell":
+        config_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "batch_config_bank"),
+            owner,
+        )
+        batch_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "batch_sample_buffer"),
+            owner,
+        )
+        result_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "batch_result_stage"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "weight0", "owner": config_owner, "width": request.width},
+                {"name": "bias0", "owner": config_owner, "width": request.width},
+                {"name": "weight1", "owner": config_owner, "width": request.width},
+                {"name": "bias1", "owner": config_owner, "width": request.width},
+                {"name": "alpha", "owner": config_owner, "width": request.width},
+                {"name": "enable", "owner": config_owner, "width": 1},
+                {"name": "captured_obs0_a", "owner": batch_owner, "width": request.width},
+                {"name": "captured_obs1_a", "owner": batch_owner, "width": request.width},
+                {"name": "captured_reward_a", "owner": batch_owner, "width": request.width},
+                {"name": "captured_next_value_a", "owner": batch_owner, "width": request.width},
+                {"name": "captured_done_a", "owner": batch_owner, "width": 1},
+                {"name": "captured_obs0_b", "owner": batch_owner, "width": request.width},
+                {"name": "captured_obs1_b", "owner": batch_owner, "width": request.width},
+                {"name": "captured_reward_b", "owner": batch_owner, "width": request.width},
+                {"name": "captured_next_value_b", "owner": batch_owner, "width": request.width},
+                {"name": "captured_done_b", "owner": batch_owner, "width": 1},
+                {"name": "selected_action_a", "owner": result_owner, "width": 1},
+                {"name": "value_estimate_a", "owner": result_owner, "width": request.width},
+                {"name": "updated_value_a", "owner": result_owner, "width": request.width},
+                {"name": "selected_action_b", "owner": result_owner, "width": 1},
+                {"name": "value_estimate_b", "owner": result_owner, "width": request.width},
+                {"name": "updated_value_b", "owner": result_owner, "width": request.width},
+                {"name": "batch_done", "owner": result_owner, "width": 1},
+                {"name": "irq_state", "owner": result_owner, "width": 1},
+            ]
+        )
     return {
         "registers": registers,
         "counters": counters,
@@ -949,6 +1065,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_replay_sample_shell",
         "composed_host_protocol_shell",
         "composed_rl_accelerator_shell",
+        "composed_batch_rl_accelerator_shell",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -1392,6 +1509,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_host_protocol_shell_rtl_files(request.width)
     if request.task_type == "composed_rl_accelerator_shell":
         return _composed_rl_accelerator_shell_rtl_files(request.width)
+    if request.task_type == "composed_batch_rl_accelerator_shell":
+        return _composed_batch_rl_accelerator_shell_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1445,6 +1564,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_host_protocol_shell_testbench(request.width)
     if request.task_type == "composed_rl_accelerator_shell":
         return _composed_rl_accelerator_shell_testbench(request.width)
+    if request.task_type == "composed_batch_rl_accelerator_shell":
+        return _composed_batch_rl_accelerator_shell_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -3532,6 +3653,194 @@ def _composed_rl_accelerator_shell_testbench(width: int) -> str:
 
             if (irq !== 1'b1) begin
               $display("TEST_FAIL expected irq after done result");
+              $finish;
+            end
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_batch_rl_accelerator_shell_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg cfg_valid;
+          wire cfg_ready;
+          reg [2:0] cfg_addr;
+          reg [{msb}:0] cfg_data;
+          reg batch_valid;
+          wire batch_ready;
+          reg [{msb}:0] obs0_a;
+          reg [{msb}:0] obs1_a;
+          reg [{msb}:0] reward_a;
+          reg [{msb}:0] next_value_a;
+          reg done_a;
+          reg [{msb}:0] obs0_b;
+          reg [{msb}:0] obs1_b;
+          reg [{msb}:0] reward_b;
+          reg [{msb}:0] next_value_b;
+          reg done_b;
+          wire result_valid;
+          reg result_ready;
+          wire selected_action_a;
+          wire [{msb}:0] value_estimate_a;
+          wire [{msb}:0] updated_value_a;
+          wire selected_action_b;
+          wire [{msb}:0] value_estimate_b;
+          wire [{msb}:0] updated_value_b;
+          wire batch_done;
+          wire irq;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .cfg_valid(cfg_valid),
+            .cfg_ready(cfg_ready),
+            .cfg_addr(cfg_addr),
+            .cfg_data(cfg_data),
+            .batch_valid(batch_valid),
+            .batch_ready(batch_ready),
+            .obs0_a(obs0_a),
+            .obs1_a(obs1_a),
+            .reward_a(reward_a),
+            .next_value_a(next_value_a),
+            .done_a(done_a),
+            .obs0_b(obs0_b),
+            .obs1_b(obs1_b),
+            .reward_b(reward_b),
+            .next_value_b(next_value_b),
+            .done_b(done_b),
+            .result_valid(result_valid),
+            .result_ready(result_ready),
+            .selected_action_a(selected_action_a),
+            .value_estimate_a(value_estimate_a),
+            .updated_value_a(updated_value_a),
+            .selected_action_b(selected_action_b),
+            .value_estimate_b(value_estimate_b),
+            .updated_value_b(updated_value_b),
+            .batch_done(batch_done),
+            .irq(irq)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task write_cfg;
+            input [2:0] addr_i;
+            input [{msb}:0] data_i;
+            begin
+              @(negedge clk);
+              cfg_valid = 1'b1;
+              cfg_addr = addr_i;
+              cfg_data = data_i;
+              while (!cfg_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              cfg_valid = 1'b0;
+            end
+          endtask
+
+          task send_batch;
+            begin
+              @(negedge clk);
+              batch_valid = 1'b1;
+              obs0_a = {width}'d4;
+              obs1_a = {width}'d2;
+              reward_a = {width}'d1;
+              next_value_a = {width}'d8;
+              done_a = 1'b0;
+              obs0_b = {width}'d1;
+              obs1_b = {width}'d5;
+              reward_b = {width}'d2;
+              next_value_b = {width}'d15;
+              done_b = 1'b1;
+              while (!batch_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              batch_valid = 1'b0;
+            end
+          endtask
+
+          task expect_batch_result;
+            input expected_action_a;
+            input [{msb}:0] expected_value_a;
+            input [{msb}:0] expected_updated_a;
+            input expected_action_b;
+            input [{msb}:0] expected_value_b;
+            input [{msb}:0] expected_updated_b;
+            input expected_batch_done;
+            begin
+              wait_cycles = 0;
+              while (!result_valid && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (!result_valid) begin
+                $display("TEST_FAIL batch result did not become valid");
+                $finish;
+              end
+              if (selected_action_a !== expected_action_a ||
+                  value_estimate_a !== expected_value_a ||
+                  updated_value_a !== expected_updated_a ||
+                  selected_action_b !== expected_action_b ||
+                  value_estimate_b !== expected_value_b ||
+                  updated_value_b !== expected_updated_b ||
+                  batch_done !== expected_batch_done) begin
+                $display("TEST_FAIL unexpected batch result");
+                $finish;
+              end
+              @(posedge clk);
+              #1;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            cfg_valid = 1'b0;
+            cfg_addr = 3'd0;
+            cfg_data = {width}'d0;
+            batch_valid = 1'b0;
+            obs0_a = {width}'d0;
+            obs1_a = {width}'d0;
+            reward_a = {width}'d0;
+            next_value_a = {width}'d0;
+            done_a = 1'b0;
+            obs0_b = {width}'d0;
+            obs1_b = {width}'d0;
+            reward_b = {width}'d0;
+            next_value_b = {width}'d0;
+            done_b = 1'b0;
+            result_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            write_cfg(3'd0, {width}'d2);
+            write_cfg(3'd1, {width}'d1);
+            write_cfg(3'd2, {width}'d3);
+            write_cfg(3'd3, {width}'d0);
+            write_cfg(3'd4, {width}'d4);
+            write_cfg(3'd5, {width}'d1);
+
+            send_batch();
+            expect_batch_result(1'b0, 8'd7, 8'd7, 1'b1, 8'd9, 8'd11, 1'b1);
+
+            if (irq !== 1'b1) begin
+              $display("TEST_FAIL expected irq after batch done result");
               $finish;
             end
 
@@ -6819,6 +7128,469 @@ def _composed_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_batch_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire cfg_valid,
+            output wire cfg_ready,
+            input wire [2:0] cfg_addr,
+            input wire [{msb}:0] cfg_data,
+            input wire batch_valid,
+            output wire batch_ready,
+            input wire [{msb}:0] obs0_a,
+            input wire [{msb}:0] obs1_a,
+            input wire [{msb}:0] reward_a,
+            input wire [{msb}:0] next_value_a,
+            input wire done_a,
+            input wire [{msb}:0] obs0_b,
+            input wire [{msb}:0] obs1_b,
+            input wire [{msb}:0] reward_b,
+            input wire [{msb}:0] next_value_b,
+            input wire done_b,
+            output wire result_valid,
+            input wire result_ready,
+            output wire selected_action_a,
+            output wire [{msb}:0] value_estimate_a,
+            output wire [{msb}:0] updated_value_a,
+            output wire selected_action_b,
+            output wire [{msb}:0] value_estimate_b,
+            output wire [{msb}:0] updated_value_b,
+            output wire batch_done,
+            output wire irq
+        );
+
+          wire [{msb}:0] weight0;
+          wire [{msb}:0] bias0;
+          wire [{msb}:0] weight1;
+          wire [{msb}:0] bias1;
+          wire [{msb}:0] alpha;
+          wire enable;
+          wire batch_stage_valid;
+          wire batch_consume_ready;
+          wire [{msb}:0] captured_obs0_a;
+          wire [{msb}:0] captured_obs1_a;
+          wire [{msb}:0] captured_reward_a;
+          wire [{msb}:0] captured_next_value_a;
+          wire captured_done_a;
+          wire [{msb}:0] captured_obs0_b;
+          wire [{msb}:0] captured_obs1_b;
+          wire [{msb}:0] captured_reward_b;
+          wire [{msb}:0] captured_next_value_b;
+          wire captured_done_b;
+          wire policy_valid;
+          wire policy_selected_action_a;
+          wire [{msb}:0] policy_value_estimate_a;
+          wire policy_selected_action_b;
+          wire [{msb}:0] policy_value_estimate_b;
+          wire update_valid;
+          wire [{msb}:0] update_updated_value_a;
+          wire [{msb}:0] update_updated_value_b;
+
+          batch_config_bank #(
+            .DATA_WIDTH({width})
+          ) u_batch_config_bank (
+            .clk(clk),
+            .rst_n(rst_n),
+            .cfg_valid(cfg_valid),
+            .cfg_ready(cfg_ready),
+            .cfg_addr(cfg_addr),
+            .cfg_data(cfg_data),
+            .weight0(weight0),
+            .bias0(bias0),
+            .weight1(weight1),
+            .bias1(bias1),
+            .alpha(alpha),
+            .enable(enable)
+          );
+
+          batch_sample_buffer #(
+            .DATA_WIDTH({width})
+          ) u_batch_sample_buffer (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(batch_valid),
+            .in_ready(batch_ready),
+            .obs0_a(obs0_a),
+            .obs1_a(obs1_a),
+            .reward_a(reward_a),
+            .next_value_a(next_value_a),
+            .done_a(done_a),
+            .obs0_b(obs0_b),
+            .obs1_b(obs1_b),
+            .reward_b(reward_b),
+            .next_value_b(next_value_b),
+            .done_b(done_b),
+            .consume_ready(batch_consume_ready),
+            .out_valid(batch_stage_valid),
+            .obs0_a_out(captured_obs0_a),
+            .obs1_a_out(captured_obs1_a),
+            .reward_a_out(captured_reward_a),
+            .next_value_a_out(captured_next_value_a),
+            .done_a_out(captured_done_a),
+            .obs0_b_out(captured_obs0_b),
+            .obs1_b_out(captured_obs1_b),
+            .reward_b_out(captured_reward_b),
+            .next_value_b_out(captured_next_value_b),
+            .done_b_out(captured_done_b)
+          );
+
+          dual_policy_value_core #(
+            .DATA_WIDTH({width})
+          ) u_dual_policy_value_core (
+            .in_valid(batch_stage_valid),
+            .obs0_a(captured_obs0_a),
+            .obs1_a(captured_obs1_a),
+            .obs0_b(captured_obs0_b),
+            .obs1_b(captured_obs1_b),
+            .weight0(weight0),
+            .bias0(bias0),
+            .weight1(weight1),
+            .bias1(bias1),
+            .enable(enable),
+            .out_valid(policy_valid),
+            .selected_action_a(policy_selected_action_a),
+            .value_estimate_a(policy_value_estimate_a),
+            .selected_action_b(policy_selected_action_b),
+            .value_estimate_b(policy_value_estimate_b)
+          );
+
+          dual_td_update_core #(
+            .DATA_WIDTH({width})
+          ) u_dual_td_update_core (
+            .in_valid(policy_valid),
+            .reward_a(captured_reward_a),
+            .next_value_a(captured_next_value_a),
+            .value_estimate_a(policy_value_estimate_a),
+            .reward_b(captured_reward_b),
+            .next_value_b(captured_next_value_b),
+            .value_estimate_b(policy_value_estimate_b),
+            .alpha(alpha),
+            .out_valid(update_valid),
+            .updated_value_a(update_updated_value_a),
+            .updated_value_b(update_updated_value_b)
+          );
+
+          batch_result_stage #(
+            .DATA_WIDTH({width})
+          ) u_batch_result_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(update_valid),
+            .out_ready(batch_consume_ready),
+            .selected_action_a(policy_selected_action_a),
+            .value_estimate_a(policy_value_estimate_a),
+            .updated_value_a(update_updated_value_a),
+            .selected_action_b(policy_selected_action_b),
+            .value_estimate_b(policy_value_estimate_b),
+            .updated_value_b(update_updated_value_b),
+            .done_a(captured_done_a),
+            .done_b(captured_done_b),
+            .result_valid(result_valid),
+            .result_ready(result_ready),
+            .selected_action_a_out(selected_action_a),
+            .value_estimate_a_out(value_estimate_a),
+            .updated_value_a_out(updated_value_a),
+            .selected_action_b_out(selected_action_b),
+            .value_estimate_b_out(value_estimate_b),
+            .updated_value_b_out(updated_value_b),
+            .batch_done_out(batch_done),
+            .irq(irq)
+          );
+
+        endmodule
+        """
+    )
+    batch_config_bank = _batch_config_bank_rtl()
+    batch_sample_buffer = dedent(
+        """\
+        module batch_sample_buffer #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [DATA_WIDTH-1:0] obs0_a,
+            input wire [DATA_WIDTH-1:0] obs1_a,
+            input wire [DATA_WIDTH-1:0] reward_a,
+            input wire [DATA_WIDTH-1:0] next_value_a,
+            input wire done_a,
+            input wire [DATA_WIDTH-1:0] obs0_b,
+            input wire [DATA_WIDTH-1:0] obs1_b,
+            input wire [DATA_WIDTH-1:0] reward_b,
+            input wire [DATA_WIDTH-1:0] next_value_b,
+            input wire done_b,
+            input wire consume_ready,
+            output wire out_valid,
+            output reg [DATA_WIDTH-1:0] obs0_a_out,
+            output reg [DATA_WIDTH-1:0] obs1_a_out,
+            output reg [DATA_WIDTH-1:0] reward_a_out,
+            output reg [DATA_WIDTH-1:0] next_value_a_out,
+            output reg done_a_out,
+            output reg [DATA_WIDTH-1:0] obs0_b_out,
+            output reg [DATA_WIDTH-1:0] obs1_b_out,
+            output reg [DATA_WIDTH-1:0] reward_b_out,
+            output reg [DATA_WIDTH-1:0] next_value_b_out,
+            output reg done_b_out
+        );
+
+          reg valid_reg;
+
+          assign in_ready = !valid_reg || consume_ready;
+          assign out_valid = valid_reg;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              valid_reg <= 1'b0;
+              obs0_a_out <= {DATA_WIDTH{1'b0}};
+              obs1_a_out <= {DATA_WIDTH{1'b0}};
+              reward_a_out <= {DATA_WIDTH{1'b0}};
+              next_value_a_out <= {DATA_WIDTH{1'b0}};
+              done_a_out <= 1'b0;
+              obs0_b_out <= {DATA_WIDTH{1'b0}};
+              obs1_b_out <= {DATA_WIDTH{1'b0}};
+              reward_b_out <= {DATA_WIDTH{1'b0}};
+              next_value_b_out <= {DATA_WIDTH{1'b0}};
+              done_b_out <= 1'b0;
+            end else begin
+              if (in_valid && in_ready) begin
+                valid_reg <= 1'b1;
+                obs0_a_out <= obs0_a;
+                obs1_a_out <= obs1_a;
+                reward_a_out <= reward_a;
+                next_value_a_out <= next_value_a;
+                done_a_out <= done_a;
+                obs0_b_out <= obs0_b;
+                obs1_b_out <= obs1_b;
+                reward_b_out <= reward_b;
+                next_value_b_out <= next_value_b;
+                done_b_out <= done_b;
+              end else if (consume_ready) begin
+                valid_reg <= 1'b0;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    dual_policy_value_core = dedent(
+        """\
+        module dual_policy_value_core #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire in_valid,
+            input wire [DATA_WIDTH-1:0] obs0_a,
+            input wire [DATA_WIDTH-1:0] obs1_a,
+            input wire [DATA_WIDTH-1:0] obs0_b,
+            input wire [DATA_WIDTH-1:0] obs1_b,
+            input wire [DATA_WIDTH-1:0] weight0,
+            input wire [DATA_WIDTH-1:0] bias0,
+            input wire [DATA_WIDTH-1:0] weight1,
+            input wire [DATA_WIDTH-1:0] bias1,
+            input wire enable,
+            output wire out_valid,
+            output wire selected_action_a,
+            output wire [DATA_WIDTH-1:0] value_estimate_a,
+            output wire selected_action_b,
+            output wire [DATA_WIDTH-1:0] value_estimate_b
+        );
+
+          wire [(2*DATA_WIDTH):0] score0_a_full;
+          wire [(2*DATA_WIDTH):0] score1_a_full;
+          wire [(2*DATA_WIDTH):0] score0_b_full;
+          wire [(2*DATA_WIDTH):0] score1_b_full;
+          wire [DATA_WIDTH-1:0] score0_a;
+          wire [DATA_WIDTH-1:0] score1_a;
+          wire [DATA_WIDTH-1:0] score0_b;
+          wire [DATA_WIDTH-1:0] score1_b;
+          wire [DATA_WIDTH:0] value_sum_a;
+          wire [DATA_WIDTH:0] value_sum_b;
+
+          assign score0_a_full = (obs0_a * weight0) + bias0;
+          assign score1_a_full = (obs1_a * weight1) + bias1;
+          assign score0_b_full = (obs0_b * weight0) + bias0;
+          assign score1_b_full = (obs1_b * weight1) + bias1;
+          assign score0_a = score0_a_full[DATA_WIDTH-1:0];
+          assign score1_a = score1_a_full[DATA_WIDTH-1:0];
+          assign score0_b = score0_b_full[DATA_WIDTH-1:0];
+          assign score1_b = score1_b_full[DATA_WIDTH-1:0];
+          assign value_sum_a = {1'b0, score0_a} + {1'b0, score1_a};
+          assign value_sum_b = {1'b0, score0_b} + {1'b0, score1_b};
+          assign selected_action_a = score1_a > score0_a;
+          assign selected_action_b = score1_b > score0_b;
+          assign value_estimate_a = value_sum_a[DATA_WIDTH:1];
+          assign value_estimate_b = value_sum_b[DATA_WIDTH:1];
+          assign out_valid = in_valid && enable;
+
+        endmodule
+        """
+    )
+    dual_td_update_core = dedent(
+        """\
+        module dual_td_update_core #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire in_valid,
+            input wire [DATA_WIDTH-1:0] reward_a,
+            input wire [DATA_WIDTH-1:0] next_value_a,
+            input wire [DATA_WIDTH-1:0] value_estimate_a,
+            input wire [DATA_WIDTH-1:0] reward_b,
+            input wire [DATA_WIDTH-1:0] next_value_b,
+            input wire [DATA_WIDTH-1:0] value_estimate_b,
+            input wire [DATA_WIDTH-1:0] alpha,
+            output wire out_valid,
+            output wire [DATA_WIDTH-1:0] updated_value_a,
+            output wire [DATA_WIDTH-1:0] updated_value_b
+        );
+
+          wire [DATA_WIDTH:0] td_error_a_full;
+          wire [DATA_WIDTH:0] td_error_b_full;
+          wire [(2*DATA_WIDTH)-1:0] update_product_a;
+          wire [(2*DATA_WIDTH)-1:0] update_product_b;
+          wire [DATA_WIDTH-1:0] update_delta_a;
+          wire [DATA_WIDTH-1:0] update_delta_b;
+
+          assign td_error_a_full = {1'b0, reward_a} + {1'b0, next_value_a} - {1'b0, value_estimate_a};
+          assign td_error_b_full = {1'b0, reward_b} + {1'b0, next_value_b} - {1'b0, value_estimate_b};
+          assign update_product_a = alpha * td_error_a_full[DATA_WIDTH-1:0];
+          assign update_product_b = alpha * td_error_b_full[DATA_WIDTH-1:0];
+          assign update_delta_a = update_product_a[(2*DATA_WIDTH)-1:4];
+          assign update_delta_b = update_product_b[(2*DATA_WIDTH)-1:4];
+          assign updated_value_a = value_estimate_a + update_delta_a;
+          assign updated_value_b = value_estimate_b + update_delta_b;
+          assign out_valid = in_valid;
+
+        endmodule
+        """
+    )
+    batch_result_stage = dedent(
+        """\
+        module batch_result_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire out_ready,
+            input wire selected_action_a,
+            input wire [DATA_WIDTH-1:0] value_estimate_a,
+            input wire [DATA_WIDTH-1:0] updated_value_a,
+            input wire selected_action_b,
+            input wire [DATA_WIDTH-1:0] value_estimate_b,
+            input wire [DATA_WIDTH-1:0] updated_value_b,
+            input wire done_a,
+            input wire done_b,
+            output reg result_valid,
+            input wire result_ready,
+            output reg selected_action_a_out,
+            output reg [DATA_WIDTH-1:0] value_estimate_a_out,
+            output reg [DATA_WIDTH-1:0] updated_value_a_out,
+            output reg selected_action_b_out,
+            output reg [DATA_WIDTH-1:0] value_estimate_b_out,
+            output reg [DATA_WIDTH-1:0] updated_value_b_out,
+            output reg batch_done_out,
+            output reg irq
+        );
+
+          assign out_ready = !result_valid || result_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              result_valid <= 1'b0;
+              selected_action_a_out <= 1'b0;
+              value_estimate_a_out <= {DATA_WIDTH{1'b0}};
+              updated_value_a_out <= {DATA_WIDTH{1'b0}};
+              selected_action_b_out <= 1'b0;
+              value_estimate_b_out <= {DATA_WIDTH{1'b0}};
+              updated_value_b_out <= {DATA_WIDTH{1'b0}};
+              batch_done_out <= 1'b0;
+              irq <= 1'b0;
+            end else begin
+              if (result_valid && result_ready) begin
+                if (batch_done_out) begin
+                  irq <= 1'b1;
+                end
+                result_valid <= 1'b0;
+              end
+              if (in_valid && out_ready) begin
+                result_valid <= 1'b1;
+                selected_action_a_out <= selected_action_a;
+                value_estimate_a_out <= value_estimate_a;
+                updated_value_a_out <= updated_value_a;
+                selected_action_b_out <= selected_action_b;
+                value_estimate_b_out <= value_estimate_b;
+                updated_value_b_out <= updated_value_b;
+                batch_done_out <= done_a | done_b;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/batch_config_bank.v": batch_config_bank,
+        "rtl/batch_sample_buffer.v": batch_sample_buffer,
+        "rtl/dual_policy_value_core.v": dual_policy_value_core,
+        "rtl/dual_td_update_core.v": dual_td_update_core,
+        "rtl/batch_result_stage.v": batch_result_stage,
+    }
+
+
+def _batch_config_bank_rtl() -> str:
+    return dedent(
+        """\
+        module batch_config_bank #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire cfg_valid,
+            output wire cfg_ready,
+            input wire [2:0] cfg_addr,
+            input wire [DATA_WIDTH-1:0] cfg_data,
+            output reg [DATA_WIDTH-1:0] weight0,
+            output reg [DATA_WIDTH-1:0] bias0,
+            output reg [DATA_WIDTH-1:0] weight1,
+            output reg [DATA_WIDTH-1:0] bias1,
+            output reg [DATA_WIDTH-1:0] alpha,
+            output reg enable
+        );
+
+          assign cfg_ready = 1'b1;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              weight0 <= {DATA_WIDTH{1'b0}};
+              bias0 <= {DATA_WIDTH{1'b0}};
+              weight1 <= {DATA_WIDTH{1'b0}};
+              bias1 <= {DATA_WIDTH{1'b0}};
+              alpha <= {DATA_WIDTH{1'b0}};
+              enable <= 1'b0;
+            end else if (cfg_valid && cfg_ready) begin
+              case (cfg_addr)
+                3'd0: weight0 <= cfg_data;
+                3'd1: bias0 <= cfg_data;
+                3'd2: weight1 <= cfg_data;
+                3'd3: bias1 <= cfg_data;
+                3'd4: alpha <= cfg_data;
+                3'd5: enable <= cfg_data[0];
+                default: enable <= enable;
+              endcase
+            end
+          end
+
+        endmodule
+        """
+    )
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -6902,6 +7674,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_rl_accelerator_shell": (
             f"Generate a {request.width}-bit T10 component-composed RL accelerator shell "
             "using host config, sample capture, policy/value scoring, TD update, result streaming, and irq reporting."
+        ),
+        "composed_batch_rl_accelerator_shell": (
+            f"Generate a {request.width}-bit T11 component-composed batch RL accelerator shell "
+            "using shared config, two-lane sample capture, dual-lane policy/value and TD update, result staging, and irq reporting."
         ),
     }
     return descriptions[request.task_type]
@@ -7281,6 +8057,43 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_batch_rl_accelerator_shell":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "cfg_valid", "width": 1},
+                    {"name": "cfg_addr", "width": 3},
+                    {"name": "cfg_data", "width": request.width},
+                    {"name": "batch_valid", "width": 1},
+                    {"name": "obs0_a", "width": request.width},
+                    {"name": "obs1_a", "width": request.width},
+                    {"name": "reward_a", "width": request.width},
+                    {"name": "next_value_a", "width": request.width},
+                    {"name": "done_a", "width": 1},
+                    {"name": "obs0_b", "width": request.width},
+                    {"name": "obs1_b", "width": request.width},
+                    {"name": "reward_b", "width": request.width},
+                    {"name": "next_value_b", "width": request.width},
+                    {"name": "done_b", "width": 1},
+                    {"name": "result_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "cfg_ready", "width": 1},
+                    {"name": "batch_ready", "width": 1},
+                    {"name": "result_valid", "width": 1},
+                    {"name": "selected_action_a", "width": 1},
+                    {"name": "value_estimate_a", "width": request.width},
+                    {"name": "updated_value_a", "width": request.width},
+                    {"name": "selected_action_b", "width": 1},
+                    {"name": "value_estimate_b", "width": request.width},
+                    {"name": "updated_value_b", "width": request.width},
+                    {"name": "batch_done", "width": 1},
+                    {"name": "irq", "width": 1},
+                ],
+            }
+        )
     return common
 
 
@@ -7331,6 +8144,11 @@ def _expected_behavior(request: ProjectRequest) -> str:
             "scored into selected action and value estimate, updated through a TD datapath, "
             "and staged as result output with episode irq reporting"
         ),
+        "composed_batch_rl_accelerator_shell": (
+            "configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, "
+            "each lane is scored and updated through duplicated policy/value and TD datapaths, "
+            "and both lane results are staged with batch_done irq reporting"
+        ),
     }
     return expectations[request.task_type]
 
@@ -7380,4 +8198,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(104, request.width * 12 + 64), "ff": request.width * 10 + 72, "bram": 0, "dsp": 0}
     if request.task_type == "composed_rl_accelerator_shell":
         return {"lut": max(136, request.width * 16 + 80), "ff": request.width * 14 + 96, "bram": 0, "dsp": 2}
+    if request.task_type == "composed_batch_rl_accelerator_shell":
+        return {"lut": max(184, request.width * 24 + 112), "ff": request.width * 24 + 144, "bram": 0, "dsp": 4}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

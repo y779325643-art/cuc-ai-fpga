@@ -277,6 +277,39 @@ class SystemHisReqFidelityTest(unittest.TestCase):
             result.errors,
         )
 
+    def test_composed_batch_rl_accelerator_shell_requires_config_batch_result_and_irq_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_batch_rl_accelerator_shell",
+            width=8,
+            project_name="batch_rl_accelerator_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"cfg_valid", "batch_valid", "updated_value_b", "irq"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'cfg_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'batch_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'updated_value_b'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'irq'",
+            result.errors,
+        )
+
     def test_unsupported_tasks_are_not_blocked_by_req_fidelity_gate(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         system_his = _deterministic_system_his(request)

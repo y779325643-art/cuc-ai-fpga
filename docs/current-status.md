@@ -249,6 +249,15 @@ Implemented and under active review:
   still synthetic and should not be described as a realistic DQN, actor-critic,
   PPO, SAC, DMA, or board-level accelerator without user-provided or cited
   workload/interface references.
+- T11 `composed_batch_rl_accelerator_shell` /
+  `t11_batch_rl_accelerator_shell` is now the synthetic two-lane batch RL shell
+  step. It combines shared host config, two-lane batch sample capture, dual-lane
+  policy/value scoring, dual-lane TD-style update, vectorized result staging,
+  `batch_done`, and irq reporting. Unit coverage verifies deterministic
+  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
+  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
+  excludes stochastic replay, true neural-network layers, DMA/DDR, ARM software,
+  board shell work, and real RL workload fidelity.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current T1-T4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
@@ -811,9 +820,10 @@ Key summary:
      vector-MAC feature-pipeline bridge, T6 is the deterministic TD-error /
      value-update bridge, T7 is the deterministic policy/value shell, T8 is the
      deterministic replay/sample host-fabric shell, T9 is the deterministic
-     host protocol shell, and T10 is the deterministic integrated RL accelerator
-     shell. Next steps should either extend T10 with a real workload reference or
-     add another synthetic bridge for batching/replay/policy-array complexity.
+     host protocol shell, T10 is the deterministic integrated RL accelerator
+     shell, and T11 is the deterministic two-lane batch RL shell. Next steps
+     should either extend T11 with a real workload reference or add another
+     synthetic bridge for replay-memory arbitration / host packetization.
      Before claiming the full
      reinforcement-learning accelerator as realistic, request or cite a real
      workload reference: RL algorithm family, observation vector width, action

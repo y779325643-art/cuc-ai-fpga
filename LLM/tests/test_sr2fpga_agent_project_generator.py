@@ -763,6 +763,69 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("expect_result(1'b1, 8'd9, 8'd11, 1'b1)", project.files["sim/tb_top.v"])
         self.assertGreaterEqual(len(system_his["connections"]), 30)
 
+    def test_generates_composed_batch_rl_accelerator_shell_from_t11_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_batch_rl_accelerator_shell",
+                width=8,
+                project_name="composed_batch_rl_accelerator_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_batch_rl_accelerator_shell",
+            {
+                "rtl/top.v",
+                "rtl/batch_config_bank.v",
+                "rtl/batch_sample_buffer.v",
+                "rtl/dual_policy_value_core.v",
+                "rtl/dual_td_update_core.v",
+                "rtl/batch_result_stage.v",
+            },
+            [
+                "batch_config_bank",
+                "batch_sample_buffer",
+                "dual_policy_value_core",
+                "dual_td_update_core",
+                "batch_result_stage",
+                ".cfg_valid(cfg_valid)",
+                ".in_valid(batch_valid)",
+                ".result_valid(result_valid)",
+                ".updated_value_b_out(updated_value_b)",
+                ".irq(irq)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t11_batch_rl_accelerator_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T11")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            [
+                "batch_config_bank",
+                "batch_sample_buffer",
+                "dual_policy_value_core",
+                "dual_td_update_core",
+                "batch_result_stage",
+            ],
+        )
+        self.assertIn(
+            {"from": "dual_td_update_core.updated_value_b", "to": "batch_result_stage.updated_value_b"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire batch_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] next_value_b", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] updated_value_a", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] updated_value_b", project.files["rtl/top.v"])
+        self.assertIn("output wire batch_done", project.files["rtl/top.v"])
+        self.assertIn("expect_batch_result(1'b0, 8'd7, 8'd7, 1'b1, 8'd9, 8'd11, 1'b1)", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 36)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -903,6 +966,7 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
             ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
             ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
+            ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -1025,6 +1089,7 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
         ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
         ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
+        ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
     ]
 
 

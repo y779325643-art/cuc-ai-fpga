@@ -1071,13 +1071,13 @@ class RunnerConfigTest(unittest.TestCase):
             repair_provider="none",
             max_attempts=1,
             refresh_exports=True,
-            line_b_targets={"max_samples": 10},
+            line_b_targets={"max_samples": 11},
             tasks=[
                 TaskConfig(
                     source="deterministic",
                     task_type="component_topology",
                     widths=[8],
-                    count=10,
+                    count=11,
                     topology_ids=[
                         "t1_event_counter",
                         "t2_stream_accumulator",
@@ -1089,6 +1089,7 @@ class RunnerConfigTest(unittest.TestCase):
                         "t8_replay_sample_shell",
                         "t9_host_protocol_shell",
                         "t10_rl_accelerator_shell",
+                        "t11_batch_rl_accelerator_shell",
                     ],
                     failure_origin="compositional_assembly",
                 )
@@ -1150,6 +1151,12 @@ class RunnerConfigTest(unittest.TestCase):
                     "t10_rl_accelerator_shell",
                     "T10",
                 ),
+                (
+                    "sample_runner_t11_batch_rl_accelerator_shell_8_000011",
+                    "composed_batch_rl_accelerator_shell",
+                    "t11_batch_rl_accelerator_shell",
+                    "T11",
+                ),
             ],
         )
         self.assertEqual(samples[0].metadata(config)["topology_id"], "t1_event_counter")
@@ -1162,6 +1169,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[7].metadata(config)["topology_id"], "t8_replay_sample_shell")
         self.assertEqual(samples[8].metadata(config)["topology_id"], "t9_host_protocol_shell")
         self.assertEqual(samples[9].metadata(config)["topology_id"], "t10_rl_accelerator_shell")
+        self.assertEqual(samples[10].metadata(config)["topology_id"], "t11_batch_rl_accelerator_shell")
         self.assertEqual(samples[3].metadata(config)["requirement_style"], "contract")
         self.assertIn("component topology t1_event_counter", samples[0].requirement)
         self.assertIn("event_gate", samples[0].requirement)
@@ -1184,6 +1192,9 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertIn("component topology t10_rl_accelerator_shell", samples[9].requirement)
         self.assertIn("policy_value_core", samples[9].requirement)
         self.assertIn("td_update_core", samples[9].requirement)
+        self.assertIn("component topology t11_batch_rl_accelerator_shell", samples[10].requirement)
+        self.assertIn("dual_policy_value_core", samples[10].requirement)
+        self.assertIn("dual_td_update_core", samples[10].requirement)
         self.assertIn("Keep rtl/top.v as the integration wrapper", samples[3].requirement)
 
     def test_classify_sample_bucket(self) -> None:

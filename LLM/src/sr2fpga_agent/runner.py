@@ -1055,6 +1055,10 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project with host configuration, sample capture, "
             "policy/value scoring, TD update, result streaming, and irq reporting."
         ),
+        "composed_batch_rl_accelerator_shell": (
+            f"Generate an {width}-bit FPGA RTL project with shared host configuration, two-lane batch sample capture, "
+            "dual-lane policy/value scoring, dual-lane TD update, result staging, and irq reporting."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1088,6 +1092,7 @@ def _natural_component_title(task_type: str) -> str:
         "composed_replay_sample_shell": "replay sample host/fabric shell",
         "composed_host_protocol_shell": "host protocol control and stream shell",
         "composed_rl_accelerator_shell": "synthetic RL accelerator shell",
+        "composed_batch_rl_accelerator_shell": "two-lane batch RL accelerator shell",
     }
     return titles[task_type]
 
@@ -1121,6 +1126,10 @@ def _natural_component_summary(task_type: str) -> str:
         "composed_rl_accelerator_shell": (
             "host_config_bank and sample_capture_stage feeding policy_value_core, then "
             "td_update_core and result_stream_stage"
+        ),
+        "composed_batch_rl_accelerator_shell": (
+            "batch_config_bank and batch_sample_buffer feeding dual_policy_value_core, then "
+            "dual_td_update_core and batch_result_stage"
         ),
     }
     return summaries[task_type]
@@ -1177,6 +1186,11 @@ def _topology_expected_behavior(task_type: str) -> str:
             "configuration writes set weights, biases, alpha, and enable; sample tuples are captured, "
             "scored into a selected action and value estimate, updated through a TD datapath, "
             "and staged as a result stream with episode irq reporting"
+        ),
+        "composed_batch_rl_accelerator_shell": (
+            "configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, "
+            "each lane is scored and updated through duplicated policy/value and TD datapaths, "
+            "and both lane results are staged with batch_done irq reporting"
         ),
     }
     return behaviors[task_type]
