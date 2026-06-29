@@ -199,6 +199,10 @@ class ContractSkeletonTest(unittest.TestCase):
 
         self.assertIn("localparam SEND_0", skeleton.files["rtl/stream_join.v"])
         self.assertIn("localparam SEND_1", skeleton.files["rtl/stream_join.v"])
+        self.assertIn(
+            "wire _unused_fsm_states = &{1'b0, (IDLE == IDLE), (WAIT_BOTH == WAIT_BOTH), (FIRE == FIRE), (SEND_0 == SEND_0), (SEND_1 == SEND_1)};",
+            skeleton.files["rtl/stream_join.v"],
+        )
 
     def test_component_skeleton_consumes_optional_clock_reset_inputs(self) -> None:
         system_his = _fixture()

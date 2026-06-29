@@ -189,6 +189,9 @@ def _component_module(component: dict[str, Any], system_his: dict[str, Any]) -> 
     lines.append("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.")
     for state in states:
         lines.append(f"  localparam {state} = 0;")
+    if states:
+        state_terms = ", ".join(f"({state} == {state})" for state in states)
+        lines.append(f"  wire _unused_fsm_states = &{{1'b0, {state_terms}}};")
     lines.append("endmodule")
     return "\n".join(lines) + "\n"
 

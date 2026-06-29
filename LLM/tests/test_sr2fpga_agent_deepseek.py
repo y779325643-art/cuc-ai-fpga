@@ -602,6 +602,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Required architecture for composed_stream_accumulator", user_prompt)
         self.assertIn("components: skid_buffer, accumulator_core", user_prompt)
         self.assertIn("top ports must include clk, rst_n, in_valid, in_data, in_ready, sample_valid, and sum", user_prompt)
+        self.assertIn("accumulator_core ports must be clk, rst_n, sample_valid, sample, sample_ready, and sum", user_prompt)
+        self.assertIn("Do not introduce sample_valid_in", user_prompt)
         self.assertIn("accumulator.sample_valid to top.sample_valid", user_prompt)
 
     def test_system_his_v12_prompt_spells_out_join_ready_valid_and_timing_contract(self) -> None:
@@ -851,6 +853,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Required top ports: clk, rst_n, in_valid, in_data, in_ready, sample_valid, sum", retry_prompt)
         self.assertIn("input_buffer.out_valid to accumulator.sample_valid and top.sample_valid", retry_prompt)
         self.assertIn("Do not leave top.sample_valid declared but disconnected", retry_prompt)
+        self.assertIn("accumulator_core.sample_valid must be an input port", retry_prompt)
+        self.assertIn("Do not create sample_valid_in", retry_prompt)
         self.assertIn("Do not rename these ports to AXI-style names", retry_prompt)
         self.assertIn("s_axis_tvalid", retry_prompt)
         self.assertIn("Do not leave fsm, from, to, effect.action, or effect.target empty", retry_prompt)

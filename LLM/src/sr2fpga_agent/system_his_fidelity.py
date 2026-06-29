@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from dataclasses import dataclass, field
 from typing import Any
 
-from LLM.src.sr2fpga_agent.models import ProjectRequest
-from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES
+from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
 from LLM.src.sr2fpga_agent.rtl_introspect import widths_equivalent
 
 
@@ -290,6 +291,7 @@ def check_system_his_req_fidelity(
 
     errors: list[str] = []
     _validate_components(request, payload, errors)
+    _validate_component_ports(request, payload, errors)
     _validate_instances(request, payload, errors)
     _validate_top_ports(request, payload, errors)
     _validate_clock_reset(payload, errors)
@@ -355,6 +357,82 @@ def _validate_components(request: ProjectRequest, payload: dict[str, Any], error
     for component_name in _required_components(request.task_type):
         if component_name not in component_names:
             errors.append(f"REQ2HIS fidelity: {request.task_type} requires component '{component_name}'")
+
+
+def _validate_component_ports(request: ProjectRequest, payload: dict[str, Any], errors: list[str]) -> None:
+    expected_components = _expected_component_ports(request)
+    if not expected_components:
+        return
+    actual_components = {
+        str(component.get("name", "")).strip(): component
+        for component in payload.get("components", [])
+        if isinstance(component, dict)
+    }
+    for component_name, expected_ports in expected_components.items():
+        component = actual_components.get(component_name)
+        if not isinstance(component, dict):
+            continue
+        actual_ports = {
+            str(port.get("name", "")).strip(): port
+            for port in component.get("ports", [])
+            if isinstance(port, dict) and str(port.get("name", "")).strip()
+        }
+        for port_name, expected in expected_ports.items():
+            port = actual_ports.get(port_name)
+            if port is None:
+                errors.append(f"REQ2HIS fidelity: component {component_name} requires port '{port_name}'")
+                continue
+            expected_direction = expected.get("direction")
+            actual_direction = _port_direction(port)
+            if expected_direction is not None and actual_direction and actual_direction != expected_direction:
+                errors.append(
+                    f"REQ2HIS fidelity: component {component_name}.{port_name} direction must be {expected_direction}"
+                )
+    _validate_data_flow_component_ports(payload, expected_components, errors)
+
+
+def _validate_data_flow_component_ports(
+    payload: dict[str, Any],
+    expected_components: dict[str, dict[str, dict[str, Any]]],
+    errors: list[str],
+) -> None:
+    instance_components = {
+        str(instance.get("name", "")).strip(): str(instance.get("component", "")).strip()
+        for instance in payload.get("instances", [])
+        if isinstance(instance, dict)
+    }
+    for flow in payload.get("data_flow", []):
+        if not isinstance(flow, dict):
+            continue
+        for endpoint in flow.get("path", []):
+            if not isinstance(endpoint, str) or "." not in endpoint:
+                continue
+            owner, port_name = endpoint.split(".", 1)
+            component_name = instance_components.get(owner)
+            if component_name not in expected_components:
+                continue
+            if port_name not in expected_components[component_name]:
+                errors.append(f"REQ2HIS fidelity: component {component_name} has unexpected port '{port_name}'")
+
+
+def _expected_component_ports(request: ProjectRequest) -> dict[str, dict[str, dict[str, Any]]]:
+    if request.task_type != "composed_stream_accumulator":
+        return {}
+    platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+    project = ProjectGenerator().generate(request, platform)
+    system_his = json.loads(project.files["system_his.json"])
+    components = system_his.get("components", [])
+    return {
+        str(component.get("name", "")).strip(): {
+            str(port.get("name", "")).strip(): {
+                "direction": _port_direction(port),
+            }
+            for port in component.get("ports", [])
+            if isinstance(port, dict) and str(port.get("name", "")).strip()
+        }
+        for component in components
+        if isinstance(component, dict) and str(component.get("name", "")).strip()
+    }
 
 
 def _validate_instances(request: ProjectRequest, payload: dict[str, Any], errors: list[str]) -> None:

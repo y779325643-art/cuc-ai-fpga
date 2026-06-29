@@ -98,6 +98,42 @@ class SystemHisReqFidelityTest(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("REQ2HIS fidelity: top.count width must match requested width 8", result.errors)
 
+    def test_composed_stream_accumulator_requires_accumulator_core_port_contract(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_stream_accumulator",
+            width=8,
+            project_name="stream_accum_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        for component in system_his["components"]:
+            if component["name"] == "accumulator_core":
+                component["ports"] = [
+                    {"name": "clk", "direction": "input", "width": 1},
+                    {"name": "rst_n", "direction": "input", "width": 1},
+                    {"name": "sample_valid_in", "direction": "input", "width": 1},
+                    {"name": "sample", "direction": "input", "width": "DATA_WIDTH"},
+                    {"name": "sample_ready", "direction": "output", "width": 1},
+                    {"name": "sum", "direction": "output", "width": "DATA_WIDTH"},
+                    {"name": "sample_valid", "direction": "output", "width": 1},
+                ]
+        for flow in system_his["data_flow"]:
+            flow["path"] = [
+                "u_accumulator_core.sample_valid_in" if endpoint == "u_accumulator_core.sample_valid" else endpoint
+                for endpoint in flow["path"]
+            ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core.sample_valid direction must be input",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_valid_in'",
+            result.errors,
+        )
+
     def test_composed_dual_stream_join_requires_two_skid_buffer_instances(self) -> None:
         request = ProjectRequest(
             task_type="composed_dual_stream_join",

@@ -1279,6 +1279,9 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- components: skid_buffer, accumulator_core\n"
             "- instances: input_buffer, accumulator\n"
             "- top ports must include clk, rst_n, in_valid, in_data, in_ready, sample_valid, and sum.\n"
+            "- accumulator_core ports must be clk, rst_n, sample_valid, sample, sample_ready, and sum; "
+            "sample_valid must be an input and sample_ready must be an output.\n"
+            "- Do not introduce sample_valid_in, sample_valid_out, or extra accumulator_core valid aliases.\n"
             "- data_flow must explicitly connect top.in_valid to input_buffer.in_valid, "
             "input_buffer.out_valid to accumulator.sample_valid, and accumulator.sample_valid to top.sample_valid.\n"
             "- data_flow must use named path arrays and control_flow must reference existing state and flows."
@@ -1317,6 +1320,8 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             + "- Required top ports: clk, rst_n, in_valid, in_data, in_ready, sample_valid, sum\n"
             "- Connect input_buffer.out_valid to accumulator.sample_valid and top.sample_valid through explicit data_flow paths.\n"
             "- Do not leave top.sample_valid declared but disconnected.\n"
+            "- accumulator_core.sample_valid must be an input port; accumulator_core.sample_ready must be an output port.\n"
+            "- Do not create sample_valid_in, sample_valid_out, or extra accumulator_core valid aliases.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
         )
