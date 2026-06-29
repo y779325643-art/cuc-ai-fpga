@@ -1830,6 +1830,12 @@ pipeline schema:
 
 Make the smallest practical fix for the failing tool log. Preserve pure
 Verilog RTL and ensure the testbench prints TEST_PASS on success.
+Repair quality rules:
+- Do not introduce a new syntax error while fixing a lint warning.
+- Use legal Verilog concatenation syntax: nested replication must be wrapped
+  as {{ {{N{{bit}}}}, signal }}; never write {{N{{bit}}, signal}}.
+- After a lint repair, the edited RTL must still be Verilator -Wall clean:
+  avoid WIDTHEXPAND, WIDTHTRUNC, UNUSEDSIGNAL, UNDRIVEN, and PINNOTFOUND.
 {_icarus_testbench_rules()}
 {_unused_parameter_repair_rules(diagnosis)}
 {_functional_mismatch_repair_rules(diagnosis)}
