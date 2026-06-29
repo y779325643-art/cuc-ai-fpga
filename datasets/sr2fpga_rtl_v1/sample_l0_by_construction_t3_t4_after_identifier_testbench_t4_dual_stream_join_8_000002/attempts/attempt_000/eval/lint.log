@@ -1,0 +1,27 @@
+%Error: rtl/stream_stage.v:2:17: Can't find definition of variable: 'None'
+    2 |     input wire [None-1:0] clk,
+      |                 ^~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: rtl/accumulator_core.v:2:17: Can't find definition of variable: 'None'
+    2 |     input wire [None-1:0] clk,
+      |                 ^~~~
+%Error: rtl/stream_join.v:2:17: Can't find definition of variable: 'None'
+    2 |     input wire [None-1:0] clk,
+      |                 ^~~~
+%Error: rtl/skid_buffer.v:2:17: Can't find definition of variable: 'None'
+    2 |     input wire [None-1:0] clk,
+      |                 ^~~~
+%Error: rtl/top.v:2:17: Can't find definition of variable: 'None'
+    2 |     input wire [None-1:0] clk,
+      |                 ^~~~
+%Error: rtl/top.v:16:9: Can't find definition of variable: 'DATA_WIDTH'
+   16 |   wire [DATA_WIDTH-1:0] in0_buffer__in_data;
+      |         ^~~~~~~~~~
+%Error: rtl/top.v:37:9: Can't find definition of variable: 'SAMPLE_WIDTH'
+   37 |   wire [SAMPLE_WIDTH-1:0] accumulator__sample;
+      |         ^~~~~~~~~~~~
+%Error: rtl/top.v:39:9: Can't find definition of variable: 'SUM_WIDTH'
+                      : ... Suggested alternative: 'SAMPLE_WIDTH'
+   39 |   wire [SUM_WIDTH-1:0] accumulator__sum;
+      |         ^~~~~~~~~
+%Error: Exiting due to 8 error(s)

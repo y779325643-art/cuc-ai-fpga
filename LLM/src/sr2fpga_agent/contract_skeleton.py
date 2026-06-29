@@ -69,7 +69,7 @@ def _validate_behavior_body(path: str, behavior: str) -> None:
 
 
 def _fill_behavior_hole(content: str, behavior: str) -> str:
-    behavior_lines = behavior.strip("\n").splitlines() or ["// empty behavior body"]
+    behavior_lines = _drop_duplicate_unused_clock_reset_lines(content, behavior).strip("\n").splitlines() or ["// empty behavior body"]
     indented = "\n".join(f"  {line}" if line.strip() else "" for line in behavior_lines)
     merged = content.replace("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.", indented, 1)
     return _drop_duplicate_skeleton_localparams(merged, _declared_localparams(behavior))
@@ -92,6 +92,17 @@ def _drop_duplicate_skeleton_localparams(content: str, declared: set[str]) -> st
             continue
         lines.append(line)
     return "\n".join(lines) + ("\n" if content.endswith("\n") else "")
+
+
+def _drop_duplicate_unused_clock_reset_lines(content: str, behavior: str) -> str:
+    if "_unused_clock_reset" not in content:
+        return behavior
+    lines = [
+        line
+        for line in behavior.splitlines()
+        if not re.fullmatch(r"\s*wire\s+_unused_clock_reset\s*=\s*&\{[^}]+\}\s*;", line)
+    ]
+    return "\n".join(lines) + ("\n" if behavior.endswith("\n") else "")
 
 
 def _manifest(
@@ -128,8 +139,9 @@ def _top_module(
     ports = _list(top.get("ports"))
     instances = _list(system_his.get("instances"))
     components_by_name = {str(component.get("name")): component for component in components_by_source.values()}
+    parameters = _merged_parameters(_list(top.get("parameters")), components_by_name.values())
     lines = [
-        f"module {top_module}{_parameter_block(_list(top.get('parameters')))} (",
+        f"module {top_module}{_parameter_block(parameters)} (",
         _port_block(ports),
         ");",
         "",
@@ -312,7 +324,8 @@ def _unused_clock_reset_line(ports: list[Any]) -> str:
 def _testbench(system_his: dict[str, Any], top_module: str) -> str:
     top = _mapping(system_his.get("top"))
     ports = _list(top.get("ports"))
-    declarations = _testbench_parameter_lines(_list(top.get("parameters")))
+    components = [_mapping(component) for component in _list(system_his.get("components"))]
+    declarations = _testbench_parameter_lines(_merged_parameters(_list(top.get("parameters")), components))
     connections = []
     for port in ports:
         port_map = _mapping(port)
@@ -344,6 +357,19 @@ def _testbench_parameter_lines(parameters: list[Any]) -> list[str]:
         if name:
             lines.append(f"  localparam {name} = {value};")
     return lines
+
+
+def _merged_parameters(top_parameters: list[Any], components: Any) -> list[Any]:
+    merged = [_mapping(parameter) for parameter in top_parameters]
+    seen = {str(parameter.get("name", "")).strip() for parameter in merged}
+    for component in components:
+        for parameter in _list(_mapping(component).get("parameters")):
+            parameter_map = _mapping(parameter)
+            name = str(parameter_map.get("name", "")).strip()
+            if name and name not in seen:
+                merged.append(parameter_map)
+                seen.add(name)
+    return merged
 
 
 def _timing_sdc(system_his: dict[str, Any]) -> str:
@@ -390,11 +416,15 @@ def _parameter_override_block(values: dict[str, Any]) -> str:
 
 
 def _range(width: Any) -> str:
+    if width is None:
+        return ""
     if isinstance(width, dict):
         if width.get("expr"):
             width = width["expr"]
         else:
             width = width.get("resolved", 1)
+        if width is None:
+            return ""
     if isinstance(width, int):
         return "" if width <= 1 else f" [{width - 1}:0]"
     text = str(width).strip()

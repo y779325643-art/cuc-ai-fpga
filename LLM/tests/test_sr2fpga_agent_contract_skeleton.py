@@ -193,6 +193,44 @@ class ContractSkeletonTest(unittest.TestCase):
 
         self.assertIn("localparam DATA_WIDTH = 8;", skeleton.files["sim/tb_top.v"])
 
+    def test_top_inherits_component_parameters_used_by_internal_wires(self) -> None:
+        system_his = _fixture()
+        system_his["top"]["parameters"] = []
+        for component in system_his["components"]:
+            component["parameters"] = [{"name": "DATA_WIDTH", "default": 8}]
+            for port in component["ports"]:
+                if port["name"].endswith("_data") or port["name"] in {"sample", "sum"}:
+                    port["width"] = {"expr": "DATA_WIDTH", "resolved": 8}
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        self.assertIn("module top #(parameter DATA_WIDTH = 8)", skeleton.files["rtl/top.v"])
+
+    def test_missing_or_null_width_defaults_to_scalar(self) -> None:
+        system_his = _fixture()
+        system_his["top"]["ports"][0].pop("width", None)
+        system_his["components"][0]["ports"][0]["width"] = {"expr": None, "resolved": None}
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        self.assertNotIn("[None-1:0]", "\n".join(skeleton.files.values()))
+        self.assertIn("input wire clk", skeleton.files["rtl/top.v"])
+        self.assertIn("input wire clk", skeleton.files["rtl/skid_buffer.v"])
+
     def test_merge_does_not_duplicate_fsm_localparams_from_behavior(self) -> None:
         system_his = _fixture()
         system_his["state"]["fsms"].append(
@@ -234,6 +272,29 @@ class ContractSkeletonTest(unittest.TestCase):
         self.assertNotIn("localparam IDLE = 0;", stream_join)
         self.assertNotIn("localparam WAIT = 0;", stream_join)
         self.assertNotIn("localparam JOINED = 0;", stream_join)
+
+    def test_merge_drops_duplicate_unused_clock_reset_from_behavior(self) -> None:
+        system_his = _fixture()
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        project = merge_behavior_files(
+            skeleton,
+            {
+                "rtl/skid_buffer.v": "wire _unused_clock_reset = &{1'b0, clk, rst_n};",
+                "rtl/stream_join.v": "assign out_valid = in0_valid && in1_valid;",
+                "rtl/accumulator_core.v": "assign sample_ready = sum_ready;\nassign sum_valid = sample_valid;",
+                "rtl/stream_stage.v": "// no behavior needed for this structural unit test",
+            },
+        )
+
+        self.assertEqual(project.files["rtl/skid_buffer.v"].count("_unused_clock_reset"), 1)
 
     def test_skeleton_preserves_complete_width_ranges(self) -> None:
         system_his = _fixture()

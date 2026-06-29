@@ -157,6 +157,19 @@ Implemented and under active review:
   now runs the RTL reserved-identifier checker before returning so those
   behavior bodies can be retried. Compact write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-top-wiring-2026-06-28.md`.
+- A fresh narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-identifier-testbench`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:2`. This run exposed deterministic skeleton defects: duplicated
+  `_unused_clock_reset` when the model echoed that reduction wire, missing
+  top-level width parameters such as `DATA_WIDTH`, and invalid `[None-1:0]`
+  ranges from null width metadata. These have now been hardened in
+  `contract_skeleton.py`; replay shows T3 lint-clean and T4 no longer fails on
+  missing/None width declarations. The remaining T4 replay errors are behavior
+  lint warnings such as unused `state` registers, so the next blocker is
+  behavior-body lint cleanliness rather than top/skeleton wiring. Compact
+  write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-identifier-testbench-2026-06-29.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
