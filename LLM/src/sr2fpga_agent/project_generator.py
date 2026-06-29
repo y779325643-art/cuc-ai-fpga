@@ -21,6 +21,7 @@ SUPPORTED_TASK_TYPES = {
     "streaming_valid_ready",
     "matrix_vector_mac",
     "alu_control_unit",
+    "crc_stream_checker",
     "composed_event_counter",
     "composed_stream_accumulator",
     "composed_stream_fork",
@@ -823,6 +824,25 @@ def _v12_state(
                 {"name": "negative", "owner": flag_owner, "width": 1},
             ]
         )
+    elif request.task_type == "crc_stream_checker":
+        accumulator_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "stream_frame_accumulator"),
+            owner,
+        )
+        status_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "crc_status"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "crc_state", "owner": accumulator_owner, "width": 8},
+                {"name": "frame_crc", "owner": accumulator_owner, "width": 8},
+                {"name": "frame_done", "owner": accumulator_owner, "width": 1},
+                {"name": "out_valid", "owner": status_owner, "width": 1},
+                {"name": "crc_value", "owner": status_owner, "width": 8},
+                {"name": "crc_match", "owner": status_owner, "width": 1},
+            ]
+        )
     elif request.task_type == "composed_vector_mac_pipeline":
         mac_owner = next(
             (str(instance["name"]) for instance in instances if instance.get("component") == "vector_mac_core"),
@@ -1162,6 +1182,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
     ]
     if request.task_type in {
         "streaming_valid_ready",
+        "crc_stream_checker",
         "composed_stream_accumulator",
         "composed_stream_fork",
         "composed_dual_stream_join",
@@ -1501,6 +1522,7 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
         "streaming_valid_ready": ["skid_buffer", "stream_stage"],
         "matrix_vector_mac": ["vector_rom", "mac_unit", "dot_product_engine"],
         "alu_control_unit": ["control_decode", "alu_core", "status_flags"],
+        "crc_stream_checker": ["stream_frame_accumulator", "crc8_update", "crc_status"],
     }
     if request.task_type in COMPONENT_TOPOLOGIES:
         submodules[request.task_type] = list(COMPONENT_TOPOLOGIES[request.task_type]["submodules"])
@@ -1599,6 +1621,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _matrix_vector_mac_rtl_files(request.width)
     if request.task_type == "alu_control_unit":
         return _alu_control_unit_rtl_files(request.width)
+    if request.task_type == "crc_stream_checker":
+        return _crc_stream_checker_rtl_files(request.width)
     if request.task_type == "composed_event_counter":
         return _composed_event_counter_rtl_files(request.width)
     if request.task_type == "composed_stream_accumulator":
@@ -1658,6 +1682,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _matrix_vector_mac_testbench(request.width)
     if request.task_type == "alu_control_unit":
         return _alu_control_unit_testbench(request.width)
+    if request.task_type == "crc_stream_checker":
+        return _crc_stream_checker_testbench(request.width)
     if request.task_type == "composed_event_counter":
         return _composed_event_counter_testbench(request.width)
     if request.task_type == "composed_stream_accumulator":
@@ -2723,6 +2749,111 @@ def _alu_control_unit_testbench(width: int) -> str:
             #1;
             if (result_valid !== 1'b0) begin
               $display("TEST_FAIL result_valid did not clear");
+              $finish;
+            end
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _crc_stream_checker_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg in_valid;
+          wire in_ready;
+          reg [{msb}:0] in_data;
+          reg frame_start;
+          reg frame_end;
+          reg [7:0] expected_crc;
+          wire out_valid;
+          reg out_ready;
+          wire [7:0] crc_value;
+          wire crc_match;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .in_data(in_data),
+            .frame_start(frame_start),
+            .frame_end(frame_end),
+            .expected_crc(expected_crc),
+            .out_valid(out_valid),
+            .out_ready(out_ready),
+            .crc_value(crc_value),
+            .crc_match(crc_match)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task send_byte;
+            input [7:0] value;
+            input start_i;
+            input end_i;
+            begin
+              @(negedge clk);
+              in_valid = 1'b1;
+              in_data = value;
+              frame_start = start_i;
+              frame_end = end_i;
+              @(negedge clk);
+              if (in_ready !== 1'b1) begin
+                $display("TEST_FAIL input was not ready");
+                $finish;
+              end
+              in_valid = 1'b0;
+              in_data = {width}'d0;
+              frame_start = 1'b0;
+              frame_end = 1'b0;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            in_valid = 1'b0;
+            in_data = {width}'d0;
+            frame_start = 1'b0;
+            frame_end = 1'b0;
+            expected_crc = 8'h7c;
+            out_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            send_byte(8'h12, 1'b1, 1'b0);
+            send_byte(8'h34, 1'b0, 1'b0);
+            send_byte(8'h56, 1'b0, 1'b1);
+
+            @(posedge clk);
+            #1;
+            if (out_valid !== 1'b1) begin
+              $display("TEST_FAIL out_valid was not asserted");
+              $finish;
+            end
+            if (crc_value !== 8'h7c) begin
+              $display("TEST_FAIL expected crc=7c got %0h", crc_value);
+              $finish;
+            end
+            if (crc_match !== 1'b1) begin
+              $display("TEST_FAIL crc_match was not asserted");
+              $finish;
+            end
+            @(posedge clk);
+            #1;
+            if (out_valid !== 1'b0) begin
+              $display("TEST_FAIL out_valid did not clear after ready");
               $finish;
             end
             $display("TEST_PASS");
@@ -5229,6 +5360,174 @@ def _alu_control_unit_rtl_files(width: int) -> dict[str, str]:
         "rtl/control_decode.v": control_decode,
         "rtl/alu_core.v": alu_core,
         "rtl/status_flags.v": status_flags,
+    }
+
+
+def _crc_stream_checker_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [{msb}:0] in_data,
+            input wire frame_start,
+            input wire frame_end,
+            input wire [7:0] expected_crc,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [7:0] crc_value,
+            output wire crc_match
+        );
+
+          wire [7:0] crc_state;
+          wire [7:0] crc_base;
+          wire [7:0] crc_next;
+          wire [7:0] frame_crc;
+          wire frame_done;
+
+          assign crc_base = frame_start ? 8'h00 : crc_state;
+
+          crc8_update u_crc8_update (
+            .crc_in(crc_base),
+            .data_in(in_data[7:0]),
+            .crc_out(crc_next)
+          );
+
+          stream_frame_accumulator u_stream_frame_accumulator (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .frame_end(frame_end),
+            .out_ready(out_ready),
+            .crc_next(crc_next),
+            .crc_state(crc_state),
+            .frame_done(frame_done),
+            .frame_crc(frame_crc)
+          );
+
+          crc_status u_crc_status (
+            .clk(clk),
+            .rst_n(rst_n),
+            .frame_done(frame_done),
+            .out_ready(out_ready),
+            .frame_crc(frame_crc),
+            .expected_crc(expected_crc),
+            .out_valid(out_valid),
+            .crc_value(crc_value),
+            .crc_match(crc_match)
+          );
+
+        endmodule
+        """
+    )
+    crc8_update = dedent(
+        """\
+        module crc8_update (
+            input wire [7:0] crc_in,
+            input wire [7:0] data_in,
+            output reg [7:0] crc_out
+        );
+
+          integer bit_index;
+          reg [7:0] crc_work;
+
+          always @* begin
+            crc_work = crc_in ^ data_in;
+            for (bit_index = 0; bit_index < 8; bit_index = bit_index + 1) begin
+              if (crc_work[7]) begin
+                crc_work = (crc_work << 1) ^ 8'h07;
+              end else begin
+                crc_work = crc_work << 1;
+              end
+            end
+            crc_out = crc_work;
+          end
+
+        endmodule
+        """
+    )
+    stream_frame_accumulator = dedent(
+        """\
+        module stream_frame_accumulator (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire frame_end,
+            input wire out_ready,
+            input wire [7:0] crc_next,
+            output reg [7:0] crc_state,
+            output reg frame_done,
+            output reg [7:0] frame_crc
+        );
+
+          wire accept;
+
+          assign in_ready = !frame_done || out_ready;
+          assign accept = in_valid && in_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              crc_state <= 8'h00;
+              frame_done <= 1'b0;
+              frame_crc <= 8'h00;
+            end else begin
+              if (frame_done && out_ready) begin
+                frame_done <= 1'b0;
+              end
+              if (accept) begin
+                crc_state <= crc_next;
+                if (frame_end) begin
+                  frame_done <= 1'b1;
+                  frame_crc <= crc_next;
+                end
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    crc_status = dedent(
+        """\
+        module crc_status (
+            input wire clk,
+            input wire rst_n,
+            input wire frame_done,
+            input wire out_ready,
+            input wire [7:0] frame_crc,
+            input wire [7:0] expected_crc,
+            output reg out_valid,
+            output reg [7:0] crc_value,
+            output reg crc_match
+        );
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              crc_value <= 8'h00;
+              crc_match <= 1'b0;
+            end else if (frame_done) begin
+              out_valid <= 1'b1;
+              crc_value <= frame_crc;
+              crc_match <= (frame_crc == expected_crc);
+            end else if (out_valid && out_ready) begin
+              out_valid <= 1'b0;
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/crc8_update.v": crc8_update,
+        "rtl/stream_frame_accumulator.v": stream_frame_accumulator,
+        "rtl/crc_status.v": crc_status,
     }
 
 
@@ -8580,6 +8879,10 @@ def _default_description(request: ProjectRequest) -> str:
             f"Generate a {request.width}-bit ALU control unit with opcode decode, arithmetic/logic core, "
             "registered result, and zero/carry/negative status flags."
         ),
+        "crc_stream_checker": (
+            f"Generate a {request.width}-bit valid-ready streaming CRC checker with frame start/end markers, "
+            "CRC-8 update logic, and registered match status."
+        ),
         "composed_event_counter": (
             f"Generate a {request.width}-bit component-composed event counter using "
             "an event gate and counter core."
@@ -8805,6 +9108,27 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                     {"name": "zero", "width": 1},
                     {"name": "carry", "width": 1},
                     {"name": "negative", "width": 1},
+                ],
+            }
+        )
+    elif request.task_type == "crc_stream_checker":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_data", "width": request.width},
+                    {"name": "frame_start", "width": 1},
+                    {"name": "frame_end", "width": 1},
+                    {"name": "expected_crc", "width": 8},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "crc_value", "width": 8},
+                    {"name": "crc_match", "width": 1},
                 ],
             }
         )
@@ -9114,6 +9438,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
             "valid op/lhs/rhs inputs are decoded, executed by the ALU core, and captured with zero, carry, "
             "and negative flags"
         ),
+        "crc_stream_checker": (
+            "valid-ready input bytes are accumulated across a marked frame, updated through CRC-8 logic, "
+            "and reported with expected CRC match status"
+        ),
         "composed_event_counter": "event_valid pulses pass through an event gate and increment the counter core",
         "composed_stream_accumulator": (
             "valid input samples pass through a skid buffer and accumulate into the running sum"
@@ -9189,6 +9517,8 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(24, request.width * 4), "ff": request.width * 4, "bram": 0, "dsp": 2}
     if request.task_type == "alu_control_unit":
         return {"lut": max(20, request.width * 3 + 8), "ff": request.width + 4, "bram": 0, "dsp": 0}
+    if request.task_type == "crc_stream_checker":
+        return {"lut": max(28, request.width * 4 + 12), "ff": request.width + 20, "bram": 0, "dsp": 0}
     if request.task_type == "composed_event_counter":
         return {"lut": max(4, request.width // 2 + 2), "ff": request.width, "bram": 0, "dsp": 0}
     if request.task_type == "composed_stream_accumulator":
