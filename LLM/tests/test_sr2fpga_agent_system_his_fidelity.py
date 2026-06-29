@@ -159,6 +159,39 @@ class SystemHisReqFidelityTest(unittest.TestCase):
             result.errors,
         )
 
+    def test_composed_dual_stream_join_rejects_accumulator_core_alias_ports_in_data_flow(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        for flow in system_his["data_flow"]:
+            flow["path"] = [
+                "u_accumulator_core.sample_valid_in" if endpoint == "u_accumulator_core.sample_valid" else endpoint
+                for endpoint in flow["path"]
+            ]
+        system_his["data_flow"].append(
+            {
+                "name": "bad_ready_alias",
+                "path": ["u_stream_stage.in_ready", "u_accumulator_core.sample_ready_out"],
+                "payload": {"name": "ready", "width": 1},
+                "protocol": "valid_ready",
+            }
+        )
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_valid_in'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_ready_out'",
+            result.errors,
+        )
+
     def test_composed_vector_mac_pipeline_requires_feature_weight_and_score_ports(self) -> None:
         request = ProjectRequest(
             task_type="composed_vector_mac_pipeline",

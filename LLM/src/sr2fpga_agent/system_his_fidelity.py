@@ -31,6 +31,15 @@ FIDELITY_METRIC_KEYS = (
     "constraint_fidelity",
 )
 
+_FORBIDDEN_COMPONENT_ALIAS_PORTS: dict[str, set[str]] = {
+    "accumulator_core": {
+        "sample_valid_in",
+        "sample_valid_out",
+        "sample_ready_in",
+        "sample_ready_out",
+    }
+}
+
 
 _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
     "alu_control_unit": {
@@ -292,6 +301,7 @@ def check_system_his_req_fidelity(
     errors: list[str] = []
     _validate_components(request, payload, errors)
     _validate_component_ports(request, payload, errors)
+    _validate_forbidden_component_alias_ports(payload, errors)
     _validate_instances(request, payload, errors)
     _validate_top_ports(request, payload, errors)
     _validate_clock_reset(payload, errors)
@@ -412,6 +422,24 @@ def _validate_data_flow_component_ports(
             if component_name not in expected_components:
                 continue
             if port_name not in expected_components[component_name]:
+                errors.append(f"REQ2HIS fidelity: component {component_name} has unexpected port '{port_name}'")
+
+
+def _validate_forbidden_component_alias_ports(payload: dict[str, Any], errors: list[str]) -> None:
+    instance_components = {
+        str(instance.get("name", "")).strip(): str(instance.get("component", "")).strip()
+        for instance in payload.get("instances", [])
+        if isinstance(instance, dict)
+    }
+    for flow in payload.get("data_flow", []):
+        if not isinstance(flow, dict):
+            continue
+        for endpoint in flow.get("path", []):
+            if not isinstance(endpoint, str) or "." not in endpoint:
+                continue
+            owner, port_name = endpoint.split(".", 1)
+            component_name = instance_components.get(owner)
+            if port_name in _FORBIDDEN_COMPONENT_ALIAS_PORTS.get(component_name, set()):
                 errors.append(f"REQ2HIS fidelity: component {component_name} has unexpected port '{port_name}'")
 
 

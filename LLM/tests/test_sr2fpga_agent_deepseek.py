@@ -620,6 +620,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("data_flow.timing entries must use concrete integer latency_cycles", user_prompt)
         self.assertIn("join_core.out_valid, accumulator.sample_valid", user_prompt)
         self.assertIn("out_stage.in_ready, accumulator.sample_ready", user_prompt)
+        self.assertIn("Do not introduce accumulator_core sample_valid_in", user_prompt)
 
     def test_system_his_v12_prompt_spells_out_stream_fork_contract(self) -> None:
         request = ProjectRequest(
@@ -894,6 +895,22 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("out_fsm is declared", td_retry)
         self.assertIn("states IDLE/VALID", td_retry)
         self.assertIn("all fsm_transition rules must use fsm out_fsm", td_retry)
+
+    def test_system_his_retry_feedback_rejects_join_accumulator_alias_ports(self) -> None:
+        messages = [
+            {"role": "system", "content": "Return JSON."},
+            {"role": "user", "content": "Generate a System-HIS."},
+        ]
+
+        retry_prompt = _with_system_his_retry_feedback(
+            messages,
+            "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_valid_in'",
+            '{"schema_version":"system-his-v1.2"}',
+            task_type="composed_dual_stream_join",
+        )[-1]["content"]
+
+        self.assertIn("accumulator_core.sample_valid must remain a single input port", retry_prompt)
+        self.assertIn("Do not create sample_valid_in, sample_valid_out, sample_ready_in, or sample_ready_out", retry_prompt)
 
     def test_system_his_retry_feedback_includes_crc_stream_checker_ports(self) -> None:
         messages = [
