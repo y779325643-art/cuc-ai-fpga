@@ -136,6 +136,8 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("alu_control_unit", 8, "alu_control_unit_8bit"),
+            ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
             ("composed_event_counter", 8, "composed_event_counter_8bit"),
             ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
             ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
@@ -276,6 +278,50 @@ class ProjectGeneratorTest(unittest.TestCase):
             ["dot_product_engine", "mac_unit", "vector_rom", ".done(done)"],
         )
         self.assertIn("result", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_alu_control_unit_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="alu_control_unit", width=8, project_name="alu_control_unit_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "alu_control_unit",
+            {"rtl/top.v", "rtl/alu_core.v", "rtl/control_decode.v", "rtl/status_flags.v"},
+            ["alu_core", "control_decode", "status_flags", ".result(result)", ".zero(zero)", ".carry(carry)"],
+        )
+        self.assertIn("input wire [2:0] op", project.files["rtl/top.v"])
+        self.assertIn("output wire negative", project.files["rtl/top.v"])
+        self.assertIn("expect_result(3'b000", project.files["sim/tb_top.v"])
+        self.assertIn("expect_result(3'b111", project.files["sim/tb_top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_crc_stream_checker_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="crc_stream_checker", width=8, project_name="crc_stream_checker_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "crc_stream_checker",
+            {"rtl/top.v", "rtl/crc8_update.v", "rtl/stream_frame_accumulator.v", "rtl/crc_status.v"},
+            [
+                "crc8_update",
+                "stream_frame_accumulator",
+                "crc_status",
+                ".crc_value(crc_value)",
+                ".crc_match(crc_match)",
+            ],
+        )
+        self.assertIn("input wire frame_start", project.files["rtl/top.v"])
+        self.assertIn("input wire frame_end", project.files["rtl/top.v"])
+        self.assertIn("input wire out_ready", project.files["rtl/top.v"])
+        self.assertIn("send_byte(8'h12", project.files["sim/tb_top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
     def test_generates_composed_stream_accumulator_from_component_topology(self) -> None:
@@ -1024,6 +1070,8 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("alu_control_unit", 8, "alu_control_unit_8bit"),
+            ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
             ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
             ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
             ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
@@ -1089,6 +1137,8 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("alu_control_unit", 8, "alu_control_unit_8bit"),
+            ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -1144,6 +1194,8 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("fir_filter", 8, "fir_filter_8bit"),
         ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
         ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+        ("alu_control_unit", 8, "alu_control_unit_8bit"),
+        ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
         ("composed_event_counter", 8, "composed_event_counter_8bit"),
         ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
         ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
