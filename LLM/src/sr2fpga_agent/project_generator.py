@@ -26,6 +26,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_dual_stream_join",
     "composed_vector_mac_pipeline",
     "composed_td_update_core",
+    "composed_policy_value_shell",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -183,6 +184,52 @@ COMPONENT_TOPOLOGIES = {
             {"from": "stream_stage.td_error_out", "to": "top.td_error"},
             {"from": "stream_stage.updated_value_out", "to": "top.updated_value"},
             {"from": "top.out_ready", "to": "stream_stage.out_ready"},
+        ],
+    },
+    "composed_policy_value_shell": {
+        "topology_id": "t7_policy_value_shell",
+        "difficulty_tier": "T7",
+        "submodules": [
+            "config_reg_bank",
+            "observation_stage",
+            "policy_score_core",
+            "action_select_core",
+            "stream_stage",
+        ],
+        "nodes": [
+            {"id": "config", "component": "config_reg_bank"},
+            {"id": "observation", "component": "observation_stage"},
+            {"id": "score", "component": "policy_score_core"},
+            {"id": "select", "component": "action_select_core"},
+            {"id": "output_stage", "component": "stream_stage"},
+        ],
+        "edges": [
+            {"from": "top.cfg_valid", "to": "config_reg_bank.cfg_valid"},
+            {"from": "top.cfg_addr", "to": "config_reg_bank.cfg_addr"},
+            {"from": "top.cfg_data", "to": "config_reg_bank.cfg_data"},
+            {"from": "config_reg_bank.cfg_ready", "to": "top.cfg_ready"},
+            {"from": "top.obs_valid", "to": "observation_stage.in_valid"},
+            {"from": "top.obs0", "to": "observation_stage.obs0"},
+            {"from": "top.obs1", "to": "observation_stage.obs1"},
+            {"from": "observation_stage.in_ready", "to": "top.obs_ready"},
+            {"from": "observation_stage.out_valid", "to": "policy_score_core.in_valid"},
+            {"from": "observation_stage.obs0_out", "to": "policy_score_core.obs0"},
+            {"from": "observation_stage.obs1_out", "to": "policy_score_core.obs1"},
+            {"from": "config_reg_bank.weight0", "to": "policy_score_core.weight0"},
+            {"from": "config_reg_bank.weight1", "to": "policy_score_core.weight1"},
+            {"from": "config_reg_bank.bias0", "to": "policy_score_core.bias0"},
+            {"from": "config_reg_bank.bias1", "to": "policy_score_core.bias1"},
+            {"from": "config_reg_bank.enable", "to": "policy_score_core.enable"},
+            {"from": "policy_score_core.out_valid", "to": "action_select_core.in_valid"},
+            {"from": "policy_score_core.score0", "to": "action_select_core.score0"},
+            {"from": "policy_score_core.score1", "to": "action_select_core.score1"},
+            {"from": "action_select_core.out_valid", "to": "stream_stage.in_valid"},
+            {"from": "action_select_core.selected_action", "to": "stream_stage.selected_action"},
+            {"from": "action_select_core.value_estimate", "to": "stream_stage.value_estimate"},
+            {"from": "stream_stage.out_valid", "to": "top.action_valid"},
+            {"from": "top.action_ready", "to": "stream_stage.out_ready"},
+            {"from": "stream_stage.selected_action_out", "to": "top.selected_action"},
+            {"from": "stream_stage.value_estimate_out", "to": "top.value_estimate"},
         ],
     },
 }
@@ -486,6 +533,32 @@ def _v12_state(
                 {"name": "updated_value", "owner": update_owner, "width": request.width},
             ]
         )
+    elif request.task_type == "composed_policy_value_shell":
+        config_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "config_reg_bank"),
+            owner,
+        )
+        observation_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "observation_stage"),
+            owner,
+        )
+        output_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "stream_stage"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "weight0", "owner": config_owner, "width": request.width},
+                {"name": "weight1", "owner": config_owner, "width": request.width},
+                {"name": "bias0", "owner": config_owner, "width": request.width},
+                {"name": "bias1", "owner": config_owner, "width": request.width},
+                {"name": "enable", "owner": config_owner, "width": 1},
+                {"name": "captured_obs0", "owner": observation_owner, "width": request.width},
+                {"name": "captured_obs1", "owner": observation_owner, "width": request.width},
+                {"name": "selected_action", "owner": output_owner, "width": 1},
+                {"name": "value_estimate", "owner": output_owner, "width": request.width},
+            ]
+        )
     return {
         "registers": registers,
         "counters": counters,
@@ -632,6 +705,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_dual_stream_join",
         "composed_vector_mac_pipeline",
         "composed_td_update_core",
+        "composed_policy_value_shell",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -1067,6 +1141,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_vector_mac_pipeline_rtl_files(request.width)
     if request.task_type == "composed_td_update_core":
         return _composed_td_update_core_rtl_files(request.width)
+    if request.task_type == "composed_policy_value_shell":
+        return _composed_policy_value_shell_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1112,6 +1188,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_vector_mac_pipeline_testbench(request.width)
     if request.task_type == "composed_td_update_core":
         return _composed_td_update_core_testbench(request.width)
+    if request.task_type == "composed_policy_value_shell":
+        return _composed_policy_value_shell_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -2571,6 +2649,143 @@ def _composed_td_update_core_testbench(width: int) -> str:
 
             send_update({width}'sd2, {width}'sd6, {width}'sd16, {width}'d8, {width}'d8);
             expect_update({width}'sd4, {width}'sd8);
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_policy_value_shell_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg cfg_valid;
+          wire cfg_ready;
+          reg [2:0] cfg_addr;
+          reg [{msb}:0] cfg_data;
+          reg obs_valid;
+          wire obs_ready;
+          reg [{msb}:0] obs0;
+          reg [{msb}:0] obs1;
+          wire action_valid;
+          reg action_ready;
+          wire selected_action;
+          wire [{msb}:0] value_estimate;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .cfg_valid(cfg_valid),
+            .cfg_ready(cfg_ready),
+            .cfg_addr(cfg_addr),
+            .cfg_data(cfg_data),
+            .obs_valid(obs_valid),
+            .obs_ready(obs_ready),
+            .obs0(obs0),
+            .obs1(obs1),
+            .action_valid(action_valid),
+            .action_ready(action_ready),
+            .selected_action(selected_action),
+            .value_estimate(value_estimate)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task write_cfg;
+            input [2:0] addr_i;
+            input [{msb}:0] data_i;
+            begin
+              @(negedge clk);
+              cfg_valid = 1'b1;
+              cfg_addr = addr_i;
+              cfg_data = data_i;
+              while (!cfg_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              cfg_valid = 1'b0;
+            end
+          endtask
+
+          task send_observation;
+            input [{msb}:0] obs0_i;
+            input [{msb}:0] obs1_i;
+            begin
+              @(negedge clk);
+              obs_valid = 1'b1;
+              obs0 = obs0_i;
+              obs1 = obs1_i;
+              while (!obs_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              obs_valid = 1'b0;
+            end
+          endtask
+
+          task expect_action;
+            input expected_action;
+            input [{msb}:0] expected_value;
+            begin
+              wait_cycles = 0;
+              while (action_valid !== 1'b1 && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (action_valid !== 1'b1) begin
+                $display("TEST_FAIL action output did not become valid");
+                $finish;
+              end
+              if (selected_action !== expected_action || value_estimate !== expected_value) begin
+                $display(
+                  "TEST_FAIL expected action=%0d value=%0d got action=%0d value=%0d",
+                  expected_action,
+                  expected_value,
+                  selected_action,
+                  value_estimate
+                );
+                $finish;
+              end
+              @(negedge clk);
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            cfg_valid = 1'b0;
+            cfg_addr = 3'd0;
+            cfg_data = {width}'d0;
+            obs_valid = 1'b0;
+            obs0 = {width}'d0;
+            obs1 = {width}'d0;
+            action_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            write_cfg(3'd0, {width}'d2);
+            write_cfg(3'd1, {width}'d1);
+            write_cfg(3'd2, {width}'d3);
+            write_cfg(3'd3, {width}'d0);
+            write_cfg(3'd4, {width}'d1);
+
+            send_observation({width}'d4, {width}'d2);
+            expect_action(1'b0, {width}'d7);
+
+            send_observation({width}'d1, {width}'d5);
+            expect_action(1'b1, {width}'d9);
 
             $display("TEST_PASS");
             $finish;
@@ -4496,6 +4711,308 @@ def _composed_td_update_core_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_policy_value_shell_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire cfg_valid,
+            output wire cfg_ready,
+            input wire [2:0] cfg_addr,
+            input wire [{msb}:0] cfg_data,
+            input wire obs_valid,
+            output wire obs_ready,
+            input wire [{msb}:0] obs0,
+            input wire [{msb}:0] obs1,
+            output wire action_valid,
+            input wire action_ready,
+            output wire selected_action,
+            output wire [{msb}:0] value_estimate
+        );
+
+          wire [{msb}:0] weight0;
+          wire [{msb}:0] weight1;
+          wire [{msb}:0] bias0;
+          wire [{msb}:0] bias1;
+          wire enable;
+          wire obs_stage_valid;
+          wire obs_stage_ready;
+          wire [{msb}:0] obs0_s;
+          wire [{msb}:0] obs1_s;
+          wire score_valid;
+          wire score_ready;
+          wire [{msb}:0] policy_score0;
+          wire [{msb}:0] policy_score1;
+          wire select_valid;
+          wire select_ready;
+          wire select_action;
+          wire [{msb}:0] select_value;
+
+          config_reg_bank #(
+            .DATA_WIDTH({width})
+          ) u_config_reg_bank (
+            .clk(clk),
+            .rst_n(rst_n),
+            .cfg_valid(cfg_valid),
+            .cfg_ready(cfg_ready),
+            .cfg_addr(cfg_addr),
+            .cfg_data(cfg_data),
+            .weight0(weight0),
+            .weight1(weight1),
+            .bias0(bias0),
+            .bias1(bias1),
+            .enable(enable)
+          );
+
+          observation_stage #(
+            .DATA_WIDTH({width})
+          ) u_observation_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(obs_valid),
+            .in_ready(obs_ready),
+            .obs0(obs0),
+            .obs1(obs1),
+            .out_valid(obs_stage_valid),
+            .out_ready(obs_stage_ready),
+            .obs0_out(obs0_s),
+            .obs1_out(obs1_s)
+          );
+
+          policy_score_core #(
+            .DATA_WIDTH({width})
+          ) u_policy_score_core (
+            .in_valid(obs_stage_valid),
+            .in_ready(obs_stage_ready),
+            .obs0(obs0_s),
+            .obs1(obs1_s),
+            .weight0(weight0),
+            .weight1(weight1),
+            .bias0(bias0),
+            .bias1(bias1),
+            .enable(enable),
+            .out_valid(score_valid),
+            .out_ready(score_ready),
+            .score0(policy_score0),
+            .score1(policy_score1)
+          );
+
+          action_select_core #(
+            .DATA_WIDTH({width})
+          ) u_action_select_core (
+            .in_valid(score_valid),
+            .in_ready(score_ready),
+            .score0(policy_score0),
+            .score1(policy_score1),
+            .out_valid(select_valid),
+            .out_ready(select_ready),
+            .selected_action(select_action),
+            .value_estimate(select_value)
+          );
+
+          stream_stage #(
+            .DATA_WIDTH({width})
+          ) u_stream_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(select_valid),
+            .in_ready(select_ready),
+            .selected_action(select_action),
+            .value_estimate(select_value),
+            .out_valid(action_valid),
+            .out_ready(action_ready),
+            .selected_action_out(selected_action),
+            .value_estimate_out(value_estimate)
+          );
+
+        endmodule
+        """
+    )
+    config_reg_bank = dedent(
+        """\
+        module config_reg_bank #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire cfg_valid,
+            output wire cfg_ready,
+            input wire [2:0] cfg_addr,
+            input wire [DATA_WIDTH-1:0] cfg_data,
+            output reg [DATA_WIDTH-1:0] weight0,
+            output reg [DATA_WIDTH-1:0] weight1,
+            output reg [DATA_WIDTH-1:0] bias0,
+            output reg [DATA_WIDTH-1:0] bias1,
+            output reg enable
+        );
+
+          assign cfg_ready = 1'b1;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              weight0 <= {{(DATA_WIDTH-1){1'b0}}, 1'b1};
+              weight1 <= {{(DATA_WIDTH-1){1'b0}}, 1'b1};
+              bias0 <= {DATA_WIDTH{1'b0}};
+              bias1 <= {DATA_WIDTH{1'b0}};
+              enable <= 1'b0;
+            end else if (cfg_valid) begin
+              case (cfg_addr)
+                3'd0: weight0 <= cfg_data;
+                3'd1: bias0 <= cfg_data;
+                3'd2: weight1 <= cfg_data;
+                3'd3: bias1 <= cfg_data;
+                3'd4: enable <= cfg_data[0];
+                default: enable <= enable;
+              endcase
+            end
+          end
+
+        endmodule
+        """
+    )
+    observation_stage = dedent(
+        """\
+        module observation_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [DATA_WIDTH-1:0] obs0,
+            input wire [DATA_WIDTH-1:0] obs1,
+            output reg out_valid,
+            input wire out_ready,
+            output reg [DATA_WIDTH-1:0] obs0_out,
+            output reg [DATA_WIDTH-1:0] obs1_out
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              obs0_out <= {DATA_WIDTH{1'b0}};
+              obs1_out <= {DATA_WIDTH{1'b0}};
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                obs0_out <= obs0;
+                obs1_out <= obs1;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    policy_score_core = dedent(
+        """\
+        module policy_score_core #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire in_valid,
+            output wire in_ready,
+            input wire [DATA_WIDTH-1:0] obs0,
+            input wire [DATA_WIDTH-1:0] obs1,
+            input wire [DATA_WIDTH-1:0] weight0,
+            input wire [DATA_WIDTH-1:0] weight1,
+            input wire [DATA_WIDTH-1:0] bias0,
+            input wire [DATA_WIDTH-1:0] bias1,
+            input wire enable,
+            output wire out_valid,
+            input wire out_ready,
+            output wire [DATA_WIDTH-1:0] score0,
+            output wire [DATA_WIDTH-1:0] score1
+        );
+
+          wire [(2*DATA_WIDTH)-1:0] score0_full;
+          wire [(2*DATA_WIDTH)-1:0] score1_full;
+
+          assign in_ready = out_ready;
+          assign out_valid = in_valid;
+          assign score0_full = (obs0 * weight0) + bias0;
+          assign score1_full = (obs1 * weight1) + bias1;
+          assign score0 = enable ? score0_full[DATA_WIDTH-1:0] : {DATA_WIDTH{1'b0}};
+          assign score1 = enable ? score1_full[DATA_WIDTH-1:0] : {DATA_WIDTH{1'b0}};
+
+        endmodule
+        """
+    )
+    action_select_core = dedent(
+        """\
+        module action_select_core #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire in_valid,
+            output wire in_ready,
+            input wire [DATA_WIDTH-1:0] score0,
+            input wire [DATA_WIDTH-1:0] score1,
+            output wire out_valid,
+            input wire out_ready,
+            output wire selected_action,
+            output wire [DATA_WIDTH-1:0] value_estimate
+        );
+
+          wire [DATA_WIDTH:0] score_sum;
+
+          assign in_ready = out_ready;
+          assign out_valid = in_valid;
+          assign selected_action = score1 > score0;
+          assign score_sum = {1'b0, score0} + {1'b0, score1};
+          assign value_estimate = score_sum[DATA_WIDTH:1];
+
+        endmodule
+        """
+    )
+    stream_stage = dedent(
+        """\
+        module stream_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire selected_action,
+            input wire [DATA_WIDTH-1:0] value_estimate,
+            output reg out_valid,
+            input wire out_ready,
+            output reg selected_action_out,
+            output reg [DATA_WIDTH-1:0] value_estimate_out
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              selected_action_out <= 1'b0;
+              value_estimate_out <= {DATA_WIDTH{1'b0}};
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                selected_action_out <= selected_action;
+                value_estimate_out <= value_estimate;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/config_reg_bank.v": config_reg_bank,
+        "rtl/observation_stage.v": observation_stage,
+        "rtl/policy_score_core.v": policy_score_core,
+        "rtl/action_select_core.v": action_select_core,
+        "rtl/stream_stage.v": stream_stage,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -4563,6 +5080,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_td_update_core": (
             f"Generate a {request.width}-bit T6 component-composed TD update datapath "
             "using an input tuple stage, discount core, TD update core, and output stage."
+        ),
+        "composed_policy_value_shell": (
+            f"Generate a {request.width}-bit T7 component-composed policy/value accelerator shell "
+            "using config registers, observation capture, policy scoring, action selection, and output staging."
         ),
     }
     return descriptions[request.task_type]
@@ -4833,6 +5354,29 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_policy_value_shell":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "cfg_valid", "width": 1},
+                    {"name": "cfg_addr", "width": 3},
+                    {"name": "cfg_data", "width": request.width},
+                    {"name": "obs_valid", "width": 1},
+                    {"name": "obs0", "width": request.width},
+                    {"name": "obs1", "width": request.width},
+                    {"name": "action_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "cfg_ready", "width": 1},
+                    {"name": "obs_ready", "width": 1},
+                    {"name": "action_valid", "width": 1},
+                    {"name": "selected_action", "width": 1},
+                    {"name": "value_estimate", "width": request.width},
+                ],
+            }
+        )
     return common
 
 
@@ -4865,6 +5409,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "composed_td_update_core": (
             "a reward, value, next value, discount factor, and learning rate tuple is staged, "
             "converted into a temporal-difference error, and used to emit an updated value"
+        ),
+        "composed_policy_value_shell": (
+            "configuration writes set weights, biases, and enable; observations are scored, compared, "
+            "and staged as selected action plus value estimate"
         ),
     }
     return expectations[request.task_type]
@@ -4907,4 +5455,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(48, request.width * 6 + 20), "ff": request.width * 6 + 24, "bram": 0, "dsp": 1}
     if request.task_type == "composed_td_update_core":
         return {"lut": max(56, request.width * 7 + 24), "ff": request.width * 7 + 28, "bram": 0, "dsp": 1}
+    if request.task_type == "composed_policy_value_shell":
+        return {"lut": max(72, request.width * 9 + 32), "ff": request.width * 8 + 40, "bram": 0, "dsp": 2}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

@@ -163,6 +163,29 @@ class SystemHisReqFidelityTest(unittest.TestCase):
         self.assertIn("REQ2HIS fidelity: composed_td_update_core requires top port 'reward'", result.errors)
         self.assertIn("REQ2HIS fidelity: composed_td_update_core requires top port 'updated_value'", result.errors)
 
+    def test_composed_policy_value_shell_requires_config_observation_and_action_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_policy_value_shell",
+            width=8,
+            project_name="policy_value_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"cfg_valid", "selected_action"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_policy_value_shell requires top port 'cfg_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_policy_value_shell requires top port 'selected_action'",
+            result.errors,
+        )
+
     def test_unsupported_tasks_are_not_blocked_by_req_fidelity_gate(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         system_his = _deterministic_system_his(request)

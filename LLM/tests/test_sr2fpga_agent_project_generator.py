@@ -521,6 +521,67 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
         self.assertGreaterEqual(len(system_his["connections"]), 18)
 
+    def test_generates_composed_policy_value_shell_from_t7_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_policy_value_shell",
+                width=8,
+                project_name="composed_policy_value_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_policy_value_shell",
+            {
+                "rtl/top.v",
+                "rtl/config_reg_bank.v",
+                "rtl/observation_stage.v",
+                "rtl/policy_score_core.v",
+                "rtl/action_select_core.v",
+                "rtl/stream_stage.v",
+            },
+            [
+                "config_reg_bank",
+                "observation_stage",
+                "policy_score_core",
+                "action_select_core",
+                "stream_stage",
+                ".cfg_valid(cfg_valid)",
+                ".obs0(obs0)",
+                ".score1(policy_score1)",
+                ".selected_action(select_action)",
+                ".value_estimate(select_value)",
+                ".selected_action_out(selected_action)",
+                ".value_estimate_out(value_estimate)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t7_policy_value_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T7")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["config_reg_bank", "observation_stage", "policy_score_core", "action_select_core", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "policy_score_core.score1", "to": "action_select_core.score1"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire cfg_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire [2:0] cfg_addr", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] cfg_data", project.files["rtl/top.v"])
+        self.assertIn("input wire obs_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire action_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire selected_action", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] value_estimate", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 24)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -655,6 +716,9 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
+            ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
+            ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -773,6 +837,7 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
         ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
         ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
+        ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
     ]
 
 

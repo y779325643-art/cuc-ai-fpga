@@ -640,6 +640,24 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("td_update_core", user_prompt)
         self.assertIn("rtl/td_update_core.v", user_prompt)
 
+    def test_system_his_v12_prompt_includes_policy_value_shell_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_policy_value_shell",
+            width=8,
+            project_name="policy_value_shell_8bit",
+            description="Generate a policy/value shell.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_policy_value_shell", user_prompt)
+        self.assertIn("config_reg_bank", user_prompt)
+        self.assertIn("observation_stage", user_prompt)
+        self.assertIn("policy_score_core", user_prompt)
+        self.assertIn("action_select_core", user_prompt)
+        self.assertIn("rtl/action_select_core.v", user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",

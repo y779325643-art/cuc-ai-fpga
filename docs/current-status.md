@@ -216,6 +216,14 @@ Implemented and under active review:
   topology expansion, REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt
   guidance. This advances RL update semantics but still excludes policy
   selection, replay memory, ARM/environment handshakes, and board shell work.
+- T7 `composed_policy_value_shell` / `t7_policy_value_shell` is now the
+  synthetic policy/value accelerator shell step. It adds a config register bank
+  for weights, biases, and enable, captures two observation inputs, computes two
+  policy scores, selects an action, estimates value, and stages the output under
+  valid-ready flow control. Unit coverage verifies deterministic generation,
+  runner topology expansion, REQ->HIS top-port fidelity, and DeepSeek
+  System-HIS prompt guidance. It is still synthetic and must not be described as
+  a realistic RL accelerator without real workload/interface references.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current T1-T4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
@@ -775,13 +783,15 @@ Key summary:
      `kind`/`polarity` guidance in REQ2HIS, missing module parameter
      declarations in `behavior_files`, and T4 FSM-state lowerability.
 00e. **Complex-task ladder toward the RL accelerator.** T5 is now the deterministic
-     vector-MAC feature-pipeline bridge, and T6 is the deterministic TD-error /
-     value-update bridge. Next, add T7 as a policy/value accelerator shell with
-     configuration registers and a clearer FPGA/ARM boundary. Before claiming the full
-     reinforcement-learning accelerator as realistic, request or cite a real
-     workload reference: RL algorithm family, observation vector width, action
-     count, fixed-point format, batch/sample shape, fabric/software split on
-     AC820-ZYNQ, and clock/DSP/BRAM targets.
+     vector-MAC feature-pipeline bridge, T6 is the deterministic TD-error /
+     value-update bridge, and T7 is the deterministic policy/value shell with
+     configuration registers, observation capture, score comparison, action
+     selection, and value-estimate output. Next steps should move toward T8+
+     replay/sample batching, host/fabric boundary, and board-facing integration.
+     Before claiming the full reinforcement-learning accelerator as realistic,
+     request or cite a real workload reference: RL algorithm family, observation
+     vector width, action count, fixed-point format, batch/sample shape,
+     fabric/software split on AC820-ZYNQ, and clock/DSP/BRAM targets.
 0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).

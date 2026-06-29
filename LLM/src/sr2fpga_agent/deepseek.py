@@ -70,6 +70,14 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/td_update_core.v",
         "rtl/stream_stage.v",
     ],
+    "composed_policy_value_shell": [
+        "rtl/top.v",
+        "rtl/config_reg_bank.v",
+        "rtl/observation_stage.v",
+        "rtl/policy_score_core.v",
+        "rtl/action_select_core.v",
+        "rtl/stream_stage.v",
+    ],
 }
 
 
@@ -1066,6 +1074,21 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/td_input_stage.v, rtl/discount_core.v, "
             "rtl/td_update_core.v, and rtl/stream_stage.v."
         )
+    if task_type == "composed_policy_value_shell":
+        return (
+            "Required architecture for composed_policy_value_shell:\n"
+            "- components: config_reg_bank, observation_stage, policy_score_core, action_select_core, stream_stage\n"
+            "- instances: config, observation, score, select, output_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include cfg_valid, cfg_ready, cfg_addr, cfg_data, obs_valid, obs_ready, "
+            "obs0, obs1, action_valid, action_ready, selected_action, and value_estimate.\n"
+            "- config_reg_bank owns weight0, weight1, bias0, bias1, and enable state.\n"
+            "- observation_stage owns captured observation state; stream_stage owns registered output state.\n"
+            "- data_flow must describe config writes, observation capture, policy scoring, action selection, "
+            "and output staging.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/config_reg_bank.v, rtl/observation_stage.v, "
+            "rtl/policy_score_core.v, rtl/action_select_core.v, and rtl/stream_stage.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1120,6 +1143,16 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             common
             + "- Required top ports: clk, rst_n, in_valid, reward, value, next_value, gamma, alpha, "
             "out_ready, in_ready, out_valid, td_error, updated_value\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_policy_value_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, cfg_valid, cfg_addr, cfg_data, cfg_ready, obs_valid, "
+            "obs_ready, obs0, obs1, action_valid, action_ready, selected_action, value_estimate\n"
+            "- Keep config_reg_bank, observation_stage, policy_score_core, action_select_core, and stream_stage "
+            "as separate RTL modules.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
         )

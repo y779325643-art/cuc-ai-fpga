@@ -102,6 +102,22 @@ _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
         "td_error": {"direction": "output", "width": "request"},
         "updated_value": {"direction": "output", "width": "request"},
     },
+    "composed_policy_value_shell": {
+        "clk": {"direction": "input"},
+        "rst_n": {"direction": "input"},
+        "cfg_valid": {"direction": "input"},
+        "cfg_addr": {"direction": "input", "width": 3},
+        "cfg_data": {"direction": "input", "width": "request"},
+        "cfg_ready": {"direction": "output"},
+        "obs_valid": {"direction": "input"},
+        "obs_ready": {"direction": "output"},
+        "obs0": {"direction": "input", "width": "request"},
+        "obs1": {"direction": "input", "width": "request"},
+        "action_valid": {"direction": "output"},
+        "action_ready": {"direction": "input"},
+        "selected_action": {"direction": "output"},
+        "value_estimate": {"direction": "output", "width": "request"},
+    },
 }
 
 

@@ -1039,6 +1039,10 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project that accepts reward, value, next_value, gamma, "
             "and alpha inputs, computes TD error, and emits an updated value stream."
         ),
+        "composed_policy_value_shell": (
+            f"Generate an {width}-bit FPGA RTL project with config registers, two observation inputs, "
+            "policy score comparison, selected action output, and value estimate output."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1068,6 +1072,7 @@ def _natural_component_title(task_type: str) -> str:
         "composed_dual_stream_join": "dual-stream join datapath",
         "composed_vector_mac_pipeline": "vector MAC feature pipeline",
         "composed_td_update_core": "TD-error value-update datapath",
+        "composed_policy_value_shell": "policy/value accelerator shell",
     }
     return titles[task_type]
 
@@ -1085,6 +1090,10 @@ def _natural_component_summary(task_type: str) -> str:
         ),
         "composed_td_update_core": (
             "td_input_stage feeding discount_core, then td_update_core, then stream_stage"
+        ),
+        "composed_policy_value_shell": (
+            "config_reg_bank and observation_stage feeding policy_score_core, then action_select_core, "
+            "then stream_stage"
         ),
     }
     return summaries[task_type]
@@ -1124,6 +1133,10 @@ def _topology_expected_behavior(task_type: str) -> str:
         "composed_td_update_core": (
             "a reward, value, next value, discount factor, and learning rate tuple is staged, "
             "converted into a temporal-difference error, and used to emit an updated value"
+        ),
+        "composed_policy_value_shell": (
+            "configuration writes set weights, biases, and enable; observation pairs are staged, "
+            "scored, compared, and emitted as selected action plus value estimate"
         ),
     }
     return behaviors[task_type]
