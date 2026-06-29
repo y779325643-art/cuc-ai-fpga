@@ -50,7 +50,7 @@ def parse_module_ports(content: str, module_name: str) -> dict[str, dict[str, An
     current_width: int | str = 1
     for declaration in split_port_declarations(body):
         match = re.search(
-            r"^\s*\b(input|output|inout)\b\s+(?:(?:wire|reg|logic)\s+)?(\[[^\]]+\])?\s*"
+            r"^\s*\b(input|output|inout)\b\s+(?:(?:wire|reg|logic|signed)\s+)*(\[[^\]]+\])?\s*"
             r"(.+?)\s*$",
             declaration,
         )

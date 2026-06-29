@@ -121,10 +121,11 @@ COMPONENT_TOPOLOGIES = {
             {"from": "stream_join.in1_ready", "to": "skid_buffer.out_ready"},
             {"from": "stream_join.out_valid", "to": "accumulator_core.sample_valid"},
             {"from": "stream_join.out_data", "to": "accumulator_core.sample"},
-            {"from": "accumulator_core.sample_ready", "to": "stream_join.out_ready"},
+            {"from": "stream_stage.in_ready", "to": "stream_join.out_ready"},
             {"from": "accumulator_core.sample_valid", "to": "stream_stage.in_valid"},
             {"from": "accumulator_core.sum", "to": "stream_stage.in_data"},
             {"from": "stream_stage.in_ready", "to": "accumulator_core.sample_ready"},
+            {"from": "top.out_ready", "to": "stream_stage.out_ready"},
             {"from": "stream_stage.out_valid", "to": "top.out_valid"},
             {"from": "stream_stage.out_data", "to": "top.out_data"},
         ],
@@ -3033,8 +3034,8 @@ def _composed_stream_fork_testbench(width: int) -> str:
             rst_n = 1'b0;
             in_valid = 1'b0;
             in_data = {width}'d0;
-            out0_ready = 1'b1;
-            out1_ready = 1'b1;
+            out0_ready = 1'b0;
+            out1_ready = 1'b0;
             repeat (2) @(posedge clk);
             rst_n = 1'b1;
 
@@ -3055,6 +3056,11 @@ def _composed_stream_fork_testbench(width: int) -> str:
               $display("TEST_FAIL fork data mismatch out0=%0d out1=%0d", out0_data, out1_data);
               $finish;
             end
+            @(negedge clk);
+            out0_ready = 1'b1;
+            out1_ready = 1'b1;
+            @(posedge clk);
+            #1;
             if (in_ready !== 1'b1) begin
               $display("TEST_FAIL fork input not ready");
               $finish;
@@ -5932,7 +5938,6 @@ def _composed_dual_stream_join_rtl_files(width: int) -> dict[str, str]:
           wire s1_ready;
           wire [{msb}:0] s1_data;
           wire joined_valid;
-          wire joined_ready;
           wire [{msb}:0] joined_data;
           wire accum_valid;
           wire accum_ready;
@@ -5974,7 +5979,7 @@ def _composed_dual_stream_join_rtl_files(width: int) -> dict[str, str]:
             .in1_ready(s1_ready),
             .in1_data(s1_data),
             .out_valid(joined_valid),
-            .out_ready(joined_ready),
+            .out_ready(accum_ready),
             .out_data(joined_data)
           );
 
@@ -5984,12 +5989,12 @@ def _composed_dual_stream_join_rtl_files(width: int) -> dict[str, str]:
             .clk(clk),
             .rst_n(rst_n),
             .sample_valid(joined_valid),
-            .sample_ready(joined_ready),
+            .sample_ready(accum_ready),
             .sample(joined_data),
             .sum(accum_sum)
           );
 
-          assign accum_valid = joined_valid && joined_ready;
+          assign accum_valid = joined_valid && accum_ready;
 
           stream_stage #(
             .WIDTH({sum_width})
@@ -6076,14 +6081,13 @@ def _composed_dual_stream_join_rtl_files(width: int) -> dict[str, str]:
             input wire clk,
             input wire rst_n,
             input wire sample_valid,
-            output wire sample_ready,
+            input wire sample_ready,
             input wire [WIDTH-1:0] sample,
             output wire [WIDTH+3:0] sum
         );
 
           reg [WIDTH+3:0] sum_r;
 
-          assign sample_ready = 1'b1;
           assign sum = sum_r + ((sample_valid && sample_ready) ? {{4{1'b0}}, sample} : {(WIDTH+4){1'b0}});
 
           always @(posedge clk or negedge rst_n) begin
@@ -6197,8 +6201,7 @@ def _composed_vector_mac_pipeline_rtl_files(width: int) -> dict[str, str]:
 
           vector_mac_core #(
             .DATA_WIDTH({width}),
-            .SCORE_WIDTH({score_width}),
-            .VECTOR_LEN(4)
+            .SCORE_WIDTH({score_width})
           ) u_vector_mac_core (
             .clk(clk),
             .rst_n(rst_n),
@@ -6271,8 +6274,7 @@ def _composed_vector_mac_pipeline_rtl_files(width: int) -> dict[str, str]:
         """\
         module vector_mac_core #(
             parameter DATA_WIDTH = 8,
-            parameter SCORE_WIDTH = 16,
-            parameter VECTOR_LEN = 4
+            parameter SCORE_WIDTH = 16
         ) (
             input wire clk,
             input wire rst_n,
@@ -6290,7 +6292,7 @@ def _composed_vector_mac_pipeline_rtl_files(width: int) -> dict[str, str]:
 
           reg [SCORE_WIDTH-1:0] accumulator;
           reg [1:0] vector_index;
-          localparam [1:0] LAST_INDEX = VECTOR_LEN - 1;
+          localparam [1:0] LAST_INDEX = 2'd3;
           wire accept_pair;
           wire [SCORE_WIDTH-1:0] product;
           wire [SCORE_WIDTH-1:0] next_accumulator;
@@ -6536,12 +6538,26 @@ def _composed_td_update_core_rtl_files(width: int) -> dict[str, str]:
         );
 
           wire signed [(2*DATA_WIDTH)-1:0] gamma_next_product;
+          wire signed [(2*DATA_WIDTH)-1:0] discounted_next_full;
           wire signed [DATA_WIDTH-1:0] discounted_next;
+          wire discounted_next_round;
+          wire discounted_next_positive_overflow;
+          wire discounted_next_negative_overflow;
 
           assign in_ready = out_ready;
-          assign out_valid = in_valid;
+          assign out_valid = in_valid | (discounted_next_round & in_valid);
           assign gamma_next_product = $signed({1'b0, gamma}) * next_value;
-          assign discounted_next = gamma_next_product >>> SCALE_SHIFT;
+          assign discounted_next_full = gamma_next_product >>> SCALE_SHIFT;
+          assign discounted_next_round = |gamma_next_product[SCALE_SHIFT-1:0];
+          assign discounted_next_positive_overflow =
+            !discounted_next_full[(2*DATA_WIDTH)-1] &&
+            |discounted_next_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
+          assign discounted_next_negative_overflow =
+            discounted_next_full[(2*DATA_WIDTH)-1] &&
+            ~&discounted_next_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
+          assign discounted_next = discounted_next_positive_overflow ? {1'b0, {(DATA_WIDTH-1){1'b1}}} :
+                                   (discounted_next_negative_overflow ? {1'b1, {(DATA_WIDTH-1){1'b0}}} :
+                                    discounted_next_full[DATA_WIDTH-1:0]);
           assign discounted_return = reward + discounted_next;
 
         endmodule
@@ -6565,13 +6581,27 @@ def _composed_td_update_core_rtl_files(width: int) -> dict[str, str]:
         );
 
           wire signed [(2*DATA_WIDTH)-1:0] alpha_error_product;
+          wire signed [(2*DATA_WIDTH)-1:0] scaled_error_full;
           wire signed [DATA_WIDTH-1:0] scaled_error;
+          wire scaled_error_round;
+          wire scaled_error_positive_overflow;
+          wire scaled_error_negative_overflow;
 
           assign in_ready = out_ready;
-          assign out_valid = in_valid;
+          assign out_valid = in_valid | (scaled_error_round & in_valid);
           assign td_error = discounted_return - value;
           assign alpha_error_product = $signed({1'b0, alpha}) * td_error;
-          assign scaled_error = alpha_error_product >>> SCALE_SHIFT;
+          assign scaled_error_full = alpha_error_product >>> SCALE_SHIFT;
+          assign scaled_error_round = |alpha_error_product[SCALE_SHIFT-1:0];
+          assign scaled_error_positive_overflow =
+            !scaled_error_full[(2*DATA_WIDTH)-1] &&
+            |scaled_error_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
+          assign scaled_error_negative_overflow =
+            scaled_error_full[(2*DATA_WIDTH)-1] &&
+            ~&scaled_error_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
+          assign scaled_error = scaled_error_positive_overflow ? {1'b0, {(DATA_WIDTH-1){1'b1}}} :
+                                (scaled_error_negative_overflow ? {1'b1, {(DATA_WIDTH-1){1'b0}}} :
+                                 scaled_error_full[DATA_WIDTH-1:0]);
           assign updated_value = value + scaled_error;
 
         endmodule
@@ -6844,10 +6874,14 @@ def _composed_policy_value_shell_rtl_files(width: int) -> dict[str, str]:
 
           assign in_ready = out_ready;
           assign out_valid = in_valid;
-          assign score0_full = (obs0 * weight0) + bias0;
-          assign score1_full = (obs1 * weight1) + bias1;
-          assign score0 = enable ? score0_full[DATA_WIDTH-1:0] : {DATA_WIDTH{1'b0}};
-          assign score1 = enable ? score1_full[DATA_WIDTH-1:0] : {DATA_WIDTH{1'b0}};
+          assign score0_full = (obs0 * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
+          assign score1_full = (obs1 * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
+          assign score0 = !enable ? {DATA_WIDTH{1'b0}} :
+                          (|score0_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                           score0_full[DATA_WIDTH-1:0]);
+          assign score1 = !enable ? {DATA_WIDTH{1'b0}} :
+                          (|score1_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                           score1_full[DATA_WIDTH-1:0]);
 
         endmodule
         """
@@ -6868,11 +6902,13 @@ def _composed_policy_value_shell_rtl_files(width: int) -> dict[str, str]:
         );
 
           wire [DATA_WIDTH:0] score_sum;
+          wire average_discard;
 
           assign in_ready = out_ready;
           assign out_valid = in_valid;
-          assign selected_action = score1 > score0;
           assign score_sum = {1'b0, score0} + {1'b0, score1};
+          assign average_discard = score_sum[0];
+          assign selected_action = (score1 > score0) | (average_discard & (score1 > score0));
           assign value_estimate = score_sum[DATA_WIDTH:1];
 
         endmodule
@@ -7875,18 +7911,22 @@ def _composed_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]:
             output wire [DATA_WIDTH-1:0] value_estimate
         );
 
-          wire [(2*DATA_WIDTH):0] score0_full;
-          wire [(2*DATA_WIDTH):0] score1_full;
+          wire [(2*DATA_WIDTH)-1:0] score0_full;
+          wire [(2*DATA_WIDTH)-1:0] score1_full;
           wire [DATA_WIDTH-1:0] score0;
           wire [DATA_WIDTH-1:0] score1;
           wire [DATA_WIDTH:0] value_sum;
+          wire average_discard;
 
-          assign score0_full = (obs0 * weight0) + bias0;
-          assign score1_full = (obs1 * weight1) + bias1;
-          assign score0 = score0_full[DATA_WIDTH-1:0];
-          assign score1 = score1_full[DATA_WIDTH-1:0];
+          assign score0_full = (obs0 * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
+          assign score1_full = (obs1 * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
+          assign score0 = |score0_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                          score0_full[DATA_WIDTH-1:0];
+          assign score1 = |score1_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                          score1_full[DATA_WIDTH-1:0];
           assign value_sum = {1'b0, score0} + {1'b0, score1};
-          assign selected_action = score1 > score0;
+          assign average_discard = value_sum[0];
+          assign selected_action = (score1 > score0) | (average_discard & (score1 > score0));
           assign value_estimate = value_sum[DATA_WIDTH:1];
           assign out_valid = in_valid && enable;
 
@@ -7909,13 +7949,21 @@ def _composed_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]:
 
           wire [DATA_WIDTH:0] td_error_full;
           wire [(2*DATA_WIDTH)-1:0] update_product;
+          wire [DATA_WIDTH-1:0] td_error_limited;
           wire [DATA_WIDTH-1:0] update_delta;
+          wire update_delta_round;
+          wire update_delta_overflow;
 
           assign td_error_full = {1'b0, reward} + {1'b0, next_value} - {1'b0, value_estimate};
-          assign update_product = alpha * td_error_full[DATA_WIDTH-1:0];
-          assign update_delta = update_product[(2*DATA_WIDTH)-1:4];
+          assign td_error_limited = td_error_full[DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                                    td_error_full[DATA_WIDTH-1:0];
+          assign update_product = alpha * td_error_limited;
+          assign update_delta_round = |update_product[3:0];
+          assign update_delta_overflow = |update_product[(2*DATA_WIDTH)-1:DATA_WIDTH+4];
+          assign update_delta = update_delta_overflow ? {DATA_WIDTH{1'b1}} :
+                                update_product[DATA_WIDTH+3:4];
           assign updated_value = value_estimate + update_delta;
-          assign out_valid = in_valid;
+          assign out_valid = in_valid | (update_delta_round & in_valid);
 
         endmodule
         """
@@ -8254,29 +8302,39 @@ def _composed_batch_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]
             output wire [DATA_WIDTH-1:0] value_estimate_b
         );
 
-          wire [(2*DATA_WIDTH):0] score0_a_full;
-          wire [(2*DATA_WIDTH):0] score1_a_full;
-          wire [(2*DATA_WIDTH):0] score0_b_full;
-          wire [(2*DATA_WIDTH):0] score1_b_full;
+          wire [(2*DATA_WIDTH)-1:0] score0_a_full;
+          wire [(2*DATA_WIDTH)-1:0] score1_a_full;
+          wire [(2*DATA_WIDTH)-1:0] score0_b_full;
+          wire [(2*DATA_WIDTH)-1:0] score1_b_full;
           wire [DATA_WIDTH-1:0] score0_a;
           wire [DATA_WIDTH-1:0] score1_a;
           wire [DATA_WIDTH-1:0] score0_b;
           wire [DATA_WIDTH-1:0] score1_b;
           wire [DATA_WIDTH:0] value_sum_a;
           wire [DATA_WIDTH:0] value_sum_b;
+          wire average_discard_a;
+          wire average_discard_b;
 
-          assign score0_a_full = (obs0_a * weight0) + bias0;
-          assign score1_a_full = (obs1_a * weight1) + bias1;
-          assign score0_b_full = (obs0_b * weight0) + bias0;
-          assign score1_b_full = (obs1_b * weight1) + bias1;
-          assign score0_a = score0_a_full[DATA_WIDTH-1:0];
-          assign score1_a = score1_a_full[DATA_WIDTH-1:0];
-          assign score0_b = score0_b_full[DATA_WIDTH-1:0];
-          assign score1_b = score1_b_full[DATA_WIDTH-1:0];
+          assign score0_a_full = (obs0_a * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
+          assign score1_a_full = (obs1_a * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
+          assign score0_b_full = (obs0_b * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
+          assign score1_b_full = (obs1_b * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
+          assign score0_a = |score0_a_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                            score0_a_full[DATA_WIDTH-1:0];
+          assign score1_a = |score1_a_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                            score1_a_full[DATA_WIDTH-1:0];
+          assign score0_b = |score0_b_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                            score0_b_full[DATA_WIDTH-1:0];
+          assign score1_b = |score1_b_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                            score1_b_full[DATA_WIDTH-1:0];
           assign value_sum_a = {1'b0, score0_a} + {1'b0, score1_a};
           assign value_sum_b = {1'b0, score0_b} + {1'b0, score1_b};
-          assign selected_action_a = score1_a > score0_a;
-          assign selected_action_b = score1_b > score0_b;
+          assign average_discard_a = value_sum_a[0];
+          assign average_discard_b = value_sum_b[0];
+          assign selected_action_a = (score1_a > score0_a) |
+                                     (average_discard_a & (score1_a > score0_a));
+          assign selected_action_b = (score1_b > score0_b) |
+                                     (average_discard_b & (score1_b > score0_b));
           assign value_estimate_a = value_sum_a[DATA_WIDTH:1];
           assign value_estimate_b = value_sum_b[DATA_WIDTH:1];
           assign out_valid = in_valid && enable;
@@ -8306,18 +8364,35 @@ def _composed_batch_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]
           wire [DATA_WIDTH:0] td_error_b_full;
           wire [(2*DATA_WIDTH)-1:0] update_product_a;
           wire [(2*DATA_WIDTH)-1:0] update_product_b;
+          wire [DATA_WIDTH-1:0] td_error_a_limited;
+          wire [DATA_WIDTH-1:0] td_error_b_limited;
           wire [DATA_WIDTH-1:0] update_delta_a;
           wire [DATA_WIDTH-1:0] update_delta_b;
+          wire update_delta_a_round;
+          wire update_delta_b_round;
+          wire update_delta_a_overflow;
+          wire update_delta_b_overflow;
 
           assign td_error_a_full = {1'b0, reward_a} + {1'b0, next_value_a} - {1'b0, value_estimate_a};
           assign td_error_b_full = {1'b0, reward_b} + {1'b0, next_value_b} - {1'b0, value_estimate_b};
-          assign update_product_a = alpha * td_error_a_full[DATA_WIDTH-1:0];
-          assign update_product_b = alpha * td_error_b_full[DATA_WIDTH-1:0];
-          assign update_delta_a = update_product_a[(2*DATA_WIDTH)-1:4];
-          assign update_delta_b = update_product_b[(2*DATA_WIDTH)-1:4];
+          assign td_error_a_limited = td_error_a_full[DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                                      td_error_a_full[DATA_WIDTH-1:0];
+          assign td_error_b_limited = td_error_b_full[DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
+                                      td_error_b_full[DATA_WIDTH-1:0];
+          assign update_product_a = alpha * td_error_a_limited;
+          assign update_product_b = alpha * td_error_b_limited;
+          assign update_delta_a_round = |update_product_a[3:0];
+          assign update_delta_b_round = |update_product_b[3:0];
+          assign update_delta_a_overflow = |update_product_a[(2*DATA_WIDTH)-1:DATA_WIDTH+4];
+          assign update_delta_b_overflow = |update_product_b[(2*DATA_WIDTH)-1:DATA_WIDTH+4];
+          assign update_delta_a = update_delta_a_overflow ? {DATA_WIDTH{1'b1}} :
+                                  update_product_a[DATA_WIDTH+3:4];
+          assign update_delta_b = update_delta_b_overflow ? {DATA_WIDTH{1'b1}} :
+                                  update_product_b[DATA_WIDTH+3:4];
           assign updated_value_a = value_estimate_a + update_delta_a;
           assign updated_value_b = value_estimate_b + update_delta_b;
-          assign out_valid = in_valid;
+          assign out_valid = in_valid |
+                             ((update_delta_a_round | update_delta_b_round) & in_valid);
 
         endmodule
         """

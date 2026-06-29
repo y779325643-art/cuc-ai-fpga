@@ -142,6 +142,7 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
             ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
             ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+            ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -1072,6 +1073,8 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
             ("alu_control_unit", 8, "alu_control_unit_8bit"),
             ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
+            ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
+            ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
             ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
             ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
             ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
@@ -1139,6 +1142,18 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
             ("alu_control_unit", 8, "alu_control_unit_8bit"),
             ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
+            ("composed_event_counter", 8, "composed_event_counter_8bit"),
+            ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
+            ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
+            ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+            ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
+            ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
+            ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
+            ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
+            ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
+            ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
+            ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
+            ("composed_replay_arbiter_shell", 8, "composed_replay_arbiter_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
