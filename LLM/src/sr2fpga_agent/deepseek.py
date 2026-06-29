@@ -63,6 +63,13 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/vector_mac_core.v",
         "rtl/stream_stage.v",
     ],
+    "composed_td_update_core": [
+        "rtl/top.v",
+        "rtl/td_input_stage.v",
+        "rtl/discount_core.v",
+        "rtl/td_update_core.v",
+        "rtl/stream_stage.v",
+    ],
 }
 
 
@@ -1045,6 +1052,20 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/skid_buffer.v, "
             "rtl/vector_mac_core.v, and rtl/stream_stage.v."
         )
+    if task_type == "composed_td_update_core":
+        return (
+            "Required architecture for composed_td_update_core:\n"
+            "- components: td_input_stage, discount_core, td_update_core, stream_stage\n"
+            "- instances: input_stage, discount, update, output_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include in_valid, in_ready, reward, value, next_value, gamma, alpha, "
+            "out_valid, out_ready, td_error, and updated_value.\n"
+            "- td_input_stage owns captured reward/value/next_value state.\n"
+            "- td_update_core or stream_stage owns td_error and updated_value state if registered.\n"
+            "- data_flow must describe tuple capture, discount calculation, TD update, and output staging.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/td_input_stage.v, rtl/discount_core.v, "
+            "rtl/td_update_core.v, and rtl/stream_stage.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1091,6 +1112,14 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             common
             + "- Required top ports: clk, rst_n, feature_valid, feature_data, weight_valid, "
             "weight_data, bias, score_ready, feature_ready, weight_ready, score_valid, score_data\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_td_update_core":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, reward, value, next_value, gamma, alpha, "
+            "out_ready, in_ready, out_valid, td_error, updated_value\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
         )

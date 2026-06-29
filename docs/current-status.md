@@ -208,6 +208,14 @@ Implemented and under active review:
   output, runner topology expansion, REQ->HIS top-port fidelity, and DeepSeek
   System-HIS prompt guidance. This is still a synthetic bridge, not the full
   reinforcement-learning accelerator.
+- The ladder now also includes T6 `composed_td_update_core` /
+  `t6_td_update_core`, a synthetic TD-error/value-update datapath. It accepts
+  reward, value, next-value, gamma, and alpha inputs, computes a fixed-point
+  temporal-difference error, and emits an updated value through a valid-ready
+  output stage. Unit coverage verifies deterministic generation, runner
+  topology expansion, REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt
+  guidance. This advances RL update semantics but still excludes policy
+  selection, replay memory, ARM/environment handshakes, and board shell work.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current T1-T4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
@@ -767,9 +775,9 @@ Key summary:
      `kind`/`polarity` guidance in REQ2HIS, missing module parameter
      declarations in `behavior_files`, and T4 FSM-state lowerability.
 00e. **Complex-task ladder toward the RL accelerator.** T5 is now the deterministic
-     vector-MAC feature-pipeline bridge. Next, add T6 as a TD-error/value-update
-     core, then T7 as a policy/value accelerator shell with configuration
-     registers and a clearer FPGA/ARM boundary. Before claiming the full
+     vector-MAC feature-pipeline bridge, and T6 is the deterministic TD-error /
+     value-update bridge. Next, add T7 as a policy/value accelerator shell with
+     configuration registers and a clearer FPGA/ARM boundary. Before claiming the full
      reinforcement-learning accelerator as realistic, request or cite a real
      workload reference: RL algorithm family, observation vector width, action
      count, fixed-point format, batch/sample shape, fabric/software split on

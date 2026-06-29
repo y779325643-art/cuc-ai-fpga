@@ -1035,6 +1035,10 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project that accepts paired feature and weight streams, "
             "computes a fixed-length vector MAC score with bias, and exposes one score stream."
         ),
+        "composed_td_update_core": (
+            f"Generate an {width}-bit FPGA RTL project that accepts reward, value, next_value, gamma, "
+            "and alpha inputs, computes TD error, and emits an updated value stream."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1063,6 +1067,7 @@ def _natural_component_title(task_type: str) -> str:
         "composed_stream_fork": "valid-ready stream fork datapath",
         "composed_dual_stream_join": "dual-stream join datapath",
         "composed_vector_mac_pipeline": "vector MAC feature pipeline",
+        "composed_td_update_core": "TD-error value-update datapath",
     }
     return titles[task_type]
 
@@ -1077,6 +1082,9 @@ def _natural_component_summary(task_type: str) -> str:
         ),
         "composed_vector_mac_pipeline": (
             "feature and weight skid_buffer instances feeding vector_mac_core, then stream_stage"
+        ),
+        "composed_td_update_core": (
+            "td_input_stage feeding discount_core, then td_update_core, then stream_stage"
         ),
     }
     return summaries[task_type]
@@ -1112,6 +1120,10 @@ def _topology_expected_behavior(task_type: str) -> str:
         "composed_vector_mac_pipeline": (
             "paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, "
             "biased, and staged as score output"
+        ),
+        "composed_td_update_core": (
+            "a reward, value, next value, discount factor, and learning rate tuple is staged, "
+            "converted into a temporal-difference error, and used to emit an updated value"
         ),
     }
     return behaviors[task_type]

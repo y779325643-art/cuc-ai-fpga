@@ -87,6 +87,21 @@ _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
         "score_valid": {"direction": "output"},
         "score_data": {"direction": "output"},
     },
+    "composed_td_update_core": {
+        "clk": {"direction": "input"},
+        "rst_n": {"direction": "input"},
+        "in_valid": {"direction": "input"},
+        "reward": {"direction": "input", "width": "request"},
+        "value": {"direction": "input", "width": "request"},
+        "next_value": {"direction": "input", "width": "request"},
+        "gamma": {"direction": "input", "width": "request"},
+        "alpha": {"direction": "input", "width": "request"},
+        "out_ready": {"direction": "input"},
+        "in_ready": {"direction": "output"},
+        "out_valid": {"direction": "output"},
+        "td_error": {"direction": "output", "width": "request"},
+        "updated_value": {"direction": "output", "width": "request"},
+    },
 }
 
 

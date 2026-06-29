@@ -25,6 +25,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_stream_fork",
     "composed_dual_stream_join",
     "composed_vector_mac_pipeline",
+    "composed_td_update_core",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -148,6 +149,40 @@ COMPONENT_TOPOLOGIES = {
             {"from": "stream_stage.out_valid", "to": "top.score_valid"},
             {"from": "stream_stage.out_data", "to": "top.score_data"},
             {"from": "top.score_ready", "to": "stream_stage.out_ready"},
+        ],
+    },
+    "composed_td_update_core": {
+        "topology_id": "t6_td_update_core",
+        "difficulty_tier": "T6",
+        "submodules": ["td_input_stage", "discount_core", "td_update_core", "stream_stage"],
+        "nodes": [
+            {"id": "input_stage", "component": "td_input_stage"},
+            {"id": "discount", "component": "discount_core"},
+            {"id": "update", "component": "td_update_core"},
+            {"id": "output_stage", "component": "stream_stage"},
+        ],
+        "edges": [
+            {"from": "top.in_valid", "to": "td_input_stage.in_valid"},
+            {"from": "top.reward", "to": "td_input_stage.reward"},
+            {"from": "top.value", "to": "td_input_stage.value"},
+            {"from": "top.next_value", "to": "td_input_stage.next_value"},
+            {"from": "top.gamma", "to": "td_input_stage.gamma"},
+            {"from": "top.alpha", "to": "td_input_stage.alpha"},
+            {"from": "td_input_stage.out_valid", "to": "discount_core.in_valid"},
+            {"from": "td_input_stage.reward_out", "to": "discount_core.reward"},
+            {"from": "td_input_stage.next_value_out", "to": "discount_core.next_value"},
+            {"from": "td_input_stage.gamma_out", "to": "discount_core.gamma"},
+            {"from": "discount_core.out_valid", "to": "td_update_core.in_valid"},
+            {"from": "discount_core.discounted_return", "to": "td_update_core.discounted_return"},
+            {"from": "td_input_stage.value_out", "to": "td_update_core.value"},
+            {"from": "td_input_stage.alpha_out", "to": "td_update_core.alpha"},
+            {"from": "td_update_core.out_valid", "to": "stream_stage.in_valid"},
+            {"from": "td_update_core.td_error", "to": "stream_stage.td_error"},
+            {"from": "td_update_core.updated_value", "to": "stream_stage.updated_value"},
+            {"from": "stream_stage.out_valid", "to": "top.out_valid"},
+            {"from": "stream_stage.td_error_out", "to": "top.td_error"},
+            {"from": "stream_stage.updated_value_out", "to": "top.updated_value"},
+            {"from": "top.out_ready", "to": "stream_stage.out_ready"},
         ],
     },
 }
@@ -433,6 +468,24 @@ def _v12_state(
             ]
         )
         counters.append({"name": "vector_index", "owner": mac_owner, "width": 2})
+    elif request.task_type == "composed_td_update_core":
+        input_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "td_input_stage"),
+            owner,
+        )
+        update_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "td_update_core"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "captured_reward", "owner": input_owner, "width": request.width},
+                {"name": "captured_value", "owner": input_owner, "width": request.width},
+                {"name": "captured_next_value", "owner": input_owner, "width": request.width},
+                {"name": "td_error", "owner": update_owner, "width": request.width},
+                {"name": "updated_value", "owner": update_owner, "width": request.width},
+            ]
+        )
     return {
         "registers": registers,
         "counters": counters,
@@ -578,6 +631,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_stream_fork",
         "composed_dual_stream_join",
         "composed_vector_mac_pipeline",
+        "composed_td_update_core",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -733,7 +787,7 @@ def _parse_module_ports(content: str, module_name: str) -> list[dict[str, object
     ports: list[dict[str, object]] = []
     for declaration in _split_port_declarations(body):
         match = re.search(
-            r"\b(input|output|inout)\b\s+(?:wire|reg\s+|reg|wire\s+)?\s*(\[[^\]]+\])?\s*([A-Za-z_][A-Za-z0-9_$]*)",
+            r"\b(input|output|inout)\b\s+(?:wire|reg\s+|reg|wire\s+)?\s*(?:signed\s+)?(\[[^\]]+\])?\s*([A-Za-z_][A-Za-z0-9_$]*)",
             declaration,
         )
         if match is None:
@@ -1011,6 +1065,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_dual_stream_join_rtl_files(request.width)
     if request.task_type == "composed_vector_mac_pipeline":
         return _composed_vector_mac_pipeline_rtl_files(request.width)
+    if request.task_type == "composed_td_update_core":
+        return _composed_td_update_core_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1054,6 +1110,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_dual_stream_join_testbench(request.width)
     if request.task_type == "composed_vector_mac_pipeline":
         return _composed_vector_mac_pipeline_testbench(request.width)
+    if request.task_type == "composed_td_update_core":
+        return _composed_td_update_core_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -2394,6 +2452,125 @@ def _composed_vector_mac_pipeline_testbench(width: int) -> str:
             send_pair({width}'d0, {width}'d3);
             send_pair({width}'d3, {width}'d4);
             expect_score({score_width}'d17);
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_td_update_core_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg in_valid;
+          wire in_ready;
+          reg signed [{msb}:0] reward;
+          reg signed [{msb}:0] value;
+          reg signed [{msb}:0] next_value;
+          reg [{msb}:0] gamma;
+          reg [{msb}:0] alpha;
+          wire out_valid;
+          reg out_ready;
+          wire signed [{msb}:0] td_error;
+          wire signed [{msb}:0] updated_value;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .reward(reward),
+            .value(value),
+            .next_value(next_value),
+            .gamma(gamma),
+            .alpha(alpha),
+            .out_valid(out_valid),
+            .out_ready(out_ready),
+            .td_error(td_error),
+            .updated_value(updated_value)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task send_update;
+            input signed [{msb}:0] reward_i;
+            input signed [{msb}:0] value_i;
+            input signed [{msb}:0] next_value_i;
+            input [{msb}:0] gamma_i;
+            input [{msb}:0] alpha_i;
+            begin
+              @(negedge clk);
+              in_valid = 1'b1;
+              reward = reward_i;
+              value = value_i;
+              next_value = next_value_i;
+              gamma = gamma_i;
+              alpha = alpha_i;
+              while (!in_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              in_valid = 1'b0;
+            end
+          endtask
+
+          task expect_update;
+            input signed [{msb}:0] expected_error;
+            input signed [{msb}:0] expected_value;
+            begin
+              wait_cycles = 0;
+              while (out_valid !== 1'b1 && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (out_valid !== 1'b1) begin
+                $display("TEST_FAIL output did not become valid");
+                $finish;
+              end
+              if (td_error !== expected_error || updated_value !== expected_value) begin
+                $display(
+                  "TEST_FAIL expected td=%0d value=%0d got td=%0d value=%0d",
+                  expected_error,
+                  expected_value,
+                  td_error,
+                  updated_value
+                );
+                $finish;
+              end
+              @(negedge clk);
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            in_valid = 1'b0;
+            reward = {width}'sd0;
+            value = {width}'sd0;
+            next_value = {width}'sd0;
+            gamma = {width}'d0;
+            alpha = {width}'d0;
+            out_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            send_update({width}'sd4, {width}'sd10, {width}'sd20, {width}'d8, {width}'d4);
+            expect_update({width}'sd4, {width}'sd11);
+
+            send_update({width}'sd2, {width}'sd6, {width}'sd16, {width}'d8, {width}'d8);
+            expect_update({width}'sd4, {width}'sd8);
 
             $display("TEST_PASS");
             $finish;
@@ -4065,6 +4242,260 @@ def _composed_vector_mac_pipeline_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_td_update_core_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire signed [{msb}:0] reward,
+            input wire signed [{msb}:0] value,
+            input wire signed [{msb}:0] next_value,
+            input wire [{msb}:0] gamma,
+            input wire [{msb}:0] alpha,
+            output wire out_valid,
+            input wire out_ready,
+            output wire signed [{msb}:0] td_error,
+            output wire signed [{msb}:0] updated_value
+        );
+
+          wire input_valid;
+          wire input_ready;
+          wire signed [{msb}:0] reward_s;
+          wire signed [{msb}:0] value_s;
+          wire signed [{msb}:0] next_value_s;
+          wire [{msb}:0] gamma_s;
+          wire [{msb}:0] alpha_s;
+          wire discount_valid;
+          wire discount_ready;
+          wire signed [{msb}:0] discounted_return;
+          wire update_valid;
+          wire update_ready;
+          wire signed [{msb}:0] update_td_error;
+          wire signed [{msb}:0] update_value;
+
+          td_input_stage #(
+            .DATA_WIDTH({width})
+          ) u_td_input_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(in_valid),
+            .in_ready(in_ready),
+            .reward(reward),
+            .value(value),
+            .next_value(next_value),
+            .gamma(gamma),
+            .alpha(alpha),
+            .out_valid(input_valid),
+            .out_ready(input_ready),
+            .reward_out(reward_s),
+            .value_out(value_s),
+            .next_value_out(next_value_s),
+            .gamma_out(gamma_s),
+            .alpha_out(alpha_s)
+          );
+
+          discount_core #(
+            .DATA_WIDTH({width}),
+            .SCALE_SHIFT(4)
+          ) u_discount_core (
+            .in_valid(input_valid),
+            .in_ready(input_ready),
+            .reward(reward_s),
+            .next_value(next_value_s),
+            .gamma(gamma_s),
+            .out_valid(discount_valid),
+            .out_ready(discount_ready),
+            .discounted_return(discounted_return)
+          );
+
+          td_update_core #(
+            .DATA_WIDTH({width}),
+            .SCALE_SHIFT(4)
+          ) u_td_update_core (
+            .in_valid(discount_valid),
+            .in_ready(discount_ready),
+            .discounted_return(discounted_return),
+            .value(value_s),
+            .alpha(alpha_s),
+            .out_valid(update_valid),
+            .out_ready(update_ready),
+            .td_error(update_td_error),
+            .updated_value(update_value)
+          );
+
+          stream_stage #(
+            .DATA_WIDTH({width})
+          ) u_stream_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(update_valid),
+            .in_ready(update_ready),
+            .td_error(update_td_error),
+            .updated_value(update_value),
+            .out_valid(out_valid),
+            .out_ready(out_ready),
+            .td_error_out(td_error),
+            .updated_value_out(updated_value)
+          );
+
+        endmodule
+        """
+    )
+    td_input_stage = dedent(
+        """\
+        module td_input_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire signed [DATA_WIDTH-1:0] reward,
+            input wire signed [DATA_WIDTH-1:0] value,
+            input wire signed [DATA_WIDTH-1:0] next_value,
+            input wire [DATA_WIDTH-1:0] gamma,
+            input wire [DATA_WIDTH-1:0] alpha,
+            output reg out_valid,
+            input wire out_ready,
+            output reg signed [DATA_WIDTH-1:0] reward_out,
+            output reg signed [DATA_WIDTH-1:0] value_out,
+            output reg signed [DATA_WIDTH-1:0] next_value_out,
+            output reg [DATA_WIDTH-1:0] gamma_out,
+            output reg [DATA_WIDTH-1:0] alpha_out
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              reward_out <= {DATA_WIDTH{1'b0}};
+              value_out <= {DATA_WIDTH{1'b0}};
+              next_value_out <= {DATA_WIDTH{1'b0}};
+              gamma_out <= {DATA_WIDTH{1'b0}};
+              alpha_out <= {DATA_WIDTH{1'b0}};
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                reward_out <= reward;
+                value_out <= value;
+                next_value_out <= next_value;
+                gamma_out <= gamma;
+                alpha_out <= alpha;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    discount_core = dedent(
+        """\
+        module discount_core #(
+            parameter DATA_WIDTH = 8,
+            parameter SCALE_SHIFT = 4
+        ) (
+            input wire in_valid,
+            output wire in_ready,
+            input wire signed [DATA_WIDTH-1:0] reward,
+            input wire signed [DATA_WIDTH-1:0] next_value,
+            input wire [DATA_WIDTH-1:0] gamma,
+            output wire out_valid,
+            input wire out_ready,
+            output wire signed [DATA_WIDTH-1:0] discounted_return
+        );
+
+          wire signed [(2*DATA_WIDTH)-1:0] gamma_next_product;
+          wire signed [DATA_WIDTH-1:0] discounted_next;
+
+          assign in_ready = out_ready;
+          assign out_valid = in_valid;
+          assign gamma_next_product = $signed({1'b0, gamma}) * next_value;
+          assign discounted_next = gamma_next_product >>> SCALE_SHIFT;
+          assign discounted_return = reward + discounted_next;
+
+        endmodule
+        """
+    )
+    td_update_core = dedent(
+        """\
+        module td_update_core #(
+            parameter DATA_WIDTH = 8,
+            parameter SCALE_SHIFT = 4
+        ) (
+            input wire in_valid,
+            output wire in_ready,
+            input wire signed [DATA_WIDTH-1:0] discounted_return,
+            input wire signed [DATA_WIDTH-1:0] value,
+            input wire [DATA_WIDTH-1:0] alpha,
+            output wire out_valid,
+            input wire out_ready,
+            output wire signed [DATA_WIDTH-1:0] td_error,
+            output wire signed [DATA_WIDTH-1:0] updated_value
+        );
+
+          wire signed [(2*DATA_WIDTH)-1:0] alpha_error_product;
+          wire signed [DATA_WIDTH-1:0] scaled_error;
+
+          assign in_ready = out_ready;
+          assign out_valid = in_valid;
+          assign td_error = discounted_return - value;
+          assign alpha_error_product = $signed({1'b0, alpha}) * td_error;
+          assign scaled_error = alpha_error_product >>> SCALE_SHIFT;
+          assign updated_value = value + scaled_error;
+
+        endmodule
+        """
+    )
+    stream_stage = dedent(
+        """\
+        module stream_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire signed [DATA_WIDTH-1:0] td_error,
+            input wire signed [DATA_WIDTH-1:0] updated_value,
+            output reg out_valid,
+            input wire out_ready,
+            output reg signed [DATA_WIDTH-1:0] td_error_out,
+            output reg signed [DATA_WIDTH-1:0] updated_value_out
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              td_error_out <= {DATA_WIDTH{1'b0}};
+              updated_value_out <= {DATA_WIDTH{1'b0}};
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                td_error_out <= td_error;
+                updated_value_out <= updated_value;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/td_input_stage.v": td_input_stage,
+        "rtl/discount_core.v": discount_core,
+        "rtl/td_update_core.v": td_update_core,
+        "rtl/stream_stage.v": stream_stage,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -4128,6 +4559,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_vector_mac_pipeline": (
             f"Generate a {request.width}-bit T5 component-composed vector MAC feature pipeline "
             "using feature and weight skid buffers, a vector MAC core, and an output stage."
+        ),
+        "composed_td_update_core": (
+            f"Generate a {request.width}-bit T6 component-composed TD update datapath "
+            "using an input tuple stage, discount core, TD update core, and output stage."
         ),
     }
     return descriptions[request.task_type]
@@ -4376,6 +4811,28 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_td_update_core":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "reward", "width": request.width},
+                    {"name": "value", "width": request.width},
+                    {"name": "next_value", "width": request.width},
+                    {"name": "gamma", "width": request.width},
+                    {"name": "alpha", "width": request.width},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "td_error", "width": request.width},
+                    {"name": "updated_value", "width": request.width},
+                ],
+            }
+        )
     return common
 
 
@@ -4404,6 +4861,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "composed_vector_mac_pipeline": (
             "paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, "
             "biased, and staged as score output"
+        ),
+        "composed_td_update_core": (
+            "a reward, value, next value, discount factor, and learning rate tuple is staged, "
+            "converted into a temporal-difference error, and used to emit an updated value"
         ),
     }
     return expectations[request.task_type]
@@ -4444,4 +4905,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(32, request.width * 4 + 12), "ff": request.width * 5 + 18, "bram": 0, "dsp": 0}
     if request.task_type == "composed_vector_mac_pipeline":
         return {"lut": max(48, request.width * 6 + 20), "ff": request.width * 6 + 24, "bram": 0, "dsp": 1}
+    if request.task_type == "composed_td_update_core":
+        return {"lut": max(56, request.width * 7 + 24), "ff": request.width * 7 + 28, "bram": 0, "dsp": 1}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

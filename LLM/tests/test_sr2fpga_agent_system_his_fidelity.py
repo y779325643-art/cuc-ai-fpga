@@ -146,6 +146,23 @@ class SystemHisReqFidelityTest(unittest.TestCase):
             result.errors,
         )
 
+    def test_composed_td_update_core_requires_reward_value_and_update_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_td_update_core",
+            width=8,
+            project_name="td_update_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"reward", "updated_value"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn("REQ2HIS fidelity: composed_td_update_core requires top port 'reward'", result.errors)
+        self.assertIn("REQ2HIS fidelity: composed_td_update_core requires top port 'updated_value'", result.errors)
+
     def test_unsupported_tasks_are_not_blocked_by_req_fidelity_gate(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         system_his = _deterministic_system_his(request)

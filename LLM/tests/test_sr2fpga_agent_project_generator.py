@@ -466,6 +466,61 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
         self.assertGreaterEqual(len(system_his["connections"]), 18)
 
+    def test_generates_composed_td_update_core_from_t6_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_td_update_core",
+                width=8,
+                project_name="composed_td_update_core_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_td_update_core",
+            {
+                "rtl/top.v",
+                "rtl/td_input_stage.v",
+                "rtl/discount_core.v",
+                "rtl/td_update_core.v",
+                "rtl/stream_stage.v",
+            },
+            [
+                "td_input_stage",
+                "discount_core",
+                "td_update_core",
+                "stream_stage",
+                ".reward(reward)",
+                ".next_value(next_value)",
+                ".td_error(update_td_error)",
+                ".updated_value(update_value)",
+                ".td_error_out(td_error)",
+                ".updated_value_out(updated_value)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t6_td_update_core")
+        self.assertEqual(architecture["difficulty_tier"], "T6")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["td_input_stage", "discount_core", "td_update_core", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "discount_core.discounted_return", "to": "td_update_core.discounted_return"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire signed [7:0] reward", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] gamma", project.files["rtl/top.v"])
+        self.assertIn("output wire signed [7:0] td_error", project.files["rtl/top.v"])
+        self.assertIn("output wire signed [7:0] updated_value", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 18)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -717,6 +772,7 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
         ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
         ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
+        ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
     ]
 
 

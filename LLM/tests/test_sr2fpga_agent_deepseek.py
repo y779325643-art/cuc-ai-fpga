@@ -623,6 +623,23 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("weight_buffer", user_prompt)
         self.assertIn("rtl/vector_mac_core.v", user_prompt)
 
+    def test_system_his_v12_prompt_includes_td_update_core_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_td_update_core",
+            width=8,
+            project_name="td_update_8bit",
+            description="Generate a TD update core.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_td_update_core", user_prompt)
+        self.assertIn("td_input_stage", user_prompt)
+        self.assertIn("discount_core", user_prompt)
+        self.assertIn("td_update_core", user_prompt)
+        self.assertIn("rtl/td_update_core.v", user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",
