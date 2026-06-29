@@ -1644,6 +1644,9 @@ Rules:
   assign DATA_WIDTH outputs from an explicitly sized intermediate or slice such
   as value_ext[DATA_WIDTH-1:0]; do not rely on implicit Verilog truncation or
   extension that would trigger WIDTHEXPAND or WIDTHTRUNC.
+- If a wide intermediate is sliced, either use every bit or add a local
+  _unused_* reduction wire for intentionally unused high/low bits so Verilator
+  does not report UNUSEDSIGNAL on partial product bits.
 - Use declared FSM state localparams from the deterministic skeleton when
   implementing state machines.
 - Do not rename, omit, or replace System-HIS state.fsms states; every declared
@@ -1694,6 +1697,7 @@ def _with_his_project_retry_feedback(
                 "- Drive every declared output in the behavior body.\n"
                 "- Every case statement must include a default branch or cover all encoded states.\n"
                 "- Make arithmetic widths explicit; avoid implicit truncation/extension warnings such as WIDTHEXPAND or WIDTHTRUNC.\n"
+                "- If a wide intermediate is sliced, consume intentionally unused high/low bits with a local _unused_* reduction wire.\n"
                 "- Avoid undriven signals, incomplete case coverage, and multiple continuous drivers.\n\n"
                 "Previous invalid behavior_files JSON:\n"
                 f"{previous_content.strip()}"

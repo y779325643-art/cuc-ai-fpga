@@ -1099,6 +1099,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Drive every declared output", retry_prompt)
         self.assertIn("Every case statement must include a default branch", retry_prompt)
         self.assertIn("WIDTHEXPAND or WIDTHTRUNC", retry_prompt)
+        self.assertIn("intentionally unused high/low bits", retry_prompt)
         self.assertIn("Avoid undriven signals, incomplete case coverage", retry_prompt)
 
     def test_deepseek_his_project_generator_rejects_reserved_identifier_behavior(self) -> None:
@@ -1185,6 +1186,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Generated behavior must be Verilator -Wall clean", user_prompt)
         self.assertIn("Make arithmetic widths explicit", user_prompt)
         self.assertIn("WIDTHEXPAND or WIDTHTRUNC", user_prompt)
+        self.assertIn("UNUSEDSIGNAL on partial product bits", user_prompt)
         self.assertIn("include a default branch for every case statement", user_prompt)
         self.assertIn("Use declared FSM state localparams from the deterministic skeleton", user_prompt)
         self.assertIn("Do not rename, omit, or replace System-HIS state.fsms states", user_prompt)
