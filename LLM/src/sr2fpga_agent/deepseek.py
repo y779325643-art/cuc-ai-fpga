@@ -42,6 +42,18 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/mac_unit.v",
         "rtl/dot_product_engine.v",
     ],
+    "alu_control_unit": [
+        "rtl/top.v",
+        "rtl/control_decode.v",
+        "rtl/alu_core.v",
+        "rtl/status_flags.v",
+    ],
+    "crc_stream_checker": [
+        "rtl/top.v",
+        "rtl/stream_frame_accumulator.v",
+        "rtl/crc8_update.v",
+        "rtl/crc_status.v",
+    ],
     "composed_event_counter": ["rtl/top.v", "rtl/event_gate.v", "rtl/counter_core.v"],
     "composed_stream_accumulator": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/accumulator_core.v"],
     "composed_stream_fork": [
@@ -1073,6 +1085,33 @@ def _with_system_his_retry_feedback(
 
 
 def _system_his_v12_task_guidance(task_type: str) -> str:
+    if task_type == "alu_control_unit":
+        return (
+            "Required architecture for alu_control_unit:\n"
+            "- components: control_decode, alu_core, status_flags\n"
+            "- instances: decoder, core, flags\n"
+            "- top ports must include clk, rst_n, valid, ready, op, lhs, rhs, result_valid, "
+            "result, zero, carry, and negative.\n"
+            "- op must be a 3-bit input; lhs, rhs, and result must match the requested width.\n"
+            "- status_flags owns result, result_valid, zero, carry, and negative state if outputs are registered.\n"
+            "- data_flow must describe opcode decode, ALU execution, and registered status output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/control_decode.v, rtl/alu_core.v, "
+            "and rtl/status_flags.v."
+        )
+    if task_type == "crc_stream_checker":
+        return (
+            "Required architecture for crc_stream_checker:\n"
+            "- components: stream_frame_accumulator, crc8_update, crc_status\n"
+            "- instances: accumulator, update, status\n"
+            "- top ports must include clk, rst_n, in_valid, in_data, frame_start, frame_end, "
+            "expected_crc, out_ready, in_ready, out_valid, crc_value, and crc_match.\n"
+            "- in_data must match the requested width; expected_crc and crc_value must be 8-bit ports.\n"
+            "- stream_frame_accumulator owns crc_state, frame_crc, and frame_done state; "
+            "crc_status owns out_valid, crc_value, and crc_match state.\n"
+            "- data_flow must describe valid-ready byte input, CRC-8 update, frame completion, and match status output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/stream_frame_accumulator.v, "
+            "rtl/crc8_update.v, and rtl/crc_status.v."
+        )
     if task_type == "composed_dual_stream_join":
         return (
             "Required architecture for composed_dual_stream_join:\n"
@@ -1253,6 +1292,20 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             "in0_ready, in1_ready, out_valid, out_data\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "alu_control_unit":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, valid, ready, op, lhs, rhs, result_valid, result, zero, carry, negative\n"
+            "- Keep control_decode, alu_core, and status_flags as separate RTL modules.\n"
+            "- Do not rename op/lhs/rhs/result or collapse flag outputs into a packed status bus.\n"
+        )
+    if task_type == "crc_stream_checker":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, frame_start, frame_end, expected_crc, out_ready, in_ready, out_valid, crc_value, crc_match\n"
+            "- Keep stream_frame_accumulator, crc8_update, and crc_status as separate RTL modules.\n"
+            "- Do not rename frame_start/frame_end/expected_crc to AXI-style sideband names.\n"
         )
     if task_type == "composed_vector_mac_pipeline":
         return (

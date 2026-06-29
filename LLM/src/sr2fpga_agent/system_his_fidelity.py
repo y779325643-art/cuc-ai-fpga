@@ -32,6 +32,34 @@ FIDELITY_METRIC_KEYS = (
 
 
 _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
+    "alu_control_unit": {
+        "clk": {"direction": "input"},
+        "rst_n": {"direction": "input"},
+        "valid": {"direction": "input"},
+        "ready": {"direction": "output"},
+        "op": {"direction": "input", "width": 3},
+        "lhs": {"direction": "input", "width": "request"},
+        "rhs": {"direction": "input", "width": "request"},
+        "result_valid": {"direction": "output"},
+        "result": {"direction": "output", "width": "request"},
+        "zero": {"direction": "output"},
+        "carry": {"direction": "output"},
+        "negative": {"direction": "output"},
+    },
+    "crc_stream_checker": {
+        "clk": {"direction": "input"},
+        "rst_n": {"direction": "input"},
+        "in_valid": {"direction": "input"},
+        "in_data": {"direction": "input", "width": "request"},
+        "frame_start": {"direction": "input"},
+        "frame_end": {"direction": "input"},
+        "expected_crc": {"direction": "input", "width": 8},
+        "out_ready": {"direction": "input"},
+        "in_ready": {"direction": "output"},
+        "out_valid": {"direction": "output"},
+        "crc_value": {"direction": "output", "width": 8},
+        "crc_match": {"direction": "output"},
+    },
     "composed_event_counter": {
         "clk": {"direction": "input"},
         "rst_n": {"direction": "input"},
@@ -240,6 +268,12 @@ _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
 }
 
 
+_SUPPLEMENTAL_TASK_COMPONENTS = {
+    "alu_control_unit": ["control_decode", "alu_core", "status_flags"],
+    "crc_stream_checker": ["stream_frame_accumulator", "crc8_update", "crc_status"],
+}
+
+
 def check_system_his_req_fidelity(
     request: ProjectRequest,
     payload: dict[str, Any],
@@ -251,7 +285,7 @@ def check_system_his_req_fidelity(
     legacy task types unblocked.
     """
 
-    if request.task_type not in COMPONENT_TOPOLOGIES:
+    if request.task_type not in COMPONENT_TOPOLOGIES and request.task_type not in _SUPPLEMENTAL_TASK_COMPONENTS:
         return SystemHisReqFidelityResult(passed=True, metrics=_not_applicable_metrics())
 
     errors: list[str] = []
@@ -318,8 +352,7 @@ def _validate_components(request: ProjectRequest, payload: dict[str, Any], error
         for component in components
         if isinstance(component, dict)
     }
-    topology = COMPONENT_TOPOLOGIES[request.task_type]
-    for component_name in topology["submodules"]:
+    for component_name in _required_components(request.task_type):
         if component_name not in component_names:
             errors.append(f"REQ2HIS fidelity: {request.task_type} requires component '{component_name}'")
 
@@ -331,18 +364,30 @@ def _validate_instances(request: ProjectRequest, payload: dict[str, Any], errors
         for instance in instances
         if isinstance(instance, dict)
     )
-    topology = COMPONENT_TOPOLOGIES[request.task_type]
-    required_counts = Counter(
-        str(node.get("component", "")).strip()
-        for node in topology.get("nodes", [])
-        if isinstance(node, dict)
-    )
+    required_counts = _required_instance_counts(request.task_type)
     for component_name, count in required_counts.items():
         if instance_components[component_name] < count:
             errors.append(
                 f"REQ2HIS fidelity: {request.task_type} requires {count} instance(s) "
                 f"of component '{component_name}'"
             )
+
+
+def _required_components(task_type: str) -> list[str]:
+    if task_type in COMPONENT_TOPOLOGIES:
+        return list(COMPONENT_TOPOLOGIES[task_type]["submodules"])
+    return list(_SUPPLEMENTAL_TASK_COMPONENTS.get(task_type, []))
+
+
+def _required_instance_counts(task_type: str) -> Counter[str]:
+    if task_type in COMPONENT_TOPOLOGIES:
+        topology = COMPONENT_TOPOLOGIES[task_type]
+        return Counter(
+            str(node.get("component", "")).strip()
+            for node in topology.get("nodes", [])
+            if isinstance(node, dict)
+        )
+    return Counter(_SUPPLEMENTAL_TASK_COMPONENTS.get(task_type, []))
 
 
 def _validate_top_ports(request: ProjectRequest, payload: dict[str, Any], errors: list[str]) -> None:

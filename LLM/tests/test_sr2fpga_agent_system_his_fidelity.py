@@ -347,6 +347,60 @@ class SystemHisReqFidelityTest(unittest.TestCase):
             result.errors,
         )
 
+    def test_alu_control_unit_accepts_deterministic_his(self) -> None:
+        request = ProjectRequest(
+            task_type="alu_control_unit",
+            width=8,
+            project_name="alu_control_unit_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertTrue(result.passed, result.errors)
+
+    def test_alu_control_unit_requires_opcode_operand_and_flag_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="alu_control_unit",
+            width=8,
+            project_name="alu_control_unit_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"op", "lhs", "negative"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn("REQ2HIS fidelity: alu_control_unit requires top port 'op'", result.errors)
+        self.assertIn("REQ2HIS fidelity: alu_control_unit requires top port 'lhs'", result.errors)
+        self.assertIn("REQ2HIS fidelity: alu_control_unit requires top port 'negative'", result.errors)
+
+    def test_crc_stream_checker_requires_frame_crc_ports_and_components(self) -> None:
+        request = ProjectRequest(
+            task_type="crc_stream_checker",
+            width=8,
+            project_name="crc_stream_checker_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"frame_start", "expected_crc", "crc_match"}
+        ]
+        system_his["components"] = [
+            component for component in system_his["components"] if component["name"] != "crc8_update"
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires component 'crc8_update'", result.errors)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires top port 'frame_start'", result.errors)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires top port 'expected_crc'", result.errors)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires top port 'crc_match'", result.errors)
+
     def test_unsupported_tasks_are_not_blocked_by_req_fidelity_gate(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         system_his = _deterministic_system_his(request)

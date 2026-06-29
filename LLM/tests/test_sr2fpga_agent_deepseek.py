@@ -751,6 +751,43 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("sample_packet_stage", user_prompt)
         self.assertIn("rtl/replay_memory_bank.v", user_prompt)
 
+    def test_system_his_v12_prompt_includes_alu_control_unit_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="alu_control_unit",
+            width=8,
+            project_name="alu_control_unit_8bit",
+            description="Generate an ALU control unit.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for alu_control_unit", user_prompt)
+        self.assertIn("control_decode", user_prompt)
+        self.assertIn("alu_core", user_prompt)
+        self.assertIn("status_flags", user_prompt)
+        self.assertIn("top ports must include clk, rst_n, valid, ready, op, lhs, rhs", user_prompt)
+        self.assertIn("rtl/status_flags.v", user_prompt)
+
+    def test_system_his_v12_prompt_includes_crc_stream_checker_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="crc_stream_checker",
+            width=8,
+            project_name="crc_stream_checker_8bit",
+            description="Generate a streaming CRC checker.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for crc_stream_checker", user_prompt)
+        self.assertIn("stream_frame_accumulator", user_prompt)
+        self.assertIn("crc8_update", user_prompt)
+        self.assertIn("crc_status", user_prompt)
+        self.assertIn("frame_start", user_prompt)
+        self.assertIn("expected_crc", user_prompt)
+        self.assertIn("rtl/crc8_update.v", user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",
@@ -794,6 +831,26 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", retry_prompt)
         self.assertIn("FSM owner must be top or an instances[].name", retry_prompt)
         self.assertIn("State names across registers, counters, fsms, buffers, and memories must be globally unique", retry_prompt)
+
+    def test_system_his_retry_feedback_includes_crc_stream_checker_ports(self) -> None:
+        messages = [
+            {"role": "system", "content": "Return JSON."},
+            {"role": "user", "content": "Generate a System-HIS."},
+        ]
+
+        retry_messages = _with_system_his_retry_feedback(
+            messages,
+            "DeepSeek System-HIS REQ2HIS fidelity failed: missing top ports",
+            '{"schema_version":"system-his-v1.2"}',
+            task_type="crc_stream_checker",
+        )
+        retry_prompt = retry_messages[-1]["content"]
+
+        self.assertIn(
+            "Required top ports: clk, rst_n, in_valid, in_data, frame_start, frame_end, expected_crc, out_ready, in_ready, out_valid, crc_value, crc_match",
+            retry_prompt,
+        )
+        self.assertIn("Keep stream_frame_accumulator, crc8_update, and crc_status as separate RTL modules", retry_prompt)
 
     def test_deepseek_his_project_generator_merges_behavior_into_checked_skeleton(self) -> None:
         system_his = _system_his_v12_fixture()
