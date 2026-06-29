@@ -212,6 +212,38 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
         self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "behavior_files")
 
+    def test_official_eval_gap_closure_config_covers_t1_t12_and_supplemental_tasks(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_official_eval_gap_closure.example.yaml"))
+        samples = planned_samples(config)
+
+        self.assertEqual(config.provider, "deepseek-his-v12")
+        self.assertEqual(config.repair_provider, "none")
+        self.assertEqual(config.max_attempts, 1)
+        self.assertEqual(config.sample_id_prefix, "official_eval_gap_closure")
+        self.assertEqual(len(samples), 28)
+        self.assertEqual(
+            [sample.task_type for sample in samples[:14]],
+            [
+                "composed_event_counter",
+                "composed_stream_accumulator",
+                "composed_stream_fork",
+                "composed_dual_stream_join",
+                "composed_vector_mac_pipeline",
+                "composed_td_update_core",
+                "composed_policy_value_shell",
+                "composed_replay_sample_shell",
+                "composed_host_protocol_shell",
+                "composed_rl_accelerator_shell",
+                "composed_batch_rl_accelerator_shell",
+                "composed_replay_arbiter_shell",
+                "alu_control_unit",
+                "crc_stream_checker",
+            ],
+        )
+        self.assertEqual([sample.source for sample in samples[:14]], ["deterministic"] * 14)
+        self.assertEqual([sample.source for sample in samples[14:]], ["deepseek-his-v12"] * 14)
+        self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"a_first_attempt_no_tools"})
+
     def test_l0_by_construction_ablation_config_pairs_full_and_skeleton_generation(self) -> None:
         config = load_runner_config(Path("configs/sr2fpga_l0_by_construction_ablation.example.yaml"))
         samples = planned_samples(config)
