@@ -1051,6 +1051,10 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project with AXI-lite-style control/status writes and reads, "
             "AXI-stream-style sample output, and irq reporting."
         ),
+        "composed_rl_accelerator_shell": (
+            f"Generate an {width}-bit FPGA RTL project with host configuration, sample capture, "
+            "policy/value scoring, TD update, result streaming, and irq reporting."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1083,6 +1087,7 @@ def _natural_component_title(task_type: str) -> str:
         "composed_policy_value_shell": "policy/value accelerator shell",
         "composed_replay_sample_shell": "replay sample host/fabric shell",
         "composed_host_protocol_shell": "host protocol control and stream shell",
+        "composed_rl_accelerator_shell": "synthetic RL accelerator shell",
     }
     return titles[task_type]
 
@@ -1112,6 +1117,10 @@ def _natural_component_summary(task_type: str) -> str:
         "composed_host_protocol_shell": (
             "axi_lite_write_ctrl and axi_lite_read_ctrl feeding control_reg_bank, then "
             "sample_stream_adapter and irq_status"
+        ),
+        "composed_rl_accelerator_shell": (
+            "host_config_bank and sample_capture_stage feeding policy_value_core, then "
+            "td_update_core and result_stream_stage"
         ),
     }
     return summaries[task_type]
@@ -1163,6 +1172,11 @@ def _topology_expected_behavior(task_type: str) -> str:
         "composed_host_protocol_shell": (
             "AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload "
             "is emitted, status can be read back, and irq remains asserted until cleared"
+        ),
+        "composed_rl_accelerator_shell": (
+            "configuration writes set weights, biases, alpha, and enable; sample tuples are captured, "
+            "scored into a selected action and value estimate, updated through a TD datapath, "
+            "and staged as a result stream with episode irq reporting"
         ),
     }
     return behaviors[task_type]

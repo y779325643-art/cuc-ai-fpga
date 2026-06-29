@@ -29,6 +29,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_policy_value_shell",
     "composed_replay_sample_shell",
     "composed_host_protocol_shell",
+    "composed_rl_accelerator_shell",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -337,6 +338,63 @@ COMPONENT_TOPOLOGIES = {
             {"from": "sample_stream_adapter.stream_done", "to": "control_reg_bank.stream_done"},
             {"from": "control_reg_bank.irq_state", "to": "irq_status.irq_in"},
             {"from": "irq_status.irq_out", "to": "top.irq"},
+        ],
+    },
+    "composed_rl_accelerator_shell": {
+        "topology_id": "t10_rl_accelerator_shell",
+        "difficulty_tier": "T10",
+        "submodules": [
+            "host_config_bank",
+            "sample_capture_stage",
+            "policy_value_core",
+            "td_update_core",
+            "result_stream_stage",
+        ],
+        "nodes": [
+            {"id": "config", "component": "host_config_bank"},
+            {"id": "sample", "component": "sample_capture_stage"},
+            {"id": "policy", "component": "policy_value_core"},
+            {"id": "update", "component": "td_update_core"},
+            {"id": "result", "component": "result_stream_stage"},
+        ],
+        "edges": [
+            {"from": "top.cfg_valid", "to": "host_config_bank.cfg_valid"},
+            {"from": "top.cfg_addr", "to": "host_config_bank.cfg_addr"},
+            {"from": "top.cfg_data", "to": "host_config_bank.cfg_data"},
+            {"from": "host_config_bank.cfg_ready", "to": "top.cfg_ready"},
+            {"from": "top.sample_valid", "to": "sample_capture_stage.in_valid"},
+            {"from": "sample_capture_stage.in_ready", "to": "top.sample_ready"},
+            {"from": "top.obs0", "to": "sample_capture_stage.obs0"},
+            {"from": "top.obs1", "to": "sample_capture_stage.obs1"},
+            {"from": "top.reward", "to": "sample_capture_stage.reward"},
+            {"from": "top.next_value", "to": "sample_capture_stage.next_value"},
+            {"from": "top.done_in", "to": "sample_capture_stage.done_in"},
+            {"from": "sample_capture_stage.out_valid", "to": "policy_value_core.in_valid"},
+            {"from": "sample_capture_stage.obs0_out", "to": "policy_value_core.obs0"},
+            {"from": "sample_capture_stage.obs1_out", "to": "policy_value_core.obs1"},
+            {"from": "host_config_bank.weight0", "to": "policy_value_core.weight0"},
+            {"from": "host_config_bank.bias0", "to": "policy_value_core.bias0"},
+            {"from": "host_config_bank.weight1", "to": "policy_value_core.weight1"},
+            {"from": "host_config_bank.bias1", "to": "policy_value_core.bias1"},
+            {"from": "host_config_bank.enable", "to": "policy_value_core.enable"},
+            {"from": "policy_value_core.out_valid", "to": "td_update_core.in_valid"},
+            {"from": "policy_value_core.value_estimate", "to": "td_update_core.value_estimate"},
+            {"from": "sample_capture_stage.reward_out", "to": "td_update_core.reward"},
+            {"from": "sample_capture_stage.next_value_out", "to": "td_update_core.next_value"},
+            {"from": "host_config_bank.alpha", "to": "td_update_core.alpha"},
+            {"from": "td_update_core.out_valid", "to": "result_stream_stage.in_valid"},
+            {"from": "policy_value_core.selected_action", "to": "result_stream_stage.selected_action"},
+            {"from": "policy_value_core.value_estimate", "to": "result_stream_stage.value_estimate"},
+            {"from": "td_update_core.updated_value", "to": "result_stream_stage.updated_value"},
+            {"from": "sample_capture_stage.done_out", "to": "result_stream_stage.done_in"},
+            {"from": "result_stream_stage.out_ready", "to": "sample_capture_stage.consume_ready"},
+            {"from": "result_stream_stage.result_valid", "to": "top.result_valid"},
+            {"from": "top.result_ready", "to": "result_stream_stage.result_ready"},
+            {"from": "result_stream_stage.selected_action_out", "to": "top.selected_action"},
+            {"from": "result_stream_stage.value_estimate_out", "to": "top.value_estimate"},
+            {"from": "result_stream_stage.updated_value_out", "to": "top.updated_value"},
+            {"from": "result_stream_stage.episode_done_out", "to": "top.episode_done"},
+            {"from": "result_stream_stage.irq", "to": "top.irq"},
         ],
     },
 }
@@ -708,6 +766,39 @@ def _v12_state(
                 {"name": "irq_state", "owner": reg_owner, "width": 1},
             ]
         )
+    elif request.task_type == "composed_rl_accelerator_shell":
+        config_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "host_config_bank"),
+            owner,
+        )
+        sample_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "sample_capture_stage"),
+            owner,
+        )
+        result_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "result_stream_stage"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "weight0", "owner": config_owner, "width": request.width},
+                {"name": "bias0", "owner": config_owner, "width": request.width},
+                {"name": "weight1", "owner": config_owner, "width": request.width},
+                {"name": "bias1", "owner": config_owner, "width": request.width},
+                {"name": "alpha", "owner": config_owner, "width": request.width},
+                {"name": "enable", "owner": config_owner, "width": 1},
+                {"name": "captured_obs0", "owner": sample_owner, "width": request.width},
+                {"name": "captured_obs1", "owner": sample_owner, "width": request.width},
+                {"name": "captured_reward", "owner": sample_owner, "width": request.width},
+                {"name": "captured_next_value", "owner": sample_owner, "width": request.width},
+                {"name": "captured_done", "owner": sample_owner, "width": 1},
+                {"name": "selected_action", "owner": result_owner, "width": 1},
+                {"name": "value_estimate", "owner": result_owner, "width": request.width},
+                {"name": "updated_value", "owner": result_owner, "width": request.width},
+                {"name": "episode_done", "owner": result_owner, "width": 1},
+                {"name": "irq_state", "owner": result_owner, "width": 1},
+            ]
+        )
     return {
         "registers": registers,
         "counters": counters,
@@ -857,6 +948,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_policy_value_shell",
         "composed_replay_sample_shell",
         "composed_host_protocol_shell",
+        "composed_rl_accelerator_shell",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -1298,6 +1390,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_replay_sample_shell_rtl_files(request.width)
     if request.task_type == "composed_host_protocol_shell":
         return _composed_host_protocol_shell_rtl_files(request.width)
+    if request.task_type == "composed_rl_accelerator_shell":
+        return _composed_rl_accelerator_shell_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1349,6 +1443,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_replay_sample_shell_testbench(request.width)
     if request.task_type == "composed_host_protocol_shell":
         return _composed_host_protocol_shell_testbench(request.width)
+    if request.task_type == "composed_rl_accelerator_shell":
+        return _composed_rl_accelerator_shell_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -3272,6 +3368,172 @@ def _composed_host_protocol_shell_testbench(width: int) -> str:
             axi_read_expect(4'hc, {width}'h06, {width}'h06);
             axi_write(4'h0, {width}'h02);
             axi_read_expect(4'hc, {width}'h04, {width}'h00);
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_rl_accelerator_shell_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg cfg_valid;
+          wire cfg_ready;
+          reg [2:0] cfg_addr;
+          reg [{msb}:0] cfg_data;
+          reg sample_valid;
+          wire sample_ready;
+          reg [{msb}:0] obs0;
+          reg [{msb}:0] obs1;
+          reg [{msb}:0] reward;
+          reg [{msb}:0] next_value;
+          reg done_in;
+          wire result_valid;
+          reg result_ready;
+          wire selected_action;
+          wire [{msb}:0] value_estimate;
+          wire [{msb}:0] updated_value;
+          wire episode_done;
+          wire irq;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .cfg_valid(cfg_valid),
+            .cfg_ready(cfg_ready),
+            .cfg_addr(cfg_addr),
+            .cfg_data(cfg_data),
+            .sample_valid(sample_valid),
+            .sample_ready(sample_ready),
+            .obs0(obs0),
+            .obs1(obs1),
+            .reward(reward),
+            .next_value(next_value),
+            .done_in(done_in),
+            .result_valid(result_valid),
+            .result_ready(result_ready),
+            .selected_action(selected_action),
+            .value_estimate(value_estimate),
+            .updated_value(updated_value),
+            .episode_done(episode_done),
+            .irq(irq)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task write_cfg;
+            input [2:0] addr_i;
+            input [{msb}:0] data_i;
+            begin
+              @(negedge clk);
+              cfg_valid = 1'b1;
+              cfg_addr = addr_i;
+              cfg_data = data_i;
+              while (!cfg_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              cfg_valid = 1'b0;
+            end
+          endtask
+
+          task send_sample;
+            input [{msb}:0] obs0_i;
+            input [{msb}:0] obs1_i;
+            input [{msb}:0] reward_i;
+            input [{msb}:0] next_value_i;
+            input done_i;
+            begin
+              @(negedge clk);
+              sample_valid = 1'b1;
+              obs0 = obs0_i;
+              obs1 = obs1_i;
+              reward = reward_i;
+              next_value = next_value_i;
+              done_in = done_i;
+              while (!sample_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              sample_valid = 1'b0;
+            end
+          endtask
+
+          task expect_result;
+            input expected_action;
+            input [{msb}:0] expected_value;
+            input [{msb}:0] expected_updated;
+            input expected_done;
+            begin
+              wait_cycles = 0;
+              while (!result_valid && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (!result_valid) begin
+                $display("TEST_FAIL result did not become valid");
+                $finish;
+              end
+              if (selected_action !== expected_action ||
+                  value_estimate !== expected_value ||
+                  updated_value !== expected_updated ||
+                  episode_done !== expected_done) begin
+                $display("TEST_FAIL expected action=%0d value=%0d updated=%0d done=%0d got action=%0d value=%0d updated=%0d done=%0d",
+                         expected_action, expected_value, expected_updated, expected_done,
+                         selected_action, value_estimate, updated_value, episode_done);
+                $finish;
+              end
+              @(posedge clk);
+              #1;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            cfg_valid = 1'b0;
+            cfg_addr = 3'd0;
+            cfg_data = {width}'d0;
+            sample_valid = 1'b0;
+            obs0 = {width}'d0;
+            obs1 = {width}'d0;
+            reward = {width}'d0;
+            next_value = {width}'d0;
+            done_in = 1'b0;
+            result_ready = 1'b1;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            write_cfg(3'd0, {width}'d2);
+            write_cfg(3'd1, {width}'d1);
+            write_cfg(3'd2, {width}'d3);
+            write_cfg(3'd3, {width}'d0);
+            write_cfg(3'd4, {width}'d4);
+            write_cfg(3'd5, {width}'d1);
+
+            send_sample({width}'d4, {width}'d2, {width}'d1, {width}'d8, 1'b0);
+            expect_result(1'b0, 8'd7, 8'd7, 1'b0);
+
+            send_sample({width}'d1, {width}'d5, {width}'d2, {width}'d15, 1'b1);
+            expect_result(1'b1, 8'd9, 8'd11, 1'b1);
+
+            if (irq !== 1'b1) begin
+              $display("TEST_FAIL expected irq after done result");
+              $finish;
+            end
 
             $display("TEST_PASS");
             $finish;
@@ -6199,6 +6461,364 @@ def _composed_host_protocol_shell_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire cfg_valid,
+            output wire cfg_ready,
+            input wire [2:0] cfg_addr,
+            input wire [{msb}:0] cfg_data,
+            input wire sample_valid,
+            output wire sample_ready,
+            input wire [{msb}:0] obs0,
+            input wire [{msb}:0] obs1,
+            input wire [{msb}:0] reward,
+            input wire [{msb}:0] next_value,
+            input wire done_in,
+            output wire result_valid,
+            input wire result_ready,
+            output wire selected_action,
+            output wire [{msb}:0] value_estimate,
+            output wire [{msb}:0] updated_value,
+            output wire episode_done,
+            output wire irq
+        );
+
+          wire [{msb}:0] weight0;
+          wire [{msb}:0] bias0;
+          wire [{msb}:0] weight1;
+          wire [{msb}:0] bias1;
+          wire [{msb}:0] alpha;
+          wire enable;
+          wire sample_stage_valid;
+          wire sample_consume_ready;
+          wire [{msb}:0] captured_obs0;
+          wire [{msb}:0] captured_obs1;
+          wire [{msb}:0] captured_reward;
+          wire [{msb}:0] captured_next_value;
+          wire captured_done;
+          wire policy_valid;
+          wire policy_selected_action;
+          wire [{msb}:0] policy_value_estimate;
+          wire update_valid;
+          wire [{msb}:0] update_updated_value;
+
+          host_config_bank #(
+            .DATA_WIDTH({width})
+          ) u_host_config_bank (
+            .clk(clk),
+            .rst_n(rst_n),
+            .cfg_valid(cfg_valid),
+            .cfg_ready(cfg_ready),
+            .cfg_addr(cfg_addr),
+            .cfg_data(cfg_data),
+            .weight0(weight0),
+            .bias0(bias0),
+            .weight1(weight1),
+            .bias1(bias1),
+            .alpha(alpha),
+            .enable(enable)
+          );
+
+          sample_capture_stage #(
+            .DATA_WIDTH({width})
+          ) u_sample_capture_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(sample_valid),
+            .in_ready(sample_ready),
+            .obs0(obs0),
+            .obs1(obs1),
+            .reward(reward),
+            .next_value(next_value),
+            .done_in(done_in),
+            .consume_ready(sample_consume_ready),
+            .out_valid(sample_stage_valid),
+            .obs0_out(captured_obs0),
+            .obs1_out(captured_obs1),
+            .reward_out(captured_reward),
+            .next_value_out(captured_next_value),
+            .done_out(captured_done)
+          );
+
+          policy_value_core #(
+            .DATA_WIDTH({width})
+          ) u_policy_value_core (
+            .in_valid(sample_stage_valid),
+            .obs0(captured_obs0),
+            .obs1(captured_obs1),
+            .weight0(weight0),
+            .bias0(bias0),
+            .weight1(weight1),
+            .bias1(bias1),
+            .enable(enable),
+            .out_valid(policy_valid),
+            .selected_action(policy_selected_action),
+            .value_estimate(policy_value_estimate)
+          );
+
+          td_update_core #(
+            .DATA_WIDTH({width})
+          ) u_td_update_core (
+            .in_valid(policy_valid),
+            .reward(captured_reward),
+            .next_value(captured_next_value),
+            .value_estimate(policy_value_estimate),
+            .alpha(alpha),
+            .out_valid(update_valid),
+            .updated_value(update_updated_value)
+          );
+
+          result_stream_stage #(
+            .DATA_WIDTH({width})
+          ) u_result_stream_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(update_valid),
+            .out_ready(sample_consume_ready),
+            .selected_action(policy_selected_action),
+            .value_estimate(policy_value_estimate),
+            .updated_value(update_updated_value),
+            .done_in(captured_done),
+            .result_valid(result_valid),
+            .result_ready(result_ready),
+            .selected_action_out(selected_action),
+            .value_estimate_out(value_estimate),
+            .updated_value_out(updated_value),
+            .episode_done_out(episode_done),
+            .irq(irq)
+          );
+
+        endmodule
+        """
+    )
+    host_config_bank = dedent(
+        """\
+        module host_config_bank #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire cfg_valid,
+            output wire cfg_ready,
+            input wire [2:0] cfg_addr,
+            input wire [DATA_WIDTH-1:0] cfg_data,
+            output reg [DATA_WIDTH-1:0] weight0,
+            output reg [DATA_WIDTH-1:0] bias0,
+            output reg [DATA_WIDTH-1:0] weight1,
+            output reg [DATA_WIDTH-1:0] bias1,
+            output reg [DATA_WIDTH-1:0] alpha,
+            output reg enable
+        );
+
+          assign cfg_ready = 1'b1;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              weight0 <= {DATA_WIDTH{1'b0}};
+              bias0 <= {DATA_WIDTH{1'b0}};
+              weight1 <= {DATA_WIDTH{1'b0}};
+              bias1 <= {DATA_WIDTH{1'b0}};
+              alpha <= {DATA_WIDTH{1'b0}};
+              enable <= 1'b0;
+            end else if (cfg_valid && cfg_ready) begin
+              case (cfg_addr)
+                3'd0: weight0 <= cfg_data;
+                3'd1: bias0 <= cfg_data;
+                3'd2: weight1 <= cfg_data;
+                3'd3: bias1 <= cfg_data;
+                3'd4: alpha <= cfg_data;
+                3'd5: enable <= cfg_data[0];
+                default: enable <= enable;
+              endcase
+            end
+          end
+
+        endmodule
+        """
+    )
+    sample_capture_stage = dedent(
+        """\
+        module sample_capture_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [DATA_WIDTH-1:0] obs0,
+            input wire [DATA_WIDTH-1:0] obs1,
+            input wire [DATA_WIDTH-1:0] reward,
+            input wire [DATA_WIDTH-1:0] next_value,
+            input wire done_in,
+            input wire consume_ready,
+            output wire out_valid,
+            output reg [DATA_WIDTH-1:0] obs0_out,
+            output reg [DATA_WIDTH-1:0] obs1_out,
+            output reg [DATA_WIDTH-1:0] reward_out,
+            output reg [DATA_WIDTH-1:0] next_value_out,
+            output reg done_out
+        );
+
+          reg valid_reg;
+
+          assign in_ready = !valid_reg || consume_ready;
+          assign out_valid = valid_reg;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              valid_reg <= 1'b0;
+              obs0_out <= {DATA_WIDTH{1'b0}};
+              obs1_out <= {DATA_WIDTH{1'b0}};
+              reward_out <= {DATA_WIDTH{1'b0}};
+              next_value_out <= {DATA_WIDTH{1'b0}};
+              done_out <= 1'b0;
+            end else begin
+              if (in_valid && in_ready) begin
+                valid_reg <= 1'b1;
+                obs0_out <= obs0;
+                obs1_out <= obs1;
+                reward_out <= reward;
+                next_value_out <= next_value;
+                done_out <= done_in;
+              end else if (consume_ready) begin
+                valid_reg <= 1'b0;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    policy_value_core = dedent(
+        """\
+        module policy_value_core #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire in_valid,
+            input wire [DATA_WIDTH-1:0] obs0,
+            input wire [DATA_WIDTH-1:0] obs1,
+            input wire [DATA_WIDTH-1:0] weight0,
+            input wire [DATA_WIDTH-1:0] bias0,
+            input wire [DATA_WIDTH-1:0] weight1,
+            input wire [DATA_WIDTH-1:0] bias1,
+            input wire enable,
+            output wire out_valid,
+            output wire selected_action,
+            output wire [DATA_WIDTH-1:0] value_estimate
+        );
+
+          wire [(2*DATA_WIDTH):0] score0_full;
+          wire [(2*DATA_WIDTH):0] score1_full;
+          wire [DATA_WIDTH-1:0] score0;
+          wire [DATA_WIDTH-1:0] score1;
+          wire [DATA_WIDTH:0] value_sum;
+
+          assign score0_full = (obs0 * weight0) + bias0;
+          assign score1_full = (obs1 * weight1) + bias1;
+          assign score0 = score0_full[DATA_WIDTH-1:0];
+          assign score1 = score1_full[DATA_WIDTH-1:0];
+          assign value_sum = {1'b0, score0} + {1'b0, score1};
+          assign selected_action = score1 > score0;
+          assign value_estimate = value_sum[DATA_WIDTH:1];
+          assign out_valid = in_valid && enable;
+
+        endmodule
+        """
+    )
+    td_update_core = dedent(
+        """\
+        module td_update_core #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire in_valid,
+            input wire [DATA_WIDTH-1:0] reward,
+            input wire [DATA_WIDTH-1:0] next_value,
+            input wire [DATA_WIDTH-1:0] value_estimate,
+            input wire [DATA_WIDTH-1:0] alpha,
+            output wire out_valid,
+            output wire [DATA_WIDTH-1:0] updated_value
+        );
+
+          wire [DATA_WIDTH:0] td_error_full;
+          wire [(2*DATA_WIDTH)-1:0] update_product;
+          wire [DATA_WIDTH-1:0] update_delta;
+
+          assign td_error_full = {1'b0, reward} + {1'b0, next_value} - {1'b0, value_estimate};
+          assign update_product = alpha * td_error_full[DATA_WIDTH-1:0];
+          assign update_delta = update_product[(2*DATA_WIDTH)-1:4];
+          assign updated_value = value_estimate + update_delta;
+          assign out_valid = in_valid;
+
+        endmodule
+        """
+    )
+    result_stream_stage = dedent(
+        """\
+        module result_stream_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire out_ready,
+            input wire selected_action,
+            input wire [DATA_WIDTH-1:0] value_estimate,
+            input wire [DATA_WIDTH-1:0] updated_value,
+            input wire done_in,
+            output reg result_valid,
+            input wire result_ready,
+            output reg selected_action_out,
+            output reg [DATA_WIDTH-1:0] value_estimate_out,
+            output reg [DATA_WIDTH-1:0] updated_value_out,
+            output reg episode_done_out,
+            output reg irq
+        );
+
+          assign out_ready = !result_valid || result_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              result_valid <= 1'b0;
+              selected_action_out <= 1'b0;
+              value_estimate_out <= {DATA_WIDTH{1'b0}};
+              updated_value_out <= {DATA_WIDTH{1'b0}};
+              episode_done_out <= 1'b0;
+              irq <= 1'b0;
+            end else begin
+              if (result_valid && result_ready) begin
+                if (episode_done_out) begin
+                  irq <= 1'b1;
+                end
+                result_valid <= 1'b0;
+              end
+              if (in_valid && out_ready) begin
+                result_valid <= 1'b1;
+                selected_action_out <= selected_action;
+                value_estimate_out <= value_estimate;
+                updated_value_out <= updated_value;
+                episode_done_out <= done_in;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/host_config_bank.v": host_config_bank,
+        "rtl/sample_capture_stage.v": sample_capture_stage,
+        "rtl/policy_value_core.v": policy_value_core,
+        "rtl/td_update_core.v": td_update_core,
+        "rtl/result_stream_stage.v": result_stream_stage,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -6278,6 +6898,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_host_protocol_shell": (
             f"Generate a {request.width}-bit T9 component-composed host protocol shell "
             "using AXI-lite-style control/status, AXI-stream-style output, and irq reporting."
+        ),
+        "composed_rl_accelerator_shell": (
+            f"Generate a {request.width}-bit T10 component-composed RL accelerator shell "
+            "using host config, sample capture, policy/value scoring, TD update, result streaming, and irq reporting."
         ),
     }
     return descriptions[request.task_type]
@@ -6628,6 +7252,35 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_rl_accelerator_shell":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "cfg_valid", "width": 1},
+                    {"name": "cfg_addr", "width": 3},
+                    {"name": "cfg_data", "width": request.width},
+                    {"name": "sample_valid", "width": 1},
+                    {"name": "obs0", "width": request.width},
+                    {"name": "obs1", "width": request.width},
+                    {"name": "reward", "width": request.width},
+                    {"name": "next_value", "width": request.width},
+                    {"name": "done_in", "width": 1},
+                    {"name": "result_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "cfg_ready", "width": 1},
+                    {"name": "sample_ready", "width": 1},
+                    {"name": "result_valid", "width": 1},
+                    {"name": "selected_action", "width": 1},
+                    {"name": "value_estimate", "width": request.width},
+                    {"name": "updated_value", "width": request.width},
+                    {"name": "episode_done", "width": 1},
+                    {"name": "irq", "width": 1},
+                ],
+            }
+        )
     return common
 
 
@@ -6672,6 +7325,11 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "composed_host_protocol_shell": (
             "AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload "
             "is emitted, status can be read back, and irq remains asserted until cleared"
+        ),
+        "composed_rl_accelerator_shell": (
+            "configuration writes set weights, biases, alpha, and enable; sample tuples are captured, "
+            "scored into selected action and value estimate, updated through a TD datapath, "
+            "and staged as result output with episode irq reporting"
         ),
     }
     return expectations[request.task_type]
@@ -6720,4 +7378,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(88, request.width * 10 + 44), "ff": request.width * 12 + 64, "bram": 0, "dsp": 0}
     if request.task_type == "composed_host_protocol_shell":
         return {"lut": max(104, request.width * 12 + 64), "ff": request.width * 10 + 72, "bram": 0, "dsp": 0}
+    if request.task_type == "composed_rl_accelerator_shell":
+        return {"lut": max(136, request.width * 16 + 80), "ff": request.width * 14 + 96, "bram": 0, "dsp": 2}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

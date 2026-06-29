@@ -694,6 +694,25 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("sample_stream_adapter", user_prompt)
         self.assertIn("rtl/axi_lite_write_ctrl.v", user_prompt)
 
+    def test_system_his_v12_prompt_includes_rl_accelerator_shell_guidance(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_rl_accelerator_shell",
+            width=8,
+            project_name="rl_accelerator_shell_8bit",
+            description="Generate an integrated RL accelerator shell.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_rl_accelerator_shell", user_prompt)
+        self.assertIn("host_config_bank", user_prompt)
+        self.assertIn("sample_capture_stage", user_prompt)
+        self.assertIn("policy_value_core", user_prompt)
+        self.assertIn("td_update_core", user_prompt)
+        self.assertIn("result_stream_stage", user_prompt)
+        self.assertIn("rtl/result_stream_stage.v", user_prompt)
+
     def test_system_his_v12_initial_prompt_keeps_structured_control_guidance_brief(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",

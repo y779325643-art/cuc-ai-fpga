@@ -94,6 +94,14 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/sample_stream_adapter.v",
         "rtl/irq_status.v",
     ],
+    "composed_rl_accelerator_shell": [
+        "rtl/top.v",
+        "rtl/host_config_bank.v",
+        "rtl/sample_capture_stage.v",
+        "rtl/policy_value_core.v",
+        "rtl/td_update_core.v",
+        "rtl/result_stream_stage.v",
+    ],
 }
 
 
@@ -1136,6 +1144,22 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/axi_lite_write_ctrl.v, rtl/axi_lite_read_ctrl.v, "
             "rtl/control_reg_bank.v, rtl/sample_stream_adapter.v, and rtl/irq_status.v."
         )
+    if task_type == "composed_rl_accelerator_shell":
+        return (
+            "Required architecture for composed_rl_accelerator_shell:\n"
+            "- components: host_config_bank, sample_capture_stage, policy_value_core, td_update_core, result_stream_stage\n"
+            "- instances: config, sample, policy, update, result\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include cfg_valid, cfg_ready, cfg_addr, cfg_data, sample_valid, sample_ready, "
+            "obs0, obs1, reward, next_value, done_in, result_valid, result_ready, selected_action, "
+            "value_estimate, updated_value, episode_done, and irq.\n"
+            "- host_config_bank owns weight0, bias0, weight1, bias1, alpha, and enable state.\n"
+            "- sample_capture_stage owns captured sample tuple state; result_stream_stage owns result and irq state.\n"
+            "- data_flow must describe config writes, sample capture, policy/value scoring, TD update, result staging, "
+            "and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/host_config_bank.v, rtl/sample_capture_stage.v, "
+            "rtl/policy_value_core.v, rtl/td_update_core.v, and rtl/result_stream_stage.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1224,6 +1248,17 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             "- Keep axi_lite_write_ctrl, axi_lite_read_ctrl, control_reg_bank, sample_stream_adapter, "
             "and irq_status as separate RTL modules.\n"
             "- This task intentionally uses AXI-style signal names; preserve them exactly.\n"
+        )
+    if task_type == "composed_rl_accelerator_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, cfg_valid, cfg_ready, cfg_addr, cfg_data, sample_valid, "
+            "sample_ready, obs0, obs1, reward, next_value, done_in, result_valid, result_ready, "
+            "selected_action, value_estimate, updated_value, episode_done, irq\n"
+            "- Keep host_config_bank, sample_capture_stage, policy_value_core, td_update_core, and "
+            "result_stream_stage as separate RTL modules.\n"
+            "- This is a synthetic integrated RL accelerator shell; do not claim real DQN, PPO, SAC, DMA, "
+            "or board-level semantics without reference inputs.\n"
         )
     if task_type == "composed_stream_fork":
         return (

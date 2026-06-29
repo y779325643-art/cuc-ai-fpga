@@ -161,6 +161,28 @@ _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
         "m_axis_tlast": {"direction": "output"},
         "irq": {"direction": "output"},
     },
+    "composed_rl_accelerator_shell": {
+        "clk": {"direction": "input"},
+        "rst_n": {"direction": "input"},
+        "cfg_valid": {"direction": "input"},
+        "cfg_ready": {"direction": "output"},
+        "cfg_addr": {"direction": "input", "width": 3},
+        "cfg_data": {"direction": "input", "width": "request"},
+        "sample_valid": {"direction": "input"},
+        "sample_ready": {"direction": "output"},
+        "obs0": {"direction": "input", "width": "request"},
+        "obs1": {"direction": "input", "width": "request"},
+        "reward": {"direction": "input", "width": "request"},
+        "next_value": {"direction": "input", "width": "request"},
+        "done_in": {"direction": "input"},
+        "result_valid": {"direction": "output"},
+        "result_ready": {"direction": "input"},
+        "selected_action": {"direction": "output"},
+        "value_estimate": {"direction": "output", "width": "request"},
+        "updated_value": {"direction": "output", "width": "request"},
+        "episode_done": {"direction": "output"},
+        "irq": {"direction": "output"},
+    },
 }
 
 
