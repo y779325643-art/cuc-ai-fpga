@@ -1117,10 +1117,15 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "Required architecture for composed_dual_stream_join:\n"
             "- components: skid_buffer, stream_join, accumulator_core, stream_stage\n"
             "- instances: in0_buffer, in1_buffer, join_core, accumulator, out_stage\n"
+            "- top ports must include clk, rst_n, in0_valid, in0_data, in1_valid, in1_data, out_ready, "
+            "in0_ready, in1_ready, out_valid, and out_data.\n"
             "- Do not collapse this topology into one fused component.\n"
             "- Do not use Verilog reserved keywords such as fork, join, or buf as instance names.\n"
             "- in0_buffer and in1_buffer must both reference component skid_buffer.\n"
             "- data_flow must use named path arrays, not from/to-only edges.\n"
+            "- data_flow.timing entries must use concrete integer latency_cycles and initiation_interval values.\n"
+            "- valid and ready data_flow paths must explicitly connect join_core.out_valid, accumulator.sample_valid, "
+            "out_stage.in_valid, out_stage.in_ready, accumulator.sample_ready, and join_core.out_ready.\n"
             "- control_flow entries must each include name, kind, when/effect for structured rules, related_state, and related_flows.\n"
             "- artifacts.rtl_sources must include rtl/top.v, rtl/skid_buffer.v, rtl/stream_join.v, "
             "rtl/accumulator_core.v, and rtl/stream_stage.v."
@@ -1133,6 +1138,8 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- Do not collapse this topology into one fused component.\n"
             "- feature_buffer and weight_buffer must both reference component skid_buffer.\n"
             "- vector_mac_core owns vector_index, accumulator, and pending_score state.\n"
+            "- If a mac_core_fsm is used, declare it with owner mac_core, states IDLE/ACCUMULATE/OUTPUT, "
+            "initial IDLE, reset_state IDLE, and transitions that reference those exact states.\n"
             "- top ports must include feature_valid, feature_data, feature_ready, weight_valid, "
             "weight_data, weight_ready, bias, score_valid, score_data, and score_ready.\n"
             "- data_flow must pair feature and weight streams into vector_mac_core and stage score output.\n"
@@ -1149,6 +1156,8 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "out_valid, out_ready, td_error, and updated_value.\n"
             "- td_input_stage owns captured reward/value/next_value state.\n"
             "- td_update_core or stream_stage owns td_error and updated_value state if registered.\n"
+            "- If an output_stage FSM is used, declare it with owner output_stage, states IDLE/VALID, "
+            "initial IDLE, reset_state IDLE, and transitions that reference those exact states.\n"
             "- data_flow must describe tuple capture, discount calculation, TD update, and output staging.\n"
             "- artifacts.rtl_sources must include rtl/top.v, rtl/td_input_stage.v, rtl/discount_core.v, "
             "rtl/td_update_core.v, and rtl/stream_stage.v."
@@ -1257,8 +1266,11 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "Required architecture for composed_stream_fork:\n"
             "- components: skid_buffer, stream_fork, stream_stage\n"
             "- instances: input_buffer, fork_core, out0_stage, out1_stage\n"
+            "- top ports must include clk, rst_n, in_valid, in_data, in_ready, out0_valid, out0_data, "
+            "out0_ready, out1_valid, out1_data, and out1_ready.\n"
             "- Do not collapse this topology into one fused component.\n"
             "- Do not use Verilog reserved keywords such as fork, join, or buf as instance names.\n"
+            "- data_flow must explicitly connect both output payload paths and the corresponding valid/ready paths.\n"
             "- data_flow must use named path arrays and control_flow must reference existing state and flows."
         )
     if task_type == "composed_stream_accumulator":
@@ -1266,6 +1278,9 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "Required architecture for composed_stream_accumulator:\n"
             "- components: skid_buffer, accumulator_core\n"
             "- instances: input_buffer, accumulator\n"
+            "- top ports must include clk, rst_n, in_valid, in_data, in_ready, sample_valid, and sum.\n"
+            "- data_flow must explicitly connect top.in_valid to input_buffer.in_valid, "
+            "input_buffer.out_valid to accumulator.sample_valid, and accumulator.sample_valid to top.sample_valid.\n"
             "- data_flow must use named path arrays and control_flow must reference existing state and flows."
         )
     if task_type == "composed_event_counter":
@@ -1290,8 +1305,28 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             common
             + "- Required top ports: clk, rst_n, in0_valid, in0_data, in1_valid, in1_data, out_ready, "
             "in0_ready, in1_ready, out_valid, out_data\n"
+            "- data_flow.timing entries must use integer latency_cycles >= 0 and initiation_interval > 0.\n"
+            "- Connect join_core.out_valid to accumulator.sample_valid and out_stage.in_valid through explicit data_flow paths.\n"
+            "- Connect out_stage.in_ready to accumulator.sample_ready and join_core.out_ready through explicit ready paths.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_stream_accumulator":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, in_ready, sample_valid, sum\n"
+            "- Connect input_buffer.out_valid to accumulator.sample_valid and top.sample_valid through explicit data_flow paths.\n"
+            "- Do not leave top.sample_valid declared but disconnected.\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_stream_fork":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, in_ready, out0_valid, out0_data, "
+            "out0_ready, out1_valid, out1_data, out1_ready\n"
+            "- If an FSM is declared for the skid buffer, initial and reset_state must be one of the declared states.\n"
+            "- Prefer handshake_rule and buffer_occupancy control rules when an explicit FSM is not necessary.\n"
         )
     if task_type == "alu_control_unit":
         return (
@@ -1312,6 +1347,10 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             common
             + "- Required top ports: clk, rst_n, feature_valid, feature_data, weight_valid, "
             "weight_data, bias, score_ready, feature_ready, weight_ready, score_valid, score_data\n"
+            "- If mac_core_fsm is declared, it must have owner mac_core, states IDLE/ACCUMULATE/OUTPUT, "
+            "initial IDLE, reset_state IDLE, and all fsm_transition rules must use those exact from/to states.\n"
+            "- control_flow.effect must be an object with a non-empty declared target; prefer counter_update or enable_rule "
+            "when the rule updates vector_index, accumulator, or pending_score.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
         )
@@ -1320,6 +1359,10 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             common
             + "- Required top ports: clk, rst_n, in_valid, reward, value, next_value, gamma, alpha, "
             "out_ready, in_ready, out_valid, td_error, updated_value\n"
+            "- If out_fsm is declared, use owner output_stage, states IDLE/VALID, initial IDLE, reset_state IDLE, "
+            "and all fsm_transition rules must use fsm out_fsm with those exact from/to states.\n"
+            "- control_flow.effect must be an object with a non-empty declared target; prefer handshake_rule "
+            "when modeling output valid/ready behavior.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
         )
@@ -1457,6 +1500,9 @@ Rules:
   names that are absent from the checked System-HIS.
 - Do not change component, instance, top port, data_flow, or control_flow names.
 - Generate RTL that implements the top-down architecture contract.
+- Generated behavior must be Verilator -Wall clean: drive every declared output,
+  include a default branch for every case statement, avoid incomplete case
+  coverage, and do not create multiple continuous drivers for the same signal.
 - Use declared FSM state localparams from the deterministic skeleton when
   implementing state machines.
 - Do not rename, omit, or replace System-HIS state.fsms states; every declared
@@ -1503,7 +1549,10 @@ def _with_his_project_retry_feedback(
                 "- Return behavior_files only, not files.\n"
                 "- Each behavior_files value must contain only the replacement body for one BEHAVIOR_HOLE.\n"
                 "- Do not include module declarations, module headers, port lists, or endmodule lines.\n"
-                "- Do not return system_his.json, manifest.json, rtl/top.v, constraints, testbench, or reports.\n\n"
+                "- Do not return system_his.json, manifest.json, rtl/top.v, constraints, testbench, or reports.\n"
+                "- Drive every declared output in the behavior body.\n"
+                "- Every case statement must include a default branch or cover all encoded states.\n"
+                "- Avoid undriven signals, incomplete case coverage, and multiple continuous drivers.\n\n"
                 "Previous invalid behavior_files JSON:\n"
                 f"{previous_content.strip()}"
             ),

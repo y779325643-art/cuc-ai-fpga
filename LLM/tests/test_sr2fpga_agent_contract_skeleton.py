@@ -114,6 +114,41 @@ class ContractSkeletonTest(unittest.TestCase):
         self.assertIn("assign out_stage__in_valid = 1'b1;", top_rtl)
         self.assertIn("wire _unused_data_flow_signals = &{1'b0, out_stage__in_ready};", top_rtl)
 
+    def test_top_skeleton_replaces_default_valid_driver_with_explicit_flow(self) -> None:
+        system_his = _fixture()
+        for component in system_his["components"]:
+            if component["name"] == "accumulator_core":
+                component["ports"] = [
+                    port for port in component["ports"] if port["name"] not in {"sum_valid", "sum_ready"}
+                ]
+        system_his["data_flow"].append(
+            {
+                "name": "valid_to_output_stage",
+                "path": ["accumulator.sample_valid", "out_stage.in_valid"],
+                "payload": {"name": "valid", "width": 1},
+                "protocol": "valid_ready",
+                "timing": {
+                    "latency_cycles": 0,
+                    "initiation_interval": 1,
+                    "throughput": "valid follows accepted accumulator samples",
+                },
+            }
+        )
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        top_rtl = skeleton.files["rtl/top.v"]
+        self.assertIn("assign out_stage__in_valid = accumulator__sample_valid;", top_rtl)
+        self.assertNotIn("assign out_stage__in_valid = 1'b1;", top_rtl)
+        self.assertEqual(top_rtl.count("assign out_stage__in_valid ="), 1)
+
     def test_rejects_behavior_for_files_without_behavior_holes(self) -> None:
         system_his = _fixture()
         request = ProjectRequest(

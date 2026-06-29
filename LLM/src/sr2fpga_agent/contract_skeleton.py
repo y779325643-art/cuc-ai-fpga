@@ -219,6 +219,7 @@ def _instance_lines(instance: dict[str, Any], component: dict[str, Any]) -> list
 def _data_flow_assignment_lines(system_his: dict[str, Any]) -> list[str]:
     lines: list[str] = []
     seen: set[tuple[str, str]] = set()
+    assigned_sinks: dict[str, tuple[str, int]] = {}
     unused_signals: set[str] = set()
     ports_by_owner = _ports_by_endpoint_owner(system_his)
     for flow in _list(system_his.get("data_flow")):
@@ -230,21 +231,27 @@ def _data_flow_assignment_lines(system_his: dict[str, Any]) -> list[str]:
             sink_owner, sink_port = sink
             if source_owner == sink_owner:
                 continue
-            _append_assignment(lines, seen, _endpoint_signal(source_owner, source_port), _endpoint_signal(sink_owner, sink_port))
+            _append_assignment(
+                lines,
+                seen,
+                assigned_sinks,
+                _endpoint_signal(source_owner, source_port),
+                _endpoint_signal(sink_owner, sink_port),
+            )
             source_valid = _companion_signal(source_owner, source_port, "valid", ports_by_owner)
             sink_valid = _companion_signal(sink_owner, sink_port, "valid", ports_by_owner)
             if source_valid and sink_valid:
-                _append_assignment(lines, seen, source_valid, sink_valid)
+                _append_assignment(lines, seen, assigned_sinks, source_valid, sink_valid)
             elif sink_valid:
-                _append_assignment(lines, seen, "1'b1", sink_valid)
+                _append_assignment(lines, seen, assigned_sinks, "1'b1", sink_valid)
             elif source_valid:
                 unused_signals.add(source_valid)
             source_ready = _companion_signal(source_owner, source_port, "ready", ports_by_owner)
             sink_ready = _companion_signal(sink_owner, sink_port, "ready", ports_by_owner)
             if source_ready and sink_ready:
-                _append_assignment(lines, seen, sink_ready, source_ready)
+                _append_assignment(lines, seen, assigned_sinks, sink_ready, source_ready)
             elif source_ready:
-                _append_assignment(lines, seen, "1'b1", source_ready)
+                _append_assignment(lines, seen, assigned_sinks, "1'b1", source_ready)
             elif sink_ready:
                 unused_signals.add(sink_ready)
     if unused_signals:
@@ -252,10 +259,25 @@ def _data_flow_assignment_lines(system_his: dict[str, Any]) -> list[str]:
     return lines
 
 
-def _append_assignment(lines: list[str], seen: set[tuple[str, str]], source: str, sink: str) -> None:
+def _append_assignment(
+    lines: list[str],
+    seen: set[tuple[str, str]],
+    assigned_sinks: dict[str, tuple[str, int]],
+    source: str,
+    sink: str,
+) -> None:
     if source == sink or (source, sink) in seen:
         return
+    existing = assigned_sinks.get(sink)
+    if existing:
+        existing_source, line_index = existing
+        if existing_source == "1'b1" and source != "1'b1":
+            lines[line_index] = f"  assign {sink} = {source};"
+            assigned_sinks[sink] = (source, line_index)
+            seen.add((source, sink))
+        return
     seen.add((source, sink))
+    assigned_sinks[sink] = (source, len(lines))
     lines.append(f"  assign {sink} = {source};")
 
 

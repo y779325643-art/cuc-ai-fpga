@@ -588,7 +588,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("top.resets[].kind must be sync or async", user_prompt)
         self.assertIn('Use {"name": "rst_n", "polarity": "active_low"', user_prompt)
 
-    def test_system_his_v12_initial_prompt_keeps_composed_topology_entry_brief(self) -> None:
+    def test_system_his_v12_initial_prompt_spells_out_stream_accumulator_contract(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_accumulator",
             width=8,
@@ -601,10 +601,37 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertIn("Required architecture for composed_stream_accumulator", user_prompt)
         self.assertIn("components: skid_buffer, accumulator_core", user_prompt)
-        self.assertNotIn("Required top ports:", user_prompt)
-        self.assertNotIn("Do not rename these ports to AXI-style names", user_prompt)
-        self.assertNotIn("s_axis_tvalid", user_prompt)
-        self.assertNotIn("m_axis_tdata", user_prompt)
+        self.assertIn("top ports must include clk, rst_n, in_valid, in_data, in_ready, sample_valid, and sum", user_prompt)
+        self.assertIn("accumulator.sample_valid to top.sample_valid", user_prompt)
+
+    def test_system_his_v12_prompt_spells_out_join_ready_valid_and_timing_contract(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("data_flow.timing entries must use concrete integer latency_cycles", user_prompt)
+        self.assertIn("join_core.out_valid, accumulator.sample_valid", user_prompt)
+        self.assertIn("out_stage.in_ready, accumulator.sample_ready", user_prompt)
+
+    def test_system_his_v12_prompt_spells_out_stream_fork_contract(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_stream_fork",
+            width=8,
+            project_name="fork_8bit",
+            description="Generate a stream fork.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("top ports must include clk, rst_n, in_valid, in_data, in_ready, out0_valid", user_prompt)
+        self.assertIn("both output payload paths and the corresponding valid/ready paths", user_prompt)
 
     def test_system_his_v12_prompt_includes_vector_mac_pipeline_guidance(self) -> None:
         request = ProjectRequest(
@@ -621,6 +648,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("vector_mac_core", user_prompt)
         self.assertIn("feature_buffer", user_prompt)
         self.assertIn("weight_buffer", user_prompt)
+        self.assertIn("mac_core_fsm is used, declare it with owner mac_core", user_prompt)
+        self.assertIn("states IDLE/ACCUMULATE/OUTPUT, initial IDLE, reset_state IDLE", user_prompt)
         self.assertIn("rtl/vector_mac_core.v", user_prompt)
 
     def test_system_his_v12_prompt_includes_td_update_core_guidance(self) -> None:
@@ -638,6 +667,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("td_input_stage", user_prompt)
         self.assertIn("discount_core", user_prompt)
         self.assertIn("td_update_core", user_prompt)
+        self.assertIn("output_stage FSM is used, declare it with owner output_stage", user_prompt)
+        self.assertIn("states IDLE/VALID, initial IDLE, reset_state IDLE", user_prompt)
         self.assertIn("rtl/td_update_core.v", user_prompt)
 
     def test_system_his_v12_prompt_includes_policy_value_shell_guidance(self) -> None:
@@ -818,6 +849,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         retry_prompt = retry_messages[-1]["content"]
 
         self.assertIn("Required top ports: clk, rst_n, in_valid, in_data, in_ready, sample_valid, sum", retry_prompt)
+        self.assertIn("input_buffer.out_valid to accumulator.sample_valid and top.sample_valid", retry_prompt)
+        self.assertIn("Do not leave top.sample_valid declared but disconnected", retry_prompt)
         self.assertIn("Do not rename these ports to AXI-style names", retry_prompt)
         self.assertIn("s_axis_tvalid", retry_prompt)
         self.assertIn("Do not leave fsm, from, to, effect.action, or effect.target empty", retry_prompt)
@@ -831,6 +864,32 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", retry_prompt)
         self.assertIn("FSM owner must be top or an instances[].name", retry_prompt)
         self.assertIn("State names across registers, counters, fsms, buffers, and memories must be globally unique", retry_prompt)
+
+    def test_system_his_retry_feedback_includes_fsm_state_guidance_for_pipeline_tasks(self) -> None:
+        messages = [
+            {"role": "system", "content": "Return JSON."},
+            {"role": "user", "content": "Generate a System-HIS."},
+        ]
+
+        vector_retry = _with_system_his_retry_feedback(
+            messages,
+            "DeepSeek System-HIS v1.2 failed validation: fsm states are empty",
+            '{"schema_version":"system-his-v1.2"}',
+            task_type="composed_vector_mac_pipeline",
+        )[-1]["content"]
+        td_retry = _with_system_his_retry_feedback(
+            messages,
+            "DeepSeek System-HIS v1.2 failed validation: fsm states are empty",
+            '{"schema_version":"system-his-v1.2"}',
+            task_type="composed_td_update_core",
+        )[-1]["content"]
+
+        self.assertIn("mac_core_fsm is declared", vector_retry)
+        self.assertIn("states IDLE/ACCUMULATE/OUTPUT", vector_retry)
+        self.assertIn("control_flow.effect must be an object", vector_retry)
+        self.assertIn("out_fsm is declared", td_retry)
+        self.assertIn("states IDLE/VALID", td_retry)
+        self.assertIn("all fsm_transition rules must use fsm out_fsm", td_retry)
 
     def test_system_his_retry_feedback_includes_crc_stream_checker_ports(self) -> None:
         messages = [
@@ -945,6 +1004,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         retry_prompt = client.messages_history[1][-1]["content"]
         self.assertIn("Your previous behavior_files output failed validation", retry_prompt)
         self.assertIn("must contain behavior body only", retry_prompt)
+        self.assertIn("Drive every declared output", retry_prompt)
+        self.assertIn("Every case statement must include a default branch", retry_prompt)
+        self.assertIn("Avoid undriven signals, incomplete case coverage", retry_prompt)
 
     def test_deepseek_his_project_generator_rejects_reserved_identifier_behavior(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -1027,6 +1089,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn('"behavior_files"', user_prompt)
         self.assertIn("Do not return system_his.json, manifest.json, rtl/top.v", user_prompt)
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", user_prompt)
+        self.assertIn("Generated behavior must be Verilator -Wall clean", user_prompt)
+        self.assertIn("include a default branch for every case statement", user_prompt)
         self.assertIn("Use declared FSM state localparams from the deterministic skeleton", user_prompt)
         self.assertIn("Do not rename, omit, or replace System-HIS state.fsms states", user_prompt)
         self.assertIn("IDLE", user_prompt)
