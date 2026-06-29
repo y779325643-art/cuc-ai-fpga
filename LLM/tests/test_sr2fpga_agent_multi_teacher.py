@@ -8,6 +8,7 @@ from unittest.mock import patch
 from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleConfig,
+    DeepSeekOracleHisProjectGenerator,
     DeepSeekProjectGenerator,
     DeepSeekRepairer,
     DeepSeekTwoStageProjectGenerator,
@@ -267,6 +268,12 @@ class ResolveSourceTest(unittest.TestCase):
         self.assertEqual(conn.kind, "deepseek")
         self.assertEqual(conn.generation_mode, "direct")
 
+    def test_legacy_deepseek_oracle_his_falls_back_to_global(self) -> None:
+        config = _base_config(api_key_env="DEEPSEEK_API_KEY")
+        conn = resolve_source_connection(config, "deepseek-oracle-his-v12")
+        self.assertEqual(conn.kind, "deepseek-oracle-his-v12")
+        self.assertEqual(conn.generation_mode, "oracle_his2project")
+
 
 class ConnectionBuilderTest(unittest.TestCase):
     def test_deterministic_connection_returns_none(self) -> None:
@@ -311,6 +318,16 @@ class ConnectionBuilderTest(unittest.TestCase):
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-ds"}, clear=False):
             generator = build_project_generator_for_connection(conn)
         self.assertIsInstance(generator, DeepSeekProjectGenerator)
+
+    def test_deepseek_oracle_his_kind_builds_oracle_his_project_generator(self) -> None:
+        conn = SourceConnection(
+            name="deepseek-oracle-his-v12", kind="deepseek-oracle-his-v12", model="deepseek-v4-pro",
+            base_url="https://api.deepseek.com", api_key_env="DEEPSEEK_API_KEY",
+            generation_mode="oracle_his2project",
+        )
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-ds"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator, DeepSeekOracleHisProjectGenerator)
 
     def test_missing_key_raises(self) -> None:
         conn = SourceConnection(
@@ -409,6 +426,14 @@ class MetadataTest(unittest.TestCase):
         self.assertEqual(metadata["failure_origin"], "natural_llm")
         self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
         self.assertEqual(metadata["training_split"], "quarantine")
+
+    def test_deepseek_oracle_his_metadata_is_clean_v12_behavior_files(self) -> None:
+        config = _base_config(api_key_env="DEEPSEEK_API_KEY")
+        metadata = self._sample("deepseek-oracle-his-v12").metadata(config)
+        self.assertEqual(metadata["failure_origin"], "natural_llm")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+        self.assertEqual(metadata["training_split"], "clean")
+        self.assertEqual(metadata["contract_skeleton_mode"], "behavior_files")
 
 
 class PreflightAuthTest(unittest.TestCase):

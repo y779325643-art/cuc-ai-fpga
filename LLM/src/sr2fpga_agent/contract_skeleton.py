@@ -140,6 +140,7 @@ def _top_module(
     instances = _list(system_his.get("instances"))
     components_by_name = {str(component.get("name")): component for component in components_by_source.values()}
     parameters = _merged_parameters(_list(top.get("parameters")), components_by_name.values())
+    top_parameter_names = {str(parameter.get("name", "")).strip() for parameter in parameters}
     lines = [
         f"module {top_module}{_parameter_block(parameters)} (",
         _port_block(ports),
@@ -169,7 +170,7 @@ def _top_module(
     for instance in instances:
         instance_map = _mapping(instance)
         component = components_by_name.get(str(instance_map.get("component")), {})
-        lines.extend(_instance_lines(instance_map, component))
+        lines.extend(_instance_lines(instance_map, component, top_parameter_names))
         lines.append("")
     lines.append("endmodule")
     return "\n".join(lines) + "\n"
@@ -202,11 +203,12 @@ def _placeholder_module(source: str, component_names: set[str], system_his: dict
     return _component_module({"name": name, "ports": []}, system_his)
 
 
-def _instance_lines(instance: dict[str, Any], component: dict[str, Any]) -> list[str]:
+def _instance_lines(instance: dict[str, Any], component: dict[str, Any], top_parameter_names: set[str] | None = None) -> list[str]:
     component_name = str(instance.get("component", "")).strip()
     instance_name = str(instance.get("name", "")).strip()
     ports = _list(component.get("ports"))
-    lines = [f"  {component_name}{_parameter_override_block(_mapping(instance.get('parameter_values')))} {instance_name} ("]
+    parameter_overrides = _parameter_override_block(_mapping(instance.get("parameter_values")), top_parameter_names or set())
+    lines = [f"  {component_name}{parameter_overrides} {instance_name} ("]
     connections = []
     for port in ports:
         port_name = str(_mapping(port).get("name", "")).strip()
@@ -326,11 +328,16 @@ def _endpoint_signal(owner: str, port: str) -> str:
 
 
 def _companion_signal(owner: str, port: str, suffix: str, ports_by_owner: dict[str, set[str]]) -> str:
-    base = port.removesuffix("_data")
-    companion = f"{base}_{suffix}"
-    if companion not in ports_by_owner.get(owner, set()):
-        return ""
-    return _endpoint_signal(owner, companion)
+    port_names = ports_by_owner.get(owner, set())
+    candidates = [f"{port.removesuffix('_data')}_{suffix}"]
+    if suffix == "ready" and port.endswith("_valid"):
+        candidates.append(f"{port.removesuffix('_valid')}_ready")
+    if suffix == "ready" and port == "valid":
+        candidates.append("ready")
+    for companion in candidates:
+        if companion in port_names:
+            return _endpoint_signal(owner, companion)
+    return ""
 
 
 def _unused_clock_reset_line(ports: list[Any]) -> str:
@@ -435,8 +442,12 @@ def _parameter_block(parameters: list[Any]) -> str:
     return "" if not declarations else " #(" + ", ".join(declarations) + ")"
 
 
-def _parameter_override_block(values: dict[str, Any]) -> str:
-    overrides = [f".{name}({value})" for name, value in values.items()]
+def _parameter_override_block(values: dict[str, Any], top_parameter_names: set[str] | None = None) -> str:
+    exposed_parameters = top_parameter_names or set()
+    overrides = [
+        f".{name}({name if name in exposed_parameters else value})"
+        for name, value in values.items()
+    ]
     return "" if not overrides else " #(" + ", ".join(overrides) + ")"
 
 

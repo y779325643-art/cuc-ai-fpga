@@ -37,6 +37,7 @@ SUPPORTED_TASK_TYPES = {
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
+TOPOLOGY_EDGE_DATA_FLOW_TASK_TYPES = {"composed_td_update_core"}
 
 COMPONENT_TOPOLOGIES = {
     "composed_event_counter": {
@@ -1057,6 +1058,9 @@ def _v12_data_flow(
     instances: list[dict[str, object]],
     components: list[dict[str, object]],
 ) -> list[dict[str, object]]:
+    topology_flows = _v12_topology_edge_data_flow(request, instances)
+    if topology_flows:
+        return topology_flows
     if instances:
         instance_ports = _component_ports_by_instance(instances, components)
         top_input = _primary_top_endpoint(top_ports, "input")
@@ -1099,6 +1103,57 @@ def _v12_data_flow(
     if request.task_type in {"fifo", "simple_fsm", "ram_read_write"}:
         flow["timing"] = {"latency_cycles": 1, "initiation_interval": 1, "throughput": "one operation per cycle when enabled"}
     return [flow]
+
+
+def _v12_topology_edge_data_flow(
+    request: ProjectRequest,
+    instances: list[dict[str, object]],
+) -> list[dict[str, object]]:
+    topology = COMPONENT_TOPOLOGIES.get(request.task_type)
+    if not topology or request.task_type not in TOPOLOGY_EDGE_DATA_FLOW_TASK_TYPES:
+        return []
+    component_to_instances: dict[str, list[str]] = {}
+    for instance in instances:
+        component_name = str(instance.get("component", "")).strip()
+        instance_name = str(instance.get("name", "")).strip()
+        if component_name and instance_name:
+            component_to_instances.setdefault(component_name, []).append(instance_name)
+
+    flows: list[dict[str, object]] = []
+    for index, edge in enumerate(topology.get("edges", [])):
+        source = _v12_resolve_topology_endpoint(str(edge.get("from", "")), component_to_instances)
+        sink = _v12_resolve_topology_endpoint(str(edge.get("to", "")), component_to_instances)
+        if not source or not sink:
+            return []
+        source_port = source.rsplit(".", 1)[-1]
+        sink_port = sink.rsplit(".", 1)[-1]
+        protocol = "valid_ready" if any("valid" in name or "ready" in name for name in (source_port, sink_port)) else "wire"
+        flow: dict[str, object] = {
+            "name": f"{request.task_type}_edge_{index:02d}_{source_port}_to_{sink_port}",
+            "path": [source, sink],
+            "payload": {"name": source_port, "width": request.width},
+            "protocol": protocol,
+        }
+        if protocol == "valid_ready":
+            flow["timing"] = {
+                "latency_cycles": 0,
+                "initiation_interval": 1,
+                "throughput": "combinational handshake connection",
+            }
+        flows.append(flow)
+    return flows
+
+
+def _v12_resolve_topology_endpoint(endpoint: str, component_to_instances: dict[str, list[str]]) -> str:
+    if "." not in endpoint:
+        return ""
+    owner, port = endpoint.split(".", 1)
+    if owner == "top":
+        return endpoint
+    instance_names = component_to_instances.get(owner, [])
+    if len(instance_names) != 1:
+        return ""
+    return f"{instance_names[0]}.{port}"
 
 
 def _primary_top_endpoint(top_ports: list[dict[str, object]], direction: str) -> str:

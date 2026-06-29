@@ -16,6 +16,7 @@ from typing import Any, Callable
 
 from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project, merge_behavior_files
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
+from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 from LLM.src.sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 from LLM.src.sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
@@ -633,6 +634,77 @@ class DeepSeekTwoStageProjectGenerator:
             request,
             lambda: self.his_project_generator.generate(request, platform, system_his),
         )
+
+    def _run_stage(self, stage: str, request: ProjectRequest, action):
+        start = time.monotonic()
+        self._emit_stage_event("generation_stage_started", stage, request)
+        try:
+            result = action()
+        except Exception as exc:
+            self._emit_stage_event(
+                "generation_stage_failed",
+                stage,
+                request,
+                duration_seconds=time.monotonic() - start,
+                error_type=type(exc).__name__,
+                error=str(exc),
+            )
+            raise
+        self._emit_stage_event(
+            "generation_stage_finished",
+            stage,
+            request,
+            duration_seconds=time.monotonic() - start,
+        )
+        return result
+
+    def _emit_stage_event(self, event: str, stage: str, request: ProjectRequest, **extra: Any) -> None:
+        if self.event_sink is None:
+            return
+        self.event_sink(
+            {
+                "event": event,
+                "stage": stage,
+                "project_name": request.project_name,
+                "task_type": request.task_type,
+                "width": request.width,
+                **extra,
+            }
+        )
+
+
+class DeepSeekOracleHisProjectGenerator:
+    """Generate behavior files from deterministic oracle System-HIS v1.2."""
+
+    def __init__(
+        self,
+        client: OpenAICompatibleClient,
+        max_attempts: int = 3,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
+        self.oracle_generator = ProjectGenerator()
+        self.his_project_generator = DeepSeekHisProjectGenerator(client, max_attempts=max_attempts)
+        self.event_sink = event_sink
+
+    def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
+        system_his = self._run_stage(
+            "oracle_req2his",
+            request,
+            lambda: self._oracle_system_his(request, platform),
+        )
+        return self._run_stage(
+            "his2project",
+            request,
+            lambda: self.his_project_generator.generate(request, platform, system_his),
+        )
+
+    def _oracle_system_his(self, request: ProjectRequest, platform: PlatformProfile) -> dict[str, Any]:
+        project = self.oracle_generator.generate(request, platform)
+        system_his = parse_system_his_v12(project.files["system_his.json"])
+        fidelity = check_system_his_req_fidelity(request, system_his)
+        if not fidelity.passed:
+            raise ValueError("Oracle System-HIS REQ2HIS fidelity failed: " + "; ".join(fidelity.errors))
+        return system_his
 
     def _run_stage(self, stage: str, request: ProjectRequest, action):
         start = time.monotonic()
@@ -1568,6 +1640,10 @@ Rules:
 - Generated behavior must be Verilator -Wall clean: drive every declared output,
   include a default branch for every case statement, avoid incomplete case
   coverage, and do not create multiple continuous drivers for the same signal.
+- Make arithmetic widths explicit. For fixed-point multiply/add/shift paths,
+  assign DATA_WIDTH outputs from an explicitly sized intermediate or slice such
+  as value_ext[DATA_WIDTH-1:0]; do not rely on implicit Verilog truncation or
+  extension that would trigger WIDTHEXPAND or WIDTHTRUNC.
 - Use declared FSM state localparams from the deterministic skeleton when
   implementing state machines.
 - Do not rename, omit, or replace System-HIS state.fsms states; every declared
@@ -1617,6 +1693,7 @@ def _with_his_project_retry_feedback(
                 "- Do not return system_his.json, manifest.json, rtl/top.v, constraints, testbench, or reports.\n"
                 "- Drive every declared output in the behavior body.\n"
                 "- Every case statement must include a default branch or cover all encoded states.\n"
+                "- Make arithmetic widths explicit; avoid implicit truncation/extension warnings such as WIDTHEXPAND or WIDTHTRUNC.\n"
                 "- Avoid undriven signals, incomplete case coverage, and multiple continuous drivers.\n\n"
                 "Previous invalid behavior_files JSON:\n"
                 f"{previous_content.strip()}"

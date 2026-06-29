@@ -867,7 +867,13 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     )
 
 
-LLM_SOURCE_KINDS = {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}
+LLM_SOURCE_KINDS = {
+    "openai_compat",
+    "anthropic_compat",
+    "deepseek",
+    "deepseek-his-v12",
+    "deepseek-oracle-his-v12",
+}
 
 
 def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnection:
@@ -875,7 +881,9 @@ def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnec
         return config.sources[source]
     if source == "deterministic":
         return SourceConnection(name="deterministic", kind="deterministic")
-    if source == "deepseek-his-v12":
+    if source == "deepseek-oracle-his-v12":
+        kind, mode = "deepseek-oracle-his-v12", "oracle_his2project"
+    elif source == "deepseek-his-v12":
         kind, mode = "deepseek-his-v12", "two_stage"
     elif source == "deepseek" or source.startswith("deepseek-"):
         kind, mode = "deepseek", "direct"
@@ -895,6 +903,7 @@ _GENERATION_MODE_BY_KIND = {
     "openai_compat": "two_stage",
     "anthropic_compat": "two_stage",
     "deepseek-his-v12": "two_stage",
+    "deepseek-oracle-his-v12": "oracle_his2project",
     "deepseek": "direct",
     "deterministic": "",
 }
@@ -1228,14 +1237,14 @@ def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
 
 def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
     connection = resolve_source_connection(config, sample.source)
-    if connection.kind == "deterministic" or connection.generation_mode == "two_stage":
+    if connection.kind == "deterministic" or connection.generation_mode in {"two_stage", "oracle_his2project"}:
         return "system-his-v1.2"
     return "system-his-v1.1"
 
 
 def _contract_skeleton_mode(sample: PlannedSample, config: RunnerConfig) -> str:
     connection = resolve_source_connection(config, sample.source)
-    if connection.generation_mode == "two_stage":
+    if connection.generation_mode in {"two_stage", "oracle_his2project"}:
         return "behavior_files"
     if connection.kind == "deterministic":
         return "deterministic_template"
@@ -1262,12 +1271,12 @@ def _project_generator_for_sample(
 ) -> object | None:
     connection = resolve_source_connection(config, sample.source)
     cache_key = sample.source
-    if connection.generation_mode == "two_stage":
+    if connection.generation_mode in {"two_stage", "oracle_his2project"}:
         cache_key = f"{sample.source}:{sample.sample_id}"
     if cache_key not in project_generators:
         event_sink = (
             _generation_event_sink(events_path, sample, config)
-            if connection.generation_mode == "two_stage"
+            if connection.generation_mode in {"two_stage", "oracle_his2project"}
             else None
         )
         project_generators[cache_key] = build_project_generator_for_connection(

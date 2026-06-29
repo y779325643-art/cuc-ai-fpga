@@ -567,6 +567,13 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("output wire signed [7:0] updated_value", project.files["rtl/top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
         self.assertGreaterEqual(len(system_his["connections"]), 18)
+        data_flow_paths = [flow["path"] for flow in system_his["data_flow"]]
+        self.assertIn(["top.reward", "u_td_input_stage.reward"], data_flow_paths)
+        self.assertIn(["top.value", "u_td_input_stage.value"], data_flow_paths)
+        self.assertIn(["top.next_value", "u_td_input_stage.next_value"], data_flow_paths)
+        self.assertIn(["top.gamma", "u_td_input_stage.gamma"], data_flow_paths)
+        self.assertIn(["top.alpha", "u_td_input_stage.alpha"], data_flow_paths)
+        self.assertIn(["u_stream_stage.updated_value_out", "top.updated_value"], data_flow_paths)
 
     def test_generates_composed_policy_value_shell_from_t7_component_topology(self) -> None:
         project = ProjectGenerator().generate(

@@ -8,6 +8,7 @@ from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleClient,
     AnthropicCompatibleConfig,
     DeepSeekHisProjectGenerator,
+    DeepSeekOracleHisProjectGenerator,
     DeepSeekProjectGenerator,
     DeepSeekRepairer,
     DeepSeekSystemHisGenerator,
@@ -1097,6 +1098,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("must contain behavior body only", retry_prompt)
         self.assertIn("Drive every declared output", retry_prompt)
         self.assertIn("Every case statement must include a default branch", retry_prompt)
+        self.assertIn("WIDTHEXPAND or WIDTHTRUNC", retry_prompt)
         self.assertIn("Avoid undriven signals, incomplete case coverage", retry_prompt)
 
     def test_deepseek_his_project_generator_rejects_reserved_identifier_behavior(self) -> None:
@@ -1181,6 +1183,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Do not return system_his.json, manifest.json, rtl/top.v", user_prompt)
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", user_prompt)
         self.assertIn("Generated behavior must be Verilator -Wall clean", user_prompt)
+        self.assertIn("Make arithmetic widths explicit", user_prompt)
+        self.assertIn("WIDTHEXPAND or WIDTHTRUNC", user_prompt)
         self.assertIn("include a default branch for every case statement", user_prompt)
         self.assertIn("Use declared FSM state localparams from the deterministic skeleton", user_prompt)
         self.assertIn("Do not rename, omit, or replace System-HIS state.fsms states", user_prompt)
@@ -1217,6 +1221,31 @@ class DeepSeekProviderTest(unittest.TestCase):
             "Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton",
             client.messages_history[1][1]["content"],
         )
+
+    def test_deepseek_oracle_his_project_generator_skips_req2his_and_runs_his2project(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Generate a dual-stream join and accumulator project.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        oracle_his = _deterministic_system_his(request)
+        behavior_files = _behavior_files_for_contract_skeleton(request, platform, oracle_his)
+        client = FakeChatClient(json.dumps({"behavior_files": behavior_files}))
+        events = []
+
+        project = DeepSeekOracleHisProjectGenerator(client, event_sink=events.append).generate(request, platform)
+
+        self.assertEqual(project.project_name, "join_8bit")
+        self.assertIn("rtl/stream_join.v", project.files)
+        self.assertEqual(client.call_count, 1)
+        self.assertEqual(client.chat_call_count, 0)
+        self.assertEqual(client.stream_call_count, 1)
+        self.assertIn("Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton", client.messages[1]["content"])
+        self.assertIn('"schema_version": "system-his-v1.2"', client.messages[1]["content"])
+        self.assertIn("Make arithmetic widths explicit", client.messages[1]["content"])
+        self.assertEqual([event["stage"] for event in events], ["oracle_req2his", "oracle_req2his", "his2project", "his2project"])
 
     def test_deepseek_two_stage_project_generator_emits_stage_events(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -1983,6 +2012,20 @@ def _behavior_files_for_system_his_v12(system_his: dict[str, object]) -> dict[st
         else:
             files[source] = "// behavior intentionally omitted in unit-test fixture"
     return files
+
+
+def _behavior_files_for_contract_skeleton(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+    system_his: dict[str, object],
+) -> dict[str, str]:
+    behavior_files = _behavior_files_for_system_his_v12(system_his)
+    skeleton = build_contract_skeleton_project(request, platform, system_his)
+    return {
+        path: body
+        for path, body in behavior_files.items()
+        if path in skeleton.files and "BEHAVIOR_HOLE" in skeleton.files[path]
+    }
 
 
 if __name__ == "__main__":

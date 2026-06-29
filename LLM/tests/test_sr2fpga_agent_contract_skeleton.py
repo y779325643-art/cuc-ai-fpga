@@ -4,6 +4,7 @@ from pathlib import Path
 
 from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project, merge_behavior_files
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12_against_rtl
 
 
@@ -113,6 +114,33 @@ class ContractSkeletonTest(unittest.TestCase):
         top_rtl = skeleton.files["rtl/top.v"]
         self.assertIn("assign out_stage__in_valid = 1'b1;", top_rtl)
         self.assertIn("wire _unused_data_flow_signals = &{1'b0, out_stage__in_ready};", top_rtl)
+
+    def test_top_skeleton_wires_td_update_oracle_his_payload_edges(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_td_update_core",
+            width=8,
+            project_name="td_update_8bit",
+            description="Generate a TD update datapath.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        oracle_project = ProjectGenerator().generate(request, platform)
+        system_his = json.loads(oracle_project.files["system_his.json"])
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        top_rtl = skeleton.files["rtl/top.v"]
+        self.assertIn("assign u_td_input_stage__reward = reward;", top_rtl)
+        self.assertIn("assign u_td_input_stage__value = value;", top_rtl)
+        self.assertIn("assign u_td_update_core__discounted_return = u_discount_core__discounted_return;", top_rtl)
+        self.assertIn("assign updated_value = u_stream_stage__updated_value_out;", top_rtl)
+        self.assertIn("assign u_stream_stage__out_ready = out_ready;", top_rtl)
+        self.assertIn("assign in_ready = u_td_input_stage__in_ready;", top_rtl)
+        self.assertIn("assign u_td_input_stage__out_ready = u_discount_core__in_ready;", top_rtl)
+        self.assertIn("assign u_discount_core__out_ready = u_td_update_core__in_ready;", top_rtl)
+        self.assertIn("assign u_td_update_core__out_ready = u_stream_stage__in_ready;", top_rtl)
+        self.assertNotIn("assign u_stream_stage__out_valid = out_valid;", top_rtl)
+        self.assertIn(".SCALE_SHIFT(SCALE_SHIFT)", top_rtl)
+        self.assertNotIn(".SCALE_SHIFT(4)", top_rtl)
 
     def test_top_skeleton_replaces_default_valid_driver_with_explicit_flow(self) -> None:
         system_his = _fixture()

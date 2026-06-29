@@ -10,6 +10,7 @@ from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleClient,
     AnthropicCompatibleConfig,
+    DeepSeekOracleHisProjectGenerator,
     DeepSeekTwoStageProjectGenerator,
     DeepSeekProjectGenerator,
     DeepSeekRepairer,
@@ -115,7 +116,7 @@ def build_project_generator_for_connection(connection, event_sink=None):
     kind = connection.kind
     if kind == "deterministic":
         return None
-    if kind not in {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}:
+    if kind not in {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12", "deepseek-oracle-his-v12"}:
         raise SystemExit(f"Unsupported source kind: {kind}")
     api_key = os.environ.get(connection.api_key_env)
     if not api_key:
@@ -144,6 +145,8 @@ def build_project_generator_for_connection(connection, event_sink=None):
     )
     if kind == "deepseek":
         return DeepSeekProjectGenerator(client)
+    if kind == "deepseek-oracle-his-v12":
+        return DeepSeekOracleHisProjectGenerator(client, event_sink=event_sink)
     return DeepSeekTwoStageProjectGenerator(client, event_sink=event_sink)
 
 
