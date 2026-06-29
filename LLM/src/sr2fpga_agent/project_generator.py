@@ -20,6 +20,7 @@ SUPPORTED_TASK_TYPES = {
     "fir_filter",
     "streaming_valid_ready",
     "matrix_vector_mac",
+    "alu_control_unit",
     "composed_event_counter",
     "composed_stream_accumulator",
     "composed_stream_fork",
@@ -808,6 +809,20 @@ def _v12_state(
     elif request.task_type == "ram_read_write":
         memories.append({"name": "mem", "owner": top_module, "width": request.width, "depth": 4})
         registers.append({"name": "rdata", "owner": top_module, "width": request.width})
+    elif request.task_type == "alu_control_unit":
+        flag_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "status_flags"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "result", "owner": flag_owner, "width": request.width},
+                {"name": "result_valid", "owner": flag_owner, "width": 1},
+                {"name": "zero", "owner": flag_owner, "width": 1},
+                {"name": "carry", "owner": flag_owner, "width": 1},
+                {"name": "negative", "owner": flag_owner, "width": 1},
+            ]
+        )
     elif request.task_type == "composed_vector_mac_pipeline":
         mac_owner = next(
             (str(instance["name"]) for instance in instances if instance.get("component") == "vector_mac_core"),
@@ -1485,6 +1500,7 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
         "fir_filter": ["mac_unit", "fir_filter_core"],
         "streaming_valid_ready": ["skid_buffer", "stream_stage"],
         "matrix_vector_mac": ["vector_rom", "mac_unit", "dot_product_engine"],
+        "alu_control_unit": ["control_decode", "alu_core", "status_flags"],
     }
     if request.task_type in COMPONENT_TOPOLOGIES:
         submodules[request.task_type] = list(COMPONENT_TOPOLOGIES[request.task_type]["submodules"])
@@ -1581,6 +1597,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _streaming_valid_ready_rtl_files(request.width)
     if request.task_type == "matrix_vector_mac":
         return _matrix_vector_mac_rtl_files(request.width)
+    if request.task_type == "alu_control_unit":
+        return _alu_control_unit_rtl_files(request.width)
     if request.task_type == "composed_event_counter":
         return _composed_event_counter_rtl_files(request.width)
     if request.task_type == "composed_stream_accumulator":
@@ -1638,6 +1656,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _streaming_valid_ready_testbench(request.width)
     if request.task_type == "matrix_vector_mac":
         return _matrix_vector_mac_testbench(request.width)
+    if request.task_type == "alu_control_unit":
+        return _alu_control_unit_testbench(request.width)
     if request.task_type == "composed_event_counter":
         return _composed_event_counter_testbench(request.width)
     if request.task_type == "composed_stream_accumulator":
@@ -2591,6 +2611,118 @@ def _matrix_vector_mac_testbench(width: int) -> str:
             #1;
             if (done !== 1'b0) begin
               $display("TEST_FAIL done was not one cycle");
+              $finish;
+            end
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _alu_control_unit_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg valid;
+          wire ready;
+          reg [2:0] op;
+          reg [{msb}:0] lhs;
+          reg [{msb}:0] rhs;
+          wire result_valid;
+          wire [{msb}:0] result;
+          wire zero;
+          wire carry;
+          wire negative;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .valid(valid),
+            .ready(ready),
+            .op(op),
+            .lhs(lhs),
+            .rhs(rhs),
+            .result_valid(result_valid),
+            .result(result),
+            .zero(zero),
+            .carry(carry),
+            .negative(negative)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task expect_result;
+            input [2:0] op_i;
+            input [{msb}:0] lhs_i;
+            input [{msb}:0] rhs_i;
+            input [{msb}:0] expected_result;
+            input expected_zero;
+            input expected_carry;
+            input expected_negative;
+            begin
+              @(negedge clk);
+              valid = 1'b1;
+              op = op_i;
+              lhs = lhs_i;
+              rhs = rhs_i;
+              @(negedge clk);
+              valid = 1'b0;
+              if (ready !== 1'b1) begin
+                $display("TEST_FAIL ready was not asserted");
+                $finish;
+              end
+              if (result_valid !== 1'b1) begin
+                $display("TEST_FAIL result_valid was not asserted for op=%0d", op_i);
+                $finish;
+              end
+              if (result !== expected_result) begin
+                $display(
+                  "TEST_FAIL op=%0d expected result=%0h got %0h",
+                  op_i,
+                  expected_result,
+                  result
+                );
+                $finish;
+              end
+              if (zero !== expected_zero || carry !== expected_carry || negative !== expected_negative) begin
+                $display("TEST_FAIL flags op=%0d zero=%0b carry=%0b negative=%0b", op_i, zero, carry, negative);
+                $finish;
+              end
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            valid = 1'b0;
+            op = 3'd0;
+            lhs = {width}'d0;
+            rhs = {width}'d0;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            expect_result(3'b000, 8'hff, 8'h01, 8'h00, 1'b1, 1'b1, 1'b0);
+            expect_result(3'b001, 8'h03, 8'h01, 8'h02, 1'b0, 1'b0, 1'b0);
+            expect_result(3'b010, 8'haa, 8'h0f, 8'h0a, 1'b0, 1'b0, 1'b0);
+            expect_result(3'b011, 8'ha0, 8'h0f, 8'haf, 1'b0, 1'b0, 1'b1);
+            expect_result(3'b100, 8'hff, 8'h0f, 8'hf0, 1'b0, 1'b0, 1'b1);
+            expect_result(3'b101, 8'h11, 8'h01, 8'h22, 1'b0, 1'b0, 1'b0);
+            expect_result(3'b110, 8'h80, 8'h02, 8'h20, 1'b0, 1'b0, 1'b0);
+            expect_result(3'b111, 8'h5a, 8'h00, 8'h5a, 1'b0, 1'b0, 1'b0);
+
+            @(posedge clk);
+            #1;
+            if (result_valid !== 1'b0) begin
+              $display("TEST_FAIL result_valid did not clear");
               $finish;
             end
             $display("TEST_PASS");
@@ -4938,6 +5070,165 @@ def _matrix_vector_mac_rtl_files(width: int) -> dict[str, str]:
         "rtl/dot_product_engine.v": dot_product_engine,
         "rtl/mac_unit.v": mac_unit,
         "rtl/vector_rom.v": vector_rom,
+    }
+
+
+def _alu_control_unit_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    shift_msb = min(2, width - 1)
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire valid,
+            output wire ready,
+            input wire [2:0] op,
+            input wire [{msb}:0] lhs,
+            input wire [{msb}:0] rhs,
+            output wire result_valid,
+            output wire [{msb}:0] result,
+            output wire zero,
+            output wire carry,
+            output wire negative
+        );
+
+          wire [2:0] decoded_op;
+          wire [{msb}:0] alu_result;
+          wire alu_carry;
+
+          assign ready = 1'b1;
+
+          control_decode u_control_decode (
+            .op(op),
+            .decoded_op(decoded_op)
+          );
+
+          alu_core #(
+            .WIDTH({width})
+          ) u_alu_core (
+            .op(decoded_op),
+            .lhs(lhs),
+            .rhs(rhs),
+            .result(alu_result),
+            .carry(alu_carry)
+          );
+
+          status_flags #(
+            .WIDTH({width})
+          ) u_status_flags (
+            .clk(clk),
+            .rst_n(rst_n),
+            .valid(valid),
+            .alu_result(alu_result),
+            .alu_carry(alu_carry),
+            .result_valid(result_valid),
+            .result(result),
+            .zero(zero),
+            .carry(carry),
+            .negative(negative)
+          );
+
+        endmodule
+        """
+    )
+    control_decode = dedent(
+        """\
+        module control_decode (
+            input wire [2:0] op,
+            output wire [2:0] decoded_op
+        );
+
+          assign decoded_op = op;
+
+        endmodule
+        """
+    )
+    alu_core = dedent(
+        f"""\
+        module alu_core #(
+            parameter WIDTH = 8
+        ) (
+            input wire [2:0] op,
+            input wire [WIDTH-1:0] lhs,
+            input wire [WIDTH-1:0] rhs,
+            output reg [WIDTH-1:0] result,
+            output reg carry
+        );
+
+          wire [WIDTH:0] add_ext;
+          wire [WIDTH:0] sub_ext;
+
+          assign add_ext = {{1'b0, lhs}} + {{1'b0, rhs}};
+          assign sub_ext = {{1'b0, lhs}} - {{1'b0, rhs}};
+
+          always @* begin
+            result = {{WIDTH{{1'b0}}}};
+            carry = 1'b0;
+            case (op)
+              3'b000: begin
+                result = add_ext[WIDTH-1:0];
+                carry = add_ext[WIDTH];
+              end
+              3'b001: begin
+                result = sub_ext[WIDTH-1:0];
+                carry = sub_ext[WIDTH];
+              end
+              3'b010: result = lhs & rhs;
+              3'b011: result = lhs | rhs;
+              3'b100: result = lhs ^ rhs;
+              3'b101: result = lhs << rhs[{shift_msb}:0];
+              3'b110: result = lhs >> rhs[{shift_msb}:0];
+              default: result = lhs;
+            endcase
+          end
+
+        endmodule
+        """
+    )
+    status_flags = dedent(
+        """\
+        module status_flags #(
+            parameter WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire valid,
+            input wire [WIDTH-1:0] alu_result,
+            input wire alu_carry,
+            output reg result_valid,
+            output reg [WIDTH-1:0] result,
+            output reg zero,
+            output reg carry,
+            output reg negative
+        );
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              result_valid <= 1'b0;
+              result <= {WIDTH{1'b0}};
+              zero <= 1'b0;
+              carry <= 1'b0;
+              negative <= 1'b0;
+            end else if (valid) begin
+              result_valid <= 1'b1;
+              result <= alu_result;
+              zero <= (alu_result == {WIDTH{1'b0}});
+              carry <= alu_carry;
+              negative <= alu_result[WIDTH-1];
+            end else begin
+              result_valid <= 1'b0;
+            end
+          end
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/control_decode.v": control_decode,
+        "rtl/alu_core.v": alu_core,
+        "rtl/status_flags.v": status_flags,
     }
 
 
@@ -8285,6 +8576,10 @@ def _default_description(request: ProjectRequest) -> str:
             f"Generate a {request.width}-bit valid-ready streaming pipeline with buffering."
         ),
         "matrix_vector_mac": f"Generate a {request.width}-bit fixed matrix-vector dot product engine.",
+        "alu_control_unit": (
+            f"Generate a {request.width}-bit ALU control unit with opcode decode, arithmetic/logic core, "
+            "registered result, and zero/carry/negative status flags."
+        ),
         "composed_event_counter": (
             f"Generate a {request.width}-bit component-composed event counter using "
             "an event gate and counter core."
@@ -8489,6 +8784,27 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                     {"name": "busy", "width": 1},
                     {"name": "done", "width": 1},
                     {"name": "result", "width": request.width + 4},
+                ],
+            }
+        )
+    elif request.task_type == "alu_control_unit":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "valid", "width": 1},
+                    {"name": "op", "width": 3},
+                    {"name": "lhs", "width": request.width},
+                    {"name": "rhs", "width": request.width},
+                ],
+                "outputs": [
+                    {"name": "ready", "width": 1},
+                    {"name": "result_valid", "width": 1},
+                    {"name": "result", "width": request.width},
+                    {"name": "zero", "width": 1},
+                    {"name": "carry", "width": 1},
+                    {"name": "negative", "width": 1},
                 ],
             }
         )
@@ -8794,6 +9110,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "fir_filter": "valid input samples produce a three-tap [1, 2, 1] FIR result",
         "streaming_valid_ready": "valid-ready transfers preserve data order across stalls",
         "matrix_vector_mac": "start computes the fixed four-element dot product and pulses done",
+        "alu_control_unit": (
+            "valid op/lhs/rhs inputs are decoded, executed by the ALU core, and captured with zero, carry, "
+            "and negative flags"
+        ),
         "composed_event_counter": "event_valid pulses pass through an event gate and increment the counter core",
         "composed_stream_accumulator": (
             "valid input samples pass through a skid buffer and accumulate into the running sum"
@@ -8867,6 +9187,8 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(10, request.width), "ff": request.width * 2 + 4, "bram": 0, "dsp": 0}
     if request.task_type == "matrix_vector_mac":
         return {"lut": max(24, request.width * 4), "ff": request.width * 4, "bram": 0, "dsp": 2}
+    if request.task_type == "alu_control_unit":
+        return {"lut": max(20, request.width * 3 + 8), "ff": request.width + 4, "bram": 0, "dsp": 0}
     if request.task_type == "composed_event_counter":
         return {"lut": max(4, request.width // 2 + 2), "ff": request.width, "bram": 0, "dsp": 0}
     if request.task_type == "composed_stream_accumulator":
