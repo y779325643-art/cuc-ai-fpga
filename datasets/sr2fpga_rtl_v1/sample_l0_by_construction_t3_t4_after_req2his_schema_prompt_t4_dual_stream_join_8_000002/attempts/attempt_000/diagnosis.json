@@ -1,0 +1,8 @@
+{
+  "failure_type": "generation_failed",
+  "stage": "generation",
+  "root_cause": "HIS2PROJECT RTL failed System-HIS v1.2 cross-check: component 'stream_join' port 'out_data' width {'expr': '2*DATA_WIDTH', 'resolved': 16} does not match RTL [2*DATA_WIDTH-1:0]; component 'accumulator_core' port 'sample' width {'expr': '2*DATA_WIDTH', 'resolved': 16} does not match RTL [2*DATA_WIDTH-1:0]",
+  "affected_files": [
+    "system_his.json"
+  ]
+}

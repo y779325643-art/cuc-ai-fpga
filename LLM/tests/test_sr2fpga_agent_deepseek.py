@@ -513,6 +513,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Previous invalid System-HIS JSON", retry_prompt)
         self.assertIn('"component": "skid_buffer"', retry_prompt)
         self.assertIn("Every instances[] object must include name", retry_prompt)
+        self.assertIn("Every instances[].owns_state must be a JSON array", retry_prompt)
+        self.assertIn("top.clocks[].target_fmax_mhz and timing.target_fmax_mhz must be positive numbers", retry_prompt)
         self.assertIn("data_flow.path endpoints must use top.<port> or <instance>.<port>", retry_prompt)
         self.assertIn("effect.target must reference a declared data_flow name or state name", retry_prompt)
 
@@ -546,6 +548,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Every instances[].parameter_values key must be declared in that component's parameters", user_prompt)
         self.assertIn("Every components[].source must be one of artifacts.rtl_sources", user_prompt)
         self.assertIn('Do not use placeholder sources such as "library"', user_prompt)
+        self.assertIn("Every instances[].owns_state must be a JSON array", user_prompt)
+        self.assertIn("top.clocks[].target_fmax_mhz and timing.target_fmax_mhz must be positive numbers", user_prompt)
         self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", user_prompt)
         self.assertIn("FSM owner must be top or an instances[].name", user_prompt)
         self.assertIn("State names across registers, counters, fsms, buffers, and memories must be globally unique", user_prompt)

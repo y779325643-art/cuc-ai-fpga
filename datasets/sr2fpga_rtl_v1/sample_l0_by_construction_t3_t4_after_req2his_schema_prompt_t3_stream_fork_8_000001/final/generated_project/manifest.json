@@ -1,0 +1,27 @@
+{
+  "project_name": "l0_by_construction_t3_t4_after_req2his_schema_prompt_t3_stream_fork_8_000001",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_fork.v",
+    "rtl/stream_stage.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

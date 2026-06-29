@@ -180,6 +180,20 @@ Implemented and under active review:
   `owns_state`), so the next small hardening target is initial REQ2HIS prompt
   specificity rather than deterministic skeleton wiring. Compact write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-width-parameters-2026-06-29.md`.
+- REQ2HIS initial and retry prompts now explicitly require
+  `top.clocks[].target_fmax_mhz` and `timing.target_fmax_mhz` to be positive
+  numbers, and `instances[].owns_state` to be a JSON array. A fresh narrow
+  T3/T4 rerun with run ID
+  `l0-by-construction-t3-t4-after-req2his-schema-prompt` completed with
+  `total_completed=2`, pass levels `L3:1, GEN_FAIL:1`, and
+  `exports_refreshed=true`. The previous `target_fmax_mhz` / `owns_state`
+  retry signatures did not reappear; the remaining REQ2HIS retry surface is
+  structured `control_flow` and FSM reset-state shape. The T4 `GEN_FAIL`
+  exposed an RTL-introspection width-equivalence gap for arithmetic ranges:
+  System-HIS `2*DATA_WIDTH` versus RTL `[2*DATA_WIDTH-1:0]`. That helper now
+  normalizes expression-minus-one ranges to the expression width. Compact
+  write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-req2his-schema-prompt-2026-06-29.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
@@ -521,6 +535,12 @@ python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construct
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters
 # total_completed=2; pass_level_breakdown: L3:2; failure_types: {}; exports_refreshed=true
 
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt --preflight --validate-provider
+# ok: true; planned_samples: 2; contract_skeleton_mode: behavior_files; provider_auth.deepseek-his-v12.status: ok
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt
+# total_completed=2; pass_level_breakdown: L3:1, GEN_FAIL:1; failure_types: generation_failed:1; exports_refreshed=true
+
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
 # ok: true; planned_samples: 8; preview shows legacy_full_project/quarantine and behavior_files/clean arms; provider_auth: not_checked
 
@@ -629,6 +649,10 @@ Latest T3/T4 behavior-files skeleton width-parameter rerun report:
 
 `tmp/sr2fpga_runs/l0-by-construction-t3-t4-after-width-parameters/baseline_report.md`
 
+Latest T3/T4 behavior-files REQ2HIS schema-prompt rerun report:
+
+`tmp/sr2fpga_runs/l0-by-construction-t3-t4-after-req2his-schema-prompt/baseline_report.md`
+
 Key summary:
 
 - Pass-rate knee: T1, because L3 pass rate is 0%.
@@ -659,6 +683,10 @@ Key summary:
   T4 `dual_stream_join` reached L3 on fresh samples after width-parameter
   hardening. The remaining visible friction is retry dependence in REQ2HIS
   schema details, not deterministic skeleton wiring.
+- Latest REQ2HIS schema-prompt rerun result: T3 stayed L3; T4 stopped at
+  `GEN_FAIL` due an arithmetic width-equivalence checker gap rather than the
+  previous `target_fmax_mhz` / `owns_state` schema errors. The checker now
+  treats `[2*DATA_WIDTH-1:0]` as width expression `2*DATA_WIDTH`.
 - HIS2PROJECT now uses OpenAI-compatible streaming (`stream: true` + SSE
   `choices[].delta.content` assembly). REQ2HIS, direct generation, repair, and
   provider preflight remain non-streaming. Unit coverage verifies streaming SSE

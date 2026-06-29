@@ -86,6 +86,9 @@ endmodule
         self.assertTrue(widths_equivalent({"expr": "DATA_WIDTH-1:0", "resolved": None}, "[DATA_WIDTH-1:0]"))
         self.assertTrue(widths_equivalent({"expr": "2*DATA_WIDTH-1:0", "resolved": None}, "[2*DATA_WIDTH-1:0]"))
 
+    def test_widths_equivalent_accepts_arithmetic_expr_against_rtl_range(self) -> None:
+        self.assertTrue(widths_equivalent({"expr": "2*DATA_WIDTH", "resolved": 16}, "[2*DATA_WIDTH-1:0]"))
+
 
 if __name__ == "__main__":
     unittest.main()
