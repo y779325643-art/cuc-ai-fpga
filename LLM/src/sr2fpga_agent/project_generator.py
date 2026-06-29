@@ -27,6 +27,7 @@ SUPPORTED_TASK_TYPES = {
     "composed_vector_mac_pipeline",
     "composed_td_update_core",
     "composed_policy_value_shell",
+    "composed_replay_sample_shell",
 }
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
@@ -230,6 +231,61 @@ COMPONENT_TOPOLOGIES = {
             {"from": "top.action_ready", "to": "stream_stage.out_ready"},
             {"from": "stream_stage.selected_action_out", "to": "top.selected_action"},
             {"from": "stream_stage.value_estimate_out", "to": "top.value_estimate"},
+        ],
+    },
+    "composed_replay_sample_shell": {
+        "topology_id": "t8_replay_sample_shell",
+        "difficulty_tier": "T8",
+        "submodules": [
+            "host_sample_stage",
+            "replay_store",
+            "sample_pack_core",
+            "sample_read_stage",
+            "occupancy_counter",
+        ],
+        "nodes": [
+            {"id": "host_stage", "component": "host_sample_stage"},
+            {"id": "store", "component": "replay_store"},
+            {"id": "pack", "component": "sample_pack_core"},
+            {"id": "read_stage", "component": "sample_read_stage"},
+            {"id": "occupancy", "component": "occupancy_counter"},
+        ],
+        "edges": [
+            {"from": "top.host_valid", "to": "host_sample_stage.in_valid"},
+            {"from": "top.host_state", "to": "host_sample_stage.state"},
+            {"from": "top.host_action", "to": "host_sample_stage.action"},
+            {"from": "top.host_reward", "to": "host_sample_stage.reward"},
+            {"from": "top.host_next_state", "to": "host_sample_stage.next_state"},
+            {"from": "top.host_done", "to": "host_sample_stage.done"},
+            {"from": "host_sample_stage.in_ready", "to": "top.host_ready"},
+            {"from": "host_sample_stage.out_valid", "to": "replay_store.write_valid"},
+            {"from": "host_sample_stage.state_out", "to": "replay_store.write_state"},
+            {"from": "host_sample_stage.action_out", "to": "replay_store.write_action"},
+            {"from": "host_sample_stage.reward_out", "to": "replay_store.write_reward"},
+            {"from": "host_sample_stage.next_state_out", "to": "replay_store.write_next_state"},
+            {"from": "host_sample_stage.done_out", "to": "replay_store.write_done"},
+            {"from": "replay_store.write_ready", "to": "host_sample_stage.out_ready"},
+            {"from": "top.sample_ready", "to": "sample_read_stage.out_ready"},
+            {"from": "sample_read_stage.read_ready", "to": "replay_store.read_ready"},
+            {"from": "replay_store.read_valid", "to": "sample_read_stage.in_valid"},
+            {"from": "replay_store.read_state", "to": "sample_pack_core.state"},
+            {"from": "replay_store.read_action", "to": "sample_pack_core.action"},
+            {"from": "replay_store.read_reward", "to": "sample_pack_core.reward"},
+            {"from": "replay_store.read_next_state", "to": "sample_pack_core.next_state"},
+            {"from": "replay_store.read_done", "to": "sample_pack_core.done"},
+            {"from": "sample_pack_core.sample_state", "to": "sample_read_stage.sample_state"},
+            {"from": "sample_pack_core.sample_action", "to": "sample_read_stage.sample_action"},
+            {"from": "sample_pack_core.sample_reward", "to": "sample_read_stage.sample_reward"},
+            {"from": "sample_pack_core.sample_next_state", "to": "sample_read_stage.sample_next_state"},
+            {"from": "sample_pack_core.sample_done", "to": "sample_read_stage.sample_done"},
+            {"from": "sample_read_stage.out_valid", "to": "top.sample_valid"},
+            {"from": "sample_read_stage.sample_state_out", "to": "top.sample_state"},
+            {"from": "sample_read_stage.sample_action_out", "to": "top.sample_action"},
+            {"from": "sample_read_stage.sample_reward_out", "to": "top.sample_reward"},
+            {"from": "sample_read_stage.sample_next_state_out", "to": "top.sample_next_state"},
+            {"from": "sample_read_stage.sample_done_out", "to": "top.sample_done"},
+            {"from": "replay_store.occupancy", "to": "occupancy_counter.occupancy_in"},
+            {"from": "occupancy_counter.occupancy_out", "to": "top.occupancy"},
         ],
     },
 }
@@ -559,6 +615,33 @@ def _v12_state(
                 {"name": "value_estimate", "owner": output_owner, "width": request.width},
             ]
         )
+    elif request.task_type == "composed_replay_sample_shell":
+        host_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "host_sample_stage"),
+            owner,
+        )
+        store_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "replay_store"),
+            owner,
+        )
+        read_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "sample_read_stage"),
+            owner,
+        )
+        registers.extend(
+            [
+                {"name": "staged_state", "owner": host_owner, "width": request.width},
+                {"name": "staged_reward", "owner": host_owner, "width": request.width},
+                {"name": "staged_next_state", "owner": host_owner, "width": request.width},
+                {"name": "write_ptr", "owner": store_owner, "width": 2},
+                {"name": "read_ptr", "owner": store_owner, "width": 2},
+                {"name": "occupancy", "owner": store_owner, "width": 3},
+                {"name": "sample_state", "owner": read_owner, "width": request.width},
+                {"name": "sample_reward", "owner": read_owner, "width": request.width},
+                {"name": "sample_next_state", "owner": read_owner, "width": request.width},
+            ]
+        )
+        buffers.append({"name": "replay_entries", "owner": store_owner, "width": request.width * 3 + 2, "depth": 4})
     return {
         "registers": registers,
         "counters": counters,
@@ -706,6 +789,7 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
         "composed_vector_mac_pipeline",
         "composed_td_update_core",
         "composed_policy_value_shell",
+        "composed_replay_sample_shell",
     }:
         flow_names = [str(flow["name"]) for flow in data_flow]
         rules.extend(
@@ -1143,6 +1227,8 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return _composed_td_update_core_rtl_files(request.width)
     if request.task_type == "composed_policy_value_shell":
         return _composed_policy_value_shell_rtl_files(request.width)
+    if request.task_type == "composed_replay_sample_shell":
+        return _composed_replay_sample_shell_rtl_files(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -1190,6 +1276,8 @@ def _testbench(request: ProjectRequest) -> str:
         return _composed_td_update_core_testbench(request.width)
     if request.task_type == "composed_policy_value_shell":
         return _composed_policy_value_shell_testbench(request.width)
+    if request.task_type == "composed_replay_sample_shell":
+        return _composed_replay_sample_shell_testbench(request.width)
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
 
 
@@ -2786,6 +2874,164 @@ def _composed_policy_value_shell_testbench(width: int) -> str:
 
             send_observation({width}'d1, {width}'d5);
             expect_action(1'b1, {width}'d9);
+
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+    )
+
+
+def _composed_replay_sample_shell_testbench(width: int) -> str:
+    msb = width - 1
+    return dedent(
+        f"""\
+        `timescale 1ns/1ps
+
+        module tb_top;
+          reg clk;
+          reg rst_n;
+          reg host_valid;
+          wire host_ready;
+          reg [{msb}:0] host_state;
+          reg host_action;
+          reg [{msb}:0] host_reward;
+          reg [{msb}:0] host_next_state;
+          reg host_done;
+          wire sample_valid;
+          reg sample_ready;
+          wire [{msb}:0] sample_state;
+          wire sample_action;
+          wire [{msb}:0] sample_reward;
+          wire [{msb}:0] sample_next_state;
+          wire sample_done;
+          wire [2:0] occupancy;
+          integer wait_cycles;
+
+          top dut (
+            .clk(clk),
+            .rst_n(rst_n),
+            .host_valid(host_valid),
+            .host_ready(host_ready),
+            .host_state(host_state),
+            .host_action(host_action),
+            .host_reward(host_reward),
+            .host_next_state(host_next_state),
+            .host_done(host_done),
+            .sample_valid(sample_valid),
+            .sample_ready(sample_ready),
+            .sample_state(sample_state),
+            .sample_action(sample_action),
+            .sample_reward(sample_reward),
+            .sample_next_state(sample_next_state),
+            .sample_done(sample_done),
+            .occupancy(occupancy)
+          );
+
+          initial begin
+            clk = 1'b0;
+            forever #5 clk = ~clk;
+          end
+
+          task write_sample;
+            input [{msb}:0] state_i;
+            input action_i;
+            input [{msb}:0] reward_i;
+            input [{msb}:0] next_state_i;
+            input done_i;
+            begin
+              @(negedge clk);
+              host_valid = 1'b1;
+              host_state = state_i;
+              host_action = action_i;
+              host_reward = reward_i;
+              host_next_state = next_state_i;
+              host_done = done_i;
+              while (!host_ready) begin
+                @(negedge clk);
+              end
+              @(negedge clk);
+              host_valid = 1'b0;
+            end
+          endtask
+
+          task expect_sample;
+            input [{msb}:0] expected_state;
+            input expected_action;
+            input [{msb}:0] expected_reward;
+            input [{msb}:0] expected_next_state;
+            input expected_done;
+            begin
+              wait_cycles = 0;
+              while (sample_valid !== 1'b1 && wait_cycles < 16) begin
+                @(posedge clk);
+                #1;
+                wait_cycles = wait_cycles + 1;
+              end
+              if (sample_valid !== 1'b1) begin
+                $display("TEST_FAIL sample output did not become valid");
+                $finish;
+              end
+              if (
+                sample_state !== expected_state ||
+                sample_action !== expected_action ||
+                sample_reward !== expected_reward ||
+                sample_next_state !== expected_next_state ||
+                sample_done !== expected_done
+              ) begin
+                $display(
+                  "TEST_FAIL expected s=%0d a=%0d r=%0d ns=%0d d=%0d got s=%0d a=%0d r=%0d ns=%0d d=%0d",
+                  expected_state,
+                  expected_action,
+                  expected_reward,
+                  expected_next_state,
+                  expected_done,
+                  sample_state,
+                  sample_action,
+                  sample_reward,
+                  sample_next_state,
+                  sample_done
+                );
+                $finish;
+              end
+              @(posedge clk);
+              #1;
+            end
+          endtask
+
+          initial begin
+            rst_n = 1'b0;
+            host_valid = 1'b0;
+            host_state = {width}'d0;
+            host_action = 1'b0;
+            host_reward = {width}'d0;
+            host_next_state = {width}'d0;
+            host_done = 1'b0;
+            sample_ready = 1'b0;
+            repeat (2) @(posedge clk);
+            rst_n = 1'b1;
+
+            write_sample({width}'d3, 1'b1, {width}'d4, {width}'d5, 1'b0);
+            write_sample({width}'d8, 1'b0, {width}'d2, {width}'d9, 1'b1);
+            write_sample({width}'d1, 1'b1, {width}'d7, {width}'d6, 1'b0);
+            @(posedge clk);
+            #1;
+            if (occupancy !== 3'd3) begin
+              $display("TEST_FAIL expected occupancy 3 got %0d", occupancy);
+              $finish;
+            end
+
+            sample_ready = 1'b1;
+            expect_sample({width}'d3, 1'b1, {width}'d4, {width}'d5, 1'b0);
+            expect_sample({width}'d8, 1'b0, {width}'d2, {width}'d9, 1'b1);
+            expect_sample({width}'d1, 1'b1, {width}'d7, {width}'d6, 1'b0);
+            @(posedge clk);
+            #1;
+            if (occupancy !== 3'd0) begin
+              $display("TEST_FAIL expected occupancy 0 got %0d", occupancy);
+              $finish;
+            end
 
             $display("TEST_PASS");
             $finish;
@@ -5013,6 +5259,376 @@ def _composed_policy_value_shell_rtl_files(width: int) -> dict[str, str]:
     }
 
 
+def _composed_replay_sample_shell_rtl_files(width: int) -> dict[str, str]:
+    msb = width - 1
+    top = dedent(
+        f"""\
+        module top (
+            input wire clk,
+            input wire rst_n,
+            input wire host_valid,
+            output wire host_ready,
+            input wire [{msb}:0] host_state,
+            input wire host_action,
+            input wire [{msb}:0] host_reward,
+            input wire [{msb}:0] host_next_state,
+            input wire host_done,
+            output wire sample_valid,
+            input wire sample_ready,
+            output wire [{msb}:0] sample_state,
+            output wire sample_action,
+            output wire [{msb}:0] sample_reward,
+            output wire [{msb}:0] sample_next_state,
+            output wire sample_done,
+            output wire [2:0] occupancy
+        );
+
+          wire host_stage_valid;
+          wire host_stage_ready;
+          wire [{msb}:0] host_stage_state;
+          wire host_stage_action;
+          wire [{msb}:0] host_stage_reward;
+          wire [{msb}:0] host_stage_next_state;
+          wire host_stage_done;
+          wire store_read_valid;
+          wire store_read_ready;
+          wire [{msb}:0] store_read_state;
+          wire store_read_action;
+          wire [{msb}:0] store_read_reward;
+          wire [{msb}:0] store_read_next_state;
+          wire store_read_done;
+          wire [{msb}:0] sample_pack_state;
+          wire sample_pack_action;
+          wire [{msb}:0] sample_pack_reward;
+          wire [{msb}:0] sample_pack_next_state;
+          wire sample_pack_done;
+          wire [2:0] store_occupancy;
+
+          host_sample_stage #(
+            .DATA_WIDTH({width})
+          ) u_host_sample_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(host_valid),
+            .in_ready(host_ready),
+            .state(host_state),
+            .action(host_action),
+            .reward(host_reward),
+            .next_state(host_next_state),
+            .done(host_done),
+            .out_valid(host_stage_valid),
+            .out_ready(host_stage_ready),
+            .state_out(host_stage_state),
+            .action_out(host_stage_action),
+            .reward_out(host_stage_reward),
+            .next_state_out(host_stage_next_state),
+            .done_out(host_stage_done)
+          );
+
+          replay_store #(
+            .DATA_WIDTH({width}),
+            .DEPTH(4)
+          ) u_replay_store (
+            .clk(clk),
+            .rst_n(rst_n),
+            .write_valid(host_stage_valid),
+            .write_ready(host_stage_ready),
+            .write_state(host_stage_state),
+            .write_action(host_stage_action),
+            .write_reward(host_stage_reward),
+            .write_next_state(host_stage_next_state),
+            .write_done(host_stage_done),
+            .read_valid(store_read_valid),
+            .read_ready(store_read_ready),
+            .read_state(store_read_state),
+            .read_action(store_read_action),
+            .read_reward(store_read_reward),
+            .read_next_state(store_read_next_state),
+            .read_done(store_read_done),
+            .occupancy(store_occupancy)
+          );
+
+          sample_pack_core #(
+            .DATA_WIDTH({width})
+          ) u_sample_pack_core (
+            .state(store_read_state),
+            .action(store_read_action),
+            .reward(store_read_reward),
+            .next_state(store_read_next_state),
+            .done(store_read_done),
+            .sample_state(sample_pack_state),
+            .sample_action(sample_pack_action),
+            .sample_reward(sample_pack_reward),
+            .sample_next_state(sample_pack_next_state),
+            .sample_done(sample_pack_done)
+          );
+
+          sample_read_stage #(
+            .DATA_WIDTH({width})
+          ) u_sample_read_stage (
+            .clk(clk),
+            .rst_n(rst_n),
+            .in_valid(store_read_valid),
+            .read_ready(store_read_ready),
+            .sample_state(sample_pack_state),
+            .sample_action(sample_pack_action),
+            .sample_reward(sample_pack_reward),
+            .sample_next_state(sample_pack_next_state),
+            .sample_done(sample_pack_done),
+            .out_valid(sample_valid),
+            .out_ready(sample_ready),
+            .sample_state_out(sample_state),
+            .sample_action_out(sample_action),
+            .sample_reward_out(sample_reward),
+            .sample_next_state_out(sample_next_state),
+            .sample_done_out(sample_done)
+          );
+
+          occupancy_counter u_occupancy_counter (
+            .occupancy_in(store_occupancy),
+            .occupancy_out(occupancy)
+          );
+
+        endmodule
+        """
+    )
+    host_sample_stage = dedent(
+        """\
+        module host_sample_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire in_ready,
+            input wire [DATA_WIDTH-1:0] state,
+            input wire action,
+            input wire [DATA_WIDTH-1:0] reward,
+            input wire [DATA_WIDTH-1:0] next_state,
+            input wire done,
+            output reg out_valid,
+            input wire out_ready,
+            output reg [DATA_WIDTH-1:0] state_out,
+            output reg action_out,
+            output reg [DATA_WIDTH-1:0] reward_out,
+            output reg [DATA_WIDTH-1:0] next_state_out,
+            output reg done_out
+        );
+
+          assign in_ready = !out_valid || out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              state_out <= {DATA_WIDTH{1'b0}};
+              action_out <= 1'b0;
+              reward_out <= {DATA_WIDTH{1'b0}};
+              next_state_out <= {DATA_WIDTH{1'b0}};
+              done_out <= 1'b0;
+            end else if (in_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                state_out <= state;
+                action_out <= action;
+                reward_out <= reward;
+                next_state_out <= next_state;
+                done_out <= done;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    replay_store = dedent(
+        """\
+        module replay_store #(
+            parameter DATA_WIDTH = 8,
+            parameter DEPTH = 4
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire write_valid,
+            output wire write_ready,
+            input wire [DATA_WIDTH-1:0] write_state,
+            input wire write_action,
+            input wire [DATA_WIDTH-1:0] write_reward,
+            input wire [DATA_WIDTH-1:0] write_next_state,
+            input wire write_done,
+            output wire read_valid,
+            input wire read_ready,
+            output wire [DATA_WIDTH-1:0] read_state,
+            output wire read_action,
+            output wire [DATA_WIDTH-1:0] read_reward,
+            output wire [DATA_WIDTH-1:0] read_next_state,
+            output wire read_done,
+            output reg [2:0] occupancy
+        );
+
+          reg [DATA_WIDTH-1:0] state_mem [0:DEPTH-1];
+          reg action_mem [0:DEPTH-1];
+          reg [DATA_WIDTH-1:0] reward_mem [0:DEPTH-1];
+          reg [DATA_WIDTH-1:0] next_state_mem [0:DEPTH-1];
+          reg done_mem [0:DEPTH-1];
+          reg [1:0] write_ptr;
+          reg [1:0] read_ptr;
+          wire write_fire;
+          wire read_fire;
+
+          assign write_ready = occupancy < 3'd4;
+          assign read_valid = occupancy != 3'd0;
+          assign write_fire = write_valid && write_ready;
+          assign read_fire = read_valid && read_ready;
+          assign read_state = state_mem[read_ptr];
+          assign read_action = action_mem[read_ptr];
+          assign read_reward = reward_mem[read_ptr];
+          assign read_next_state = next_state_mem[read_ptr];
+          assign read_done = done_mem[read_ptr];
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              write_ptr <= 2'd0;
+              read_ptr <= 2'd0;
+              occupancy <= 3'd0;
+              state_mem[0] <= {DATA_WIDTH{1'b0}};
+              state_mem[1] <= {DATA_WIDTH{1'b0}};
+              state_mem[2] <= {DATA_WIDTH{1'b0}};
+              state_mem[3] <= {DATA_WIDTH{1'b0}};
+              action_mem[0] <= 1'b0;
+              action_mem[1] <= 1'b0;
+              action_mem[2] <= 1'b0;
+              action_mem[3] <= 1'b0;
+              reward_mem[0] <= {DATA_WIDTH{1'b0}};
+              reward_mem[1] <= {DATA_WIDTH{1'b0}};
+              reward_mem[2] <= {DATA_WIDTH{1'b0}};
+              reward_mem[3] <= {DATA_WIDTH{1'b0}};
+              next_state_mem[0] <= {DATA_WIDTH{1'b0}};
+              next_state_mem[1] <= {DATA_WIDTH{1'b0}};
+              next_state_mem[2] <= {DATA_WIDTH{1'b0}};
+              next_state_mem[3] <= {DATA_WIDTH{1'b0}};
+              done_mem[0] <= 1'b0;
+              done_mem[1] <= 1'b0;
+              done_mem[2] <= 1'b0;
+              done_mem[3] <= 1'b0;
+            end else begin
+              if (write_fire) begin
+                state_mem[write_ptr] <= write_state;
+                action_mem[write_ptr] <= write_action;
+                reward_mem[write_ptr] <= write_reward;
+                next_state_mem[write_ptr] <= write_next_state;
+                done_mem[write_ptr] <= write_done;
+                write_ptr <= write_ptr + 2'd1;
+              end
+              if (read_fire) begin
+                read_ptr <= read_ptr + 2'd1;
+              end
+              if (write_fire && !read_fire) begin
+                occupancy <= occupancy + 3'd1;
+              end else if (!write_fire && read_fire) begin
+                occupancy <= occupancy - 3'd1;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    sample_pack_core = dedent(
+        """\
+        module sample_pack_core #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire [DATA_WIDTH-1:0] state,
+            input wire action,
+            input wire [DATA_WIDTH-1:0] reward,
+            input wire [DATA_WIDTH-1:0] next_state,
+            input wire done,
+            output wire [DATA_WIDTH-1:0] sample_state,
+            output wire sample_action,
+            output wire [DATA_WIDTH-1:0] sample_reward,
+            output wire [DATA_WIDTH-1:0] sample_next_state,
+            output wire sample_done
+        );
+
+          assign sample_state = state;
+          assign sample_action = action;
+          assign sample_reward = reward;
+          assign sample_next_state = next_state;
+          assign sample_done = done;
+
+        endmodule
+        """
+    )
+    sample_read_stage = dedent(
+        """\
+        module sample_read_stage #(
+            parameter DATA_WIDTH = 8
+        ) (
+            input wire clk,
+            input wire rst_n,
+            input wire in_valid,
+            output wire read_ready,
+            input wire [DATA_WIDTH-1:0] sample_state,
+            input wire sample_action,
+            input wire [DATA_WIDTH-1:0] sample_reward,
+            input wire [DATA_WIDTH-1:0] sample_next_state,
+            input wire sample_done,
+            output reg out_valid,
+            input wire out_ready,
+            output reg [DATA_WIDTH-1:0] sample_state_out,
+            output reg sample_action_out,
+            output reg [DATA_WIDTH-1:0] sample_reward_out,
+            output reg [DATA_WIDTH-1:0] sample_next_state_out,
+            output reg sample_done_out
+        );
+
+          assign read_ready = out_ready;
+
+          always @(posedge clk or negedge rst_n) begin
+            if (!rst_n) begin
+              out_valid <= 1'b0;
+              sample_state_out <= {DATA_WIDTH{1'b0}};
+              sample_action_out <= 1'b0;
+              sample_reward_out <= {DATA_WIDTH{1'b0}};
+              sample_next_state_out <= {DATA_WIDTH{1'b0}};
+              sample_done_out <= 1'b0;
+            end else if (read_ready) begin
+              out_valid <= in_valid;
+              if (in_valid) begin
+                sample_state_out <= sample_state;
+                sample_action_out <= sample_action;
+                sample_reward_out <= sample_reward;
+                sample_next_state_out <= sample_next_state;
+                sample_done_out <= sample_done;
+              end
+            end
+          end
+
+        endmodule
+        """
+    )
+    occupancy_counter = dedent(
+        """\
+        module occupancy_counter (
+            input wire [2:0] occupancy_in,
+            output wire [2:0] occupancy_out
+        );
+
+          assign occupancy_out = occupancy_in;
+
+        endmodule
+        """
+    )
+    return {
+        "rtl/top.v": top,
+        "rtl/host_sample_stage.v": host_sample_stage,
+        "rtl/replay_store.v": replay_store,
+        "rtl/sample_pack_core.v": sample_pack_core,
+        "rtl/sample_read_stage.v": sample_read_stage,
+        "rtl/occupancy_counter.v": occupancy_counter,
+    }
+
+
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
     resource_shape = _resource_shape(request)
     assumptions = {
@@ -5084,6 +5700,10 @@ def _default_description(request: ProjectRequest) -> str:
         "composed_policy_value_shell": (
             f"Generate a {request.width}-bit T7 component-composed policy/value accelerator shell "
             "using config registers, observation capture, policy scoring, action selection, and output staging."
+        ),
+        "composed_replay_sample_shell": (
+            f"Generate a {request.width}-bit T8 component-composed replay sample shell "
+            "using host sample staging, a small replay store, sample packing, read staging, and occupancy reporting."
         ),
     }
     return descriptions[request.task_type]
@@ -5377,6 +5997,32 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "composed_replay_sample_shell":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "host_valid", "width": 1},
+                    {"name": "host_state", "width": request.width},
+                    {"name": "host_action", "width": 1},
+                    {"name": "host_reward", "width": request.width},
+                    {"name": "host_next_state", "width": request.width},
+                    {"name": "host_done", "width": 1},
+                    {"name": "sample_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "host_ready", "width": 1},
+                    {"name": "sample_valid", "width": 1},
+                    {"name": "sample_state", "width": request.width},
+                    {"name": "sample_action", "width": 1},
+                    {"name": "sample_reward", "width": request.width},
+                    {"name": "sample_next_state", "width": request.width},
+                    {"name": "sample_done", "width": 1},
+                    {"name": "occupancy", "width": 3},
+                ],
+            }
+        )
     return common
 
 
@@ -5413,6 +6059,10 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "composed_policy_value_shell": (
             "configuration writes set weights, biases, and enable; observations are scored, compared, "
             "and staged as selected action plus value estimate"
+        ),
+        "composed_replay_sample_shell": (
+            "host-side transition samples are staged into a small replay store, then read back in FIFO order "
+            "through a fabric-side valid-ready sample output with occupancy reporting"
         ),
     }
     return expectations[request.task_type]
@@ -5457,4 +6107,6 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(56, request.width * 7 + 24), "ff": request.width * 7 + 28, "bram": 0, "dsp": 1}
     if request.task_type == "composed_policy_value_shell":
         return {"lut": max(72, request.width * 9 + 32), "ff": request.width * 8 + 40, "bram": 0, "dsp": 2}
+    if request.task_type == "composed_replay_sample_shell":
+        return {"lut": max(88, request.width * 10 + 44), "ff": request.width * 12 + 64, "bram": 0, "dsp": 0}
     raise ValueError(f"Unsupported task_type for V1: {request.task_type}")

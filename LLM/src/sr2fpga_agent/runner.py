@@ -1043,6 +1043,10 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project with config registers, two observation inputs, "
             "policy score comparison, selected action output, and value estimate output."
         ),
+        "composed_replay_sample_shell": (
+            f"Generate an {width}-bit FPGA RTL project with a host-side replay sample write interface, "
+            "a small replay store, fabric-side sample readout, and occupancy status."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1073,6 +1077,7 @@ def _natural_component_title(task_type: str) -> str:
         "composed_vector_mac_pipeline": "vector MAC feature pipeline",
         "composed_td_update_core": "TD-error value-update datapath",
         "composed_policy_value_shell": "policy/value accelerator shell",
+        "composed_replay_sample_shell": "replay sample host/fabric shell",
     }
     return titles[task_type]
 
@@ -1094,6 +1099,10 @@ def _natural_component_summary(task_type: str) -> str:
         "composed_policy_value_shell": (
             "config_reg_bank and observation_stage feeding policy_score_core, then action_select_core, "
             "then stream_stage"
+        ),
+        "composed_replay_sample_shell": (
+            "host_sample_stage feeding replay_store, then sample_pack_core and sample_read_stage, "
+            "with occupancy_counter status"
         ),
     }
     return summaries[task_type]
@@ -1137,6 +1146,10 @@ def _topology_expected_behavior(task_type: str) -> str:
         "composed_policy_value_shell": (
             "configuration writes set weights, biases, and enable; observation pairs are staged, "
             "scored, compared, and emitted as selected action plus value estimate"
+        ),
+        "composed_replay_sample_shell": (
+            "host-side transition samples are staged into a small replay store, then read back in FIFO order "
+            "through a fabric-side valid-ready sample output with occupancy reporting"
         ),
     }
     return behaviors[task_type]

@@ -582,6 +582,65 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
         self.assertGreaterEqual(len(system_his["connections"]), 24)
 
+    def test_generates_composed_replay_sample_shell_from_t8_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_replay_sample_shell",
+                width=8,
+                project_name="composed_replay_sample_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_replay_sample_shell",
+            {
+                "rtl/top.v",
+                "rtl/host_sample_stage.v",
+                "rtl/replay_store.v",
+                "rtl/sample_pack_core.v",
+                "rtl/sample_read_stage.v",
+                "rtl/occupancy_counter.v",
+            },
+            [
+                "host_sample_stage",
+                "replay_store",
+                "sample_pack_core",
+                "sample_read_stage",
+                "occupancy_counter",
+                ".in_valid(host_valid)",
+                ".write_valid(host_stage_valid)",
+                ".read_valid(store_read_valid)",
+                ".sample_state(sample_pack_state)",
+                ".sample_state_out(sample_state)",
+                ".occupancy_out(occupancy)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t8_replay_sample_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T8")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["host_sample_stage", "replay_store", "sample_pack_core", "sample_read_stage", "occupancy_counter"],
+        )
+        self.assertIn(
+            {"from": "replay_store.read_valid", "to": "sample_read_stage.in_valid"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire host_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] host_state", project.files["rtl/top.v"])
+        self.assertIn("input wire host_action", project.files["rtl/top.v"])
+        self.assertIn("output wire sample_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] sample_next_state", project.files["rtl/top.v"])
+        self.assertIn("output wire [2:0] occupancy", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 28)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -719,6 +778,7 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
             ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
             ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
+            ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -838,6 +898,7 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
         ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
         ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
+        ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
     ]
 
 

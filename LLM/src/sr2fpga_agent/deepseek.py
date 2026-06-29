@@ -78,6 +78,14 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/action_select_core.v",
         "rtl/stream_stage.v",
     ],
+    "composed_replay_sample_shell": [
+        "rtl/top.v",
+        "rtl/host_sample_stage.v",
+        "rtl/replay_store.v",
+        "rtl/sample_pack_core.v",
+        "rtl/sample_read_stage.v",
+        "rtl/occupancy_counter.v",
+    ],
 }
 
 
@@ -1089,6 +1097,22 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "- artifacts.rtl_sources must include rtl/top.v, rtl/config_reg_bank.v, rtl/observation_stage.v, "
             "rtl/policy_score_core.v, rtl/action_select_core.v, and rtl/stream_stage.v."
         )
+    if task_type == "composed_replay_sample_shell":
+        return (
+            "Required architecture for composed_replay_sample_shell:\n"
+            "- components: host_sample_stage, replay_store, sample_pack_core, sample_read_stage, occupancy_counter\n"
+            "- instances: host_stage, store, pack, read_stage, occupancy\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include host_valid, host_ready, host_state, host_action, host_reward, "
+            "host_next_state, host_done, sample_valid, sample_ready, sample_state, sample_action, "
+            "sample_reward, sample_next_state, sample_done, and occupancy.\n"
+            "- replay_store owns replay_entries, write_ptr, read_ptr, and occupancy state.\n"
+            "- host_sample_stage owns staged host sample state; sample_read_stage owns staged output sample state.\n"
+            "- data_flow must describe host sample staging, replay store write/read, sample packing, "
+            "fabric-side output staging, and occupancy reporting.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/host_sample_stage.v, rtl/replay_store.v, "
+            "rtl/sample_pack_core.v, rtl/sample_read_stage.v, and rtl/occupancy_counter.v."
+        )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
@@ -1153,6 +1177,17 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             "obs_ready, obs0, obs1, action_valid, action_ready, selected_action, value_estimate\n"
             "- Keep config_reg_bank, observation_stage, policy_score_core, action_select_core, and stream_stage "
             "as separate RTL modules.\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_replay_sample_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, host_valid, host_ready, host_state, host_action, "
+            "host_reward, host_next_state, host_done, sample_valid, sample_ready, sample_state, "
+            "sample_action, sample_reward, sample_next_state, sample_done, occupancy\n"
+            "- Keep host_sample_stage, replay_store, sample_pack_core, sample_read_stage, and "
+            "occupancy_counter as separate RTL modules.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
         )

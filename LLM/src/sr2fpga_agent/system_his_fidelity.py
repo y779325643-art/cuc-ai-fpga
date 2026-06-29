@@ -118,6 +118,25 @@ _TASK_TOP_PORTS: dict[str, dict[str, dict[str, Any]]] = {
         "selected_action": {"direction": "output"},
         "value_estimate": {"direction": "output", "width": "request"},
     },
+    "composed_replay_sample_shell": {
+        "clk": {"direction": "input"},
+        "rst_n": {"direction": "input"},
+        "host_valid": {"direction": "input"},
+        "host_ready": {"direction": "output"},
+        "host_state": {"direction": "input", "width": "request"},
+        "host_action": {"direction": "input"},
+        "host_reward": {"direction": "input", "width": "request"},
+        "host_next_state": {"direction": "input", "width": "request"},
+        "host_done": {"direction": "input"},
+        "sample_valid": {"direction": "output"},
+        "sample_ready": {"direction": "input"},
+        "sample_state": {"direction": "output", "width": "request"},
+        "sample_action": {"direction": "output"},
+        "sample_reward": {"direction": "output", "width": "request"},
+        "sample_next_state": {"direction": "output", "width": "request"},
+        "sample_done": {"direction": "output"},
+        "occupancy": {"direction": "output", "width": 3},
+    },
 }
 
 
