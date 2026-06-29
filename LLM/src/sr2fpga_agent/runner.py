@@ -65,6 +65,8 @@ class SourceConnection:
     api_key_env: str = ""
     generation_mode: str = ""
     timeout_seconds: int = 120
+    transport_attempts: int = 3
+    max_tokens: int = 0
 
 
 @dataclass(frozen=True)
@@ -917,6 +919,8 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             api_key_env=str(item.get("api_key_env", "")),
             generation_mode=generation_mode,
             timeout_seconds=int(item.get("timeout_seconds", 120)),
+            transport_attempts=int(item.get("transport_attempts", 3)),
+            max_tokens=int(item.get("max_tokens", 0)),
         )
     return sources
 

@@ -514,6 +514,42 @@ class TimeoutConfigTest(unittest.TestCase):
             config = load_runner_config(path)
             self.assertEqual(config.sources["slow"].timeout_seconds, 600)
 
+    def test_load_sources_parses_transport_attempts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "single_try": {
+                        "kind": "openai_compat",
+                        "model": "qwen3.7-plus",
+                        "base_url": "https://example/v1",
+                        "api_key_env": "X_API_KEY",
+                        "generation_mode": "two_stage",
+                        "transport_attempts": 1,
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["single_try"].transport_attempts, 1)
+
+    def test_load_sources_parses_max_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "bounded": {
+                        "kind": "openai_compat",
+                        "model": "qwen3.7-plus",
+                        "base_url": "https://example/v1",
+                        "api_key_env": "X_API_KEY",
+                        "generation_mode": "two_stage",
+                        "max_tokens": 4096,
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["bounded"].max_tokens, 4096)
+
     def test_timeout_seconds_defaults_to_120_when_omitted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
@@ -542,4 +578,30 @@ class TimeoutConfigTest(unittest.TestCase):
         self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
         self.assertEqual(
             generator.his_project_generator.client.config.timeout_seconds, 600
+        )
+
+    def test_builder_passes_transport_attempts_to_client(self) -> None:
+        conn = SourceConnection(
+            name="single_try", kind="openai_compat", model="qwen3.7-plus",
+            base_url="https://example/v1", api_key_env="X_API_KEY",
+            generation_mode="two_stage", transport_attempts=1,
+        )
+        with patch.dict(os.environ, {"X_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
+        self.assertEqual(
+            generator.his_project_generator.client.config.transport_attempts, 1
+        )
+
+    def test_builder_passes_max_tokens_to_openai_compatible_client(self) -> None:
+        conn = SourceConnection(
+            name="bounded", kind="openai_compat", model="qwen3.7-plus",
+            base_url="https://example/v1", api_key_env="X_API_KEY",
+            generation_mode="two_stage", max_tokens=4096,
+        )
+        with patch.dict(os.environ, {"X_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
+        self.assertEqual(
+            generator.his_project_generator.client.config.max_tokens, 4096
         )

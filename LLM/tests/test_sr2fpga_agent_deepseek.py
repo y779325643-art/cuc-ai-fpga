@@ -104,6 +104,49 @@ class DeepSeekProviderTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "OpenAI-compatible API request timed out"):
                 client.chat([{"role": "user", "content": "hello"}])
 
+    def test_openai_compatible_client_times_out_never_ending_response_body(self) -> None:
+        response = FakeNeverEndingHTTPResponse(
+            json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=1,
+                transport_attempts=1,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.time.monotonic", side_effect=[0.0, 0.0, 2.0]),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "OpenAI-compatible API response read timed out"):
+                client.chat([{"role": "user", "content": "hello"}])
+
+    def test_openai_compatible_client_classifies_reader_timeout_as_response_read_timeout(self) -> None:
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=7,
+                transport_attempts=1,
+            )
+        )
+
+        def timed_out_reader(_response):
+            raise TimeoutError("read deadline exceeded")
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=FakeHTTPResponse(b"{}")),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "OpenAI-compatible API response read timed out"):
+                client._request_with_retries({"messages": []}, timed_out_reader)
+
     def test_openai_compatible_client_retries_transient_http_errors(self) -> None:
         response = FakeHTTPResponse(
             json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
@@ -161,6 +204,31 @@ class DeepSeekProviderTest(unittest.TestCase):
         payload = json.loads(request.data.decode("utf-8"))
         self.assertEqual(content, '{"ok": true}')
         self.assertNotIn("response_format", payload)
+
+    def test_openai_compatible_client_includes_max_tokens_when_configured(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=7,
+                max_tokens=4096,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+        ):
+            content = client.chat([{"role": "user", "content": "hello"}])
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(content, '{"ok": true}')
+        self.assertEqual(payload["max_tokens"], 4096)
 
     def test_openai_compatible_client_merges_system_messages_for_claude_models(self) -> None:
         response = FakeHTTPResponse(
@@ -435,6 +503,8 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 1)
+        self.assertEqual(client.stream_call_count, 1)
+        self.assertEqual(client.chat_call_count, 0)
         self.assertIn("生成一个 8-bit 双路数据流合并并累加", client.messages[1]["content"])
         self.assertIn("Return only System-HIS JSON", client.messages[1]["content"])
         self.assertIn("Do not generate RTL", client.messages[1]["content"])
@@ -1140,8 +1210,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
         self.assertEqual(client.call_count, 2)
-        self.assertEqual(client.chat_call_count, 1)
-        self.assertEqual(client.stream_call_count, 1)
+        self.assertEqual(client.chat_call_count, 0)
+        self.assertEqual(client.stream_call_count, 2)
         self.assertIn("Generate a canonical System-HIS v1.2", client.messages_history[0][1]["content"])
         self.assertIn(
             "Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton",
@@ -1817,6 +1887,7 @@ class FakeChatClient:
 class FakeHTTPResponse:
     def __init__(self, body: bytes) -> None:
         self.body = body
+        self.offset = 0
 
     def __enter__(self):
         return self
@@ -1824,8 +1895,14 @@ class FakeHTTPResponse:
     def __exit__(self, exc_type, exc, traceback):
         return False
 
-    def read(self) -> bytes:
-        return self.body
+    def read(self, size: int = -1) -> bytes:
+        if size < 0:
+            chunk = self.body[self.offset :]
+            self.offset = len(self.body)
+            return chunk
+        chunk = self.body[self.offset : self.offset + size]
+        self.offset += len(chunk)
+        return chunk
 
     def close(self) -> None:
         pass
@@ -1845,6 +1922,16 @@ class FakeStreamingHTTPResponse:
         if not self.lines:
             return b""
         return self.lines.pop(0)
+
+
+class FakeNeverEndingHTTPResponse(FakeHTTPResponse):
+    def __init__(self, body_for_unbounded_read: bytes) -> None:
+        super().__init__(body_for_unbounded_read)
+
+    def read(self, size: int = -1) -> bytes:
+        if size < 0:
+            return self.body
+        return b" "
 
 
 def _valid_manifest(sources=None) -> str:

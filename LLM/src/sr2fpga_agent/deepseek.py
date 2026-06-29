@@ -4,10 +4,13 @@ from __future__ import annotations
 
 import difflib
 import json
+import signal
 import ssl
+import threading
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable
 
@@ -141,6 +144,7 @@ class OpenAICompatibleConfig:
     model: str = "deepseek-v4-pro"
     base_url: str = "https://api.deepseek.com"
     timeout_seconds: int = 120
+    max_tokens: int = 0
     transport_attempts: int = 3
     retry_backoff_seconds: float = 0.5
 
@@ -153,7 +157,10 @@ class OpenAICompatibleClient:
 
     def chat(self, messages: list[dict[str, str]]) -> str:
         payload = self._chat_payload(messages)
-        data = self._request_with_retries(payload, _read_chat_completion_json)
+        data = self._request_with_retries(
+            payload,
+            lambda response: _read_chat_completion_json(response, self.config.timeout_seconds),
+        )
 
         try:
             return str(data["choices"][0]["message"]["content"])
@@ -165,7 +172,10 @@ class OpenAICompatibleClient:
     def stream_chat(self, messages: list[dict[str, str]]) -> str:
         payload = self._chat_payload(messages)
         payload["stream"] = True
-        return self._request_with_retries(payload, _read_streaming_chat_content)
+        return self._request_with_retries(
+            payload,
+            lambda response: _read_streaming_chat_content(response, self.config.timeout_seconds),
+        )
 
     def _chat_payload(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -175,6 +185,8 @@ class OpenAICompatibleClient:
         }
         if _model_supports_json_response_format(self.config.model):
             payload["response_format"] = {"type": "json_object"}
+        if self.config.max_tokens > 0:
+            payload["max_tokens"] = self.config.max_tokens
         return payload
 
     def _request_with_retries(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
@@ -211,7 +223,13 @@ class OpenAICompatibleClient:
                 timeout=self.config.timeout_seconds,
                 context=_default_ssl_context(),
             ) as response:
-                return reader(response)
+                try:
+                    with _response_read_deadline(self.config.timeout_seconds):
+                        return reader(response)
+                except TimeoutError as exc:
+                    raise _TransientOpenAICompatibleError(
+                        "OpenAI-compatible API response read timed out"
+                    ) from exc
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             message = f"OpenAI-compatible API request failed with HTTP {exc.code}: {body}"
@@ -286,7 +304,7 @@ class AnthropicCompatibleClient:
                 timeout=self.config.timeout_seconds,
                 context=_default_ssl_context(),
             ) as response:
-                return _read_chat_completion_json(response)
+                return _read_chat_completion_json(response, self.config.timeout_seconds)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             message = f"Anthropic-compatible API request failed with HTTP {exc.code}: {body}"
@@ -312,6 +330,25 @@ TRANSIENT_HTTP_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 class _TransientOpenAICompatibleError(RuntimeError):
     pass
+
+
+@contextmanager
+def _response_read_deadline(timeout_seconds: int):
+    if timeout_seconds <= 0 or not hasattr(signal, "SIGALRM") or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _raise_timeout(_signum, _frame):
+        raise TimeoutError("response read deadline exceeded")
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _raise_timeout)
+    signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def _model_supports_json_response_format(model: str) -> bool:
@@ -343,8 +380,21 @@ def _messages_for_model(model: str, messages: list[dict[str, str]]) -> list[dict
     return [{"role": "user", "content": f"System instructions:\n{system_text}"}] + rewritten
 
 
-def _read_chat_completion_json(response: Any) -> Any:
-    return json.loads(response.read().decode("utf-8"))
+def _read_chat_completion_json(response: Any, timeout_seconds: int) -> Any:
+    return json.loads(_read_response_body(response, timeout_seconds).decode("utf-8"))
+
+
+def _read_response_body(response: Any, timeout_seconds: int) -> bytes:
+    chunks: list[bytes] = []
+    started_at = time.monotonic()
+    while True:
+        chunk = response.read(65536)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        if time.monotonic() - started_at > timeout_seconds:
+            raise _TransientOpenAICompatibleError("OpenAI-compatible API response read timed out")
+    return b"".join(chunks)
 
 
 def _anthropic_messages_payload(
@@ -390,12 +440,15 @@ def _read_anthropic_message_text(data: Any) -> str:
     raise RuntimeError("Anthropic-compatible API response did not contain text content")
 
 
-def _read_streaming_chat_content(response: Any) -> str:
+def _read_streaming_chat_content(response: Any, timeout_seconds: int) -> str:
     chunks: list[str] = []
+    started_at = time.monotonic()
     while True:
         raw_line = response.readline()
         if not raw_line:
             break
+        if time.monotonic() - started_at > timeout_seconds:
+            raise _TransientOpenAICompatibleError("OpenAI-compatible API response read timed out")
         line = raw_line.decode("utf-8", errors="replace").strip()
         if not line or line.startswith(":"):
             continue
@@ -462,7 +515,7 @@ class DeepSeekSystemHisGenerator:
         messages = _system_his_v12_messages(request, platform)
         last_error: ValueError | None = None
         for attempt_id in range(self.max_attempts):
-            content = self.client.chat(messages)
+            content = self.client.stream_chat(messages)
             try:
                 system_his = parse_system_his_v12(content)
                 fidelity = check_system_his_req_fidelity(request, system_his)

@@ -127,6 +127,8 @@ def build_project_generator_for_connection(connection, event_sink=None):
                 model=connection.model,
                 base_url=connection.base_url,
                 timeout_seconds=getattr(connection, "timeout_seconds", 120),
+                max_tokens=getattr(connection, "max_tokens", 0) or 16384,
+                transport_attempts=getattr(connection, "transport_attempts", 3),
             )
         )
         return DeepSeekTwoStageProjectGenerator(client, event_sink=event_sink)
@@ -136,6 +138,8 @@ def build_project_generator_for_connection(connection, event_sink=None):
             model=connection.model,
             base_url=connection.base_url,
             timeout_seconds=getattr(connection, "timeout_seconds", 120),
+            max_tokens=getattr(connection, "max_tokens", 0),
+            transport_attempts=getattr(connection, "transport_attempts", 3),
         )
     )
     if kind == "deepseek":
