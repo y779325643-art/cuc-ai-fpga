@@ -8,7 +8,9 @@ from unittest.mock import patch
 from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleConfig,
+    DeepSeekOracleHisProjectGenerator,
     DeepSeekProjectGenerator,
+    DeepSeekRepairer,
     DeepSeekTwoStageProjectGenerator,
     OpenAICompatibleConfig,
 )
@@ -90,7 +92,7 @@ class SourcesParsingTest(unittest.TestCase):
             config = load_runner_config(config_path)
             self.assertEqual(config.sources, {})
 
-    def test_openai_compat_without_generation_mode_defaults_to_two_stage(self) -> None:
+    def test_openai_compat_without_generation_mode_defaults_to_two_stage_quarantine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
                 tmp,
@@ -110,8 +112,8 @@ class SourcesParsingTest(unittest.TestCase):
                 sample_id="s_claude", source="claude", task_type="counter", width=8,
                 project_name="p", requirement="r",
             ).metadata(config)
-            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
-            self.assertEqual(metadata["training_split"], "clean")
+            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
+            self.assertEqual(metadata["training_split"], "quarantine")
 
     def test_deepseek_his_v12_without_generation_mode_defaults_to_two_stage(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -192,6 +194,13 @@ class SourcesParsingTest(unittest.TestCase):
             self.assertEqual(config.sources["claude"].kind, "anthropic_compat")
             self.assertEqual(config.sources["claude"].generation_mode, "two_stage")
 
+    def test_multi_teacher_example_uses_anthropic_client_for_official_claude_endpoint(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_multi_teacher.example.yaml"))
+        claude = config.sources["claude"]
+
+        self.assertEqual(claude.kind, "anthropic_compat")
+        self.assertEqual(claude.base_url, "https://api.anthropic.com/v1")
+
     def test_openai_compat_explicit_direct_mode_raises(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
@@ -259,6 +268,12 @@ class ResolveSourceTest(unittest.TestCase):
         self.assertEqual(conn.kind, "deepseek")
         self.assertEqual(conn.generation_mode, "direct")
 
+    def test_legacy_deepseek_oracle_his_falls_back_to_global(self) -> None:
+        config = _base_config(api_key_env="DEEPSEEK_API_KEY")
+        conn = resolve_source_connection(config, "deepseek-oracle-his-v12")
+        self.assertEqual(conn.kind, "deepseek-oracle-his-v12")
+        self.assertEqual(conn.generation_mode, "oracle_his2project")
+
 
 class ConnectionBuilderTest(unittest.TestCase):
     def test_deterministic_connection_returns_none(self) -> None:
@@ -304,6 +319,16 @@ class ConnectionBuilderTest(unittest.TestCase):
             generator = build_project_generator_for_connection(conn)
         self.assertIsInstance(generator, DeepSeekProjectGenerator)
 
+    def test_deepseek_oracle_his_kind_builds_oracle_his_project_generator(self) -> None:
+        conn = SourceConnection(
+            name="deepseek-oracle-his-v12", kind="deepseek-oracle-his-v12", model="deepseek-v4-pro",
+            base_url="https://api.deepseek.com", api_key_env="DEEPSEEK_API_KEY",
+            generation_mode="oracle_his2project",
+        )
+        with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-ds"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator, DeepSeekOracleHisProjectGenerator)
+
     def test_missing_key_raises(self) -> None:
         conn = SourceConnection(
             name="gpt55", kind="openai_compat", model="gpt-5.5",
@@ -312,6 +337,22 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with self.assertRaises(SystemExit):
             build_project_generator_for_connection(conn)
+
+    def test_anthropic_compat_builds_repairer_with_official_client(self) -> None:
+        from LLM.src.sr2fpga_agent.cli import build_repairer_for_connection
+
+        conn = SourceConnection(
+            name="claude-repair", kind="anthropic_compat", model="claude-opus-4-8",
+            base_url="https://w.ciykj.cn/v1", api_key_env="ANTHROPIC_API_KEY",
+            generation_mode="two_stage",
+        )
+        with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
+            repairer = build_repairer_for_connection(conn)
+        self.assertIsInstance(repairer, DeepSeekRepairer)
+        client_config = repairer.client.config
+        self.assertIsInstance(client_config, AnthropicCompatibleConfig)
+        self.assertEqual(client_config.model, "claude-opus-4-8")
+        self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
 
 
 class PerSampleDispatchTest(unittest.TestCase):
@@ -360,7 +401,7 @@ class MetadataTest(unittest.TestCase):
             difficulty_tier="T1",
         )
 
-    def test_openai_compat_two_stage_is_clean_v12_natural_llm(self) -> None:
+    def test_openai_compat_two_stage_is_quarantined_until_vetted(self) -> None:
         claude = SourceConnection(
             name="claude", kind="openai_compat", model="claude-opus-4-8",
             base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_API_KEY",
@@ -369,8 +410,8 @@ class MetadataTest(unittest.TestCase):
         config = _base_config(sources={"claude": claude})
         metadata = self._sample("claude").metadata(config)
         self.assertEqual(metadata["failure_origin"], "natural_llm")
-        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
-        self.assertEqual(metadata["training_split"], "clean")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
+        self.assertEqual(metadata["training_split"], "quarantine")
         self.assertEqual(metadata["model"], "claude-opus-4-8")
 
     def test_deterministic_metadata_unchanged(self) -> None:
@@ -385,6 +426,14 @@ class MetadataTest(unittest.TestCase):
         self.assertEqual(metadata["failure_origin"], "natural_llm")
         self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
         self.assertEqual(metadata["training_split"], "quarantine")
+
+    def test_deepseek_oracle_his_metadata_is_clean_v12_behavior_files(self) -> None:
+        config = _base_config(api_key_env="DEEPSEEK_API_KEY")
+        metadata = self._sample("deepseek-oracle-his-v12").metadata(config)
+        self.assertEqual(metadata["failure_origin"], "natural_llm")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+        self.assertEqual(metadata["training_split"], "clean")
+        self.assertEqual(metadata["contract_skeleton_mode"], "behavior_files")
 
 
 class PreflightAuthTest(unittest.TestCase):
@@ -490,6 +539,42 @@ class TimeoutConfigTest(unittest.TestCase):
             config = load_runner_config(path)
             self.assertEqual(config.sources["slow"].timeout_seconds, 600)
 
+    def test_load_sources_parses_transport_attempts(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "single_try": {
+                        "kind": "openai_compat",
+                        "model": "qwen3.7-plus",
+                        "base_url": "https://example/v1",
+                        "api_key_env": "X_API_KEY",
+                        "generation_mode": "two_stage",
+                        "transport_attempts": 1,
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["single_try"].transport_attempts, 1)
+
+    def test_load_sources_parses_max_tokens(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "bounded": {
+                        "kind": "openai_compat",
+                        "model": "qwen3.7-plus",
+                        "base_url": "https://example/v1",
+                        "api_key_env": "X_API_KEY",
+                        "generation_mode": "two_stage",
+                        "max_tokens": 4096,
+                    }
+                },
+            )
+            config = load_runner_config(path)
+            self.assertEqual(config.sources["bounded"].max_tokens, 4096)
+
     def test_timeout_seconds_defaults_to_120_when_omitted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
@@ -518,4 +603,30 @@ class TimeoutConfigTest(unittest.TestCase):
         self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
         self.assertEqual(
             generator.his_project_generator.client.config.timeout_seconds, 600
+        )
+
+    def test_builder_passes_transport_attempts_to_client(self) -> None:
+        conn = SourceConnection(
+            name="single_try", kind="openai_compat", model="qwen3.7-plus",
+            base_url="https://example/v1", api_key_env="X_API_KEY",
+            generation_mode="two_stage", transport_attempts=1,
+        )
+        with patch.dict(os.environ, {"X_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
+        self.assertEqual(
+            generator.his_project_generator.client.config.transport_attempts, 1
+        )
+
+    def test_builder_passes_max_tokens_to_openai_compatible_client(self) -> None:
+        conn = SourceConnection(
+            name="bounded", kind="openai_compat", model="qwen3.7-plus",
+            base_url="https://example/v1", api_key_env="X_API_KEY",
+            generation_mode="two_stage", max_tokens=4096,
+        )
+        with patch.dict(os.environ, {"X_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(conn)
+        self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
+        self.assertEqual(
+            generator.his_project_generator.client.config.max_tokens, 4096
         )

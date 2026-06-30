@@ -1,0 +1,218 @@
+{
+  "sample_id": "sample_l0_by_construction_ablation_t3_stream_fork_8_000003",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "l0_consistency",
+      "status": "failed",
+      "tool": "system_his_checker",
+      "exit_code": 1,
+      "command": [
+        "system_his_checker"
+      ],
+      "failure_type": "l0_contract_violation",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'clk'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'rst_n'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'in_valid'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'in_data'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'out0_ready'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'out1_ready'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'in_ready'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'out0_valid'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'out0_data'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'out1_valid'",
+        "REQ2HIS fidelity: composed_stream_fork requires top port 'out1_data'"
+      ]
+    },
+    "clock_reset_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: clock clk is required",
+        "REQ2HIS fidelity: reset rst_n is required",
+        "REQ2HIS fidelity: timing.primary_clock is required"
+      ]
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: composed_stream_fork requires component 'skid_buffer'",
+        "REQ2HIS fidelity: composed_stream_fork requires component 'stream_fork'",
+        "REQ2HIS fidelity: composed_stream_fork requires component 'stream_stage'",
+        "REQ2HIS fidelity: composed_stream_fork requires 1 instance(s) of component 'skid_buffer'",
+        "REQ2HIS fidelity: composed_stream_fork requires 1 instance(s) of component 'stream_fork'",
+        "REQ2HIS fidelity: composed_stream_fork requires 1 instance(s) of component 'stream_stage'"
+      ]
+    },
+    "verification_intent_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: verification.testbench is required",
+        "REQ2HIS fidelity: verification.scenarios must be a list",
+        "REQ2HIS fidelity: verification.pass_condition is required"
+      ]
+    },
+    "constraint_fidelity": {
+      "status": "fail",
+      "errors": [
+        "REQ2HIS fidelity: timing.target_fmax_mhz must be positive"
+      ]
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "project_name": "l0_by_construction_ablation_t3_stream_fork_8_000003",
+    "task_type": "composed_stream_fork",
+    "width": 8,
+    "description": "8-bit valid-ready stream fork with skid buffer and stream stages",
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000,
+      "reset_polarity": "active_low"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 238,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 338,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 127,
+        "behavior_holes": 0
+      },
+      "rtl/skid_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 1020,
+        "behavior_holes": 0
+      },
+      "rtl/stream_fork.v": {
+        "origin": "model_generated",
+        "bytes": 1053,
+        "behavior_holes": 0
+      },
+      "rtl/stream_stage.v": {
+        "origin": "model_generated",
+        "bytes": 905,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 1698,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 3735,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 385,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/skid_buffer.v",
+      "rtl/stream_fork.v",
+      "rtl/stream_stage.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.885462,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "fail",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

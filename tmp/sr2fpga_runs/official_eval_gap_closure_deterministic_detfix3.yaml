@@ -1,0 +1,102 @@
+dataset_root: datasets/sr2fpga_rtl_v1
+export_root: datasets/sr2fpga_rtl_v1_exports
+run_root: tmp/sr2fpga_runs
+provider: deepseek-his-v12
+repair_provider: none
+model: deepseek-v4-pro
+base_url: https://api.deepseek.com
+api_key_env: DEEPSEEK_API_KEY
+env_file: .env
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: official_eval_gap_closure_detfix3
+line_b_targets:
+  l3_success_ratio: 0.4
+  repair_trajectory_ratio: 0.6
+  max_samples: 14
+tasks:
+- source: deterministic
+  task_type: component_topology
+  topology_ids:
+  - t1_event_counter
+  - t2_stream_accumulator
+  - t3_stream_fork
+  - t4_dual_stream_join
+  - t5_vector_mac_pipeline
+  - t6_td_update_core
+  - t7_policy_value_shell
+  - t8_replay_sample_shell
+  - t9_host_protocol_shell
+  - t10_rl_accelerator_shell
+  - t11_batch_rl_accelerator_shell
+  - t12_replay_arbiter_shell
+  requirement_style: natural_component
+  failure_origin: compositional_assembly
+  measurement_point: a_first_attempt_no_tools
+  widths:
+  - 8
+  count: 12
+  failure_injectors: []
+- source: deterministic
+  task_type: alu_control_unit
+  difficulty_tier: S1
+  requirement_style: contract
+  failure_origin: compositional_assembly
+  measurement_point: a_first_attempt_no_tools
+  widths:
+  - 8
+  count: 1
+  failure_injectors: []
+- source: deterministic
+  task_type: crc_stream_checker
+  difficulty_tier: S1
+  requirement_style: contract
+  failure_origin: compositional_assembly
+  measurement_point: a_first_attempt_no_tools
+  widths:
+  - 8
+  count: 1
+  failure_injectors: []
+- source: deepseek-his-v12
+  task_type: component_topology
+  topology_ids:
+  - t1_event_counter
+  - t2_stream_accumulator
+  - t3_stream_fork
+  - t4_dual_stream_join
+  - t5_vector_mac_pipeline
+  - t6_td_update_core
+  - t7_policy_value_shell
+  - t8_replay_sample_shell
+  - t9_host_protocol_shell
+  - t10_rl_accelerator_shell
+  - t11_batch_rl_accelerator_shell
+  - t12_replay_arbiter_shell
+  requirement_style: natural_component
+  failure_origin: natural_llm
+  measurement_point: a_first_attempt_no_tools
+  widths:
+  - 8
+  count: 12
+  failure_injectors: []
+- source: deepseek-his-v12
+  task_type: alu_control_unit
+  difficulty_tier: S1
+  requirement_style: simple_prompt
+  failure_origin: natural_llm
+  measurement_point: a_first_attempt_no_tools
+  widths:
+  - 8
+  count: 1
+  failure_injectors: []
+- source: deepseek-his-v12
+  task_type: crc_stream_checker
+  difficulty_tier: S1
+  requirement_style: simple_prompt
+  failure_origin: natural_llm
+  measurement_point: a_first_attempt_no_tools
+  widths:
+  - 8
+  count: 1
+  failure_injectors: []

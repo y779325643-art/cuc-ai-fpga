@@ -10,6 +10,7 @@ from LLM.src.sr2fpga_agent.agent import DataGenerationAgent
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleClient,
     AnthropicCompatibleConfig,
+    DeepSeekOracleHisProjectGenerator,
     DeepSeekTwoStageProjectGenerator,
     DeepSeekProjectGenerator,
     DeepSeekRepairer,
@@ -115,7 +116,7 @@ def build_project_generator_for_connection(connection, event_sink=None):
     kind = connection.kind
     if kind == "deterministic":
         return None
-    if kind not in {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}:
+    if kind not in {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12", "deepseek-oracle-his-v12"}:
         raise SystemExit(f"Unsupported source kind: {kind}")
     api_key = os.environ.get(connection.api_key_env)
     if not api_key:
@@ -127,6 +128,8 @@ def build_project_generator_for_connection(connection, event_sink=None):
                 model=connection.model,
                 base_url=connection.base_url,
                 timeout_seconds=getattr(connection, "timeout_seconds", 120),
+                max_tokens=getattr(connection, "max_tokens", 0) or 16384,
+                transport_attempts=getattr(connection, "transport_attempts", 3),
             )
         )
         return DeepSeekTwoStageProjectGenerator(client, event_sink=event_sink)
@@ -136,10 +139,14 @@ def build_project_generator_for_connection(connection, event_sink=None):
             model=connection.model,
             base_url=connection.base_url,
             timeout_seconds=getattr(connection, "timeout_seconds", 120),
+            max_tokens=getattr(connection, "max_tokens", 0),
+            transport_attempts=getattr(connection, "transport_attempts", 3),
         )
     )
     if kind == "deepseek":
         return DeepSeekProjectGenerator(client)
+    if kind == "deepseek-oracle-his-v12":
+        return DeepSeekOracleHisProjectGenerator(client, event_sink=event_sink)
     return DeepSeekTwoStageProjectGenerator(client, event_sink=event_sink)
 
 
@@ -165,6 +172,36 @@ def build_repairer(
             )
         )
     raise SystemExit(f"Unsupported repair provider: {provider}")
+
+
+def build_repairer_for_connection(connection):
+    kind = connection.kind
+    if kind == "deterministic":
+        return None
+    if kind not in {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}:
+        raise SystemExit(f"Unsupported repair source kind: {kind}")
+    api_key = os.environ.get(connection.api_key_env)
+    if not api_key:
+        raise SystemExit(f"{connection.api_key_env} is not set")
+    if kind == "anthropic_compat":
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key=api_key,
+                model=connection.model,
+                base_url=connection.base_url,
+                timeout_seconds=getattr(connection, "timeout_seconds", 120),
+            )
+        )
+        return DeepSeekRepairer(client)
+    client = OpenAICompatibleClient(
+        OpenAICompatibleConfig(
+            api_key=api_key,
+            model=connection.model,
+            base_url=connection.base_url,
+            timeout_seconds=getattr(connection, "timeout_seconds", 120),
+        )
+    )
+    return DeepSeekRepairer(client)
 
 
 if __name__ == "__main__":

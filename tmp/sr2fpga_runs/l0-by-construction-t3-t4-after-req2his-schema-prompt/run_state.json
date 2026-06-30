@@ -1,0 +1,22 @@
+{
+  "run_id": "l0-by-construction-t3-t4-after-req2his-schema-prompt",
+  "next_index": 2,
+  "completed_samples": [
+    "sample_l0_by_construction_t3_t4_after_req2his_schema_prompt_t3_stream_fork_8_000001",
+    "sample_l0_by_construction_t3_t4_after_req2his_schema_prompt_t4_dual_stream_join_8_000002"
+  ],
+  "buckets": {
+    "success_l3": [
+      "sample_l0_by_construction_t3_t4_after_req2his_schema_prompt_t3_stream_fork_8_000001"
+    ],
+    "repair_trajectory": [],
+    "rejected": [
+      "sample_l0_by_construction_t3_t4_after_req2his_schema_prompt_t4_dual_stream_join_8_000002"
+    ]
+  },
+  "failure_types": {
+    "generation_failed": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "878939ba307dd30830bd832ee57942568198459af5e5fdf3ea1c754d1a444a66"
+}

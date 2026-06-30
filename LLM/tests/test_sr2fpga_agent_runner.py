@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from LLM.src.sr2fpga_agent.runner import (
+    PlannedSample,
     RunState,
     RunnerConfig,
     SourceConnection,
@@ -21,6 +22,8 @@ from LLM.src.sr2fpga_agent.runner import (
     write_run_state,
     _failure_family,
     _record_completed as _record_completed_for_test,
+    _sample_system_his_schema_version,
+    _source_auth_diagnostics,
     _summary as run_batch_summary_for_test,
 )
 
@@ -210,6 +213,210 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["measurement_point"], "a_first_attempt_no_tools")
         self.assertEqual(samples[0].metadata(config)["system_his_schema_version"], "system-his-v1.2")
         self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
+        self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "behavior_files")
+
+    def test_unvetted_openai_compat_source_is_quarantined(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("/tmp/test"),
+            export_root=Path("/tmp/test_exports"),
+            run_root=Path("/tmp/test_runs"),
+            provider="my_openai",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={},
+            tasks=[],
+            model="gpt-4",
+            base_url="https://api.openai.example/v1",
+            api_key_env="OPENAI_API_KEY",
+            sources={
+                "my_openai": SourceConnection(
+                    name="my_openai",
+                    kind="openai_compat",
+                    generation_mode="two_stage",
+                )
+            },
+        )
+        sample = PlannedSample(
+            sample_id="s1",
+            source="my_openai",
+            task_type="counter",
+            width=8,
+            project_name="counter_8",
+            requirement="Design a counter.",
+        )
+
+        schema = _sample_system_his_schema_version(sample, config)
+
+        self.assertEqual(schema, "system-his-v1.1")
+        self.assertEqual(sample.metadata(config)["training_split"], "quarantine")
+
+    def test_unknown_source_kind_fails_preflight_auth_diagnostics(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("/tmp/test"),
+            export_root=Path("/tmp/test_exports"),
+            run_root=Path("/tmp/test_runs"),
+            provider="bad_source",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={},
+            tasks=[],
+            sources={
+                "bad_source": SourceConnection(
+                    name="bad_source",
+                    kind="openai-compat",
+                    api_key_env="SOME_KEY",
+                    generation_mode="two_stage",
+                )
+            },
+        )
+        sample = PlannedSample(
+            sample_id="s1",
+            source="bad_source",
+            task_type="counter",
+            width=8,
+            project_name="counter_8",
+            requirement="Design a counter.",
+        )
+
+        _, errors = _source_auth_diagnostics(config, [sample], validate_provider=False)
+
+        self.assertTrue(
+            any("unsupported kind" in error for error in errors),
+            f"Expected unsupported source kind error, got: {errors}",
+        )
+
+    def test_official_eval_gap_closure_config_covers_t1_t12_and_supplemental_tasks(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_official_eval_gap_closure.example.yaml"))
+        samples = planned_samples(config)
+
+        self.assertEqual(config.provider, "deepseek-his-v12")
+        self.assertEqual(config.repair_provider, "none")
+        self.assertEqual(config.max_attempts, 1)
+        self.assertEqual(config.sample_id_prefix, "official_eval_gap_closure")
+        self.assertEqual(len(samples), 28)
+        self.assertEqual(
+            [sample.task_type for sample in samples[:14]],
+            [
+                "composed_event_counter",
+                "composed_stream_accumulator",
+                "composed_stream_fork",
+                "composed_dual_stream_join",
+                "composed_vector_mac_pipeline",
+                "composed_td_update_core",
+                "composed_policy_value_shell",
+                "composed_replay_sample_shell",
+                "composed_host_protocol_shell",
+                "composed_rl_accelerator_shell",
+                "composed_batch_rl_accelerator_shell",
+                "composed_replay_arbiter_shell",
+                "alu_control_unit",
+                "crc_stream_checker",
+            ],
+        )
+        self.assertEqual([sample.source for sample in samples[:14]], ["deterministic"] * 14)
+        self.assertEqual([sample.source for sample in samples[14:]], ["deepseek-his-v12"] * 14)
+        self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"a_first_attempt_no_tools"})
+
+    def test_l0_by_construction_ablation_config_pairs_full_and_skeleton_generation(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_l0_by_construction_ablation.example.yaml"))
+        samples = planned_samples(config)
+
+        self.assertEqual(config.provider, "deepseek")
+        self.assertEqual(config.repair_provider, "none")
+        self.assertEqual(config.max_attempts, 1)
+        self.assertEqual(config.sample_id_prefix, "l0_by_construction_ablation")
+        self.assertEqual(len(samples), 8)
+        self.assertEqual(
+            [sample.topology_id for sample in samples],
+            [
+                "t1_event_counter",
+                "t2_stream_accumulator",
+                "t3_stream_fork",
+                "t4_dual_stream_join",
+                "t1_event_counter",
+                "t2_stream_accumulator",
+                "t3_stream_fork",
+                "t4_dual_stream_join",
+            ],
+        )
+        self.assertEqual({sample.width for sample in samples}, {8})
+        self.assertEqual({sample.requirement_style for sample in samples}, {"natural_component"})
+        self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"a_first_attempt_no_tools"})
+        self.assertEqual({sample.metadata(config)["failure_origin"] for sample in samples}, {"natural_llm"})
+        self.assertEqual(
+            [sample.metadata(config)["contract_skeleton_mode"] for sample in samples],
+            [
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+            ],
+        )
+        self.assertEqual(
+            [sample.metadata(config)["system_his_schema_version"] for sample in samples],
+            [
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+            ],
+        )
+
+    def test_l0_by_construction_preflight_preview_shows_ablation_arm_metadata(self) -> None:
+        config = load_runner_config(Path("configs/sr2fpga_l0_by_construction_ablation.example.yaml"))
+
+        report = runner_preflight(config, run_id="l0-by-construction-ablation")
+
+        self.assertEqual(report["planned_samples"], 8)
+        self.assertEqual(
+            [sample["contract_skeleton_mode"] for sample in report["samples"]],
+            [
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "legacy_full_project",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+                "behavior_files",
+            ],
+        )
+        self.assertEqual(
+            [sample["system_his_schema_version"] for sample in report["samples"]],
+            [
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.1",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+                "system-his-v1.2",
+            ],
+        )
+        self.assertEqual(
+            [sample["training_split"] for sample in report["samples"]],
+            [
+                "quarantine",
+                "quarantine",
+                "quarantine",
+                "quarantine",
+                "clean",
+                "clean",
+                "clean",
+                "clean",
+            ],
+        )
 
     def test_deterministic_samples_are_v12_clean_training_split(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -231,6 +438,7 @@ class RunnerConfigTest(unittest.TestCase):
 
             self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
             self.assertEqual(metadata["training_split"], "clean")
+            self.assertEqual(metadata["contract_skeleton_mode"], "deterministic_template")
 
     def test_load_runner_config_parses_env_file(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -486,6 +694,9 @@ class RunnerConfigTest(unittest.TestCase):
                         "topology_id": "",
                         "failure_origin": "natural_llm",
                         "measurement_point": "a_first_attempt_no_tools",
+                        "system_his_schema_version": "system-his-v1.1",
+                        "training_split": "quarantine",
+                        "contract_skeleton_mode": "legacy_full_project",
                     }
                 ],
             )
@@ -680,6 +891,37 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
             self.assertEqual(client_config.api_key, "shell-fake-key")
             self.assertEqual(client_config.timeout_seconds, 120)
+
+    def test_run_batch_accepts_named_source_repair_provider(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="claude-repair",
+                max_attempts=2,
+                refresh_exports=False,
+                line_b_targets={},
+                tasks=[],
+                sources={
+                    "claude-repair": SourceConnection(
+                        name="claude-repair",
+                        kind="anthropic_compat",
+                        model="claude-opus-4-8",
+                        base_url="https://w.ciykj.cn/v1",
+                        api_key_env="ANTHROPIC_API_KEY",
+                        generation_mode="two_stage",
+                    )
+                },
+            )
+
+            with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "shell-fake-key"}, clear=False):
+                summary = run_batch(config, run_id="named_repair")
+
+            self.assertEqual(summary["total_planned"], 0)
+            self.assertEqual(summary["total_completed"], 0)
 
     def test_runner_preflight_validate_provider_reports_deepseek_auth_failure_without_secret(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -896,7 +1138,9 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["failure_origin"], "natural_llm")
         self.assertEqual(samples[0].metadata(config)["difficulty_tier"], "T2")
         self.assertEqual(samples[0].metadata(config)["measurement_point"], "b_tool_in_loop_repair")
+        self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "legacy_full_project")
         self.assertEqual(samples[1].metadata(config)["failure_origin"], "synthetic_injected")
+        self.assertEqual(samples[1].metadata(config)["contract_skeleton_mode"], "deterministic_template")
 
     def test_planned_samples_allow_task_measurement_point_override(self) -> None:
         config = RunnerConfig(
@@ -934,18 +1178,26 @@ class RunnerConfigTest(unittest.TestCase):
             repair_provider="none",
             max_attempts=1,
             refresh_exports=True,
-            line_b_targets={"max_samples": 4},
+            line_b_targets={"max_samples": 12},
             tasks=[
                 TaskConfig(
                     source="deterministic",
                     task_type="component_topology",
                     widths=[8],
-                    count=4,
+                    count=12,
                     topology_ids=[
                         "t1_event_counter",
                         "t2_stream_accumulator",
                         "t3_stream_fork",
                         "t4_dual_stream_join",
+                        "t5_vector_mac_pipeline",
+                        "t6_td_update_core",
+                        "t7_policy_value_shell",
+                        "t8_replay_sample_shell",
+                        "t9_host_protocol_shell",
+                        "t10_rl_accelerator_shell",
+                        "t11_batch_rl_accelerator_shell",
+                        "t12_replay_arbiter_shell",
                     ],
                     failure_origin="compositional_assembly",
                 )
@@ -971,12 +1223,68 @@ class RunnerConfigTest(unittest.TestCase):
                     "t4_dual_stream_join",
                     "T4",
                 ),
+                (
+                    "sample_runner_t5_vector_mac_pipeline_8_000005",
+                    "composed_vector_mac_pipeline",
+                    "t5_vector_mac_pipeline",
+                    "T5",
+                ),
+                (
+                    "sample_runner_t6_td_update_core_8_000006",
+                    "composed_td_update_core",
+                    "t6_td_update_core",
+                    "T6",
+                ),
+                (
+                    "sample_runner_t7_policy_value_shell_8_000007",
+                    "composed_policy_value_shell",
+                    "t7_policy_value_shell",
+                    "T7",
+                ),
+                (
+                    "sample_runner_t8_replay_sample_shell_8_000008",
+                    "composed_replay_sample_shell",
+                    "t8_replay_sample_shell",
+                    "T8",
+                ),
+                (
+                    "sample_runner_t9_host_protocol_shell_8_000009",
+                    "composed_host_protocol_shell",
+                    "t9_host_protocol_shell",
+                    "T9",
+                ),
+                (
+                    "sample_runner_t10_rl_accelerator_shell_8_000010",
+                    "composed_rl_accelerator_shell",
+                    "t10_rl_accelerator_shell",
+                    "T10",
+                ),
+                (
+                    "sample_runner_t11_batch_rl_accelerator_shell_8_000011",
+                    "composed_batch_rl_accelerator_shell",
+                    "t11_batch_rl_accelerator_shell",
+                    "T11",
+                ),
+                (
+                    "sample_runner_t12_replay_arbiter_shell_8_000012",
+                    "composed_replay_arbiter_shell",
+                    "t12_replay_arbiter_shell",
+                    "T12",
+                ),
             ],
         )
         self.assertEqual(samples[0].metadata(config)["topology_id"], "t1_event_counter")
         self.assertEqual(samples[1].metadata(config)["topology_id"], "t2_stream_accumulator")
         self.assertEqual(samples[2].metadata(config)["topology_id"], "t3_stream_fork")
         self.assertEqual(samples[3].metadata(config)["topology_id"], "t4_dual_stream_join")
+        self.assertEqual(samples[4].metadata(config)["topology_id"], "t5_vector_mac_pipeline")
+        self.assertEqual(samples[5].metadata(config)["topology_id"], "t6_td_update_core")
+        self.assertEqual(samples[6].metadata(config)["topology_id"], "t7_policy_value_shell")
+        self.assertEqual(samples[7].metadata(config)["topology_id"], "t8_replay_sample_shell")
+        self.assertEqual(samples[8].metadata(config)["topology_id"], "t9_host_protocol_shell")
+        self.assertEqual(samples[9].metadata(config)["topology_id"], "t10_rl_accelerator_shell")
+        self.assertEqual(samples[10].metadata(config)["topology_id"], "t11_batch_rl_accelerator_shell")
+        self.assertEqual(samples[11].metadata(config)["topology_id"], "t12_replay_arbiter_shell")
         self.assertEqual(samples[3].metadata(config)["requirement_style"], "contract")
         self.assertIn("component topology t1_event_counter", samples[0].requirement)
         self.assertIn("event_gate", samples[0].requirement)
@@ -986,6 +1294,25 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertIn("skid_a:skid_buffer", samples[3].requirement)
         self.assertIn("skid_b:skid_buffer", samples[3].requirement)
         self.assertIn("stream_join.out_data -> accumulator_core.sample", samples[3].requirement)
+        self.assertIn("component topology t5_vector_mac_pipeline", samples[4].requirement)
+        self.assertIn("vector_mac_core", samples[4].requirement)
+        self.assertIn("component topology t6_td_update_core", samples[5].requirement)
+        self.assertIn("td_update_core", samples[5].requirement)
+        self.assertIn("component topology t7_policy_value_shell", samples[6].requirement)
+        self.assertIn("action_select_core", samples[6].requirement)
+        self.assertIn("component topology t8_replay_sample_shell", samples[7].requirement)
+        self.assertIn("replay_store", samples[7].requirement)
+        self.assertIn("component topology t9_host_protocol_shell", samples[8].requirement)
+        self.assertIn("axi_lite_write_ctrl", samples[8].requirement)
+        self.assertIn("component topology t10_rl_accelerator_shell", samples[9].requirement)
+        self.assertIn("policy_value_core", samples[9].requirement)
+        self.assertIn("td_update_core", samples[9].requirement)
+        self.assertIn("component topology t11_batch_rl_accelerator_shell", samples[10].requirement)
+        self.assertIn("dual_policy_value_core", samples[10].requirement)
+        self.assertIn("dual_td_update_core", samples[10].requirement)
+        self.assertIn("component topology t12_replay_arbiter_shell", samples[11].requirement)
+        self.assertIn("replay_request_arbiter", samples[11].requirement)
+        self.assertIn("replay_memory_bank", samples[11].requirement)
         self.assertIn("Keep rtl/top.v as the integration wrapper", samples[3].requirement)
 
     def test_classify_sample_bucket(self) -> None:
@@ -1074,6 +1401,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["metadata_breakdown"]["source"]["deterministic"], 1)
             self.assertEqual(summary["metadata_breakdown"]["failure_origin"]["deterministic_template"], 1)
             self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"]["T1"], 1)
+            self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"]["deterministic_template"], 1)
             self.assertEqual(summary["pass_level_breakdown"]["L3"], 1)
             self.assertEqual(
                 summary["contract_metrics"],
@@ -1114,6 +1442,7 @@ class RunnerConfigTest(unittest.TestCase):
             )
             self.assertEqual(metadata["failure_origin"], "deterministic_template")
             self.assertEqual(metadata["measurement_point"], "a_first_attempt_no_tools")
+            self.assertEqual(metadata["contract_skeleton_mode"], "deterministic_template")
             self.assertTrue((root / "exports/requirement_to_project.jsonl").exists())
 
     def test_run_batch_summary_groups_component_topology_metadata(self) -> None:
@@ -1146,6 +1475,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["metadata_breakdown"]["failure_origin"], {"compositional_assembly": 2})
             self.assertEqual(summary["metadata_breakdown"]["measurement_point"], {"a_first_attempt_no_tools": 2})
             self.assertEqual(summary["metadata_breakdown"]["requirement_style"], {"contract": 2})
+            self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"], {"deterministic_template": 2})
             self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"], {"T1": 1, "T2": 1})
             self.assertEqual(
                 summary["metadata_breakdown"]["topology_id"],
@@ -1194,6 +1524,16 @@ class RunnerConfigTest(unittest.TestCase):
             )
             self.assertEqual(
                 summary["calibration_matrix"]["requirement_style"]["contract"],
+                {
+                    "total": 2,
+                    "pass_levels": {"L3": 2},
+                    "l3_pass_rate": 1.0,
+                    "l0_contract_failures": 0,
+                    "cross_file_consistency_error_rate": 0.0,
+                },
+            )
+            self.assertEqual(
+                summary["calibration_matrix"]["contract_skeleton_mode"]["deterministic_template"],
                 {
                     "total": 2,
                     "pass_levels": {"L3": 2},

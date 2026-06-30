@@ -1,4 +1,4 @@
-# SR2FPGA Current Status - 2026-06-26
+# SR2FPGA Current Status - 2026-06-29
 
 ## Current Branch
 
@@ -73,12 +73,200 @@ Implemented and under active review:
   `c_finetuned_first_attempt_no_tools`.
 - Runner now dispatches each sample through its configured source instead of
   only the global provider.
+- Contract-preserving generation Tier A has an initial implementation:
+  `LLM/src/sr2fpga_agent/contract_skeleton.py` builds a deterministic
+  System-HIS v1.2 project skeleton (module headers, top instances, manifest,
+  SDC, testbench shell, predicted-QoR stub). HIS2PROJECT now asks the model for
+  `behavior_files` only, merges those bodies into `BEHAVIOR_HOLE` markers, rejects
+  full-project `files` responses, and then runs the v1.2 HIS↔RTL cross-check.
+  Runner metadata records `contract_skeleton_mode` (`behavior_files`,
+  `deterministic_template`, or `legacy_full_project`) so summaries can separate
+  the Tier A skeleton path from direct full-project generation.
+  This is structural hardening only; Tier B logit-masked constrained decoding is
+  still design-only.
+- `configs/sr2fpga_l0_by_construction_ablation.example.yaml` is the paired
+  first-attempt/no-repair entry point for the L0-by-construction ablation. It
+  runs the same T1-T4 component-topology task set twice: legacy DeepSeek
+  full-project generation (`legacy_full_project`) and System-HIS v1.2 skeleton
+  generation (`behavior_files`). Compare `calibration_matrix["contract_skeleton_mode"]`
+  and L0/L2 outcomes after the run.
+- The first real L0-by-construction ablation run completed with run ID
+  `l0-by-construction-ablation`:
+  `total_completed=8`, `success_l3=0`, `repair_trajectory=5`, `rejected=3`.
+  Legacy full-project generation produced `L0_FAIL:4`; `behavior_files`
+  skeleton generation produced `GEN_FAIL:3, L0:1`. This reduced L0 contract
+  failures from 4/4 to 3/4 and produced one T3 sample that crossed L0, but did
+  not yet reach L1/L2/L3. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`.
+- The after-fixes rerun completed with run ID
+  `l0-by-construction-ablation-after-fixes` using a fresh sample prefix:
+  `total_completed=8`, `success_l3=0`, `repair_trajectory=5`, `rejected=3`,
+  and `exports_refreshed=true`. The aggregate arm-level result stayed the same
+  (`legacy_full_project`: `L0_FAIL:4`; `behavior_files`: `GEN_FAIL:3, L0:1`),
+  but the `behavior_files` sample that crossed L0 moved from T3 to T1. Residual
+  blockers are now sharper: non-lowerable component sources such as `library`,
+  missing FSM ownership, and repeated RTL range construction such as
+  `[7:0-1:0]` / `[DATA_WIDTH-1:0-1:0]`. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-ablation-after-fixes-2026-06-28.md`.
+- The after-hardening rerun completed with run ID
+  `l0-by-construction-ablation-after-hardening` using another fresh sample
+  prefix: `total_completed=8`, `success_l3=0`, `repair_trajectory=7`,
+  `rejected=1`, and `exports_refreshed=true`. The behavior-files arm improved
+  from the after-fixes result `GEN_FAIL:3, L0:1` to `GEN_FAIL:1, L0:3`;
+  `legacy_full_project` remained `L0_FAIL:4`. Residual blockers are now mostly
+  T3 REQ2HIS state/control-flow validity and T4 RTL compile failure from
+  duplicate FSM localparams in `rtl/stream_join.v`. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-ablation-after-hardening-2026-06-28.md`.
+- After that rerun, contract skeleton merge now drops deterministic placeholder
+  FSM localparams when the behavior body already declares the same state names,
+  preventing T4-style duplicate `IDLE`/`WAIT`/`JOINED` declarations. REQ2HIS
+  initial and retry prompts also now state that v1.2 state names must be
+  globally unique across state groups and that `control_flow.effect.target`
+  should target declared data-flow or state names rather than ports/modules.
+- A narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-state-hardening`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:2`. This confirms the latest state/control-flow hardening moved T3 from
+  `GEN_FAIL` to `L0` and kept T4 at `L0`. The new shared blocker is
+  HIS2PROJECT returning complete module bodies inside behavior holes, producing
+  Verilator nested-module errors. `merge_behavior_files()` now rejects module
+  declarations/`endmodule` in behavior text and HIS2PROJECT appends retry
+  feedback for that validation error. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-state-hardening-2026-06-28.md`.
+- A follow-up narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-behavior-retry`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:2`. The nested-module failure signature is gone. Both samples now fail as
+  `lint_warning_as_error` because `top.v` ports and internal wires are mostly
+  undriven/unused, so the next blocker is deterministic top/skeleton wiring
+  materialization from System-HIS `data_flow`. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-behavior-retry-2026-06-28.md`.
+- Deterministic skeleton top generation now materializes System-HIS `data_flow`
+  paths into `rtl/top.v` assignments and derives valid/ready companion wiring
+  where matching ports exist. Component skeletons also consume optional
+  clock/reset inputs with `_unused_clock_reset` reduction wires, keeping
+  combinational components from failing Verilator solely because the contract
+  exposes `clk`/`rst_n`.
+- A follow-up narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-top-wiring`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:1, L1:1`. T4 crossed lint and reached sim compile; T3 now fails on a
+  generated behavior reserved identifier (`buf`) rather than top wiring.
+  Reading this run led to two additional hardening changes: testbench generation
+  now emits top parameter `localparam`s such as `DATA_WIDTH`, and HIS2PROJECT
+  now runs the RTL reserved-identifier checker before returning so those
+  behavior bodies can be retried. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-top-wiring-2026-06-28.md`.
+- A fresh narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-identifier-testbench`: `total_completed=2`,
+  `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
+  `L0:2`. This run exposed deterministic skeleton defects: duplicated
+  `_unused_clock_reset` when the model echoed that reduction wire, missing
+  top-level width parameters such as `DATA_WIDTH`, and invalid `[None-1:0]`
+  ranges from null width metadata. These have now been hardened in
+  `contract_skeleton.py`; replay shows T3 lint-clean and T4 no longer fails on
+  missing/None width declarations. The remaining T4 replay errors are behavior
+  lint warnings such as unused `state` registers, so the next blocker is
+  behavior-body lint cleanliness rather than top/skeleton wiring. Compact
+  write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-identifier-testbench-2026-06-29.md`.
+- A fresh narrow T3/T4 behavior-files rerun completed with run ID
+  `l0-by-construction-t3-t4-after-width-parameters`: `total_completed=2`,
+  pass levels `L3:2`, `failure_types={}`, and `exports_refreshed=true`. This
+  verifies the width-parameter hardening on new DeepSeek samples: the previous
+  `[None-1:0]`, missing top-level width parameter, and duplicate
+  `_unused_clock_reset` signatures did not reappear. Both samples still needed
+  one REQ2HIS retry for schema details (`target_fmax_mhz` and list-valued
+  `owns_state`), so the next small hardening target is initial REQ2HIS prompt
+  specificity rather than deterministic skeleton wiring. Compact write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-width-parameters-2026-06-29.md`.
+- REQ2HIS initial and retry prompts now explicitly require
+  `top.clocks[].target_fmax_mhz` and `timing.target_fmax_mhz` to be positive
+  numbers, and `instances[].owns_state` to be a JSON array. A fresh narrow
+  T3/T4 rerun with run ID
+  `l0-by-construction-t3-t4-after-req2his-schema-prompt` completed with
+  `total_completed=2`, pass levels `L3:1, GEN_FAIL:1`, and
+  `exports_refreshed=true`. The previous `target_fmax_mhz` / `owns_state`
+  retry signatures did not reappear; the remaining REQ2HIS retry surface is
+  structured `control_flow` and FSM reset-state shape. The T4 `GEN_FAIL`
+  exposed an RTL-introspection width-equivalence gap for arithmetic ranges:
+  System-HIS `2*DATA_WIDTH` versus RTL `[2*DATA_WIDTH-1:0]`. That helper now
+  normalizes expression-minus-one ranges to the expression width. Compact
+  write-up:
+  `docs/sr2fpga-l0-by-construction-t3-t4-after-req2his-schema-prompt-2026-06-29.md`.
 - `run_state.json` records a config fingerprint; resume rejects attempts to
   reuse the same run ID with a different config, which keeps baseline
   calibration runs reproducible.
 - Runner supports `task_type: component_topology` with `topology_ids`, expanding
   topology selections into concrete `composed_*` tasks while preserving
   `topology_id` in sample metadata.
+- The deterministic component-topology ladder now includes T5
+  `composed_vector_mac_pipeline` / `t5_vector_mac_pipeline`, the first
+  RL-shaped intermediate task. It accepts paired feature/weight valid-ready
+  streams, applies a fixed-length vector MAC plus bias in `vector_mac_core`, and
+  emits a score stream through `stream_stage`. Unit coverage verifies generator
+  output, runner topology expansion, REQ->HIS top-port fidelity, and DeepSeek
+  System-HIS prompt guidance. This is still a synthetic bridge, not the full
+  reinforcement-learning accelerator.
+- The ladder now also includes T6 `composed_td_update_core` /
+  `t6_td_update_core`, a synthetic TD-error/value-update datapath. It accepts
+  reward, value, next-value, gamma, and alpha inputs, computes a fixed-point
+  temporal-difference error, and emits an updated value through a valid-ready
+  output stage. Unit coverage verifies deterministic generation, runner
+  topology expansion, REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt
+  guidance. This advances RL update semantics but still excludes policy
+  selection, replay memory, ARM/environment handshakes, and board shell work.
+- T7 `composed_policy_value_shell` / `t7_policy_value_shell` is now the
+  synthetic policy/value accelerator shell step. It adds a config register bank
+  for weights, biases, and enable, captures two observation inputs, computes two
+  policy scores, selects an action, estimates value, and stages the output under
+  valid-ready flow control. Unit coverage verifies deterministic generation,
+  runner topology expansion, REQ->HIS top-port fidelity, and DeepSeek
+  System-HIS prompt guidance. It is still synthetic and must not be described as
+  a realistic RL accelerator without real workload/interface references.
+- T8 `composed_replay_sample_shell` / `t8_replay_sample_shell` is now the
+  synthetic replay/sample host-fabric boundary step. It accepts host-side
+  transition samples, stores them in a depth-4 replay store, reports occupancy,
+  and emits fabric-side samples in FIFO order under valid-ready flow control.
+  Unit coverage verifies deterministic generation, Icarus simulation, runner
+  topology expansion, REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt
+  guidance. It is still synthetic and excludes random replay sampling, AXI/DMA,
+  ARM software, board shell work, and real RL workload fidelity.
+- T9 `composed_host_protocol_shell` / `t9_host_protocol_shell` is now the
+  synthetic protocol-shaped host/fabric wrapper step. It exposes an
+  AXI-lite-style single-beat control/status subset, an AXI-stream-style one-beat
+  sample output, and an irq line. Unit coverage verifies deterministic
+  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
+  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
+  excludes full AXI compliance, DMA, ARM software, board shell work, and real RL
+  workload fidelity.
+- T10 `composed_rl_accelerator_shell` / `t10_rl_accelerator_shell` is now the
+  synthetic integrated RL accelerator shell step. It combines host config
+  registers, sample capture, policy/value scoring, TD-style value update, result
+  valid-ready output, episode done, and irq reporting. Unit coverage verifies
+  deterministic generation, Icarus simulation, runner topology expansion,
+  REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt guidance. It is
+  still synthetic and should not be described as a realistic DQN, actor-critic,
+  PPO, SAC, DMA, or board-level accelerator without user-provided or cited
+  workload/interface references.
+- T11 `composed_batch_rl_accelerator_shell` /
+  `t11_batch_rl_accelerator_shell` is now the synthetic two-lane batch RL shell
+  step. It combines shared host config, two-lane batch sample capture, dual-lane
+  policy/value scoring, dual-lane TD-style update, vectorized result staging,
+  `batch_done`, and irq reporting. Unit coverage verifies deterministic
+  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
+  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
+  excludes stochastic replay, true neural-network layers, DMA/DDR, ARM software,
+  board shell work, and real RL workload fidelity.
+- T12 `composed_replay_arbiter_shell` / `t12_replay_arbiter_shell` is now the
+  synthetic replay-memory arbitration and host-packetization step. It accepts
+  host transition packets, allocates depth-4 replay write indices, arbitrates
+  indexed fabric sample requests behind host writes, stages sample packets, and
+  reports occupancy, write index, and irq. Unit coverage verifies deterministic
+  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
+  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
+  excludes random/prioritized replay, DMA/DDR, ARM software, board shell work,
+  and real RL workload fidelity.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current T1-T4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
@@ -161,6 +349,41 @@ Implemented and under active review:
 - L0 checker width normalization now treats numeric ranges like `[7:0]` as
   equivalent to integer width `8`. This addresses the T3 narrow-smoke residual
   failure without loosening parameterized ranges such as `[DATA_WIDTH-1:0]`.
+- The same normalization now also treats concrete minus-one RTL ranges such as
+  `[1-1:0]` and `[8-1:0]` as integer widths. This targets the T1
+  L0-by-construction ablation false mismatch while leaving symbolic parameter
+  ranges under exact symbolic/resolved comparison.
+- REQ2HIS prompt and retry feedback now explicitly constrain
+  `top.resets[].polarity` to `active_low`/`active_high`,
+  `top.resets[].kind` to `sync`/`async`, and the current `rst_n` contract to
+  active-low sync unless a task says otherwise. This targets the T2
+  L0-by-construction ablation reset enum failure in future reruns.
+- System-HIS v1.2 now rejects `instances[].parameter_values` keys that are not
+  declared in the target `components[].parameters`, and REQ2HIS prompt/retry
+  guidance states that rule. This targets the T3 skeleton lowerability failure
+  where top-level `DATA_WIDTH` overrides reached modules without a matching
+  parameter declaration.
+- Contract skeleton generation now infers FSM owners from instance-prefixed
+  names such as `join_core.arb_fsm`, so declared FSM state localparams remain
+  visible in the target component module. HIS2PROJECT prompt guidance also tells
+  the model not to rename, omit, or replace System-HIS `state.fsms` states. This
+  targets the T4 FSM-state lowerability failure in future reruns.
+- Contract skeleton width rendering now preserves complete range expressions
+  such as `7:0`, `DATA_WIDTH-1:0`, and `2*DATA_WIDTH-1:0` instead of appending a
+  second `-1:0` suffix. The shared width normalizer also compares complete range
+  expressions with and without brackets, so HIS widths like
+  `DATA_WIDTH-1:0` match parsed RTL widths like `[DATA_WIDTH-1:0]`. This targets
+  the after-fixes T4 repeated-range failure in future reruns.
+- System-HIS v1.2 internal validation now rejects `components[].source` values
+  that are not listed in `artifacts.rtl_sources`, and REQ2HIS initial/retry
+  prompts explicitly forbid placeholder sources such as `library`. This moves
+  the after-fixes T2 component-source lowerability failure from HIS2PROJECT
+  cross-check into the earlier REQ2HIS repair loop.
+- System-HIS v1.2 internal validation now requires every `state.fsms[]` entry
+  to either declare an `owner` or use `<instance>.<fsm>` naming, with the owner
+  constrained to `top` or an existing instance name. REQ2HIS initial/retry
+  prompts now state the same rule, targeting the after-fixes T3/T2 failure mode
+  where unowned FSMs were later checked against RTL module `top`.
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:
@@ -177,8 +400,9 @@ Implemented and under active review:
   environment readiness, HDL tool availability, and existing run-directory state
   before spending API calls on baseline (a). The preflight JSON also includes a
   planned sample preview with source, task type, requirement style, requirement
-  text, difficulty tier, topology ID, failure origin, and measurement point for
-  each sample. It reports the `DEEPSEEK_API_KEY` source and a short non-secret
+  text, difficulty tier, topology ID, failure origin, measurement point,
+  System-HIS schema version, training split, and contract skeleton mode for each
+  sample. It reports the `DEEPSEEK_API_KEY` source and a short non-secret
   fingerprint so local `.env` key updates can be confirmed before a DeepSeek
   run. With `--validate-provider`, preflight makes a minimal DeepSeek
   authentication request, catching invalid keys before any RTL sample is
@@ -186,9 +410,10 @@ Implemented and under active review:
   and expected behavior for prompt audit.
 - Runner summaries now include `metadata_breakdown`, `pass_level_breakdown`,
   `failure_family_breakdown`, and `calibration_matrix` for source, failure
-  family, failure origin, requirement style, difficulty tier, topology ID,
-  measurement point, pass-level counts, L3 pass-rate calibration, L0
-  contract-failure counts, and grouped cross-file consistency error rates.
+  family, failure origin, requirement style, contract skeleton mode, difficulty
+  tier, topology ID, measurement point, pass-level counts, L3 pass-rate
+  calibration, L0 contract-failure counts, and grouped cross-file consistency
+  error rates.
   `l0_contract_violation` is reported as the first-class project-generation
   family `artifact_contract_failure`. Stage-aware family mapping now classifies
   unknown `lint` and `sim_compile` failures as `rtl_compile_failure`, `sim_run`
@@ -198,10 +423,14 @@ Implemented and under active review:
   samples, L0 contract failures, and cross-file consistency error rate.
 - `LLM/src/sr2fpga_agent/baseline_report.py` renders runner `summary.json`
   into a compact Markdown table for baseline (a), grouped by source, failure
-  origin, requirement style, difficulty tier, topology ID, and measurement
-  point. Runner now writes this table automatically as `baseline_report.md` in
-  each run directory and flags the first difficulty tier below the default 80%
-  L3 pass-rate knee threshold.
+  origin, requirement style, contract skeleton mode, difficulty tier, topology
+  ID, and measurement point. Runner now writes this table automatically as
+  `baseline_report.md` in each run directory and flags the first difficulty tier
+  below the default 80% L3 pass-rate knee threshold.
+  When `calibration_matrix["contract_skeleton_mode"]` is present, the report also
+  adds a dedicated contract-skeleton ablation section with mode-level rows and
+  `behavior_files - legacy_full_project` deltas for L0 contract failures and L3
+  pass rate.
 - Sample metadata is written to `metadata.json` and copied into all exported
   JSONL training views.
 - L0 is now a real System-HIS/manifest consistency check before HDL tools run:
@@ -364,8 +593,27 @@ Supported failure injectors:
 Fresh verification from the latest implementation pass:
 
 ```bash
-python3 -m unittest discover -s LLM/tests -q
-# Ran 256 tests - OK
+python3 -m pytest LLM/tests -q
+# 297 passed
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters --preflight --validate-provider
+# ok: true; planned_samples: 2; contract_skeleton_mode: behavior_files; provider_auth.deepseek-his-v12.status: ok
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters
+# total_completed=2; pass_level_breakdown: L3:2; failure_types: {}; exports_refreshed=true
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt --preflight --validate-provider
+# ok: true; planned_samples: 2; contract_skeleton_mode: behavior_files; provider_auth.deepseek-his-v12.status: ok
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt
+# total_completed=2; pass_level_breakdown: L3:1, GEN_FAIL:1; failure_types: generation_failed:1; exports_refreshed=true
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
+# ok: true; planned_samples: 8; preview shows legacy_full_project/quarantine and behavior_files/clean arms; provider_auth: not_checked
+
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation
+# total_completed=8; success_l3=0; repair_trajectory=5; rejected=3
+# contract_skeleton_mode: legacy_full_project -> L0_FAIL:4; behavior_files -> GEN_FAIL:3, L0:1
 
 python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok
@@ -464,6 +712,14 @@ Latest `deepseek-v4-pro` v1.2 repair T1-T4 report:
 
 `tmp/sr2fpga_runs/deepseek-v4-pro-his-v12-repair-t1-t4/baseline_report.md`
 
+Latest T3/T4 behavior-files skeleton width-parameter rerun report:
+
+`tmp/sr2fpga_runs/l0-by-construction-t3-t4-after-width-parameters/baseline_report.md`
+
+Latest T3/T4 behavior-files REQ2HIS schema-prompt rerun report:
+
+`tmp/sr2fpga_runs/l0-by-construction-t3-t4-after-req2his-schema-prompt/baseline_report.md`
+
 Key summary:
 
 - Pass-rate knee: T1, because L3 pass rate is 0%.
@@ -490,6 +746,14 @@ Key summary:
   RTL lint. The reserved-identifier precheck now catches lexical legality before
   Verilator; the newest observed failure is strict warning hygiene under
   Verilator `-Wall`.
+- Latest T3/T4 behavior-files skeleton rerun result: both T3 `stream_fork` and
+  T4 `dual_stream_join` reached L3 on fresh samples after width-parameter
+  hardening. The remaining visible friction is retry dependence in REQ2HIS
+  schema details, not deterministic skeleton wiring.
+- Latest REQ2HIS schema-prompt rerun result: T3 stayed L3; T4 stopped at
+  `GEN_FAIL` due an arithmetic width-equivalence checker gap rather than the
+  previous `target_fmax_mhz` / `owns_state` schema errors. The checker now
+  treats `[2*DATA_WIDTH-1:0]` as width expression `2*DATA_WIDTH`.
 - HIS2PROJECT now uses OpenAI-compatible streaming (`stream: true` + SSE
   `choices[].delta.content` assembly). REQ2HIS, direct generation, repair, and
   provider preflight remain non-streaming. Unit coverage verifies streaming SSE
@@ -555,6 +819,27 @@ Key summary:
      targets and tighten HIS2PROJECT/repair feedback for T3 component names and
      RTL endpoint alignment. Then rerun the ignored local T1-T4 config and only
      expand sample count after T2/T3 stop dominating the small baseline.
+00d. **L0-by-construction ablation blockers.** The first paired ablation run
+     reduced L0 failures but still failed to reach L1/L2/L3. Fix the observed
+     blockers before rerunning at scale: single-bit width normalization
+     (`1` versus `[1-1:0]`) in HIS↔RTL comparison, canonical reset
+     `kind`/`polarity` guidance in REQ2HIS, missing module parameter
+     declarations in `behavior_files`, and T4 FSM-state lowerability.
+00e. **Complex-task ladder toward the RL accelerator.** T5 is now the deterministic
+     vector-MAC feature-pipeline bridge, T6 is the deterministic TD-error /
+     value-update bridge, T7 is the deterministic policy/value shell, T8 is the
+     deterministic replay/sample host-fabric shell, T9 is the deterministic
+     host protocol shell, T10 is the deterministic integrated RL accelerator
+     shell, T11 is the deterministic two-lane batch RL shell, and T12 is the
+     deterministic replay arbiter shell. Next steps should either extend T12
+     with a real workload reference or add another synthetic bridge for host
+     register-map packetization / software-visible command lifecycle.
+     Before claiming the full
+     reinforcement-learning accelerator as realistic, request or cite a real
+     workload reference: RL algorithm family, observation vector width, action
+     count, replay schema, host register/stream packet map, fixed-point format,
+     batch/sample shape, fabric/software split on AC820-ZYNQ, and clock/DSP/BRAM
+     targets.
 0. **System-HIS v1.2 freeze (implemented; keep verifying before new data).** The freeze
    plan `docs/superpowers/plans/2026-06-24-sr2fpga-system-his-v1.2-freeze.md`
    (spec: `docs/superpowers/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`).
@@ -565,8 +850,10 @@ Key summary:
    task with L2-measured behavior. Before a larger clean split, follow the reframe
    hardening gates now recorded in the freeze spec: measurement freeze, REQ→HIS
    fidelity scoring, hidden/random/stress L2-core plus optional L2S/L2-UVM,
-   contract-preserving skeleton generation with deterministic/model-generated
-   artifact metadata, and episode field data-release tiers.
+   contract-preserving skeleton body-merge + L0-by-construction ablation, and
+   episode field data-release tiers.
+   The new paired ablation entry point is:
+   `configs/sr2fpga_l0_by_construction_ablation.example.yaml`.
 0b. **OpenXC7 L4 tool-stage spike (approved; run on the Windows+WSL2 box).**
    Plan `docs/superpowers/plans/2026-06-24-openxc7-l4-tool-stage-spike.md`
    (spec: `docs/superpowers/specs/2026-06-24-openxc7-l4-tool-stage-spike-design.md`).
@@ -642,6 +929,10 @@ Key summary:
 - Baseline (b) smoke config: `configs/sr2fpga_baseline_b_smoke.example.yaml`
 - Baseline (b) full tightened config: `configs/sr2fpga_baseline_b_tightened.example.yaml`
 - Baseline (b) T3/T4 smoke config: `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
+- L0-by-construction ablation config: `configs/sr2fpga_l0_by_construction_ablation.example.yaml`
+- L0-by-construction ablation write-up: `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`
+- L0-by-construction after-fixes config: `configs/sr2fpga_l0_by_construction_ablation_after_fixes.example.yaml`
+- L0-by-construction after-fixes write-up: `docs/sr2fpga-l0-by-construction-ablation-after-fixes-2026-06-28.md`
 - System-HIS v1.2 two-stage smoke config: `configs/sr2fpga_his_v12_smoke.example.yaml`
 - Tool-loop runner config: `configs/sr2fpga_agent.example.yaml`
 - Baseline report renderer: `LLM/src/sr2fpga_agent/baseline_report.py`

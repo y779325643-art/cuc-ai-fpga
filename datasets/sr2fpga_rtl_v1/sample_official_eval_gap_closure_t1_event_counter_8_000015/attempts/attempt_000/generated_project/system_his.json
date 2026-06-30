@@ -1,0 +1,297 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Build an 8-bit event-counting subsystem as a complete SR2FPGA Verilog RTL project. This is component topology t1_event_counter, difficulty tier T1. Use an event_gate in front of a counter_core. The design must implement this black-box behavior: event_valid pulses pass through an event gate and increment the counter core. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.event_valid -> event_gate.event_valid; event_gate.count_en -> counter_core.en; counter_core.count -> top.count. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "design_goal": "Implement an 8-bit event counter with event_gate and counter_core, outputting count on top.count.",
+    "assumptions": [
+      "Event gate is a combinational pass-through of event_valid to count_en.",
+      "Counter increments on rising edge of clock when en is asserted.",
+      "Output count is registered from the counter."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "value": 8
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "target_fmax_mhz": 100
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "event_valid",
+        "direction": "input",
+        "width": 1,
+        "clock": "clk"
+      },
+      {
+        "name": "count",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "clock": "clk"
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [
+      {
+        "name": "counter.value",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "owner": "counter",
+        "initial": 0
+      }
+    ],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "event_gate",
+      "semantic_kind": "gate",
+      "source": "rtl/event_gate.v",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "event_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count_en",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "parameters": [],
+      "intent": "Passes event_valid pulses to count_en. Combinational."
+    },
+    {
+      "name": "counter_core",
+      "semantic_kind": "counter",
+      "source": "rtl/counter_core.v",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "en",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "intent": "Synchronous counter increments on en assertion, with registered output."
+    }
+  ],
+  "instances": [
+    {
+      "name": "event_gate",
+      "component": "event_gate",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "counter",
+      "component": "counter_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "counter.value"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "event_to_counter",
+      "path": [
+        "top.event_valid",
+        "event_gate.event_valid",
+        "event_gate.count_en",
+        "counter.en"
+      ],
+      "payload": {
+        "name": "pulse",
+        "width": 1
+      },
+      "protocol": "pulse",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one pulse per cycle"
+      }
+    },
+    {
+      "name": "counter_output",
+      "path": [
+        "counter.count",
+        "top.count"
+      ],
+      "payload": {
+        "name": "count_value",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "registered",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_counter",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "counter.value",
+        "value": 0
+      },
+      "related_state": [
+        "counter.value"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "counter_increment",
+      "kind": "counter_update",
+      "when": {
+        "signal": "counter.en",
+        "op": "==",
+        "value": 1
+      },
+      "effect": {
+        "action": "increment",
+        "target": "counter.value",
+        "value": 1
+      },
+      "related_state": [
+        "counter.value"
+      ],
+      "related_flows": [
+        "event_to_counter",
+        "counter_output"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_event_count",
+        "description": "Apply a sequence of event_valid pulses and verify count increments accordingly.",
+        "stimulus": "After reset, apply 10 pulses with gaps, then check count == 10. Repeat with more pulses to cover counter wrap around at 256.",
+        "expected": [
+          "Count increments on each rising edge after valid",
+          "Count rolls over from 255 to 0",
+          "TEST_PASS after all checks"
+        ]
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/event_gate.v",
+      "rtl/counter_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

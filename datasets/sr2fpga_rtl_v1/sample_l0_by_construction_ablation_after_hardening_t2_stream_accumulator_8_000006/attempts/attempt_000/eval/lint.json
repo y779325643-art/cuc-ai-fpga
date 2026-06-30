@@ -1,0 +1,16 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/accumulator_core.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Error: rtl/top.v:12:9: Can't find definition of variable: 'DATA_WIDTH'\n   12 |   wire [DATA_WIDTH-1:0] input_buffer__in_data;\n      |         ^~~~~~~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: Exiting due to 1 error(s)\n",
+  "duration_seconds": 0.11279925000053481
+}

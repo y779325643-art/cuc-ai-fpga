@@ -32,6 +32,10 @@ endmodule
     def test_normalize_width_treats_range_and_int_equal(self) -> None:
         self.assertEqual(normalize_width("[7:0]"), normalize_width(8))
 
+    def test_normalize_width_treats_concrete_minus_one_range_as_int_equal(self) -> None:
+        self.assertEqual(normalize_width("[1-1:0]"), normalize_width(1))
+        self.assertEqual(normalize_width("[8-1:0]"), normalize_width(8))
+
     def test_parse_module_ports_ignores_line_comments_in_port_list(self) -> None:
         rtl = """
 module skid_buffer #(
@@ -69,6 +73,21 @@ endmodule
     def test_widths_equivalent_accepts_dict_resolved_against_concrete_rtl_width(self) -> None:
         self.assertTrue(widths_equivalent({"expr": "DATA_WIDTH", "resolved": 8}, 8))
         self.assertTrue(widths_equivalent({"expr": "[DATA_WIDTH-1:0]", "resolved": 8}, "[7:0]"))
+
+    def test_widths_equivalent_accepts_single_bit_minus_one_rtl_range(self) -> None:
+        rtl = "module top(input [1-1:0] clk, output [8-1:0] data);\nendmodule\n"
+
+        ports = parse_module_ports(rtl, "top")
+
+        self.assertTrue(widths_equivalent({"expr": "1", "resolved": 1}, ports["clk"]["width"]))
+        self.assertTrue(widths_equivalent({"expr": "8", "resolved": 8}, ports["data"]["width"]))
+
+    def test_widths_equivalent_accepts_complete_unbracketed_range_expr(self) -> None:
+        self.assertTrue(widths_equivalent({"expr": "DATA_WIDTH-1:0", "resolved": None}, "[DATA_WIDTH-1:0]"))
+        self.assertTrue(widths_equivalent({"expr": "2*DATA_WIDTH-1:0", "resolved": None}, "[2*DATA_WIDTH-1:0]"))
+
+    def test_widths_equivalent_accepts_arithmetic_expr_against_rtl_range(self) -> None:
+        self.assertTrue(widths_equivalent({"expr": "2*DATA_WIDTH", "resolved": 16}, "[2*DATA_WIDTH-1:0]"))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,3 @@
+TEST_FAIL fork outputs not valid
+sim/tb_top.v:55: $finish called at 56000 (1ps)
+Simulation reported TEST_FAIL

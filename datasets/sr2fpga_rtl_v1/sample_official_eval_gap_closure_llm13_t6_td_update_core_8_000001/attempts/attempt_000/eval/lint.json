@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/td_input_stage.v",
+    "rtl/discount_core.v",
+    "rtl/td_update_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDSIGNAL: rtl/discount_core.v:11:24: Bits of signal are not used: 'product'[15:12,3:0]\n                                                : ... note: In instance 'top.u_discount_core'\n   11 |     wire signed [15:0] product;\n      |                        ^~~~~~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Warning-UNUSEDSIGNAL: rtl/td_update_core.v:12:24: Bits of signal are not used: 'product'[15:12,3:0]\n                                                 : ... note: In instance 'top.u_td_update_core'\n   12 |     wire signed [15:0] product;\n      |                        ^~~~~~~\n%Error: Exiting due to 2 warning(s)\n",
+  "duration_seconds": 0.10721970899612643
+}

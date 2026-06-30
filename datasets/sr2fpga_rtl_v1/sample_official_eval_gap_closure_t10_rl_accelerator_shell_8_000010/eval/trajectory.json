@@ -1,0 +1,2796 @@
+{
+  "sample_id": "sample_official_eval_gap_closure_t10_rl_accelerator_shell_8_000010",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 1,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/host_config_bank.v",
+        "rtl/sample_capture_stage.v",
+        "rtl/policy_value_core.v",
+        "rtl/td_update_core.v",
+        "rtl/result_stream_stage.v"
+      ],
+      "failure_type": "lint_warning_as_error",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "composed_rl_accelerator_shell",
+    "project_name": "official_eval_gap_closure_t10_rl_accelerator_shell_8_000010",
+    "project": {
+      "name": "official_eval_gap_closure_t10_rl_accelerator_shell_8_000010",
+      "description": "Build an 8-bit synthetic RL accelerator shell as a complete SR2FPGA Verilog RTL project. This is component topology t10_rl_accelerator_shell, difficulty tier T10. Use host_config_bank and sample_capture_stage feeding policy_value_core, then td_update_core and result_stream_stage. The design must implement this black-box behavior: configuration writes set weights, biases, alpha, and enable; sample tuples are captured, scored into a selected action and value estimate, updated through a TD datapath, and staged as a result stream with episode irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.cfg_valid -> host_config_bank.cfg_valid; top.cfg_addr -> host_config_bank.cfg_addr; top.cfg_data -> host_config_bank.cfg_data; host_config_bank.cfg_ready -> top.cfg_ready; top.sample_valid -> sample_capture_stage.in_valid; sample_capture_stage.in_ready -> top.sample_ready; top.obs0 -> sample_capture_stage.obs0; top.obs1 -> sample_capture_stage.obs1; top.reward -> sample_capture_stage.reward; top.next_value -> sample_capture_stage.next_value; top.done_in -> sample_capture_stage.done_in; sample_capture_stage.out_valid -> policy_value_core.in_valid; sample_capture_stage.obs0_out -> policy_value_core.obs0; sample_capture_stage.obs1_out -> policy_value_core.obs1; host_config_bank.weight0 -> policy_value_core.weight0; host_config_bank.bias0 -> policy_value_core.bias0; host_config_bank.weight1 -> policy_value_core.weight1; host_config_bank.bias1 -> policy_value_core.bias1; host_config_bank.enable -> policy_value_core.enable; policy_value_core.out_valid -> td_update_core.in_valid; policy_value_core.value_estimate -> td_update_core.value_estimate; sample_capture_stage.reward_out -> td_update_core.reward; sample_capture_stage.next_value_out -> td_update_core.next_value; host_config_bank.alpha -> td_update_core.alpha; td_update_core.out_valid -> result_stream_stage.in_valid; policy_value_core.selected_action -> result_stream_stage.selected_action; policy_value_core.value_estimate -> result_stream_stage.value_estimate; td_update_core.updated_value -> result_stream_stage.updated_value; sample_capture_stage.done_out -> result_stream_stage.done_in; result_stream_stage.out_ready -> sample_capture_stage.consume_ready; result_stream_stage.result_valid -> top.result_valid; top.result_ready -> result_stream_stage.result_ready; result_stream_stage.selected_action_out -> top.selected_action; result_stream_stage.value_estimate_out -> top.value_estimate; result_stream_stage.updated_value_out -> top.updated_value; result_stream_stage.episode_done_out -> top.episode_done; result_stream_stage.irq -> top.irq. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Build an 8-bit synthetic RL accelerator shell as a complete SR2FPGA Verilog RTL project. This is component topology t10_rl_accelerator_shell, difficulty tier T10. Use host_config_bank and sample_capture_stage feeding policy_value_core, then td_update_core and result_stream_stage. The design must implement this black-box behavior: configuration writes set weights, biases, alpha, and enable; sample tuples are captured, scored into a selected action and value estimate, updated through a TD datapath, and staged as a result stream with episode irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.cfg_valid -> host_config_bank.cfg_valid; top.cfg_addr -> host_config_bank.cfg_addr; top.cfg_data -> host_config_bank.cfg_data; host_config_bank.cfg_ready -> top.cfg_ready; top.sample_valid -> sample_capture_stage.in_valid; sample_capture_stage.in_ready -> top.sample_ready; top.obs0 -> sample_capture_stage.obs0; top.obs1 -> sample_capture_stage.obs1; top.reward -> sample_capture_stage.reward; top.next_value -> sample_capture_stage.next_value; top.done_in -> sample_capture_stage.done_in; sample_capture_stage.out_valid -> policy_value_core.in_valid; sample_capture_stage.obs0_out -> policy_value_core.obs0; sample_capture_stage.obs1_out -> policy_value_core.obs1; host_config_bank.weight0 -> policy_value_core.weight0; host_config_bank.bias0 -> policy_value_core.bias0; host_config_bank.weight1 -> policy_value_core.weight1; host_config_bank.bias1 -> policy_value_core.bias1; host_config_bank.enable -> policy_value_core.enable; policy_value_core.out_valid -> td_update_core.in_valid; policy_value_core.value_estimate -> td_update_core.value_estimate; sample_capture_stage.reward_out -> td_update_core.reward; sample_capture_stage.next_value_out -> td_update_core.next_value; host_config_bank.alpha -> td_update_core.alpha; td_update_core.out_valid -> result_stream_stage.in_valid; policy_value_core.selected_action -> result_stream_stage.selected_action; policy_value_core.value_estimate -> result_stream_stage.value_estimate; td_update_core.updated_value -> result_stream_stage.updated_value; sample_capture_stage.done_out -> result_stream_stage.done_in; result_stream_stage.out_ready -> sample_capture_stage.consume_ready; result_stream_stage.result_valid -> top.result_valid; top.result_ready -> result_stream_stage.result_ready; result_stream_stage.selected_action_out -> top.selected_action; result_stream_stage.value_estimate_out -> top.value_estimate; result_stream_stage.updated_value_out -> top.updated_value; result_stream_stage.episode_done_out -> top.episode_done; result_stream_stage.irq -> top.irq. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "configuration writes set weights, biases, alpha, and enable; sample tuples are captured, scored into selected action and value estimate, updated through a TD datapath, and staged as result output with episode irq reporting",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_addr",
+          "dir": "input",
+          "width": 3
+        },
+        {
+          "name": "cfg_data",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "sample_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "obs1",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "reward",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "next_value",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "done_in",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "result_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "selected_action",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "updated_value",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "episode_done",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "weight0",
+          "owner": "u_host_config_bank",
+          "width": 8
+        },
+        {
+          "name": "bias0",
+          "owner": "u_host_config_bank",
+          "width": 8
+        },
+        {
+          "name": "weight1",
+          "owner": "u_host_config_bank",
+          "width": 8
+        },
+        {
+          "name": "bias1",
+          "owner": "u_host_config_bank",
+          "width": 8
+        },
+        {
+          "name": "alpha",
+          "owner": "u_host_config_bank",
+          "width": 8
+        },
+        {
+          "name": "enable",
+          "owner": "u_host_config_bank",
+          "width": 1
+        },
+        {
+          "name": "captured_obs0",
+          "owner": "u_sample_capture_stage",
+          "width": 8
+        },
+        {
+          "name": "captured_obs1",
+          "owner": "u_sample_capture_stage",
+          "width": 8
+        },
+        {
+          "name": "captured_reward",
+          "owner": "u_sample_capture_stage",
+          "width": 8
+        },
+        {
+          "name": "captured_next_value",
+          "owner": "u_sample_capture_stage",
+          "width": 8
+        },
+        {
+          "name": "captured_done",
+          "owner": "u_sample_capture_stage",
+          "width": 1
+        },
+        {
+          "name": "selected_action",
+          "owner": "u_result_stream_stage",
+          "width": 1
+        },
+        {
+          "name": "value_estimate",
+          "owner": "u_result_stream_stage",
+          "width": 8
+        },
+        {
+          "name": "updated_value",
+          "owner": "u_result_stream_stage",
+          "width": 8
+        },
+        {
+          "name": "episode_done",
+          "owner": "u_result_stream_stage",
+          "width": 1
+        },
+        {
+          "name": "irq_state",
+          "owner": "u_result_stream_stage",
+          "width": 1
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_addr",
+            "dir": "input",
+            "width": 3
+          },
+          {
+            "name": "cfg_data",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "sample_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "obs0",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "obs1",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "next_value",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "done_in",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "result_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "result_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "selected_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "value_estimate",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "updated_value",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "episode_done",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "irq",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "host_config_bank",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/host_config_bank.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "cfg_addr",
+            "dir": "input",
+            "width": 3
+          },
+          {
+            "name": "cfg_data",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight0",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias0",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight1",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias1",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "enable",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "host config bank component in the generated RTL project"
+      },
+      {
+        "name": "sample_capture_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/sample_capture_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "obs0",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "obs1",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_in",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "consume_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "obs0_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "obs1_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "reward_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_out",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample capture stage component in the generated RTL project"
+      },
+      {
+        "name": "policy_value_core",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/policy_value_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "obs0",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "obs1",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight0",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias0",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight1",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias1",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "enable",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "selected_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "value_estimate",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "policy value core component in the generated RTL project"
+      },
+      {
+        "name": "td_update_core",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/td_update_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value_estimate",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "updated_value",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "td update core component in the generated RTL project"
+      },
+      {
+        "name": "result_stream_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/result_stream_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "selected_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "value_estimate",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_in",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "result_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "result_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "selected_action_out",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "value_estimate_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "episode_done_out",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "irq",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "result stream stage component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_host_config_bank",
+        "component": "host_config_bank",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_sample_capture_stage",
+        "component": "sample_capture_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_policy_value_core",
+        "component": "policy_value_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_td_update_core",
+        "component": "td_update_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_result_stream_stage",
+        "component": "result_stream_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_host_config_bank_primary_path",
+        "path": [
+          "top.cfg_data",
+          "u_host_config_bank.cfg_valid",
+          "u_host_config_bank.cfg_ready",
+          "top.result_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_sample_capture_stage_primary_path",
+        "path": [
+          "top.cfg_data",
+          "u_sample_capture_stage.in_valid",
+          "u_sample_capture_stage.in_ready",
+          "top.result_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_policy_value_core_primary_path",
+        "path": [
+          "top.cfg_data",
+          "u_policy_value_core.in_valid",
+          "u_policy_value_core.out_valid",
+          "top.result_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_td_update_core_primary_path",
+        "path": [
+          "top.cfg_data",
+          "u_td_update_core.in_valid",
+          "u_td_update_core.out_valid",
+          "top.result_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_result_stream_stage_primary_path",
+        "path": [
+          "top.cfg_data",
+          "u_result_stream_stage.in_valid",
+          "u_result_stream_stage.out_ready",
+          "top.result_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      },
+      {
+        "name": "valid_ready_transfer",
+        "kind": "handshake_rule",
+        "condition": "valid && ready",
+        "effects": [
+          "advance each ready/valid flow by one payload"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_host_config_bank_primary_path",
+          "u_sample_capture_stage_primary_path",
+          "u_policy_value_core_primary_path",
+          "u_td_update_core_primary_path",
+          "u_result_stream_stage_primary_path"
+        ]
+      },
+      {
+        "name": "backpressure_hold",
+        "kind": "stall_rule",
+        "condition": "valid && !ready",
+        "effects": [
+          "hold payload and valid state until downstream ready"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_host_config_bank_primary_path",
+          "u_sample_capture_stage_primary_path",
+          "u_policy_value_core_primary_path",
+          "u_td_update_core_primary_path",
+          "u_result_stream_stage_primary_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 208,
+        "ff": 208,
+        "bram": 0,
+        "dsp": 2
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when configuration writes set weights, biases, alpha, and enable; sample tuples are captured, scored into selected action and value estimate, updated through a TD datapath, and staged as result output with episode irq reporting.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when configuration writes set weights, biases, alpha, and enable; sample tuples are captured, scored into selected action and value estimate, updated through a TD datapath, and staged as result output with episode irq reporting.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when configuration writes set weights, biases, alpha, and enable; sample tuples are captured, scored into selected action and value estimate, updated through a TD datapath, and staged as result output with episode irq reporting."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/host_config_bank.v",
+        "rtl/sample_capture_stage.v",
+        "rtl/policy_value_core.v",
+        "rtl/td_update_core.v",
+        "rtl/result_stream_stage.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Build an 8-bit synthetic RL accelerator shell as a complete SR2FPGA Verilog RTL project. This is component topology t10_rl_accelerator_shell, difficulty tier T10. Use host_config_bank and sample_capture_stage feeding policy_value_core, then td_update_core and result_stream_stage. The design must implement this black-box behavior: configuration writes set weights, biases, alpha, and enable; sample tuples are captured, scored into a selected action and value estimate, updated through a TD datapath, and staged as a result stream with episode irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.cfg_valid -> host_config_bank.cfg_valid; top.cfg_addr -> host_config_bank.cfg_addr; top.cfg_data -> host_config_bank.cfg_data; host_config_bank.cfg_ready -> top.cfg_ready; top.sample_valid -> sample_capture_stage.in_valid; sample_capture_stage.in_ready -> top.sample_ready; top.obs0 -> sample_capture_stage.obs0; top.obs1 -> sample_capture_stage.obs1; top.reward -> sample_capture_stage.reward; top.next_value -> sample_capture_stage.next_value; top.done_in -> sample_capture_stage.done_in; sample_capture_stage.out_valid -> policy_value_core.in_valid; sample_capture_stage.obs0_out -> policy_value_core.obs0; sample_capture_stage.obs1_out -> policy_value_core.obs1; host_config_bank.weight0 -> policy_value_core.weight0; host_config_bank.bias0 -> policy_value_core.bias0; host_config_bank.weight1 -> policy_value_core.weight1; host_config_bank.bias1 -> policy_value_core.bias1; host_config_bank.enable -> policy_value_core.enable; policy_value_core.out_valid -> td_update_core.in_valid; policy_value_core.value_estimate -> td_update_core.value_estimate; sample_capture_stage.reward_out -> td_update_core.reward; sample_capture_stage.next_value_out -> td_update_core.next_value; host_config_bank.alpha -> td_update_core.alpha; td_update_core.out_valid -> result_stream_stage.in_valid; policy_value_core.selected_action -> result_stream_stage.selected_action; policy_value_core.value_estimate -> result_stream_stage.value_estimate; td_update_core.updated_value -> result_stream_stage.updated_value; sample_capture_stage.done_out -> result_stream_stage.done_in; result_stream_stage.out_ready -> sample_capture_stage.consume_ready; result_stream_stage.result_valid -> top.result_valid; top.result_ready -> result_stream_stage.result_ready; result_stream_stage.selected_action_out -> top.selected_action; result_stream_stage.value_estimate_out -> top.value_estimate; result_stream_stage.updated_value_out -> top.updated_value; result_stream_stage.episode_done_out -> top.episode_done; result_stream_stage.irq -> top.irq. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "cfg_valid",
+          "width": 1
+        },
+        {
+          "name": "cfg_addr",
+          "width": 3
+        },
+        {
+          "name": "cfg_data",
+          "width": 8
+        },
+        {
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "name": "obs0",
+          "width": 8
+        },
+        {
+          "name": "obs1",
+          "width": 8
+        },
+        {
+          "name": "reward",
+          "width": 8
+        },
+        {
+          "name": "next_value",
+          "width": 8
+        },
+        {
+          "name": "done_in",
+          "width": 1
+        },
+        {
+          "name": "result_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "cfg_ready",
+          "width": 1
+        },
+        {
+          "name": "sample_ready",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "width": 1
+        },
+        {
+          "name": "selected_action",
+          "width": 1
+        },
+        {
+          "name": "value_estimate",
+          "width": 8
+        },
+        {
+          "name": "updated_value",
+          "width": 8
+        },
+        {
+          "name": "episode_done",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "width": 1
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "host_config_bank",
+        "sample_capture_stage",
+        "policy_value_core",
+        "td_update_core",
+        "result_stream_stage"
+      ],
+      "generator": "component_topology",
+      "topology_id": "t10_rl_accelerator_shell",
+      "difficulty_tier": "T10",
+      "component_library": "sr2fpga_deterministic_components_v1",
+      "topology": {
+        "nodes": [
+          {
+            "id": "config",
+            "component": "host_config_bank"
+          },
+          {
+            "id": "sample",
+            "component": "sample_capture_stage"
+          },
+          {
+            "id": "policy",
+            "component": "policy_value_core"
+          },
+          {
+            "id": "update",
+            "component": "td_update_core"
+          },
+          {
+            "id": "result",
+            "component": "result_stream_stage"
+          }
+        ],
+        "edges": [
+          {
+            "from": "top.cfg_valid",
+            "to": "host_config_bank.cfg_valid"
+          },
+          {
+            "from": "top.cfg_addr",
+            "to": "host_config_bank.cfg_addr"
+          },
+          {
+            "from": "top.cfg_data",
+            "to": "host_config_bank.cfg_data"
+          },
+          {
+            "from": "host_config_bank.cfg_ready",
+            "to": "top.cfg_ready"
+          },
+          {
+            "from": "top.sample_valid",
+            "to": "sample_capture_stage.in_valid"
+          },
+          {
+            "from": "sample_capture_stage.in_ready",
+            "to": "top.sample_ready"
+          },
+          {
+            "from": "top.obs0",
+            "to": "sample_capture_stage.obs0"
+          },
+          {
+            "from": "top.obs1",
+            "to": "sample_capture_stage.obs1"
+          },
+          {
+            "from": "top.reward",
+            "to": "sample_capture_stage.reward"
+          },
+          {
+            "from": "top.next_value",
+            "to": "sample_capture_stage.next_value"
+          },
+          {
+            "from": "top.done_in",
+            "to": "sample_capture_stage.done_in"
+          },
+          {
+            "from": "sample_capture_stage.out_valid",
+            "to": "policy_value_core.in_valid"
+          },
+          {
+            "from": "sample_capture_stage.obs0_out",
+            "to": "policy_value_core.obs0"
+          },
+          {
+            "from": "sample_capture_stage.obs1_out",
+            "to": "policy_value_core.obs1"
+          },
+          {
+            "from": "host_config_bank.weight0",
+            "to": "policy_value_core.weight0"
+          },
+          {
+            "from": "host_config_bank.bias0",
+            "to": "policy_value_core.bias0"
+          },
+          {
+            "from": "host_config_bank.weight1",
+            "to": "policy_value_core.weight1"
+          },
+          {
+            "from": "host_config_bank.bias1",
+            "to": "policy_value_core.bias1"
+          },
+          {
+            "from": "host_config_bank.enable",
+            "to": "policy_value_core.enable"
+          },
+          {
+            "from": "policy_value_core.out_valid",
+            "to": "td_update_core.in_valid"
+          },
+          {
+            "from": "policy_value_core.value_estimate",
+            "to": "td_update_core.value_estimate"
+          },
+          {
+            "from": "sample_capture_stage.reward_out",
+            "to": "td_update_core.reward"
+          },
+          {
+            "from": "sample_capture_stage.next_value_out",
+            "to": "td_update_core.next_value"
+          },
+          {
+            "from": "host_config_bank.alpha",
+            "to": "td_update_core.alpha"
+          },
+          {
+            "from": "td_update_core.out_valid",
+            "to": "result_stream_stage.in_valid"
+          },
+          {
+            "from": "policy_value_core.selected_action",
+            "to": "result_stream_stage.selected_action"
+          },
+          {
+            "from": "policy_value_core.value_estimate",
+            "to": "result_stream_stage.value_estimate"
+          },
+          {
+            "from": "td_update_core.updated_value",
+            "to": "result_stream_stage.updated_value"
+          },
+          {
+            "from": "sample_capture_stage.done_out",
+            "to": "result_stream_stage.done_in"
+          },
+          {
+            "from": "result_stream_stage.out_ready",
+            "to": "sample_capture_stage.consume_ready"
+          },
+          {
+            "from": "result_stream_stage.result_valid",
+            "to": "top.result_valid"
+          },
+          {
+            "from": "top.result_ready",
+            "to": "result_stream_stage.result_ready"
+          },
+          {
+            "from": "result_stream_stage.selected_action_out",
+            "to": "top.selected_action"
+          },
+          {
+            "from": "result_stream_stage.value_estimate_out",
+            "to": "top.value_estimate"
+          },
+          {
+            "from": "result_stream_stage.updated_value_out",
+            "to": "top.updated_value"
+          },
+          {
+            "from": "result_stream_stage.episode_done_out",
+            "to": "top.episode_done"
+          },
+          {
+            "from": "result_stream_stage.irq",
+            "to": "top.irq"
+          }
+        ]
+      }
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_addr",
+            "direction": "input",
+            "width": 3
+          },
+          {
+            "name": "cfg_data",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "sample_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "obs0",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "obs1",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "next_value",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "done_in",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "result_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "result_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "selected_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "value_estimate",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "updated_value",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "episode_done",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "irq",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "host_config_bank",
+        "role": "submodule",
+        "source": "rtl/host_config_bank.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "cfg_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "cfg_addr",
+            "direction": "input",
+            "width": 3
+          },
+          {
+            "name": "cfg_data",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight0",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias0",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight1",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias1",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "enable",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "host config bank component in the generated RTL project"
+      },
+      {
+        "name": "sample_capture_stage",
+        "role": "submodule",
+        "source": "rtl/sample_capture_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "obs0",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "obs1",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_in",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "consume_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "obs0_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "obs1_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "reward_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_out",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample capture stage component in the generated RTL project"
+      },
+      {
+        "name": "policy_value_core",
+        "role": "submodule",
+        "source": "rtl/policy_value_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "obs0",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "obs1",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight0",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias0",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight1",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias1",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "enable",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "selected_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "value_estimate",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "policy value core component in the generated RTL project"
+      },
+      {
+        "name": "td_update_core",
+        "role": "submodule",
+        "source": "rtl/td_update_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value_estimate",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "updated_value",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "td update core component in the generated RTL project"
+      },
+      {
+        "name": "result_stream_stage",
+        "role": "submodule",
+        "source": "rtl/result_stream_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "selected_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "value_estimate",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_in",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "result_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "result_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "selected_action_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "value_estimate_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "episode_done_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "irq",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "result stream stage component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "host_config_bank",
+          "port": "clk",
+          "instance": "u_host_config_bank"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "clk",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "clk",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "host_config_bank",
+          "port": "rst_n",
+          "instance": "u_host_config_bank"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "rst_n",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "rst_n",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "cfg_valid"
+        },
+        "to": {
+          "module": "host_config_bank",
+          "port": "cfg_valid",
+          "instance": "u_host_config_bank"
+        },
+        "signal": "cfg_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_config_bank",
+          "port": "cfg_ready",
+          "instance": "u_host_config_bank"
+        },
+        "to": {
+          "module": "top",
+          "port": "cfg_ready"
+        },
+        "signal": "cfg_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "cfg_addr"
+        },
+        "to": {
+          "module": "host_config_bank",
+          "port": "cfg_addr",
+          "instance": "u_host_config_bank"
+        },
+        "signal": "cfg_addr",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 3,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "cfg_data"
+        },
+        "to": {
+          "module": "host_config_bank",
+          "port": "cfg_data",
+          "instance": "u_host_config_bank"
+        },
+        "signal": "cfg_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_config_bank",
+          "port": "weight0",
+          "instance": "u_host_config_bank"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "weight0",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "weight0",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_config_bank",
+          "port": "bias0",
+          "instance": "u_host_config_bank"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "bias0",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "bias0",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_config_bank",
+          "port": "weight1",
+          "instance": "u_host_config_bank"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "weight1",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "weight1",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_config_bank",
+          "port": "bias1",
+          "instance": "u_host_config_bank"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "bias1",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "bias1",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_config_bank",
+          "port": "alpha",
+          "instance": "u_host_config_bank"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "alpha",
+          "instance": "u_td_update_core"
+        },
+        "signal": "alpha",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_config_bank",
+          "port": "enable",
+          "instance": "u_host_config_bank"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "enable",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "enable",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "sample_valid"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "in_valid",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "sample_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_capture_stage",
+          "port": "in_ready",
+          "instance": "u_sample_capture_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_ready"
+        },
+        "signal": "sample_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "obs0"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "obs0",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "obs0",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "obs1"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "obs1",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "obs1",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "reward"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "reward",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "next_value"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "next_value",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "next_value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "done_in"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "done_in",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "done_in",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "result_stream_stage",
+          "port": "out_ready",
+          "instance": "u_result_stream_stage"
+        },
+        "to": {
+          "module": "sample_capture_stage",
+          "port": "consume_ready",
+          "instance": "u_sample_capture_stage"
+        },
+        "signal": "sample_consume_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_capture_stage",
+          "port": "out_valid",
+          "instance": "u_sample_capture_stage"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "in_valid",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "sample_stage_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_capture_stage",
+          "port": "obs0_out",
+          "instance": "u_sample_capture_stage"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "obs0",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "captured_obs0",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_capture_stage",
+          "port": "obs1_out",
+          "instance": "u_sample_capture_stage"
+        },
+        "to": {
+          "module": "policy_value_core",
+          "port": "obs1",
+          "instance": "u_policy_value_core"
+        },
+        "signal": "captured_obs1",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_capture_stage",
+          "port": "reward_out",
+          "instance": "u_sample_capture_stage"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "reward",
+          "instance": "u_td_update_core"
+        },
+        "signal": "captured_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_capture_stage",
+          "port": "next_value_out",
+          "instance": "u_sample_capture_stage"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "next_value",
+          "instance": "u_td_update_core"
+        },
+        "signal": "captured_next_value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_capture_stage",
+          "port": "done_out",
+          "instance": "u_sample_capture_stage"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "done_in",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "captured_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "policy_value_core",
+          "port": "out_valid",
+          "instance": "u_policy_value_core"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "in_valid",
+          "instance": "u_td_update_core"
+        },
+        "signal": "policy_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "policy_value_core",
+          "port": "selected_action",
+          "instance": "u_policy_value_core"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "selected_action",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "policy_selected_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "policy_value_core",
+          "port": "value_estimate",
+          "instance": "u_policy_value_core"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "value_estimate",
+          "instance": "u_td_update_core"
+        },
+        "signal": "policy_value_estimate",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "policy_value_core",
+          "port": "value_estimate",
+          "instance": "u_policy_value_core"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "value_estimate",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "policy_value_estimate",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_update_core",
+          "port": "out_valid",
+          "instance": "u_td_update_core"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "in_valid",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "update_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_update_core",
+          "port": "updated_value",
+          "instance": "u_td_update_core"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "updated_value",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "update_updated_value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "result_stream_stage",
+          "port": "result_valid",
+          "instance": "u_result_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "result_valid"
+        },
+        "signal": "result_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "result_ready"
+        },
+        "to": {
+          "module": "result_stream_stage",
+          "port": "result_ready",
+          "instance": "u_result_stream_stage"
+        },
+        "signal": "result_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "result_stream_stage",
+          "port": "selected_action_out",
+          "instance": "u_result_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "selected_action"
+        },
+        "signal": "selected_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "result_stream_stage",
+          "port": "value_estimate_out",
+          "instance": "u_result_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "value_estimate"
+        },
+        "signal": "value_estimate",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "result_stream_stage",
+          "port": "updated_value_out",
+          "instance": "u_result_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "updated_value"
+        },
+        "signal": "updated_value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "result_stream_stage",
+          "port": "episode_done_out",
+          "instance": "u_result_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "episode_done"
+        },
+        "signal": "episode_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "result_stream_stage",
+          "port": "irq",
+          "instance": "u_result_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "irq"
+        },
+        "signal": "irq",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "cfg_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "cfg_addr",
+        "direction": "input",
+        "width": 3
+      },
+      {
+        "name": "cfg_data",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "sample_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "obs0",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "obs1",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "reward",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "next_value",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "done_in",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "result_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "cfg_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "result_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "selected_action",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "value_estimate",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "updated_value",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "episode_done",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "irq",
+        "direction": "output",
+        "width": 1
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 208,
+        "ff": 208,
+        "bram": 0,
+        "dsp": 2
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 823,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 523,
+        "behavior_holes": 0
+      },
+      "rtl/host_config_bank.v": {
+        "origin": "model_generated",
+        "bytes": 1100,
+        "behavior_holes": 0
+      },
+      "rtl/policy_value_core.v": {
+        "origin": "model_generated",
+        "bytes": 1026,
+        "behavior_holes": 0
+      },
+      "rtl/result_stream_stage.v": {
+        "origin": "model_generated",
+        "bytes": 1347,
+        "behavior_holes": 0
+      },
+      "rtl/sample_capture_stage.v": {
+        "origin": "model_generated",
+        "bytes": 1315,
+        "behavior_holes": 0
+      },
+      "rtl/td_update_core.v": {
+        "origin": "model_generated",
+        "bytes": 762,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 3181,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 3633,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 67286,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/host_config_bank.v",
+      "rtl/policy_value_core.v",
+      "rtl/result_stream_stage.v",
+      "rtl/sample_capture_stage.v",
+      "rtl/td_update_core.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.152548,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

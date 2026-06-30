@@ -1,0 +1,5 @@
+%Error: rtl/top.v:11:9: Can't find definition of variable: 'WIDTH'
+   11 |   wire [WIDTH-1:0] counter__count;
+      |         ^~~~~
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: Exiting due to 1 error(s)

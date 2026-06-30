@@ -1,0 +1,558 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "composed_event_counter",
+  "project_name": "official_eval_gap_closure_detfix2_t1_event_counter_8_000001",
+  "project": {
+    "name": "official_eval_gap_closure_detfix2_t1_event_counter_8_000001",
+    "description": "Build an 8-bit event-counting subsystem as a complete SR2FPGA Verilog RTL project. This is component topology t1_event_counter, difficulty tier T1. Use an event_gate in front of a counter_core. The design must implement this black-box behavior: event_valid pulses pass through an event gate and increment the counter core. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.event_valid -> event_gate.event_valid; event_gate.count_en -> counter_core.en; counter_core.count -> top.count. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Build an 8-bit event-counting subsystem as a complete SR2FPGA Verilog RTL project. This is component topology t1_event_counter, difficulty tier T1. Use an event_gate in front of a counter_core. The design must implement this black-box behavior: event_valid pulses pass through an event gate and increment the counter core. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.event_valid -> event_gate.event_valid; event_gate.count_en -> counter_core.en; counter_core.count -> top.count. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "design_goal": "event_valid pulses pass through an event gate and increment the counter core",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "event_valid",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "count",
+        "dir": "output",
+        "width": 8
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "event_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "dir": "output",
+          "width": 8
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "event_gate",
+      "semantic_kind": "gate",
+      "source": "rtl/event_gate.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "event_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "count_en",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "event gate component in the generated RTL project"
+    },
+    {
+      "name": "counter_core",
+      "semantic_kind": "counter",
+      "source": "rtl/counter_core.v",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "en",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "dir": "output",
+          "width": "[WIDTH-1:0]"
+        }
+      ],
+      "intent": "counter core component in the generated RTL project"
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_event_gate",
+      "component": "event_gate",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_counter_core",
+      "component": "counter_core",
+      "parameter_values": {
+        "WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "u_event_gate_primary_path",
+      "path": [
+        "top.event_valid",
+        "u_event_gate.event_valid",
+        "u_event_gate.count_en",
+        "top.count"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_counter_core_primary_path",
+      "path": [
+        "top.event_valid",
+        "u_counter_core.en",
+        "u_counter_core.count",
+        "top.count"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 6,
+      "ff": 8,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when event_valid pulses pass through an event gate and increment the counter core.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when event_valid pulses pass through an event gate and increment the counter core.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when event_valid pulses pass through an event gate and increment the counter core."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/event_gate.v",
+      "rtl/counter_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Build an 8-bit event-counting subsystem as a complete SR2FPGA Verilog RTL project. This is component topology t1_event_counter, difficulty tier T1. Use an event_gate in front of a counter_core. The design must implement this black-box behavior: event_valid pulses pass through an event gate and increment the counter core. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.event_valid -> event_gate.event_valid; event_gate.count_en -> counter_core.en; counter_core.count -> top.count. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "event_valid",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "count",
+        "width": 8
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "event_gate",
+      "counter_core"
+    ],
+    "generator": "component_topology",
+    "topology_id": "t1_event_counter",
+    "difficulty_tier": "T1",
+    "component_library": "sr2fpga_deterministic_components_v1",
+    "topology": {
+      "nodes": [
+        {
+          "id": "gate",
+          "component": "event_gate"
+        },
+        {
+          "id": "counter",
+          "component": "counter_core"
+        }
+      ],
+      "edges": [
+        {
+          "from": "top.event_valid",
+          "to": "event_gate.event_valid"
+        },
+        {
+          "from": "event_gate.count_en",
+          "to": "counter_core.en"
+        },
+        {
+          "from": "counter_core.count",
+          "to": "top.count"
+        }
+      ]
+    }
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "event_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": 8
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "event_gate",
+      "role": "submodule",
+      "source": "rtl/event_gate.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "event_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count_en",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "event gate component in the generated RTL project"
+    },
+    {
+      "name": "counter_core",
+      "role": "submodule",
+      "source": "rtl/counter_core.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "en",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": "[WIDTH-1:0]"
+        }
+      ],
+      "intent": "counter core component in the generated RTL project"
+    }
+  ],
+  "connections": [
+    {
+      "from": {
+        "module": "top",
+        "port": "event_valid"
+      },
+      "to": {
+        "module": "event_gate",
+        "port": "event_valid",
+        "instance": "u_event_gate"
+      },
+      "signal": "event_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "event_gate",
+        "port": "count_en",
+        "instance": "u_event_gate"
+      },
+      "to": {
+        "module": "counter_core",
+        "port": "en",
+        "instance": "u_counter_core"
+      },
+      "signal": "count_en",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "counter_core",
+        "port": "clk",
+        "instance": "u_counter_core"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "counter_core",
+        "port": "rst_n",
+        "instance": "u_counter_core"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "counter_core",
+        "port": "count",
+        "instance": "u_counter_core"
+      },
+      "to": {
+        "module": "top",
+        "port": "count"
+      },
+      "signal": "count",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[WIDTH-1:0]",
+      "cdc": false
+    }
+  ],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "event_valid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "count",
+      "direction": "output",
+      "width": 8
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 6,
+      "ff": 8,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

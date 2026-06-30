@@ -1,0 +1,11 @@
+{
+  "project_name": "l0_by_construction_ablation_after_fixes_t4_dual_stream_join_8_000004",
+  "predicted_qor": {
+    "fmax_mhz": 150,
+    "lut_count": 80,
+    "ff_count": 120,
+    "dsp_count": 0,
+    "bram_count": 0,
+    "power_mw": 5
+  }
+}

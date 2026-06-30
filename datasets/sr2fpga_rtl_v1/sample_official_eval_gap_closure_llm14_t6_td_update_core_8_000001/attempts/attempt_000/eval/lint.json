@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/td_input_stage.v",
+    "rtl/discount_core.v",
+    "rtl/td_update_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-WIDTHEXPAND: rtl/discount_core.v:25:48: Operator ADD expects 16 bits on the LHS, but LHS's VARREF 'r' generates 8 bits.\n                                               : ... note: In instance 'top.u_discount_core'\n   25 |     wire signed [2*DATA_WIDTH-1:0] sum     = r + shifted;\n      |                                                ^\n                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048\n                      ... Use \"/* verilator lint_off WIDTHEXPAND */\" and lint_on around source to disable this message.\n%Warning-UNUSEDSIGNAL: rtl/discount_core.v:25:36: Bits of signal are not used: 'sum'[15:8]\n                                                : ... note: In instance 'top.u_discount_core'\n   25 |     wire signed [2*DATA_WIDTH-1:0] sum     = r + shifted;\n      |                                    ^~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Warning-UNUSEDSIGNAL: rtl/td_update_core.v:26:34: Bits of signal are not used: 'scaled'[16:8]\n                                                 : ... note: In instance 'top.u_td_update_core'\n   26 |     wire signed [2*DATA_WIDTH:0] scaled = mul >>> SCALE_SHIFT;\n      |                                  ^~~~~~\n%Warning-UNUSEDSIGNAL: rtl/td_update_core.v:27:34: Bits of signal are not used: 'new_val'[8]\n                                                 : ... note: In instance 'top.u_td_update_core'\n   27 |     wire signed [DATA_WIDTH:0]   new_val = v + $signed(scaled[DATA_WIDTH-1:0]);\n      |                                  ^~~~~~~\n%Error: Exiting due to 4 warning(s)\n",
+  "duration_seconds": 0.09817299999122042
+}

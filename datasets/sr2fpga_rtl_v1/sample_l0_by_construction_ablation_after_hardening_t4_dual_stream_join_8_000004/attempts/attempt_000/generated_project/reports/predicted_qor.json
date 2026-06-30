@@ -1,0 +1,16 @@
+{
+  "toolchain": "open_source",
+  "clock_frequency_mhz": 100.0,
+  "predicted_resource_usage": {
+    "LUTs": 80,
+    "FFs": 120,
+    "DSPs": 0,
+    "BRAMs": 0
+  },
+  "predicted_performance": {
+    "WNS_ns": 1.0,
+    "TNS_ns": 0.0,
+    "critical_path_ns": 8.5
+  },
+  "notes": "Conservative estimates for a small streaming design."
+}

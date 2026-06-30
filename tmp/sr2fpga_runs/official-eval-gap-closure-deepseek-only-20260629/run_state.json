@@ -1,0 +1,31 @@
+{
+  "run_id": "official-eval-gap-closure-deepseek-only-20260629",
+  "next_index": 5,
+  "completed_samples": [
+    "sample_official_eval_gap_closure_llm1_t1_event_counter_8_000001",
+    "sample_official_eval_gap_closure_llm1_t2_stream_accumulator_8_000002",
+    "sample_official_eval_gap_closure_llm1_t3_stream_fork_8_000003",
+    "sample_official_eval_gap_closure_llm1_t4_dual_stream_join_8_000004",
+    "sample_official_eval_gap_closure_llm1_t5_vector_mac_pipeline_8_000005"
+  ],
+  "buckets": {
+    "success_l3": [
+      "sample_official_eval_gap_closure_llm1_t1_event_counter_8_000001"
+    ],
+    "repair_trajectory": [
+      "sample_official_eval_gap_closure_llm1_t2_stream_accumulator_8_000002",
+      "sample_official_eval_gap_closure_llm1_t3_stream_fork_8_000003",
+      "sample_official_eval_gap_closure_llm1_t4_dual_stream_join_8_000004"
+    ],
+    "rejected": [
+      "sample_official_eval_gap_closure_llm1_t5_vector_mac_pipeline_8_000005"
+    ]
+  },
+  "failure_types": {
+    "lint_warning_as_error": 2,
+    "port_mismatch": 1,
+    "generation_failed": 1
+  },
+  "exports_refreshed": false,
+  "config_fingerprint": "107cf03d77a1f365166b3feb8e37913f891c2f22dad5ee0393ac6eb263fe7319"
+}

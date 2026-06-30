@@ -1,5 +1,17 @@
 # SR2FPGA LLM Generation Entry Design
 
+## Status
+
+Delivered (2026-06-22). DeepSeek entry is implemented and tested.
+
+**Post-delivery note:** This spec describes the first concrete LLM provider (DeepSeek)
+as the implementation vehicle. The underlying design intent — a provider-agnostic
+generation entry — was realized in the runner's multi-teacher source architecture
+(`2026-06-25-sr2fpga-multi-teacher-source-design.md`). DeepSeek is now one source
+among many (Qwen via DashScope, Claude, GPT-5.5, deterministic). The spec's provider
+boundary decisions (`cli.py` / `deepseek.py` / `DataGenerationAgent`) remain valid
+and are the foundation of that extension.
+
 ## Decision
 
 This document records the next SR2FPGA data-agent step: connect an actual LLM

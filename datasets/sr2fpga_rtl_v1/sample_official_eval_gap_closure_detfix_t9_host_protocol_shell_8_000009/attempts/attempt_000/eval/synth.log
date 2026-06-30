@@ -1,0 +1,1663 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+
+-- Running command `read_verilog rtl/top.v rtl/axi_lite_write_ctrl.v rtl/axi_lite_read_ctrl.v rtl/control_reg_bank.v rtl/sample_stream_adapter.v rtl/irq_status.v; synth -top top; stat' --
+
+1. Executing Verilog-2005 frontend: rtl/top.v
+Parsing Verilog input from `rtl/top.v' to AST representation.
+Generating RTLIL representation for module `\top'.
+Successfully finished Verilog frontend.
+
+2. Executing Verilog-2005 frontend: rtl/axi_lite_write_ctrl.v
+Parsing Verilog input from `rtl/axi_lite_write_ctrl.v' to AST representation.
+Generating RTLIL representation for module `\axi_lite_write_ctrl'.
+Successfully finished Verilog frontend.
+
+3. Executing Verilog-2005 frontend: rtl/axi_lite_read_ctrl.v
+Parsing Verilog input from `rtl/axi_lite_read_ctrl.v' to AST representation.
+Generating RTLIL representation for module `\axi_lite_read_ctrl'.
+Successfully finished Verilog frontend.
+
+4. Executing Verilog-2005 frontend: rtl/control_reg_bank.v
+Parsing Verilog input from `rtl/control_reg_bank.v' to AST representation.
+Generating RTLIL representation for module `\control_reg_bank'.
+Successfully finished Verilog frontend.
+
+5. Executing Verilog-2005 frontend: rtl/sample_stream_adapter.v
+Parsing Verilog input from `rtl/sample_stream_adapter.v' to AST representation.
+Generating RTLIL representation for module `\sample_stream_adapter'.
+Successfully finished Verilog frontend.
+
+6. Executing Verilog-2005 frontend: rtl/irq_status.v
+Parsing Verilog input from `rtl/irq_status.v' to AST representation.
+Generating RTLIL representation for module `\irq_status'.
+Successfully finished Verilog frontend.
+
+7. Executing SYNTH pass.
+
+7.1. Executing HIERARCHY pass (managing design hierarchy).
+
+7.1.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \irq_status
+Used module:     \sample_stream_adapter
+Used module:     \control_reg_bank
+Used module:     \axi_lite_read_ctrl
+Used module:     \axi_lite_write_ctrl
+Parameter \DATA_WIDTH = 8
+
+7.1.2. Executing AST frontend in derive mode using pre-parsed AST for module `\sample_stream_adapter'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Parameter \DATA_WIDTH = 8
+
+7.1.3. Executing AST frontend in derive mode using pre-parsed AST for module `\control_reg_bank'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Parameter \DATA_WIDTH = 8
+
+7.1.4. Executing AST frontend in derive mode using pre-parsed AST for module `\axi_lite_write_ctrl'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+
+7.1.5. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \irq_status
+Used module:     $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \axi_lite_read_ctrl
+Used module:     $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+
+7.1.6. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \irq_status
+Used module:     $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \axi_lite_read_ctrl
+Used module:     $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+Removing unused module `\sample_stream_adapter'.
+Removing unused module `\control_reg_bank'.
+Removing unused module `\axi_lite_write_ctrl'.
+Removed 3 unused modules.
+
+7.2. Executing PROC pass (convert processes to netlists).
+
+7.2.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+7.2.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 2 switch rules as full_case in process $proc$rtl/axi_lite_write_ctrl.v:29$35 in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Marked 3 switch rules as full_case in process $proc$rtl/control_reg_bank.v:23$27 in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Marked 2 switch rules as full_case in process $proc$rtl/axi_lite_read_ctrl.v:20$12 in module axi_lite_read_ctrl.
+Marked 2 switch rules as full_case in process $proc$rtl/sample_stream_adapter.v:16$22 in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Removed a total of 0 dead cases.
+
+7.2.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 2 redundant assignments.
+Promoted 0 assignments to connections.
+
+7.2.4. Executing PROC_INIT pass (extract init attributes).
+
+7.2.5. Executing PROC_ARST pass (detect async resets in processes).
+Found async reset \rst_n in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/axi_lite_write_ctrl.v:29$35'.
+Found async reset \rst_n in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+Found async reset \rst_n in `\axi_lite_read_ctrl.$proc$rtl/axi_lite_read_ctrl.v:20$12'.
+Found async reset \rst_n in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+
+7.2.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~13 debug messages>
+
+7.2.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/axi_lite_write_ctrl.v:29$35'.
+     1/1: $0\bvalid[0:0]
+Creating decoders for process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+     1/8: $0\start_pulse[0:0]
+     2/8: $0\done[0:0]
+     3/8: $0\busy[0:0]
+     4/8: $0\ctrl[7:0]
+     5/8: $0\read_data[7:0]
+     6/8: $0\irq_state[0:0]
+     7/8: $0\sample1[7:0]
+     8/8: $0\sample0[7:0]
+Creating decoders for process `\axi_lite_read_ctrl.$proc$rtl/axi_lite_read_ctrl.v:20$12'.
+     1/1: $0\rvalid[0:0]
+Creating decoders for process `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+     1/4: $0\stream_done[0:0]
+     2/4: $0\tlast[0:0]
+     3/4: $0\tdata[15:0]
+     4/4: $0\tvalid[0:0]
+
+7.2.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+7.2.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.\bvalid' using process `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/axi_lite_write_ctrl.v:29$35'.
+  created $adff cell `$procdff$138' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\start_pulse' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$143' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\sample0' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$148' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\sample1' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$153' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\irq_state' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$158' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\read_data' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$163' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\ctrl' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$168' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\busy' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$173' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\done' using process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+  created $adff cell `$procdff$178' with positive edge clock and positive level reset.
+Creating register for signal `\axi_lite_read_ctrl.\rvalid' using process `\axi_lite_read_ctrl.$proc$rtl/axi_lite_read_ctrl.v:20$12'.
+  created $adff cell `$procdff$183' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.\stream_done' using process `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+  created $adff cell `$procdff$188' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.\tvalid' using process `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+  created $adff cell `$procdff$193' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.\tdata' using process `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+  created $adff cell `$procdff$198' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.\tlast' using process `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+  created $adff cell `$procdff$203' with positive edge clock and positive level reset.
+
+7.2.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+7.2.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 2 empty switches in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/axi_lite_write_ctrl.v:29$35'.
+Removing empty process `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/axi_lite_write_ctrl.v:29$35'.
+Found and cleaned up 7 empty switches in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+Removing empty process `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/control_reg_bank.v:23$27'.
+Found and cleaned up 2 empty switches in `\axi_lite_read_ctrl.$proc$rtl/axi_lite_read_ctrl.v:20$12'.
+Removing empty process `axi_lite_read_ctrl.$proc$rtl/axi_lite_read_ctrl.v:20$12'.
+Found and cleaned up 2 empty switches in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+Removing empty process `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_stream_adapter.v:16$22'.
+Cleaned up 13 empty switches.
+
+7.2.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~2 debug messages>
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~22 debug messages>
+Optimizing module axi_lite_read_ctrl.
+<suppressed ~2 debug messages>
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~8 debug messages>
+Optimizing module top.
+
+7.3. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 18 unused cells and 77 unused wires.
+<suppressed ~22 debug messages>
+
+7.5. Executing CHECK pass (checking for obvious problems).
+Checking module irq_status...
+Checking module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module axi_lite_read_ctrl...
+Checking module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+7.6. Executing OPT pass (performing simple optimizations).
+
+7.6.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~3 debug messages>
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 42 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 38 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~12 debug messages>
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 6 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 5 cells.
+
+7.6.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \irq_status..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \axi_lite_read_ctrl..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~48 debug messages>
+
+7.6.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \irq_status.
+  Optimizing cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \axi_lite_read_ctrl.
+  Optimizing cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.6.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 38 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 6 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.6.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.6.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 4 unused wires.
+<suppressed ~1 debug messages>
+
+7.6.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.6.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \irq_status..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \axi_lite_read_ctrl..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~48 debug messages>
+
+7.6.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \irq_status.
+  Optimizing cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \axi_lite_read_ctrl.
+  Optimizing cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.6.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 38 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 6 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.6.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.6.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.6.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.16. Finished fast OPT passes. (There is nothing left to do.)
+
+7.7. Executing FSM pass (extract and optimize FSM).
+
+7.7.1. Executing FSM_DETECT pass (finding FSMs in design).
+
+7.7.2. Executing FSM_EXTRACT pass (extracting FSM from design).
+
+7.7.3. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+7.7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.7.5. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+7.7.6. Executing FSM_RECODE pass (re-assigning FSM state encoding).
+
+7.7.7. Executing FSM_INFO pass (dumping all available information on FSM cells).
+
+7.7.8. Executing FSM_MAP pass (mapping FSMs to basic logic).
+
+7.8. Executing OPT pass (performing simple optimizations).
+
+7.8.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 38 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 6 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \irq_status..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \axi_lite_read_ctrl..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~48 debug messages>
+
+7.8.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \irq_status.
+  Optimizing cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \axi_lite_read_ctrl.
+  Optimizing cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 38 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 6 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $procdff$138 ($adff) from module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $0\bvalid[0:0], Q = \bvalid).
+Adding EN signal on $procdff$163 ($adff) from module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $procmux$82_Y, Q = \read_data).
+Adding EN signal on $procdff$158 ($adff) from module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $0\irq_state[0:0], Q = \irq_state).
+Adding EN signal on $procdff$168 ($adff) from module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_data, Q = \ctrl).
+Adding EN signal on $procdff$148 ($adff) from module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_data, Q = \sample0).
+Adding EN signal on $procdff$178 ($adff) from module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $0\done[0:0], Q = \done).
+Adding EN signal on $procdff$153 ($adff) from module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_data, Q = \sample1).
+Adding EN signal on $procdff$173 ($adff) from module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $0\busy[0:0], Q = \busy).
+Adding EN signal on $procdff$183 ($adff) from module axi_lite_read_ctrl (D = $0\rvalid[0:0], Q = \rvalid).
+Adding EN signal on $procdff$193 ($adff) from module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $0\tvalid[0:0], Q = \tvalid).
+Adding EN signal on $procdff$203 ($adff) from module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $0\tlast[0:0], Q = \tlast).
+Adding EN signal on $procdff$198 ($adff) from module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000 (D = { \sample1 \sample0 }, Q = \tdata).
+
+7.8.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 8 unused cells and 8 unused wires.
+<suppressed ~10 debug messages>
+
+7.8.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~1 debug messages>
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~9 debug messages>
+Optimizing module axi_lite_read_ctrl.
+<suppressed ~1 debug messages>
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~2 debug messages>
+Optimizing module top.
+
+7.8.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.8.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \irq_status..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \axi_lite_read_ctrl..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~36 debug messages>
+
+7.8.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \irq_status.
+  Optimizing cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \axi_lite_read_ctrl.
+  Optimizing cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 46 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 41 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 40 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~18 debug messages>
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 7 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 15 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 13 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 12 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 11 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~12 debug messages>
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 10 cells.
+
+7.8.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.8.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 9 unused wires.
+<suppressed ~2 debug messages>
+
+7.8.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.16. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.8.17. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \irq_status..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \axi_lite_read_ctrl..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~33 debug messages>
+
+7.8.18. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \irq_status.
+  Optimizing cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \axi_lite_read_ctrl.
+  Optimizing cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.19. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 40 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 7 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 11 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.20. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.8.21. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.8.22. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.23. Finished fast OPT passes. (There is nothing left to do.)
+
+7.9. Executing WREDUCE pass (reducing word size of cells).
+Removed top 1 bits (of 4) from port B of cell $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$procmux$85_CMP0 ($eq).
+Removed top 1 bits (of 4) from port B of cell $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$procmux$108_CMP0 ($eq).
+
+7.10. Executing PEEPOPT pass (run peephole optimizers).
+
+7.11. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.12. Executing ALUMACC pass (create $alu and $macc cells).
+Extracting $alu and $macc cells in module irq_status:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module axi_lite_read_ctrl:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module top:
+  created 0 $alu and 0 $macc cells.
+
+7.13. Executing SHARE pass (SAT-based resource sharing).
+
+7.14. Executing OPT pass (performing simple optimizations).
+
+7.14.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 40 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 7 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 11 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \irq_status..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \axi_lite_read_ctrl..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~33 debug messages>
+
+7.14.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \irq_status.
+  Optimizing cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \axi_lite_read_ctrl.
+  Optimizing cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.14.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 40 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 7 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 11 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.14.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.14.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.9. Finished fast OPT passes. (There is nothing left to do.)
+
+7.15. Executing MEMORY pass.
+
+7.15.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+7.15.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+7.15.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+
+7.15.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+7.15.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+
+7.15.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.15.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+
+7.15.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+7.15.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.15.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+7.16. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.17. Executing OPT pass (performing simple optimizations).
+
+7.17.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~3 debug messages>
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~16 debug messages>
+Optimizing module axi_lite_read_ctrl.
+<suppressed ~3 debug messages>
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~4 debug messages>
+Optimizing module top.
+
+7.17.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 8 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 28 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 5 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 8 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.17.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.17.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 19 unused wires.
+<suppressed ~4 debug messages>
+
+7.17.5. Finished fast OPT passes.
+
+7.18. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+
+7.19. Executing OPT pass (performing simple optimizations).
+
+7.19.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~1 debug messages>
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 8 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 28 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 5 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 8 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \irq_status..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \axi_lite_read_ctrl..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~4 debug messages>
+
+7.19.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \irq_status.
+  Optimizing cells in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \axi_lite_read_ctrl.
+  Optimizing cells in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.19.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 8 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 28 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 5 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 8 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.6. Executing OPT_SHARE pass.
+
+7.19.7. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.19.8. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.19.9. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.10. Finished fast OPT passes. (There is nothing left to do.)
+
+7.20. Executing TECHMAP pass (map to technology primitives).
+
+7.20.1. Executing Verilog-2005 frontend: /opt/homebrew/bin/../share/yosys/techmap.v
+Parsing Verilog input from `/opt/homebrew/bin/../share/yosys/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+7.20.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $adffe.
+Using extmapper simplemap for cells of type $reduce_bool.
+Using extmapper simplemap for cells of type $logic_not.
+Using extmapper simplemap for cells of type $logic_and.
+Using extmapper simplemap for cells of type $mux.
+Using extmapper simplemap for cells of type $adff.
+Using extmapper simplemap for cells of type $reduce_and.
+Using extmapper simplemap for cells of type $and.
+Using extmapper simplemap for cells of type $not.
+Using extmapper simplemap for cells of type $eq.
+Using extmapper simplemap for cells of type $pmux.
+No more expansions possible.
+<suppressed ~126 debug messages>
+
+7.21. Executing OPT pass (performing simple optimizations).
+
+7.21.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~30 debug messages>
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.21.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 8 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 141 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 134 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~21 debug messages>
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 5 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 23 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 7 cells.
+
+7.21.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.21.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 34 unused wires.
+<suppressed ~4 debug messages>
+
+7.21.5. Finished fast OPT passes.
+
+7.22. Executing ABC pass (technology mapping using ABC).
+
+7.22.1. Extracting gate netlist of module `\irq_status' to `<abc-temp-dir>/input.blif'..
+
+7.22.1.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+
+7.22.2. Extracting gate netlist of module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.2.1. Executed ABC.
+Extracted 7 gates and 12 wires to a netlist network with 5 inputs and 3 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.2.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        3
+ABC RESULTS:            ANDNOT cells:        1
+ABC RESULTS:               NOT cells:        1
+ABC RESULTS:                OR cells:        1
+ABC RESULTS:        internal signals:        4
+ABC RESULTS:           input signals:        5
+ABC RESULTS:          output signals:        3
+Removing temp directory.
+
+7.22.3. Extracting gate netlist of module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.3.1. Executed ABC.
+Extracted 98 gates and 138 wires to a netlist network with 39 inputs and 15 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.3.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:       20
+ABC RESULTS:            ANDNOT cells:        5
+ABC RESULTS:              NAND cells:       37
+ABC RESULTS:               NOR cells:        2
+ABC RESULTS:               NOT cells:        1
+ABC RESULTS:                OR cells:        1
+ABC RESULTS:        internal signals:       84
+ABC RESULTS:           input signals:       39
+ABC RESULTS:          output signals:       15
+Removing temp directory.
+
+7.22.4. Extracting gate netlist of module `\axi_lite_read_ctrl' to `<abc-temp-dir>/input.blif'..
+
+7.22.4.1. Executed ABC.
+Extracted 4 gates and 7 wires to a netlist network with 3 inputs and 3 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.4.2. Re-integrating ABC results.
+ABC RESULTS:            ANDNOT cells:        1
+ABC RESULTS:               MUX cells:        1
+ABC RESULTS:               NOT cells:        1
+ABC RESULTS:        internal signals:        1
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        3
+Removing temp directory.
+
+7.22.5. Extracting gate netlist of module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.5.1. Executed ABC.
+Extracted 5 gates and 9 wires to a netlist network with 3 inputs and 3 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.5.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:            ANDNOT cells:        1
+ABC RESULTS:               MUX cells:        1
+ABC RESULTS:        internal signals:        3
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        3
+Removing temp directory.
+
+7.22.6. Extracting gate netlist of module `\top' to `<abc-temp-dir>/input.blif'..
+
+7.22.6.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+Removing global temp directory.
+
+7.23. Executing OPT pass (performing simple optimizations).
+
+7.23.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module irq_status.
+Optimizing module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module axi_lite_read_ctrl.
+Optimizing module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.23.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\irq_status'.
+Computing hashes of 0 cells of `\irq_status'.
+Finding duplicate cells in `\irq_status'.
+Finding identical cells in module `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 102 cells of `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\axi_lite_read_ctrl'.
+Computing hashes of 4 cells of `\axi_lite_read_ctrl'.
+Finding duplicate cells in `\axi_lite_read_ctrl'.
+Finding identical cells in module `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 21 cells of `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.23.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.23.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \irq_status..
+Finding unused cells or wires in module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \axi_lite_read_ctrl..
+Finding unused cells or wires in module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 146 unused wires.
+<suppressed ~4 debug messages>
+
+7.23.5. Finished fast OPT passes.
+
+7.24. Executing HIERARCHY pass (managing design hierarchy).
+Attribute `top' found on module `top'. Setting top module to top.
+
+7.24.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \irq_status
+Used module:     $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \axi_lite_read_ctrl
+Used module:     $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+
+7.24.2. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \irq_status
+Used module:     $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \axi_lite_read_ctrl
+Used module:     $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+Removed 0 unused modules.
+
+7.25. Printing statistics.
+
+=== irq_status ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        2 wires
+        2 wire bits
+        2 public wires
+        2 public wire bits
+        2 ports
+        2 port bits
+
+=== $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       19 wires
+       39 wire bits
+       15 public wires
+       35 public wire bits
+       14 ports
+       34 port bits
+        7 cells
+        1   $_ANDNOT_
+        3   $_AND_
+        1   $_DFFE_PN0P_
+        1   $_NOT_
+        1   $_OR_
+
+=== $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       82 wires
+      123 wire bits
+       16 public wires
+       57 public wire bits
+       13 ports
+       47 port bits
+      102 cells
+        5   $_ANDNOT_
+       20   $_AND_
+       35   $_DFFE_PN0P_
+        1   $_DFF_PN0_
+       37   $_NAND_
+        2   $_NOR_
+        1   $_NOT_
+        1   $_OR_
+
+=== axi_lite_read_ctrl ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       17 wire bits
+       10 public wires
+       16 public wire bits
+        9 ports
+       15 port bits
+        4 cells
+        1   $_ANDNOT_
+        1   $_DFFE_PN0P_
+        1   $_MUX_
+        1   $_NOT_
+
+=== $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       13 wires
+       42 wire bits
+       10 public wires
+       39 public wire bits
+       10 ports
+       39 port bits
+       21 cells
+        1   $_ANDNOT_
+        1   $_AND_
+       17   $_DFFE_PN0P_
+        1   $_DFF_PN0_
+        1   $_MUX_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       32 wires
+       94 wire bits
+       32 public wires
+       94 public wire bits
+       22 ports
+       57 port bits
+        5 submodules
+        1   $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   axi_lite_read_ctrl
+        1   irq_status
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      134 top
+        7 $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+      102 $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+       21 $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+        4 axi_lite_read_ctrl
+
+        +----------Count including submodules.
+        | 
+      159 wires
+      317 wire bits
+       85 public wires
+      243 public wire bits
+       70 ports
+      194 port bits
+        - memories
+        - memory bits
+        - processes
+      134 cells
+        8   $_ANDNOT_
+       24   $_AND_
+       54   $_DFFE_PN0P_
+        2   $_DFF_PN0_
+        2   $_MUX_
+       37   $_NAND_
+        2   $_NOR_
+        3   $_NOT_
+        2   $_OR_
+        5 submodules
+        1   $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   axi_lite_read_ctrl
+        1   irq_status
+
+7.26. Executing CHECK pass (checking for obvious problems).
+Checking module irq_status...
+Checking module $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module axi_lite_read_ctrl...
+Checking module $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+8. Printing statistics.
+
+=== irq_status ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        2 wires
+        2 wire bits
+        2 public wires
+        2 public wire bits
+        2 ports
+        2 port bits
+
+=== $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       19 wires
+       39 wire bits
+       15 public wires
+       35 public wire bits
+       14 ports
+       34 port bits
+        7 cells
+        1   $_ANDNOT_
+        3   $_AND_
+        1   $_DFFE_PN0P_
+        1   $_NOT_
+        1   $_OR_
+
+=== $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       82 wires
+      123 wire bits
+       16 public wires
+       57 public wire bits
+       13 ports
+       47 port bits
+      102 cells
+        5   $_ANDNOT_
+       20   $_AND_
+       35   $_DFFE_PN0P_
+        1   $_DFF_PN0_
+       37   $_NAND_
+        2   $_NOR_
+        1   $_NOT_
+        1   $_OR_
+
+=== axi_lite_read_ctrl ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       17 wire bits
+       10 public wires
+       16 public wire bits
+        9 ports
+       15 port bits
+        4 cells
+        1   $_ANDNOT_
+        1   $_DFFE_PN0P_
+        1   $_MUX_
+        1   $_NOT_
+
+=== $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       13 wires
+       42 wire bits
+       10 public wires
+       39 public wire bits
+       10 ports
+       39 port bits
+       21 cells
+        1   $_ANDNOT_
+        1   $_AND_
+       17   $_DFFE_PN0P_
+        1   $_DFF_PN0_
+        1   $_MUX_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       32 wires
+       94 wire bits
+       32 public wires
+       94 public wire bits
+       22 ports
+       57 port bits
+        5 submodules
+        1   $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   axi_lite_read_ctrl
+        1   irq_status
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      134 top
+        7 $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+      102 $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+       21 $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+        4 axi_lite_read_ctrl
+
+        +----------Count including submodules.
+        | 
+      159 wires
+      317 wire bits
+       85 public wires
+      243 public wire bits
+       70 ports
+      194 port bits
+        - memories
+        - memory bits
+        - processes
+      134 cells
+        8   $_ANDNOT_
+       24   $_AND_
+       54   $_DFFE_PN0P_
+        2   $_DFF_PN0_
+        2   $_MUX_
+       37   $_NAND_
+        2   $_NOR_
+        3   $_NOT_
+        2   $_OR_
+        5 submodules
+        1   $paramod\axi_lite_write_ctrl\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\control_reg_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_stream_adapter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   axi_lite_read_ctrl
+        1   irq_status
+
+End of script. Logfile hash: 9c6c92bc96, time: 0.24s, user: 0.04s, system: 0.01s, MEM: 18.64 MB peak
+Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+Time spent: 83% 1x abc (0 sec), 4% 8x read_verilog (0 sec), ...

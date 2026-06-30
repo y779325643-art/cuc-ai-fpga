@@ -1,0 +1,19 @@
+{
+  "run_id": "official-eval-gap-closure-deepseek-t4-llm7-20260629",
+  "next_index": 1,
+  "completed_samples": [
+    "sample_official_eval_gap_closure_llm7_t4_dual_stream_join_8_000001"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [],
+    "rejected": [
+      "sample_official_eval_gap_closure_llm7_t4_dual_stream_join_8_000001"
+    ]
+  },
+  "failure_types": {
+    "generation_failed": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "42108aae8d2c8d13427e5f77685ab98f4423f220f5c87486bb6296555ae896a3"
+}

@@ -1,0 +1,17 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/vector_mac_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-WIDTHTRUNC: rtl/vector_mac_core.v:22:20: Operator VAR 'LAST_INDEX' expects 2 bits on the Initial value, but Initial value's SUB generates 32 or 3 bits.\n                                                : ... note: In instance 'top.u_vector_mac_core'\n   22 |   localparam [1:0] LAST_INDEX = VECTOR_LEN - 1;\n      |                    ^~~~~~~~~~\n                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.048\n                     ... Use \"/* verilator lint_off WIDTHTRUNC */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)\n",
+  "duration_seconds": 0.05796674999874085
+}

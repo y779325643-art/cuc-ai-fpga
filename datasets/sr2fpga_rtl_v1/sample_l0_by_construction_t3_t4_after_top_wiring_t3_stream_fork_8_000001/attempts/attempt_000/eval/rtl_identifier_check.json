@@ -1,0 +1,11 @@
+{
+  "stage": "rtl_identifier_check",
+  "command": [
+    "rtl_identifier_checker"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "rtl/skid_buffer.v:14: Verilog reserved keyword 'buf' used as declared signal\n",
+  "duration_seconds": 0.0
+}

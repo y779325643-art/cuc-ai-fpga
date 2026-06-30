@@ -139,7 +139,7 @@ class DatasetRecorder:
                     {
                         "sample_id": sample_id,
                         "metadata": metadata,
-                        "episode": episode,
+                        "episode": _episode_without_verification(episode),
                         "files": final_files,
                         "predicted_qor": json.loads(predicted_qor_path.read_text(encoding="utf-8")),
                     }
@@ -209,6 +209,12 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     with path.open("w", encoding="utf-8") as output:
         for row in rows:
             output.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def _episode_without_verification(episode: dict[str, Any]) -> dict[str, Any]:
+    result = dict(episode)
+    result.pop("verification", None)
+    return result
 
 
 def _system_his_episode(
@@ -310,8 +316,10 @@ def _project_file_origin(path: str) -> str:
 
 
 def _behavior_hole_count(content: str) -> int:
-    markers = ("BEHAVIOR_HOLE", "TODO_BEHAVIOR", "__BEHAVIOR_HOLE__")
-    return sum(content.count(marker) for marker in markers)
+    delimited = content.count("__BEHAVIOR_HOLE__")
+    plain = content.replace("__BEHAVIOR_HOLE__", "").count("BEHAVIOR_HOLE")
+    todo = content.count("TODO_BEHAVIOR")
+    return delimited + plain + todo
 
 
 def _verification_episode_metadata(labels: dict[str, Any], measured_qor: dict[str, Any]) -> dict[str, Any]:

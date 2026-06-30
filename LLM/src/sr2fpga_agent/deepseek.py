@@ -3,19 +3,27 @@
 from __future__ import annotations
 
 import difflib
+import http.client
 import json
+import signal
 import ssl
+import threading
 import time
 import urllib.error
 import urllib.request
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable
 
+from LLM.src.sr2fpga_agent.contract_skeleton import build_contract_skeleton_project, merge_behavior_files
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest, RepairResult
+from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
+from LLM.src.sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 from LLM.src.sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
 from LLM.src.sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
 from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12
+from LLM.src.sr2fpga_agent.system_his_v12_checker import check_system_his_v12_against_rtl
 
 
 REQUIRED_PROJECT_FILES = {
@@ -39,6 +47,18 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/mac_unit.v",
         "rtl/dot_product_engine.v",
     ],
+    "alu_control_unit": [
+        "rtl/top.v",
+        "rtl/control_decode.v",
+        "rtl/alu_core.v",
+        "rtl/status_flags.v",
+    ],
+    "crc_stream_checker": [
+        "rtl/top.v",
+        "rtl/stream_frame_accumulator.v",
+        "rtl/crc8_update.v",
+        "rtl/crc_status.v",
+    ],
     "composed_event_counter": ["rtl/top.v", "rtl/event_gate.v", "rtl/counter_core.v"],
     "composed_stream_accumulator": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/accumulator_core.v"],
     "composed_stream_fork": [
@@ -54,6 +74,67 @@ MULTIMODULE_RTL_EXAMPLES = {
         "rtl/accumulator_core.v",
         "rtl/stream_stage.v",
     ],
+    "composed_vector_mac_pipeline": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/vector_mac_core.v",
+        "rtl/stream_stage.v",
+    ],
+    "composed_td_update_core": [
+        "rtl/top.v",
+        "rtl/td_input_stage.v",
+        "rtl/discount_core.v",
+        "rtl/td_update_core.v",
+        "rtl/stream_stage.v",
+    ],
+    "composed_policy_value_shell": [
+        "rtl/top.v",
+        "rtl/config_reg_bank.v",
+        "rtl/observation_stage.v",
+        "rtl/policy_score_core.v",
+        "rtl/action_select_core.v",
+        "rtl/stream_stage.v",
+    ],
+    "composed_replay_sample_shell": [
+        "rtl/top.v",
+        "rtl/host_sample_stage.v",
+        "rtl/replay_store.v",
+        "rtl/sample_pack_core.v",
+        "rtl/sample_read_stage.v",
+        "rtl/occupancy_counter.v",
+    ],
+    "composed_host_protocol_shell": [
+        "rtl/top.v",
+        "rtl/axi_lite_write_ctrl.v",
+        "rtl/axi_lite_read_ctrl.v",
+        "rtl/control_reg_bank.v",
+        "rtl/sample_stream_adapter.v",
+        "rtl/irq_status.v",
+    ],
+    "composed_rl_accelerator_shell": [
+        "rtl/top.v",
+        "rtl/host_config_bank.v",
+        "rtl/sample_capture_stage.v",
+        "rtl/policy_value_core.v",
+        "rtl/td_update_core.v",
+        "rtl/result_stream_stage.v",
+    ],
+    "composed_batch_rl_accelerator_shell": [
+        "rtl/top.v",
+        "rtl/batch_config_bank.v",
+        "rtl/batch_sample_buffer.v",
+        "rtl/dual_policy_value_core.v",
+        "rtl/dual_td_update_core.v",
+        "rtl/batch_result_stage.v",
+    ],
+    "composed_replay_arbiter_shell": [
+        "rtl/top.v",
+        "rtl/host_transition_packetizer.v",
+        "rtl/replay_index_allocator.v",
+        "rtl/replay_request_arbiter.v",
+        "rtl/replay_memory_bank.v",
+        "rtl/sample_packet_stage.v",
+    ],
 }
 
 
@@ -65,6 +146,7 @@ class OpenAICompatibleConfig:
     model: str = "deepseek-v4-pro"
     base_url: str = "https://api.deepseek.com"
     timeout_seconds: int = 120
+    max_tokens: int = 0
     transport_attempts: int = 3
     retry_backoff_seconds: float = 0.5
 
@@ -77,7 +159,10 @@ class OpenAICompatibleClient:
 
     def chat(self, messages: list[dict[str, str]]) -> str:
         payload = self._chat_payload(messages)
-        data = self._request_with_retries(payload, _read_chat_completion_json)
+        data = self._request_with_retries(
+            payload,
+            lambda response: _read_chat_completion_json(response, self.config.timeout_seconds),
+        )
 
         try:
             return str(data["choices"][0]["message"]["content"])
@@ -89,7 +174,10 @@ class OpenAICompatibleClient:
     def stream_chat(self, messages: list[dict[str, str]]) -> str:
         payload = self._chat_payload(messages)
         payload["stream"] = True
-        return self._request_with_retries(payload, _read_streaming_chat_content)
+        return self._request_with_retries(
+            payload,
+            lambda response: _read_streaming_chat_content(response, self.config.timeout_seconds),
+        )
 
     def _chat_payload(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -99,6 +187,8 @@ class OpenAICompatibleClient:
         }
         if _model_supports_json_response_format(self.config.model):
             payload["response_format"] = {"type": "json_object"}
+        if self.config.max_tokens > 0:
+            payload["max_tokens"] = self.config.max_tokens
         return payload
 
     def _request_with_retries(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
@@ -135,7 +225,13 @@ class OpenAICompatibleClient:
                 timeout=self.config.timeout_seconds,
                 context=_default_ssl_context(),
             ) as response:
-                return reader(response)
+                try:
+                    with _response_read_deadline(self.config.timeout_seconds):
+                        return reader(response)
+                except TimeoutError as exc:
+                    raise _TransientOpenAICompatibleError(
+                        "OpenAI-compatible API response read timed out"
+                    ) from exc
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             message = f"OpenAI-compatible API request failed with HTTP {exc.code}: {body}"
@@ -146,6 +242,10 @@ class OpenAICompatibleClient:
             raise _TransientOpenAICompatibleError("OpenAI-compatible API request timed out") from exc
         except urllib.error.URLError as exc:
             raise _TransientOpenAICompatibleError(f"OpenAI-compatible API request failed: {exc.reason}") from exc
+        except http.client.IncompleteRead as exc:
+            raise _TransientOpenAICompatibleError(
+                f"OpenAI-compatible API response truncated (IncompleteRead): {exc}"
+            ) from exc
 
 
 @dataclass(frozen=True)
@@ -210,7 +310,7 @@ class AnthropicCompatibleClient:
                 timeout=self.config.timeout_seconds,
                 context=_default_ssl_context(),
             ) as response:
-                return _read_chat_completion_json(response)
+                return _read_chat_completion_json(response, self.config.timeout_seconds)
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             message = f"Anthropic-compatible API request failed with HTTP {exc.code}: {body}"
@@ -236,6 +336,25 @@ TRANSIENT_HTTP_STATUS_CODES = {408, 429, 500, 502, 503, 504}
 
 class _TransientOpenAICompatibleError(RuntimeError):
     pass
+
+
+@contextmanager
+def _response_read_deadline(timeout_seconds: int):
+    if timeout_seconds <= 0 or not hasattr(signal, "SIGALRM") or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    def _raise_timeout(_signum, _frame):
+        raise TimeoutError("response read deadline exceeded")
+
+    previous_handler = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _raise_timeout)
+    signal.setitimer(signal.ITIMER_REAL, timeout_seconds)
+    try:
+        yield
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous_handler)
 
 
 def _model_supports_json_response_format(model: str) -> bool:
@@ -267,8 +386,21 @@ def _messages_for_model(model: str, messages: list[dict[str, str]]) -> list[dict
     return [{"role": "user", "content": f"System instructions:\n{system_text}"}] + rewritten
 
 
-def _read_chat_completion_json(response: Any) -> Any:
-    return json.loads(response.read().decode("utf-8"))
+def _read_chat_completion_json(response: Any, timeout_seconds: int) -> Any:
+    return json.loads(_read_response_body(response, timeout_seconds).decode("utf-8"))
+
+
+def _read_response_body(response: Any, timeout_seconds: int) -> bytes:
+    chunks: list[bytes] = []
+    started_at = time.monotonic()
+    while True:
+        chunk = response.read(65536)
+        if not chunk:
+            break
+        chunks.append(chunk)
+        if time.monotonic() - started_at > timeout_seconds:
+            raise _TransientOpenAICompatibleError("OpenAI-compatible API response read timed out")
+    return b"".join(chunks)
 
 
 def _anthropic_messages_payload(
@@ -314,12 +446,15 @@ def _read_anthropic_message_text(data: Any) -> str:
     raise RuntimeError("Anthropic-compatible API response did not contain text content")
 
 
-def _read_streaming_chat_content(response: Any) -> str:
+def _read_streaming_chat_content(response: Any, timeout_seconds: int) -> str:
     chunks: list[str] = []
+    started_at = time.monotonic()
     while True:
         raw_line = response.readline()
         if not raw_line:
             break
+        if time.monotonic() - started_at > timeout_seconds:
+            raise _TransientOpenAICompatibleError("OpenAI-compatible API response read timed out")
         line = raw_line.decode("utf-8", errors="replace").strip()
         if not line or line.startswith(":"):
             continue
@@ -386,7 +521,7 @@ class DeepSeekSystemHisGenerator:
         messages = _system_his_v12_messages(request, platform)
         last_error: ValueError | None = None
         for attempt_id in range(self.max_attempts):
-            content = self.client.chat(messages)
+            content = self.client.stream_chat(messages)
             try:
                 system_his = parse_system_his_v12(content)
                 fidelity = check_system_his_req_fidelity(request, system_his)
@@ -433,22 +568,47 @@ class DeepSeekHisProjectGenerator:
         system_his: dict[str, Any],
     ) -> GeneratedProject:
         messages = _his_project_messages(request, platform, system_his)
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
         last_error: ValueError | None = None
         for _attempt in range(self.max_attempts):
             content = self.client.stream_chat(messages)
             try:
-                files = parse_project_files(content, expected_task_type=request.task_type)
-                try:
-                    returned_system_his = parse_system_his_v12(files["system_his.json"])
-                    _validate_system_his_contract_unchanged(system_his, returned_system_his)
-                except ValueError as exc:
-                    raise ValueError(f"DeepSeek HIS2PROJECT system_his.json failed validation: {exc}") from exc
-                return GeneratedProject(project_name=request.project_name, files=files)
+                behavior_files = parse_behavior_files(content)
+                project = merge_behavior_files(skeleton, behavior_files)
+                identifier_issues = check_rtl_identifiers(project, _project_rtl_sources(project))
+                if identifier_issues:
+                    raise ValueError(
+                        "HIS2PROJECT RTL failed identifier check: "
+                        + "; ".join(
+                            f"{issue.path}:{issue.line}: Verilog reserved keyword '{issue.identifier}' used as {issue.context}"
+                            for issue in identifier_issues
+                        )
+                    )
+                contract_result = check_system_his_v12_against_rtl(system_his, project)
+                if not contract_result.passed:
+                    raise ValueError(
+                        "HIS2PROJECT RTL failed System-HIS v1.2 cross-check: "
+                        + "; ".join(contract_result.errors)
+                    )
+                return project
             except ValueError as exc:
                 last_error = exc
+                if _attempt + 1 < self.max_attempts:
+                    messages = _with_his_project_retry_feedback(messages, str(exc), content)
         if last_error is not None:
             raise last_error
         raise RuntimeError("DeepSeek HIS2PROJECT generator did not run")
+
+
+def _project_rtl_sources(project: GeneratedProject) -> list[str]:
+    try:
+        manifest = json.loads(project.files.get("manifest.json", "{}"))
+    except json.JSONDecodeError:
+        manifest = {}
+    sources = manifest.get("sources")
+    if isinstance(sources, list):
+        return [source for source in sources if isinstance(source, str) and source.endswith(".v")]
+    return sorted(path for path in project.files if path.endswith(".v"))
 
 
 class DeepSeekTwoStageProjectGenerator:
@@ -479,6 +639,77 @@ class DeepSeekTwoStageProjectGenerator:
             request,
             lambda: self.his_project_generator.generate(request, platform, system_his),
         )
+
+    def _run_stage(self, stage: str, request: ProjectRequest, action):
+        start = time.monotonic()
+        self._emit_stage_event("generation_stage_started", stage, request)
+        try:
+            result = action()
+        except Exception as exc:
+            self._emit_stage_event(
+                "generation_stage_failed",
+                stage,
+                request,
+                duration_seconds=time.monotonic() - start,
+                error_type=type(exc).__name__,
+                error=str(exc),
+            )
+            raise
+        self._emit_stage_event(
+            "generation_stage_finished",
+            stage,
+            request,
+            duration_seconds=time.monotonic() - start,
+        )
+        return result
+
+    def _emit_stage_event(self, event: str, stage: str, request: ProjectRequest, **extra: Any) -> None:
+        if self.event_sink is None:
+            return
+        self.event_sink(
+            {
+                "event": event,
+                "stage": stage,
+                "project_name": request.project_name,
+                "task_type": request.task_type,
+                "width": request.width,
+                **extra,
+            }
+        )
+
+
+class DeepSeekOracleHisProjectGenerator:
+    """Generate behavior files from deterministic oracle System-HIS v1.2."""
+
+    def __init__(
+        self,
+        client: OpenAICompatibleClient,
+        max_attempts: int = 3,
+        event_sink: Callable[[dict[str, Any]], None] | None = None,
+    ) -> None:
+        self.oracle_generator = ProjectGenerator()
+        self.his_project_generator = DeepSeekHisProjectGenerator(client, max_attempts=max_attempts)
+        self.event_sink = event_sink
+
+    def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
+        system_his = self._run_stage(
+            "oracle_req2his",
+            request,
+            lambda: self._oracle_system_his(request, platform),
+        )
+        return self._run_stage(
+            "his2project",
+            request,
+            lambda: self.his_project_generator.generate(request, platform, system_his),
+        )
+
+    def _oracle_system_his(self, request: ProjectRequest, platform: PlatformProfile) -> dict[str, Any]:
+        project = self.oracle_generator.generate(request, platform)
+        system_his = parse_system_his_v12(project.files["system_his.json"])
+        fidelity = check_system_his_req_fidelity(request, system_his)
+        if not fidelity.passed:
+            raise ValueError("Oracle System-HIS REQ2HIS fidelity failed: " + "; ".join(fidelity.errors))
+        return system_his
 
     def _run_stage(self, stage: str, request: ProjectRequest, action):
         start = time.monotonic()
@@ -588,6 +819,22 @@ def parse_project_files(content: str, expected_task_type: str | None = None) -> 
     _validate_manifest(files)
     _validate_expected_rtl_structure(files, expected_task_type)
     return files
+
+
+def parse_behavior_files(content: str) -> dict[str, str]:
+    """Parse HIS2PROJECT JSON output into behavior-only file bodies."""
+
+    cleaned = _strip_markdown_fence(content)
+    try:
+        payload = json.loads(cleaned)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"DeepSeek HIS2PROJECT behavior output is not valid JSON: {exc.msg}") from exc
+    if "files" in payload:
+        raise ValueError("HIS2PROJECT response must contain behavior_files, not files")
+    raw_behavior = payload.get("behavior_files")
+    if not isinstance(raw_behavior, dict):
+        raise ValueError("HIS2PROJECT response must contain behavior_files as an object")
+    return {str(path): str(body) for path, body in raw_behavior.items()}
 
 
 def parse_system_his_v12(content: str) -> dict[str, Any]:
@@ -814,10 +1061,19 @@ Required top-level sections:
 Architectural rules:
 - Start from top-level ports, interfaces, clocks, resets, and parameters.
 - Every clock and reset declared in top.clocks/top.resets must also appear in top.ports.
+- top.resets[].polarity must be active_low or active_high.
+- top.resets[].kind must be sync or async.
+- Use {{"name": "rst_n", "polarity": "active_low", "kind": "sync"}} unless the task explicitly says otherwise.
 - Record architectural state, not incidental RTL temporaries.
+- State names across registers, counters, fsms, buffers, and memories must be globally unique.
 - Separate component definitions from concrete instances.
 - Every component must include name, semantic_kind, source, ports, and intent.
+- Every components[].source must be one of artifacts.rtl_sources.
+- Do not use placeholder sources such as "library"; use concrete RTL paths like rtl/top.v.
 - Every instance must include name, component, parameter_values, clock, reset, and owns_state.
+- Every instances[].owns_state must be a JSON array; use [] when the instance owns no state.
+- Every instances[].parameter_values key must be declared in that component's parameters.
+- top.clocks[].target_fmax_mhz and timing.target_fmax_mhz must be positive numbers.
 - Every data_flow endpoint must name top.<port> or <instance>.<port>.
 - data_flow.timing is optional, but when present it must include
   latency_cycles >= 0, initiation_interval > 0, and optional non-empty throughput.
@@ -828,6 +1084,10 @@ Architectural rules:
   machine-checkable behavior. The guard grammar allows atoms {"signal","op","value"} or
   all_of/any_of lists with depth <= 2; signal must reference a declared top port,
   top clock/reset, instance port, state, data_flow name, or <fsm>.state.
+- control_flow.effect.target must reference a declared data_flow name or state name; do not target
+  top ports, instance ports, all, or module names directly.
+- Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming.
+- FSM owner must be top or an instances[].name.
 - fsm_transition rules must reference a declared state.fsms entry and use
   from/to states declared by that FSM.
 - Use width objects with expr and resolved when a parameterized width is useful.
@@ -915,6 +1175,7 @@ def _with_system_his_retry_feedback(
     task_guidance = _system_his_v12_retry_guidance(task_type)
     return [
         *messages,
+        {"role": "assistant", "content": previous_content or "{}"},
         {
             "role": "user",
             "content": (
@@ -924,14 +1185,27 @@ def _with_system_his_retry_feedback(
                 f"{error}\n\n"
                 "System-HIS v1.2 IR repair checklist:\n"
                 "- Every components[] object must include name, semantic_kind, source, ports, and intent.\n"
+                "- Every components[].source must be one of artifacts.rtl_sources.\n"
+                "- Do not use placeholder sources such as \"library\"; use concrete RTL paths like rtl/top.v.\n"
                 "- Every instances[] object must include name, component, parameter_values, clock, reset, and owns_state.\n"
+                "- Every instances[].owns_state must be a JSON array; use [] when the instance owns no state.\n"
+                "- Every instances[].parameter_values key must be declared in that component's parameters.\n"
                 "- Every instance name must be unique and every component value must match a declared components[].name.\n"
                 "- Every top clock/reset should be listed in top.clocks/top.resets and also in top.ports.\n"
+                "- top.clocks[].target_fmax_mhz and timing.target_fmax_mhz must be positive numbers.\n"
+                "- top.resets[].polarity must be active_low or active_high.\n"
+                "- top.resets[].kind must be sync or async.\n"
+                "- Use {\"name\": \"rst_n\", \"polarity\": \"active_low\", \"kind\": \"sync\"} unless the task "
+                "explicitly says otherwise.\n"
                 "- data_flow.path endpoints must use top.<port> or <instance>.<port>; do not use component names as endpoints.\n"
                 "- control_flow.when signal values must reference declared top ports, instance ports, state names, "
                 "data_flow names, or <fsm>.state.\n"
                 "- control_flow.effect.target must reference a declared data_flow name or state name; do not target "
                 "top ports, instance ports, all, or module names directly.\n"
+                "- State names across registers, counters, fsms, buffers, and memories must be globally unique; "
+                "prefix repeated per-instance state names such as out0_valid_reg and out1_valid_reg.\n"
+                "- Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming.\n"
+                "- FSM owner must be top or an instances[].name.\n"
                 "- FSMs must declare non-empty states, initial, and reset_state, and transitions must use those states.\n\n"
                 f"{task_guidance}\n"
                 "Previous invalid System-HIS JSON:\n"
@@ -942,26 +1216,196 @@ def _with_system_his_retry_feedback(
 
 
 def _system_his_v12_task_guidance(task_type: str) -> str:
+    if task_type == "alu_control_unit":
+        return (
+            "Required architecture for alu_control_unit:\n"
+            "- components: control_decode, alu_core, status_flags\n"
+            "- instances: decoder, core, flags\n"
+            "- top ports must include clk, rst_n, valid, ready, op, lhs, rhs, result_valid, "
+            "result, zero, carry, and negative.\n"
+            "- op must be a 3-bit input; lhs, rhs, and result must match the requested width.\n"
+            "- status_flags owns result, result_valid, zero, carry, and negative state if outputs are registered.\n"
+            "- data_flow must describe opcode decode, ALU execution, and registered status output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/control_decode.v, rtl/alu_core.v, "
+            "and rtl/status_flags.v."
+        )
+    if task_type == "crc_stream_checker":
+        return (
+            "Required architecture for crc_stream_checker:\n"
+            "- components: stream_frame_accumulator, crc8_update, crc_status\n"
+            "- instances: accumulator, update, status\n"
+            "- top ports must include clk, rst_n, in_valid, in_data, frame_start, frame_end, "
+            "expected_crc, out_ready, in_ready, out_valid, crc_value, and crc_match.\n"
+            "- in_data must match the requested width; expected_crc and crc_value must be 8-bit ports.\n"
+            "- stream_frame_accumulator owns crc_state, frame_crc, and frame_done state; "
+            "crc_status owns out_valid, crc_value, and crc_match state.\n"
+            "- data_flow must describe valid-ready byte input, CRC-8 update, frame completion, and match status output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/stream_frame_accumulator.v, "
+            "rtl/crc8_update.v, and rtl/crc_status.v."
+        )
     if task_type == "composed_dual_stream_join":
         return (
             "Required architecture for composed_dual_stream_join:\n"
             "- components: skid_buffer, stream_join, accumulator_core, stream_stage\n"
             "- instances: in0_buffer, in1_buffer, join_core, accumulator, out_stage\n"
+            "- top ports must include clk, rst_n, in0_valid, in0_data, in1_valid, in1_data, out_ready, "
+            "in0_ready, in1_ready, out_valid, and out_data.\n"
             "- Do not collapse this topology into one fused component.\n"
             "- Do not use Verilog reserved keywords such as fork, join, or buf as instance names.\n"
             "- in0_buffer and in1_buffer must both reference component skid_buffer.\n"
             "- data_flow must use named path arrays, not from/to-only edges.\n"
+            "- data_flow.timing entries must use concrete integer latency_cycles and initiation_interval values.\n"
+            "- valid and ready data_flow paths must explicitly connect join_core.out_valid, accumulator.sample_valid, "
+            "out_stage.in_valid, out_stage.in_ready, accumulator.sample_ready, and join_core.out_ready.\n"
+            "- accumulator_core.sample_valid must remain a single input port and accumulator_core.sample_ready "
+            "must remain a single input port in this topology.\n"
+            "- Do not introduce accumulator_core sample_valid_in, sample_valid_out, sample_ready_in, or "
+            "sample_ready_out aliases.\n"
             "- control_flow entries must each include name, kind, when/effect for structured rules, related_state, and related_flows.\n"
             "- artifacts.rtl_sources must include rtl/top.v, rtl/skid_buffer.v, rtl/stream_join.v, "
             "rtl/accumulator_core.v, and rtl/stream_stage.v."
+        )
+    if task_type == "composed_vector_mac_pipeline":
+        return (
+            "Required architecture for composed_vector_mac_pipeline:\n"
+            "- components: skid_buffer, vector_mac_core, stream_stage\n"
+            "- instances: feature_buffer, weight_buffer, mac_core, score_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- feature_buffer and weight_buffer must both reference component skid_buffer.\n"
+            "- vector_mac_core owns vector_index, accumulator, and pending_score state.\n"
+            "- If a mac_core_fsm is used, declare it with owner mac_core, states IDLE/ACCUMULATE/OUTPUT, "
+            "initial IDLE, reset_state IDLE, and transitions that reference those exact states.\n"
+            "- top ports must include feature_valid, feature_data, feature_ready, weight_valid, "
+            "weight_data, weight_ready, bias, score_valid, score_data, and score_ready.\n"
+            "- data_flow must pair feature and weight streams into vector_mac_core and stage score output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/skid_buffer.v, "
+            "rtl/vector_mac_core.v, and rtl/stream_stage.v."
+        )
+    if task_type == "composed_td_update_core":
+        return (
+            "Required architecture for composed_td_update_core:\n"
+            "- components: td_input_stage, discount_core, td_update_core, stream_stage\n"
+            "- instances: input_stage, discount, update, output_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include in_valid, in_ready, reward, value, next_value, gamma, alpha, "
+            "out_valid, out_ready, td_error, and updated_value.\n"
+            "- td_input_stage owns captured reward/value/next_value state.\n"
+            "- td_update_core or stream_stage owns td_error and updated_value state if registered.\n"
+            "- If an output_stage FSM is used, declare it with owner output_stage, states IDLE/VALID, "
+            "initial IDLE, reset_state IDLE, and transitions that reference those exact states.\n"
+            "- data_flow must describe tuple capture, discount calculation, TD update, and output staging.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/td_input_stage.v, rtl/discount_core.v, "
+            "rtl/td_update_core.v, and rtl/stream_stage.v."
+        )
+    if task_type == "composed_policy_value_shell":
+        return (
+            "Required architecture for composed_policy_value_shell:\n"
+            "- components: config_reg_bank, observation_stage, policy_score_core, action_select_core, stream_stage\n"
+            "- instances: config, observation, score, select, output_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include cfg_valid, cfg_ready, cfg_addr, cfg_data, obs_valid, obs_ready, "
+            "obs0, obs1, action_valid, action_ready, selected_action, and value_estimate.\n"
+            "- config_reg_bank owns weight0, weight1, bias0, bias1, and enable state.\n"
+            "- observation_stage owns captured observation state; stream_stage owns registered output state.\n"
+            "- data_flow must describe config writes, observation capture, policy scoring, action selection, "
+            "and output staging.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/config_reg_bank.v, rtl/observation_stage.v, "
+            "rtl/policy_score_core.v, rtl/action_select_core.v, and rtl/stream_stage.v."
+        )
+    if task_type == "composed_replay_sample_shell":
+        return (
+            "Required architecture for composed_replay_sample_shell:\n"
+            "- components: host_sample_stage, replay_store, sample_pack_core, sample_read_stage, occupancy_counter\n"
+            "- instances: host_stage, store, pack, read_stage, occupancy\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include host_valid, host_ready, host_state, host_action, host_reward, "
+            "host_next_state, host_done, sample_valid, sample_ready, sample_state, sample_action, "
+            "sample_reward, sample_next_state, sample_done, and occupancy.\n"
+            "- replay_store owns replay_entries, write_ptr, read_ptr, and occupancy state.\n"
+            "- host_sample_stage owns staged host sample state; sample_read_stage owns staged output sample state.\n"
+            "- data_flow must describe host sample staging, replay store write/read, sample packing, "
+            "fabric-side output staging, and occupancy reporting.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/host_sample_stage.v, rtl/replay_store.v, "
+            "rtl/sample_pack_core.v, rtl/sample_read_stage.v, and rtl/occupancy_counter.v."
+        )
+    if task_type == "composed_host_protocol_shell":
+        return (
+            "Required architecture for composed_host_protocol_shell:\n"
+            "- components: axi_lite_write_ctrl, axi_lite_read_ctrl, control_reg_bank, sample_stream_adapter, irq_status\n"
+            "- instances: write_ctrl, read_ctrl, regs, stream, irq\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include s_axi_awvalid, s_axi_awready, s_axi_awaddr, s_axi_wvalid, "
+            "s_axi_wready, s_axi_wdata, s_axi_wstrb, s_axi_bvalid, s_axi_bready, "
+            "s_axi_arvalid, s_axi_arready, s_axi_araddr, s_axi_rvalid, s_axi_rready, "
+            "s_axi_rdata, m_axis_tvalid, m_axis_tready, m_axis_tdata, m_axis_tlast, and irq.\n"
+            "- control_reg_bank owns ctrl, sample0, sample1, busy, done, and irq_state.\n"
+            "- data_flow must describe write capture, readback, stream output, stream_done feedback, and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/axi_lite_write_ctrl.v, rtl/axi_lite_read_ctrl.v, "
+            "rtl/control_reg_bank.v, rtl/sample_stream_adapter.v, and rtl/irq_status.v."
+        )
+    if task_type == "composed_rl_accelerator_shell":
+        return (
+            "Required architecture for composed_rl_accelerator_shell:\n"
+            "- components: host_config_bank, sample_capture_stage, policy_value_core, td_update_core, result_stream_stage\n"
+            "- instances: config, sample, policy, update, result\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include cfg_valid, cfg_ready, cfg_addr, cfg_data, sample_valid, sample_ready, "
+            "obs0, obs1, reward, next_value, done_in, result_valid, result_ready, selected_action, "
+            "value_estimate, updated_value, episode_done, and irq.\n"
+            "- host_config_bank owns weight0, bias0, weight1, bias1, alpha, and enable state.\n"
+            "- sample_capture_stage owns captured sample tuple state; result_stream_stage owns result and irq state.\n"
+            "- data_flow must describe config writes, sample capture, policy/value scoring, TD update, result staging, "
+            "and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/host_config_bank.v, rtl/sample_capture_stage.v, "
+            "rtl/policy_value_core.v, rtl/td_update_core.v, and rtl/result_stream_stage.v."
+        )
+    if task_type == "composed_batch_rl_accelerator_shell":
+        return (
+            "Required architecture for composed_batch_rl_accelerator_shell:\n"
+            "- components: batch_config_bank, batch_sample_buffer, dual_policy_value_core, "
+            "dual_td_update_core, batch_result_stage\n"
+            "- instances: config, batch, policy, update, result\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include cfg_valid, cfg_ready, cfg_addr, cfg_data, batch_valid, batch_ready, "
+            "obs0_a, obs1_a, reward_a, next_value_a, done_a, obs0_b, obs1_b, reward_b, next_value_b, "
+            "done_b, result_valid, result_ready, selected_action_a, value_estimate_a, updated_value_a, "
+            "selected_action_b, value_estimate_b, updated_value_b, batch_done, and irq.\n"
+            "- batch_config_bank owns shared weight0, bias0, weight1, bias1, alpha, and enable state.\n"
+            "- batch_sample_buffer owns captured lane sample state; batch_result_stage owns lane result and irq state.\n"
+            "- data_flow must describe config writes, two-lane batch capture, dual-lane policy/value scoring, "
+            "dual-lane TD update, result staging, and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/batch_config_bank.v, rtl/batch_sample_buffer.v, "
+            "rtl/dual_policy_value_core.v, rtl/dual_td_update_core.v, and rtl/batch_result_stage.v."
+        )
+    if task_type == "composed_replay_arbiter_shell":
+        return (
+            "Required architecture for composed_replay_arbiter_shell:\n"
+            "- components: host_transition_packetizer, replay_index_allocator, replay_request_arbiter, "
+            "replay_memory_bank, sample_packet_stage\n"
+            "- instances: packetizer, allocator, arbiter, memory, sample_stage\n"
+            "- Do not collapse this topology into one fused component.\n"
+            "- top ports must include host_valid, host_ready, host_state, host_action, host_reward, "
+            "host_next_state, host_done, sample_req_valid, sample_req_ready, sample_index, sample_valid, "
+            "sample_ready, sample_state, sample_action, sample_reward, sample_next_state, sample_done, "
+            "occupancy, write_index, and irq.\n"
+            "- replay_index_allocator owns write_index and occupancy; replay_memory_bank owns replay_entries; "
+            "sample_packet_stage owns staged sample outputs and irq.\n"
+            "- data_flow must describe host transition packetization, replay write allocation, read arbitration, "
+            "memory readback, sample packet staging, and irq output.\n"
+            "- artifacts.rtl_sources must include rtl/top.v, rtl/host_transition_packetizer.v, "
+            "rtl/replay_index_allocator.v, rtl/replay_request_arbiter.v, rtl/replay_memory_bank.v, "
+            "and rtl/sample_packet_stage.v."
         )
     if task_type == "composed_stream_fork":
         return (
             "Required architecture for composed_stream_fork:\n"
             "- components: skid_buffer, stream_fork, stream_stage\n"
             "- instances: input_buffer, fork_core, out0_stage, out1_stage\n"
+            "- top ports must include clk, rst_n, in_valid, in_data, in_ready, out0_valid, out0_data, "
+            "out0_ready, out1_valid, out1_data, and out1_ready.\n"
             "- Do not collapse this topology into one fused component.\n"
             "- Do not use Verilog reserved keywords such as fork, join, or buf as instance names.\n"
+            "- data_flow must explicitly connect both output payload paths and the corresponding valid/ready paths.\n"
             "- data_flow must use named path arrays and control_flow must reference existing state and flows."
         )
     if task_type == "composed_stream_accumulator":
@@ -969,6 +1413,12 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "Required architecture for composed_stream_accumulator:\n"
             "- components: skid_buffer, accumulator_core\n"
             "- instances: input_buffer, accumulator\n"
+            "- top ports must include clk, rst_n, in_valid, in_data, in_ready, sample_valid, and sum.\n"
+            "- accumulator_core ports must be clk, rst_n, sample_valid, sample, sample_ready, and sum; "
+            "sample_valid must be an input and sample_ready must be an output.\n"
+            "- Do not introduce sample_valid_in, sample_valid_out, or extra accumulator_core valid aliases.\n"
+            "- data_flow must explicitly connect top.in_valid to input_buffer.in_valid, "
+            "input_buffer.out_valid to accumulator.sample_valid, and accumulator.sample_valid to top.sample_valid.\n"
             "- data_flow must use named path arrays and control_flow must reference existing state and flows."
         )
     if task_type == "composed_event_counter":
@@ -993,8 +1443,138 @@ def _system_his_v12_retry_guidance(task_type: str) -> str:
             common
             + "- Required top ports: clk, rst_n, in0_valid, in0_data, in1_valid, in1_data, out_ready, "
             "in0_ready, in1_ready, out_valid, out_data\n"
+            "- data_flow.timing entries must use integer latency_cycles >= 0 and initiation_interval > 0.\n"
+            "- Connect join_core.out_valid to accumulator.sample_valid and out_stage.in_valid through explicit data_flow paths.\n"
+            "- Connect out_stage.in_ready to accumulator.sample_ready and join_core.out_ready through explicit ready paths.\n"
+            "- accumulator_core.sample_valid must remain a single input port; accumulator_core.sample_ready "
+            "must remain a single input port.\n"
+            "- Do not create sample_valid_in, sample_valid_out, sample_ready_in, or sample_ready_out aliases.\n"
             "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
             "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_stream_accumulator":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, in_ready, sample_valid, sum\n"
+            "- Connect input_buffer.out_valid to accumulator.sample_valid and top.sample_valid through explicit data_flow paths.\n"
+            "- Do not leave top.sample_valid declared but disconnected.\n"
+            "- accumulator_core.sample_valid must be an input port; accumulator_core.sample_ready must be an output port.\n"
+            "- Do not create sample_valid_in, sample_valid_out, or extra accumulator_core valid aliases.\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_stream_fork":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, in_ready, out0_valid, out0_data, "
+            "out0_ready, out1_valid, out1_data, out1_ready\n"
+            "- If an FSM is declared for the skid buffer, initial and reset_state must be one of the declared states.\n"
+            "- Prefer handshake_rule and buffer_occupancy control rules when an explicit FSM is not necessary.\n"
+        )
+    if task_type == "alu_control_unit":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, valid, ready, op, lhs, rhs, result_valid, result, zero, carry, negative\n"
+            "- Keep control_decode, alu_core, and status_flags as separate RTL modules.\n"
+            "- Do not rename op/lhs/rhs/result or collapse flag outputs into a packed status bus.\n"
+        )
+    if task_type == "crc_stream_checker":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, in_data, frame_start, frame_end, expected_crc, out_ready, in_ready, out_valid, crc_value, crc_match\n"
+            "- Keep stream_frame_accumulator, crc8_update, and crc_status as separate RTL modules.\n"
+            "- Do not rename frame_start/frame_end/expected_crc to AXI-style sideband names.\n"
+        )
+    if task_type == "composed_vector_mac_pipeline":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, feature_valid, feature_data, weight_valid, "
+            "weight_data, bias, score_ready, feature_ready, weight_ready, score_valid, score_data\n"
+            "- If mac_core_fsm is declared, it must have owner mac_core, states IDLE/ACCUMULATE/OUTPUT, "
+            "initial IDLE, reset_state IDLE, and all fsm_transition rules must use those exact from/to states.\n"
+            "- control_flow.effect must be an object with a non-empty declared target; prefer counter_update or enable_rule "
+            "when the rule updates vector_index, accumulator, or pending_score.\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_td_update_core":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, in_valid, reward, value, next_value, gamma, alpha, "
+            "out_ready, in_ready, out_valid, td_error, updated_value\n"
+            "- If out_fsm is declared, use owner output_stage, states IDLE/VALID, initial IDLE, reset_state IDLE, "
+            "and all fsm_transition rules must use fsm out_fsm with those exact from/to states.\n"
+            "- control_flow.effect must be an object with a non-empty declared target; prefer handshake_rule "
+            "when modeling output valid/ready behavior.\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_policy_value_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, cfg_valid, cfg_addr, cfg_data, cfg_ready, obs_valid, "
+            "obs_ready, obs0, obs1, action_valid, action_ready, selected_action, value_estimate\n"
+            "- Keep config_reg_bank, observation_stage, policy_score_core, action_select_core, and stream_stage "
+            "as separate RTL modules.\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_replay_sample_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, host_valid, host_ready, host_state, host_action, "
+            "host_reward, host_next_state, host_done, sample_valid, sample_ready, sample_state, "
+            "sample_action, sample_reward, sample_next_state, sample_done, occupancy\n"
+            "- Keep host_sample_stage, replay_store, sample_pack_core, sample_read_stage, and "
+            "occupancy_counter as separate RTL modules.\n"
+            "- Do not rename these ports to AXI-style names such as s_axis_tvalid, s_axis_tdata, "
+            "m_axis_tvalid, or m_axis_tdata.\n"
+        )
+    if task_type == "composed_host_protocol_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, s_axi_awvalid, s_axi_awready, s_axi_awaddr, "
+            "s_axi_wvalid, s_axi_wready, s_axi_wdata, s_axi_wstrb, s_axi_bvalid, s_axi_bready, "
+            "s_axi_arvalid, s_axi_arready, s_axi_araddr, s_axi_rvalid, s_axi_rready, s_axi_rdata, "
+            "m_axis_tvalid, m_axis_tready, m_axis_tdata, m_axis_tlast, irq\n"
+            "- Keep axi_lite_write_ctrl, axi_lite_read_ctrl, control_reg_bank, sample_stream_adapter, "
+            "and irq_status as separate RTL modules.\n"
+            "- This task intentionally uses AXI-style signal names; preserve them exactly.\n"
+        )
+    if task_type == "composed_rl_accelerator_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, cfg_valid, cfg_ready, cfg_addr, cfg_data, sample_valid, "
+            "sample_ready, obs0, obs1, reward, next_value, done_in, result_valid, result_ready, "
+            "selected_action, value_estimate, updated_value, episode_done, irq\n"
+            "- Keep host_config_bank, sample_capture_stage, policy_value_core, td_update_core, and "
+            "result_stream_stage as separate RTL modules.\n"
+            "- This is a synthetic integrated RL accelerator shell; do not claim real DQN, PPO, SAC, DMA, "
+            "or board-level semantics without reference inputs.\n"
+        )
+    if task_type == "composed_batch_rl_accelerator_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, cfg_valid, cfg_ready, cfg_addr, cfg_data, batch_valid, "
+            "batch_ready, obs0_a, obs1_a, reward_a, next_value_a, done_a, obs0_b, obs1_b, reward_b, "
+            "next_value_b, done_b, result_valid, result_ready, selected_action_a, value_estimate_a, "
+            "updated_value_a, selected_action_b, value_estimate_b, updated_value_b, batch_done, irq\n"
+            "- Keep batch_config_bank, batch_sample_buffer, dual_policy_value_core, dual_td_update_core, "
+            "and batch_result_stage as separate RTL modules.\n"
+            "- This is a synthetic two-lane batch RL accelerator shell; do not claim real DQN, PPO, SAC, DMA, "
+            "or board-level semantics without reference inputs.\n"
+        )
+    if task_type == "composed_replay_arbiter_shell":
+        return (
+            common
+            + "- Required top ports: clk, rst_n, host_valid, host_ready, host_state, host_action, "
+            "host_reward, host_next_state, host_done, sample_req_valid, sample_req_ready, sample_index, "
+            "sample_valid, sample_ready, sample_state, sample_action, sample_reward, sample_next_state, "
+            "sample_done, occupancy, write_index, irq\n"
+            "- Keep host_transition_packetizer, replay_index_allocator, replay_request_arbiter, "
+            "replay_memory_bank, and sample_packet_stage as separate RTL modules.\n"
+            "- This is a synthetic replay arbiter shell; do not claim random replay, prioritized replay, DMA, "
+            "DDR, or board-level semantics without reference inputs.\n"
         )
     if task_type == "composed_stream_fork":
         return (
@@ -1021,17 +1601,18 @@ def _his_project_messages(
     platform: PlatformProfile,
     system_his: dict[str, Any],
 ) -> list[dict[str, str]]:
-    required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
     system_his_text = json.dumps(system_his, ensure_ascii=False, indent=2)
-    sources = _artifact_sources_example(system_his, request.task_type)
-    extra_entries = _additional_file_entries(sources)
+    skeleton_files = build_contract_skeleton_project(request, platform, system_his).files
+    skeleton_text = json.dumps(skeleton_files, ensure_ascii=False, indent=2)
+    behavior_paths = [path for path, content in sorted(skeleton_files.items()) if "BEHAVIOR_HOLE" in content]
+    behavior_entries = "\n".join(f'    "{path}": "...",' for path in behavior_paths).rstrip(",")
     system = (
-        "You generate complete FPGA RTL project packages from checked System-HIS architecture contracts. "
+        "You generate behavioral RTL bodies for checked System-HIS architecture contracts. "
         "Return only valid JSON. Do not include markdown. "
         "Do not generate vendor IP, HLS, bitstreams, or real tool reports."
     )
     user = f"""
-Generate a complete SR2FPGA Verilog RTL project from this checked System-HIS.
+Generate behavior bodies for a contract-preserving SR2FPGA Verilog RTL skeleton.
 
 Project:
 - project_name: {request.project_name}
@@ -1049,48 +1630,87 @@ Platform:
 Checked System-HIS v1.2:
 {system_his_text}
 
+Contract-preserving deterministic skeleton:
+{skeleton_text}
+
 Rules:
 - Treat the System-HIS as the frozen architecture contract.
+- Use the deterministic skeleton as the structural source of truth.
+- Preserve module headers, top-level port lists, instance names, parameter
+  overrides, manifest sources, timing constraints, and testbench top instantiation
+  from the skeleton.
+- Fill BEHAVIOR_HOLE regions with behavioral RTL only; do not create structural
+  names that are absent from the checked System-HIS.
 - Do not change component, instance, top port, data_flow, or control_flow names.
 - Generate RTL that implements the top-down architecture contract.
+- Generated behavior must be Verilator -Wall clean: drive every declared output,
+  include a default branch for every case statement, avoid incomplete case
+  coverage, and do not create multiple continuous drivers for the same signal.
+- Make arithmetic widths explicit. For fixed-point multiply/add/shift paths,
+  assign DATA_WIDTH outputs from an explicitly sized intermediate or slice such
+  as value_ext[DATA_WIDTH-1:0]; do not rely on implicit Verilog truncation or
+  extension that would trigger WIDTHEXPAND or WIDTHTRUNC.
+- If a wide intermediate is sliced, either use every bit or add a local
+  _unused_* reduction wire for intentionally unused high/low bits so Verilator
+  does not report UNUSEDSIGNAL on partial product bits.
+- Use declared FSM state localparams from the deterministic skeleton when
+  implementing state machines.
+- Do not rename, omit, or replace System-HIS state.fsms states; every declared
+  state name must remain visible in the generated RTL module.
 - Do not use Verilog reserved keywords for any RTL identifier, including modules,
   instances, regs, wires, arrays, blocks, and parameters. Avoid names such as
   fork, join, buf, begin, end, module, wire, input, output, and reg.
-- Keep rtl/top.v as the integration wrapper.
-- Put reusable components in separate RTL files.
-- Include the same System-HIS JSON as system_his.json unless only formatting changes are needed.
-- Include a bounded self-checking testbench that prints TEST_PASS on success and TEST_FAIL on failure.
+- Do not return system_his.json, manifest.json, rtl/top.v, constraints, testbench,
+  reports, complete modules, module headers, or endmodule lines.
+- The deterministic skeleton already supplies structure, constraints, manifest,
+  reports, and testbench. Your output supplies only replacement text for each
+  BEHAVIOR_HOLE marker.
 {_icarus_testbench_rules()}
 
-Required files:
-{required_files}
+Behavior files with BEHAVIOR_HOLE markers:
+{json.dumps(behavior_paths, ensure_ascii=False, indent=2)}
 
-Return JSON in this exact shape. The value of each file must be a JSON string;
-escape newlines as \\n and escape any double quotes inside file contents:
+Return JSON in this exact shape. The value of each behavior file must be a JSON
+string; escape newlines as \\n and escape any double quotes inside file contents:
 {{
-  "files": {{
-    "system_his.json": "...",
-    "manifest.json": "...",
-    "rtl/top.v": "...",
-{extra_entries}
-    "constraints/timing.sdc": "...",
-    "sim/tb_top.v": "...",
-    "reports/predicted_qor.json": "..."
+  "behavior_files": {{
+{behavior_entries}
   }}
-}}
-
-The manifest.json file content must itself be JSON and must contain this tool
-pipeline schema:
-{{
-  "project_name": "{request.project_name}",
-  "top_module": "top",
-  "sources": {json.dumps(sources)},
-  "constraints": {{"timing": "constraints/timing.sdc"}},
-  "simulation": {{"testbench": "sim/tb_top.v"}},
-  "reports": ["reports/predicted_qor.json"]
 }}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _with_his_project_retry_feedback(
+    messages: list[dict[str, str]],
+    error: str,
+    previous_content: str,
+) -> list[dict[str, str]]:
+    return [
+        *messages,
+        {"role": "assistant", "content": previous_content or "{}"},
+        {
+            "role": "user",
+            "content": (
+                "Your previous behavior_files output failed validation. "
+                "Repair that JSON in place and return a corrected complete behavior_files JSON object only.\n\n"
+                "Validation error:\n"
+                f"{error}\n\n"
+                "HIS2PROJECT behavior repair checklist:\n"
+                "- Return behavior_files only, not files.\n"
+                "- Each behavior_files value must contain only the replacement body for one BEHAVIOR_HOLE.\n"
+                "- Do not include module declarations, module headers, port lists, or endmodule lines.\n"
+                "- Do not return system_his.json, manifest.json, rtl/top.v, constraints, testbench, or reports.\n"
+                "- Drive every declared output in the behavior body.\n"
+                "- Every case statement must include a default branch or cover all encoded states.\n"
+                "- Make arithmetic widths explicit; avoid implicit truncation/extension warnings such as WIDTHEXPAND or WIDTHTRUNC.\n"
+                "- If a wide intermediate is sliced, consume intentionally unused high/low bits with a local _unused_* reduction wire.\n"
+                "- Avoid undriven signals, incomplete case coverage, and multiple continuous drivers.\n\n"
+                "Previous invalid behavior_files JSON:\n"
+                f"{previous_content.strip()}"
+            ),
+        },
+    ]
 
 
 def _project_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:
@@ -1217,6 +1837,12 @@ pipeline schema:
 
 Make the smallest practical fix for the failing tool log. Preserve pure
 Verilog RTL and ensure the testbench prints TEST_PASS on success.
+Repair quality rules:
+- Do not introduce a new syntax error while fixing a lint warning.
+- Use legal Verilog concatenation syntax: nested replication must be wrapped
+  as {{ {{N{{bit}}}}, signal }}; never write {{N{{bit}}, signal}}.
+- After a lint repair, the edited RTL must still be Verilator -Wall clean:
+  avoid WIDTHEXPAND, WIDTHTRUNC, UNUSEDSIGNAL, UNDRIVEN, and PINNOTFOUND.
 {_icarus_testbench_rules()}
 {_unused_parameter_repair_rules(diagnosis)}
 {_functional_mismatch_repair_rules(diagnosis)}

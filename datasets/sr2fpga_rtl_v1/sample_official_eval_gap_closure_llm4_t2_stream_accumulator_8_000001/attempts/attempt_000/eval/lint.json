@@ -1,0 +1,16 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/accumulator_core.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDPARAM: rtl/skid_buffer.v:36:14: Parameter is not used: 'EMPTY'\n                                             : ... note: In instance 'top.input_buffer'\n   36 |   localparam EMPTY = 0;\n      |              ^~~~~\n                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048\n                      ... Use \"/* verilator lint_off UNUSEDPARAM */\" and lint_on around source to disable this message.\n%Warning-UNUSEDPARAM: rtl/skid_buffer.v:37:14: Parameter is not used: 'FULL'\n                                             : ... note: In instance 'top.input_buffer'\n   37 |   localparam FULL = 0;\n      |              ^~~~\n%Error: Exiting due to 2 warning(s)\n",
+  "duration_seconds": 0.10896291700191796
+}

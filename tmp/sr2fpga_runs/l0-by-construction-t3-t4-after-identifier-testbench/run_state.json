@@ -1,0 +1,22 @@
+{
+  "run_id": "l0-by-construction-t3-t4-after-identifier-testbench",
+  "next_index": 2,
+  "completed_samples": [
+    "sample_l0_by_construction_t3_t4_after_identifier_testbench_t3_stream_fork_8_000001",
+    "sample_l0_by_construction_t3_t4_after_identifier_testbench_t4_dual_stream_join_8_000002"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_l0_by_construction_t3_t4_after_identifier_testbench_t3_stream_fork_8_000001",
+      "sample_l0_by_construction_t3_t4_after_identifier_testbench_t4_dual_stream_join_8_000002"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "reset_behavior_error": 1,
+    "unknown": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "825817d9e03f56ecb3c097df4614e774a0a4b43cc7e2363483ef493666825ac1"
+}

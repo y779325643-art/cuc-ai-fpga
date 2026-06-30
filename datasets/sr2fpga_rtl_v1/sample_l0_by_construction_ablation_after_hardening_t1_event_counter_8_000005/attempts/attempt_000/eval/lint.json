@@ -1,0 +1,16 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/event_gate.v",
+    "rtl/counter_core.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDSIGNAL: rtl/top.v:4:16: Signal is not used: 'event_valid'\n                                     : ... note: In instance 'top'\n    4 |     input wire event_valid,\n      |                ^~~~~~~~~~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Warning-UNDRIVEN: rtl/top.v:5:29: Signal is not driven: 'count'\n                                 : ... note: In instance 'top'\n    5 |     output wire [WIDTH-1:0] count\n      |                             ^~~~~\n                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=5.048\n                   ... Use \"/* verilator lint_off UNDRIVEN */\" and lint_on around source to disable this message.\n%Warning-UNDRIVEN: rtl/top.v:8:8: Signal is not driven: 'event_gate__event_valid'\n                                : ... note: In instance 'top'\n    8 |   wire event_gate__event_valid;\n      |        ^~~~~~~~~~~~~~~~~~~~~~~\n%Warning-UNUSEDSIGNAL: rtl/top.v:9:8: Signal is not used: 'event_gate__count_en'\n                                    : ... note: In instance 'top'\n    9 |   wire event_gate__count_en;\n      |        ^~~~~~~~~~~~~~~~~~~~\n%Warning-UNDRIVEN: rtl/top.v:10:8: Signal is not driven: 'counter__en'\n                                 : ... note: In instance 'top'\n   10 |   wire counter__en;\n      |        ^~~~~~~~~~~\n%Warning-UNUSEDSIGNAL: rtl/top.v:11:20: Signal is not used: 'counter__count'\n                                      : ... note: In instance 'top'\n   11 |   wire [WIDTH-1:0] counter__count;\n      |                    ^~~~~~~~~~~~~~\n%Error: Exiting due to 6 warning(s)\n",
+  "duration_seconds": 0.11115095800050767
+}

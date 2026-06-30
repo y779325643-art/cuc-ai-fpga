@@ -1,0 +1,10 @@
+%Warning-MULTIDRIVEN: rtl/top.v:21:8: Bit [0] of signal 'top.accumulator__sample_valid' have multiple combinational drivers. This can cause performance degradation.
+                      rtl/top.v:27:36: ... Location of offending driver
+   27 |   assign accumulator__sample_valid = input_buffer__out_valid;
+      |                                    ^
+                      rtl/accumulator_core.v:15:25: ... Location of offending driver
+   15 |     assign sample_valid = sample_valid_in;
+      |                         ^
+                      ... For warning description see https://verilator.org/warn/MULTIDRIVEN?v=5.048
+                      ... Use "/* verilator lint_off MULTIDRIVEN */" and lint_on around source to disable this message.
+%Error: Exiting due to 1 warning(s)

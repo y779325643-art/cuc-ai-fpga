@@ -98,6 +98,42 @@ class SystemHisReqFidelityTest(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("REQ2HIS fidelity: top.count width must match requested width 8", result.errors)
 
+    def test_composed_stream_accumulator_requires_accumulator_core_port_contract(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_stream_accumulator",
+            width=8,
+            project_name="stream_accum_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        for component in system_his["components"]:
+            if component["name"] == "accumulator_core":
+                component["ports"] = [
+                    {"name": "clk", "direction": "input", "width": 1},
+                    {"name": "rst_n", "direction": "input", "width": 1},
+                    {"name": "sample_valid_in", "direction": "input", "width": 1},
+                    {"name": "sample", "direction": "input", "width": "DATA_WIDTH"},
+                    {"name": "sample_ready", "direction": "output", "width": 1},
+                    {"name": "sum", "direction": "output", "width": "DATA_WIDTH"},
+                    {"name": "sample_valid", "direction": "output", "width": 1},
+                ]
+        for flow in system_his["data_flow"]:
+            flow["path"] = [
+                "u_accumulator_core.sample_valid_in" if endpoint == "u_accumulator_core.sample_valid" else endpoint
+                for endpoint in flow["path"]
+            ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core.sample_valid direction must be input",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_valid_in'",
+            result.errors,
+        )
+
     def test_composed_dual_stream_join_requires_two_skid_buffer_instances(self) -> None:
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
@@ -122,6 +158,317 @@ class SystemHisReqFidelityTest(unittest.TestCase):
             "REQ2HIS fidelity: composed_dual_stream_join requires 2 instance(s) of component 'skid_buffer'",
             result.errors,
         )
+
+    def test_composed_dual_stream_join_rejects_accumulator_core_alias_ports_in_data_flow(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        for flow in system_his["data_flow"]:
+            flow["path"] = [
+                "u_accumulator_core.sample_valid_in" if endpoint == "u_accumulator_core.sample_valid" else endpoint
+                for endpoint in flow["path"]
+            ]
+        system_his["data_flow"].append(
+            {
+                "name": "bad_ready_alias",
+                "path": ["u_stream_stage.in_ready", "u_accumulator_core.sample_ready_out"],
+                "payload": {"name": "ready", "width": 1},
+                "protocol": "valid_ready",
+            }
+        )
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_valid_in'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_ready_out'",
+            result.errors,
+        )
+
+    def test_composed_vector_mac_pipeline_requires_feature_weight_and_score_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_vector_mac_pipeline",
+            width=8,
+            project_name="vector_mac_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"feature_data", "score_data"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_vector_mac_pipeline requires top port 'feature_data'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_vector_mac_pipeline requires top port 'score_data'",
+            result.errors,
+        )
+
+    def test_composed_td_update_core_requires_reward_value_and_update_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_td_update_core",
+            width=8,
+            project_name="td_update_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"reward", "updated_value"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn("REQ2HIS fidelity: composed_td_update_core requires top port 'reward'", result.errors)
+        self.assertIn("REQ2HIS fidelity: composed_td_update_core requires top port 'updated_value'", result.errors)
+
+    def test_composed_policy_value_shell_requires_config_observation_and_action_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_policy_value_shell",
+            width=8,
+            project_name="policy_value_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"cfg_valid", "selected_action"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_policy_value_shell requires top port 'cfg_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_policy_value_shell requires top port 'selected_action'",
+            result.errors,
+        )
+
+    def test_composed_replay_sample_shell_requires_host_sample_and_occupancy_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_replay_sample_shell",
+            width=8,
+            project_name="replay_sample_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"host_valid", "sample_state", "occupancy"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_sample_shell requires top port 'host_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_sample_shell requires top port 'sample_state'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_sample_shell requires top port 'occupancy'",
+            result.errors,
+        )
+
+    def test_composed_host_protocol_shell_requires_axi_stream_and_irq_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_host_protocol_shell",
+            width=8,
+            project_name="host_protocol_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"s_axi_awvalid", "m_axis_tdata", "irq"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_host_protocol_shell requires top port 's_axi_awvalid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_host_protocol_shell requires top port 'm_axis_tdata'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_host_protocol_shell requires top port 'irq'",
+            result.errors,
+        )
+
+    def test_composed_rl_accelerator_shell_requires_config_sample_result_and_irq_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_rl_accelerator_shell",
+            width=8,
+            project_name="rl_accelerator_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"cfg_valid", "sample_valid", "updated_value", "irq"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_rl_accelerator_shell requires top port 'cfg_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_rl_accelerator_shell requires top port 'sample_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_rl_accelerator_shell requires top port 'updated_value'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_rl_accelerator_shell requires top port 'irq'",
+            result.errors,
+        )
+
+    def test_composed_batch_rl_accelerator_shell_requires_config_batch_result_and_irq_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_batch_rl_accelerator_shell",
+            width=8,
+            project_name="batch_rl_accelerator_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"cfg_valid", "batch_valid", "updated_value_b", "irq"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'cfg_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'batch_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'updated_value_b'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_batch_rl_accelerator_shell requires top port 'irq'",
+            result.errors,
+        )
+
+    def test_composed_replay_arbiter_shell_requires_host_request_sample_status_and_irq_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_replay_arbiter_shell",
+            width=8,
+            project_name="replay_arbiter_shell_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"host_valid", "sample_req_valid", "sample_state", "occupancy", "irq"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'host_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'sample_req_valid'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'sample_state'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'occupancy'",
+            result.errors,
+        )
+        self.assertIn(
+            "REQ2HIS fidelity: composed_replay_arbiter_shell requires top port 'irq'",
+            result.errors,
+        )
+
+    def test_alu_control_unit_accepts_deterministic_his(self) -> None:
+        request = ProjectRequest(
+            task_type="alu_control_unit",
+            width=8,
+            project_name="alu_control_unit_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertTrue(result.passed, result.errors)
+
+    def test_alu_control_unit_requires_opcode_operand_and_flag_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="alu_control_unit",
+            width=8,
+            project_name="alu_control_unit_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port for port in system_his["top"]["ports"] if port["name"] not in {"op", "lhs", "negative"}
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn("REQ2HIS fidelity: alu_control_unit requires top port 'op'", result.errors)
+        self.assertIn("REQ2HIS fidelity: alu_control_unit requires top port 'lhs'", result.errors)
+        self.assertIn("REQ2HIS fidelity: alu_control_unit requires top port 'negative'", result.errors)
+
+    def test_crc_stream_checker_requires_frame_crc_ports_and_components(self) -> None:
+        request = ProjectRequest(
+            task_type="crc_stream_checker",
+            width=8,
+            project_name="crc_stream_checker_8bit",
+        )
+        system_his = _deterministic_system_his(request)
+        system_his["top"]["ports"] = [
+            port
+            for port in system_his["top"]["ports"]
+            if port["name"] not in {"frame_start", "expected_crc", "crc_match"}
+        ]
+        system_his["components"] = [
+            component for component in system_his["components"] if component["name"] != "crc8_update"
+        ]
+
+        result = check_system_his_req_fidelity(request, system_his)
+
+        self.assertFalse(result.passed)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires component 'crc8_update'", result.errors)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires top port 'frame_start'", result.errors)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires top port 'expected_crc'", result.errors)
+        self.assertIn("REQ2HIS fidelity: crc_stream_checker requires top port 'crc_match'", result.errors)
 
     def test_unsupported_tasks_are_not_blocked_by_req_fidelity_gate(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")

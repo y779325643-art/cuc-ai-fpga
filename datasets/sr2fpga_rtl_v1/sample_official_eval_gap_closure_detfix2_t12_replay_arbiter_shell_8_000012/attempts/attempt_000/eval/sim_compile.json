@@ -1,0 +1,21 @@
+{
+  "stage": "sim_compile",
+  "command": [
+    "/opt/homebrew/bin/iverilog",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/host_transition_packetizer.v",
+    "rtl/replay_index_allocator.v",
+    "rtl/replay_request_arbiter.v",
+    "rtl/replay_memory_bank.v",
+    "rtl/sample_packet_stage.v",
+    "sim/tb_top.v"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "",
+  "duration_seconds": 0.0181132500001695
+}

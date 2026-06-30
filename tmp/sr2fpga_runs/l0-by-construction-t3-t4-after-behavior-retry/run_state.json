@@ -1,0 +1,21 @@
+{
+  "run_id": "l0-by-construction-t3-t4-after-behavior-retry",
+  "next_index": 2,
+  "completed_samples": [
+    "sample_l0_by_construction_t3_t4_after_behavior_retry_t3_stream_fork_8_000001",
+    "sample_l0_by_construction_t3_t4_after_behavior_retry_t4_dual_stream_join_8_000002"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_l0_by_construction_t3_t4_after_behavior_retry_t3_stream_fork_8_000001",
+      "sample_l0_by_construction_t3_t4_after_behavior_retry_t4_dual_stream_join_8_000002"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "lint_warning_as_error": 2
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "94d954e0ffeb7f062451bbac909fb3b439933f1ef7e6951d9e0d43736aa334aa"
+}

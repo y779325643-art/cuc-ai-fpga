@@ -1,0 +1,14 @@
+%Error-UNSUPPORTED: rtl/skid_buffer.v:41:1: Unsupported: module decls within module decls
+   41 | endmodule
+      | ^~~~~~~~~
+                    ... For error description see https://verilator.org/warn/UNSUPPORTED?v=5.048
+%Error-UNSUPPORTED: rtl/stream_join.v:28:1: Unsupported: module decls within module decls
+   28 | endmodule
+      | ^~~~~~~~~
+%Error-UNSUPPORTED: rtl/accumulator_core.v:41:1: Unsupported: module decls within module decls
+   41 | endmodule
+      | ^~~~~~~~~
+%Error-UNSUPPORTED: rtl/stream_stage.v:41:1: Unsupported: module decls within module decls
+   41 | endmodule
+      | ^~~~~~~~~
+%Error: Exiting due to 4 error(s)

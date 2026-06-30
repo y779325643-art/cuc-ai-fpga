@@ -1,0 +1,3421 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "composed_batch_rl_accelerator_shell",
+  "project_name": "official_eval_gap_closure_detfix3_t11_batch_rl_accelerator_shell_8_000011",
+  "project": {
+    "name": "official_eval_gap_closure_detfix3_t11_batch_rl_accelerator_shell_8_000011",
+    "description": "Build an 8-bit two-lane batch RL accelerator shell as a complete SR2FPGA Verilog RTL project. This is component topology t11_batch_rl_accelerator_shell, difficulty tier T11. Use batch_config_bank and batch_sample_buffer feeding dual_policy_value_core, then dual_td_update_core and batch_result_stage. The design must implement this black-box behavior: configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, each lane is scored and updated through duplicated policy/value and TD datapaths, and both lane results are staged with batch_done irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.cfg_valid -> batch_config_bank.cfg_valid; top.cfg_addr -> batch_config_bank.cfg_addr; top.cfg_data -> batch_config_bank.cfg_data; batch_config_bank.cfg_ready -> top.cfg_ready; top.batch_valid -> batch_sample_buffer.in_valid; batch_sample_buffer.in_ready -> top.batch_ready; top.obs0_a -> batch_sample_buffer.obs0_a; top.obs1_a -> batch_sample_buffer.obs1_a; top.reward_a -> batch_sample_buffer.reward_a; top.next_value_a -> batch_sample_buffer.next_value_a; top.done_a -> batch_sample_buffer.done_a; top.obs0_b -> batch_sample_buffer.obs0_b; top.obs1_b -> batch_sample_buffer.obs1_b; top.reward_b -> batch_sample_buffer.reward_b; top.next_value_b -> batch_sample_buffer.next_value_b; top.done_b -> batch_sample_buffer.done_b; batch_sample_buffer.out_valid -> dual_policy_value_core.in_valid; batch_sample_buffer.obs0_a_out -> dual_policy_value_core.obs0_a; batch_sample_buffer.obs1_a_out -> dual_policy_value_core.obs1_a; batch_sample_buffer.obs0_b_out -> dual_policy_value_core.obs0_b; batch_sample_buffer.obs1_b_out -> dual_policy_value_core.obs1_b; batch_config_bank.weight0 -> dual_policy_value_core.weight0; batch_config_bank.bias0 -> dual_policy_value_core.bias0; batch_config_bank.weight1 -> dual_policy_value_core.weight1; batch_config_bank.bias1 -> dual_policy_value_core.bias1; batch_config_bank.enable -> dual_policy_value_core.enable; dual_policy_value_core.out_valid -> dual_td_update_core.in_valid; dual_policy_value_core.value_estimate_a -> dual_td_update_core.value_estimate_a; dual_policy_value_core.value_estimate_b -> dual_td_update_core.value_estimate_b; batch_sample_buffer.reward_a_out -> dual_td_update_core.reward_a; batch_sample_buffer.next_value_a_out -> dual_td_update_core.next_value_a; batch_sample_buffer.reward_b_out -> dual_td_update_core.reward_b; batch_sample_buffer.next_value_b_out -> dual_td_update_core.next_value_b; batch_config_bank.alpha -> dual_td_update_core.alpha; dual_td_update_core.out_valid -> batch_result_stage.in_valid; dual_policy_value_core.selected_action_a -> batch_result_stage.selected_action_a; dual_policy_value_core.value_estimate_a -> batch_result_stage.value_estimate_a; dual_td_update_core.updated_value_a -> batch_result_stage.updated_value_a; dual_policy_value_core.selected_action_b -> batch_result_stage.selected_action_b; dual_policy_value_core.value_estimate_b -> batch_result_stage.value_estimate_b; dual_td_update_core.updated_value_b -> batch_result_stage.updated_value_b; batch_sample_buffer.done_a_out -> batch_result_stage.done_a; batch_sample_buffer.done_b_out -> batch_result_stage.done_b; batch_result_stage.out_ready -> batch_sample_buffer.consume_ready; batch_result_stage.result_valid -> top.result_valid; top.result_ready -> batch_result_stage.result_ready; batch_result_stage.selected_action_a_out -> top.selected_action_a; batch_result_stage.value_estimate_a_out -> top.value_estimate_a; batch_result_stage.updated_value_a_out -> top.updated_value_a; batch_result_stage.selected_action_b_out -> top.selected_action_b; batch_result_stage.value_estimate_b_out -> top.value_estimate_b; batch_result_stage.updated_value_b_out -> top.updated_value_b; batch_result_stage.batch_done_out -> top.batch_done; batch_result_stage.irq -> top.irq. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Build an 8-bit two-lane batch RL accelerator shell as a complete SR2FPGA Verilog RTL project. This is component topology t11_batch_rl_accelerator_shell, difficulty tier T11. Use batch_config_bank and batch_sample_buffer feeding dual_policy_value_core, then dual_td_update_core and batch_result_stage. The design must implement this black-box behavior: configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, each lane is scored and updated through duplicated policy/value and TD datapaths, and both lane results are staged with batch_done irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.cfg_valid -> batch_config_bank.cfg_valid; top.cfg_addr -> batch_config_bank.cfg_addr; top.cfg_data -> batch_config_bank.cfg_data; batch_config_bank.cfg_ready -> top.cfg_ready; top.batch_valid -> batch_sample_buffer.in_valid; batch_sample_buffer.in_ready -> top.batch_ready; top.obs0_a -> batch_sample_buffer.obs0_a; top.obs1_a -> batch_sample_buffer.obs1_a; top.reward_a -> batch_sample_buffer.reward_a; top.next_value_a -> batch_sample_buffer.next_value_a; top.done_a -> batch_sample_buffer.done_a; top.obs0_b -> batch_sample_buffer.obs0_b; top.obs1_b -> batch_sample_buffer.obs1_b; top.reward_b -> batch_sample_buffer.reward_b; top.next_value_b -> batch_sample_buffer.next_value_b; top.done_b -> batch_sample_buffer.done_b; batch_sample_buffer.out_valid -> dual_policy_value_core.in_valid; batch_sample_buffer.obs0_a_out -> dual_policy_value_core.obs0_a; batch_sample_buffer.obs1_a_out -> dual_policy_value_core.obs1_a; batch_sample_buffer.obs0_b_out -> dual_policy_value_core.obs0_b; batch_sample_buffer.obs1_b_out -> dual_policy_value_core.obs1_b; batch_config_bank.weight0 -> dual_policy_value_core.weight0; batch_config_bank.bias0 -> dual_policy_value_core.bias0; batch_config_bank.weight1 -> dual_policy_value_core.weight1; batch_config_bank.bias1 -> dual_policy_value_core.bias1; batch_config_bank.enable -> dual_policy_value_core.enable; dual_policy_value_core.out_valid -> dual_td_update_core.in_valid; dual_policy_value_core.value_estimate_a -> dual_td_update_core.value_estimate_a; dual_policy_value_core.value_estimate_b -> dual_td_update_core.value_estimate_b; batch_sample_buffer.reward_a_out -> dual_td_update_core.reward_a; batch_sample_buffer.next_value_a_out -> dual_td_update_core.next_value_a; batch_sample_buffer.reward_b_out -> dual_td_update_core.reward_b; batch_sample_buffer.next_value_b_out -> dual_td_update_core.next_value_b; batch_config_bank.alpha -> dual_td_update_core.alpha; dual_td_update_core.out_valid -> batch_result_stage.in_valid; dual_policy_value_core.selected_action_a -> batch_result_stage.selected_action_a; dual_policy_value_core.value_estimate_a -> batch_result_stage.value_estimate_a; dual_td_update_core.updated_value_a -> batch_result_stage.updated_value_a; dual_policy_value_core.selected_action_b -> batch_result_stage.selected_action_b; dual_policy_value_core.value_estimate_b -> batch_result_stage.value_estimate_b; dual_td_update_core.updated_value_b -> batch_result_stage.updated_value_b; batch_sample_buffer.done_a_out -> batch_result_stage.done_a; batch_sample_buffer.done_b_out -> batch_result_stage.done_b; batch_result_stage.out_ready -> batch_sample_buffer.consume_ready; batch_result_stage.result_valid -> top.result_valid; top.result_ready -> batch_result_stage.result_ready; batch_result_stage.selected_action_a_out -> top.selected_action_a; batch_result_stage.value_estimate_a_out -> top.value_estimate_a; batch_result_stage.updated_value_a_out -> top.updated_value_a; batch_result_stage.selected_action_b_out -> top.selected_action_b; batch_result_stage.value_estimate_b_out -> top.value_estimate_b; batch_result_stage.updated_value_b_out -> top.updated_value_b; batch_result_stage.batch_done_out -> top.batch_done; batch_result_stage.irq -> top.irq. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "design_goal": "configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, each lane is scored and updated through duplicated policy/value and TD datapaths, and both lane results are staged with batch_done irq reporting",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "cfg_valid",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "cfg_addr",
+        "dir": "input",
+        "width": 3
+      },
+      {
+        "name": "cfg_data",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "batch_valid",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "obs0_a",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "obs1_a",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "reward_a",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "next_value_a",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "done_a",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "obs0_b",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "obs1_b",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "reward_b",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "next_value_b",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "done_b",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "result_ready",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "cfg_ready",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "batch_ready",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "result_valid",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "selected_action_a",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "value_estimate_a",
+        "dir": "output",
+        "width": 8
+      },
+      {
+        "name": "updated_value_a",
+        "dir": "output",
+        "width": 8
+      },
+      {
+        "name": "selected_action_b",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "value_estimate_b",
+        "dir": "output",
+        "width": 8
+      },
+      {
+        "name": "updated_value_b",
+        "dir": "output",
+        "width": 8
+      },
+      {
+        "name": "batch_done",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "irq",
+        "dir": "output",
+        "width": 1
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "weight0",
+        "owner": "u_batch_config_bank",
+        "width": 8
+      },
+      {
+        "name": "bias0",
+        "owner": "u_batch_config_bank",
+        "width": 8
+      },
+      {
+        "name": "weight1",
+        "owner": "u_batch_config_bank",
+        "width": 8
+      },
+      {
+        "name": "bias1",
+        "owner": "u_batch_config_bank",
+        "width": 8
+      },
+      {
+        "name": "alpha",
+        "owner": "u_batch_config_bank",
+        "width": 8
+      },
+      {
+        "name": "enable",
+        "owner": "u_batch_config_bank",
+        "width": 1
+      },
+      {
+        "name": "captured_obs0_a",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_obs1_a",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_reward_a",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_next_value_a",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_done_a",
+        "owner": "u_batch_sample_buffer",
+        "width": 1
+      },
+      {
+        "name": "captured_obs0_b",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_obs1_b",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_reward_b",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_next_value_b",
+        "owner": "u_batch_sample_buffer",
+        "width": 8
+      },
+      {
+        "name": "captured_done_b",
+        "owner": "u_batch_sample_buffer",
+        "width": 1
+      },
+      {
+        "name": "selected_action_a",
+        "owner": "u_batch_result_stage",
+        "width": 1
+      },
+      {
+        "name": "value_estimate_a",
+        "owner": "u_batch_result_stage",
+        "width": 8
+      },
+      {
+        "name": "updated_value_a",
+        "owner": "u_batch_result_stage",
+        "width": 8
+      },
+      {
+        "name": "selected_action_b",
+        "owner": "u_batch_result_stage",
+        "width": 1
+      },
+      {
+        "name": "value_estimate_b",
+        "owner": "u_batch_result_stage",
+        "width": 8
+      },
+      {
+        "name": "updated_value_b",
+        "owner": "u_batch_result_stage",
+        "width": 8
+      },
+      {
+        "name": "batch_done",
+        "owner": "u_batch_result_stage",
+        "width": 1
+      },
+      {
+        "name": "irq_state",
+        "owner": "u_batch_result_stage",
+        "width": 1
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_addr",
+          "dir": "input",
+          "width": 3
+        },
+        {
+          "name": "cfg_data",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "batch_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_a",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "obs1_a",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "reward_a",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "next_value_a",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "done_a",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_b",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "obs1_b",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "reward_b",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "next_value_b",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "done_b",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "result_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "batch_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "updated_value_a",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "selected_action_b",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "updated_value_b",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "batch_done",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "batch_config_bank",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/batch_config_bank.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "cfg_addr",
+          "dir": "input",
+          "width": 3
+        },
+        {
+          "name": "cfg_data",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight0",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias0",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight1",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias1",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "alpha",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "enable",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "batch config bank component in the generated RTL project"
+    },
+    {
+      "name": "batch_sample_buffer",
+      "semantic_kind": "buffer",
+      "source": "rtl/batch_sample_buffer.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "obs0_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_a",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_b",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "consume_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "obs0_a_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_a_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_a_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_a_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_a_out",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "obs0_b_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_b_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_b_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_b_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_b_out",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "batch sample buffer component in the generated RTL project"
+    },
+    {
+      "name": "dual_policy_value_core",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/dual_policy_value_core.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "in_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs0_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight0",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias0",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight1",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias1",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "enable",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "selected_action_b",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        }
+      ],
+      "intent": "dual policy value core component in the generated RTL project"
+    },
+    {
+      "name": "dual_td_update_core",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/dual_td_update_core.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "in_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "reward_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "value_estimate_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "value_estimate_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "alpha",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "out_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "updated_value_a",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_b",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        }
+      ],
+      "intent": "dual td update core component in the generated RTL project"
+    },
+    {
+      "name": "batch_result_stage",
+      "semantic_kind": "stage",
+      "source": "rtl/batch_result_stage.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_a",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "selected_action_b",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_b",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_a",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "done_b",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a_out",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_a_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "selected_action_b_out",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_b_out",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "batch_done_out",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "batch result stage component in the generated RTL project"
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_batch_config_bank",
+      "component": "batch_config_bank",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_batch_sample_buffer",
+      "component": "batch_sample_buffer",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_dual_policy_value_core",
+      "component": "dual_policy_value_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_dual_td_update_core",
+      "component": "dual_td_update_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_batch_result_stage",
+      "component": "batch_result_stage",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "u_batch_config_bank_primary_path",
+      "path": [
+        "top.cfg_data",
+        "u_batch_config_bank.cfg_valid",
+        "u_batch_config_bank.cfg_ready",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_batch_sample_buffer_primary_path",
+      "path": [
+        "top.cfg_data",
+        "u_batch_sample_buffer.in_valid",
+        "u_batch_sample_buffer.in_ready",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_dual_policy_value_core_primary_path",
+      "path": [
+        "top.cfg_data",
+        "u_dual_policy_value_core.in_valid",
+        "u_dual_policy_value_core.out_valid",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_dual_td_update_core_primary_path",
+      "path": [
+        "top.cfg_data",
+        "u_dual_td_update_core.in_valid",
+        "u_dual_td_update_core.out_valid",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_batch_result_stage_primary_path",
+      "path": [
+        "top.cfg_data",
+        "u_batch_result_stage.in_valid",
+        "u_batch_result_stage.out_ready",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    },
+    {
+      "name": "valid_ready_transfer",
+      "kind": "handshake_rule",
+      "condition": "valid && ready",
+      "effects": [
+        "advance each ready/valid flow by one payload"
+      ],
+      "related_state": [],
+      "related_flows": [
+        "u_batch_config_bank_primary_path",
+        "u_batch_sample_buffer_primary_path",
+        "u_dual_policy_value_core_primary_path",
+        "u_dual_td_update_core_primary_path",
+        "u_batch_result_stage_primary_path"
+      ]
+    },
+    {
+      "name": "backpressure_hold",
+      "kind": "stall_rule",
+      "condition": "valid && !ready",
+      "effects": [
+        "hold payload and valid state until downstream ready"
+      ],
+      "related_state": [],
+      "related_flows": [
+        "u_batch_config_bank_primary_path",
+        "u_batch_sample_buffer_primary_path",
+        "u_dual_policy_value_core_primary_path",
+        "u_dual_td_update_core_primary_path",
+        "u_batch_result_stage_primary_path"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 304,
+      "ff": 336,
+      "bram": 0,
+      "dsp": 4
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, each lane is scored and updated through duplicated policy/value and TD datapaths, and both lane results are staged with batch_done irq reporting.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, each lane is scored and updated through duplicated policy/value and TD datapaths, and both lane results are staged with batch_done irq reporting.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, each lane is scored and updated through duplicated policy/value and TD datapaths, and both lane results are staged with batch_done irq reporting."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/batch_config_bank.v",
+      "rtl/batch_sample_buffer.v",
+      "rtl/dual_policy_value_core.v",
+      "rtl/dual_td_update_core.v",
+      "rtl/batch_result_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Build an 8-bit two-lane batch RL accelerator shell as a complete SR2FPGA Verilog RTL project. This is component topology t11_batch_rl_accelerator_shell, difficulty tier T11. Use batch_config_bank and batch_sample_buffer feeding dual_policy_value_core, then dual_td_update_core and batch_result_stage. The design must implement this black-box behavior: configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, each lane is scored and updated through duplicated policy/value and TD datapaths, and both lane results are staged with batch_done irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.cfg_valid -> batch_config_bank.cfg_valid; top.cfg_addr -> batch_config_bank.cfg_addr; top.cfg_data -> batch_config_bank.cfg_data; batch_config_bank.cfg_ready -> top.cfg_ready; top.batch_valid -> batch_sample_buffer.in_valid; batch_sample_buffer.in_ready -> top.batch_ready; top.obs0_a -> batch_sample_buffer.obs0_a; top.obs1_a -> batch_sample_buffer.obs1_a; top.reward_a -> batch_sample_buffer.reward_a; top.next_value_a -> batch_sample_buffer.next_value_a; top.done_a -> batch_sample_buffer.done_a; top.obs0_b -> batch_sample_buffer.obs0_b; top.obs1_b -> batch_sample_buffer.obs1_b; top.reward_b -> batch_sample_buffer.reward_b; top.next_value_b -> batch_sample_buffer.next_value_b; top.done_b -> batch_sample_buffer.done_b; batch_sample_buffer.out_valid -> dual_policy_value_core.in_valid; batch_sample_buffer.obs0_a_out -> dual_policy_value_core.obs0_a; batch_sample_buffer.obs1_a_out -> dual_policy_value_core.obs1_a; batch_sample_buffer.obs0_b_out -> dual_policy_value_core.obs0_b; batch_sample_buffer.obs1_b_out -> dual_policy_value_core.obs1_b; batch_config_bank.weight0 -> dual_policy_value_core.weight0; batch_config_bank.bias0 -> dual_policy_value_core.bias0; batch_config_bank.weight1 -> dual_policy_value_core.weight1; batch_config_bank.bias1 -> dual_policy_value_core.bias1; batch_config_bank.enable -> dual_policy_value_core.enable; dual_policy_value_core.out_valid -> dual_td_update_core.in_valid; dual_policy_value_core.value_estimate_a -> dual_td_update_core.value_estimate_a; dual_policy_value_core.value_estimate_b -> dual_td_update_core.value_estimate_b; batch_sample_buffer.reward_a_out -> dual_td_update_core.reward_a; batch_sample_buffer.next_value_a_out -> dual_td_update_core.next_value_a; batch_sample_buffer.reward_b_out -> dual_td_update_core.reward_b; batch_sample_buffer.next_value_b_out -> dual_td_update_core.next_value_b; batch_config_bank.alpha -> dual_td_update_core.alpha; dual_td_update_core.out_valid -> batch_result_stage.in_valid; dual_policy_value_core.selected_action_a -> batch_result_stage.selected_action_a; dual_policy_value_core.value_estimate_a -> batch_result_stage.value_estimate_a; dual_td_update_core.updated_value_a -> batch_result_stage.updated_value_a; dual_policy_value_core.selected_action_b -> batch_result_stage.selected_action_b; dual_policy_value_core.value_estimate_b -> batch_result_stage.value_estimate_b; dual_td_update_core.updated_value_b -> batch_result_stage.updated_value_b; batch_sample_buffer.done_a_out -> batch_result_stage.done_a; batch_sample_buffer.done_b_out -> batch_result_stage.done_b; batch_result_stage.out_ready -> batch_sample_buffer.consume_ready; batch_result_stage.result_valid -> top.result_valid; top.result_ready -> batch_result_stage.result_ready; batch_result_stage.selected_action_a_out -> top.selected_action_a; batch_result_stage.value_estimate_a_out -> top.value_estimate_a; batch_result_stage.updated_value_a_out -> top.updated_value_a; batch_result_stage.selected_action_b_out -> top.selected_action_b; batch_result_stage.value_estimate_b_out -> top.value_estimate_b; batch_result_stage.updated_value_b_out -> top.updated_value_b; batch_result_stage.batch_done_out -> top.batch_done; batch_result_stage.irq -> top.irq. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "cfg_valid",
+        "width": 1
+      },
+      {
+        "name": "cfg_addr",
+        "width": 3
+      },
+      {
+        "name": "cfg_data",
+        "width": 8
+      },
+      {
+        "name": "batch_valid",
+        "width": 1
+      },
+      {
+        "name": "obs0_a",
+        "width": 8
+      },
+      {
+        "name": "obs1_a",
+        "width": 8
+      },
+      {
+        "name": "reward_a",
+        "width": 8
+      },
+      {
+        "name": "next_value_a",
+        "width": 8
+      },
+      {
+        "name": "done_a",
+        "width": 1
+      },
+      {
+        "name": "obs0_b",
+        "width": 8
+      },
+      {
+        "name": "obs1_b",
+        "width": 8
+      },
+      {
+        "name": "reward_b",
+        "width": 8
+      },
+      {
+        "name": "next_value_b",
+        "width": 8
+      },
+      {
+        "name": "done_b",
+        "width": 1
+      },
+      {
+        "name": "result_ready",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "cfg_ready",
+        "width": 1
+      },
+      {
+        "name": "batch_ready",
+        "width": 1
+      },
+      {
+        "name": "result_valid",
+        "width": 1
+      },
+      {
+        "name": "selected_action_a",
+        "width": 1
+      },
+      {
+        "name": "value_estimate_a",
+        "width": 8
+      },
+      {
+        "name": "updated_value_a",
+        "width": 8
+      },
+      {
+        "name": "selected_action_b",
+        "width": 1
+      },
+      {
+        "name": "value_estimate_b",
+        "width": 8
+      },
+      {
+        "name": "updated_value_b",
+        "width": 8
+      },
+      {
+        "name": "batch_done",
+        "width": 1
+      },
+      {
+        "name": "irq",
+        "width": 1
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "batch_config_bank",
+      "batch_sample_buffer",
+      "dual_policy_value_core",
+      "dual_td_update_core",
+      "batch_result_stage"
+    ],
+    "generator": "component_topology",
+    "topology_id": "t11_batch_rl_accelerator_shell",
+    "difficulty_tier": "T11",
+    "component_library": "sr2fpga_deterministic_components_v1",
+    "topology": {
+      "nodes": [
+        {
+          "id": "config",
+          "component": "batch_config_bank"
+        },
+        {
+          "id": "batch",
+          "component": "batch_sample_buffer"
+        },
+        {
+          "id": "policy",
+          "component": "dual_policy_value_core"
+        },
+        {
+          "id": "update",
+          "component": "dual_td_update_core"
+        },
+        {
+          "id": "result",
+          "component": "batch_result_stage"
+        }
+      ],
+      "edges": [
+        {
+          "from": "top.cfg_valid",
+          "to": "batch_config_bank.cfg_valid"
+        },
+        {
+          "from": "top.cfg_addr",
+          "to": "batch_config_bank.cfg_addr"
+        },
+        {
+          "from": "top.cfg_data",
+          "to": "batch_config_bank.cfg_data"
+        },
+        {
+          "from": "batch_config_bank.cfg_ready",
+          "to": "top.cfg_ready"
+        },
+        {
+          "from": "top.batch_valid",
+          "to": "batch_sample_buffer.in_valid"
+        },
+        {
+          "from": "batch_sample_buffer.in_ready",
+          "to": "top.batch_ready"
+        },
+        {
+          "from": "top.obs0_a",
+          "to": "batch_sample_buffer.obs0_a"
+        },
+        {
+          "from": "top.obs1_a",
+          "to": "batch_sample_buffer.obs1_a"
+        },
+        {
+          "from": "top.reward_a",
+          "to": "batch_sample_buffer.reward_a"
+        },
+        {
+          "from": "top.next_value_a",
+          "to": "batch_sample_buffer.next_value_a"
+        },
+        {
+          "from": "top.done_a",
+          "to": "batch_sample_buffer.done_a"
+        },
+        {
+          "from": "top.obs0_b",
+          "to": "batch_sample_buffer.obs0_b"
+        },
+        {
+          "from": "top.obs1_b",
+          "to": "batch_sample_buffer.obs1_b"
+        },
+        {
+          "from": "top.reward_b",
+          "to": "batch_sample_buffer.reward_b"
+        },
+        {
+          "from": "top.next_value_b",
+          "to": "batch_sample_buffer.next_value_b"
+        },
+        {
+          "from": "top.done_b",
+          "to": "batch_sample_buffer.done_b"
+        },
+        {
+          "from": "batch_sample_buffer.out_valid",
+          "to": "dual_policy_value_core.in_valid"
+        },
+        {
+          "from": "batch_sample_buffer.obs0_a_out",
+          "to": "dual_policy_value_core.obs0_a"
+        },
+        {
+          "from": "batch_sample_buffer.obs1_a_out",
+          "to": "dual_policy_value_core.obs1_a"
+        },
+        {
+          "from": "batch_sample_buffer.obs0_b_out",
+          "to": "dual_policy_value_core.obs0_b"
+        },
+        {
+          "from": "batch_sample_buffer.obs1_b_out",
+          "to": "dual_policy_value_core.obs1_b"
+        },
+        {
+          "from": "batch_config_bank.weight0",
+          "to": "dual_policy_value_core.weight0"
+        },
+        {
+          "from": "batch_config_bank.bias0",
+          "to": "dual_policy_value_core.bias0"
+        },
+        {
+          "from": "batch_config_bank.weight1",
+          "to": "dual_policy_value_core.weight1"
+        },
+        {
+          "from": "batch_config_bank.bias1",
+          "to": "dual_policy_value_core.bias1"
+        },
+        {
+          "from": "batch_config_bank.enable",
+          "to": "dual_policy_value_core.enable"
+        },
+        {
+          "from": "dual_policy_value_core.out_valid",
+          "to": "dual_td_update_core.in_valid"
+        },
+        {
+          "from": "dual_policy_value_core.value_estimate_a",
+          "to": "dual_td_update_core.value_estimate_a"
+        },
+        {
+          "from": "dual_policy_value_core.value_estimate_b",
+          "to": "dual_td_update_core.value_estimate_b"
+        },
+        {
+          "from": "batch_sample_buffer.reward_a_out",
+          "to": "dual_td_update_core.reward_a"
+        },
+        {
+          "from": "batch_sample_buffer.next_value_a_out",
+          "to": "dual_td_update_core.next_value_a"
+        },
+        {
+          "from": "batch_sample_buffer.reward_b_out",
+          "to": "dual_td_update_core.reward_b"
+        },
+        {
+          "from": "batch_sample_buffer.next_value_b_out",
+          "to": "dual_td_update_core.next_value_b"
+        },
+        {
+          "from": "batch_config_bank.alpha",
+          "to": "dual_td_update_core.alpha"
+        },
+        {
+          "from": "dual_td_update_core.out_valid",
+          "to": "batch_result_stage.in_valid"
+        },
+        {
+          "from": "dual_policy_value_core.selected_action_a",
+          "to": "batch_result_stage.selected_action_a"
+        },
+        {
+          "from": "dual_policy_value_core.value_estimate_a",
+          "to": "batch_result_stage.value_estimate_a"
+        },
+        {
+          "from": "dual_td_update_core.updated_value_a",
+          "to": "batch_result_stage.updated_value_a"
+        },
+        {
+          "from": "dual_policy_value_core.selected_action_b",
+          "to": "batch_result_stage.selected_action_b"
+        },
+        {
+          "from": "dual_policy_value_core.value_estimate_b",
+          "to": "batch_result_stage.value_estimate_b"
+        },
+        {
+          "from": "dual_td_update_core.updated_value_b",
+          "to": "batch_result_stage.updated_value_b"
+        },
+        {
+          "from": "batch_sample_buffer.done_a_out",
+          "to": "batch_result_stage.done_a"
+        },
+        {
+          "from": "batch_sample_buffer.done_b_out",
+          "to": "batch_result_stage.done_b"
+        },
+        {
+          "from": "batch_result_stage.out_ready",
+          "to": "batch_sample_buffer.consume_ready"
+        },
+        {
+          "from": "batch_result_stage.result_valid",
+          "to": "top.result_valid"
+        },
+        {
+          "from": "top.result_ready",
+          "to": "batch_result_stage.result_ready"
+        },
+        {
+          "from": "batch_result_stage.selected_action_a_out",
+          "to": "top.selected_action_a"
+        },
+        {
+          "from": "batch_result_stage.value_estimate_a_out",
+          "to": "top.value_estimate_a"
+        },
+        {
+          "from": "batch_result_stage.updated_value_a_out",
+          "to": "top.updated_value_a"
+        },
+        {
+          "from": "batch_result_stage.selected_action_b_out",
+          "to": "top.selected_action_b"
+        },
+        {
+          "from": "batch_result_stage.value_estimate_b_out",
+          "to": "top.value_estimate_b"
+        },
+        {
+          "from": "batch_result_stage.updated_value_b_out",
+          "to": "top.updated_value_b"
+        },
+        {
+          "from": "batch_result_stage.batch_done_out",
+          "to": "top.batch_done"
+        },
+        {
+          "from": "batch_result_stage.irq",
+          "to": "top.irq"
+        }
+      ]
+    }
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_addr",
+          "direction": "input",
+          "width": 3
+        },
+        {
+          "name": "cfg_data",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "batch_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_a",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "obs1_a",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "reward_a",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "next_value_a",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "done_a",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_b",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "obs1_b",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "reward_b",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "next_value_b",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "done_b",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "result_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "batch_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "updated_value_a",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "selected_action_b",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "updated_value_b",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "batch_done",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "batch_config_bank",
+      "role": "submodule",
+      "source": "rtl/batch_config_bank.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "cfg_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "cfg_addr",
+          "direction": "input",
+          "width": 3
+        },
+        {
+          "name": "cfg_data",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight0",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias0",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight1",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias1",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "alpha",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "enable",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "batch config bank component in the generated RTL project"
+    },
+    {
+      "name": "batch_sample_buffer",
+      "role": "submodule",
+      "source": "rtl/batch_sample_buffer.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "obs0_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_a",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_b",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "consume_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "obs0_a_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_a_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_a_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_a_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_a_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "obs0_b_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_b_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_b_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_b_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_b_out",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "batch sample buffer component in the generated RTL project"
+    },
+    {
+      "name": "dual_policy_value_core",
+      "role": "submodule",
+      "source": "rtl/dual_policy_value_core.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "obs0_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs0_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "obs1_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight0",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias0",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "weight1",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "bias1",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "enable",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "selected_action_b",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        }
+      ],
+      "intent": "dual policy value core component in the generated RTL project"
+    },
+    {
+      "name": "dual_td_update_core",
+      "role": "submodule",
+      "source": "rtl/dual_td_update_core.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "reward_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "value_estimate_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "reward_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "next_value_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "value_estimate_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "alpha",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "updated_value_a",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_b",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        }
+      ],
+      "intent": "dual td update core component in the generated RTL project"
+    },
+    {
+      "name": "batch_result_stage",
+      "role": "submodule",
+      "source": "rtl/batch_result_stage.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_a",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "selected_action_b",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_b",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "done_a",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "done_b",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "result_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "selected_action_a_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_a_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_a_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "selected_action_b_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "value_estimate_b_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "updated_value_b_out",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "batch_done_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "batch result stage component in the generated RTL project"
+    }
+  ],
+  "connections": [
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "batch_config_bank",
+        "port": "clk",
+        "instance": "u_batch_config_bank"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "clk",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "clk",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "batch_config_bank",
+        "port": "rst_n",
+        "instance": "u_batch_config_bank"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "rst_n",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "rst_n",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "cfg_valid"
+      },
+      "to": {
+        "module": "batch_config_bank",
+        "port": "cfg_valid",
+        "instance": "u_batch_config_bank"
+      },
+      "signal": "cfg_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_config_bank",
+        "port": "cfg_ready",
+        "instance": "u_batch_config_bank"
+      },
+      "to": {
+        "module": "top",
+        "port": "cfg_ready"
+      },
+      "signal": "cfg_ready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "cfg_addr"
+      },
+      "to": {
+        "module": "batch_config_bank",
+        "port": "cfg_addr",
+        "instance": "u_batch_config_bank"
+      },
+      "signal": "cfg_addr",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 3,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "cfg_data"
+      },
+      "to": {
+        "module": "batch_config_bank",
+        "port": "cfg_data",
+        "instance": "u_batch_config_bank"
+      },
+      "signal": "cfg_data",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_config_bank",
+        "port": "weight0",
+        "instance": "u_batch_config_bank"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "weight0",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "weight0",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_config_bank",
+        "port": "bias0",
+        "instance": "u_batch_config_bank"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "bias0",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "bias0",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_config_bank",
+        "port": "weight1",
+        "instance": "u_batch_config_bank"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "weight1",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "weight1",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_config_bank",
+        "port": "bias1",
+        "instance": "u_batch_config_bank"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "bias1",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "bias1",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_config_bank",
+        "port": "alpha",
+        "instance": "u_batch_config_bank"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "alpha",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "alpha",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_config_bank",
+        "port": "enable",
+        "instance": "u_batch_config_bank"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "enable",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "enable",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "batch_valid"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "in_valid",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "batch_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "in_ready",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "top",
+        "port": "batch_ready"
+      },
+      "signal": "batch_ready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "obs0_a"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "obs0_a",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "obs0_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "obs1_a"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "obs1_a",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "obs1_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "reward_a"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "reward_a",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "reward_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "next_value_a"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "next_value_a",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "next_value_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "done_a"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "done_a",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "done_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "obs0_b"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "obs0_b",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "obs0_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "obs1_b"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "obs1_b",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "obs1_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "reward_b"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "reward_b",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "reward_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "next_value_b"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "next_value_b",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "next_value_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "done_b"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "done_b",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "done_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "out_ready",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "batch_sample_buffer",
+        "port": "consume_ready",
+        "instance": "u_batch_sample_buffer"
+      },
+      "signal": "batch_consume_ready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "out_valid",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "in_valid",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "batch_stage_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "obs0_a_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "obs0_a",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "captured_obs0_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "obs1_a_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "obs1_a",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "captured_obs1_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "reward_a_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "reward_a",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "captured_reward_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "next_value_a_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "next_value_a",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "captured_next_value_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "done_a_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "done_a",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "captured_done_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "obs0_b_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "obs0_b",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "captured_obs0_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "obs1_b_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_policy_value_core",
+        "port": "obs1_b",
+        "instance": "u_dual_policy_value_core"
+      },
+      "signal": "captured_obs1_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "reward_b_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "reward_b",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "captured_reward_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "next_value_b_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "next_value_b",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "captured_next_value_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_sample_buffer",
+        "port": "done_b_out",
+        "instance": "u_batch_sample_buffer"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "done_b",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "captured_done_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_policy_value_core",
+        "port": "out_valid",
+        "instance": "u_dual_policy_value_core"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "in_valid",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "policy_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_policy_value_core",
+        "port": "selected_action_a",
+        "instance": "u_dual_policy_value_core"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "selected_action_a",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "policy_selected_action_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_policy_value_core",
+        "port": "value_estimate_a",
+        "instance": "u_dual_policy_value_core"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "value_estimate_a",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "policy_value_estimate_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_policy_value_core",
+        "port": "value_estimate_a",
+        "instance": "u_dual_policy_value_core"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "value_estimate_a",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "policy_value_estimate_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_policy_value_core",
+        "port": "selected_action_b",
+        "instance": "u_dual_policy_value_core"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "selected_action_b",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "policy_selected_action_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_policy_value_core",
+        "port": "value_estimate_b",
+        "instance": "u_dual_policy_value_core"
+      },
+      "to": {
+        "module": "dual_td_update_core",
+        "port": "value_estimate_b",
+        "instance": "u_dual_td_update_core"
+      },
+      "signal": "policy_value_estimate_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_policy_value_core",
+        "port": "value_estimate_b",
+        "instance": "u_dual_policy_value_core"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "value_estimate_b",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "policy_value_estimate_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_td_update_core",
+        "port": "out_valid",
+        "instance": "u_dual_td_update_core"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "in_valid",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "update_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_td_update_core",
+        "port": "updated_value_a",
+        "instance": "u_dual_td_update_core"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "updated_value_a",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "update_updated_value_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "dual_td_update_core",
+        "port": "updated_value_b",
+        "instance": "u_dual_td_update_core"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "updated_value_b",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "update_updated_value_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "result_valid",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "result_valid"
+      },
+      "signal": "result_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "result_ready"
+      },
+      "to": {
+        "module": "batch_result_stage",
+        "port": "result_ready",
+        "instance": "u_batch_result_stage"
+      },
+      "signal": "result_ready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "selected_action_a_out",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "selected_action_a"
+      },
+      "signal": "selected_action_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "value_estimate_a_out",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "value_estimate_a"
+      },
+      "signal": "value_estimate_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "updated_value_a_out",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "updated_value_a"
+      },
+      "signal": "updated_value_a",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "selected_action_b_out",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "selected_action_b"
+      },
+      "signal": "selected_action_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "value_estimate_b_out",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "value_estimate_b"
+      },
+      "signal": "value_estimate_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "updated_value_b_out",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "updated_value_b"
+      },
+      "signal": "updated_value_b",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "batch_done_out",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "batch_done"
+      },
+      "signal": "batch_done",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "batch_result_stage",
+        "port": "irq",
+        "instance": "u_batch_result_stage"
+      },
+      "to": {
+        "module": "top",
+        "port": "irq"
+      },
+      "signal": "irq",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    }
+  ],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "cfg_valid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "cfg_addr",
+      "direction": "input",
+      "width": 3
+    },
+    {
+      "name": "cfg_data",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "batch_valid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "obs0_a",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "obs1_a",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "reward_a",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "next_value_a",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "done_a",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "obs0_b",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "obs1_b",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "reward_b",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "next_value_b",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "done_b",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "result_ready",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "cfg_ready",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "batch_ready",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "result_valid",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "selected_action_a",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "value_estimate_a",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "updated_value_a",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "selected_action_b",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "value_estimate_b",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "updated_value_b",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "batch_done",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "irq",
+      "direction": "output",
+      "width": 1
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 304,
+      "ff": 336,
+      "bram": 0,
+      "dsp": 4
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

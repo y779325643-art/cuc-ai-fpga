@@ -1,0 +1,12 @@
+{
+  "project": "l0_by_construction_ablation_after_hardening_t2_stream_accumulator_8_000002",
+  "toolchain": "open_source",
+  "target_clock_hz": 100000000,
+  "predictions": {
+    "fmax_mhz": 250,
+    "latency_cycles": 2,
+    "area_luts": 12,
+    "area_registers": 24,
+    "notes": "8-bit wide datapath with skid buffer and accumulator. Achievable on typical 7-series FPGA."
+  }
+}

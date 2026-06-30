@@ -1,0 +1,38 @@
+{
+  "project_name": "official_eval_gap_closure_detfix2_t7_policy_value_shell_8_000007",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/config_reg_bank.v",
+    "rtl/observation_stage.v",
+    "rtl/policy_score_core.v",
+    "rtl/action_select_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "clock": {
+    "name": "clk",
+    "frequency_hz": 100000000
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  }
+}

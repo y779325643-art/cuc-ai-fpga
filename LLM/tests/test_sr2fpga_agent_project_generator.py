@@ -136,10 +136,13 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("alu_control_unit", 8, "alu_control_unit_8bit"),
+            ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
             ("composed_event_counter", 8, "composed_event_counter_8bit"),
             ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
             ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
             ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+            ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -278,6 +281,50 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertIn("result", project.files["rtl/top.v"])
         self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
 
+    def test_generates_alu_control_unit_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="alu_control_unit", width=8, project_name="alu_control_unit_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "alu_control_unit",
+            {"rtl/top.v", "rtl/alu_core.v", "rtl/control_decode.v", "rtl/status_flags.v"},
+            ["alu_core", "control_decode", "status_flags", ".result(result)", ".zero(zero)", ".carry(carry)"],
+        )
+        self.assertIn("input wire [2:0] op", project.files["rtl/top.v"])
+        self.assertIn("output wire negative", project.files["rtl/top.v"])
+        self.assertIn("expect_result(3'b000", project.files["sim/tb_top.v"])
+        self.assertIn("expect_result(3'b111", project.files["sim/tb_top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_generates_crc_stream_checker_multimodule_project_package(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(task_type="crc_stream_checker", width=8, project_name="crc_stream_checker_8bit"),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "crc_stream_checker",
+            {"rtl/top.v", "rtl/crc8_update.v", "rtl/stream_frame_accumulator.v", "rtl/crc_status.v"},
+            [
+                "crc8_update",
+                "stream_frame_accumulator",
+                "crc_status",
+                ".crc_value(crc_value)",
+                ".crc_match(crc_match)",
+            ],
+        )
+        self.assertIn("input wire frame_start", project.files["rtl/top.v"])
+        self.assertIn("input wire frame_end", project.files["rtl/top.v"])
+        self.assertIn("input wire out_ready", project.files["rtl/top.v"])
+        self.assertIn("send_byte(8'h12", project.files["sim/tb_top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
     def test_generates_composed_stream_accumulator_from_component_topology(self) -> None:
         project = ProjectGenerator().generate(
             ProjectRequest(
@@ -414,6 +461,489 @@ class ProjectGeneratorTest(unittest.TestCase):
         )
         self.assertGreaterEqual(len(system_his["connections"]), 24)
 
+    def test_generates_composed_vector_mac_pipeline_from_t5_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_vector_mac_pipeline",
+                width=8,
+                project_name="composed_vector_mac_pipeline_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_vector_mac_pipeline",
+            {
+                "rtl/top.v",
+                "rtl/skid_buffer.v",
+                "rtl/vector_mac_core.v",
+                "rtl/stream_stage.v",
+            },
+            [
+                "skid_buffer",
+                "vector_mac_core",
+                "stream_stage",
+                ".in_valid(feature_valid)",
+                ".in_valid(weight_valid)",
+                ".feature_valid(feature_buf_valid)",
+                ".weight_valid(weight_buf_valid)",
+                ".out_valid(score_valid)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t5_vector_mac_pipeline")
+        self.assertEqual(architecture["difficulty_tier"], "T5")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["skid_buffer", "skid_buffer", "vector_mac_core", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "vector_mac_core.score_data", "to": "stream_stage.in_data"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire [7:0] feature_data", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] weight_data", project.files["rtl/top.v"])
+        self.assertIn("input wire [15:0] bias", project.files["rtl/top.v"])
+        self.assertIn("output wire [15:0] score_data", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 18)
+
+    def test_generates_composed_td_update_core_from_t6_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_td_update_core",
+                width=8,
+                project_name="composed_td_update_core_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_td_update_core",
+            {
+                "rtl/top.v",
+                "rtl/td_input_stage.v",
+                "rtl/discount_core.v",
+                "rtl/td_update_core.v",
+                "rtl/stream_stage.v",
+            },
+            [
+                "td_input_stage",
+                "discount_core",
+                "td_update_core",
+                "stream_stage",
+                ".reward(reward)",
+                ".next_value(next_value)",
+                ".td_error(update_td_error)",
+                ".updated_value(update_value)",
+                ".td_error_out(td_error)",
+                ".updated_value_out(updated_value)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t6_td_update_core")
+        self.assertEqual(architecture["difficulty_tier"], "T6")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["td_input_stage", "discount_core", "td_update_core", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "discount_core.discounted_return", "to": "td_update_core.discounted_return"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire signed [7:0] reward", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] gamma", project.files["rtl/top.v"])
+        self.assertIn("output wire signed [7:0] td_error", project.files["rtl/top.v"])
+        self.assertIn("output wire signed [7:0] updated_value", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 18)
+        data_flow_paths = [flow["path"] for flow in system_his["data_flow"]]
+        self.assertIn(["top.reward", "u_td_input_stage.reward"], data_flow_paths)
+        self.assertIn(["top.value", "u_td_input_stage.value"], data_flow_paths)
+        self.assertIn(["top.next_value", "u_td_input_stage.next_value"], data_flow_paths)
+        self.assertIn(["top.gamma", "u_td_input_stage.gamma"], data_flow_paths)
+        self.assertIn(["top.alpha", "u_td_input_stage.alpha"], data_flow_paths)
+        self.assertIn(["u_stream_stage.updated_value_out", "top.updated_value"], data_flow_paths)
+
+    def test_generates_composed_policy_value_shell_from_t7_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_policy_value_shell",
+                width=8,
+                project_name="composed_policy_value_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_policy_value_shell",
+            {
+                "rtl/top.v",
+                "rtl/config_reg_bank.v",
+                "rtl/observation_stage.v",
+                "rtl/policy_score_core.v",
+                "rtl/action_select_core.v",
+                "rtl/stream_stage.v",
+            },
+            [
+                "config_reg_bank",
+                "observation_stage",
+                "policy_score_core",
+                "action_select_core",
+                "stream_stage",
+                ".cfg_valid(cfg_valid)",
+                ".obs0(obs0)",
+                ".score1(policy_score1)",
+                ".selected_action(select_action)",
+                ".value_estimate(select_value)",
+                ".selected_action_out(selected_action)",
+                ".value_estimate_out(value_estimate)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t7_policy_value_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T7")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["config_reg_bank", "observation_stage", "policy_score_core", "action_select_core", "stream_stage"],
+        )
+        self.assertIn(
+            {"from": "policy_score_core.score1", "to": "action_select_core.score1"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire cfg_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire [2:0] cfg_addr", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] cfg_data", project.files["rtl/top.v"])
+        self.assertIn("input wire obs_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire action_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire selected_action", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] value_estimate", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 24)
+
+    def test_generates_composed_replay_sample_shell_from_t8_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_replay_sample_shell",
+                width=8,
+                project_name="composed_replay_sample_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_replay_sample_shell",
+            {
+                "rtl/top.v",
+                "rtl/host_sample_stage.v",
+                "rtl/replay_store.v",
+                "rtl/sample_pack_core.v",
+                "rtl/sample_read_stage.v",
+                "rtl/occupancy_counter.v",
+            },
+            [
+                "host_sample_stage",
+                "replay_store",
+                "sample_pack_core",
+                "sample_read_stage",
+                "occupancy_counter",
+                ".in_valid(host_valid)",
+                ".write_valid(host_stage_valid)",
+                ".read_valid(store_read_valid)",
+                ".sample_state(sample_pack_state)",
+                ".sample_state_out(sample_state)",
+                ".occupancy_out(occupancy)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t8_replay_sample_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T8")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["host_sample_stage", "replay_store", "sample_pack_core", "sample_read_stage", "occupancy_counter"],
+        )
+        self.assertIn(
+            {"from": "replay_store.read_valid", "to": "sample_read_stage.in_valid"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire host_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] host_state", project.files["rtl/top.v"])
+        self.assertIn("input wire host_action", project.files["rtl/top.v"])
+        self.assertIn("output wire sample_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] sample_next_state", project.files["rtl/top.v"])
+        self.assertIn("output wire [2:0] occupancy", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 28)
+
+    def test_generates_composed_host_protocol_shell_from_t9_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_host_protocol_shell",
+                width=8,
+                project_name="composed_host_protocol_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_host_protocol_shell",
+            {
+                "rtl/top.v",
+                "rtl/axi_lite_write_ctrl.v",
+                "rtl/axi_lite_read_ctrl.v",
+                "rtl/control_reg_bank.v",
+                "rtl/sample_stream_adapter.v",
+                "rtl/irq_status.v",
+            },
+            [
+                "axi_lite_write_ctrl",
+                "axi_lite_read_ctrl",
+                "control_reg_bank",
+                "sample_stream_adapter",
+                "irq_status",
+                ".awvalid(s_axi_awvalid)",
+                ".write_valid(write_valid)",
+                ".read_valid(read_valid)",
+                ".tdata(m_axis_tdata)",
+                ".irq_out(irq)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t9_host_protocol_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T9")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            ["axi_lite_write_ctrl", "axi_lite_read_ctrl", "control_reg_bank", "sample_stream_adapter", "irq_status"],
+        )
+        self.assertIn(
+            {"from": "sample_stream_adapter.tvalid", "to": "top.m_axis_tvalid"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire s_axi_awvalid", project.files["rtl/top.v"])
+        self.assertIn("input wire [3:0] s_axi_awaddr", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] s_axi_wdata", project.files["rtl/top.v"])
+        self.assertIn("output wire s_axi_rvalid", project.files["rtl/top.v"])
+        self.assertIn("output wire [15:0] m_axis_tdata", project.files["rtl/top.v"])
+        self.assertIn("output wire irq", project.files["rtl/top.v"])
+        self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 30)
+
+    def test_generates_composed_rl_accelerator_shell_from_t10_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_rl_accelerator_shell",
+                width=8,
+                project_name="composed_rl_accelerator_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_rl_accelerator_shell",
+            {
+                "rtl/top.v",
+                "rtl/host_config_bank.v",
+                "rtl/sample_capture_stage.v",
+                "rtl/policy_value_core.v",
+                "rtl/td_update_core.v",
+                "rtl/result_stream_stage.v",
+            },
+            [
+                "host_config_bank",
+                "sample_capture_stage",
+                "policy_value_core",
+                "td_update_core",
+                "result_stream_stage",
+                ".cfg_valid(cfg_valid)",
+                ".in_valid(sample_valid)",
+                ".result_valid(result_valid)",
+                ".updated_value_out(updated_value)",
+                ".irq(irq)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t10_rl_accelerator_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T10")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            [
+                "host_config_bank",
+                "sample_capture_stage",
+                "policy_value_core",
+                "td_update_core",
+                "result_stream_stage",
+            ],
+        )
+        self.assertIn(
+            {"from": "td_update_core.updated_value", "to": "result_stream_stage.updated_value"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire sample_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] next_value", project.files["rtl/top.v"])
+        self.assertIn("output wire result_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] updated_value", project.files["rtl/top.v"])
+        self.assertIn("output wire irq", project.files["rtl/top.v"])
+        self.assertIn("expect_result(1'b0, 8'd7, 8'd7, 1'b0)", project.files["sim/tb_top.v"])
+        self.assertIn("expect_result(1'b1, 8'd9, 8'd11, 1'b1)", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 30)
+
+    def test_generates_composed_batch_rl_accelerator_shell_from_t11_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_batch_rl_accelerator_shell",
+                width=8,
+                project_name="composed_batch_rl_accelerator_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_batch_rl_accelerator_shell",
+            {
+                "rtl/top.v",
+                "rtl/batch_config_bank.v",
+                "rtl/batch_sample_buffer.v",
+                "rtl/dual_policy_value_core.v",
+                "rtl/dual_td_update_core.v",
+                "rtl/batch_result_stage.v",
+            },
+            [
+                "batch_config_bank",
+                "batch_sample_buffer",
+                "dual_policy_value_core",
+                "dual_td_update_core",
+                "batch_result_stage",
+                ".cfg_valid(cfg_valid)",
+                ".in_valid(batch_valid)",
+                ".result_valid(result_valid)",
+                ".updated_value_b_out(updated_value_b)",
+                ".irq(irq)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t11_batch_rl_accelerator_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T11")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            [
+                "batch_config_bank",
+                "batch_sample_buffer",
+                "dual_policy_value_core",
+                "dual_td_update_core",
+                "batch_result_stage",
+            ],
+        )
+        self.assertIn(
+            {"from": "dual_td_update_core.updated_value_b", "to": "batch_result_stage.updated_value_b"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire batch_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire [7:0] next_value_b", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] updated_value_a", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] updated_value_b", project.files["rtl/top.v"])
+        self.assertIn("output wire batch_done", project.files["rtl/top.v"])
+        self.assertIn("expect_batch_result(1'b0, 8'd7, 8'd7, 1'b1, 8'd9, 8'd11, 1'b1)", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 36)
+
+    def test_generates_composed_replay_arbiter_shell_from_t12_component_topology(self) -> None:
+        project = ProjectGenerator().generate(
+            ProjectRequest(
+                task_type="composed_replay_arbiter_shell",
+                width=8,
+                project_name="composed_replay_arbiter_shell_8bit",
+            ),
+            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        )
+
+        _assert_multimodule_task(
+            self,
+            project,
+            "composed_replay_arbiter_shell",
+            {
+                "rtl/top.v",
+                "rtl/host_transition_packetizer.v",
+                "rtl/replay_index_allocator.v",
+                "rtl/replay_request_arbiter.v",
+                "rtl/replay_memory_bank.v",
+                "rtl/sample_packet_stage.v",
+            },
+            [
+                "host_transition_packetizer",
+                "replay_index_allocator",
+                "replay_request_arbiter",
+                "replay_memory_bank",
+                "sample_packet_stage",
+                ".host_valid(host_valid)",
+                ".read_req_valid(sample_req_valid)",
+                ".sample_valid(sample_valid)",
+                ".sample_state_out(sample_state)",
+                ".irq(irq)",
+            ],
+        )
+        system_his = _system_his(project)
+        architecture = system_his["architecture"]
+
+        self.assertEqual(architecture["generator"], "component_topology")
+        self.assertEqual(architecture["topology_id"], "t12_replay_arbiter_shell")
+        self.assertEqual(architecture["difficulty_tier"], "T12")
+        self.assertEqual(
+            [node["component"] for node in architecture["topology"]["nodes"]],
+            [
+                "host_transition_packetizer",
+                "replay_index_allocator",
+                "replay_request_arbiter",
+                "replay_memory_bank",
+                "sample_packet_stage",
+            ],
+        )
+        self.assertIn(
+            {"from": "replay_request_arbiter.mem_read_valid", "to": "replay_memory_bank.read_valid"},
+            architecture["topology"]["edges"],
+        )
+        self.assertIn("input wire host_valid", project.files["rtl/top.v"])
+        self.assertIn("input wire sample_req_valid", project.files["rtl/top.v"])
+        self.assertIn("output wire [7:0] sample_state", project.files["rtl/top.v"])
+        self.assertIn("output wire [2:0] occupancy", project.files["rtl/top.v"])
+        self.assertIn("output wire irq", project.files["rtl/top.v"])
+        self.assertIn("expect_sample(8'h12, 1'b0, 8'h03, 8'h21, 1'b0)", project.files["sim/tb_top.v"])
+        self.assertIn("expect_sample(8'h34, 1'b1, 8'h05, 8'h43, 1'b1)", project.files["sim/tb_top.v"])
+        self.assertGreaterEqual(len(system_his["connections"]), 34)
+
     def test_manifest_sources_exist_for_all_supported_task_types(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
@@ -548,6 +1078,18 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("alu_control_unit", 8, "alu_control_unit_8bit"),
+            ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
+            ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
+            ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+            ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
+            ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
+            ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
+            ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
+            ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
+            ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
+            ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
+            ("composed_replay_arbiter_shell", 8, "composed_replay_arbiter_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -605,6 +1147,20 @@ class ProjectGeneratorTest(unittest.TestCase):
             ("fir_filter", 8, "fir_filter_8bit"),
             ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
             ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+            ("alu_control_unit", 8, "alu_control_unit_8bit"),
+            ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
+            ("composed_event_counter", 8, "composed_event_counter_8bit"),
+            ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
+            ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
+            ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+            ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
+            ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
+            ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
+            ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
+            ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
+            ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
+            ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
+            ("composed_replay_arbiter_shell", 8, "composed_replay_arbiter_shell_8bit"),
         ]
 
         for task_type, width, project_name in cases:
@@ -660,10 +1216,20 @@ def _supported_task_cases() -> list[tuple[str, int, str]]:
         ("fir_filter", 8, "fir_filter_8bit"),
         ("streaming_valid_ready", 8, "streaming_valid_ready_8bit"),
         ("matrix_vector_mac", 8, "matrix_vector_mac_8bit"),
+        ("alu_control_unit", 8, "alu_control_unit_8bit"),
+        ("crc_stream_checker", 8, "crc_stream_checker_8bit"),
         ("composed_event_counter", 8, "composed_event_counter_8bit"),
         ("composed_stream_accumulator", 8, "composed_stream_accumulator_8bit"),
         ("composed_stream_fork", 8, "composed_stream_fork_8bit"),
         ("composed_dual_stream_join", 8, "composed_dual_stream_join_8bit"),
+        ("composed_vector_mac_pipeline", 8, "composed_vector_mac_pipeline_8bit"),
+        ("composed_td_update_core", 8, "composed_td_update_core_8bit"),
+        ("composed_policy_value_shell", 8, "composed_policy_value_shell_8bit"),
+        ("composed_replay_sample_shell", 8, "composed_replay_sample_shell_8bit"),
+        ("composed_host_protocol_shell", 8, "composed_host_protocol_shell_8bit"),
+        ("composed_rl_accelerator_shell", 8, "composed_rl_accelerator_shell_8bit"),
+        ("composed_batch_rl_accelerator_shell", 8, "composed_batch_rl_accelerator_shell_8bit"),
+        ("composed_replay_arbiter_shell", 8, "composed_replay_arbiter_shell_8bit"),
     ]
 
 

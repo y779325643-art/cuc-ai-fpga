@@ -1,0 +1,6 @@
+{
+  "failure_type": "lint_warning_as_error",
+  "stage": "lint",
+  "root_cause": "%Warning-UNDRIVEN: rtl/top.v:7:17: Signal is not driven: 'sample_valid'\n                                 : ... note: In instance 'top'\n    7 |     output wire sample_valid,\n      |                 ^~~~~~~~~~~~\n                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=5.048\n                   ... Use \"/* verilator lint_off UNDRIVEN */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)",
+  "affected_files": []
+}

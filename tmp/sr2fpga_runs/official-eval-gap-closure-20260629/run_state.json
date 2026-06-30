@@ -1,0 +1,56 @@
+{
+  "run_id": "official-eval-gap-closure-20260629",
+  "next_index": 18,
+  "completed_samples": [
+    "sample_official_eval_gap_closure_t1_event_counter_8_000001",
+    "sample_official_eval_gap_closure_t2_stream_accumulator_8_000002",
+    "sample_official_eval_gap_closure_t3_stream_fork_8_000003",
+    "sample_official_eval_gap_closure_t4_dual_stream_join_8_000004",
+    "sample_official_eval_gap_closure_t5_vector_mac_pipeline_8_000005",
+    "sample_official_eval_gap_closure_t6_td_update_core_8_000006",
+    "sample_official_eval_gap_closure_t7_policy_value_shell_8_000007",
+    "sample_official_eval_gap_closure_t8_replay_sample_shell_8_000008",
+    "sample_official_eval_gap_closure_t9_host_protocol_shell_8_000009",
+    "sample_official_eval_gap_closure_t10_rl_accelerator_shell_8_000010",
+    "sample_official_eval_gap_closure_t11_batch_rl_accelerator_shell_8_000011",
+    "sample_official_eval_gap_closure_t12_replay_arbiter_shell_8_000012",
+    "sample_official_eval_gap_closure_alu_control_unit_8_000013",
+    "sample_official_eval_gap_closure_crc_stream_checker_8_000014",
+    "sample_official_eval_gap_closure_t1_event_counter_8_000015",
+    "sample_official_eval_gap_closure_t2_stream_accumulator_8_000016",
+    "sample_official_eval_gap_closure_t3_stream_fork_8_000017",
+    "sample_official_eval_gap_closure_t4_dual_stream_join_8_000018"
+  ],
+  "buckets": {
+    "success_l3": [
+      "sample_official_eval_gap_closure_t1_event_counter_8_000001",
+      "sample_official_eval_gap_closure_t2_stream_accumulator_8_000002",
+      "sample_official_eval_gap_closure_t8_replay_sample_shell_8_000008",
+      "sample_official_eval_gap_closure_t9_host_protocol_shell_8_000009",
+      "sample_official_eval_gap_closure_t12_replay_arbiter_shell_8_000012",
+      "sample_official_eval_gap_closure_alu_control_unit_8_000013",
+      "sample_official_eval_gap_closure_crc_stream_checker_8_000014",
+      "sample_official_eval_gap_closure_t1_event_counter_8_000015",
+      "sample_official_eval_gap_closure_t2_stream_accumulator_8_000016"
+    ],
+    "repair_trajectory": [
+      "sample_official_eval_gap_closure_t3_stream_fork_8_000003",
+      "sample_official_eval_gap_closure_t4_dual_stream_join_8_000004",
+      "sample_official_eval_gap_closure_t5_vector_mac_pipeline_8_000005",
+      "sample_official_eval_gap_closure_t6_td_update_core_8_000006",
+      "sample_official_eval_gap_closure_t7_policy_value_shell_8_000007",
+      "sample_official_eval_gap_closure_t10_rl_accelerator_shell_8_000010",
+      "sample_official_eval_gap_closure_t11_batch_rl_accelerator_shell_8_000011",
+      "sample_official_eval_gap_closure_t3_stream_fork_8_000017",
+      "sample_official_eval_gap_closure_t4_dual_stream_join_8_000018"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "functional_mismatch": 1,
+    "lint_warning_as_error": 7,
+    "l0_contract_violation": 1
+  },
+  "exports_refreshed": false,
+  "config_fingerprint": "0fcd2571382e43ada349283780968accaba63db03e8b9fd2e0aaaaf6ae8c3051"
+}

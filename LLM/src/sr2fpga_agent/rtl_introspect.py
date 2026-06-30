@@ -50,7 +50,7 @@ def parse_module_ports(content: str, module_name: str) -> dict[str, dict[str, An
     current_width: int | str = 1
     for declaration in split_port_declarations(body):
         match = re.search(
-            r"^\s*\b(input|output|inout)\b\s+(?:(?:wire|reg|logic)\s+)?(\[[^\]]+\])?\s*"
+            r"^\s*\b(input|output|inout)\b\s+(?:(?:wire|reg|logic|signed)\s+)*(\[[^\]]+\])?\s*"
             r"(.+?)\s*$",
             declaration,
         )
@@ -119,6 +119,9 @@ def port_width(range_text: str | None) -> int | str:
     numeric = re.fullmatch(r"\[(\d+):0\]", normalized)
     if numeric is not None:
         return int(numeric.group(1)) + 1
+    concrete_minus_one = re.fullmatch(r"\[(\d+)\s*-\s*1\s*:\s*0\]", normalized)
+    if concrete_minus_one is not None:
+        return int(concrete_minus_one.group(1))
     return normalized
 
 
@@ -169,9 +172,30 @@ def normalize_width(value: Any) -> str:
     numeric_range = re.fullmatch(r"\[(\d+):0\]", text)
     if numeric_range is not None:
         return str(int(numeric_range.group(1)) + 1)
+    concrete_minus_one_range = re.fullmatch(r"\[(\d+)\s*-\s*1\s*:\s*0\]", text)
+    if concrete_minus_one_range is not None:
+        return concrete_minus_one_range.group(1)
     symbolic_range = re.fullmatch(r"\[([A-Za-z_][A-Za-z0-9_$]*)\s*-\s*1\s*:\s*0\]", text)
     if symbolic_range is not None:
         return symbolic_range.group(1)
+    expression_minus_one_range = re.fullmatch(r"\[(.+)\s*-\s*1\s*:\s*0\]", text)
+    if expression_minus_one_range is not None:
+        return expression_minus_one_range.group(1).strip()
+    unbracketed_numeric_range = re.fullmatch(r"(\d+)\s*:\s*0", text)
+    if unbracketed_numeric_range is not None:
+        return str(int(unbracketed_numeric_range.group(1)) + 1)
+    unbracketed_concrete_minus_one_range = re.fullmatch(r"(\d+)\s*-\s*1\s*:\s*0", text)
+    if unbracketed_concrete_minus_one_range is not None:
+        return unbracketed_concrete_minus_one_range.group(1)
+    unbracketed_symbolic_range = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_$]*)\s*-\s*1\s*:\s*0", text)
+    if unbracketed_symbolic_range is not None:
+        return unbracketed_symbolic_range.group(1)
+    unbracketed_expression_minus_one_range = re.fullmatch(r"(.+)\s*-\s*1\s*:\s*0", text)
+    if unbracketed_expression_minus_one_range is not None:
+        return unbracketed_expression_minus_one_range.group(1).strip()
+    bracketed_range = re.fullmatch(r"\[(.+:.+)\]", text)
+    if bracketed_range is not None:
+        return bracketed_range.group(1).strip()
     return text
 
 

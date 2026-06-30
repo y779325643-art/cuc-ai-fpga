@@ -1,0 +1,17 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_fork.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Error: rtl/skid_buffer.v:12:10: Duplicate declaration of signal: '_unused_clock_reset'\n   12 |     wire _unused_clock_reset = &{1'b0, clk, rst_n};\n      |          ^~~~~~~~~~~~~~~~~~~\n        rtl/skid_buffer.v:11:8: ... Location of original declaration\n   11 |   wire _unused_clock_reset = &{1'b0, clk, rst_n};\n      |        ^~~~~~~~~~~~~~~~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: rtl/stream_stage.v:12:10: Duplicate declaration of signal: '_unused_clock_reset'\n   12 |     wire _unused_clock_reset = &{1'b0, clk, rst_n};\n      |          ^~~~~~~~~~~~~~~~~~~\n        rtl/stream_stage.v:11:8: ... Location of original declaration\n   11 |   wire _unused_clock_reset = &{1'b0, clk, rst_n};\n      |        ^~~~~~~~~~~~~~~~~~~\n%Error: rtl/top.v:16:9: Can't find definition of variable: 'DATA_WIDTH'\n   16 |   wire [DATA_WIDTH-1:0] input_buffer__in_data;\n      |         ^~~~~~~~~~\n%Error: Exiting due to 3 error(s)\n",
+  "duration_seconds": 0.1250557499952265
+}

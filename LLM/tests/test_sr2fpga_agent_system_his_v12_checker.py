@@ -62,6 +62,40 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("instances[2].name 'buf' is a Verilog reserved keyword", result.errors)
 
+    def test_rejects_component_source_not_declared_in_artifacts(self) -> None:
+        payload = _fixture()
+        payload["components"][0]["source"] = "library"
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("components[0].source 'library' is not in artifacts.rtl_sources", result.errors)
+
+    def test_duplicate_component_does_not_clobber_original_ports(self) -> None:
+        payload = _fixture()
+        payload["components"].append(
+            {
+                "name": "skid_buffer",
+                "semantic_kind": "stream_buffer",
+                "source": "rtl/skid_buffer_dup.v",
+                "parameters": [{"name": "DATA_WIDTH", "default": 8}],
+                "ports": [
+                    {"name": "clk", "dir": "input", "width": 1},
+                    {"name": "rst_n", "dir": "input", "width": 1},
+                ],
+                "intent": "duplicate component definition with fewer ports",
+            }
+        )
+        payload["artifacts"]["rtl_sources"].append("rtl/skid_buffer_dup.v")
+
+        result = check_system_his_v12(payload)
+
+        self.assertTrue(any("duplicate component 'skid_buffer'" in error for error in result.errors), result.errors)
+        self.assertFalse(
+            any("in0_buffer.in_data" in error or "in0_buffer.out_data" in error for error in result.errors),
+            f"Duplicate component clobbered original port map: {result.errors}",
+        )
+
     def test_rejects_data_flow_endpoint_that_uses_component_instead_of_instance(self) -> None:
         payload = _fixture()
         payload["data_flow"][0]["path"][1] = "skid_buffer.in_data"
@@ -139,6 +173,24 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertIn("data_flow 'input0_payload_to_join'.payload must be an object", result.errors)
         self.assertIn("control_flow 'reset_all_state'.kind 'free_text_rule' is invalid", result.errors)
 
+    def test_rejects_instance_parameter_value_not_declared_by_component(self) -> None:
+        payload, _ = _consistent_v12_project()
+        payload["instances"][0]["parameter_values"] = {"DATA_WIDTH": 8}
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "instances[0].parameter_values.DATA_WIDTH is not declared by component 'counter_core'",
+            result.errors,
+        )
+
+        payload["components"][0]["parameters"] = [{"name": "DATA_WIDTH", "default": 8, "type": "integer"}]
+
+        result = check_system_his_v12(payload)
+
+        self.assertTrue(result.passed, result.errors)
+
     def test_rejects_control_rule_references_to_missing_state_and_flow(self) -> None:
         payload = _fixture()
         payload["control_flow"][0]["related_state"].append("missing_state")
@@ -175,6 +227,42 @@ class SystemHisV12CheckerTest(unittest.TestCase):
 
         self.assertFalse(result.passed)
         self.assertIn("state.fsms 'join_fsm'.initial 'BROKEN' is not declared in states", result.errors)
+
+    def test_rejects_fsm_without_explicit_or_instance_prefixed_owner(self) -> None:
+        payload = _fixture()
+        del payload["state"]["fsms"][0]["owner"]
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("state.fsms 'join_fsm' must declare owner or use <instance>.<fsm> name", result.errors)
+
+    def test_rejects_fsm_owner_that_is_not_top_or_instance(self) -> None:
+        payload = _fixture()
+        payload["state"]["fsms"][0]["owner"] = "missing_instance"
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn("state.fsms 'join_fsm'.owner 'missing_instance' is not top or an instance", result.errors)
+
+    def test_fsm_owner_top_valid_when_top_name_absent(self) -> None:
+        payload = _fixture()
+        payload["top"].pop("name", None)
+        payload["state"]["fsms"].append(
+            {
+                "owner": "top",
+                "name": "ctrl_fsm",
+                "states": ["IDLE", "RUN"],
+                "initial": "IDLE",
+                "reset_state": "IDLE",
+                "transitions": [],
+            }
+        )
+
+        result = check_system_his_v12(payload)
+
+        self.assertNotIn("state.fsms 'ctrl_fsm'.owner 'top' is not top or an instance", result.errors)
 
     def test_rejects_fsm_transition_to_missing_state(self) -> None:
         payload = _fixture_with_fsm()
@@ -372,17 +460,21 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         payload = json.loads(project.files["system_his.json"])
         payload["state"]["fsms"].append(
             {
-                "name": "join_core.arb_fsm",
+                "name": "u_stream_join.arb_fsm",
                 "states": ["IDLE", "SEND_0", "SEND_1"],
                 "initial": "IDLE",
                 "reset_state": "IDLE",
             }
         )
         for instance in payload["instances"]:
-            if instance["name"] == "join_core":
-                instance["owns_state"] = ["join_core.arb_fsm"]
+            if instance["name"] == "u_stream_join":
+                instance["owns_state"] = ["u_stream_join.arb_fsm"]
         files = dict(project.files)
         files["system_his.json"] = json.dumps(payload) + "\n"
+        files["rtl/stream_join.v"] = files["rtl/stream_join.v"].replace(
+            "endmodule\n",
+            "  localparam IDLE = 0;\n  localparam SEND_0 = 1;\n  localparam SEND_1 = 2;\nendmodule\n",
+        )
         project_with_fsm = GeneratedProject(project_name=project.project_name, files=files)
 
         result = check_project_l0(project_with_fsm)

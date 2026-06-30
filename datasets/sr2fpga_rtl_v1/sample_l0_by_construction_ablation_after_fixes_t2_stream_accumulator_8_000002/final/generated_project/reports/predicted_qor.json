@@ -1,0 +1,8 @@
+{
+  "max_frequency_mhz": 250,
+  "total_luts": 45,
+  "total_registers": 30,
+  "pipeline_stages": 2,
+  "latency_cycles": 1,
+  "notes": "Predicted QoR for 8-bit streaming accumulator. LUT count includes skid buffer and accumulator. Assumes 100 MHz target easily met."
+}

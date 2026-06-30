@@ -1,0 +1,6 @@
+{
+  "failure_type": "lint_warning_as_error",
+  "stage": "lint",
+  "root_cause": "%Warning-CASEINCOMPLETE: rtl/skid_buffer.v:33:9: Case values incompletely covered (example pattern 0x3)\n   33 |         case (state)\n      |         ^~~~\n                         ... For warning description see https://verilator.org/warn/CASEINCOMPLETE?v=5.048\n                         ... Use \"/* verilator lint_off CASEINCOMPLETE */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)",
+  "affected_files": []
+}

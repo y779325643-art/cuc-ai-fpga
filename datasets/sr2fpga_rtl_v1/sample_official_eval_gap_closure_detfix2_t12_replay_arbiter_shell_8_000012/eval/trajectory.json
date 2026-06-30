@@ -1,0 +1,3172 @@
+{
+  "sample_id": "sample_official_eval_gap_closure_detfix2_t12_replay_arbiter_shell_8_000012",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/host_transition_packetizer.v",
+        "rtl/replay_index_allocator.v",
+        "rtl/replay_request_arbiter.v",
+        "rtl/replay_memory_bank.v",
+        "rtl/sample_packet_stage.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/iverilog",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/host_transition_packetizer.v",
+        "rtl/replay_index_allocator.v",
+        "rtl/replay_request_arbiter.v",
+        "rtl/replay_memory_bank.v",
+        "rtl/sample_packet_stage.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/vvp",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/vvp",
+        "sim.out"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/yosys",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/yosys",
+        "-p",
+        "read_verilog rtl/top.v rtl/host_transition_packetizer.v rtl/replay_index_allocator.v rtl/replay_request_arbiter.v rtl/replay_memory_bank.v rtl/sample_packet_stage.v; synth -top top; stat"
+      ]
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "composed_replay_arbiter_shell",
+    "project_name": "official_eval_gap_closure_detfix2_t12_replay_arbiter_shell_8_000012",
+    "project": {
+      "name": "official_eval_gap_closure_detfix2_t12_replay_arbiter_shell_8_000012",
+      "description": "Build an 8-bit replay arbiter host/fabric shell as a complete SR2FPGA Verilog RTL project. This is component topology t12_replay_arbiter_shell, difficulty tier T12. Use host_transition_packetizer and replay_index_allocator feeding replay_request_arbiter, then replay_memory_bank and sample_packet_stage. The design must implement this black-box behavior: host transition packets are written into a depth-4 replay memory, indexed sample requests are gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.host_valid -> host_transition_packetizer.host_valid; top.host_state -> host_transition_packetizer.host_state; top.host_action -> host_transition_packetizer.host_action; top.host_reward -> host_transition_packetizer.host_reward; top.host_next_state -> host_transition_packetizer.host_next_state; top.host_done -> host_transition_packetizer.host_done; host_transition_packetizer.host_ready -> top.host_ready; host_transition_packetizer.packet_valid -> replay_request_arbiter.write_valid; host_transition_packetizer.packet_state -> replay_request_arbiter.write_state; host_transition_packetizer.packet_action -> replay_request_arbiter.write_action; host_transition_packetizer.packet_reward -> replay_request_arbiter.write_reward; host_transition_packetizer.packet_next_state -> replay_request_arbiter.write_next_state; host_transition_packetizer.packet_done -> replay_request_arbiter.write_done; replay_index_allocator.write_index -> replay_request_arbiter.write_index; replay_index_allocator.occupancy -> replay_request_arbiter.occupancy; top.sample_req_valid -> replay_request_arbiter.read_req_valid; top.sample_index -> replay_request_arbiter.sample_index; replay_request_arbiter.sample_req_ready -> top.sample_req_ready; replay_request_arbiter.mem_write_valid -> replay_memory_bank.write_valid; replay_request_arbiter.mem_write_addr -> replay_memory_bank.write_addr; replay_request_arbiter.mem_write_state -> replay_memory_bank.write_state; replay_request_arbiter.mem_write_action -> replay_memory_bank.write_action; replay_request_arbiter.mem_write_reward -> replay_memory_bank.write_reward; replay_request_arbiter.mem_write_next_state -> replay_memory_bank.write_next_state; replay_request_arbiter.mem_write_done -> replay_memory_bank.write_done; replay_request_arbiter.mem_read_valid -> replay_memory_bank.read_valid; replay_request_arbiter.mem_read_addr -> replay_memory_bank.read_addr; replay_request_arbiter.write_accepted -> replay_index_allocator.write_accepted; replay_memory_bank.read_valid_out -> sample_packet_stage.in_valid; replay_memory_bank.read_state -> sample_packet_stage.sample_state; replay_memory_bank.read_action -> sample_packet_stage.sample_action; replay_memory_bank.read_reward -> sample_packet_stage.sample_reward; replay_memory_bank.read_next_state -> sample_packet_stage.sample_next_state; replay_memory_bank.read_done -> sample_packet_stage.sample_done; sample_packet_stage.sample_valid -> top.sample_valid; top.sample_ready -> sample_packet_stage.sample_ready; sample_packet_stage.sample_state_out -> top.sample_state; sample_packet_stage.sample_action_out -> top.sample_action; sample_packet_stage.sample_reward_out -> top.sample_reward; sample_packet_stage.sample_next_state_out -> top.sample_next_state; sample_packet_stage.sample_done_out -> top.sample_done; sample_packet_stage.irq -> top.irq; replay_index_allocator.occupancy -> top.occupancy; replay_index_allocator.write_index -> top.write_index. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Build an 8-bit replay arbiter host/fabric shell as a complete SR2FPGA Verilog RTL project. This is component topology t12_replay_arbiter_shell, difficulty tier T12. Use host_transition_packetizer and replay_index_allocator feeding replay_request_arbiter, then replay_memory_bank and sample_packet_stage. The design must implement this black-box behavior: host transition packets are written into a depth-4 replay memory, indexed sample requests are gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.host_valid -> host_transition_packetizer.host_valid; top.host_state -> host_transition_packetizer.host_state; top.host_action -> host_transition_packetizer.host_action; top.host_reward -> host_transition_packetizer.host_reward; top.host_next_state -> host_transition_packetizer.host_next_state; top.host_done -> host_transition_packetizer.host_done; host_transition_packetizer.host_ready -> top.host_ready; host_transition_packetizer.packet_valid -> replay_request_arbiter.write_valid; host_transition_packetizer.packet_state -> replay_request_arbiter.write_state; host_transition_packetizer.packet_action -> replay_request_arbiter.write_action; host_transition_packetizer.packet_reward -> replay_request_arbiter.write_reward; host_transition_packetizer.packet_next_state -> replay_request_arbiter.write_next_state; host_transition_packetizer.packet_done -> replay_request_arbiter.write_done; replay_index_allocator.write_index -> replay_request_arbiter.write_index; replay_index_allocator.occupancy -> replay_request_arbiter.occupancy; top.sample_req_valid -> replay_request_arbiter.read_req_valid; top.sample_index -> replay_request_arbiter.sample_index; replay_request_arbiter.sample_req_ready -> top.sample_req_ready; replay_request_arbiter.mem_write_valid -> replay_memory_bank.write_valid; replay_request_arbiter.mem_write_addr -> replay_memory_bank.write_addr; replay_request_arbiter.mem_write_state -> replay_memory_bank.write_state; replay_request_arbiter.mem_write_action -> replay_memory_bank.write_action; replay_request_arbiter.mem_write_reward -> replay_memory_bank.write_reward; replay_request_arbiter.mem_write_next_state -> replay_memory_bank.write_next_state; replay_request_arbiter.mem_write_done -> replay_memory_bank.write_done; replay_request_arbiter.mem_read_valid -> replay_memory_bank.read_valid; replay_request_arbiter.mem_read_addr -> replay_memory_bank.read_addr; replay_request_arbiter.write_accepted -> replay_index_allocator.write_accepted; replay_memory_bank.read_valid_out -> sample_packet_stage.in_valid; replay_memory_bank.read_state -> sample_packet_stage.sample_state; replay_memory_bank.read_action -> sample_packet_stage.sample_action; replay_memory_bank.read_reward -> sample_packet_stage.sample_reward; replay_memory_bank.read_next_state -> sample_packet_stage.sample_next_state; replay_memory_bank.read_done -> sample_packet_stage.sample_done; sample_packet_stage.sample_valid -> top.sample_valid; top.sample_ready -> sample_packet_stage.sample_ready; sample_packet_stage.sample_state_out -> top.sample_state; sample_packet_stage.sample_action_out -> top.sample_action; sample_packet_stage.sample_reward_out -> top.sample_reward; sample_packet_stage.sample_next_state_out -> top.sample_next_state; sample_packet_stage.sample_done_out -> top.sample_done; sample_packet_stage.irq -> top.irq; replay_index_allocator.occupancy -> top.occupancy; replay_index_allocator.write_index -> top.write_index. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "host transition packets are written into a depth-4 replay memory, indexed sample requests are gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_state",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "host_action",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_reward",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "host_next_state",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "host_done",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "sample_req_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "sample_index",
+          "dir": "input",
+          "width": 2
+        },
+        {
+          "name": "sample_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_req_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_state",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "sample_action",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_reward",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "sample_next_state",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "sample_done",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "occupancy",
+          "dir": "output",
+          "width": 3
+        },
+        {
+          "name": "write_index",
+          "dir": "output",
+          "width": 2
+        },
+        {
+          "name": "irq",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "write_index",
+          "owner": "u_replay_index_allocator",
+          "width": 2
+        },
+        {
+          "name": "occupancy",
+          "owner": "u_replay_index_allocator",
+          "width": 3
+        },
+        {
+          "name": "sample_state",
+          "owner": "u_sample_packet_stage",
+          "width": 8
+        },
+        {
+          "name": "sample_reward",
+          "owner": "u_sample_packet_stage",
+          "width": 8
+        },
+        {
+          "name": "sample_next_state",
+          "owner": "u_sample_packet_stage",
+          "width": 8
+        },
+        {
+          "name": "sample_action",
+          "owner": "u_sample_packet_stage",
+          "width": 1
+        },
+        {
+          "name": "sample_done",
+          "owner": "u_sample_packet_stage",
+          "width": 1
+        },
+        {
+          "name": "irq_state",
+          "owner": "u_sample_packet_stage",
+          "width": 1
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": [
+        {
+          "name": "replay_entries",
+          "owner": "u_replay_memory_bank",
+          "width": 26,
+          "depth": 4
+        }
+      ]
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_state",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "host_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_reward",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "host_next_state",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "host_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_req_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_index",
+            "dir": "input",
+            "width": 2
+          },
+          {
+            "name": "sample_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_req_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_next_state",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_done",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "occupancy",
+            "dir": "output",
+            "width": 3
+          },
+          {
+            "name": "write_index",
+            "dir": "output",
+            "width": 2
+          },
+          {
+            "name": "irq",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "host_transition_packetizer",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/host_transition_packetizer.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "host_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "host_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "host_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "host_next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "host_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "packet_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "packet_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "packet_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "packet_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "packet_reward",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "packet_next_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "packet_done",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "host transition packetizer component in the generated RTL project"
+      },
+      {
+        "name": "replay_index_allocator",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/replay_index_allocator.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_accepted",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_index",
+            "dir": "output",
+            "width": 2
+          },
+          {
+            "name": "occupancy",
+            "dir": "output",
+            "width": 3
+          }
+        ],
+        "intent": "replay index allocator component in the generated RTL project"
+      },
+      {
+        "name": "replay_request_arbiter",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/replay_request_arbiter.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "write_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "write_index",
+            "dir": "input",
+            "width": 2
+          },
+          {
+            "name": "occupancy",
+            "dir": "input",
+            "width": 3
+          },
+          {
+            "name": "write_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "read_req_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_index",
+            "dir": "input",
+            "width": 2
+          },
+          {
+            "name": "sample_stage_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_req_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_write_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_write_addr",
+            "dir": "output",
+            "width": 2
+          },
+          {
+            "name": "mem_write_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "mem_write_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_write_reward",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "mem_write_next_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "mem_write_done",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_read_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_read_addr",
+            "dir": "output",
+            "width": 2
+          },
+          {
+            "name": "write_accepted",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "replay request arbiter component in the generated RTL project"
+      },
+      {
+        "name": "replay_memory_bank",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/replay_memory_bank.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_addr",
+            "dir": "input",
+            "width": 2
+          },
+          {
+            "name": "write_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "read_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "read_addr",
+            "dir": "input",
+            "width": 2
+          },
+          {
+            "name": "read_valid_out",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "read_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "read_reward",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_next_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_done",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "replay memory bank component in the generated RTL project"
+      },
+      {
+        "name": "sample_packet_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/sample_packet_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_state_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action_out",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done_out",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "irq",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample packet stage component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_host_transition_packetizer",
+        "component": "host_transition_packetizer",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_replay_index_allocator",
+        "component": "replay_index_allocator",
+        "parameter_values": {},
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_replay_request_arbiter",
+        "component": "replay_request_arbiter",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_replay_memory_bank",
+        "component": "replay_memory_bank",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_sample_packet_stage",
+        "component": "sample_packet_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_host_transition_packetizer_primary_path",
+        "path": [
+          "top.sample_req_valid",
+          "u_host_transition_packetizer.host_valid",
+          "u_host_transition_packetizer.host_ready",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_replay_index_allocator_primary_path",
+        "path": [
+          "top.sample_req_valid",
+          "u_replay_index_allocator.write_accepted",
+          "u_replay_index_allocator.write_index",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      },
+      {
+        "name": "u_replay_request_arbiter_primary_path",
+        "path": [
+          "top.sample_req_valid",
+          "u_replay_request_arbiter.write_valid",
+          "u_replay_request_arbiter.write_ready",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_replay_memory_bank_primary_path",
+        "path": [
+          "top.sample_req_valid",
+          "u_replay_memory_bank.write_valid",
+          "u_replay_memory_bank.read_valid_out",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_sample_packet_stage_primary_path",
+        "path": [
+          "top.sample_req_valid",
+          "u_sample_packet_stage.in_valid",
+          "u_sample_packet_stage.in_ready",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      },
+      {
+        "name": "valid_ready_transfer",
+        "kind": "handshake_rule",
+        "condition": "valid && ready",
+        "effects": [
+          "advance each ready/valid flow by one payload"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_host_transition_packetizer_primary_path",
+          "u_replay_index_allocator_primary_path",
+          "u_replay_request_arbiter_primary_path",
+          "u_replay_memory_bank_primary_path",
+          "u_sample_packet_stage_primary_path"
+        ]
+      },
+      {
+        "name": "backpressure_hold",
+        "kind": "stall_rule",
+        "condition": "valid && !ready",
+        "effects": [
+          "hold payload and valid state until downstream ready"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_host_transition_packetizer_primary_path",
+          "u_replay_index_allocator_primary_path",
+          "u_replay_request_arbiter_primary_path",
+          "u_replay_memory_bank_primary_path",
+          "u_sample_packet_stage_primary_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 264,
+        "ff": 272,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when host transition packets are written into a depth-4 replay memory, indexed sample requests are gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when host transition packets are written into a depth-4 replay memory, indexed sample requests are gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when host transition packets are written into a depth-4 replay memory, indexed sample requests are gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/host_transition_packetizer.v",
+        "rtl/replay_index_allocator.v",
+        "rtl/replay_request_arbiter.v",
+        "rtl/replay_memory_bank.v",
+        "rtl/sample_packet_stage.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Build an 8-bit replay arbiter host/fabric shell as a complete SR2FPGA Verilog RTL project. This is component topology t12_replay_arbiter_shell, difficulty tier T12. Use host_transition_packetizer and replay_index_allocator feeding replay_request_arbiter, then replay_memory_bank and sample_packet_stage. The design must implement this black-box behavior: host transition packets are written into a depth-4 replay memory, indexed sample requests are gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.host_valid -> host_transition_packetizer.host_valid; top.host_state -> host_transition_packetizer.host_state; top.host_action -> host_transition_packetizer.host_action; top.host_reward -> host_transition_packetizer.host_reward; top.host_next_state -> host_transition_packetizer.host_next_state; top.host_done -> host_transition_packetizer.host_done; host_transition_packetizer.host_ready -> top.host_ready; host_transition_packetizer.packet_valid -> replay_request_arbiter.write_valid; host_transition_packetizer.packet_state -> replay_request_arbiter.write_state; host_transition_packetizer.packet_action -> replay_request_arbiter.write_action; host_transition_packetizer.packet_reward -> replay_request_arbiter.write_reward; host_transition_packetizer.packet_next_state -> replay_request_arbiter.write_next_state; host_transition_packetizer.packet_done -> replay_request_arbiter.write_done; replay_index_allocator.write_index -> replay_request_arbiter.write_index; replay_index_allocator.occupancy -> replay_request_arbiter.occupancy; top.sample_req_valid -> replay_request_arbiter.read_req_valid; top.sample_index -> replay_request_arbiter.sample_index; replay_request_arbiter.sample_req_ready -> top.sample_req_ready; replay_request_arbiter.mem_write_valid -> replay_memory_bank.write_valid; replay_request_arbiter.mem_write_addr -> replay_memory_bank.write_addr; replay_request_arbiter.mem_write_state -> replay_memory_bank.write_state; replay_request_arbiter.mem_write_action -> replay_memory_bank.write_action; replay_request_arbiter.mem_write_reward -> replay_memory_bank.write_reward; replay_request_arbiter.mem_write_next_state -> replay_memory_bank.write_next_state; replay_request_arbiter.mem_write_done -> replay_memory_bank.write_done; replay_request_arbiter.mem_read_valid -> replay_memory_bank.read_valid; replay_request_arbiter.mem_read_addr -> replay_memory_bank.read_addr; replay_request_arbiter.write_accepted -> replay_index_allocator.write_accepted; replay_memory_bank.read_valid_out -> sample_packet_stage.in_valid; replay_memory_bank.read_state -> sample_packet_stage.sample_state; replay_memory_bank.read_action -> sample_packet_stage.sample_action; replay_memory_bank.read_reward -> sample_packet_stage.sample_reward; replay_memory_bank.read_next_state -> sample_packet_stage.sample_next_state; replay_memory_bank.read_done -> sample_packet_stage.sample_done; sample_packet_stage.sample_valid -> top.sample_valid; top.sample_ready -> sample_packet_stage.sample_ready; sample_packet_stage.sample_state_out -> top.sample_state; sample_packet_stage.sample_action_out -> top.sample_action; sample_packet_stage.sample_reward_out -> top.sample_reward; sample_packet_stage.sample_next_state_out -> top.sample_next_state; sample_packet_stage.sample_done_out -> top.sample_done; sample_packet_stage.irq -> top.irq; replay_index_allocator.occupancy -> top.occupancy; replay_index_allocator.write_index -> top.write_index. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "host_valid",
+          "width": 1
+        },
+        {
+          "name": "host_state",
+          "width": 8
+        },
+        {
+          "name": "host_action",
+          "width": 1
+        },
+        {
+          "name": "host_reward",
+          "width": 8
+        },
+        {
+          "name": "host_next_state",
+          "width": 8
+        },
+        {
+          "name": "host_done",
+          "width": 1
+        },
+        {
+          "name": "sample_req_valid",
+          "width": 1
+        },
+        {
+          "name": "sample_index",
+          "width": 2
+        },
+        {
+          "name": "sample_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "host_ready",
+          "width": 1
+        },
+        {
+          "name": "sample_req_ready",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "name": "sample_state",
+          "width": 8
+        },
+        {
+          "name": "sample_action",
+          "width": 1
+        },
+        {
+          "name": "sample_reward",
+          "width": 8
+        },
+        {
+          "name": "sample_next_state",
+          "width": 8
+        },
+        {
+          "name": "sample_done",
+          "width": 1
+        },
+        {
+          "name": "occupancy",
+          "width": 3
+        },
+        {
+          "name": "write_index",
+          "width": 2
+        },
+        {
+          "name": "irq",
+          "width": 1
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "host_transition_packetizer",
+        "replay_index_allocator",
+        "replay_request_arbiter",
+        "replay_memory_bank",
+        "sample_packet_stage"
+      ],
+      "generator": "component_topology",
+      "topology_id": "t12_replay_arbiter_shell",
+      "difficulty_tier": "T12",
+      "component_library": "sr2fpga_deterministic_components_v1",
+      "topology": {
+        "nodes": [
+          {
+            "id": "packetizer",
+            "component": "host_transition_packetizer"
+          },
+          {
+            "id": "allocator",
+            "component": "replay_index_allocator"
+          },
+          {
+            "id": "arbiter",
+            "component": "replay_request_arbiter"
+          },
+          {
+            "id": "memory",
+            "component": "replay_memory_bank"
+          },
+          {
+            "id": "sample_stage",
+            "component": "sample_packet_stage"
+          }
+        ],
+        "edges": [
+          {
+            "from": "top.host_valid",
+            "to": "host_transition_packetizer.host_valid"
+          },
+          {
+            "from": "top.host_state",
+            "to": "host_transition_packetizer.host_state"
+          },
+          {
+            "from": "top.host_action",
+            "to": "host_transition_packetizer.host_action"
+          },
+          {
+            "from": "top.host_reward",
+            "to": "host_transition_packetizer.host_reward"
+          },
+          {
+            "from": "top.host_next_state",
+            "to": "host_transition_packetizer.host_next_state"
+          },
+          {
+            "from": "top.host_done",
+            "to": "host_transition_packetizer.host_done"
+          },
+          {
+            "from": "host_transition_packetizer.host_ready",
+            "to": "top.host_ready"
+          },
+          {
+            "from": "host_transition_packetizer.packet_valid",
+            "to": "replay_request_arbiter.write_valid"
+          },
+          {
+            "from": "host_transition_packetizer.packet_state",
+            "to": "replay_request_arbiter.write_state"
+          },
+          {
+            "from": "host_transition_packetizer.packet_action",
+            "to": "replay_request_arbiter.write_action"
+          },
+          {
+            "from": "host_transition_packetizer.packet_reward",
+            "to": "replay_request_arbiter.write_reward"
+          },
+          {
+            "from": "host_transition_packetizer.packet_next_state",
+            "to": "replay_request_arbiter.write_next_state"
+          },
+          {
+            "from": "host_transition_packetizer.packet_done",
+            "to": "replay_request_arbiter.write_done"
+          },
+          {
+            "from": "replay_index_allocator.write_index",
+            "to": "replay_request_arbiter.write_index"
+          },
+          {
+            "from": "replay_index_allocator.occupancy",
+            "to": "replay_request_arbiter.occupancy"
+          },
+          {
+            "from": "top.sample_req_valid",
+            "to": "replay_request_arbiter.read_req_valid"
+          },
+          {
+            "from": "top.sample_index",
+            "to": "replay_request_arbiter.sample_index"
+          },
+          {
+            "from": "replay_request_arbiter.sample_req_ready",
+            "to": "top.sample_req_ready"
+          },
+          {
+            "from": "replay_request_arbiter.mem_write_valid",
+            "to": "replay_memory_bank.write_valid"
+          },
+          {
+            "from": "replay_request_arbiter.mem_write_addr",
+            "to": "replay_memory_bank.write_addr"
+          },
+          {
+            "from": "replay_request_arbiter.mem_write_state",
+            "to": "replay_memory_bank.write_state"
+          },
+          {
+            "from": "replay_request_arbiter.mem_write_action",
+            "to": "replay_memory_bank.write_action"
+          },
+          {
+            "from": "replay_request_arbiter.mem_write_reward",
+            "to": "replay_memory_bank.write_reward"
+          },
+          {
+            "from": "replay_request_arbiter.mem_write_next_state",
+            "to": "replay_memory_bank.write_next_state"
+          },
+          {
+            "from": "replay_request_arbiter.mem_write_done",
+            "to": "replay_memory_bank.write_done"
+          },
+          {
+            "from": "replay_request_arbiter.mem_read_valid",
+            "to": "replay_memory_bank.read_valid"
+          },
+          {
+            "from": "replay_request_arbiter.mem_read_addr",
+            "to": "replay_memory_bank.read_addr"
+          },
+          {
+            "from": "replay_request_arbiter.write_accepted",
+            "to": "replay_index_allocator.write_accepted"
+          },
+          {
+            "from": "replay_memory_bank.read_valid_out",
+            "to": "sample_packet_stage.in_valid"
+          },
+          {
+            "from": "replay_memory_bank.read_state",
+            "to": "sample_packet_stage.sample_state"
+          },
+          {
+            "from": "replay_memory_bank.read_action",
+            "to": "sample_packet_stage.sample_action"
+          },
+          {
+            "from": "replay_memory_bank.read_reward",
+            "to": "sample_packet_stage.sample_reward"
+          },
+          {
+            "from": "replay_memory_bank.read_next_state",
+            "to": "sample_packet_stage.sample_next_state"
+          },
+          {
+            "from": "replay_memory_bank.read_done",
+            "to": "sample_packet_stage.sample_done"
+          },
+          {
+            "from": "sample_packet_stage.sample_valid",
+            "to": "top.sample_valid"
+          },
+          {
+            "from": "top.sample_ready",
+            "to": "sample_packet_stage.sample_ready"
+          },
+          {
+            "from": "sample_packet_stage.sample_state_out",
+            "to": "top.sample_state"
+          },
+          {
+            "from": "sample_packet_stage.sample_action_out",
+            "to": "top.sample_action"
+          },
+          {
+            "from": "sample_packet_stage.sample_reward_out",
+            "to": "top.sample_reward"
+          },
+          {
+            "from": "sample_packet_stage.sample_next_state_out",
+            "to": "top.sample_next_state"
+          },
+          {
+            "from": "sample_packet_stage.sample_done_out",
+            "to": "top.sample_done"
+          },
+          {
+            "from": "sample_packet_stage.irq",
+            "to": "top.irq"
+          },
+          {
+            "from": "replay_index_allocator.occupancy",
+            "to": "top.occupancy"
+          },
+          {
+            "from": "replay_index_allocator.write_index",
+            "to": "top.write_index"
+          }
+        ]
+      }
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_state",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "host_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_reward",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "host_next_state",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "host_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_req_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_index",
+            "direction": "input",
+            "width": 2
+          },
+          {
+            "name": "sample_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_req_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_next_state",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_done",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "occupancy",
+            "direction": "output",
+            "width": 3
+          },
+          {
+            "name": "write_index",
+            "direction": "output",
+            "width": 2
+          },
+          {
+            "name": "irq",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "host_transition_packetizer",
+        "role": "submodule",
+        "source": "rtl/host_transition_packetizer.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "host_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "host_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "host_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "host_next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "host_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "packet_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "packet_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "packet_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "packet_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "packet_reward",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "packet_next_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "packet_done",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "host transition packetizer component in the generated RTL project"
+      },
+      {
+        "name": "replay_index_allocator",
+        "role": "submodule",
+        "source": "rtl/replay_index_allocator.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_accepted",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_index",
+            "direction": "output",
+            "width": 2
+          },
+          {
+            "name": "occupancy",
+            "direction": "output",
+            "width": 3
+          }
+        ],
+        "intent": "replay index allocator component in the generated RTL project"
+      },
+      {
+        "name": "replay_request_arbiter",
+        "role": "submodule",
+        "source": "rtl/replay_request_arbiter.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "write_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "write_index",
+            "direction": "input",
+            "width": 2
+          },
+          {
+            "name": "occupancy",
+            "direction": "input",
+            "width": 3
+          },
+          {
+            "name": "write_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "read_req_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_index",
+            "direction": "input",
+            "width": 2
+          },
+          {
+            "name": "sample_stage_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_req_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_write_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_write_addr",
+            "direction": "output",
+            "width": 2
+          },
+          {
+            "name": "mem_write_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "mem_write_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_write_reward",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "mem_write_next_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "mem_write_done",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_read_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "mem_read_addr",
+            "direction": "output",
+            "width": 2
+          },
+          {
+            "name": "write_accepted",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "replay request arbiter component in the generated RTL project"
+      },
+      {
+        "name": "replay_memory_bank",
+        "role": "submodule",
+        "source": "rtl/replay_memory_bank.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_addr",
+            "direction": "input",
+            "width": 2
+          },
+          {
+            "name": "write_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "read_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "read_addr",
+            "direction": "input",
+            "width": 2
+          },
+          {
+            "name": "read_valid_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "read_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "read_reward",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_next_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_done",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "replay memory bank component in the generated RTL project"
+      },
+      {
+        "name": "sample_packet_stage",
+        "role": "submodule",
+        "source": "rtl/sample_packet_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_state_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "irq",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample packet stage component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "host_valid"
+        },
+        "to": {
+          "module": "host_transition_packetizer",
+          "port": "host_valid",
+          "instance": "u_host_transition_packetizer"
+        },
+        "signal": "host_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_transition_packetizer",
+          "port": "host_ready",
+          "instance": "u_host_transition_packetizer"
+        },
+        "to": {
+          "module": "top",
+          "port": "host_ready"
+        },
+        "signal": "host_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_state"
+        },
+        "to": {
+          "module": "host_transition_packetizer",
+          "port": "host_state",
+          "instance": "u_host_transition_packetizer"
+        },
+        "signal": "host_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_action"
+        },
+        "to": {
+          "module": "host_transition_packetizer",
+          "port": "host_action",
+          "instance": "u_host_transition_packetizer"
+        },
+        "signal": "host_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_reward"
+        },
+        "to": {
+          "module": "host_transition_packetizer",
+          "port": "host_reward",
+          "instance": "u_host_transition_packetizer"
+        },
+        "signal": "host_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_next_state"
+        },
+        "to": {
+          "module": "host_transition_packetizer",
+          "port": "host_next_state",
+          "instance": "u_host_transition_packetizer"
+        },
+        "signal": "host_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_done"
+        },
+        "to": {
+          "module": "host_transition_packetizer",
+          "port": "host_done",
+          "instance": "u_host_transition_packetizer"
+        },
+        "signal": "host_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "write_ready",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "host_transition_packetizer",
+          "port": "packet_ready",
+          "instance": "u_host_transition_packetizer"
+        },
+        "signal": "packet_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_transition_packetizer",
+          "port": "packet_valid",
+          "instance": "u_host_transition_packetizer"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "write_valid",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "packet_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_transition_packetizer",
+          "port": "packet_state",
+          "instance": "u_host_transition_packetizer"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "write_state",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "packet_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_transition_packetizer",
+          "port": "packet_action",
+          "instance": "u_host_transition_packetizer"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "write_action",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "packet_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_transition_packetizer",
+          "port": "packet_reward",
+          "instance": "u_host_transition_packetizer"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "write_reward",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "packet_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_transition_packetizer",
+          "port": "packet_next_state",
+          "instance": "u_host_transition_packetizer"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "write_next_state",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "packet_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_transition_packetizer",
+          "port": "packet_done",
+          "instance": "u_host_transition_packetizer"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "write_done",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "packet_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "replay_index_allocator",
+          "port": "clk",
+          "instance": "u_replay_index_allocator"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "clk",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "clk",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "replay_index_allocator",
+          "port": "rst_n",
+          "instance": "u_replay_index_allocator"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "rst_n",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "rst_n",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "write_accepted",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_index_allocator",
+          "port": "write_accepted",
+          "instance": "u_replay_index_allocator"
+        },
+        "signal": "write_accepted",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_index_allocator",
+          "port": "write_index",
+          "instance": "u_replay_index_allocator"
+        },
+        "to": {
+          "module": "top",
+          "port": "write_index"
+        },
+        "signal": "write_index",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 2,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_index_allocator",
+          "port": "write_index",
+          "instance": "u_replay_index_allocator"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "write_index",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "write_index",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 2,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_index_allocator",
+          "port": "occupancy",
+          "instance": "u_replay_index_allocator"
+        },
+        "to": {
+          "module": "top",
+          "port": "occupancy"
+        },
+        "signal": "occupancy",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 3,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_index_allocator",
+          "port": "occupancy",
+          "instance": "u_replay_index_allocator"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "occupancy",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "occupancy",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 3,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "sample_req_valid"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "read_req_valid",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "sample_req_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "sample_index"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "sample_index",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "sample_index",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 2,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "in_ready",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "replay_request_arbiter",
+          "port": "sample_stage_ready",
+          "instance": "u_replay_request_arbiter"
+        },
+        "signal": "sample_stage_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "sample_req_ready",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_req_ready"
+        },
+        "signal": "sample_req_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_write_valid",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "write_valid",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_write_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_write_addr",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "write_addr",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_write_addr",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 2,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_write_state",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "write_state",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_write_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_write_action",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "write_action",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_write_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_write_reward",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "write_reward",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_write_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_write_next_state",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "write_next_state",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_write_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_write_done",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "write_done",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_write_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_read_valid",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "read_valid",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_read_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_request_arbiter",
+          "port": "mem_read_addr",
+          "instance": "u_replay_request_arbiter"
+        },
+        "to": {
+          "module": "replay_memory_bank",
+          "port": "read_addr",
+          "instance": "u_replay_memory_bank"
+        },
+        "signal": "mem_read_addr",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 2,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_memory_bank",
+          "port": "read_valid_out",
+          "instance": "u_replay_memory_bank"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "in_valid",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "read_valid_out",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_memory_bank",
+          "port": "read_state",
+          "instance": "u_replay_memory_bank"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "sample_state",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "read_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_memory_bank",
+          "port": "read_action",
+          "instance": "u_replay_memory_bank"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "sample_action",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "read_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_memory_bank",
+          "port": "read_reward",
+          "instance": "u_replay_memory_bank"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "sample_reward",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "read_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_memory_bank",
+          "port": "read_next_state",
+          "instance": "u_replay_memory_bank"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "sample_next_state",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "read_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_memory_bank",
+          "port": "read_done",
+          "instance": "u_replay_memory_bank"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "sample_done",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "read_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "sample_valid",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_valid"
+        },
+        "signal": "sample_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "sample_ready"
+        },
+        "to": {
+          "module": "sample_packet_stage",
+          "port": "sample_ready",
+          "instance": "u_sample_packet_stage"
+        },
+        "signal": "sample_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "sample_state_out",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_state"
+        },
+        "signal": "sample_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "sample_action_out",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_action"
+        },
+        "signal": "sample_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "sample_reward_out",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_reward"
+        },
+        "signal": "sample_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "sample_next_state_out",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_next_state"
+        },
+        "signal": "sample_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "sample_done_out",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_done"
+        },
+        "signal": "sample_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_packet_stage",
+          "port": "irq",
+          "instance": "u_sample_packet_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "irq"
+        },
+        "signal": "irq",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_state",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "host_action",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_reward",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "host_next_state",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "host_done",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "sample_req_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "sample_index",
+        "direction": "input",
+        "width": 2
+      },
+      {
+        "name": "sample_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_req_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_state",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "sample_action",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_reward",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "sample_next_state",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "sample_done",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "occupancy",
+        "direction": "output",
+        "width": 3
+      },
+      {
+        "name": "write_index",
+        "direction": "output",
+        "width": 2
+      },
+      {
+        "name": "irq",
+        "direction": "output",
+        "width": 1
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 264,
+        "ff": 272,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 852,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 531,
+        "behavior_holes": 0
+      },
+      "rtl/host_transition_packetizer.v": {
+        "origin": "model_generated",
+        "bytes": 877,
+        "behavior_holes": 0
+      },
+      "rtl/replay_index_allocator.v": {
+        "origin": "model_generated",
+        "bytes": 483,
+        "behavior_holes": 0
+      },
+      "rtl/replay_memory_bank.v": {
+        "origin": "model_generated",
+        "bytes": 1728,
+        "behavior_holes": 0
+      },
+      "rtl/replay_request_arbiter.v": {
+        "origin": "model_generated",
+        "bytes": 1579,
+        "behavior_holes": 0
+      },
+      "rtl/sample_packet_stage.v": {
+        "origin": "model_generated",
+        "bytes": 1488,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 4224,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 3814,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 79600,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/host_transition_packetizer.v",
+      "rtl/replay_index_allocator.v",
+      "rtl/replay_memory_bank.v",
+      "rtl/replay_request_arbiter.v",
+      "rtl/sample_packet_stage.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.149039,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 0,
+      "ff": 164,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "run_id": "official-eval-gap-closure-deepseek-t4-llm10-20260629",
+  "next_index": 0,
+  "completed_samples": [],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [],
+    "rejected": []
+  },
+  "failure_types": {},
+  "exports_refreshed": false,
+  "config_fingerprint": "de427fbb4fb9203268c42e3fef374a5540f2ba6bcc52cd6fd4e2aba8b981ed0f"
+}

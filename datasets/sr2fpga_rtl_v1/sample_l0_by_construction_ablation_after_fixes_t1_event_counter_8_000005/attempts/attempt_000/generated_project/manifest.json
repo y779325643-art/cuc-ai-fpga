@@ -1,0 +1,26 @@
+{
+  "project_name": "l0_by_construction_ablation_after_fixes_t1_event_counter_8_000005",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/event_gate.v",
+    "rtl/counter_core.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

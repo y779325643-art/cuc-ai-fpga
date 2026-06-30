@@ -1,0 +1,11 @@
+{
+  "frequency_mhz": 100.0,
+  "latency_cycles": 1,
+  "throughput_1_per_cycle": true,
+  "resource_utilization": {
+    "lut": 25,
+    "ff": 30,
+    "dsp": 0,
+    "bram": 0
+  }
+}

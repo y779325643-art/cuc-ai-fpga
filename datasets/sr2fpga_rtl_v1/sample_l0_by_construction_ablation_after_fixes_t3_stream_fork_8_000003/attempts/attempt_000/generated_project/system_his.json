@@ -1,0 +1,17 @@
+{
+  "top_module": "top",
+  "ports": {
+    "clk": "input wire",
+    "reset_n": "input wire",
+    "in_valid": "input wire",
+    "in_data": "input wire [7:0]",
+    "in_ready": "output wire",
+    "out0_valid": "output wire",
+    "out0_data": "output wire [7:0]",
+    "out0_ready": "input wire",
+    "out1_valid": "output wire",
+    "out1_data": "output wire [7:0]",
+    "out1_ready": "input wire"
+  },
+  "description": "8-bit valid-ready stream fork with skid buffer and two output pipeline stages."
+}

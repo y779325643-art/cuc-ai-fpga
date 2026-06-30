@@ -1,0 +1,11 @@
+--- a/rtl/td_update_core.v
++++ b/rtl/td_update_core.v
+@@ -26,7 +26,7 @@
+     assign mult_full = $signed(alpha_ext) * td_error_s;
+     assign _unused_mult_low = mult_full[3:0];
+     assign mult_scaled = mult_full >>> 4;
+-    assign value_ext = $signed({10{1'b0}, value});
++    assign value_ext = $signed({ {10{1'b0}}, value });
+     assign update_sum = value_ext + mult_scaled;
+     always @* begin
+       if (update_sum <= 0)

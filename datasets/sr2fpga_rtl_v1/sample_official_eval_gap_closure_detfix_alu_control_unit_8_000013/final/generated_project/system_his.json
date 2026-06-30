@@ -1,0 +1,1061 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "alu_control_unit",
+  "project_name": "official_eval_gap_closure_detfix_alu_control_unit_8_000013",
+  "project": {
+    "name": "official_eval_gap_closure_detfix_alu_control_unit_8_000013",
+    "description": "Design a 8-bit alu_control_unit as a complete SR2FPGA Verilog RTL project. Use multi-file RTL for FIFO, SPI, UART, PWM, and controller-style tasks; include system_his.json, manifest.json, timing constraints, a bounded self-checking testbench that prints TEST_PASS on success or TEST_FAIL on failure, and predicted QoR.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Design a 8-bit alu_control_unit as a complete SR2FPGA Verilog RTL project. Use multi-file RTL for FIFO, SPI, UART, PWM, and controller-style tasks; include system_his.json, manifest.json, timing constraints, a bounded self-checking testbench that prints TEST_PASS on success or TEST_FAIL on failure, and predicted QoR.",
+    "design_goal": "valid op/lhs/rhs inputs are decoded, executed by the ALU core, and captured with zero, carry, and negative flags",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "valid",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "op",
+        "dir": "input",
+        "width": 3
+      },
+      {
+        "name": "lhs",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "rhs",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "ready",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "result_valid",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "result",
+        "dir": "output",
+        "width": 8
+      },
+      {
+        "name": "zero",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "carry",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "negative",
+        "dir": "output",
+        "width": 1
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "result",
+        "owner": "u_status_flags",
+        "width": 8
+      },
+      {
+        "name": "result_valid",
+        "owner": "u_status_flags",
+        "width": 1
+      },
+      {
+        "name": "zero",
+        "owner": "u_status_flags",
+        "width": 1
+      },
+      {
+        "name": "carry",
+        "owner": "u_status_flags",
+        "width": 1
+      },
+      {
+        "name": "negative",
+        "owner": "u_status_flags",
+        "width": 1
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "op",
+          "dir": "input",
+          "width": 3
+        },
+        {
+          "name": "lhs",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "rhs",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "zero",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "carry",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "negative",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "control_decode",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/control_decode.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "op",
+          "dir": "input",
+          "width": 3
+        },
+        {
+          "name": "decoded_op",
+          "dir": "output",
+          "width": 3
+        }
+      ],
+      "intent": "control decode component in the generated RTL project"
+    },
+    {
+      "name": "alu_core",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/alu_core.v",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "op",
+          "dir": "input",
+          "width": 3
+        },
+        {
+          "name": "lhs",
+          "dir": "input",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "rhs",
+          "dir": "input",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "result",
+          "dir": "output",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "carry",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "alu core component in the generated RTL project"
+    },
+    {
+      "name": "status_flags",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/status_flags.v",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "alu_result",
+          "dir": "input",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "alu_carry",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "dir": "output",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "zero",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "carry",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "negative",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "status flags component in the generated RTL project"
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_control_decode",
+      "component": "control_decode",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_alu_core",
+      "component": "alu_core",
+      "parameter_values": {
+        "WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_status_flags",
+      "component": "status_flags",
+      "parameter_values": {
+        "WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "u_control_decode_primary_path",
+      "path": [
+        "top.valid",
+        "u_control_decode.op",
+        "u_control_decode.decoded_op",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    },
+    {
+      "name": "u_alu_core_primary_path",
+      "path": [
+        "top.valid",
+        "u_alu_core.op",
+        "u_alu_core.result",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    },
+    {
+      "name": "u_status_flags_primary_path",
+      "path": [
+        "top.valid",
+        "u_status_flags.valid",
+        "u_status_flags.result_valid",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 32,
+      "ff": 12,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when valid op/lhs/rhs inputs are decoded, executed by the ALU core, and captured with zero, carry, and negative flags.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when valid op/lhs/rhs inputs are decoded, executed by the ALU core, and captured with zero, carry, and negative flags.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when valid op/lhs/rhs inputs are decoded, executed by the ALU core, and captured with zero, carry, and negative flags."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/control_decode.v",
+      "rtl/alu_core.v",
+      "rtl/status_flags.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Design a 8-bit alu_control_unit as a complete SR2FPGA Verilog RTL project. Use multi-file RTL for FIFO, SPI, UART, PWM, and controller-style tasks; include system_his.json, manifest.json, timing constraints, a bounded self-checking testbench that prints TEST_PASS on success or TEST_FAIL on failure, and predicted QoR."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "valid",
+        "width": 1
+      },
+      {
+        "name": "op",
+        "width": 3
+      },
+      {
+        "name": "lhs",
+        "width": 8
+      },
+      {
+        "name": "rhs",
+        "width": 8
+      }
+    ],
+    "outputs": [
+      {
+        "name": "ready",
+        "width": 1
+      },
+      {
+        "name": "result_valid",
+        "width": 1
+      },
+      {
+        "name": "result",
+        "width": 8
+      },
+      {
+        "name": "zero",
+        "width": 1
+      },
+      {
+        "name": "carry",
+        "width": 1
+      },
+      {
+        "name": "negative",
+        "width": 1
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "control_decode",
+      "alu_core",
+      "status_flags"
+    ]
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "op",
+          "direction": "input",
+          "width": 3
+        },
+        {
+          "name": "lhs",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "rhs",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "zero",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "carry",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "negative",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "control_decode",
+      "role": "submodule",
+      "source": "rtl/control_decode.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "op",
+          "direction": "input",
+          "width": 3
+        },
+        {
+          "name": "decoded_op",
+          "direction": "output",
+          "width": 3
+        }
+      ],
+      "intent": "control decode component in the generated RTL project"
+    },
+    {
+      "name": "alu_core",
+      "role": "submodule",
+      "source": "rtl/alu_core.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "op",
+          "direction": "input",
+          "width": 3
+        },
+        {
+          "name": "lhs",
+          "direction": "input",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "rhs",
+          "direction": "input",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "result",
+          "direction": "output",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "carry",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "alu core component in the generated RTL project"
+    },
+    {
+      "name": "status_flags",
+      "role": "submodule",
+      "source": "rtl/status_flags.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "alu_result",
+          "direction": "input",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "alu_carry",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "direction": "output",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "name": "zero",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "carry",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "negative",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "status flags component in the generated RTL project"
+    }
+  ],
+  "connections": [
+    {
+      "from": {
+        "module": "top",
+        "port": "op"
+      },
+      "to": {
+        "module": "control_decode",
+        "port": "op",
+        "instance": "u_control_decode"
+      },
+      "signal": "op",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 3,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "control_decode",
+        "port": "decoded_op",
+        "instance": "u_control_decode"
+      },
+      "to": {
+        "module": "alu_core",
+        "port": "op",
+        "instance": "u_alu_core"
+      },
+      "signal": "decoded_op",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 3,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "lhs"
+      },
+      "to": {
+        "module": "alu_core",
+        "port": "lhs",
+        "instance": "u_alu_core"
+      },
+      "signal": "lhs",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rhs"
+      },
+      "to": {
+        "module": "alu_core",
+        "port": "rhs",
+        "instance": "u_alu_core"
+      },
+      "signal": "rhs",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "alu_core",
+        "port": "result",
+        "instance": "u_alu_core"
+      },
+      "to": {
+        "module": "status_flags",
+        "port": "alu_result",
+        "instance": "u_status_flags"
+      },
+      "signal": "alu_result",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "alu_core",
+        "port": "carry",
+        "instance": "u_alu_core"
+      },
+      "to": {
+        "module": "status_flags",
+        "port": "alu_carry",
+        "instance": "u_status_flags"
+      },
+      "signal": "alu_carry",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "status_flags",
+        "port": "clk",
+        "instance": "u_status_flags"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "status_flags",
+        "port": "rst_n",
+        "instance": "u_status_flags"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "valid"
+      },
+      "to": {
+        "module": "status_flags",
+        "port": "valid",
+        "instance": "u_status_flags"
+      },
+      "signal": "valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "status_flags",
+        "port": "result_valid",
+        "instance": "u_status_flags"
+      },
+      "to": {
+        "module": "top",
+        "port": "result_valid"
+      },
+      "signal": "result_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "status_flags",
+        "port": "result",
+        "instance": "u_status_flags"
+      },
+      "to": {
+        "module": "top",
+        "port": "result"
+      },
+      "signal": "result",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "status_flags",
+        "port": "zero",
+        "instance": "u_status_flags"
+      },
+      "to": {
+        "module": "top",
+        "port": "zero"
+      },
+      "signal": "zero",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "status_flags",
+        "port": "carry",
+        "instance": "u_status_flags"
+      },
+      "to": {
+        "module": "top",
+        "port": "carry"
+      },
+      "signal": "carry",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "status_flags",
+        "port": "negative",
+        "instance": "u_status_flags"
+      },
+      "to": {
+        "module": "top",
+        "port": "negative"
+      },
+      "signal": "negative",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    }
+  ],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "valid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "op",
+      "direction": "input",
+      "width": 3
+    },
+    {
+      "name": "lhs",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "rhs",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "ready",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "result_valid",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "result",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "zero",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "carry",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "negative",
+      "direction": "output",
+      "width": 1
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 32,
+      "ff": 12,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

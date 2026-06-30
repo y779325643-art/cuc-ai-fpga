@@ -1,0 +1,335 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Build an 8-bit event-counting subsystem as a complete SR2FPGA Verilog RTL project. This is component topology t1_event_counter, difficulty tier T1. Use an event_gate in front of a counter_core. The design must implement this black-box behavior: event_valid pulses pass through an event gate and increment the counter core. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.event_valid -> event_gate.event_valid; event_gate.count_en -> counter_core.en; counter_core.count -> top.count. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+    "design_goal": "Implement an 8‑bit event counter by composing an event_gate and a counter_core, with a simple top-level wrapper. The design is intended for a generic Verilog flow with open‑source tools, targeting 100 MHz operation.",
+    "assumptions": [
+      "The event_gate is a purely combinational pass‑through of event_valid to count_en.",
+      "The counter_core uses a synchronous active‑low reset.",
+      "The counter rolls over naturally from 255 to 0.",
+      "No enable gating logic is required inside the event_gate; it simply connects event_valid to count_en."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "WIDTH",
+        "default": 8,
+        "type": "integer",
+        "description": "Bit width of the counter output."
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100,
+        "comment": "Primary system clock."
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync",
+        "comment": "Active‑low synchronous reset."
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": {
+          "resolved": 1
+        },
+        "description": "Clock input."
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": {
+          "resolved": 1
+        },
+        "description": "Active‑low synchronous reset."
+      },
+      {
+        "name": "event_valid",
+        "direction": "input",
+        "width": {
+          "resolved": 1
+        },
+        "description": "Event valid pulse input."
+      },
+      {
+        "name": "count",
+        "direction": "output",
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        },
+        "description": "8‑bit counter value output."
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [
+      {
+        "name": "value",
+        "owner": "counter",
+        "description": "8‑bit counter value held in the counter_core instance."
+      }
+    ],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "event_gate",
+      "semantic_kind": "event_gate",
+      "source": "rtl/event_gate.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "event_valid",
+          "direction": "input",
+          "width": {
+            "resolved": 1
+          },
+          "description": "Input event valid pulse."
+        },
+        {
+          "name": "count_en",
+          "direction": "output",
+          "width": {
+            "resolved": 1
+          },
+          "description": "Gated count enable output."
+        }
+      ],
+      "intent": "Passes the event_valid signal to count_en (combinational pass‑through)."
+    },
+    {
+      "name": "counter_core",
+      "semantic_kind": "counter",
+      "source": "rtl/counter_core.v",
+      "parameters": [
+        {
+          "name": "WIDTH",
+          "default": 8,
+          "type": "integer",
+          "description": "Bit width of the counter."
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "resolved": 1
+          },
+          "description": "Clock input."
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "resolved": 1
+          },
+          "description": "Active‑low synchronous reset."
+        },
+        {
+          "name": "en",
+          "direction": "input",
+          "width": {
+            "resolved": 1
+          },
+          "description": "Count enable."
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": {
+            "expr": "WIDTH",
+            "resolved": 8
+          },
+          "description": "Counter value."
+        }
+      ],
+      "intent": "Synchronous 8‑bit up counter with enable and active‑low reset. Counts up by one when en is high and rst_n is inactive."
+    }
+  ],
+  "instances": [
+    {
+      "name": "event_gate",
+      "component": "event_gate",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "counter",
+      "component": "counter_core",
+      "parameter_values": {
+        "WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "value"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "event_pulse_propagation",
+      "path": [
+        "top.event_valid",
+        "event_gate.event_valid",
+        "event_gate.count_en",
+        "counter.en"
+      ],
+      "payload": {
+        "name": "event_pulse",
+        "width": {
+          "resolved": 1
+        }
+      },
+      "protocol": "wire",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1
+      }
+    },
+    {
+      "name": "counter_output",
+      "path": [
+        "counter.count",
+        "top.count"
+      ],
+      "payload": {
+        "name": "count_value",
+        "width": {
+          "expr": "WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "wire",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_counter",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "counter.value",
+        "value": 0
+      },
+      "related_state": [
+        "counter.value"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "counter_increment",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "counter.en",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "rst_n",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "increment",
+        "target": "counter.value"
+      },
+      "related_state": [
+        "counter.value"
+      ],
+      "related_flows": [
+        "event_pulse_propagation"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "reset_clears_counter",
+        "description": "After reset, the counter is initialized to zero.",
+        "stimulus": "Assert rst_n low for a few cycles, then de‑assert. Check count value.",
+        "expected": "count == 0"
+      },
+      {
+        "name": "increment_on_event",
+        "description": "The counter increments on each event_valid pulse.",
+        "stimulus": "Release reset. Pulse event_valid high for exactly N cycles.",
+        "expected": "count == N"
+      },
+      {
+        "name": "no_change_without_event",
+        "description": "Counter does not change when event_valid is low.",
+        "stimulus": "Increment counter a few times. Hold event_valid low for several cycles. Verify count remains constant.",
+        "expected": "count stays at the previous value"
+      },
+      {
+        "name": "wrap_around",
+        "description": "Counter wraps from 255 back to 0.",
+        "stimulus": "Pulse event_valid enough times to reach 255, then once more.",
+        "expected": "count == 0 after wrap"
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/event_gate.v",
+      "rtl/counter_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

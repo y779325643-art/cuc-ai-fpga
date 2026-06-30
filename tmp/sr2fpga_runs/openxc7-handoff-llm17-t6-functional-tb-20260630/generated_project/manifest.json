@@ -1,0 +1,28 @@
+{
+  "project_name": "td_update_8bit_functional_tb_check",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/td_input_stage.v",
+    "rtl/discount_core.v",
+    "rtl/td_update_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

@@ -144,6 +144,44 @@ class DatasetRecorderTest(unittest.TestCase):
                 self.assertEqual(json.loads(rows[0])["sample_id"], "sample_000001")
                 self.assertEqual(json.loads(rows[0])["metadata"]["difficulty_tier"], "T2")
 
+    def test_predicted_qor_rows_exclude_verification_metadata(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter_8bit"),
+                platform,
+            )
+            recorder.start_sample(
+                "sample_qor_leak",
+                "Design an 8-bit counter.",
+                platform,
+                metadata={"system_his_schema_version": "system-his-v1.2"},
+            )
+            recorder.write_final(
+                "sample_qor_leak",
+                project,
+                labels={"pass_level": "L3", "checks": {"l3_synth_pass": True}},
+                measured_qor={"lut": 99, "ff": 12},
+                tool_versions={},
+                trajectory={"attempts": []},
+            )
+
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+
+            row = json.loads((export_dir / "project_to_predicted_qor.jsonl").read_text(encoding="utf-8"))
+            self.assertNotIn("verification", row["episode"])
+            self.assertNotIn("99", json.dumps(row["episode"], sort_keys=True))
+
+    def test_behavior_hole_count_no_double_count(self) -> None:
+        from LLM.src.sr2fpga_agent.recorder import _behavior_hole_count
+
+        self.assertEqual(_behavior_hole_count("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here."), 1)
+        self.assertEqual(_behavior_hole_count("  // __BEHAVIOR_HOLE__"), 1)
+        self.assertEqual(_behavior_hole_count("  // __BEHAVIOR_HOLE__\n  // __BEHAVIOR_HOLE__"), 2)
+
     def test_l0_checker_rejects_manifest_that_violates_system_his_contract(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
         project = ProjectGenerator().generate(

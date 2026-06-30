@@ -1,0 +1,19 @@
+{
+  "stage": "sim_compile",
+  "command": [
+    "/opt/homebrew/bin/iverilog",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/crc8_update.v",
+    "rtl/stream_frame_accumulator.v",
+    "rtl/crc_status.v",
+    "sim/tb_top.v"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "",
+  "duration_seconds": 0.014877666006213985
+}

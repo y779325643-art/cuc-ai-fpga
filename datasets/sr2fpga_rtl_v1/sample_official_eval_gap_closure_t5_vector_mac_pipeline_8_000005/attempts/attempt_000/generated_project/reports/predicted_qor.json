@@ -1,0 +1,23 @@
+{
+  "project_name": "official_eval_gap_closure_t5_vector_mac_pipeline_8_000005",
+  "target": {
+    "platform": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source"
+  },
+  "predicted": {
+    "lut": 68,
+    "ff": 72,
+    "bram": 0,
+    "dsp": 1,
+    "fmax_mhz": 300.0,
+    "confidence": 0.65
+  },
+  "assumptions": {
+    "data_width": 8,
+    "task_type": "composed_vector_mac_pipeline",
+    "single_clock": true,
+    "no_vendor_ip": true,
+    "estimate_type": "pre_synthesis_model_prediction"
+  }
+}

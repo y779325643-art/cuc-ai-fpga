@@ -1,0 +1,36 @@
+{
+  "run_id": "l0-by-construction-ablation-after-fixes",
+  "next_index": 8,
+  "completed_samples": [
+    "sample_l0_by_construction_ablation_after_fixes_t1_event_counter_8_000001",
+    "sample_l0_by_construction_ablation_after_fixes_t2_stream_accumulator_8_000002",
+    "sample_l0_by_construction_ablation_after_fixes_t3_stream_fork_8_000003",
+    "sample_l0_by_construction_ablation_after_fixes_t4_dual_stream_join_8_000004",
+    "sample_l0_by_construction_ablation_after_fixes_t1_event_counter_8_000005",
+    "sample_l0_by_construction_ablation_after_fixes_t2_stream_accumulator_8_000006",
+    "sample_l0_by_construction_ablation_after_fixes_t3_stream_fork_8_000007",
+    "sample_l0_by_construction_ablation_after_fixes_t4_dual_stream_join_8_000008"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_l0_by_construction_ablation_after_fixes_t1_event_counter_8_000001",
+      "sample_l0_by_construction_ablation_after_fixes_t2_stream_accumulator_8_000002",
+      "sample_l0_by_construction_ablation_after_fixes_t3_stream_fork_8_000003",
+      "sample_l0_by_construction_ablation_after_fixes_t4_dual_stream_join_8_000004",
+      "sample_l0_by_construction_ablation_after_fixes_t1_event_counter_8_000005"
+    ],
+    "rejected": [
+      "sample_l0_by_construction_ablation_after_fixes_t2_stream_accumulator_8_000006",
+      "sample_l0_by_construction_ablation_after_fixes_t3_stream_fork_8_000007",
+      "sample_l0_by_construction_ablation_after_fixes_t4_dual_stream_join_8_000008"
+    ]
+  },
+  "failure_types": {
+    "l0_contract_violation": 4,
+    "unknown": 1,
+    "generation_failed": 3
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "b2815072757aeb864631c6c85cb3ed415e1ae761f42c0c613e043c7b3f1c2c47"
+}

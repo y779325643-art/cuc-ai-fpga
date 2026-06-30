@@ -1,0 +1,277 @@
+{
+  "run_id": "l0-by-construction-ablation",
+  "config_fingerprint": "75e6fb7731ea35d3f99a404e589f277e73e7673b6552abfd6c03f9c961a61789",
+  "total_planned": 8,
+  "total_completed": 8,
+  "next_index": 8,
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_l0_by_construction_ablation_t1_event_counter_8_000001",
+      "sample_l0_by_construction_ablation_t2_stream_accumulator_8_000002",
+      "sample_l0_by_construction_ablation_t3_stream_fork_8_000003",
+      "sample_l0_by_construction_ablation_t4_dual_stream_join_8_000004",
+      "sample_l0_by_construction_ablation_t3_stream_fork_8_000007"
+    ],
+    "rejected": [
+      "sample_l0_by_construction_ablation_t1_event_counter_8_000005",
+      "sample_l0_by_construction_ablation_t2_stream_accumulator_8_000006",
+      "sample_l0_by_construction_ablation_t4_dual_stream_join_8_000008"
+    ]
+  },
+  "failure_types": {
+    "l0_contract_violation": 4,
+    "generation_failed": 3,
+    "unknown": 1
+  },
+  "failure_family_breakdown": {
+    "artifact_contract_failure": 4,
+    "generation_failure": 3,
+    "rtl_compile_failure": 1
+  },
+  "attempt_stage_transition_breakdown": {},
+  "latent_testbench_issue_breakdown": {},
+  "metadata_breakdown": {
+    "source": {
+      "deepseek": 4,
+      "deepseek-his-v12": 4
+    },
+    "failure_origin": {
+      "natural_llm": 8
+    },
+    "requirement_style": {
+      "natural_component": 8
+    },
+    "contract_skeleton_mode": {
+      "legacy_full_project": 4,
+      "behavior_files": 4
+    },
+    "difficulty_tier": {
+      "T1": 2,
+      "T2": 2,
+      "T3": 2,
+      "T4": 2
+    },
+    "topology_id": {
+      "t1_event_counter": 2,
+      "t2_stream_accumulator": 2,
+      "t3_stream_fork": 2,
+      "t4_dual_stream_join": 2
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": 8
+    }
+  },
+  "pass_level_breakdown": {
+    "L0_FAIL": 4,
+    "GEN_FAIL": 3,
+    "L0": 1
+  },
+  "calibration_matrix": {
+    "source": {
+      "deepseek": {
+        "total": 4,
+        "pass_levels": {
+          "L0_FAIL": 4
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 4,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "deepseek-his-v12": {
+        "total": 4,
+        "pass_levels": {
+          "GEN_FAIL": 3,
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 3,
+        "cross_file_consistency_error_rate": 0.75
+      }
+    },
+    "failure_origin": {
+      "natural_llm": {
+        "total": 8,
+        "pass_levels": {
+          "L0_FAIL": 4,
+          "GEN_FAIL": 3,
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 7,
+        "cross_file_consistency_error_rate": 0.875
+      }
+    },
+    "requirement_style": {
+      "natural_component": {
+        "total": 8,
+        "pass_levels": {
+          "L0_FAIL": 4,
+          "GEN_FAIL": 3,
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 7,
+        "cross_file_consistency_error_rate": 0.875
+      }
+    },
+    "contract_skeleton_mode": {
+      "legacy_full_project": {
+        "total": 4,
+        "pass_levels": {
+          "L0_FAIL": 4
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 4,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "behavior_files": {
+        "total": 4,
+        "pass_levels": {
+          "GEN_FAIL": 3,
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 3,
+        "cross_file_consistency_error_rate": 0.75
+      }
+    },
+    "difficulty_tier": {
+      "T1": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 2,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "T2": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 2,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "T3": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      },
+      "T4": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 2,
+        "cross_file_consistency_error_rate": 1.0
+      }
+    },
+    "topology_id": {
+      "t1_event_counter": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 2,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "t2_stream_accumulator": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 2,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "t3_stream_fork": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 1,
+        "cross_file_consistency_error_rate": 0.5
+      },
+      "t4_dual_stream_join": {
+        "total": 2,
+        "pass_levels": {
+          "L0_FAIL": 1,
+          "GEN_FAIL": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 2,
+        "cross_file_consistency_error_rate": 1.0
+      }
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": {
+        "total": 8,
+        "pass_levels": {
+          "L0_FAIL": 4,
+          "GEN_FAIL": 3,
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 7,
+        "cross_file_consistency_error_rate": 0.875
+      }
+    },
+    "failure_family": {
+      "artifact_contract_failure": {
+        "total": 4,
+        "pass_levels": {
+          "L0_FAIL": 4
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 4,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "generation_failure": {
+        "total": 3,
+        "pass_levels": {
+          "GEN_FAIL": 3
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 3,
+        "cross_file_consistency_error_rate": 1.0
+      },
+      "rtl_compile_failure": {
+        "total": 1,
+        "pass_levels": {
+          "L0": 1
+        },
+        "l3_pass_rate": 0.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    }
+  },
+  "contract_metrics": {
+    "total_labeled": 8,
+    "l0_contract_failures": 7,
+    "cross_file_consistency_error_rate": 0.875
+  },
+  "exports_refreshed": true,
+  "line_b_targets": {
+    "l3_success_ratio": 0.4,
+    "repair_trajectory_ratio": 0.6,
+    "max_samples": 8
+  }
+}

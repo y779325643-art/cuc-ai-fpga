@@ -1,0 +1,40 @@
+# Temporary DeepSeek T4 smoke after switching REQ2HIS to streaming reads.
+dataset_root: datasets/sr2fpga_rtl_v1
+export_root: datasets/sr2fpga_rtl_v1_exports
+run_root: tmp/sr2fpga_runs
+provider: deepseek-his-v12
+repair_provider: none
+model: deepseek-v4-pro
+base_url: https://api.deepseek.com
+api_key_env: DEEPSEEK_API_KEY
+env_file: .env
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: official_eval_gap_closure_llm8
+
+sources:
+  deepseek-his-v12:
+    kind: deepseek-his-v12
+    model: deepseek-v4-pro
+    base_url: https://api.deepseek.com
+    api_key_env: DEEPSEEK_API_KEY
+    generation_mode: two_stage
+    timeout_seconds: 45
+
+line_b_targets:
+  l3_success_ratio: 0.4
+  repair_trajectory_ratio: 0.6
+  max_samples: 1
+
+tasks:
+  - source: deepseek-his-v12
+    task_type: component_topology
+    topology_ids:
+      - t4_dual_stream_join
+    requirement_style: natural_component
+    failure_origin: natural_llm
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    failure_injectors: []

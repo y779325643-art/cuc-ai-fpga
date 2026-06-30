@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "/opt/homebrew/bin/vvp",
+    "sim.out"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "TEST_PASS\nsim/tb_top.v:45: $finish called at 66000 (1ps)\n",
+  "stderr": "",
+  "duration_seconds": 0.012632291996851563
+}

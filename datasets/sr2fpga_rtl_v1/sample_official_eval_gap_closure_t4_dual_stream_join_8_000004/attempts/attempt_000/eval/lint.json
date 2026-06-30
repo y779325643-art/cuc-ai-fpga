@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDSIGNAL: rtl/top.v:25:8: Signal is not used: 'accum_ready'\n                                     : ... note: In instance 'top'\n   25 |   wire accum_ready;\n      |        ^~~~~~~~~~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)\n",
+  "duration_seconds": 0.05861012499372009
+}

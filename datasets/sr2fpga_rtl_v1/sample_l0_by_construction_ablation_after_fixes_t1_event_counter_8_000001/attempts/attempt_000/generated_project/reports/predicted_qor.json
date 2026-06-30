@@ -1,0 +1,8 @@
+{
+  "fmax_mhz": 400,
+  "lut": 10,
+  "ff": 9,
+  "dsp": 0,
+  "bram": 0,
+  "summary": "Simple 8-bit counter with gated enable; easily achieves 400 MHz on generic FPGA."
+}

@@ -1,0 +1,23 @@
+{
+  "project_name": "official_eval_gap_closure_t11_batch_rl_accelerator_shell_8_000011",
+  "target": {
+    "platform": "generic_verilog",
+    "vendor": "generic",
+    "toolchain": "open_source"
+  },
+  "predicted": {
+    "lut": 304,
+    "ff": 336,
+    "bram": 0,
+    "dsp": 4,
+    "fmax_mhz": 300.0,
+    "confidence": 0.65
+  },
+  "assumptions": {
+    "data_width": 8,
+    "task_type": "composed_batch_rl_accelerator_shell",
+    "single_clock": true,
+    "no_vendor_ip": true,
+    "estimate_type": "pre_synthesis_model_prediction"
+  }
+}

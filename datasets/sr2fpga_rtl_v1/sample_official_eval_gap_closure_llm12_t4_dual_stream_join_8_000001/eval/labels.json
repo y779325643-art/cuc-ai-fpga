@@ -1,0 +1,13 @@
+{
+  "pass_level": "GEN_FAIL",
+  "checks": {
+    "generation_complete": false,
+    "l0_complete": false,
+    "l1_lint_pass": false,
+    "l2_sim_pass": false,
+    "l3_synth_pass": false,
+    "l4_lite_timing_pass": false
+  },
+  "final_attempt_id": 0,
+  "failure_count": 1
+}

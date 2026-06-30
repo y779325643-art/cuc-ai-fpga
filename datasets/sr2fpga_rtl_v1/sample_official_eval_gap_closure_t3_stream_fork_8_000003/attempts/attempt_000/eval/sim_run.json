@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "/opt/homebrew/bin/vvp",
+    "sim.out"
+  ],
+  "status": "failed",
+  "exit_code": 0,
+  "stdout": "TEST_FAIL fork outputs not valid\nsim/tb_top.v:55: $finish called at 56000 (1ps)\n",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "duration_seconds": 0.007863083010306582
+}

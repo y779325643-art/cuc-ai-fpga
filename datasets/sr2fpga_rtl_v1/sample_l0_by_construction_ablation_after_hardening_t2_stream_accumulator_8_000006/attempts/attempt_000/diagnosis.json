@@ -1,0 +1,6 @@
+{
+  "failure_type": "unknown",
+  "stage": "lint",
+  "root_cause": "%Error: rtl/top.v:12:9: Can't find definition of variable: 'DATA_WIDTH'\n   12 |   wire [DATA_WIDTH-1:0] input_buffer__in_data;\n      |         ^~~~~~~~~~\n        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.\n%Error: Exiting due to 1 error(s)",
+  "affected_files": []
+}

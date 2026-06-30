@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/td_input_stage.v",
+    "rtl/discount_core.v",
+    "rtl/td_update_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-WIDTHTRUNC: rtl/td_update_core.v:25:26: Operator ASSIGNW expects 8 bits on the Assign RHS, but Assign RHS's SHIFTRS generates 16 bits.\n                                               : ... note: In instance 'top.u_td_update_core'\n   25 |     assign shifted_mul_a = mul_a >>> SCALE_SHIFT;\n      |                          ^\n                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.048\n                     ... Use \"/* verilator lint_off WIDTHTRUNC */\" and lint_on around source to disable this message.\n%Warning-WIDTHTRUNC: rtl/discount_core.v:18:24: Operator ASSIGNW expects 8 bits on the Assign RHS, but Assign RHS's SHIFTRS generates 16 bits.\n                                              : ... note: In instance 'top.u_discount_core'\n   18 |     assign shifted_mul = mul >>> SCALE_SHIFT;\n      |                        ^\n%Error: Exiting due to 2 warning(s)\n",
+  "duration_seconds": 0.08450608300336171
+}

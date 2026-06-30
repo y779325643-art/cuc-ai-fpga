@@ -1,0 +1,36 @@
+# Temporary DeepSeek focused slice after composed-topology prompt/skeleton hardening.
+# Uses a fresh sample_id_prefix to avoid sample_exists reuse from aborted probes.
+dataset_root: datasets/sr2fpga_rtl_v1
+export_root: datasets/sr2fpga_rtl_v1_exports
+run_root: tmp/sr2fpga_runs
+provider: deepseek-his-v12
+repair_provider: none
+model: deepseek-v4-pro
+base_url: https://api.deepseek.com
+api_key_env: DEEPSEEK_API_KEY
+env_file: .env
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: official_eval_gap_closure_llm3
+
+line_b_targets:
+  l3_success_ratio: 0.4
+  repair_trajectory_ratio: 0.6
+  max_samples: 5
+
+tasks:
+  - source: deepseek-his-v12
+    task_type: component_topology
+    topology_ids:
+      - t2_stream_accumulator
+      - t3_stream_fork
+      - t4_dual_stream_join
+      - t5_vector_mac_pipeline
+      - t6_td_update_core
+    requirement_style: natural_component
+    failure_origin: natural_llm
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 5
+    failure_injectors: []

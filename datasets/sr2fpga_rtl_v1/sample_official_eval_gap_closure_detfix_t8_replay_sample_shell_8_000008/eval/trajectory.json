@@ -1,0 +1,2694 @@
+{
+  "sample_id": "sample_official_eval_gap_closure_detfix_t8_replay_sample_shell_8_000008",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/host_sample_stage.v",
+        "rtl/replay_store.v",
+        "rtl/sample_pack_core.v",
+        "rtl/sample_read_stage.v",
+        "rtl/occupancy_counter.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/iverilog",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/host_sample_stage.v",
+        "rtl/replay_store.v",
+        "rtl/sample_pack_core.v",
+        "rtl/sample_read_stage.v",
+        "rtl/occupancy_counter.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/vvp",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/vvp",
+        "sim.out"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/yosys",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/yosys",
+        "-p",
+        "read_verilog rtl/top.v rtl/host_sample_stage.v rtl/replay_store.v rtl/sample_pack_core.v rtl/sample_read_stage.v rtl/occupancy_counter.v; synth -top top; stat"
+      ]
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "composed_replay_sample_shell",
+    "project_name": "official_eval_gap_closure_detfix_t8_replay_sample_shell_8_000008",
+    "project": {
+      "name": "official_eval_gap_closure_detfix_t8_replay_sample_shell_8_000008",
+      "description": "Build an 8-bit replay sample host/fabric shell as a complete SR2FPGA Verilog RTL project. This is component topology t8_replay_sample_shell, difficulty tier T8. Use host_sample_stage feeding replay_store, then sample_pack_core and sample_read_stage, with occupancy_counter status. The design must implement this black-box behavior: host-side transition samples are staged into a small replay store, then read back in FIFO order through a fabric-side valid-ready sample output with occupancy reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.host_valid -> host_sample_stage.in_valid; top.host_state -> host_sample_stage.state; top.host_action -> host_sample_stage.action; top.host_reward -> host_sample_stage.reward; top.host_next_state -> host_sample_stage.next_state; top.host_done -> host_sample_stage.done; host_sample_stage.in_ready -> top.host_ready; host_sample_stage.out_valid -> replay_store.write_valid; host_sample_stage.state_out -> replay_store.write_state; host_sample_stage.action_out -> replay_store.write_action; host_sample_stage.reward_out -> replay_store.write_reward; host_sample_stage.next_state_out -> replay_store.write_next_state; host_sample_stage.done_out -> replay_store.write_done; replay_store.write_ready -> host_sample_stage.out_ready; top.sample_ready -> sample_read_stage.out_ready; sample_read_stage.read_ready -> replay_store.read_ready; replay_store.read_valid -> sample_read_stage.in_valid; replay_store.read_state -> sample_pack_core.state; replay_store.read_action -> sample_pack_core.action; replay_store.read_reward -> sample_pack_core.reward; replay_store.read_next_state -> sample_pack_core.next_state; replay_store.read_done -> sample_pack_core.done; sample_pack_core.sample_state -> sample_read_stage.sample_state; sample_pack_core.sample_action -> sample_read_stage.sample_action; sample_pack_core.sample_reward -> sample_read_stage.sample_reward; sample_pack_core.sample_next_state -> sample_read_stage.sample_next_state; sample_pack_core.sample_done -> sample_read_stage.sample_done; sample_read_stage.out_valid -> top.sample_valid; sample_read_stage.sample_state_out -> top.sample_state; sample_read_stage.sample_action_out -> top.sample_action; sample_read_stage.sample_reward_out -> top.sample_reward; sample_read_stage.sample_next_state_out -> top.sample_next_state; sample_read_stage.sample_done_out -> top.sample_done; replay_store.occupancy -> occupancy_counter.occupancy_in; occupancy_counter.occupancy_out -> top.occupancy. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Build an 8-bit replay sample host/fabric shell as a complete SR2FPGA Verilog RTL project. This is component topology t8_replay_sample_shell, difficulty tier T8. Use host_sample_stage feeding replay_store, then sample_pack_core and sample_read_stage, with occupancy_counter status. The design must implement this black-box behavior: host-side transition samples are staged into a small replay store, then read back in FIFO order through a fabric-side valid-ready sample output with occupancy reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.host_valid -> host_sample_stage.in_valid; top.host_state -> host_sample_stage.state; top.host_action -> host_sample_stage.action; top.host_reward -> host_sample_stage.reward; top.host_next_state -> host_sample_stage.next_state; top.host_done -> host_sample_stage.done; host_sample_stage.in_ready -> top.host_ready; host_sample_stage.out_valid -> replay_store.write_valid; host_sample_stage.state_out -> replay_store.write_state; host_sample_stage.action_out -> replay_store.write_action; host_sample_stage.reward_out -> replay_store.write_reward; host_sample_stage.next_state_out -> replay_store.write_next_state; host_sample_stage.done_out -> replay_store.write_done; replay_store.write_ready -> host_sample_stage.out_ready; top.sample_ready -> sample_read_stage.out_ready; sample_read_stage.read_ready -> replay_store.read_ready; replay_store.read_valid -> sample_read_stage.in_valid; replay_store.read_state -> sample_pack_core.state; replay_store.read_action -> sample_pack_core.action; replay_store.read_reward -> sample_pack_core.reward; replay_store.read_next_state -> sample_pack_core.next_state; replay_store.read_done -> sample_pack_core.done; sample_pack_core.sample_state -> sample_read_stage.sample_state; sample_pack_core.sample_action -> sample_read_stage.sample_action; sample_pack_core.sample_reward -> sample_read_stage.sample_reward; sample_pack_core.sample_next_state -> sample_read_stage.sample_next_state; sample_pack_core.sample_done -> sample_read_stage.sample_done; sample_read_stage.out_valid -> top.sample_valid; sample_read_stage.sample_state_out -> top.sample_state; sample_read_stage.sample_action_out -> top.sample_action; sample_read_stage.sample_reward_out -> top.sample_reward; sample_read_stage.sample_next_state_out -> top.sample_next_state; sample_read_stage.sample_done_out -> top.sample_done; replay_store.occupancy -> occupancy_counter.occupancy_in; occupancy_counter.occupancy_out -> top.occupancy. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "host-side transition samples are staged into a small replay store, then read back in FIFO order through a fabric-side valid-ready sample output with occupancy reporting",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_state",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "host_action",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_reward",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "host_next_state",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "host_done",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "sample_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "host_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_state",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "sample_action",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample_reward",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "sample_next_state",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "sample_done",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "occupancy",
+          "dir": "output",
+          "width": 3
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "staged_state",
+          "owner": "u_host_sample_stage",
+          "width": 8
+        },
+        {
+          "name": "staged_reward",
+          "owner": "u_host_sample_stage",
+          "width": 8
+        },
+        {
+          "name": "staged_next_state",
+          "owner": "u_host_sample_stage",
+          "width": 8
+        },
+        {
+          "name": "write_ptr",
+          "owner": "u_replay_store",
+          "width": 2
+        },
+        {
+          "name": "read_ptr",
+          "owner": "u_replay_store",
+          "width": 2
+        },
+        {
+          "name": "occupancy",
+          "owner": "u_replay_store",
+          "width": 3
+        },
+        {
+          "name": "sample_state",
+          "owner": "u_sample_read_stage",
+          "width": 8
+        },
+        {
+          "name": "sample_reward",
+          "owner": "u_sample_read_stage",
+          "width": 8
+        },
+        {
+          "name": "sample_next_state",
+          "owner": "u_sample_read_stage",
+          "width": 8
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [
+        {
+          "name": "replay_entries",
+          "owner": "u_replay_store",
+          "width": 26,
+          "depth": 4
+        }
+      ],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_state",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "host_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_reward",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "host_next_state",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "host_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "host_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_next_state",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_done",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "occupancy",
+            "dir": "output",
+            "width": 3
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "host_sample_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/host_sample_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "state_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "action_out",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "reward_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_state_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_out",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "host sample stage component in the generated RTL project"
+      },
+      {
+        "name": "replay_store",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/replay_store.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          },
+          {
+            "name": "DEPTH",
+            "default": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "write_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "read_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "read_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "read_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "read_reward",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_next_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_done",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "occupancy",
+            "dir": "output",
+            "width": 3
+          }
+        ],
+        "intent": "replay store component in the generated RTL project"
+      },
+      {
+        "name": "sample_pack_core",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/sample_pack_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample pack core component in the generated RTL project"
+      },
+      {
+        "name": "sample_read_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/sample_read_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "read_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_state_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action_out",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done_out",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample read stage component in the generated RTL project"
+      },
+      {
+        "name": "occupancy_counter",
+        "semantic_kind": "counter",
+        "source": "rtl/occupancy_counter.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "occupancy_in",
+            "dir": "input",
+            "width": 3
+          },
+          {
+            "name": "occupancy_out",
+            "dir": "output",
+            "width": 3
+          }
+        ],
+        "intent": "occupancy counter component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_host_sample_stage",
+        "component": "host_sample_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_replay_store",
+        "component": "replay_store",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "DEPTH": 4
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_sample_pack_core",
+        "component": "sample_pack_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_sample_read_stage",
+        "component": "sample_read_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_occupancy_counter",
+        "component": "occupancy_counter",
+        "parameter_values": {},
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_host_sample_stage_primary_path",
+        "path": [
+          "top.sample_ready",
+          "u_host_sample_stage.in_valid",
+          "u_host_sample_stage.in_ready",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_replay_store_primary_path",
+        "path": [
+          "top.sample_ready",
+          "u_replay_store.write_valid",
+          "u_replay_store.write_ready",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_sample_pack_core_primary_path",
+        "path": [
+          "top.sample_ready",
+          "u_sample_pack_core.state",
+          "u_sample_pack_core.sample_state",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      },
+      {
+        "name": "u_sample_read_stage_primary_path",
+        "path": [
+          "top.sample_ready",
+          "u_sample_read_stage.in_valid",
+          "u_sample_read_stage.read_ready",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_occupancy_counter_primary_path",
+        "path": [
+          "top.sample_ready",
+          "u_occupancy_counter.occupancy_in",
+          "u_occupancy_counter.occupancy_out",
+          "top.sample_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      },
+      {
+        "name": "valid_ready_transfer",
+        "kind": "handshake_rule",
+        "condition": "valid && ready",
+        "effects": [
+          "advance each ready/valid flow by one payload"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_host_sample_stage_primary_path",
+          "u_replay_store_primary_path",
+          "u_sample_pack_core_primary_path",
+          "u_sample_read_stage_primary_path",
+          "u_occupancy_counter_primary_path"
+        ]
+      },
+      {
+        "name": "backpressure_hold",
+        "kind": "stall_rule",
+        "condition": "valid && !ready",
+        "effects": [
+          "hold payload and valid state until downstream ready"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_host_sample_stage_primary_path",
+          "u_replay_store_primary_path",
+          "u_sample_pack_core_primary_path",
+          "u_sample_read_stage_primary_path",
+          "u_occupancy_counter_primary_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 124,
+        "ff": 160,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when host-side transition samples are staged into a small replay store, then read back in FIFO order through a fabric-side valid-ready sample output with occupancy reporting.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when host-side transition samples are staged into a small replay store, then read back in FIFO order through a fabric-side valid-ready sample output with occupancy reporting.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when host-side transition samples are staged into a small replay store, then read back in FIFO order through a fabric-side valid-ready sample output with occupancy reporting."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/host_sample_stage.v",
+        "rtl/replay_store.v",
+        "rtl/sample_pack_core.v",
+        "rtl/sample_read_stage.v",
+        "rtl/occupancy_counter.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Build an 8-bit replay sample host/fabric shell as a complete SR2FPGA Verilog RTL project. This is component topology t8_replay_sample_shell, difficulty tier T8. Use host_sample_stage feeding replay_store, then sample_pack_core and sample_read_stage, with occupancy_counter status. The design must implement this black-box behavior: host-side transition samples are staged into a small replay store, then read back in FIFO order through a fabric-side valid-ready sample output with occupancy reporting. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.host_valid -> host_sample_stage.in_valid; top.host_state -> host_sample_stage.state; top.host_action -> host_sample_stage.action; top.host_reward -> host_sample_stage.reward; top.host_next_state -> host_sample_stage.next_state; top.host_done -> host_sample_stage.done; host_sample_stage.in_ready -> top.host_ready; host_sample_stage.out_valid -> replay_store.write_valid; host_sample_stage.state_out -> replay_store.write_state; host_sample_stage.action_out -> replay_store.write_action; host_sample_stage.reward_out -> replay_store.write_reward; host_sample_stage.next_state_out -> replay_store.write_next_state; host_sample_stage.done_out -> replay_store.write_done; replay_store.write_ready -> host_sample_stage.out_ready; top.sample_ready -> sample_read_stage.out_ready; sample_read_stage.read_ready -> replay_store.read_ready; replay_store.read_valid -> sample_read_stage.in_valid; replay_store.read_state -> sample_pack_core.state; replay_store.read_action -> sample_pack_core.action; replay_store.read_reward -> sample_pack_core.reward; replay_store.read_next_state -> sample_pack_core.next_state; replay_store.read_done -> sample_pack_core.done; sample_pack_core.sample_state -> sample_read_stage.sample_state; sample_pack_core.sample_action -> sample_read_stage.sample_action; sample_pack_core.sample_reward -> sample_read_stage.sample_reward; sample_pack_core.sample_next_state -> sample_read_stage.sample_next_state; sample_pack_core.sample_done -> sample_read_stage.sample_done; sample_read_stage.out_valid -> top.sample_valid; sample_read_stage.sample_state_out -> top.sample_state; sample_read_stage.sample_action_out -> top.sample_action; sample_read_stage.sample_reward_out -> top.sample_reward; sample_read_stage.sample_next_state_out -> top.sample_next_state; sample_read_stage.sample_done_out -> top.sample_done; replay_store.occupancy -> occupancy_counter.occupancy_in; occupancy_counter.occupancy_out -> top.occupancy. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "host_valid",
+          "width": 1
+        },
+        {
+          "name": "host_state",
+          "width": 8
+        },
+        {
+          "name": "host_action",
+          "width": 1
+        },
+        {
+          "name": "host_reward",
+          "width": 8
+        },
+        {
+          "name": "host_next_state",
+          "width": 8
+        },
+        {
+          "name": "host_done",
+          "width": 1
+        },
+        {
+          "name": "sample_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "host_ready",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "name": "sample_state",
+          "width": 8
+        },
+        {
+          "name": "sample_action",
+          "width": 1
+        },
+        {
+          "name": "sample_reward",
+          "width": 8
+        },
+        {
+          "name": "sample_next_state",
+          "width": 8
+        },
+        {
+          "name": "sample_done",
+          "width": 1
+        },
+        {
+          "name": "occupancy",
+          "width": 3
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "host_sample_stage",
+        "replay_store",
+        "sample_pack_core",
+        "sample_read_stage",
+        "occupancy_counter"
+      ],
+      "generator": "component_topology",
+      "topology_id": "t8_replay_sample_shell",
+      "difficulty_tier": "T8",
+      "component_library": "sr2fpga_deterministic_components_v1",
+      "topology": {
+        "nodes": [
+          {
+            "id": "host_stage",
+            "component": "host_sample_stage"
+          },
+          {
+            "id": "store",
+            "component": "replay_store"
+          },
+          {
+            "id": "pack",
+            "component": "sample_pack_core"
+          },
+          {
+            "id": "read_stage",
+            "component": "sample_read_stage"
+          },
+          {
+            "id": "occupancy",
+            "component": "occupancy_counter"
+          }
+        ],
+        "edges": [
+          {
+            "from": "top.host_valid",
+            "to": "host_sample_stage.in_valid"
+          },
+          {
+            "from": "top.host_state",
+            "to": "host_sample_stage.state"
+          },
+          {
+            "from": "top.host_action",
+            "to": "host_sample_stage.action"
+          },
+          {
+            "from": "top.host_reward",
+            "to": "host_sample_stage.reward"
+          },
+          {
+            "from": "top.host_next_state",
+            "to": "host_sample_stage.next_state"
+          },
+          {
+            "from": "top.host_done",
+            "to": "host_sample_stage.done"
+          },
+          {
+            "from": "host_sample_stage.in_ready",
+            "to": "top.host_ready"
+          },
+          {
+            "from": "host_sample_stage.out_valid",
+            "to": "replay_store.write_valid"
+          },
+          {
+            "from": "host_sample_stage.state_out",
+            "to": "replay_store.write_state"
+          },
+          {
+            "from": "host_sample_stage.action_out",
+            "to": "replay_store.write_action"
+          },
+          {
+            "from": "host_sample_stage.reward_out",
+            "to": "replay_store.write_reward"
+          },
+          {
+            "from": "host_sample_stage.next_state_out",
+            "to": "replay_store.write_next_state"
+          },
+          {
+            "from": "host_sample_stage.done_out",
+            "to": "replay_store.write_done"
+          },
+          {
+            "from": "replay_store.write_ready",
+            "to": "host_sample_stage.out_ready"
+          },
+          {
+            "from": "top.sample_ready",
+            "to": "sample_read_stage.out_ready"
+          },
+          {
+            "from": "sample_read_stage.read_ready",
+            "to": "replay_store.read_ready"
+          },
+          {
+            "from": "replay_store.read_valid",
+            "to": "sample_read_stage.in_valid"
+          },
+          {
+            "from": "replay_store.read_state",
+            "to": "sample_pack_core.state"
+          },
+          {
+            "from": "replay_store.read_action",
+            "to": "sample_pack_core.action"
+          },
+          {
+            "from": "replay_store.read_reward",
+            "to": "sample_pack_core.reward"
+          },
+          {
+            "from": "replay_store.read_next_state",
+            "to": "sample_pack_core.next_state"
+          },
+          {
+            "from": "replay_store.read_done",
+            "to": "sample_pack_core.done"
+          },
+          {
+            "from": "sample_pack_core.sample_state",
+            "to": "sample_read_stage.sample_state"
+          },
+          {
+            "from": "sample_pack_core.sample_action",
+            "to": "sample_read_stage.sample_action"
+          },
+          {
+            "from": "sample_pack_core.sample_reward",
+            "to": "sample_read_stage.sample_reward"
+          },
+          {
+            "from": "sample_pack_core.sample_next_state",
+            "to": "sample_read_stage.sample_next_state"
+          },
+          {
+            "from": "sample_pack_core.sample_done",
+            "to": "sample_read_stage.sample_done"
+          },
+          {
+            "from": "sample_read_stage.out_valid",
+            "to": "top.sample_valid"
+          },
+          {
+            "from": "sample_read_stage.sample_state_out",
+            "to": "top.sample_state"
+          },
+          {
+            "from": "sample_read_stage.sample_action_out",
+            "to": "top.sample_action"
+          },
+          {
+            "from": "sample_read_stage.sample_reward_out",
+            "to": "top.sample_reward"
+          },
+          {
+            "from": "sample_read_stage.sample_next_state_out",
+            "to": "top.sample_next_state"
+          },
+          {
+            "from": "sample_read_stage.sample_done_out",
+            "to": "top.sample_done"
+          },
+          {
+            "from": "replay_store.occupancy",
+            "to": "occupancy_counter.occupancy_in"
+          },
+          {
+            "from": "occupancy_counter.occupancy_out",
+            "to": "top.occupancy"
+          }
+        ]
+      }
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_state",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "host_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_reward",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "host_next_state",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "host_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "host_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_next_state",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "sample_done",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "occupancy",
+            "direction": "output",
+            "width": 3
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "host_sample_stage",
+        "role": "submodule",
+        "source": "rtl/host_sample_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "state_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "action_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "reward_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_state_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done_out",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "host sample stage component in the generated RTL project"
+      },
+      {
+        "name": "replay_store",
+        "role": "submodule",
+        "source": "rtl/replay_store.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8,
+          "DEPTH": 4
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          },
+          {
+            "name": "DEPTH",
+            "value": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "write_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "write_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "read_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "read_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "read_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "read_reward",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_next_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "read_done",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "occupancy",
+            "direction": "output",
+            "width": 3
+          }
+        ],
+        "intent": "replay store component in the generated RTL project"
+      },
+      {
+        "name": "sample_pack_core",
+        "role": "submodule",
+        "source": "rtl/sample_pack_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample pack core component in the generated RTL project"
+      },
+      {
+        "name": "sample_read_stage",
+        "role": "submodule",
+        "source": "rtl/sample_read_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "read_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_state_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_action_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample_reward_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_next_state_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "sample_done_out",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sample read stage component in the generated RTL project"
+      },
+      {
+        "name": "occupancy_counter",
+        "role": "submodule",
+        "source": "rtl/occupancy_counter.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "occupancy_in",
+            "direction": "input",
+            "width": 3
+          },
+          {
+            "name": "occupancy_out",
+            "direction": "output",
+            "width": 3
+          }
+        ],
+        "intent": "occupancy counter component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "clk",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "clk",
+          "instance": "u_replay_store"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "clk",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "rst_n",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "rst_n",
+          "instance": "u_replay_store"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "rst_n",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_valid"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "in_valid",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "host_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_sample_stage",
+          "port": "in_ready",
+          "instance": "u_host_sample_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "host_ready"
+        },
+        "signal": "host_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_state"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "state",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "host_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_action"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "action",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "host_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_reward"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "reward",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "host_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_next_state"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "next_state",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "host_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "host_done"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "done",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "host_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_sample_stage",
+          "port": "out_valid",
+          "instance": "u_host_sample_stage"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "write_valid",
+          "instance": "u_replay_store"
+        },
+        "signal": "host_stage_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "write_ready",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "host_sample_stage",
+          "port": "out_ready",
+          "instance": "u_host_sample_stage"
+        },
+        "signal": "host_stage_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_sample_stage",
+          "port": "state_out",
+          "instance": "u_host_sample_stage"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "write_state",
+          "instance": "u_replay_store"
+        },
+        "signal": "host_stage_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_sample_stage",
+          "port": "action_out",
+          "instance": "u_host_sample_stage"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "write_action",
+          "instance": "u_replay_store"
+        },
+        "signal": "host_stage_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_sample_stage",
+          "port": "reward_out",
+          "instance": "u_host_sample_stage"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "write_reward",
+          "instance": "u_replay_store"
+        },
+        "signal": "host_stage_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_sample_stage",
+          "port": "next_state_out",
+          "instance": "u_host_sample_stage"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "write_next_state",
+          "instance": "u_replay_store"
+        },
+        "signal": "host_stage_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "host_sample_stage",
+          "port": "done_out",
+          "instance": "u_host_sample_stage"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "write_done",
+          "instance": "u_replay_store"
+        },
+        "signal": "host_stage_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "read_valid",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "in_valid",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "store_read_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_read_stage",
+          "port": "read_ready",
+          "instance": "u_sample_read_stage"
+        },
+        "to": {
+          "module": "replay_store",
+          "port": "read_ready",
+          "instance": "u_replay_store"
+        },
+        "signal": "store_read_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "read_state",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "sample_pack_core",
+          "port": "state",
+          "instance": "u_sample_pack_core"
+        },
+        "signal": "store_read_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "read_action",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "sample_pack_core",
+          "port": "action",
+          "instance": "u_sample_pack_core"
+        },
+        "signal": "store_read_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "read_reward",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "sample_pack_core",
+          "port": "reward",
+          "instance": "u_sample_pack_core"
+        },
+        "signal": "store_read_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "read_next_state",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "sample_pack_core",
+          "port": "next_state",
+          "instance": "u_sample_pack_core"
+        },
+        "signal": "store_read_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "read_done",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "sample_pack_core",
+          "port": "done",
+          "instance": "u_sample_pack_core"
+        },
+        "signal": "store_read_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "replay_store",
+          "port": "occupancy",
+          "instance": "u_replay_store"
+        },
+        "to": {
+          "module": "occupancy_counter",
+          "port": "occupancy_in",
+          "instance": "u_occupancy_counter"
+        },
+        "signal": "store_occupancy",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 3,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_pack_core",
+          "port": "sample_state",
+          "instance": "u_sample_pack_core"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "sample_state",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "sample_pack_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_pack_core",
+          "port": "sample_action",
+          "instance": "u_sample_pack_core"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "sample_action",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "sample_pack_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_pack_core",
+          "port": "sample_reward",
+          "instance": "u_sample_pack_core"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "sample_reward",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "sample_pack_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_pack_core",
+          "port": "sample_next_state",
+          "instance": "u_sample_pack_core"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "sample_next_state",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "sample_pack_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_pack_core",
+          "port": "sample_done",
+          "instance": "u_sample_pack_core"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "sample_done",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "sample_pack_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_read_stage",
+          "port": "out_valid",
+          "instance": "u_sample_read_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_valid"
+        },
+        "signal": "sample_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "sample_ready"
+        },
+        "to": {
+          "module": "sample_read_stage",
+          "port": "out_ready",
+          "instance": "u_sample_read_stage"
+        },
+        "signal": "sample_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_read_stage",
+          "port": "sample_state_out",
+          "instance": "u_sample_read_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_state"
+        },
+        "signal": "sample_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_read_stage",
+          "port": "sample_action_out",
+          "instance": "u_sample_read_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_action"
+        },
+        "signal": "sample_action",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_read_stage",
+          "port": "sample_reward_out",
+          "instance": "u_sample_read_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_reward"
+        },
+        "signal": "sample_reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_read_stage",
+          "port": "sample_next_state_out",
+          "instance": "u_sample_read_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_next_state"
+        },
+        "signal": "sample_next_state",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "sample_read_stage",
+          "port": "sample_done_out",
+          "instance": "u_sample_read_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_done"
+        },
+        "signal": "sample_done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "occupancy_counter",
+          "port": "occupancy_out",
+          "instance": "u_occupancy_counter"
+        },
+        "to": {
+          "module": "top",
+          "port": "occupancy"
+        },
+        "signal": "occupancy",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 3,
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_state",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "host_action",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_reward",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "host_next_state",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "host_done",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "sample_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "host_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_state",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "sample_action",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "sample_reward",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "sample_next_state",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "sample_done",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "occupancy",
+        "direction": "output",
+        "width": 3
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 124,
+        "ff": 160,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 821,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 527,
+        "behavior_holes": 0
+      },
+      "rtl/host_sample_stage.v": {
+        "origin": "model_generated",
+        "bytes": 1151,
+        "behavior_holes": 0
+      },
+      "rtl/occupancy_counter.v": {
+        "origin": "model_generated",
+        "bytes": 152,
+        "behavior_holes": 0
+      },
+      "rtl/replay_store.v": {
+        "origin": "model_generated",
+        "bytes": 2864,
+        "behavior_holes": 0
+      },
+      "rtl/sample_pack_core.v": {
+        "origin": "model_generated",
+        "bytes": 615,
+        "behavior_holes": 0
+      },
+      "rtl/sample_read_stage.v": {
+        "origin": "model_generated",
+        "bytes": 1318,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 3523,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 3649,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 63486,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/host_sample_stage.v",
+      "rtl/occupancy_counter.v",
+      "rtl/replay_store.v",
+      "rtl/sample_pack_core.v",
+      "rtl/sample_read_stage.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.169806,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 0,
+      "ff": 165,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

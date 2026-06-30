@@ -1,0 +1,17 @@
+%Warning-UNUSEDPARAM: rtl/discount_core.v:1:60: Parameter is not used: 'SCALE_SHIFT'
+                                              : ... note: In instance 'top.u_discount_core'
+    1 | module discount_core #(parameter DATA_WIDTH = 8, parameter SCALE_SHIFT = 4) (
+      |                                                            ^~~~~~~~~~~
+                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048
+                      ... Use "/* verilator lint_off UNUSEDPARAM */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/discount_core.v:11:17: Bits of signal are not used: 'mult'[15:12]
+                                                : ... note: In instance 'top.u_discount_core'
+   11 |     wire [15:0] mult;
+      |                 ^~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDPARAM: rtl/td_update_core.v:1:61: Parameter is not used: 'SCALE_SHIFT'
+                                               : ... note: In instance 'top.u_td_update_core'
+    1 | module td_update_core #(parameter DATA_WIDTH = 8, parameter SCALE_SHIFT = 4) (
+      |                                                             ^~~~~~~~~~~
+%Error: Exiting due to 3 warning(s)

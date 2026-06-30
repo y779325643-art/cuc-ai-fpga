@@ -1,0 +1,17 @@
+{
+  "project_name": "l0_by_construction_ablation_t1_event_counter_8_000001",
+  "component_type": "event_counter",
+  "top_module": "top",
+  "interface": {
+    "inputs": {
+      "clk": "1",
+      "rst_n": "1",
+      "event_valid": "1"
+    },
+    "outputs": {
+      "count": "8"
+    }
+  },
+  "clock_hz": 100000000,
+  "reset_polarity": "active_low"
+}

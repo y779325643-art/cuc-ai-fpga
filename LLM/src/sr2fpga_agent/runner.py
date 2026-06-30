@@ -17,6 +17,7 @@ from LLM.src.sr2fpga_agent.baseline_report import baseline_rows, render_markdown
 from LLM.src.sr2fpga_agent.cli import (
     build_project_generator_for_connection,
     build_repairer,
+    build_repairer_for_connection,
 )
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleClient,
@@ -64,6 +65,8 @@ class SourceConnection:
     api_key_env: str = ""
     generation_mode: str = ""
     timeout_seconds: int = 120
+    transport_attempts: int = 3
+    max_tokens: int = 0
 
 
 @dataclass(frozen=True)
@@ -117,6 +120,7 @@ class PlannedSample:
             "width": self.width,
             "system_his_schema_version": schema_version,
             "training_split": _training_split(schema_version),
+            "contract_skeleton_mode": _contract_skeleton_mode(self, config),
             "topology_id": self.topology_id,
             "requirement_style": self.requirement_style,
         }
@@ -240,6 +244,9 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
         "topology_id": str(metadata["topology_id"]),
         "failure_origin": str(metadata["failure_origin"]),
         "measurement_point": str(metadata["measurement_point"]),
+        "system_his_schema_version": str(metadata["system_his_schema_version"]),
+        "training_split": str(metadata["training_split"]),
+        "contract_skeleton_mode": str(metadata["contract_skeleton_mode"]),
     }
 
 
@@ -276,12 +283,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
 
     samples = planned_samples(config)
     project_generators: dict[str, object | None] = {}
-    repairer = build_repairer(
-        provider=config.repair_provider,
-        model=config.model,
-        base_url=config.base_url,
-        api_key_env=config.api_key_env,
-    )
+    repairer = _repairer_for_config(config)
 
     for index, sample in enumerate(samples):
         if index < state.next_index or should_skip_sample(state, sample.sample_id):
@@ -482,7 +484,13 @@ def _check_source_auth(
         return
     seen.add(source)
     connection = resolve_source_connection(config, source)
+    if connection.kind == "deterministic":
+        return
     if connection.kind not in LLM_SOURCE_KINDS:
+        errors.append(
+            f"Source '{source}' has unsupported kind '{connection.kind}'. "
+            f"Supported kinds: {sorted(LLM_SOURCE_KINDS)}."
+        )
         return
     api_key = os.environ.get(connection.api_key_env, "")
     if not api_key:
@@ -710,6 +718,7 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
         "source",
         "failure_origin",
         "requirement_style",
+        "contract_skeleton_mode",
         "difficulty_tier",
         "topology_id",
         "measurement_point",
@@ -864,7 +873,15 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     )
 
 
-LLM_SOURCE_KINDS = {"openai_compat", "anthropic_compat", "deepseek", "deepseek-his-v12"}
+LLM_SOURCE_KINDS = {
+    "openai_compat",
+    "anthropic_compat",
+    "deepseek",
+    "deepseek-his-v12",
+    "deepseek-oracle-his-v12",
+}
+
+VETTED_TWO_STAGE_KINDS = {"deepseek-his-v12", "deepseek-oracle-his-v12"}
 
 
 def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnection:
@@ -872,7 +889,9 @@ def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnec
         return config.sources[source]
     if source == "deterministic":
         return SourceConnection(name="deterministic", kind="deterministic")
-    if source == "deepseek-his-v12":
+    if source == "deepseek-oracle-his-v12":
+        kind, mode = "deepseek-oracle-his-v12", "oracle_his2project"
+    elif source == "deepseek-his-v12":
         kind, mode = "deepseek-his-v12", "two_stage"
     elif source == "deepseek" or source.startswith("deepseek-"):
         kind, mode = "deepseek", "direct"
@@ -892,6 +911,7 @@ _GENERATION_MODE_BY_KIND = {
     "openai_compat": "two_stage",
     "anthropic_compat": "two_stage",
     "deepseek-his-v12": "two_stage",
+    "deepseek-oracle-his-v12": "oracle_his2project",
     "deepseek": "direct",
     "deterministic": "",
 }
@@ -916,6 +936,8 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             api_key_env=str(item.get("api_key_env", "")),
             generation_mode=generation_mode,
             timeout_seconds=int(item.get("timeout_seconds", 120)),
+            transport_attempts=int(item.get("transport_attempts", 3)),
+            max_tokens=int(item.get("max_tokens", 0)),
         )
     return sources
 
@@ -1030,6 +1052,38 @@ def _simple_prompt_requirement(task_type: str, width: int) -> str:
             f"Generate an {width}-bit FPGA RTL project that joins two input streams, accumulates joined samples, "
             "and exposes one output stream."
         ),
+        "composed_vector_mac_pipeline": (
+            f"Generate an {width}-bit FPGA RTL project that accepts paired feature and weight streams, "
+            "computes a fixed-length vector MAC score with bias, and exposes one score stream."
+        ),
+        "composed_td_update_core": (
+            f"Generate an {width}-bit FPGA RTL project that accepts reward, value, next_value, gamma, "
+            "and alpha inputs, computes TD error, and emits an updated value stream."
+        ),
+        "composed_policy_value_shell": (
+            f"Generate an {width}-bit FPGA RTL project with config registers, two observation inputs, "
+            "policy score comparison, selected action output, and value estimate output."
+        ),
+        "composed_replay_sample_shell": (
+            f"Generate an {width}-bit FPGA RTL project with a host-side replay sample write interface, "
+            "a small replay store, fabric-side sample readout, and occupancy status."
+        ),
+        "composed_host_protocol_shell": (
+            f"Generate an {width}-bit FPGA RTL project with AXI-lite-style control/status writes and reads, "
+            "AXI-stream-style sample output, and irq reporting."
+        ),
+        "composed_rl_accelerator_shell": (
+            f"Generate an {width}-bit FPGA RTL project with host configuration, sample capture, "
+            "policy/value scoring, TD update, result streaming, and irq reporting."
+        ),
+        "composed_batch_rl_accelerator_shell": (
+            f"Generate an {width}-bit FPGA RTL project with shared host configuration, two-lane batch sample capture, "
+            "dual-lane policy/value scoring, dual-lane TD update, result staging, and irq reporting."
+        ),
+        "composed_replay_arbiter_shell": (
+            f"Generate an {width}-bit FPGA RTL project with host transition packetization, indexed replay sample "
+            "requests, read/write arbitration, sample packet output, occupancy status, and irq reporting."
+        ),
     }
     return prompts.get(task_type, f"Generate an {width}-bit {task_type} FPGA RTL project.")
 
@@ -1057,6 +1111,14 @@ def _natural_component_title(task_type: str) -> str:
         "composed_stream_accumulator": "streaming accumulator datapath",
         "composed_stream_fork": "valid-ready stream fork datapath",
         "composed_dual_stream_join": "dual-stream join datapath",
+        "composed_vector_mac_pipeline": "vector MAC feature pipeline",
+        "composed_td_update_core": "TD-error value-update datapath",
+        "composed_policy_value_shell": "policy/value accelerator shell",
+        "composed_replay_sample_shell": "replay sample host/fabric shell",
+        "composed_host_protocol_shell": "host protocol control and stream shell",
+        "composed_rl_accelerator_shell": "synthetic RL accelerator shell",
+        "composed_batch_rl_accelerator_shell": "two-lane batch RL accelerator shell",
+        "composed_replay_arbiter_shell": "replay arbiter host/fabric shell",
     }
     return titles[task_type]
 
@@ -1068,6 +1130,36 @@ def _natural_component_summary(task_type: str) -> str:
         "composed_stream_fork": "a skid_buffer feeding a stream_fork and two stream_stage outputs",
         "composed_dual_stream_join": (
             "two skid_buffer instances feeding stream_join, then accumulator_core, then stream_stage"
+        ),
+        "composed_vector_mac_pipeline": (
+            "feature and weight skid_buffer instances feeding vector_mac_core, then stream_stage"
+        ),
+        "composed_td_update_core": (
+            "td_input_stage feeding discount_core, then td_update_core, then stream_stage"
+        ),
+        "composed_policy_value_shell": (
+            "config_reg_bank and observation_stage feeding policy_score_core, then action_select_core, "
+            "then stream_stage"
+        ),
+        "composed_replay_sample_shell": (
+            "host_sample_stage feeding replay_store, then sample_pack_core and sample_read_stage, "
+            "with occupancy_counter status"
+        ),
+        "composed_host_protocol_shell": (
+            "axi_lite_write_ctrl and axi_lite_read_ctrl feeding control_reg_bank, then "
+            "sample_stream_adapter and irq_status"
+        ),
+        "composed_rl_accelerator_shell": (
+            "host_config_bank and sample_capture_stage feeding policy_value_core, then "
+            "td_update_core and result_stream_stage"
+        ),
+        "composed_batch_rl_accelerator_shell": (
+            "batch_config_bank and batch_sample_buffer feeding dual_policy_value_core, then "
+            "dual_td_update_core and batch_result_stage"
+        ),
+        "composed_replay_arbiter_shell": (
+            "host_transition_packetizer and replay_index_allocator feeding replay_request_arbiter, then "
+            "replay_memory_bank and sample_packet_stage"
         ),
     }
     return summaries[task_type]
@@ -1100,6 +1192,40 @@ def _topology_expected_behavior(task_type: str) -> str:
         "composed_dual_stream_join": (
             "two valid-ready input streams are buffered, synchronized, joined, accumulated, and staged"
         ),
+        "composed_vector_mac_pipeline": (
+            "paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, "
+            "biased, and staged as score output"
+        ),
+        "composed_td_update_core": (
+            "a reward, value, next value, discount factor, and learning rate tuple is staged, "
+            "converted into a temporal-difference error, and used to emit an updated value"
+        ),
+        "composed_policy_value_shell": (
+            "configuration writes set weights, biases, and enable; observation pairs are staged, "
+            "scored, compared, and emitted as selected action plus value estimate"
+        ),
+        "composed_replay_sample_shell": (
+            "host-side transition samples are staged into a small replay store, then read back in FIFO order "
+            "through a fabric-side valid-ready sample output with occupancy reporting"
+        ),
+        "composed_host_protocol_shell": (
+            "AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload "
+            "is emitted, status can be read back, and irq remains asserted until cleared"
+        ),
+        "composed_rl_accelerator_shell": (
+            "configuration writes set weights, biases, alpha, and enable; sample tuples are captured, "
+            "scored into a selected action and value estimate, updated through a TD datapath, "
+            "and staged as a result stream with episode irq reporting"
+        ),
+        "composed_batch_rl_accelerator_shell": (
+            "configuration writes set shared weights, biases, alpha, and enable; a two-lane batch is captured, "
+            "each lane is scored and updated through duplicated policy/value and TD datapaths, "
+            "and both lane results are staged with batch_done irq reporting"
+        ),
+        "composed_replay_arbiter_shell": (
+            "host transition packets are written into a depth-4 replay memory, indexed sample requests are "
+            "gated by occupancy and arbitrated behind host writes, and accepted read packets are staged with irq reporting"
+        ),
     }
     return behaviors[task_type]
 
@@ -1119,9 +1245,22 @@ def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
 
 def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
     connection = resolve_source_connection(config, sample.source)
-    if connection.kind == "deterministic" or connection.generation_mode == "two_stage":
+    if connection.kind == "deterministic":
+        return "system-his-v1.2"
+    if connection.kind in VETTED_TWO_STAGE_KINDS and connection.generation_mode in {"two_stage", "oracle_his2project"}:
         return "system-his-v1.2"
     return "system-his-v1.1"
+
+
+def _contract_skeleton_mode(sample: PlannedSample, config: RunnerConfig) -> str:
+    connection = resolve_source_connection(config, sample.source)
+    if connection.generation_mode in {"two_stage", "oracle_his2project"}:
+        return "behavior_files"
+    if connection.kind == "deterministic":
+        return "deterministic_template"
+    if connection.kind in LLM_SOURCE_KINDS:
+        return "legacy_full_project"
+    return connection.kind or sample.source
 
 
 def _training_split(schema_version: str) -> str:
@@ -1142,12 +1281,12 @@ def _project_generator_for_sample(
 ) -> object | None:
     connection = resolve_source_connection(config, sample.source)
     cache_key = sample.source
-    if connection.generation_mode == "two_stage":
+    if connection.generation_mode in {"two_stage", "oracle_his2project"}:
         cache_key = f"{sample.source}:{sample.sample_id}"
     if cache_key not in project_generators:
         event_sink = (
             _generation_event_sink(events_path, sample, config)
-            if connection.generation_mode == "two_stage"
+            if connection.generation_mode in {"two_stage", "oracle_his2project"}
             else None
         )
         project_generators[cache_key] = build_project_generator_for_connection(
@@ -1159,6 +1298,17 @@ def _project_generator_for_sample(
         return project_generator
     base_generator = project_generator or ProjectGenerator()
     return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
+
+
+def _repairer_for_config(config: RunnerConfig):
+    if config.repair_provider in config.sources:
+        return build_repairer_for_connection(resolve_source_connection(config, config.repair_provider))
+    return build_repairer(
+        provider=config.repair_provider,
+        model=config.model,
+        base_url=config.base_url,
+        api_key_env=config.api_key_env,
+    )
 
 
 def _generation_event_sink(events_path: Path, sample: PlannedSample, config: RunnerConfig):

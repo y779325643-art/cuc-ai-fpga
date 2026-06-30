@@ -1,0 +1,13 @@
+%Warning-UNUSEDSIGNAL: rtl/top.v:37:8: Signal is not used: 'accumulator__sample_ready_out'
+                                     : ... note: In instance 'top'
+   37 |   wire accumulator__sample_ready_out;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNDRIVEN: rtl/accumulator_core.v:5:17: Signal is not driven: 'sample_ready_out'
+                                              : ... note: In instance 'top.accumulator'
+    5 |     output wire sample_ready_out,
+      |                 ^~~~~~~~~~~~~~~~
+                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=5.048
+                   ... Use "/* verilator lint_off UNDRIVEN */" and lint_on around source to disable this message.
+%Error: Exiting due to 2 warning(s)
