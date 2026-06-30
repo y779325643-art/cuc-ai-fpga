@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "/opt/homebrew/bin/vvp",
+    "sim.out"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "TEST_PASS\n",
+  "stderr": "",
+  "duration_seconds": 0.010156457996345125
+}

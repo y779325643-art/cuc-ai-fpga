@@ -1,0 +1,674 @@
+{
+  "sample_id": "sample_official_eval_gap_closure_llm1_t2_stream_accumulator_8_000002",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 1,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/accumulator_core.v"
+      ],
+      "failure_type": "lint_warning_as_error",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Build an 8-bit streaming accumulator datapath as a complete SR2FPGA Verilog RTL project. This is component topology t2_stream_accumulator, difficulty tier T2. Use a skid_buffer feeding an accumulator_core. The design must implement this black-box behavior: valid input samples pass through a skid buffer and accumulate into the running sum. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.in_valid -> skid_buffer.in_valid; top.in_data -> skid_buffer.in_data; skid_buffer.out_valid -> accumulator_core.sample_valid; skid_buffer.out_data -> accumulator_core.sample; accumulator_core.sample_ready -> skid_buffer.out_ready; accumulator_core.sum -> top.sum. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "Implement a composed 8-bit streaming accumulator with a skid buffer to handle backpressure, ensuring full valid/ready handshaking.",
+      "assumptions": [
+        "The sum output reflects the accumulated value after the most recent valid sample.",
+        "Overflow wraps modulo 2^8.",
+        "Top-level output ready is not required (sum is always valid).",
+        "The skid buffer provides a ready signal to the external source."
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8,
+          "desc": "Bit width of input samples and accumulated sum"
+        }
+      ],
+      "clocks": [
+        {
+          "name": "clk",
+          "port": "clk",
+          "frequency_hz": 100000000,
+          "target_fmax_mhz": 100
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "type": "wire",
+          "width": 1,
+          "clock": true
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "type": "wire",
+          "width": 1,
+          "reset": true
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "direction": "output",
+          "type": "wire",
+          "width": 1
+        },
+        {
+          "name": "sum",
+          "direction": "output",
+          "type": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "input_stream",
+          "type": "stream",
+          "protocol": "valid_ready",
+          "ports": [
+            "in_valid",
+            "in_data",
+            "in_ready"
+          ]
+        },
+        {
+          "name": "output_sum",
+          "type": "continuous",
+          "ports": [
+            "sum"
+          ]
+        },
+        {
+          "name": "sample_valid_monitor",
+          "type": "continuous",
+          "ports": [
+            "sample_valid"
+          ]
+        }
+      ]
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "accumulator_sum",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "desc": "Accumulated sum (registered output of accumulator_core)"
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [
+        {
+          "name": "skid_fifo",
+          "type": "fifo",
+          "depth": 2,
+          "data_width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "capacity": 2,
+          "current_occupancy": 0,
+          "desc": "Two‑entry FIFO implementing the skid buffer storage"
+        }
+      ],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "skid_buffer",
+        "semantic_kind": "skid_buffer",
+        "source": "rtl/skid_buffer.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8,
+            "desc": "Data width of input and output"
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "type": "wire",
+            "width": 1
+          }
+        ],
+        "intent": "Skid buffer providing pipelining and backpressure handling with valid/ready handshake, implementing a 2‑entry FIFO."
+      },
+      {
+        "name": "accumulator_core",
+        "semantic_kind": "accumulator",
+        "source": "rtl/accumulator_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8,
+            "desc": "Width of sample and sum"
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "direction": "input",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "sample",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "sample_ready",
+            "direction": "output",
+            "type": "wire",
+            "width": 1
+          },
+          {
+            "name": "sum",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ],
+        "intent": "Accumulates input samples on valid/ready handshake, providing a registered sum output. sample_ready indicates ability to accept a new sample in the current cycle."
+      }
+    ],
+    "instances": [
+      {
+        "name": "input_buffer",
+        "component": "skid_buffer",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "skid_fifo"
+        ]
+      },
+      {
+        "name": "accumulator",
+        "component": "accumulator_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "accumulator_sum"
+        ]
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "sample_input_path",
+        "path": [
+          "top.in_data",
+          "input_buffer.in_data",
+          "input_buffer.out_data",
+          "accumulator.sample"
+        ],
+        "payload": {
+          "name": "sample",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready"
+        }
+      },
+      {
+        "name": "sum_output_path",
+        "path": [
+          "accumulator.sum",
+          "top.sum"
+        ],
+        "payload": {
+          "name": "sum",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "continuous",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "skid_fifo_write",
+        "kind": "buffer_occupancy",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.in_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "input_buffer.in_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "increment",
+          "target": "skid_fifo"
+        },
+        "related_state": [
+          "skid_fifo"
+        ],
+        "related_flows": [
+          "sample_input_path"
+        ]
+      },
+      {
+        "name": "skid_fifo_read",
+        "kind": "buffer_occupancy",
+        "when": {
+          "all_of": [
+            {
+              "signal": "input_buffer.out_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "accumulator.sample_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "decrement",
+          "target": "skid_fifo"
+        },
+        "related_state": [
+          "skid_fifo"
+        ],
+        "related_flows": [
+          "sample_input_path"
+        ]
+      },
+      {
+        "name": "accumulator_enable",
+        "kind": "enable_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "accumulator.sample_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "accumulator.sample_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "assign",
+          "target": "accumulator_sum",
+          "value": "accumulator_sum + accumulator.sample"
+        },
+        "related_state": [
+          "accumulator_sum"
+        ],
+        "related_flows": [
+          "sum_output_path"
+        ]
+      },
+      {
+        "name": "accumulator_ready_control",
+        "kind": "stall_rule",
+        "when": {
+          "signal": "accumulator.sample_ready",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "hold",
+          "target": "skid_fifo"
+        },
+        "related_state": [
+          "skid_fifo"
+        ],
+        "related_flows": [
+          "sample_input_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "low",
+        "ff": "low",
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "Back-to-back valid samples without backpressure",
+        "Samples with backpressure from accumulator (sample_ready deasserted randomly)",
+        "Empty input stream (in_valid deasserted)",
+        "Reset test to clear accumulator"
+      ],
+      "pass_condition": "TEST_PASS is printed and no TEST_FAIL is printed"
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/accumulator_core.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 560,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 88,
+        "behavior_holes": 0
+      },
+      "rtl/accumulator_core.v": {
+        "origin": "model_generated",
+        "bytes": 566,
+        "behavior_holes": 0
+      },
+      "rtl/skid_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 1141,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 1542,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 413,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 11748,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/accumulator_core.v",
+      "rtl/skid_buffer.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.22734,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

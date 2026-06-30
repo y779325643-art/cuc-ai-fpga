@@ -1,0 +1,1060 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+
+-- Running command `read_verilog rtl/top.v rtl/skid_buffer.v rtl/stream_fork.v rtl/stream_stage.v; synth -top top; stat' --
+
+1. Executing Verilog-2005 frontend: rtl/top.v
+Parsing Verilog input from `rtl/top.v' to AST representation.
+Generating RTLIL representation for module `\top'.
+Successfully finished Verilog frontend.
+
+2. Executing Verilog-2005 frontend: rtl/skid_buffer.v
+Parsing Verilog input from `rtl/skid_buffer.v' to AST representation.
+Generating RTLIL representation for module `\skid_buffer'.
+Successfully finished Verilog frontend.
+
+3. Executing Verilog-2005 frontend: rtl/stream_fork.v
+Parsing Verilog input from `rtl/stream_fork.v' to AST representation.
+Generating RTLIL representation for module `\stream_fork'.
+Successfully finished Verilog frontend.
+
+4. Executing Verilog-2005 frontend: rtl/stream_stage.v
+Parsing Verilog input from `rtl/stream_stage.v' to AST representation.
+Generating RTLIL representation for module `\stream_stage'.
+Successfully finished Verilog frontend.
+
+5. Executing SYNTH pass.
+
+5.1. Executing HIERARCHY pass (managing design hierarchy).
+
+5.1.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \stream_stage
+Used module:     \stream_fork
+Used module:     \skid_buffer
+Parameter \WIDTH = 8
+
+5.1.2. Executing AST frontend in derive mode using pre-parsed AST for module `\stream_stage'.
+Parameter \WIDTH = 8
+Generating RTLIL representation for module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Parameter \WIDTH = 8
+Found cached RTLIL representation for module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Parameter \WIDTH = 8
+
+5.1.3. Executing AST frontend in derive mode using pre-parsed AST for module `\stream_fork'.
+Parameter \WIDTH = 8
+Generating RTLIL representation for module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Parameter \WIDTH = 8
+
+5.1.4. Executing AST frontend in derive mode using pre-parsed AST for module `\skid_buffer'.
+Parameter \WIDTH = 8
+Generating RTLIL representation for module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+
+5.1.5. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+
+5.1.6. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+Removing unused module `\stream_stage'.
+Removing unused module `\stream_fork'.
+Removing unused module `\skid_buffer'.
+Removed 3 unused modules.
+
+5.2. Executing PROC pass (convert processes to netlists).
+
+5.2.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+5.2.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 1 switch rules as full_case in process $proc$rtl/skid_buffer.v:21$21 in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Marked 1 switch rules as full_case in process $proc$rtl/stream_stage.v:16$14 in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Removed a total of 0 dead cases.
+
+5.2.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 0 redundant assignments.
+Promoted 0 assignments to connections.
+
+5.2.4. Executing PROC_INIT pass (extract init attributes).
+
+5.2.5. Executing PROC_ARST pass (detect async resets in processes).
+Found async reset \rst_n in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/skid_buffer.v:21$21'.
+Found async reset \rst_n in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:16$14'.
+
+5.2.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~4 debug messages>
+
+5.2.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/skid_buffer.v:21$21'.
+     1/2: $0\data_r[7:0]
+     2/2: $0\valid_r[0:0]
+Creating decoders for process `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:16$14'.
+     1/2: $0\out_data[7:0]
+     2/2: $0\out_valid[0:0]
+
+5.2.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+5.2.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.\valid_r' using process `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/skid_buffer.v:21$21'.
+  created $adff cell `$procdff$39' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.\data_r' using process `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/skid_buffer.v:21$21'.
+  created $adff cell `$procdff$44' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.\out_valid' using process `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:16$14'.
+  created $adff cell `$procdff$49' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.\out_data' using process `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:16$14'.
+  created $adff cell `$procdff$54' with positive edge clock and positive level reset.
+
+5.2.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+5.2.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 2 empty switches in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/skid_buffer.v:21$21'.
+Removing empty process `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/skid_buffer.v:21$21'.
+Found and cleaned up 2 empty switches in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:16$14'.
+Removing empty process `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:16$14'.
+Cleaned up 4 empty switches.
+
+5.2.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~4 debug messages>
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~4 debug messages>
+Optimizing module top.
+
+5.3. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 6 unused cells and 25 unused wires.
+<suppressed ~9 debug messages>
+
+5.5. Executing CHECK pass (checking for obvious problems).
+Checking module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+5.6. Executing OPT pass (performing simple optimizations).
+
+5.6.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.6.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.6.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~10 debug messages>
+
+5.6.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+5.6.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.6.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.6.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.6.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.6.9. Finished fast OPT passes. (There is nothing left to do.)
+
+5.7. Executing FSM pass (extract and optimize FSM).
+
+5.7.1. Executing FSM_DETECT pass (finding FSMs in design).
+
+5.7.2. Executing FSM_EXTRACT pass (extracting FSM from design).
+
+5.7.3. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+5.7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.7.5. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+5.7.6. Executing FSM_RECODE pass (re-assigning FSM state encoding).
+
+5.7.7. Executing FSM_INFO pass (dumping all available information on FSM cells).
+
+5.7.8. Executing FSM_MAP pass (mapping FSMs to basic logic).
+
+5.8. Executing OPT pass (performing simple optimizations).
+
+5.8.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.8.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.8.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~10 debug messages>
+
+5.8.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+5.8.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.8.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $procdff$44 ($adff) from module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000 (D = \in_data, Q = \data_r).
+Adding EN signal on $procdff$39 ($adff) from module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000 (D = \in_valid, Q = \valid_r).
+Adding EN signal on $procdff$54 ($adff) from module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000 (D = \in_data, Q = \out_data).
+Adding EN signal on $procdff$49 ($adff) from module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000 (D = \in_valid, Q = \out_valid).
+
+5.8.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 6 unused cells and 6 unused wires.
+<suppressed ~8 debug messages>
+
+5.8.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.8.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+5.8.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+5.8.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+5.8.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.8.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.8.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.8.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.8.16. Finished fast OPT passes. (There is nothing left to do.)
+
+5.9. Executing WREDUCE pass (reducing word size of cells).
+
+5.10. Executing PEEPOPT pass (run peephole optimizers).
+
+5.11. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.12. Executing ALUMACC pass (create $alu and $macc cells).
+Extracting $alu and $macc cells in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module top:
+  created 0 $alu and 0 $macc cells.
+
+5.13. Executing SHARE pass (SAT-based resource sharing).
+
+5.14. Executing OPT pass (performing simple optimizations).
+
+5.14.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.14.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.14.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+5.14.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+5.14.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.14.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.14.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.14.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.14.9. Finished fast OPT passes. (There is nothing left to do.)
+
+5.15. Executing MEMORY pass.
+
+5.15.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+5.15.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+5.15.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+
+5.15.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+5.15.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+
+5.15.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.15.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+
+5.15.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+5.15.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.15.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+5.16. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.17. Executing OPT pass (performing simple optimizations).
+
+5.17.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.17.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.17.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.17.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.17.5. Finished fast OPT passes.
+
+5.18. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+
+5.19. Executing OPT pass (performing simple optimizations).
+
+5.19.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.19.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.19.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+
+5.19.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+5.19.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.19.6. Executing OPT_SHARE pass.
+
+5.19.7. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.19.8. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+5.19.9. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.19.10. Finished fast OPT passes. (There is nothing left to do.)
+
+5.20. Executing TECHMAP pass (map to technology primitives).
+
+5.20.1. Executing Verilog-2005 frontend: /opt/homebrew/bin/../share/yosys/techmap.v
+Parsing Verilog input from `/opt/homebrew/bin/../share/yosys/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+5.20.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $adffe.
+Using extmapper simplemap for cells of type $reduce_and.
+Using extmapper simplemap for cells of type $logic_not.
+Using extmapper simplemap for cells of type $logic_or.
+Using extmapper simplemap for cells of type $logic_and.
+No more expansions possible.
+<suppressed ~90 debug messages>
+
+5.21. Executing OPT pass (performing simple optimizations).
+
+5.21.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.21.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 12 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 12 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.21.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.21.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 2 unused wires.
+<suppressed ~2 debug messages>
+
+5.21.5. Finished fast OPT passes.
+
+5.22. Executing ABC pass (technology mapping using ABC).
+
+5.22.1. Extracting gate netlist of module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+5.22.1.1. Executed ABC.
+Extracted 3 gates and 6 wires to a netlist network with 3 inputs and 2 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+5.22.1.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:        internal signals:        1
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        2
+Removing temp directory.
+
+5.22.2. Extracting gate netlist of module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+5.22.2.1. Executed ABC.
+Extracted 3 gates and 6 wires to a netlist network with 3 inputs and 3 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+5.22.2.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        3
+ABC RESULTS:        internal signals:        0
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        3
+Removing temp directory.
+
+5.22.3. Extracting gate netlist of module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+5.22.3.1. Executed ABC.
+Extracted 3 gates and 6 wires to a netlist network with 3 inputs and 2 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+5.22.3.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:        internal signals:        1
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        2
+Removing temp directory.
+
+5.22.4. Extracting gate netlist of module `\top' to `<abc-temp-dir>/input.blif'..
+
+5.22.4.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+Removing global temp directory.
+
+5.23. Executing OPT pass (performing simple optimizations).
+
+5.23.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+5.23.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 11 cells of `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 3 cells of `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 11 cells of `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+5.23.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+5.23.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 18 unused wires.
+<suppressed ~3 debug messages>
+
+5.23.5. Finished fast OPT passes.
+
+5.24. Executing HIERARCHY pass (managing design hierarchy).
+Attribute `top' found on module `top'. Setting top module to top.
+
+5.24.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+
+5.24.2. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+Removed 0 unused modules.
+
+5.25. Printing statistics.
+
+=== $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       32 wire bits
+       10 public wires
+       31 public wire bits
+        8 ports
+       22 port bits
+       11 cells
+        1   $_AND_
+        9   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        9 wires
+       30 wire bits
+        9 public wires
+       30 public wire bits
+        9 ports
+       30 port bits
+        3 cells
+        3   $_AND_
+
+=== $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        9 wires
+       23 wire bits
+        8 public wires
+       22 public wire bits
+        8 ports
+       22 port bits
+       11 cells
+        1   $_AND_
+        9   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       20 wires
+       62 wire bits
+       20 public wires
+       62 public wire bits
+       11 ports
+       32 port bits
+        4 submodules
+        1   $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+        2   $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+       36 top
+       11 $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+        3 $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+       11 $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+
+        +----------Count including submodules.
+        | 
+       58 wires
+      170 wire bits
+       55 public wires
+      167 public wire bits
+       44 ports
+      128 port bits
+        - memories
+        - memory bits
+        - processes
+       36 cells
+        6   $_AND_
+       27   $_DFFE_PN0P_
+        3   $_ORNOT_
+        4 submodules
+        1   $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+        2   $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+
+5.26. Executing CHECK pass (checking for obvious problems).
+Checking module $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+6. Printing statistics.
+
+=== $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       32 wire bits
+       10 public wires
+       31 public wire bits
+        8 ports
+       22 port bits
+       11 cells
+        1   $_AND_
+        9   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        9 wires
+       30 wire bits
+        9 public wires
+       30 public wire bits
+        9 ports
+       30 port bits
+        3 cells
+        3   $_AND_
+
+=== $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        9 wires
+       23 wire bits
+        8 public wires
+       22 public wire bits
+        8 ports
+       22 port bits
+       11 cells
+        1   $_AND_
+        9   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       20 wires
+       62 wire bits
+       20 public wires
+       62 public wire bits
+       11 ports
+       32 port bits
+        4 submodules
+        1   $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+        2   $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+       36 top
+       11 $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+        3 $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+       11 $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+
+        +----------Count including submodules.
+        | 
+       58 wires
+      170 wire bits
+       55 public wires
+      167 public wire bits
+       44 ports
+      128 port bits
+        - memories
+        - memory bits
+        - processes
+       36 cells
+        6   $_AND_
+       27   $_DFFE_PN0P_
+        3   $_ORNOT_
+        4 submodules
+        1   $paramod\skid_buffer\WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\stream_fork\WIDTH=s32'00000000000000000000000000001000
+        2   $paramod\stream_stage\WIDTH=s32'00000000000000000000000000001000
+
+End of script. Logfile hash: 0dcefdb328, time: 0.14s, user: 0.02s, system: 0.01s, MEM: 17.67 MB peak
+Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+Time spent: 84% 1x abc (0 sec), 6% 6x read_verilog (0 sec), ...

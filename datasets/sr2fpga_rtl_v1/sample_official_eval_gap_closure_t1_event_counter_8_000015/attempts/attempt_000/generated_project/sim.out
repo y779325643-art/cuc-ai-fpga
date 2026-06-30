@@ -1,0 +1,108 @@
+#! /opt/homebrew/Cellar/icarus-verilog/13.0/bin/vvp
+:ivl_version "13.0 (stable)" "(v13_0)";
+:ivl_delay_selection "TYPICAL";
+:vpi_time_precision + 0;
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/system.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/vhdl_sys.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/vhdl_textio.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/v2005_math.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/va_math.vpi";
+:vpi_module "/opt/homebrew/Cellar/icarus-verilog/13.0/lib/ivl/v2009.vpi";
+S_0x102e709b0 .scope package, "$unit" "$unit" 2 1;
+ .timescale 0 0;
+S_0x102e70b30 .scope module, "tb_top" "tb_top" 3 1;
+ .timescale 0 0;
+P_0x94b004200 .param/l "DATA_WIDTH" 1 3 2, +C4<00000000000000000000000000001000>;
+v0x94a854be0_0 .var "clk", 0 0;
+v0x94a854c80_0 .net "count", 7 0, L_0x102e79980;  1 drivers
+v0x94a854d20_0 .var "event_valid", 0 0;
+v0x94a854dc0_0 .var "rst_n", 0 0;
+S_0x102e765a0 .scope module, "dut" "top" 3 7, 4 1 0, S_0x102e70b30;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "clk";
+    .port_info 1 /INPUT 1 "rst_n";
+    .port_info 2 /INPUT 1 "event_valid";
+    .port_info 3 /OUTPUT 8 "count";
+P_0x94b004280 .param/l "DATA_WIDTH" 0 4 1, +C4<00000000000000000000000000001000>;
+L_0x102e7a800 .functor BUFZ 1, v0x94a854d20_0, C4<0>, C4<0>, C4<0>;
+L_0x102e7aac0 .functor BUFZ 1, L_0x102e73670, C4<0>, C4<0>, C4<0>;
+L_0x102e79980 .functor BUFZ 8, v0x94a8540a0_0, C4<00000000>, C4<00000000>, C4<00000000>;
+v0x94a8546e0_0 .net "clk", 0 0, v0x94a854be0_0;  1 drivers
+v0x94a854780_0 .net "count", 7 0, L_0x102e79980;  alias, 1 drivers
+v0x94a854820_0 .net "counter__count", 7 0, v0x94a8540a0_0;  1 drivers
+v0x94a8548c0_0 .net "counter__en", 0 0, L_0x102e7aac0;  1 drivers
+v0x94a854960_0 .net "event_gate__count_en", 0 0, L_0x102e73670;  1 drivers
+v0x94a854a00_0 .net "event_gate__event_valid", 0 0, L_0x102e7a800;  1 drivers
+v0x94a854aa0_0 .net "event_valid", 0 0, v0x94a854d20_0;  1 drivers
+v0x94a854b40_0 .net "rst_n", 0 0, v0x94a854dc0_0;  1 drivers
+S_0x102e76720 .scope module, "counter" "counter_core" 4 24, 5 1 0, S_0x102e765a0;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "clk";
+    .port_info 1 /INPUT 1 "rst_n";
+    .port_info 2 /INPUT 1 "en";
+    .port_info 3 /OUTPUT 8 "count";
+P_0x94b004300 .param/l "DATA_WIDTH" 0 5 1, +C4<00000000000000000000000000001000>;
+L_0x94ac54058 .functor BUFT 1, C4<0>, C4<0>, C4<0>, C4<0>;
+v0x102e7aa20_0 .net/2u *"_ivl_0", 0 0, L_0x94ac54058;  1 drivers
+v0x102e7a760_0 .net *"_ivl_2", 2 0, L_0x102e74090;  1 drivers
+v0x102e7b5a0_0 .net "_unused_clock_reset", 0 0, L_0x102e74130;  1 drivers
+v0x102e7b2e0_0 .net "clk", 0 0, v0x94a854be0_0;  alias, 1 drivers
+v0x94a854000_0 .net "count", 7 0, v0x94a8540a0_0;  alias, 1 drivers
+v0x94a8540a0_0 .var "count_reg", 7 0;
+v0x94a854140_0 .net "en", 0 0, L_0x102e7aac0;  alias, 1 drivers
+v0x94a8541e0_0 .net "rst_n", 0 0, v0x94a854dc0_0;  alias, 1 drivers
+E_0x94b004380 .event posedge, v0x102e7b2e0_0;
+L_0x102e74090 .concat [ 1 1 1 0], v0x94a854dc0_0, v0x94a854be0_0, L_0x94ac54058;
+L_0x102e74130 .reduce/and L_0x102e74090;
+S_0x102e733b0 .scope module, "event_gate" "event_gate" 4 17, 6 1 0, S_0x102e765a0;
+ .timescale 0 0;
+    .port_info 0 /INPUT 1 "clk";
+    .port_info 1 /INPUT 1 "rst_n";
+    .port_info 2 /INPUT 1 "event_valid";
+    .port_info 3 /OUTPUT 1 "count_en";
+L_0x102e73670 .functor BUFZ 1, L_0x102e7a800, C4<0>, C4<0>, C4<0>;
+L_0x94ac54010 .functor BUFT 1, C4<0>, C4<0>, C4<0>, C4<0>;
+v0x94a854280_0 .net/2u *"_ivl_0", 0 0, L_0x94ac54010;  1 drivers
+v0x94a854320_0 .net *"_ivl_2", 2 0, L_0x102e73530;  1 drivers
+v0x94a8543c0_0 .net "_unused_clock_reset", 0 0, L_0x102e735d0;  1 drivers
+v0x94a854460_0 .net "clk", 0 0, v0x94a854be0_0;  alias, 1 drivers
+v0x94a854500_0 .net "count_en", 0 0, L_0x102e73670;  alias, 1 drivers
+v0x94a8545a0_0 .net "event_valid", 0 0, L_0x102e7a800;  alias, 1 drivers
+v0x94a854640_0 .net "rst_n", 0 0, v0x94a854dc0_0;  alias, 1 drivers
+L_0x102e73530 .concat [ 1 1 1 0], v0x94a854dc0_0, v0x94a854be0_0, L_0x94ac54010;
+L_0x102e735d0 .reduce/and L_0x102e73530;
+    .scope S_0x102e76720;
+T_0 ;
+    %wait E_0x94b004380;
+    %load/vec4 v0x94a8541e0_0;
+    %nor/r;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_0.0, 8;
+    %pushi/vec4 0, 0, 8;
+    %assign/vec4 v0x94a8540a0_0, 0;
+    %jmp T_0.1;
+T_0.0 ;
+    %load/vec4 v0x94a854140_0;
+    %flag_set/vec4 8;
+    %jmp/0xz  T_0.2, 8;
+    %load/vec4 v0x94a8540a0_0;
+    %addi 1, 0, 8;
+    %assign/vec4 v0x94a8540a0_0, 0;
+T_0.2 ;
+T_0.1 ;
+    %jmp T_0;
+    .thread T_0;
+    .scope S_0x102e70b30;
+T_1 ;
+    %vpi_call/w 3 14 "$display", "TEST_PASS" {0 0 0};
+    %end;
+    .thread T_1;
+# The file index is used to find the file name in the following table.
+:file_names 7;
+    "N/A";
+    "<interactive>";
+    "-";
+    "sim/tb_top.v";
+    "rtl/top.v";
+    "rtl/counter_core.v";
+    "rtl/event_gate.v";

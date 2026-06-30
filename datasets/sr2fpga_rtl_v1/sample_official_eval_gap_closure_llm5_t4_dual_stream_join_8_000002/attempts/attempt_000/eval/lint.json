@@ -1,0 +1,18 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-UNUSEDSIGNAL: rtl/top.v:37:8: Signal is not used: 'accumulator__sample_ready_out'\n                                     : ... note: In instance 'top'\n   37 |   wire accumulator__sample_ready_out;\n      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048\n                       ... Use \"/* verilator lint_off UNUSEDSIGNAL */\" and lint_on around source to disable this message.\n%Warning-UNDRIVEN: rtl/accumulator_core.v:5:17: Signal is not driven: 'sample_ready_out'\n                                              : ... note: In instance 'top.accumulator'\n    5 |     output wire sample_ready_out,\n      |                 ^~~~~~~~~~~~~~~~\n                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=5.048\n                   ... Use \"/* verilator lint_off UNDRIVEN */\" and lint_on around source to disable this message.\n%Error: Exiting due to 2 warning(s)\n",
+  "duration_seconds": 0.1162694999948144
+}

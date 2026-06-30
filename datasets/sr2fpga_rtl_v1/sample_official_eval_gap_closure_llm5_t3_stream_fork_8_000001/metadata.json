@@ -1,0 +1,17 @@
+{
+  "source": "deepseek-his-v12",
+  "generator_provider": "deepseek-his-v12",
+  "model": "deepseek-v4-pro",
+  "failure_origin": "natural_llm",
+  "difficulty_tier": "T3",
+  "measurement_point": "a_first_attempt_no_tools",
+  "repair_provider": "none",
+  "failure_injectors": [],
+  "task_type": "composed_stream_fork",
+  "width": 8,
+  "system_his_schema_version": "system-his-v1.2",
+  "training_split": "clean",
+  "contract_skeleton_mode": "behavior_files",
+  "topology_id": "t3_stream_fork",
+  "requirement_style": "natural_component"
+}

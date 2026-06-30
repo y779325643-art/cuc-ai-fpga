@@ -1,0 +1,71 @@
+%Warning-WIDTHTRUNC: rtl/dual_td_update_core.v:28:25: Operator ASSIGNW expects 8 bits on the Assign RHS, but Assign RHS's SEL generates 12 bits.
+                                                    : ... note: In instance 'top.u_dual_td_update_core'
+   28 |   assign update_delta_a = update_product_a[(2*DATA_WIDTH)-1:4];
+      |                         ^
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.048
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-WIDTHTRUNC: rtl/dual_td_update_core.v:29:25: Operator ASSIGNW expects 8 bits on the Assign RHS, but Assign RHS's SEL generates 12 bits.
+                                                    : ... note: In instance 'top.u_dual_td_update_core'
+   29 |   assign update_delta_b = update_product_b[(2*DATA_WIDTH)-1:4];
+      |                         ^
+%Warning-WIDTHEXPAND: rtl/dual_policy_value_core.v:32:45: Operator ADD expects 17 bits on the RHS, but RHS's VARREF 'bias0' generates 8 bits.
+                                                        : ... note: In instance 'top.u_dual_policy_value_core'
+   32 |   assign score0_a_full = (obs0_a * weight0) + bias0;
+      |                                             ^
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: rtl/dual_policy_value_core.v:33:45: Operator ADD expects 17 bits on the RHS, but RHS's VARREF 'bias1' generates 8 bits.
+                                                        : ... note: In instance 'top.u_dual_policy_value_core'
+   33 |   assign score1_a_full = (obs1_a * weight1) + bias1;
+      |                                             ^
+%Warning-WIDTHEXPAND: rtl/dual_policy_value_core.v:34:45: Operator ADD expects 17 bits on the RHS, but RHS's VARREF 'bias0' generates 8 bits.
+                                                        : ... note: In instance 'top.u_dual_policy_value_core'
+   34 |   assign score0_b_full = (obs0_b * weight0) + bias0;
+      |                                             ^
+%Warning-WIDTHEXPAND: rtl/dual_policy_value_core.v:35:45: Operator ADD expects 17 bits on the RHS, but RHS's VARREF 'bias1' generates 8 bits.
+                                                        : ... note: In instance 'top.u_dual_policy_value_core'
+   35 |   assign score1_b_full = (obs1_b * weight1) + bias1;
+      |                                             ^
+%Warning-UNUSEDSIGNAL: rtl/dual_policy_value_core.v:21:27: Bits of signal are not used: 'score0_a_full'[16:8]
+                                                         : ... note: In instance 'top.u_dual_policy_value_core'
+   21 |   wire [(2*DATA_WIDTH):0] score0_a_full;
+      |                           ^~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/dual_policy_value_core.v:22:27: Bits of signal are not used: 'score1_a_full'[16:8]
+                                                         : ... note: In instance 'top.u_dual_policy_value_core'
+   22 |   wire [(2*DATA_WIDTH):0] score1_a_full;
+      |                           ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_policy_value_core.v:23:27: Bits of signal are not used: 'score0_b_full'[16:8]
+                                                         : ... note: In instance 'top.u_dual_policy_value_core'
+   23 |   wire [(2*DATA_WIDTH):0] score0_b_full;
+      |                           ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_policy_value_core.v:24:27: Bits of signal are not used: 'score1_b_full'[16:8]
+                                                         : ... note: In instance 'top.u_dual_policy_value_core'
+   24 |   wire [(2*DATA_WIDTH):0] score1_b_full;
+      |                           ^~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_policy_value_core.v:29:23: Bits of signal are not used: 'value_sum_a'[0]
+                                                         : ... note: In instance 'top.u_dual_policy_value_core'
+   29 |   wire [DATA_WIDTH:0] value_sum_a;
+      |                       ^~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_policy_value_core.v:30:23: Bits of signal are not used: 'value_sum_b'[0]
+                                                         : ... note: In instance 'top.u_dual_policy_value_core'
+   30 |   wire [DATA_WIDTH:0] value_sum_b;
+      |                       ^~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_td_update_core.v:17:23: Bits of signal are not used: 'td_error_a_full'[8]
+                                                      : ... note: In instance 'top.u_dual_td_update_core'
+   17 |   wire [DATA_WIDTH:0] td_error_a_full;
+      |                       ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_td_update_core.v:18:23: Bits of signal are not used: 'td_error_b_full'[8]
+                                                      : ... note: In instance 'top.u_dual_td_update_core'
+   18 |   wire [DATA_WIDTH:0] td_error_b_full;
+      |                       ^~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_td_update_core.v:19:29: Bits of signal are not used: 'update_product_a'[3:0]
+                                                      : ... note: In instance 'top.u_dual_td_update_core'
+   19 |   wire [(2*DATA_WIDTH)-1:0] update_product_a;
+      |                             ^~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/dual_td_update_core.v:20:29: Bits of signal are not used: 'update_product_b'[3:0]
+                                                      : ... note: In instance 'top.u_dual_td_update_core'
+   20 |   wire [(2*DATA_WIDTH)-1:0] update_product_b;
+      |                             ^~~~~~~~~~~~~~~~
+%Error: Exiting due to 16 warning(s)

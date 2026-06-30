@@ -1,0 +1,50 @@
+top port 'reward' is not declared in RTL
+top port 'value' is not declared in RTL
+top port 'next_value' is not declared in RTL
+top port 'td_error' is not declared in RTL
+top port 'updated_value' is not declared in RTL
+component 'top' port 'reward' is not declared in RTL
+component 'top' port 'value' is not declared in RTL
+component 'top' port 'next_value' is not declared in RTL
+component 'top' port 'td_error' is not declared in RTL
+component 'top' port 'updated_value' is not declared in RTL
+component 'td_input_stage' port 'reward' is not declared in RTL
+component 'td_input_stage' port 'value' is not declared in RTL
+component 'td_input_stage' port 'next_value' is not declared in RTL
+component 'td_input_stage' port 'reward_out' is not declared in RTL
+component 'td_input_stage' port 'value_out' is not declared in RTL
+component 'td_input_stage' port 'next_value_out' is not declared in RTL
+component 'discount_core' port 'reward' is not declared in RTL
+component 'discount_core' port 'next_value' is not declared in RTL
+component 'discount_core' port 'discounted_return' is not declared in RTL
+component 'td_update_core' port 'discounted_return' is not declared in RTL
+component 'td_update_core' port 'value' is not declared in RTL
+component 'td_update_core' port 'td_error' is not declared in RTL
+component 'td_update_core' port 'updated_value' is not declared in RTL
+component 'stream_stage' port 'td_error' is not declared in RTL
+component 'stream_stage' port 'updated_value' is not declared in RTL
+component 'stream_stage' port 'td_error_out' is not declared in RTL
+component 'stream_stage' port 'updated_value_out' is not declared in RTL
+System-HIS module 'top' port 'reward' is not declared in RTL
+System-HIS module 'top' port 'value' is not declared in RTL
+System-HIS module 'top' port 'next_value' is not declared in RTL
+System-HIS module 'top' port 'td_error' is not declared in RTL
+System-HIS module 'top' port 'updated_value' is not declared in RTL
+System-HIS module 'td_input_stage' port 'reward' is not declared in RTL
+System-HIS module 'td_input_stage' port 'value' is not declared in RTL
+System-HIS module 'td_input_stage' port 'next_value' is not declared in RTL
+System-HIS module 'td_input_stage' port 'reward_out' is not declared in RTL
+System-HIS module 'td_input_stage' port 'value_out' is not declared in RTL
+System-HIS module 'td_input_stage' port 'next_value_out' is not declared in RTL
+System-HIS module 'discount_core' port 'reward' is not declared in RTL
+System-HIS module 'discount_core' port 'next_value' is not declared in RTL
+System-HIS module 'discount_core' port 'discounted_return' is not declared in RTL
+System-HIS module 'td_update_core' port 'discounted_return' is not declared in RTL
+System-HIS module 'td_update_core' port 'value' is not declared in RTL
+System-HIS module 'td_update_core' port 'td_error' is not declared in RTL
+System-HIS module 'td_update_core' port 'updated_value' is not declared in RTL
+System-HIS module 'stream_stage' port 'td_error' is not declared in RTL
+System-HIS module 'stream_stage' port 'updated_value' is not declared in RTL
+System-HIS module 'stream_stage' port 'td_error_out' is not declared in RTL
+System-HIS module 'stream_stage' port 'updated_value_out' is not declared in RTL
+system_his.top_ports does not match top module RTL ports

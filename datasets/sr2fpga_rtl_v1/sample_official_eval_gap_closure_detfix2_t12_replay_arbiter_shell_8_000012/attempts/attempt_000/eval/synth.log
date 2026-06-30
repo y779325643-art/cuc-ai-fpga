@@ -1,0 +1,1971 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+
+-- Running command `read_verilog rtl/top.v rtl/host_transition_packetizer.v rtl/replay_index_allocator.v rtl/replay_request_arbiter.v rtl/replay_memory_bank.v rtl/sample_packet_stage.v; synth -top top; stat' --
+
+1. Executing Verilog-2005 frontend: rtl/top.v
+Parsing Verilog input from `rtl/top.v' to AST representation.
+Generating RTLIL representation for module `\top'.
+Successfully finished Verilog frontend.
+
+2. Executing Verilog-2005 frontend: rtl/host_transition_packetizer.v
+Parsing Verilog input from `rtl/host_transition_packetizer.v' to AST representation.
+Generating RTLIL representation for module `\host_transition_packetizer'.
+Successfully finished Verilog frontend.
+
+3. Executing Verilog-2005 frontend: rtl/replay_index_allocator.v
+Parsing Verilog input from `rtl/replay_index_allocator.v' to AST representation.
+Generating RTLIL representation for module `\replay_index_allocator'.
+Successfully finished Verilog frontend.
+
+4. Executing Verilog-2005 frontend: rtl/replay_request_arbiter.v
+Parsing Verilog input from `rtl/replay_request_arbiter.v' to AST representation.
+Generating RTLIL representation for module `\replay_request_arbiter'.
+Successfully finished Verilog frontend.
+
+5. Executing Verilog-2005 frontend: rtl/replay_memory_bank.v
+Parsing Verilog input from `rtl/replay_memory_bank.v' to AST representation.
+Generating RTLIL representation for module `\replay_memory_bank'.
+Warning: Replacing memory \done_mem with list of registers. See rtl/replay_memory_bank.v:44
+Warning: Replacing memory \next_state_mem with list of registers. See rtl/replay_memory_bank.v:43
+Warning: Replacing memory \reward_mem with list of registers. See rtl/replay_memory_bank.v:42
+Warning: Replacing memory \action_mem with list of registers. See rtl/replay_memory_bank.v:41
+Warning: Replacing memory \state_mem with list of registers. See rtl/replay_memory_bank.v:40
+Successfully finished Verilog frontend.
+
+6. Executing Verilog-2005 frontend: rtl/sample_packet_stage.v
+Parsing Verilog input from `rtl/sample_packet_stage.v' to AST representation.
+Generating RTLIL representation for module `\sample_packet_stage'.
+Successfully finished Verilog frontend.
+
+7. Executing SYNTH pass.
+
+7.1. Executing HIERARCHY pass (managing design hierarchy).
+
+7.1.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \sample_packet_stage
+Used module:     \replay_memory_bank
+Used module:     \replay_request_arbiter
+Used module:     \replay_index_allocator
+Used module:     \host_transition_packetizer
+Parameter \DATA_WIDTH = 8
+
+7.1.2. Executing AST frontend in derive mode using pre-parsed AST for module `\sample_packet_stage'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Parameter \DATA_WIDTH = 8
+
+7.1.3. Executing AST frontend in derive mode using pre-parsed AST for module `\replay_memory_bank'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Warning: Replacing memory \done_mem with list of registers. See rtl/replay_memory_bank.v:44
+Warning: Replacing memory \next_state_mem with list of registers. See rtl/replay_memory_bank.v:43
+Warning: Replacing memory \reward_mem with list of registers. See rtl/replay_memory_bank.v:42
+Warning: Replacing memory \action_mem with list of registers. See rtl/replay_memory_bank.v:41
+Warning: Replacing memory \state_mem with list of registers. See rtl/replay_memory_bank.v:40
+Parameter \DATA_WIDTH = 8
+
+7.1.4. Executing AST frontend in derive mode using pre-parsed AST for module `\replay_request_arbiter'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Parameter \DATA_WIDTH = 8
+
+7.1.5. Executing AST frontend in derive mode using pre-parsed AST for module `\host_transition_packetizer'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+
+7.1.6. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \replay_index_allocator
+Used module:     $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+
+7.1.7. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \replay_index_allocator
+Used module:     $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+Removing unused module `\sample_packet_stage'.
+Removing unused module `\replay_memory_bank'.
+Removing unused module `\replay_request_arbiter'.
+Removing unused module `\host_transition_packetizer'.
+Removed 4 unused modules.
+
+7.2. Executing PROC pass (convert processes to netlists).
+
+7.2.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+7.2.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Removed 5 dead cases from process $proc$rtl/replay_memory_bank.v:29$112 in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Marked 13 switch rules as full_case in process $proc$rtl/replay_memory_bank.v:29$112 in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Marked 1 switch rules as full_case in process $proc$rtl/replay_index_allocator.v:9$2 in module replay_index_allocator.
+Marked 1 switch rules as full_case in process $proc$rtl/sample_packet_stage.v:25$98 in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Removed a total of 5 dead cases.
+
+7.2.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 1 redundant assignment.
+Promoted 20 assignments to connections.
+
+7.2.4. Executing PROC_INIT pass (extract init attributes).
+
+7.2.5. Executing PROC_ARST pass (detect async resets in processes).
+Found async reset \rst_n in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+Found async reset \rst_n in `\replay_index_allocator.$proc$rtl/replay_index_allocator.v:9$2'.
+Found async reset \rst_n in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+
+7.2.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~16 debug messages>
+
+7.2.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+     1/71: $3$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_DATA[0:0]$178
+     2/71: $3$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_DATA[7:0]$177
+     3/71: $3$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_DATA[7:0]$176
+     4/71: $3$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_DATA[0:0]$175
+     5/71: $3$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_DATA[7:0]$174
+     6/71: $2$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_DATA[0:0]$173
+     7/71: $2$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_ADDR[1:0]$172
+     8/71: $2$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_DATA[7:0]$171
+     9/71: $2$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_ADDR[1:0]$170
+    10/71: $2$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_DATA[7:0]$169
+    11/71: $2$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_ADDR[1:0]$168
+    12/71: $2$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_DATA[0:0]$167
+    13/71: $2$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_ADDR[1:0]$166
+    14/71: $2$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_DATA[7:0]$165
+    15/71: $2$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_ADDR[1:0]$164
+    16/71: $2$mem2reg_wr$\done_mem$rtl/replay_memory_bank.v:44$106_ADDR[1:0]$162
+    17/71: $2$mem2reg_wr$\done_mem$rtl/replay_memory_bank.v:44$106_DATA[0:0]$163
+    18/71: $2$mem2reg_wr$\next_state_mem$rtl/replay_memory_bank.v:43$105_ADDR[1:0]$160
+    19/71: $2$mem2reg_wr$\next_state_mem$rtl/replay_memory_bank.v:43$105_DATA[7:0]$161
+    20/71: $2$mem2reg_wr$\reward_mem$rtl/replay_memory_bank.v:42$104_ADDR[1:0]$158
+    21/71: $2$mem2reg_wr$\reward_mem$rtl/replay_memory_bank.v:42$104_DATA[7:0]$159
+    22/71: $2$mem2reg_wr$\action_mem$rtl/replay_memory_bank.v:41$103_ADDR[1:0]$156
+    23/71: $2$mem2reg_wr$\action_mem$rtl/replay_memory_bank.v:41$103_DATA[0:0]$157
+    24/71: $2$mem2reg_wr$\state_mem$rtl/replay_memory_bank.v:40$102_ADDR[1:0]$154
+    25/71: $2$mem2reg_wr$\state_mem$rtl/replay_memory_bank.v:40$102_DATA[7:0]$155
+    26/71: $1$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_DATA[0:0]$153
+    27/71: $1$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_ADDR[1:0]$152
+    28/71: $1$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_DATA[7:0]$151
+    29/71: $1$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_ADDR[1:0]$150
+    30/71: $1$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_DATA[7:0]$149
+    31/71: $1$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_ADDR[1:0]$148
+    32/71: $1$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_DATA[0:0]$147
+    33/71: $1$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_ADDR[1:0]$146
+    34/71: $1$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_DATA[7:0]$145
+    35/71: $1$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_ADDR[1:0]$144
+    36/71: $1$mem2reg_wr$\done_mem$rtl/replay_memory_bank.v:44$106_DATA[0:0]$143
+    37/71: $1$mem2reg_wr$\done_mem$rtl/replay_memory_bank.v:44$106_ADDR[1:0]$142
+    38/71: $1$mem2reg_wr$\next_state_mem$rtl/replay_memory_bank.v:43$105_DATA[7:0]$141
+    39/71: $1$mem2reg_wr$\next_state_mem$rtl/replay_memory_bank.v:43$105_ADDR[1:0]$140
+    40/71: $1$mem2reg_wr$\reward_mem$rtl/replay_memory_bank.v:42$104_DATA[7:0]$139
+    41/71: $1$mem2reg_wr$\reward_mem$rtl/replay_memory_bank.v:42$104_ADDR[1:0]$138
+    42/71: $1$mem2reg_wr$\action_mem$rtl/replay_memory_bank.v:41$103_DATA[0:0]$137
+    43/71: $1$mem2reg_wr$\action_mem$rtl/replay_memory_bank.v:41$103_ADDR[1:0]$136
+    44/71: $1$mem2reg_wr$\state_mem$rtl/replay_memory_bank.v:40$102_DATA[7:0]$135
+    45/71: $1$mem2reg_wr$\state_mem$rtl/replay_memory_bank.v:40$102_ADDR[1:0]$134
+    46/71: $0\read_valid_out[0:0]
+    47/71: $0\done_mem[3][0:0]
+    48/71: $0\done_mem[2][0:0]
+    49/71: $0\done_mem[1][0:0]
+    50/71: $0\done_mem[0][0:0]
+    51/71: $0\next_state_mem[3][7:0]
+    52/71: $0\next_state_mem[2][7:0]
+    53/71: $0\next_state_mem[1][7:0]
+    54/71: $0\next_state_mem[0][7:0]
+    55/71: $0\reward_mem[3][7:0]
+    56/71: $0\reward_mem[2][7:0]
+    57/71: $0\reward_mem[1][7:0]
+    58/71: $0\reward_mem[0][7:0]
+    59/71: $0\action_mem[3][0:0]
+    60/71: $0\action_mem[2][0:0]
+    61/71: $0\action_mem[1][0:0]
+    62/71: $0\action_mem[0][0:0]
+    63/71: $0\state_mem[3][7:0]
+    64/71: $0\state_mem[2][7:0]
+    65/71: $0\state_mem[1][7:0]
+    66/71: $0\state_mem[0][7:0]
+    67/71: $0\read_done[0:0]
+    68/71: $0\read_next_state[7:0]
+    69/71: $0\read_reward[7:0]
+    70/71: $0\read_action[0:0]
+    71/71: $0\read_state[7:0]
+Creating decoders for process `\replay_index_allocator.$proc$rtl/replay_index_allocator.v:9$2'.
+     1/2: $0\write_index[1:0]
+     2/2: $0\occupancy[2:0]
+Creating decoders for process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+     1/7: $0\sample_done_out[0:0]
+     2/7: $0\sample_next_state_out[7:0]
+     3/7: $0\sample_reward_out[7:0]
+     4/7: $0\sample_action_out[0:0]
+     5/7: $0\sample_state_out[7:0]
+     6/7: $0\irq[0:0]
+     7/7: $0\sample_valid[0:0]
+
+7.2.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+7.2.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\read_valid_out' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$457' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\read_state' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$462' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\read_action' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$467' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\read_reward' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$472' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\read_next_state' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$477' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\read_done' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$482' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\state_mem[0]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$489' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\state_mem[1]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$496' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\state_mem[2]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$503' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\state_mem[3]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$510' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\action_mem[0]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$517' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\action_mem[1]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$524' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\action_mem[2]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$531' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\action_mem[3]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$538' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\reward_mem[0]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$545' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\reward_mem[1]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$552' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\reward_mem[2]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$559' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\reward_mem[3]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$566' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\next_state_mem[0]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$573' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\next_state_mem[1]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$580' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\next_state_mem[2]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$587' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\next_state_mem[3]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$594' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\done_mem[0]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$601' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\done_mem[1]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$608' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\done_mem[2]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$615' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.\done_mem[3]' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $dff cell `$procdff$622' with positive edge clock.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\state_mem$rtl/replay_memory_bank.v:40$102_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$627' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\state_mem$rtl/replay_memory_bank.v:40$102_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$632' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\action_mem$rtl/replay_memory_bank.v:41$103_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$637' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\action_mem$rtl/replay_memory_bank.v:41$103_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$642' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\reward_mem$rtl/replay_memory_bank.v:42$104_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$647' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\reward_mem$rtl/replay_memory_bank.v:42$104_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$652' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\next_state_mem$rtl/replay_memory_bank.v:43$105_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$657' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\next_state_mem$rtl/replay_memory_bank.v:43$105_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$662' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\done_mem$rtl/replay_memory_bank.v:44$106_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$667' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_wr$\done_mem$rtl/replay_memory_bank.v:44$106_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$672' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$677' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$682' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$687' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$692' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$697' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$702' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$707' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$712' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_ADDR' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$717' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_DATA' using process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+  created $adff cell `$procdff$722' with positive edge clock and positive level reset.
+Creating register for signal `\replay_index_allocator.\occupancy' using process `\replay_index_allocator.$proc$rtl/replay_index_allocator.v:9$2'.
+  created $adff cell `$procdff$727' with positive edge clock and positive level reset.
+Creating register for signal `\replay_index_allocator.\write_index' using process `\replay_index_allocator.$proc$rtl/replay_index_allocator.v:9$2'.
+  created $adff cell `$procdff$732' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_valid' using process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+  created $adff cell `$procdff$737' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\irq' using process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+  created $adff cell `$procdff$742' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_state_out' using process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+  created $adff cell `$procdff$747' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_action_out' using process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+  created $adff cell `$procdff$752' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_reward_out' using process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+  created $adff cell `$procdff$757' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_next_state_out' using process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+  created $adff cell `$procdff$762' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_done_out' using process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+  created $adff cell `$procdff$767' with positive edge clock and positive level reset.
+
+7.2.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+7.2.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 12 empty switches in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+Removing empty process `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/replay_memory_bank.v:29$112'.
+Found and cleaned up 2 empty switches in `\replay_index_allocator.$proc$rtl/replay_index_allocator.v:9$2'.
+Removing empty process `replay_index_allocator.$proc$rtl/replay_index_allocator.v:9$2'.
+Found and cleaned up 2 empty switches in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+Removing empty process `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_packet_stage.v:25$98'.
+Cleaned up 16 empty switches.
+
+7.2.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~1 debug messages>
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~102 debug messages>
+Optimizing module replay_index_allocator.
+<suppressed ~4 debug messages>
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~14 debug messages>
+Optimizing module top.
+
+7.3. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 98 unused cells and 320 unused wires.
+<suppressed ~103 debug messages>
+
+7.5. Executing CHECK pass (checking for obvious problems).
+Checking module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module replay_index_allocator...
+Checking module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+7.6. Executing OPT pass (performing simple optimizations).
+
+7.6.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 141 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 109 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~96 debug messages>
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 8 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 32 cells.
+
+7.6.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+    dead port 2/2 on $mux $procmux$224.
+    dead port 2/2 on $mux $procmux$216.
+    dead port 2/2 on $mux $procmux$208.
+    dead port 2/2 on $mux $procmux$200.
+    dead port 2/2 on $mux $procmux$192.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 5 multiplexer ports.
+<suppressed ~120 debug messages>
+
+7.6.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.6.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 104 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 8 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.6.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.6.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 37 unused wires.
+<suppressed ~1 debug messages>
+
+7.6.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.6.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~115 debug messages>
+
+7.6.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.6.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 104 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 8 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.6.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.6.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.6.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.16. Finished fast OPT passes. (There is nothing left to do.)
+
+7.7. Executing FSM pass (extract and optimize FSM).
+
+7.7.1. Executing FSM_DETECT pass (finding FSMs in design).
+
+7.7.2. Executing FSM_EXTRACT pass (extracting FSM from design).
+
+7.7.3. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+7.7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.7.5. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+7.7.6. Executing FSM_RECODE pass (re-assigning FSM state encoding).
+
+7.7.7. Executing FSM_INFO pass (dumping all available information on FSM cells).
+
+7.7.8. Executing FSM_MAP pass (mapping FSMs to basic logic).
+
+7.8. Executing OPT pass (performing simple optimizations).
+
+7.8.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 104 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 8 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~115 debug messages>
+
+7.8.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 104 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 8 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $procdff$566 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_reward, Q = \reward_mem[3]).
+Adding EN signal on $procdff$622 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_done, Q = \done_mem[3]).
+Adding EN signal on $procdff$462 ($adff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $3$mem2reg_rd$\state_mem$rtl/replay_memory_bank.v:47$107_DATA[7:0]$174, Q = \read_state).
+Adding EN signal on $procdff$524 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_action, Q = \action_mem[1]).
+Adding EN signal on $procdff$467 ($adff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $3$mem2reg_rd$\action_mem$rtl/replay_memory_bank.v:48$108_DATA[0:0]$175, Q = \read_action).
+Adding EN signal on $procdff$559 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_reward, Q = \reward_mem[2]).
+Adding EN signal on $procdff$517 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_action, Q = \action_mem[0]).
+Adding EN signal on $procdff$552 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_reward, Q = \reward_mem[1]).
+Adding EN signal on $procdff$594 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_next_state, Q = \next_state_mem[3]).
+Adding EN signal on $procdff$545 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_reward, Q = \reward_mem[0]).
+Adding EN signal on $procdff$608 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_done, Q = \done_mem[1]).
+Adding EN signal on $procdff$538 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_action, Q = \action_mem[3]).
+Adding EN signal on $procdff$615 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_done, Q = \done_mem[2]).
+Adding EN signal on $procdff$510 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_state, Q = \state_mem[3]).
+Adding EN signal on $procdff$531 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_action, Q = \action_mem[2]).
+Adding EN signal on $procdff$573 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_next_state, Q = \next_state_mem[0]).
+Adding EN signal on $procdff$472 ($adff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $3$mem2reg_rd$\reward_mem$rtl/replay_memory_bank.v:49$109_DATA[7:0]$176, Q = \read_reward).
+Adding EN signal on $procdff$601 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_done, Q = \done_mem[0]).
+Adding EN signal on $procdff$477 ($adff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $3$mem2reg_rd$\next_state_mem$rtl/replay_memory_bank.v:50$110_DATA[7:0]$177, Q = \read_next_state).
+Adding EN signal on $procdff$496 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_state, Q = \state_mem[1]).
+Adding EN signal on $procdff$482 ($adff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $3$mem2reg_rd$\done_mem$rtl/replay_memory_bank.v:51$111_DATA[0:0]$178, Q = \read_done).
+Adding EN signal on $procdff$587 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_next_state, Q = \next_state_mem[2]).
+Adding EN signal on $procdff$489 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_state, Q = \state_mem[0]).
+Adding EN signal on $procdff$580 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_next_state, Q = \next_state_mem[1]).
+Adding EN signal on $procdff$503 ($dff) from module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \write_state, Q = \state_mem[2]).
+Adding EN signal on $procdff$732 ($adff) from module replay_index_allocator (D = $add$rtl/replay_index_allocator.v:14$4_Y, Q = \write_index).
+Adding EN signal on $procdff$727 ($adff) from module replay_index_allocator (D = $add$rtl/replay_index_allocator.v:16$6_Y, Q = \occupancy).
+Adding EN signal on $procdff$762 ($adff) from module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_next_state, Q = \sample_next_state_out).
+Adding EN signal on $procdff$767 ($adff) from module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_done, Q = \sample_done_out).
+Adding EN signal on $procdff$757 ($adff) from module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_reward, Q = \sample_reward_out).
+Adding EN signal on $procdff$737 ($adff) from module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = $0\sample_valid[0:0], Q = \sample_valid).
+Adding EN signal on $procdff$747 ($adff) from module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_state, Q = \sample_state_out).
+Adding EN signal on $procdff$752 ($adff) from module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_action, Q = \sample_action_out).
+Adding EN signal on $procdff$742 ($adff) from module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = 1'1, Q = \irq).
+
+7.8.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 74 unused cells and 74 unused wires.
+<suppressed ~77 debug messages>
+
+7.8.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~1 debug messages>
+Optimizing module top.
+
+7.8.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.8.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.8.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 59 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 43 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~48 debug messages>
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 6 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 16 cells.
+
+7.8.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.8.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 16 unused wires.
+<suppressed ~1 debug messages>
+
+7.8.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.16. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.8.17. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.8.18. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.19. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 5 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 43 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 6 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.20. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.8.21. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.8.22. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.23. Finished fast OPT passes. (There is nothing left to do.)
+
+7.9. Executing WREDUCE pass (reducing word size of cells).
+Removed top 1 bits (of 3) from port A of cell $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.$lt$rtl/replay_request_arbiter.v:33$180 ($lt).
+Removed top 1 bits (of 2) from port B of cell $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$procmux$222_CMP0 ($eq).
+Removed top 1 bits (of 2) from port B of cell $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.$procmux$405_CMP0 ($eq).
+Removed top 1 bits (of 2) from port B of cell replay_index_allocator.$add$rtl/replay_index_allocator.v:14$4 ($add).
+Removed top 2 bits (of 3) from port B of cell replay_index_allocator.$add$rtl/replay_index_allocator.v:16$6 ($add).
+
+7.10. Executing PEEPOPT pass (run peephole optimizers).
+
+7.11. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.12. Executing ALUMACC pass (create $alu and $macc cells).
+Extracting $alu and $macc cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000:
+  creating $alu model for $lt$rtl/replay_request_arbiter.v:33$180 ($lt): new $alu
+  creating $alu cell for $lt$rtl/replay_request_arbiter.v:33$180: $auto$alumacc.cc:512:replace_alu$847
+  created 1 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module replay_index_allocator:
+  creating $macc model for $add$rtl/replay_index_allocator.v:16$6 ($add).
+  creating $macc model for $add$rtl/replay_index_allocator.v:14$4 ($add).
+  creating $alu model for $macc $add$rtl/replay_index_allocator.v:14$4.
+  creating $alu model for $macc $add$rtl/replay_index_allocator.v:16$6.
+  creating $alu model for $lt$rtl/replay_index_allocator.v:15$5 ($lt): new $alu
+  creating $alu cell for $lt$rtl/replay_index_allocator.v:15$5: $auto$alumacc.cc:512:replace_alu$853
+  creating $alu cell for $add$rtl/replay_index_allocator.v:16$6: $auto$alumacc.cc:512:replace_alu$858
+  creating $alu cell for $add$rtl/replay_index_allocator.v:14$4: $auto$alumacc.cc:512:replace_alu$861
+  created 3 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module top:
+  created 0 $alu and 0 $macc cells.
+
+7.13. Executing SHARE pass (SAT-based resource sharing).
+
+7.14. Executing OPT pass (performing simple optimizations).
+
+7.14.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 43 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 7 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.14.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.14.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 43 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 7 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.14.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 2 unused wires.
+<suppressed ~2 debug messages>
+
+7.14.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.14.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.14.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.14.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 43 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 7 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 14 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.14.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.14.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.16. Finished fast OPT passes. (There is nothing left to do.)
+
+7.15. Executing MEMORY pass.
+
+7.15.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+7.15.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+7.15.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+
+7.15.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+7.15.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+
+7.15.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.15.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+
+7.15.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+7.15.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.15.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+7.16. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.17. Executing OPT pass (performing simple optimizations).
+
+7.17.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~5 debug messages>
+Optimizing module replay_index_allocator.
+<suppressed ~1 debug messages>
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~3 debug messages>
+Optimizing module top.
+
+7.17.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 43 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 9 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 12 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.17.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.17.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 3 unused cells and 5 unused wires.
+<suppressed ~6 debug messages>
+
+7.17.5. Finished fast OPT passes.
+
+7.18. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+
+7.19. Executing OPT pass (performing simple optimizations).
+
+7.19.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 42 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 7 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 12 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \replay_index_allocator..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~10 debug messages>
+
+7.19.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \replay_index_allocator.
+  Optimizing cells in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.19.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 42 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 7 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 12 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.6. Executing OPT_SHARE pass.
+
+7.19.7. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.19.8. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.19.9. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.10. Finished fast OPT passes. (There is nothing left to do.)
+
+7.20. Executing TECHMAP pass (map to technology primitives).
+
+7.20.1. Executing Verilog-2005 frontend: /opt/homebrew/bin/../share/yosys/techmap.v
+Parsing Verilog input from `/opt/homebrew/bin/../share/yosys/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+7.20.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $adffe.
+Using extmapper simplemap for cells of type $reduce_bool.
+Using extmapper simplemap for cells of type $logic_not.
+Using extmapper simplemap for cells of type $logic_or.
+Using extmapper simplemap for cells of type $logic_and.
+Using template $paramod$175e67c02b86e96b1288b9dc100122520d7240d8\_90_alu for cells of type $alu.
+Using template $paramod$3ef7d3dd227da7627a99c5e5a6a4deb817573e39\_90_alu for cells of type $alu.
+Using extmapper simplemap for cells of type $not.
+Using template $paramod$fc972a7a46956c1788f3cb5257b53c8f1df2d0cc\_90_alu for cells of type $alu.
+Using extmapper simplemap for cells of type $reduce_and.
+Using extmapper simplemap for cells of type $mux.
+Using extmapper simplemap for cells of type $pos.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000000001 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000000001 for cells of type $lcu.
+Using extmapper simplemap for cells of type $xor.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000000011 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000000011 for cells of type $lcu.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000000010 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000000010 for cells of type $lcu.
+Using extmapper simplemap for cells of type $and.
+Using extmapper simplemap for cells of type $or.
+Using extmapper simplemap for cells of type $dffe.
+Using extmapper simplemap for cells of type $pmux.
+Using extmapper simplemap for cells of type $eq.
+Using extmapper simplemap for cells of type $adff.
+Using template $paramod$79fc7abbb3333dbd5736999d565fd903198fb1eb\_90_alu for cells of type $alu.
+No more expansions possible.
+<suppressed ~647 debug messages>
+
+7.21. Executing OPT pass (performing simple optimizations).
+
+7.21.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~18 debug messages>
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~12 debug messages>
+Optimizing module replay_index_allocator.
+<suppressed ~52 debug messages>
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.21.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 327 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 316 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 312 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~45 debug messages>
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 21 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Computing hashes of 17 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+<suppressed ~12 debug messages>
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 33 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 19 cells.
+
+7.21.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.21.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 7 unused cells and 203 unused wires.
+<suppressed ~11 debug messages>
+
+7.21.5. Finished fast OPT passes.
+
+7.22. Executing ABC pass (technology mapping using ABC).
+
+7.22.1. Extracting gate netlist of module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.1.1. Executed ABC.
+Extracted 1 gates and 3 wires to a netlist network with 2 inputs and 1 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.1.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:        internal signals:        0
+ABC RESULTS:           input signals:        2
+ABC RESULTS:          output signals:        1
+Removing temp directory.
+
+7.22.2. Extracting gate netlist of module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.2.1. Executed ABC.
+Extracted 16 gates and 24 wires to a netlist network with 8 inputs and 2 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.2.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        2
+ABC RESULTS:            ANDNOT cells:        3
+ABC RESULTS:              NAND cells:        2
+ABC RESULTS:               NOR cells:        1
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:        internal signals:       14
+ABC RESULTS:           input signals:        8
+ABC RESULTS:          output signals:        2
+Removing temp directory.
+
+7.22.3. Extracting gate netlist of module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.3.1. Executed ABC.
+Extracted 181 gates and 291 wires to a netlist network with 110 inputs and 30 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.3.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:       58
+ABC RESULTS:            ANDNOT cells:        4
+ABC RESULTS:              NAND cells:      130
+ABC RESULTS:               NOR cells:        2
+ABC RESULTS:        internal signals:      151
+ABC RESULTS:           input signals:      110
+ABC RESULTS:          output signals:       30
+Removing temp directory.
+
+7.22.4. Extracting gate netlist of module `\replay_index_allocator' to `<abc-temp-dir>/input.blif'..
+
+7.22.4.1. Executed ABC.
+Extracted 8 gates and 14 wires to a netlist network with 6 inputs and 6 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.4.2. Re-integrating ABC results.
+ABC RESULTS:            ANDNOT cells:        1
+ABC RESULTS:              NAND cells:        1
+ABC RESULTS:               NOT cells:        2
+ABC RESULTS:              XNOR cells:        1
+ABC RESULTS:               XOR cells:        2
+ABC RESULTS:        internal signals:        2
+ABC RESULTS:           input signals:        6
+ABC RESULTS:          output signals:        6
+Removing temp directory.
+
+7.22.5. Extracting gate netlist of module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.5.1. Executed ABC.
+Extracted 5 gates and 8 wires to a netlist network with 3 inputs and 4 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.5.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        2
+ABC RESULTS:               MUX cells:        1
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:        internal signals:        1
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        4
+Removing temp directory.
+
+7.22.6. Extracting gate netlist of module `\top' to `<abc-temp-dir>/input.blif'..
+
+7.22.6.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+Removing global temp directory.
+
+7.23. Executing OPT pass (performing simple optimizations).
+
+7.23.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module replay_index_allocator.
+Optimizing module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.23.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 1 cells of `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 325 cells of `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\replay_index_allocator'.
+Computing hashes of 12 cells of `\replay_index_allocator'.
+Finding duplicate cells in `\replay_index_allocator'.
+Finding identical cells in module `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 32 cells of `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.23.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.23.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \replay_index_allocator..
+Finding unused cells or wires in module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 334 unused wires.
+<suppressed ~6 debug messages>
+
+7.23.5. Finished fast OPT passes.
+
+7.24. Executing HIERARCHY pass (managing design hierarchy).
+Attribute `top' found on module `top'. Setting top module to top.
+
+7.24.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \replay_index_allocator
+Used module:     $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+
+7.24.2. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     \replay_index_allocator
+Used module:     $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+Removed 0 unused modules.
+
+7.25. Printing statistics.
+
+=== $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       14 wires
+       56 wire bits
+       14 public wires
+       56 public wire bits
+       14 ports
+       56 port bits
+        1 cells
+        1   $_AND_
+
+=== $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       30 wires
+       78 wire bits
+       23 public wires
+       71 public wire bits
+       23 ports
+       71 port bits
+        9 cells
+        3   $_ANDNOT_
+        2   $_AND_
+        2   $_NAND_
+        1   $_NOR_
+        1   $_ORNOT_
+
+=== $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      210 wires
+      359 wire bits
+       37 public wires
+      165 public wire bits
+       17 ports
+       61 port bits
+      325 cells
+        4   $_ANDNOT_
+       58   $_AND_
+       26   $_DFFE_PN0P_
+      104   $_DFFE_PP_
+        1   $_DFF_PN0_
+      130   $_NAND_
+        2   $_NOR_
+
+=== replay_index_allocator ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       20 wire bits
+        5 public wires
+        8 public wire bits
+        5 ports
+        8 port bits
+       12 cells
+        1   $_ANDNOT_
+        5   $_DFFE_PN0P_
+        1   $_NAND_
+        2   $_NOT_
+        1   $_XNOR_
+        2   $_XOR_
+
+=== $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       20 wires
+       62 wire bits
+       17 public wires
+       59 public wire bits
+       17 ports
+       59 port bits
+       32 cells
+        2   $_AND_
+       28   $_DFFE_PN0P_
+        1   $_MUX_
+        1   $_ORNOT_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       46 wires
+      157 wire bits
+       46 public wires
+      157 public wire bits
+       22 ports
+       68 port bits
+        5 submodules
+        1   $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   replay_index_allocator
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      379 top
+        1 $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+      325 $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        9 $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+       32 $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+       12 replay_index_allocator
+
+        +----------Count including submodules.
+        | 
+      331 wires
+      732 wire bits
+      142 public wires
+      516 public wire bits
+       98 ports
+      323 port bits
+        - memories
+        - memory bits
+        - processes
+      379 cells
+        8   $_ANDNOT_
+       63   $_AND_
+       59   $_DFFE_PN0P_
+      104   $_DFFE_PP_
+        1   $_DFF_PN0_
+        1   $_MUX_
+      133   $_NAND_
+        3   $_NOR_
+        2   $_NOT_
+        2   $_ORNOT_
+        1   $_XNOR_
+        2   $_XOR_
+        5 submodules
+        1   $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   replay_index_allocator
+
+7.26. Executing CHECK pass (checking for obvious problems).
+Checking module $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module replay_index_allocator...
+Checking module $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+8. Printing statistics.
+
+=== $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       14 wires
+       56 wire bits
+       14 public wires
+       56 public wire bits
+       14 ports
+       56 port bits
+        1 cells
+        1   $_AND_
+
+=== $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       30 wires
+       78 wire bits
+       23 public wires
+       71 public wire bits
+       23 ports
+       71 port bits
+        9 cells
+        3   $_ANDNOT_
+        2   $_AND_
+        2   $_NAND_
+        1   $_NOR_
+        1   $_ORNOT_
+
+=== $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      210 wires
+      359 wire bits
+       37 public wires
+      165 public wire bits
+       17 ports
+       61 port bits
+      325 cells
+        4   $_ANDNOT_
+       58   $_AND_
+       26   $_DFFE_PN0P_
+      104   $_DFFE_PP_
+        1   $_DFF_PN0_
+      130   $_NAND_
+        2   $_NOR_
+
+=== replay_index_allocator ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       20 wire bits
+        5 public wires
+        8 public wire bits
+        5 ports
+        8 port bits
+       12 cells
+        1   $_ANDNOT_
+        5   $_DFFE_PN0P_
+        1   $_NAND_
+        2   $_NOT_
+        1   $_XNOR_
+        2   $_XOR_
+
+=== $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       20 wires
+       62 wire bits
+       17 public wires
+       59 public wire bits
+       17 ports
+       59 port bits
+       32 cells
+        2   $_AND_
+       28   $_DFFE_PN0P_
+        1   $_MUX_
+        1   $_ORNOT_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       46 wires
+      157 wire bits
+       46 public wires
+      157 public wire bits
+       22 ports
+       68 port bits
+        5 submodules
+        1   $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   replay_index_allocator
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      379 top
+        1 $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+      325 $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        9 $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+       32 $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+       12 replay_index_allocator
+
+        +----------Count including submodules.
+        | 
+      331 wires
+      732 wire bits
+      142 public wires
+      516 public wire bits
+       98 ports
+      323 port bits
+        - memories
+        - memory bits
+        - processes
+      379 cells
+        8   $_ANDNOT_
+       63   $_AND_
+       59   $_DFFE_PN0P_
+      104   $_DFFE_PP_
+        1   $_DFF_PN0_
+        1   $_MUX_
+      133   $_NAND_
+        3   $_NOR_
+        2   $_NOT_
+        2   $_ORNOT_
+        1   $_XNOR_
+        2   $_XOR_
+        5 submodules
+        1   $paramod\host_transition_packetizer\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_memory_bank\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\replay_request_arbiter\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_packet_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   replay_index_allocator
+
+Warnings: 5 unique messages, 10 total
+End of script. Logfile hash: f120d12a5d, time: 0.33s, user: 0.10s, system: 0.01s, MEM: 21.53 MB peak
+Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+Time spent: 70% 1x abc (0 sec), 5% 20x opt_clean (0 sec), ...

@@ -1,0 +1,11 @@
+{
+  "stage": "rtl_identifier_check",
+  "command": [
+    "rtl_identifier_checker"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "",
+  "stderr": "",
+  "duration_seconds": 0.0
+}

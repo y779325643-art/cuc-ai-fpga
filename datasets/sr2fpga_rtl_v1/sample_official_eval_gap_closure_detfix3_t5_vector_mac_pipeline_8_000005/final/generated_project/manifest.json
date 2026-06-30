@@ -1,0 +1,36 @@
+{
+  "project_name": "official_eval_gap_closure_detfix3_t5_vector_mac_pipeline_8_000005",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/vector_mac_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "clock": {
+    "name": "clk",
+    "frequency_hz": 100000000
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  }
+}

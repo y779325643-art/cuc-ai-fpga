@@ -1,0 +1,13 @@
+{
+  "cell_count": 36,
+  "cell_breakdown": {
+    "$_AND_": 6,
+    "$_DFFE_PN0P_": 27,
+    "$_ORNOT_": 3,
+    "submodules": 4
+  },
+  "lut": 0,
+  "ff": 27,
+  "bram": 0,
+  "dsp": 0
+}

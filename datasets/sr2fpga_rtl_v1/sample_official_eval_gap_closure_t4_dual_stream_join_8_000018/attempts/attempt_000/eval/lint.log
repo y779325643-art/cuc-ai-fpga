@@ -1,0 +1,31 @@
+%Warning-WIDTHTRUNC: rtl/top.v:64:29: Operator ASSIGNW expects 8 bits on the Assign RHS, but Assign RHS's VARREF 'accumulator__sum' generates 9 bits.
+                                    : ... note: In instance 'top'
+   64 |   assign out_stage__in_data = accumulator__sum;
+      |                             ^
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.048
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: rtl/top.v:67:19: Operator ASSIGNW expects 9 bits on the Assign RHS, but Assign RHS's VARREF 'out_stage__out_data' generates 8 bits.
+                                     : ... note: In instance 'top'
+   67 |   assign out_data = out_stage__out_data;
+      |                   ^
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: rtl/top.v:122:6: Input port connection 'in_data' expects 9 bits on the pin connection, but pin connection's VARREF 'out_stage__in_data' generates 8 bits.
+                                     : ... note: In instance 'top'
+  122 |     .in_data(out_stage__in_data),
+      |      ^~~~~~~
+%Warning-WIDTHEXPAND: rtl/top.v:125:6: Output port connection 'out_data' expects 9 bits on the pin connection, but pin connection's VARREF 'out_stage__out_data' generates 8 bits.
+                                     : ... note: In instance 'top'
+  125 |     .out_data(out_stage__out_data),
+      |      ^~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:40:24: Bits of signal are not used: 'accumulator__sum'[8]
+                                      : ... note: In instance 'top'
+   40 |   wire [SUM_WIDTH-1:0] accumulator__sum;
+      |                        ^~~~~~~~~~~~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/accumulator_core.v:5:35: Bits of signal are not used: 'sample'[15:9]
+                                                  : ... note: In instance 'top.accumulator'
+    5 |     input wire [SAMPLE_WIDTH-1:0] sample,
+      |                                   ^~~~~~
+%Error: Exiting due to 6 warning(s)

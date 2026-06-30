@@ -1,0 +1,38 @@
+{
+  "project_name": "official_eval_gap_closure_detfix3_t9_host_protocol_shell_8_000009",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/axi_lite_write_ctrl.v",
+    "rtl/axi_lite_read_ctrl.v",
+    "rtl/control_reg_bank.v",
+    "rtl/sample_stream_adapter.v",
+    "rtl/irq_status.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "clock": {
+    "name": "clk",
+    "frequency_hz": 100000000
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  }
+}

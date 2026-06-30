@@ -1,0 +1,6 @@
+{
+  "failure_type": "generation_failed",
+  "stage": "generation",
+  "root_cause": "OpenAI-compatible API request timed out",
+  "affected_files": []
+}

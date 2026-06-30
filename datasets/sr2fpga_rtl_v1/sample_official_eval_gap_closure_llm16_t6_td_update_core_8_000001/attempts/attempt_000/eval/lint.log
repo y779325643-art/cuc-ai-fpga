@@ -1,0 +1,5 @@
+%Error: rtl/td_update_core.v:29:41: syntax error, unexpected ',', expecting '}'
+   29 |     assign value_ext = $signed({10{1'b0}, value});
+      |                                         ^
+        ... See the manual at https://verilator.org/verilator_doc.html?v=5.048 for more assistance.
+%Error: Exiting due to 1 error(s)

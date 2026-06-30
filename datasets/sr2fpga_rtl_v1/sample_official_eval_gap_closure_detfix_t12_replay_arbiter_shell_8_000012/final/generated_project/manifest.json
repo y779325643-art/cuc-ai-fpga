@@ -1,0 +1,38 @@
+{
+  "project_name": "official_eval_gap_closure_detfix_t12_replay_arbiter_shell_8_000012",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/host_transition_packetizer.v",
+    "rtl/replay_index_allocator.v",
+    "rtl/replay_request_arbiter.v",
+    "rtl/replay_memory_bank.v",
+    "rtl/sample_packet_stage.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "clock": {
+    "name": "clk",
+    "frequency_hz": 100000000
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  }
+}

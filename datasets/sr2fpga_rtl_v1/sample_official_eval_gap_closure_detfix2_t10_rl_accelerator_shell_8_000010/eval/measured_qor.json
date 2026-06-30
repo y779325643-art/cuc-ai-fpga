@@ -1,0 +1,21 @@
+{
+  "cell_count": 1289,
+  "cell_breakdown": {
+    "$_ANDNOT_": 25,
+    "$_AND_": 315,
+    "$_DFFE_PN0P_": 95,
+    "$_NOR_": 8,
+    "$_ORNOT_": 30,
+    "$_OR_": 42,
+    "$_NAND_": 434,
+    "$_NOT_": 2,
+    "$_XNOR_": 102,
+    "$_XOR_": 235,
+    "$_MUX_": 1,
+    "submodules": 5
+  },
+  "lut": 0,
+  "ff": 95,
+  "bram": 0,
+  "dsp": 0
+}

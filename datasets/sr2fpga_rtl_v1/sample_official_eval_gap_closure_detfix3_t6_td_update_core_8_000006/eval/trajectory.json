@@ -1,0 +1,2093 @@
+{
+  "sample_id": "sample_official_eval_gap_closure_detfix3_t6_td_update_core_8_000006",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/td_input_stage.v",
+        "rtl/discount_core.v",
+        "rtl/td_update_core.v",
+        "rtl/stream_stage.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/iverilog",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/td_input_stage.v",
+        "rtl/discount_core.v",
+        "rtl/td_update_core.v",
+        "rtl/stream_stage.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/vvp",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/vvp",
+        "sim.out"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/yosys",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/yosys",
+        "-p",
+        "read_verilog rtl/top.v rtl/td_input_stage.v rtl/discount_core.v rtl/td_update_core.v rtl/stream_stage.v; synth -top top; stat"
+      ]
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "composed_td_update_core",
+    "project_name": "official_eval_gap_closure_detfix3_t6_td_update_core_8_000006",
+    "project": {
+      "name": "official_eval_gap_closure_detfix3_t6_td_update_core_8_000006",
+      "description": "Build an 8-bit TD-error value-update datapath as a complete SR2FPGA Verilog RTL project. This is component topology t6_td_update_core, difficulty tier T6. Use td_input_stage feeding discount_core, then td_update_core, then stream_stage. The design must implement this black-box behavior: a reward, value, next value, discount factor, and learning rate tuple is staged, converted into a temporal-difference error, and used to emit an updated value. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.in_valid -> td_input_stage.in_valid; top.reward -> td_input_stage.reward; top.value -> td_input_stage.value; top.next_value -> td_input_stage.next_value; top.gamma -> td_input_stage.gamma; top.alpha -> td_input_stage.alpha; td_input_stage.out_valid -> discount_core.in_valid; td_input_stage.reward_out -> discount_core.reward; td_input_stage.next_value_out -> discount_core.next_value; td_input_stage.gamma_out -> discount_core.gamma; discount_core.out_valid -> td_update_core.in_valid; discount_core.discounted_return -> td_update_core.discounted_return; td_input_stage.value_out -> td_update_core.value; td_input_stage.alpha_out -> td_update_core.alpha; td_update_core.out_valid -> stream_stage.in_valid; td_update_core.td_error -> stream_stage.td_error; td_update_core.updated_value -> stream_stage.updated_value; stream_stage.out_valid -> top.out_valid; stream_stage.td_error_out -> top.td_error; stream_stage.updated_value_out -> top.updated_value; top.out_ready -> stream_stage.out_ready. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Build an 8-bit TD-error value-update datapath as a complete SR2FPGA Verilog RTL project. This is component topology t6_td_update_core, difficulty tier T6. Use td_input_stage feeding discount_core, then td_update_core, then stream_stage. The design must implement this black-box behavior: a reward, value, next value, discount factor, and learning rate tuple is staged, converted into a temporal-difference error, and used to emit an updated value. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.in_valid -> td_input_stage.in_valid; top.reward -> td_input_stage.reward; top.value -> td_input_stage.value; top.next_value -> td_input_stage.next_value; top.gamma -> td_input_stage.gamma; top.alpha -> td_input_stage.alpha; td_input_stage.out_valid -> discount_core.in_valid; td_input_stage.reward_out -> discount_core.reward; td_input_stage.next_value_out -> discount_core.next_value; td_input_stage.gamma_out -> discount_core.gamma; discount_core.out_valid -> td_update_core.in_valid; discount_core.discounted_return -> td_update_core.discounted_return; td_input_stage.value_out -> td_update_core.value; td_input_stage.alpha_out -> td_update_core.alpha; td_update_core.out_valid -> stream_stage.in_valid; td_update_core.td_error -> stream_stage.td_error; td_update_core.updated_value -> stream_stage.updated_value; stream_stage.out_valid -> top.out_valid; stream_stage.td_error_out -> top.td_error; stream_stage.updated_value_out -> top.updated_value; top.out_ready -> stream_stage.out_ready. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "a reward, value, next value, discount factor, and learning rate tuple is staged, converted into a temporal-difference error, and used to emit an updated value",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "reward",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "value",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "next_value",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "gamma",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "alpha",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "out_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "td_error",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "updated_value",
+          "dir": "output",
+          "width": 8
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "captured_reward",
+          "owner": "u_td_input_stage",
+          "width": 8
+        },
+        {
+          "name": "captured_value",
+          "owner": "u_td_input_stage",
+          "width": 8
+        },
+        {
+          "name": "captured_next_value",
+          "owner": "u_td_input_stage",
+          "width": 8
+        },
+        {
+          "name": "td_error",
+          "owner": "u_td_update_core",
+          "width": 8
+        },
+        {
+          "name": "updated_value",
+          "owner": "u_td_update_core",
+          "width": 8
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "value",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "next_value",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "gamma",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "alpha",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "td_error",
+            "dir": "output",
+            "width": 8
+          },
+          {
+            "name": "updated_value",
+            "dir": "output",
+            "width": 8
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "td_input_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/td_input_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "gamma",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "reward_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "gamma_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "td input stage component in the generated RTL project"
+      },
+      {
+        "name": "discount_core",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/discount_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          },
+          {
+            "name": "SCALE_SHIFT",
+            "default": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "gamma",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "discounted_return",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "discount core component in the generated RTL project"
+      },
+      {
+        "name": "td_update_core",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/td_update_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          },
+          {
+            "name": "SCALE_SHIFT",
+            "default": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "discounted_return",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "td_error",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "td update core component in the generated RTL project"
+      },
+      {
+        "name": "stream_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/stream_stage.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "td_error",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "td_error_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value_out",
+            "dir": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "stream stage component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_td_input_stage",
+        "component": "td_input_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_discount_core",
+        "component": "discount_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "SCALE_SHIFT": 4
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_td_update_core",
+        "component": "td_update_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "SCALE_SHIFT": 4
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_stream_stage",
+        "component": "stream_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_td_input_stage_primary_path",
+        "path": [
+          "top.in_valid",
+          "u_td_input_stage.in_valid",
+          "u_td_input_stage.in_ready",
+          "top.out_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_discount_core_primary_path",
+        "path": [
+          "top.in_valid",
+          "u_discount_core.in_valid",
+          "u_discount_core.in_ready",
+          "top.out_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_td_update_core_primary_path",
+        "path": [
+          "top.in_valid",
+          "u_td_update_core.in_valid",
+          "u_td_update_core.in_ready",
+          "top.out_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_stream_stage_primary_path",
+        "path": [
+          "top.in_valid",
+          "u_stream_stage.in_valid",
+          "u_stream_stage.in_ready",
+          "top.out_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      },
+      {
+        "name": "valid_ready_transfer",
+        "kind": "handshake_rule",
+        "condition": "valid && ready",
+        "effects": [
+          "advance each ready/valid flow by one payload"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_td_input_stage_primary_path",
+          "u_discount_core_primary_path",
+          "u_td_update_core_primary_path",
+          "u_stream_stage_primary_path"
+        ]
+      },
+      {
+        "name": "backpressure_hold",
+        "kind": "stall_rule",
+        "condition": "valid && !ready",
+        "effects": [
+          "hold payload and valid state until downstream ready"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_td_input_stage_primary_path",
+          "u_discount_core_primary_path",
+          "u_td_update_core_primary_path",
+          "u_stream_stage_primary_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 80,
+        "ff": 84,
+        "bram": 0,
+        "dsp": 1
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when a reward, value, next value, discount factor, and learning rate tuple is staged, converted into a temporal-difference error, and used to emit an updated value.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when a reward, value, next value, discount factor, and learning rate tuple is staged, converted into a temporal-difference error, and used to emit an updated value.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when a reward, value, next value, discount factor, and learning rate tuple is staged, converted into a temporal-difference error, and used to emit an updated value."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/td_input_stage.v",
+        "rtl/discount_core.v",
+        "rtl/td_update_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Build an 8-bit TD-error value-update datapath as a complete SR2FPGA Verilog RTL project. This is component topology t6_td_update_core, difficulty tier T6. Use td_input_stage feeding discount_core, then td_update_core, then stream_stage. The design must implement this black-box behavior: a reward, value, next value, discount factor, and learning rate tuple is staged, converted into a temporal-difference error, and used to emit an updated value. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.in_valid -> td_input_stage.in_valid; top.reward -> td_input_stage.reward; top.value -> td_input_stage.value; top.next_value -> td_input_stage.next_value; top.gamma -> td_input_stage.gamma; top.alpha -> td_input_stage.alpha; td_input_stage.out_valid -> discount_core.in_valid; td_input_stage.reward_out -> discount_core.reward; td_input_stage.next_value_out -> discount_core.next_value; td_input_stage.gamma_out -> discount_core.gamma; discount_core.out_valid -> td_update_core.in_valid; discount_core.discounted_return -> td_update_core.discounted_return; td_input_stage.value_out -> td_update_core.value; td_input_stage.alpha_out -> td_update_core.alpha; td_update_core.out_valid -> stream_stage.in_valid; td_update_core.td_error -> stream_stage.td_error; td_update_core.updated_value -> stream_stage.updated_value; stream_stage.out_valid -> top.out_valid; stream_stage.td_error_out -> top.td_error; stream_stage.updated_value_out -> top.updated_value; top.out_ready -> stream_stage.out_ready. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "name": "reward",
+          "width": 8
+        },
+        {
+          "name": "value",
+          "width": 8
+        },
+        {
+          "name": "next_value",
+          "width": 8
+        },
+        {
+          "name": "gamma",
+          "width": 8
+        },
+        {
+          "name": "alpha",
+          "width": 8
+        },
+        {
+          "name": "out_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "name": "td_error",
+          "width": 8
+        },
+        {
+          "name": "updated_value",
+          "width": 8
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "td_input_stage",
+        "discount_core",
+        "td_update_core",
+        "stream_stage"
+      ],
+      "generator": "component_topology",
+      "topology_id": "t6_td_update_core",
+      "difficulty_tier": "T6",
+      "component_library": "sr2fpga_deterministic_components_v1",
+      "topology": {
+        "nodes": [
+          {
+            "id": "input_stage",
+            "component": "td_input_stage"
+          },
+          {
+            "id": "discount",
+            "component": "discount_core"
+          },
+          {
+            "id": "update",
+            "component": "td_update_core"
+          },
+          {
+            "id": "output_stage",
+            "component": "stream_stage"
+          }
+        ],
+        "edges": [
+          {
+            "from": "top.in_valid",
+            "to": "td_input_stage.in_valid"
+          },
+          {
+            "from": "top.reward",
+            "to": "td_input_stage.reward"
+          },
+          {
+            "from": "top.value",
+            "to": "td_input_stage.value"
+          },
+          {
+            "from": "top.next_value",
+            "to": "td_input_stage.next_value"
+          },
+          {
+            "from": "top.gamma",
+            "to": "td_input_stage.gamma"
+          },
+          {
+            "from": "top.alpha",
+            "to": "td_input_stage.alpha"
+          },
+          {
+            "from": "td_input_stage.out_valid",
+            "to": "discount_core.in_valid"
+          },
+          {
+            "from": "td_input_stage.reward_out",
+            "to": "discount_core.reward"
+          },
+          {
+            "from": "td_input_stage.next_value_out",
+            "to": "discount_core.next_value"
+          },
+          {
+            "from": "td_input_stage.gamma_out",
+            "to": "discount_core.gamma"
+          },
+          {
+            "from": "discount_core.out_valid",
+            "to": "td_update_core.in_valid"
+          },
+          {
+            "from": "discount_core.discounted_return",
+            "to": "td_update_core.discounted_return"
+          },
+          {
+            "from": "td_input_stage.value_out",
+            "to": "td_update_core.value"
+          },
+          {
+            "from": "td_input_stage.alpha_out",
+            "to": "td_update_core.alpha"
+          },
+          {
+            "from": "td_update_core.out_valid",
+            "to": "stream_stage.in_valid"
+          },
+          {
+            "from": "td_update_core.td_error",
+            "to": "stream_stage.td_error"
+          },
+          {
+            "from": "td_update_core.updated_value",
+            "to": "stream_stage.updated_value"
+          },
+          {
+            "from": "stream_stage.out_valid",
+            "to": "top.out_valid"
+          },
+          {
+            "from": "stream_stage.td_error_out",
+            "to": "top.td_error"
+          },
+          {
+            "from": "stream_stage.updated_value_out",
+            "to": "top.updated_value"
+          },
+          {
+            "from": "top.out_ready",
+            "to": "stream_stage.out_ready"
+          }
+        ]
+      }
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "value",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "next_value",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "gamma",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "alpha",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "td_error",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "updated_value",
+            "direction": "output",
+            "width": 8
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "td_input_stage",
+        "role": "submodule",
+        "source": "rtl/td_input_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "gamma",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "reward_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "gamma_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "td input stage component in the generated RTL project"
+      },
+      {
+        "name": "discount_core",
+        "role": "submodule",
+        "source": "rtl/discount_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8,
+          "SCALE_SHIFT": 4
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          },
+          {
+            "name": "SCALE_SHIFT",
+            "value": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "reward",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "next_value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "gamma",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "discounted_return",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "discount core component in the generated RTL project"
+      },
+      {
+        "name": "td_update_core",
+        "role": "submodule",
+        "source": "rtl/td_update_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8,
+          "SCALE_SHIFT": 4
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          },
+          {
+            "name": "SCALE_SHIFT",
+            "value": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "discounted_return",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "alpha",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "td_error",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "td update core component in the generated RTL project"
+      },
+      {
+        "name": "stream_stage",
+        "role": "submodule",
+        "source": "rtl/stream_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "td_error",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "td_error_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "updated_value_out",
+            "direction": "output",
+            "width": "[DATA_WIDTH-1:0]"
+          }
+        ],
+        "intent": "stream stage component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "clk",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "clk",
+          "instance": "u_stream_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "rst_n",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "rst_n",
+          "instance": "u_stream_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "in_valid"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "in_valid",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "in_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_input_stage",
+          "port": "in_ready",
+          "instance": "u_td_input_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "in_ready"
+        },
+        "signal": "in_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "reward"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "reward",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "reward",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "value"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "value",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "next_value"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "next_value",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "next_value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "gamma"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "gamma",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "gamma",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "alpha"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "alpha",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "alpha",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_input_stage",
+          "port": "out_valid",
+          "instance": "u_td_input_stage"
+        },
+        "to": {
+          "module": "discount_core",
+          "port": "in_valid",
+          "instance": "u_discount_core"
+        },
+        "signal": "input_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "discount_core",
+          "port": "in_ready",
+          "instance": "u_discount_core"
+        },
+        "to": {
+          "module": "td_input_stage",
+          "port": "out_ready",
+          "instance": "u_td_input_stage"
+        },
+        "signal": "input_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_input_stage",
+          "port": "reward_out",
+          "instance": "u_td_input_stage"
+        },
+        "to": {
+          "module": "discount_core",
+          "port": "reward",
+          "instance": "u_discount_core"
+        },
+        "signal": "reward_s",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_input_stage",
+          "port": "value_out",
+          "instance": "u_td_input_stage"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "value",
+          "instance": "u_td_update_core"
+        },
+        "signal": "value_s",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_input_stage",
+          "port": "next_value_out",
+          "instance": "u_td_input_stage"
+        },
+        "to": {
+          "module": "discount_core",
+          "port": "next_value",
+          "instance": "u_discount_core"
+        },
+        "signal": "next_value_s",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_input_stage",
+          "port": "gamma_out",
+          "instance": "u_td_input_stage"
+        },
+        "to": {
+          "module": "discount_core",
+          "port": "gamma",
+          "instance": "u_discount_core"
+        },
+        "signal": "gamma_s",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_input_stage",
+          "port": "alpha_out",
+          "instance": "u_td_input_stage"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "alpha",
+          "instance": "u_td_update_core"
+        },
+        "signal": "alpha_s",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "discount_core",
+          "port": "out_valid",
+          "instance": "u_discount_core"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "in_valid",
+          "instance": "u_td_update_core"
+        },
+        "signal": "discount_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_update_core",
+          "port": "in_ready",
+          "instance": "u_td_update_core"
+        },
+        "to": {
+          "module": "discount_core",
+          "port": "out_ready",
+          "instance": "u_discount_core"
+        },
+        "signal": "discount_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "discount_core",
+          "port": "discounted_return",
+          "instance": "u_discount_core"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "discounted_return",
+          "instance": "u_td_update_core"
+        },
+        "signal": "discounted_return",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_update_core",
+          "port": "out_valid",
+          "instance": "u_td_update_core"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "in_valid",
+          "instance": "u_stream_stage"
+        },
+        "signal": "update_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "in_ready",
+          "instance": "u_stream_stage"
+        },
+        "to": {
+          "module": "td_update_core",
+          "port": "out_ready",
+          "instance": "u_td_update_core"
+        },
+        "signal": "update_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_update_core",
+          "port": "td_error",
+          "instance": "u_td_update_core"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "td_error",
+          "instance": "u_stream_stage"
+        },
+        "signal": "update_td_error",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "td_update_core",
+          "port": "updated_value",
+          "instance": "u_td_update_core"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "updated_value",
+          "instance": "u_stream_stage"
+        },
+        "signal": "update_value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "out_valid",
+          "instance": "u_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "out_valid"
+        },
+        "signal": "out_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "out_ready"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "out_ready",
+          "instance": "u_stream_stage"
+        },
+        "signal": "out_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "td_error_out",
+          "instance": "u_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "td_error"
+        },
+        "signal": "td_error",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "updated_value_out",
+          "instance": "u_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "updated_value"
+        },
+        "signal": "updated_value",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[DATA_WIDTH-1:0]",
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "reward",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "value",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "next_value",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "gamma",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "alpha",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "td_error",
+        "direction": "output",
+        "width": 8
+      },
+      {
+        "name": "updated_value",
+        "direction": "output",
+        "width": 8
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 80,
+        "ff": 84,
+        "bram": 0,
+        "dsp": 1
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 777,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 516,
+        "behavior_holes": 0
+      },
+      "rtl/discount_core.v": {
+        "origin": "model_generated",
+        "bytes": 1597,
+        "behavior_holes": 0
+      },
+      "rtl/stream_stage.v": {
+        "origin": "model_generated",
+        "bytes": 848,
+        "behavior_holes": 0
+      },
+      "rtl/td_input_stage.v": {
+        "origin": "model_generated",
+        "bytes": 1286,
+        "behavior_holes": 0
+      },
+      "rtl/td_update_core.v": {
+        "origin": "model_generated",
+        "bytes": 1631,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 2279,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 2405,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 46049,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/discount_core.v",
+      "rtl/stream_stage.v",
+      "rtl/td_input_stage.v",
+      "rtl/td_update_core.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.174889,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 0,
+      "ff": 58,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

@@ -1,0 +1,1733 @@
+{
+  "sample_id": "sample_official_eval_gap_closure_t5_vector_mac_pipeline_8_000005",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "failed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 1,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/vector_mac_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "failure_type": "lint_warning_as_error",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "composed_vector_mac_pipeline",
+    "project_name": "official_eval_gap_closure_t5_vector_mac_pipeline_8_000005",
+    "project": {
+      "name": "official_eval_gap_closure_t5_vector_mac_pipeline_8_000005",
+      "description": "Build an 8-bit vector MAC feature pipeline as a complete SR2FPGA Verilog RTL project. This is component topology t5_vector_mac_pipeline, difficulty tier T5. Use feature and weight skid_buffer instances feeding vector_mac_core, then stream_stage. The design must implement this black-box behavior: paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, biased, and staged as score output. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.feature_valid -> skid_buffer.in_valid; top.feature_data -> skid_buffer.in_data; top.weight_valid -> skid_buffer.in_valid; top.weight_data -> skid_buffer.in_data; skid_buffer.out_valid -> vector_mac_core.feature_valid; skid_buffer.out_data -> vector_mac_core.feature_data; skid_buffer.out_valid -> vector_mac_core.weight_valid; skid_buffer.out_data -> vector_mac_core.weight_data; vector_mac_core.feature_ready -> skid_buffer.out_ready; vector_mac_core.weight_ready -> skid_buffer.out_ready; top.bias -> vector_mac_core.bias; vector_mac_core.score_valid -> stream_stage.in_valid; vector_mac_core.score_data -> stream_stage.in_data; stream_stage.in_ready -> vector_mac_core.score_ready; stream_stage.out_valid -> top.score_valid; stream_stage.out_data -> top.score_data; top.score_ready -> stream_stage.out_ready. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Build an 8-bit vector MAC feature pipeline as a complete SR2FPGA Verilog RTL project. This is component topology t5_vector_mac_pipeline, difficulty tier T5. Use feature and weight skid_buffer instances feeding vector_mac_core, then stream_stage. The design must implement this black-box behavior: paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, biased, and staged as score output. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.feature_valid -> skid_buffer.in_valid; top.feature_data -> skid_buffer.in_data; top.weight_valid -> skid_buffer.in_valid; top.weight_data -> skid_buffer.in_data; skid_buffer.out_valid -> vector_mac_core.feature_valid; skid_buffer.out_data -> vector_mac_core.feature_data; skid_buffer.out_valid -> vector_mac_core.weight_valid; skid_buffer.out_data -> vector_mac_core.weight_data; vector_mac_core.feature_ready -> skid_buffer.out_ready; vector_mac_core.weight_ready -> skid_buffer.out_ready; top.bias -> vector_mac_core.bias; vector_mac_core.score_valid -> stream_stage.in_valid; vector_mac_core.score_data -> stream_stage.in_data; stream_stage.in_ready -> vector_mac_core.score_ready; stream_stage.out_valid -> top.score_valid; stream_stage.out_data -> top.score_data; top.score_ready -> stream_stage.out_ready. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure.",
+      "design_goal": "paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, biased, and staged as score output",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "feature_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "feature_data",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "weight_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "weight_data",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "bias",
+          "dir": "input",
+          "width": 16
+        },
+        {
+          "name": "score_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "feature_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "weight_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "score_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "score_data",
+          "dir": "output",
+          "width": 16
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "accumulator",
+          "owner": "u_vector_mac_core",
+          "width": 16
+        },
+        {
+          "name": "pending_score",
+          "owner": "u_vector_mac_core",
+          "width": 16
+        }
+      ],
+      "counters": [
+        {
+          "name": "vector_index",
+          "owner": "u_vector_mac_core",
+          "width": 2
+        }
+      ],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_data",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "weight_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "weight_data",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "bias",
+            "dir": "input",
+            "width": 16
+          },
+          {
+            "name": "score_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "weight_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "score_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "score_data",
+            "dir": "output",
+            "width": 16
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "skid_buffer",
+        "semantic_kind": "buffer",
+        "source": "rtl/skid_buffer.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "dir": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "skid buffer component in the generated RTL project"
+      },
+      {
+        "name": "vector_mac_core",
+        "semantic_kind": "mac",
+        "source": "rtl/vector_mac_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "default": 8
+          },
+          {
+            "name": "SCORE_WIDTH",
+            "default": 16
+          },
+          {
+            "name": "VECTOR_LEN",
+            "default": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "feature_data",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "weight_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "weight_data",
+            "dir": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias",
+            "dir": "input",
+            "width": "[SCORE_WIDTH-1:0]"
+          },
+          {
+            "name": "score_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "score_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "score_data",
+            "dir": "output",
+            "width": "[SCORE_WIDTH-1:0]"
+          }
+        ],
+        "intent": "vector mac core component in the generated RTL project"
+      },
+      {
+        "name": "stream_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/stream_stage.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 16
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "dir": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "stream stage component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_feature_buffer",
+        "component": "skid_buffer",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_weight_buffer",
+        "component": "skid_buffer",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_vector_mac_core",
+        "component": "vector_mac_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "SCORE_WIDTH": 16,
+          "VECTOR_LEN": 4
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_score_stage",
+        "component": "stream_stage",
+        "parameter_values": {
+          "WIDTH": 16
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_feature_buffer_primary_path",
+        "path": [
+          "top.feature_data",
+          "u_feature_buffer.in_valid",
+          "u_feature_buffer.in_ready",
+          "top.score_data"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_weight_buffer_primary_path",
+        "path": [
+          "top.feature_data",
+          "u_weight_buffer.in_valid",
+          "u_weight_buffer.in_ready",
+          "top.score_data"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_vector_mac_core_primary_path",
+        "path": [
+          "top.feature_data",
+          "u_vector_mac_core.feature_valid",
+          "u_vector_mac_core.feature_ready",
+          "top.score_data"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_score_stage_primary_path",
+        "path": [
+          "top.feature_data",
+          "u_score_stage.in_valid",
+          "u_score_stage.in_ready",
+          "top.score_data"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      },
+      {
+        "name": "valid_ready_transfer",
+        "kind": "handshake_rule",
+        "condition": "valid && ready",
+        "effects": [
+          "advance each ready/valid flow by one payload"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_feature_buffer_primary_path",
+          "u_weight_buffer_primary_path",
+          "u_vector_mac_core_primary_path",
+          "u_score_stage_primary_path"
+        ]
+      },
+      {
+        "name": "backpressure_hold",
+        "kind": "stall_rule",
+        "condition": "valid && !ready",
+        "effects": [
+          "hold payload and valid state until downstream ready"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_feature_buffer_primary_path",
+          "u_weight_buffer_primary_path",
+          "u_vector_mac_core_primary_path",
+          "u_score_stage_primary_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 68,
+        "ff": 72,
+        "bram": 0,
+        "dsp": 1
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, biased, and staged as score output.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, biased, and staged as score output.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, biased, and staged as score output."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/vector_mac_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Build an 8-bit vector MAC feature pipeline as a complete SR2FPGA Verilog RTL project. This is component topology t5_vector_mac_pipeline, difficulty tier T5. Use feature and weight skid_buffer instances feeding vector_mac_core, then stream_stage. The design must implement this black-box behavior: paired feature and weight streams are buffered, multiplied and accumulated over a fixed vector length, biased, and staged as score output. Keep rtl/top.v as the integration wrapper and keep each reusable component in a separate RTL file. Preserve these interface contracts: top.feature_valid -> skid_buffer.in_valid; top.feature_data -> skid_buffer.in_data; top.weight_valid -> skid_buffer.in_valid; top.weight_data -> skid_buffer.in_data; skid_buffer.out_valid -> vector_mac_core.feature_valid; skid_buffer.out_data -> vector_mac_core.feature_data; skid_buffer.out_valid -> vector_mac_core.weight_valid; skid_buffer.out_data -> vector_mac_core.weight_data; vector_mac_core.feature_ready -> skid_buffer.out_ready; vector_mac_core.weight_ready -> skid_buffer.out_ready; top.bias -> vector_mac_core.bias; vector_mac_core.score_valid -> stream_stage.in_valid; vector_mac_core.score_data -> stream_stage.in_data; stream_stage.in_ready -> vector_mac_core.score_ready; stream_stage.out_valid -> top.score_valid; stream_stage.out_data -> top.score_data; top.score_ready -> stream_stage.out_ready. Include system_his.json, manifest.json, timing constraints, predicted QoR, and a bounded self-checking testbench that prints TEST_PASS only on success or TEST_FAIL on failure."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "feature_valid",
+          "width": 1
+        },
+        {
+          "name": "feature_data",
+          "width": 8
+        },
+        {
+          "name": "weight_valid",
+          "width": 1
+        },
+        {
+          "name": "weight_data",
+          "width": 8
+        },
+        {
+          "name": "bias",
+          "width": 16
+        },
+        {
+          "name": "score_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "feature_ready",
+          "width": 1
+        },
+        {
+          "name": "weight_ready",
+          "width": 1
+        },
+        {
+          "name": "score_valid",
+          "width": 1
+        },
+        {
+          "name": "score_data",
+          "width": 16
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "skid_buffer",
+        "vector_mac_core",
+        "stream_stage"
+      ],
+      "generator": "component_topology",
+      "topology_id": "t5_vector_mac_pipeline",
+      "difficulty_tier": "T5",
+      "component_library": "sr2fpga_deterministic_components_v1",
+      "topology": {
+        "nodes": [
+          {
+            "id": "feature_buffer",
+            "component": "skid_buffer"
+          },
+          {
+            "id": "weight_buffer",
+            "component": "skid_buffer"
+          },
+          {
+            "id": "mac",
+            "component": "vector_mac_core"
+          },
+          {
+            "id": "score_stage",
+            "component": "stream_stage"
+          }
+        ],
+        "edges": [
+          {
+            "from": "top.feature_valid",
+            "to": "skid_buffer.in_valid"
+          },
+          {
+            "from": "top.feature_data",
+            "to": "skid_buffer.in_data"
+          },
+          {
+            "from": "top.weight_valid",
+            "to": "skid_buffer.in_valid"
+          },
+          {
+            "from": "top.weight_data",
+            "to": "skid_buffer.in_data"
+          },
+          {
+            "from": "skid_buffer.out_valid",
+            "to": "vector_mac_core.feature_valid"
+          },
+          {
+            "from": "skid_buffer.out_data",
+            "to": "vector_mac_core.feature_data"
+          },
+          {
+            "from": "skid_buffer.out_valid",
+            "to": "vector_mac_core.weight_valid"
+          },
+          {
+            "from": "skid_buffer.out_data",
+            "to": "vector_mac_core.weight_data"
+          },
+          {
+            "from": "vector_mac_core.feature_ready",
+            "to": "skid_buffer.out_ready"
+          },
+          {
+            "from": "vector_mac_core.weight_ready",
+            "to": "skid_buffer.out_ready"
+          },
+          {
+            "from": "top.bias",
+            "to": "vector_mac_core.bias"
+          },
+          {
+            "from": "vector_mac_core.score_valid",
+            "to": "stream_stage.in_valid"
+          },
+          {
+            "from": "vector_mac_core.score_data",
+            "to": "stream_stage.in_data"
+          },
+          {
+            "from": "stream_stage.in_ready",
+            "to": "vector_mac_core.score_ready"
+          },
+          {
+            "from": "stream_stage.out_valid",
+            "to": "top.score_valid"
+          },
+          {
+            "from": "stream_stage.out_data",
+            "to": "top.score_data"
+          },
+          {
+            "from": "top.score_ready",
+            "to": "stream_stage.out_ready"
+          }
+        ]
+      }
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_data",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "weight_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "weight_data",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "bias",
+            "direction": "input",
+            "width": 16
+          },
+          {
+            "name": "score_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "weight_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "score_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "score_data",
+            "direction": "output",
+            "width": 16
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "skid_buffer",
+        "role": "submodule",
+        "source": "rtl/skid_buffer.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "skid buffer component in the generated RTL project"
+      },
+      {
+        "name": "vector_mac_core",
+        "role": "submodule",
+        "source": "rtl/vector_mac_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "DATA_WIDTH": 8,
+          "SCORE_WIDTH": 16,
+          "VECTOR_LEN": 4
+        },
+        "params": [
+          {
+            "name": "DATA_WIDTH",
+            "value": 8
+          },
+          {
+            "name": "SCORE_WIDTH",
+            "value": 16
+          },
+          {
+            "name": "VECTOR_LEN",
+            "value": 4
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "feature_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "feature_data",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "weight_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "weight_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "weight_data",
+            "direction": "input",
+            "width": "[DATA_WIDTH-1:0]"
+          },
+          {
+            "name": "bias",
+            "direction": "input",
+            "width": "[SCORE_WIDTH-1:0]"
+          },
+          {
+            "name": "score_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "score_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "score_data",
+            "direction": "output",
+            "width": "[SCORE_WIDTH-1:0]"
+          }
+        ],
+        "intent": "vector mac core component in the generated RTL project"
+      },
+      {
+        "name": "stream_stage",
+        "role": "submodule",
+        "source": "rtl/stream_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 16
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 16
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "stream stage component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "clk",
+          "instance": "u_feature_buffer"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "clk",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "clk",
+          "instance": "u_score_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "rst_n",
+          "instance": "u_feature_buffer"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "rst_n",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "rst_n",
+          "instance": "u_score_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "feature_valid"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "in_valid",
+          "instance": "u_feature_buffer"
+        },
+        "signal": "feature_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "in_ready",
+          "instance": "u_feature_buffer"
+        },
+        "to": {
+          "module": "top",
+          "port": "feature_ready"
+        },
+        "signal": "feature_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "feature_data"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "in_data",
+          "instance": "u_feature_buffer"
+        },
+        "signal": "feature_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "out_valid",
+          "instance": "u_feature_buffer"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "feature_valid",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "feature_buf_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "vector_mac_core",
+          "port": "feature_ready",
+          "instance": "u_vector_mac_core"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "out_ready",
+          "instance": "u_feature_buffer"
+        },
+        "signal": "feature_buf_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "out_data",
+          "instance": "u_feature_buffer"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "feature_data",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "feature_buf_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "weight_valid"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "in_valid",
+          "instance": "u_weight_buffer"
+        },
+        "signal": "weight_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "in_ready",
+          "instance": "u_weight_buffer"
+        },
+        "to": {
+          "module": "top",
+          "port": "weight_ready"
+        },
+        "signal": "weight_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "weight_data"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "in_data",
+          "instance": "u_weight_buffer"
+        },
+        "signal": "weight_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "out_valid",
+          "instance": "u_weight_buffer"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "weight_valid",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "weight_buf_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "vector_mac_core",
+          "port": "weight_ready",
+          "instance": "u_vector_mac_core"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "out_ready",
+          "instance": "u_weight_buffer"
+        },
+        "signal": "weight_buf_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "out_data",
+          "instance": "u_weight_buffer"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "weight_data",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "weight_buf_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "bias"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "bias",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "bias",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 16,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "vector_mac_core",
+          "port": "score_valid",
+          "instance": "u_vector_mac_core"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "in_valid",
+          "instance": "u_score_stage"
+        },
+        "signal": "mac_score_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "in_ready",
+          "instance": "u_score_stage"
+        },
+        "to": {
+          "module": "vector_mac_core",
+          "port": "score_ready",
+          "instance": "u_vector_mac_core"
+        },
+        "signal": "mac_score_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "vector_mac_core",
+          "port": "score_data",
+          "instance": "u_vector_mac_core"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "in_data",
+          "instance": "u_score_stage"
+        },
+        "signal": "mac_score_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[SCORE_WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "out_valid",
+          "instance": "u_score_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "score_valid"
+        },
+        "signal": "score_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "score_ready"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "out_ready",
+          "instance": "u_score_stage"
+        },
+        "signal": "score_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "out_data",
+          "instance": "u_score_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "score_data"
+        },
+        "signal": "score_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[WIDTH-1:0]",
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "feature_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "feature_data",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "weight_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "weight_data",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "bias",
+        "direction": "input",
+        "width": 16
+      },
+      {
+        "name": "score_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "feature_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "weight_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "score_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "score_data",
+        "direction": "output",
+        "width": 16
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 68,
+        "ff": 72,
+        "bram": 0,
+        "dsp": 1
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 745,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 518,
+        "behavior_holes": 0
+      },
+      "rtl/skid_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 688,
+        "behavior_holes": 0
+      },
+      "rtl/stream_stage.v": {
+        "origin": "model_generated",
+        "bytes": 597,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 1940,
+        "behavior_holes": 0
+      },
+      "rtl/vector_mac_core.v": {
+        "origin": "model_generated",
+        "bytes": 1724,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 2302,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 38342,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/skid_buffer.v",
+      "rtl/stream_stage.v",
+      "rtl/top.v",
+      "rtl/vector_mac_core.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.154573,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

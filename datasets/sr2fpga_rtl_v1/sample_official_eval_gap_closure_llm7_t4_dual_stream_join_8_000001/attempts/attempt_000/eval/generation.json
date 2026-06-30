@@ -1,0 +1,11 @@
+{
+  "stage": "generation",
+  "command": [
+    "project_generator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "OpenAI-compatible API request timed out",
+  "duration_seconds": 0.0
+}

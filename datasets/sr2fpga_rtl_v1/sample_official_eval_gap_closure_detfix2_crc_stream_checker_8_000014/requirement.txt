@@ -1,0 +1,1 @@
+Design a 8-bit crc_stream_checker as a complete SR2FPGA Verilog RTL project. Use multi-file RTL for FIFO, SPI, UART, PWM, and controller-style tasks; include system_his.json, manifest.json, timing constraints, a bounded self-checking testbench that prints TEST_PASS on success or TEST_FAIL on failure, and predicted QoR.

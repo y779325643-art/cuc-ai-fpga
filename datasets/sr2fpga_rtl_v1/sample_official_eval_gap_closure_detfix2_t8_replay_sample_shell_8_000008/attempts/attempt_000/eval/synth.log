@@ -1,0 +1,2035 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+
+-- Running command `read_verilog rtl/top.v rtl/host_sample_stage.v rtl/replay_store.v rtl/sample_pack_core.v rtl/sample_read_stage.v rtl/occupancy_counter.v; synth -top top; stat' --
+
+1. Executing Verilog-2005 frontend: rtl/top.v
+Parsing Verilog input from `rtl/top.v' to AST representation.
+Generating RTLIL representation for module `\top'.
+Successfully finished Verilog frontend.
+
+2. Executing Verilog-2005 frontend: rtl/host_sample_stage.v
+Parsing Verilog input from `rtl/host_sample_stage.v' to AST representation.
+Generating RTLIL representation for module `\host_sample_stage'.
+Successfully finished Verilog frontend.
+
+3. Executing Verilog-2005 frontend: rtl/replay_store.v
+Parsing Verilog input from `rtl/replay_store.v' to AST representation.
+Generating RTLIL representation for module `\replay_store'.
+Warning: Replacing memory \done_mem with list of registers. See rtl/replay_store.v:65
+Warning: Replacing memory \next_state_mem with list of registers. See rtl/replay_store.v:61
+Warning: Replacing memory \reward_mem with list of registers. See rtl/replay_store.v:57
+Warning: Replacing memory \action_mem with list of registers. See rtl/replay_store.v:53
+Warning: Replacing memory \state_mem with list of registers. See rtl/replay_store.v:49
+Successfully finished Verilog frontend.
+
+4. Executing Verilog-2005 frontend: rtl/sample_pack_core.v
+Parsing Verilog input from `rtl/sample_pack_core.v' to AST representation.
+Generating RTLIL representation for module `\sample_pack_core'.
+Successfully finished Verilog frontend.
+
+5. Executing Verilog-2005 frontend: rtl/sample_read_stage.v
+Parsing Verilog input from `rtl/sample_read_stage.v' to AST representation.
+Generating RTLIL representation for module `\sample_read_stage'.
+Successfully finished Verilog frontend.
+
+6. Executing Verilog-2005 frontend: rtl/occupancy_counter.v
+Parsing Verilog input from `rtl/occupancy_counter.v' to AST representation.
+Generating RTLIL representation for module `\occupancy_counter'.
+Successfully finished Verilog frontend.
+
+7. Executing SYNTH pass.
+
+7.1. Executing HIERARCHY pass (managing design hierarchy).
+
+7.1.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \occupancy_counter
+Used module:     \sample_read_stage
+Used module:     \sample_pack_core
+Used module:     \replay_store
+Used module:     \host_sample_stage
+Parameter \DATA_WIDTH = 8
+
+7.1.2. Executing AST frontend in derive mode using pre-parsed AST for module `\sample_read_stage'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Parameter \DATA_WIDTH = 8
+
+7.1.3. Executing AST frontend in derive mode using pre-parsed AST for module `\sample_pack_core'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Parameter \DATA_WIDTH = 8
+Parameter \DEPTH = 4
+
+7.1.4. Executing AST frontend in derive mode using pre-parsed AST for module `\replay_store'.
+Parameter \DATA_WIDTH = 8
+Parameter \DEPTH = 4
+Generating RTLIL representation for module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Warning: Replacing memory \done_mem with list of registers. See rtl/replay_store.v:65
+Warning: Replacing memory \next_state_mem with list of registers. See rtl/replay_store.v:61
+Warning: Replacing memory \reward_mem with list of registers. See rtl/replay_store.v:57
+Warning: Replacing memory \action_mem with list of registers. See rtl/replay_store.v:53
+Warning: Replacing memory \state_mem with list of registers. See rtl/replay_store.v:49
+Parameter \DATA_WIDTH = 8
+
+7.1.5. Executing AST frontend in derive mode using pre-parsed AST for module `\host_sample_stage'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+
+7.1.6. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \occupancy_counter
+Used module:     $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+Used module:     $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+7.1.7. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \occupancy_counter
+Used module:     $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+Used module:     $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Removing unused module `\sample_read_stage'.
+Removing unused module `\sample_pack_core'.
+Removing unused module `\replay_store'.
+Removing unused module `\host_sample_stage'.
+Removed 4 unused modules.
+
+7.2. Executing PROC pass (convert processes to netlists).
+
+7.2.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+7.2.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 1 switch rules as full_case in process $proc$rtl/host_sample_stage.v:24$149 in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Removed 1 dead cases from process $proc$rtl/replay_store.v:42$144 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Marked 1 switch rules as full_case in process $proc$rtl/replay_store.v:42$144 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Removed 1 dead cases from process $proc$rtl/replay_store.v:41$141 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Marked 1 switch rules as full_case in process $proc$rtl/replay_store.v:41$141 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Removed 1 dead cases from process $proc$rtl/replay_store.v:40$138 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Marked 1 switch rules as full_case in process $proc$rtl/replay_store.v:40$138 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Removed 1 dead cases from process $proc$rtl/replay_store.v:39$135 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Marked 1 switch rules as full_case in process $proc$rtl/replay_store.v:39$135 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Removed 1 dead cases from process $proc$rtl/replay_store.v:38$132 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Marked 1 switch rules as full_case in process $proc$rtl/replay_store.v:38$132 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Marked 8 switch rules as full_case in process $proc$rtl/replay_store.v:44$92 in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Marked 1 switch rules as full_case in process $proc$rtl/sample_read_stage.v:24$76 in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Removed a total of 5 dead cases.
+
+7.2.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 0 redundant assignments.
+Promoted 15 assignments to connections.
+
+7.2.4. Executing PROC_INIT pass (extract init attributes).
+
+7.2.5. Executing PROC_ARST pass (detect async resets in processes).
+Found async reset \rst_n in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+Found async reset \rst_n in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+Found async reset \rst_n in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+
+7.2.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~18 debug messages>
+
+7.2.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+     1/6: $0\done_out[0:0]
+     2/6: $0\next_state_out[7:0]
+     3/6: $0\reward_out[7:0]
+     4/6: $0\action_out[0:0]
+     5/6: $0\state_out[7:0]
+     6/6: $0\out_valid[0:0]
+Creating decoders for process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:42$144'.
+     1/1: $1$mem2reg_rd$\done_mem$rtl/replay_store.v:42$82_DATA[0:0]$146
+Creating decoders for process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:41$141'.
+     1/1: $1$mem2reg_rd$\next_state_mem$rtl/replay_store.v:41$81_DATA[7:0]$143
+Creating decoders for process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:40$138'.
+     1/1: $1$mem2reg_rd$\reward_mem$rtl/replay_store.v:40$80_DATA[7:0]$140
+Creating decoders for process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:39$135'.
+     1/1: $1$mem2reg_rd$\action_mem$rtl/replay_store.v:39$79_DATA[0:0]$137
+Creating decoders for process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:38$132'.
+     1/1: $1$mem2reg_rd$\state_mem$rtl/replay_store.v:38$78_DATA[7:0]$134
+Creating decoders for process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+     1/43: $2$mem2reg_wr$\done_mem$rtl/replay_store.v:75$87_ADDR[1:0]$122
+     2/43: $2$mem2reg_wr$\done_mem$rtl/replay_store.v:75$87_DATA[0:0]$123
+     3/43: $2$mem2reg_wr$\next_state_mem$rtl/replay_store.v:74$86_ADDR[1:0]$120
+     4/43: $2$mem2reg_wr$\next_state_mem$rtl/replay_store.v:74$86_DATA[7:0]$121
+     5/43: $2$mem2reg_wr$\reward_mem$rtl/replay_store.v:73$85_ADDR[1:0]$118
+     6/43: $2$mem2reg_wr$\reward_mem$rtl/replay_store.v:73$85_DATA[7:0]$119
+     7/43: $2$mem2reg_wr$\action_mem$rtl/replay_store.v:72$84_ADDR[1:0]$116
+     8/43: $2$mem2reg_wr$\action_mem$rtl/replay_store.v:72$84_DATA[0:0]$117
+     9/43: $2$mem2reg_wr$\state_mem$rtl/replay_store.v:71$83_ADDR[1:0]$114
+    10/43: $2$mem2reg_wr$\state_mem$rtl/replay_store.v:71$83_DATA[7:0]$115
+    11/43: $1$mem2reg_wr$\done_mem$rtl/replay_store.v:75$87_DATA[0:0]$113
+    12/43: $1$mem2reg_wr$\done_mem$rtl/replay_store.v:75$87_ADDR[1:0]$112
+    13/43: $1$mem2reg_wr$\next_state_mem$rtl/replay_store.v:74$86_DATA[7:0]$111
+    14/43: $1$mem2reg_wr$\next_state_mem$rtl/replay_store.v:74$86_ADDR[1:0]$110
+    15/43: $1$mem2reg_wr$\reward_mem$rtl/replay_store.v:73$85_DATA[7:0]$109
+    16/43: $1$mem2reg_wr$\reward_mem$rtl/replay_store.v:73$85_ADDR[1:0]$108
+    17/43: $1$mem2reg_wr$\action_mem$rtl/replay_store.v:72$84_DATA[0:0]$107
+    18/43: $1$mem2reg_wr$\action_mem$rtl/replay_store.v:72$84_ADDR[1:0]$106
+    19/43: $1$mem2reg_wr$\state_mem$rtl/replay_store.v:71$83_DATA[7:0]$105
+    20/43: $1$mem2reg_wr$\state_mem$rtl/replay_store.v:71$83_ADDR[1:0]$104
+    21/43: $0\done_mem[3][0:0]
+    22/43: $0\done_mem[2][0:0]
+    23/43: $0\done_mem[1][0:0]
+    24/43: $0\done_mem[0][0:0]
+    25/43: $0\next_state_mem[3][7:0]
+    26/43: $0\next_state_mem[2][7:0]
+    27/43: $0\next_state_mem[1][7:0]
+    28/43: $0\next_state_mem[0][7:0]
+    29/43: $0\reward_mem[3][7:0]
+    30/43: $0\reward_mem[2][7:0]
+    31/43: $0\reward_mem[1][7:0]
+    32/43: $0\reward_mem[0][7:0]
+    33/43: $0\action_mem[3][0:0]
+    34/43: $0\action_mem[2][0:0]
+    35/43: $0\action_mem[1][0:0]
+    36/43: $0\action_mem[0][0:0]
+    37/43: $0\state_mem[3][7:0]
+    38/43: $0\state_mem[2][7:0]
+    39/43: $0\state_mem[1][7:0]
+    40/43: $0\state_mem[0][7:0]
+    41/43: $0\read_ptr[1:0]
+    42/43: $0\write_ptr[1:0]
+    43/43: $0\occupancy[2:0]
+Creating decoders for process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+     1/6: $0\sample_done_out[0:0]
+     2/6: $0\sample_next_state_out[7:0]
+     3/6: $0\sample_reward_out[7:0]
+     4/6: $0\sample_action_out[0:0]
+     5/6: $0\sample_state_out[7:0]
+     6/6: $0\out_valid[0:0]
+
+7.2.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+No latch inferred for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_rd$\done_mem$rtl/replay_store.v:42$82_DATA' from process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:42$144'.
+No latch inferred for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_rd$\next_state_mem$rtl/replay_store.v:41$81_DATA' from process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:41$141'.
+No latch inferred for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_rd$\reward_mem$rtl/replay_store.v:40$80_DATA' from process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:40$138'.
+No latch inferred for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_rd$\action_mem$rtl/replay_store.v:39$79_DATA' from process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:39$135'.
+No latch inferred for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_rd$\state_mem$rtl/replay_store.v:38$78_DATA' from process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:38$132'.
+
+7.2.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\out_valid' using process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+  created $adff cell `$procdff$394' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\state_out' using process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+  created $adff cell `$procdff$399' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\action_out' using process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+  created $adff cell `$procdff$404' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\reward_out' using process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+  created $adff cell `$procdff$409' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\next_state_out' using process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+  created $adff cell `$procdff$414' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\done_out' using process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+  created $adff cell `$procdff$419' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\occupancy' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$424' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\write_ptr' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$429' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\read_ptr' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$434' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\state_mem[0]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$439' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\state_mem[1]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$444' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\state_mem[2]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$449' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\state_mem[3]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$454' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\action_mem[0]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$459' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\action_mem[1]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$464' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\action_mem[2]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$469' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\action_mem[3]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$474' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\reward_mem[0]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$479' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\reward_mem[1]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$484' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\reward_mem[2]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$489' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\reward_mem[3]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$494' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\next_state_mem[0]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$499' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\next_state_mem[1]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$504' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\next_state_mem[2]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$509' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\next_state_mem[3]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$514' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\done_mem[0]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$519' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\done_mem[1]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$524' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\done_mem[2]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$529' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.\done_mem[3]' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$534' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\state_mem$rtl/replay_store.v:71$83_ADDR' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$539' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\state_mem$rtl/replay_store.v:71$83_DATA' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$544' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\action_mem$rtl/replay_store.v:72$84_ADDR' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$549' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\action_mem$rtl/replay_store.v:72$84_DATA' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$554' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\reward_mem$rtl/replay_store.v:73$85_ADDR' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$559' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\reward_mem$rtl/replay_store.v:73$85_DATA' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$564' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\next_state_mem$rtl/replay_store.v:74$86_ADDR' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$569' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\next_state_mem$rtl/replay_store.v:74$86_DATA' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$574' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\done_mem$rtl/replay_store.v:75$87_ADDR' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$579' with positive edge clock and positive level reset.
+Creating register for signal `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$mem2reg_wr$\done_mem$rtl/replay_store.v:75$87_DATA' using process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+  created $adff cell `$procdff$584' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\out_valid' using process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+  created $adff cell `$procdff$589' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_state_out' using process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+  created $adff cell `$procdff$594' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_action_out' using process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+  created $adff cell `$procdff$599' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_reward_out' using process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+  created $adff cell `$procdff$604' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_next_state_out' using process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+  created $adff cell `$procdff$609' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\sample_done_out' using process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+  created $adff cell `$procdff$614' with positive edge clock and positive level reset.
+
+7.2.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+7.2.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 2 empty switches in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+Removing empty process `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/host_sample_stage.v:24$149'.
+Found and cleaned up 1 empty switch in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:42$144'.
+Removing empty process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:42$144'.
+Found and cleaned up 1 empty switch in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:41$141'.
+Removing empty process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:41$141'.
+Found and cleaned up 1 empty switch in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:40$138'.
+Removing empty process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:40$138'.
+Found and cleaned up 1 empty switch in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:39$135'.
+Removing empty process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:39$135'.
+Found and cleaned up 1 empty switch in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:38$132'.
+Removing empty process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:38$132'.
+Found and cleaned up 9 empty switches in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+Removing empty process `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$proc$rtl/replay_store.v:44$92'.
+Found and cleaned up 2 empty switches in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+Removing empty process `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/sample_read_stage.v:24$76'.
+Cleaned up 18 empty switches.
+
+7.2.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~12 debug messages>
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+<suppressed ~77 debug messages>
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~12 debug messages>
+Optimizing module top.
+
+7.3. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 68 unused cells and 264 unused wires.
+<suppressed ~71 debug messages>
+
+7.5. Executing CHECK pass (checking for obvious problems).
+Checking module occupancy_counter...
+Checking module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store...
+Checking module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+7.6. Executing OPT pass (performing simple optimizations).
+
+7.6.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 124 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 92 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+<suppressed ~96 debug messages>
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 17 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 32 cells.
+
+7.6.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~111 debug messages>
+
+7.6.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.6.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 92 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 17 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.6.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.6.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 32 unused wires.
+<suppressed ~1 debug messages>
+
+7.6.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.6.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~111 debug messages>
+
+7.6.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.6.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 92 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 17 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.6.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.6.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.6.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.6.16. Finished fast OPT passes. (There is nothing left to do.)
+
+7.7. Executing FSM pass (extract and optimize FSM).
+
+7.7.1. Executing FSM_DETECT pass (finding FSMs in design).
+
+7.7.2. Executing FSM_EXTRACT pass (extracting FSM from design).
+
+7.7.3. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+7.7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.7.5. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+7.7.6. Executing FSM_RECODE pass (re-assigning FSM state encoding).
+
+7.7.7. Executing FSM_INFO pass (dumping all available information on FSM cells).
+
+7.7.8. Executing FSM_MAP pass (mapping FSMs to basic logic).
+
+7.8. Executing OPT pass (performing simple optimizations).
+
+7.8.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 92 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 17 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~111 debug messages>
+
+7.8.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 92 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 17 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $procdff$399 ($adff) from module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \state, Q = \state_out).
+Adding EN signal on $procdff$404 ($adff) from module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \action, Q = \action_out).
+Adding EN signal on $procdff$409 ($adff) from module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \reward, Q = \reward_out).
+Adding EN signal on $procdff$394 ($adff) from module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \in_valid, Q = \out_valid).
+Adding EN signal on $procdff$414 ($adff) from module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \next_state, Q = \next_state_out).
+Adding EN signal on $procdff$419 ($adff) from module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \done, Q = \done_out).
+Adding EN signal on $procdff$474 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_action, Q = \action_mem[3]).
+Adding EN signal on $procdff$439 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_state, Q = \state_mem[0]).
+Adding EN signal on $procdff$529 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_done, Q = \done_mem[2]).
+Adding EN signal on $procdff$509 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_next_state, Q = \next_state_mem[2]).
+Adding EN signal on $procdff$469 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_action, Q = \action_mem[2]).
+Adding EN signal on $procdff$519 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_done, Q = \done_mem[0]).
+Adding EN signal on $procdff$499 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_next_state, Q = \next_state_mem[0]).
+Adding EN signal on $procdff$464 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_action, Q = \action_mem[1]).
+Adding EN signal on $procdff$454 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_state, Q = \state_mem[3]).
+Adding EN signal on $procdff$489 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_reward, Q = \reward_mem[2]).
+Adding EN signal on $procdff$459 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_action, Q = \action_mem[0]).
+Adding EN signal on $procdff$504 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_next_state, Q = \next_state_mem[1]).
+Adding EN signal on $procdff$494 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_reward, Q = \reward_mem[3]).
+Adding EN signal on $procdff$444 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_state, Q = \state_mem[1]).
+Adding EN signal on $procdff$424 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = $0\occupancy[2:0], Q = \occupancy).
+Adding EN signal on $procdff$449 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_state, Q = \state_mem[2]).
+Adding EN signal on $procdff$484 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_reward, Q = \reward_mem[1]).
+Adding EN signal on $procdff$429 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = $add$rtl/replay_store.v:76$124_Y, Q = \write_ptr).
+Adding EN signal on $procdff$479 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_reward, Q = \reward_mem[0]).
+Adding EN signal on $procdff$534 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_done, Q = \done_mem[3]).
+Adding EN signal on $procdff$434 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = $add$rtl/replay_store.v:79$125_Y, Q = \read_ptr).
+Adding EN signal on $procdff$524 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_done, Q = \done_mem[1]).
+Adding EN signal on $procdff$514 ($adff) from module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store (D = \write_next_state, Q = \next_state_mem[3]).
+Adding EN signal on $procdff$594 ($adff) from module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_state, Q = \sample_state_out).
+Adding EN signal on $procdff$599 ($adff) from module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_action, Q = \sample_action_out).
+Adding EN signal on $procdff$604 ($adff) from module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_reward, Q = \sample_reward_out).
+Adding EN signal on $procdff$589 ($adff) from module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \in_valid, Q = \out_valid).
+Adding EN signal on $procdff$609 ($adff) from module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_next_state, Q = \sample_next_state_out).
+Adding EN signal on $procdff$614 ($adff) from module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \sample_done, Q = \sample_done_out).
+
+7.8.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 64 unused cells and 64 unused wires.
+<suppressed ~67 debug messages>
+
+7.8.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+<suppressed ~1 debug messages>
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.8.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.8.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 13 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~12 debug messages>
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 71 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 55 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+<suppressed ~48 debug messages>
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 11 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~12 debug messages>
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 24 cells.
+
+7.8.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.8.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 24 unused wires.
+<suppressed ~3 debug messages>
+
+7.8.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.16. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.8.17. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.8.18. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.8.19. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 55 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.8.20. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.8.21. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.8.22. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.8.23. Finished fast OPT passes. (There is nothing left to do.)
+
+7.9. Executing WREDUCE pass (reducing word size of cells).
+Removed top 1 bits (of 2) from port B of cell $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$add$rtl/replay_store.v:76$124 ($add).
+Removed top 1 bits (of 2) from port B of cell $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$add$rtl/replay_store.v:79$125 ($add).
+Removed top 2 bits (of 3) from port B of cell $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$add$rtl/replay_store.v:82$128 ($add).
+Removed top 2 bits (of 3) from port B of cell $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$sub$rtl/replay_store.v:84$131 ($sub).
+Removed top 1 bits (of 2) from port B of cell $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$procmux$196_CMP0 ($eq).
+Removed top 1 bits (of 2) from port B of cell $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.$procmux$347_CMP0 ($eq).
+
+7.10. Executing PEEPOPT pass (run peephole optimizers).
+
+7.11. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.12. Executing ALUMACC pass (create $alu and $macc cells).
+Extracting $alu and $macc cells in module occupancy_counter:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store:
+  creating $macc model for $sub$rtl/replay_store.v:84$131 ($sub).
+  creating $macc model for $add$rtl/replay_store.v:82$128 ($add).
+  creating $macc model for $add$rtl/replay_store.v:79$125 ($add).
+  creating $macc model for $add$rtl/replay_store.v:76$124 ($add).
+  creating $alu model for $macc $add$rtl/replay_store.v:76$124.
+  creating $alu model for $macc $add$rtl/replay_store.v:79$125.
+  creating $alu model for $macc $add$rtl/replay_store.v:82$128.
+  creating $alu model for $macc $sub$rtl/replay_store.v:84$131.
+  creating $alu model for $lt$rtl/replay_store.v:34$88 ($lt): new $alu
+  creating $alu cell for $lt$rtl/replay_store.v:34$88: $auto$alumacc.cc:512:replace_alu$713
+  creating $alu cell for $sub$rtl/replay_store.v:84$131: $auto$alumacc.cc:512:replace_alu$718
+  creating $alu cell for $add$rtl/replay_store.v:82$128: $auto$alumacc.cc:512:replace_alu$721
+  creating $alu cell for $add$rtl/replay_store.v:79$125: $auto$alumacc.cc:512:replace_alu$724
+  creating $alu cell for $add$rtl/replay_store.v:76$124: $auto$alumacc.cc:512:replace_alu$727
+  created 5 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module top:
+  created 0 $alu and 0 $macc cells.
+
+7.13. Executing SHARE pass (SAT-based resource sharing).
+
+7.14. Executing OPT pass (performing simple optimizations).
+
+7.14.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 56 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.14.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.14.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 56 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.14.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 1 unused wires.
+<suppressed ~1 debug messages>
+
+7.14.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.14.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~13 debug messages>
+
+7.14.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.14.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 56 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.14.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.14.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.14.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.14.16. Finished fast OPT passes. (There is nothing left to do.)
+
+7.15. Executing MEMORY pass.
+
+7.15.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+7.15.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+7.15.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+
+7.15.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+7.15.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+
+7.15.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.15.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+
+7.15.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+7.15.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.15.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+7.16. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.17. Executing OPT pass (performing simple optimizations).
+
+7.17.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+<suppressed ~7 debug messages>
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.17.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 57 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.17.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.17.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 3 unused cells and 4 unused wires.
+<suppressed ~4 debug messages>
+
+7.17.5. Finished fast OPT passes.
+
+7.18. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+
+7.19. Executing OPT pass (performing simple optimizations).
+
+7.19.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 54 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~12 debug messages>
+
+7.19.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.19.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 54 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.6. Executing OPT_SHARE pass.
+    Found cells that share an operand and can be merged by moving the $mux $procmux$366 in front of them:
+        $auto$alumacc.cc:512:replace_alu$721
+        $auto$alumacc.cc:512:replace_alu$718
+
+7.19.7. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.19.8. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 6 unused wires.
+<suppressed ~1 debug messages>
+
+7.19.9. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+<suppressed ~2 debug messages>
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.10. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.19.11. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~12 debug messages>
+
+7.19.12. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+    Consolidated identical input bits for $mux cell $auto$opt_share.cc:244:merge_operators$737:
+      Old ports: A=3'111, B=3'001, Y=$auto$rtlil.cc:3390:Mux$738
+      New ports: A=1'1, B=1'0, Y=$auto$rtlil.cc:3390:Mux$738 [1]
+      New connections: { $auto$rtlil.cc:3390:Mux$738 [2] $auto$rtlil.cc:3390:Mux$738 [0] } = { $auto$rtlil.cc:3390:Mux$738 [1] 1'1 }
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 1 changes.
+
+7.19.13. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 53 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.14. Executing OPT_SHARE pass.
+
+7.19.15. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.19.16. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 2 unused wires.
+<suppressed ~1 debug messages>
+
+7.19.17. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+<suppressed ~1 debug messages>
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.18. Rerunning OPT passes. (Maybe there is more to do..)
+
+7.19.19. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module \occupancy_counter..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~10 debug messages>
+
+7.19.20. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module \occupancy_counter.
+  Optimizing cells in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+  Optimizing cells in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+7.19.21. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 53 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.19.22. Executing OPT_SHARE pass.
+
+7.19.23. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.19.24. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+7.19.25. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.19.26. Finished fast OPT passes. (There is nothing left to do.)
+
+7.20. Executing TECHMAP pass (map to technology primitives).
+
+7.20.1. Executing Verilog-2005 frontend: /opt/homebrew/bin/../share/yosys/techmap.v
+Parsing Verilog input from `/opt/homebrew/bin/../share/yosys/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+7.20.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $adffe.
+Using extmapper simplemap for cells of type $reduce_and.
+Using extmapper simplemap for cells of type $not.
+Using template $paramod$175e67c02b86e96b1288b9dc100122520d7240d8\_90_alu for cells of type $alu.
+Using template $paramod$78e969f2586efcf3a5b0b0440bcca0db83d5cca2\_90_alu for cells of type $alu.
+Using template $paramod$fc972a7a46956c1788f3cb5257b53c8f1df2d0cc\_90_alu for cells of type $alu.
+Using extmapper simplemap for cells of type $reduce_bool.
+Using extmapper simplemap for cells of type $logic_and.
+Using extmapper simplemap for cells of type $logic_not.
+Using extmapper simplemap for cells of type $pmux.
+Using extmapper simplemap for cells of type $eq.
+Using extmapper simplemap for cells of type $mux.
+Using extmapper simplemap for cells of type $pos.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000000001 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000000001 for cells of type $lcu.
+Using extmapper simplemap for cells of type $xor.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000000011 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000000011 for cells of type $lcu.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000000010 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000000010 for cells of type $lcu.
+Using extmapper simplemap for cells of type $and.
+Using extmapper simplemap for cells of type $or.
+Using extmapper simplemap for cells of type $logic_or.
+No more expansions possible.
+<suppressed ~627 debug messages>
+
+7.21. Executing OPT pass (performing simple optimizations).
+
+7.21.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+<suppressed ~75 debug messages>
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.21.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 30 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 339 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 322 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 318 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+<suppressed ~63 debug messages>
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 28 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 21 cells.
+
+7.21.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.21.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 6 unused cells and 204 unused wires.
+<suppressed ~9 debug messages>
+
+7.21.5. Finished fast OPT passes.
+
+7.22. Executing ABC pass (technology mapping using ABC).
+
+7.22.1. Extracting gate netlist of module `\occupancy_counter' to `<abc-temp-dir>/input.blif'..
+
+7.22.1.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+
+7.22.2. Extracting gate netlist of module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.2.1. Executed ABC.
+Extracted 3 gates and 6 wires to a netlist network with 3 inputs and 2 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.2.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:        internal signals:        1
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        2
+Removing temp directory.
+
+7.22.3. Extracting gate netlist of module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store' to `<abc-temp-dir>/input.blif'..
+
+7.22.3.1. Executed ABC.
+Extracted 201 gates and 314 wires to a netlist network with 113 inputs and 42 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.3.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:       59
+ABC RESULTS:            ANDNOT cells:        5
+ABC RESULTS:              NAND cells:      136
+ABC RESULTS:               NOR cells:        3
+ABC RESULTS:               NOT cells:        5
+ABC RESULTS:                OR cells:        4
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:              XNOR cells:        3
+ABC RESULTS:        internal signals:      159
+ABC RESULTS:           input signals:      113
+ABC RESULTS:          output signals:       42
+Removing temp directory.
+
+7.22.4. Extracting gate netlist of module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.4.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+
+7.22.5. Extracting gate netlist of module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+7.22.5.1. Executed ABC.
+Extracted 1 gates and 3 wires to a netlist network with 2 inputs and 1 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+7.22.5.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:        internal signals:        0
+ABC RESULTS:           input signals:        2
+ABC RESULTS:          output signals:        1
+Removing temp directory.
+
+7.22.6. Extracting gate netlist of module `\top' to `<abc-temp-dir>/input.blif'..
+
+7.22.6.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+Removing global temp directory.
+
+7.23. Executing OPT pass (performing simple optimizations).
+
+7.23.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module occupancy_counter.
+Optimizing module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store.
+Optimizing module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+7.23.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `\occupancy_counter'.
+Computing hashes of 0 cells of `\occupancy_counter'.
+Finding duplicate cells in `\occupancy_counter'.
+Finding identical cells in module `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 29 cells of `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Computing hashes of 327 cells of `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding duplicate cells in `$paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store'.
+Finding identical cells in module `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 0 cells of `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 28 cells of `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 5 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+7.23.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+7.23.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module \occupancy_counter..
+Finding unused cells or wires in module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store..
+Finding unused cells or wires in module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 321 unused wires.
+<suppressed ~3 debug messages>
+
+7.23.5. Finished fast OPT passes.
+
+7.24. Executing HIERARCHY pass (managing design hierarchy).
+Attribute `top' found on module `top'. Setting top module to top.
+
+7.24.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \occupancy_counter
+Used module:     $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+Used module:     $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+7.24.2. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \occupancy_counter
+Used module:     $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+Used module:     $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Removed 0 unused modules.
+
+7.25. Printing statistics.
+
+=== occupancy_counter ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        2 wires
+        6 wire bits
+        2 public wires
+        6 public wire bits
+        2 ports
+        6 port bits
+
+=== $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       17 wires
+       59 wire bits
+       16 public wires
+       58 public wire bits
+       16 ports
+       58 port bits
+       29 cells
+        1   $_AND_
+       27   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      226 wires
+      364 wire bits
+       41 public wires
+      171 public wire bits
+       17 ports
+       61 port bits
+      327 cells
+        5   $_ANDNOT_
+       59   $_AND_
+      111   $_DFFE_PN0P_
+      136   $_NAND_
+        3   $_NOR_
+        5   $_NOT_
+        1   $_ORNOT_
+        4   $_OR_
+        3   $_XNOR_
+
+=== $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       10 wires
+       52 wire bits
+       10 public wires
+       52 public wire bits
+       10 ports
+       52 port bits
+
+=== $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       17 wires
+       59 wire bits
+       16 public wires
+       58 public wire bits
+       16 ports
+       58 port bits
+       28 cells
+        1   $_AND_
+       27   $_DFFE_PN0P_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       37 wires
+      146 wire bits
+       37 public wires
+      146 public wire bits
+       17 ports
+       61 port bits
+        5 submodules
+        1   $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+        1   $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   occupancy_counter
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      384 top
+      327 $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+       29 $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+       28 $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+        +----------Count including submodules.
+        | 
+      309 wires
+      686 wire bits
+      122 public wires
+      491 public wire bits
+       78 ports
+      296 port bits
+        - memories
+        - memory bits
+        - processes
+      384 cells
+        5   $_ANDNOT_
+       61   $_AND_
+      165   $_DFFE_PN0P_
+      136   $_NAND_
+        3   $_NOR_
+        5   $_NOT_
+        2   $_ORNOT_
+        4   $_OR_
+        3   $_XNOR_
+        5 submodules
+        1   $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+        1   $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   occupancy_counter
+
+7.26. Executing CHECK pass (checking for obvious problems).
+Checking module occupancy_counter...
+Checking module $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store...
+Checking module $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+8. Printing statistics.
+
+=== occupancy_counter ===
+
+        +----------Local Count, excluding submodules.
+        | 
+        2 wires
+        6 wire bits
+        2 public wires
+        6 public wire bits
+        2 ports
+        6 port bits
+
+=== $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       17 wires
+       59 wire bits
+       16 public wires
+       58 public wire bits
+       16 ports
+       58 port bits
+       29 cells
+        1   $_AND_
+       27   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      226 wires
+      364 wire bits
+       41 public wires
+      171 public wire bits
+       17 ports
+       61 port bits
+      327 cells
+        5   $_ANDNOT_
+       59   $_AND_
+      111   $_DFFE_PN0P_
+      136   $_NAND_
+        3   $_NOR_
+        5   $_NOT_
+        1   $_ORNOT_
+        4   $_OR_
+        3   $_XNOR_
+
+=== $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       10 wires
+       52 wire bits
+       10 public wires
+       52 public wire bits
+       10 ports
+       52 port bits
+
+=== $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       17 wires
+       59 wire bits
+       16 public wires
+       58 public wire bits
+       16 ports
+       58 port bits
+       28 cells
+        1   $_AND_
+       27   $_DFFE_PN0P_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       37 wires
+      146 wire bits
+       37 public wires
+      146 public wire bits
+       17 ports
+       61 port bits
+        5 submodules
+        1   $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+        1   $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   occupancy_counter
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      384 top
+      327 $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+       29 $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+       28 $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+        +----------Count including submodules.
+        | 
+      309 wires
+      686 wire bits
+      122 public wires
+      491 public wire bits
+       78 ports
+      296 port bits
+        - memories
+        - memory bits
+        - processes
+      384 cells
+        5   $_ANDNOT_
+       61   $_AND_
+      165   $_DFFE_PN0P_
+      136   $_NAND_
+        3   $_NOR_
+        5   $_NOT_
+        2   $_ORNOT_
+        4   $_OR_
+        3   $_XNOR_
+        5 submodules
+        1   $paramod$188e61a87cdf364e27bfb9344c32cf27510b3195\replay_store
+        1   $paramod\host_sample_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_pack_core\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\sample_read_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   occupancy_counter
+
+Warnings: 5 unique messages, 10 total
+End of script. Logfile hash: e72c44440e, time: 0.24s, user: 0.08s, system: 0.01s, MEM: 21.08 MB peak
+Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+Time spent: 65% 1x abc (0 sec), 6% 22x opt_clean (0 sec), ...

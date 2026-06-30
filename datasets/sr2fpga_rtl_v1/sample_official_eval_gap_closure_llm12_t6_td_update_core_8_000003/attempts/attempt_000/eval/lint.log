@@ -1,0 +1,203 @@
+%Warning-WIDTHEXPAND: rtl/td_update_core.v:19:34: Operator ADD expects 16 bits on the LHS, but LHS's VARREF 'value' generates 8 bits.
+                                                : ... note: In instance 'top.u_td_update_core'
+   19 |     assign updated_value = value + (product >> SCALE_SHIFT);
+      |                                  ^
+                      ... For warning description see https://verilator.org/warn/WIDTHEXPAND?v=5.048
+                      ... Use "/* verilator lint_off WIDTHEXPAND */" and lint_on around source to disable this message.
+%Warning-WIDTHTRUNC: rtl/td_update_core.v:19:26: Operator ASSIGNW expects 8 bits on the Assign RHS, but Assign RHS's ADD generates 16 bits.
+                                               : ... note: In instance 'top.u_td_update_core'
+   19 |     assign updated_value = value + (product >> SCALE_SHIFT);
+      |                          ^
+                     ... For warning description see https://verilator.org/warn/WIDTHTRUNC?v=5.048
+                     ... Use "/* verilator lint_off WIDTHTRUNC */" and lint_on around source to disable this message.
+%Warning-WIDTHEXPAND: rtl/discount_core.v:14:39: Operator ADD expects 16 bits on the LHS, but LHS's VARREF 'reward' generates 8 bits.
+                                               : ... note: In instance 'top.u_discount_core'
+   14 |     assign discounted_return = reward + (product >> SCALE_SHIFT);
+      |                                       ^
+%Warning-WIDTHTRUNC: rtl/discount_core.v:14:30: Operator ASSIGNW expects 8 bits on the Assign RHS, but Assign RHS's ADD generates 16 bits.
+                                              : ... note: In instance 'top.u_discount_core'
+   14 |     assign discounted_return = reward + (product >> SCALE_SHIFT);
+      |                              ^
+%Warning-UNUSEDPARAM: rtl/top.v:1:50: Parameter is not used: 'SCALE_SHIFT'
+                                    : ... note: In instance 'top'
+    1 | module top #(parameter DATA_WIDTH = 8, parameter SCALE_SHIFT = 4) (
+      |                                                  ^~~~~~~~~~~
+                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048
+                      ... Use "/* verilator lint_off UNUSEDPARAM */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/top.v:5:22: Signal is not used: 'reward'
+                                     : ... note: In instance 'top'
+    5 |     input wire [7:0] reward,
+      |                      ^~~~~~
+                       ... For warning description see https://verilator.org/warn/UNUSEDSIGNAL?v=5.048
+                       ... Use "/* verilator lint_off UNUSEDSIGNAL */" and lint_on around source to disable this message.
+%Warning-UNUSEDSIGNAL: rtl/top.v:6:22: Signal is not used: 'value'
+                                     : ... note: In instance 'top'
+    6 |     input wire [7:0] value,
+      |                      ^~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:7:22: Signal is not used: 'next_value'
+                                     : ... note: In instance 'top'
+    7 |     input wire [7:0] next_value,
+      |                      ^~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:8:22: Signal is not used: 'gamma'
+                                     : ... note: In instance 'top'
+    8 |     input wire [7:0] gamma,
+      |                      ^~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:9:22: Signal is not used: 'alpha'
+                                     : ... note: In instance 'top'
+    9 |     input wire [7:0] alpha,
+      |                      ^~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:10:16: Signal is not used: 'out_ready'
+                                      : ... note: In instance 'top'
+   10 |     input wire out_ready,
+      |                ^~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:11:17: Signal is not driven: 'in_ready'
+                                  : ... note: In instance 'top'
+   11 |     output wire in_ready,
+      |                 ^~~~~~~~
+                   ... For warning description see https://verilator.org/warn/UNDRIVEN?v=5.048
+                   ... Use "/* verilator lint_off UNDRIVEN */" and lint_on around source to disable this message.
+%Warning-UNDRIVEN: rtl/top.v:13:23: Signal is not driven: 'td_error'
+                                  : ... note: In instance 'top'
+   13 |     output wire [7:0] td_error,
+      |                       ^~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:14:23: Signal is not driven: 'updated_value'
+                                  : ... note: In instance 'top'
+   14 |     output wire [7:0] updated_value
+      |                       ^~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:19:25: Signal is not driven: 'u_td_input_stage__reward'
+                                  : ... note: In instance 'top'
+   19 |   wire [DATA_WIDTH-1:0] u_td_input_stage__reward;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:20:25: Signal is not driven: 'u_td_input_stage__value'
+                                  : ... note: In instance 'top'
+   20 |   wire [DATA_WIDTH-1:0] u_td_input_stage__value;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:21:25: Signal is not driven: 'u_td_input_stage__next_value'
+                                  : ... note: In instance 'top'
+   21 |   wire [DATA_WIDTH-1:0] u_td_input_stage__next_value;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:22:25: Signal is not driven: 'u_td_input_stage__gamma'
+                                  : ... note: In instance 'top'
+   22 |   wire [DATA_WIDTH-1:0] u_td_input_stage__gamma;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:23:25: Signal is not driven: 'u_td_input_stage__alpha'
+                                  : ... note: In instance 'top'
+   23 |   wire [DATA_WIDTH-1:0] u_td_input_stage__alpha;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:24:8: Signal is not used: 'u_td_input_stage__out_valid'
+                                     : ... note: In instance 'top'
+   24 |   wire u_td_input_stage__out_valid;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:25:8: Signal is not driven: 'u_td_input_stage__out_ready'
+                                 : ... note: In instance 'top'
+   25 |   wire u_td_input_stage__out_ready;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:26:25: Signal is not used: 'u_td_input_stage__reward_out'
+                                      : ... note: In instance 'top'
+   26 |   wire [DATA_WIDTH-1:0] u_td_input_stage__reward_out;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:27:25: Signal is not used: 'u_td_input_stage__value_out'
+                                      : ... note: In instance 'top'
+   27 |   wire [DATA_WIDTH-1:0] u_td_input_stage__value_out;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:28:25: Signal is not used: 'u_td_input_stage__next_value_out'
+                                      : ... note: In instance 'top'
+   28 |   wire [DATA_WIDTH-1:0] u_td_input_stage__next_value_out;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:29:25: Signal is not used: 'u_td_input_stage__gamma_out'
+                                      : ... note: In instance 'top'
+   29 |   wire [DATA_WIDTH-1:0] u_td_input_stage__gamma_out;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:30:25: Signal is not used: 'u_td_input_stage__alpha_out'
+                                      : ... note: In instance 'top'
+   30 |   wire [DATA_WIDTH-1:0] u_td_input_stage__alpha_out;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:32:8: Signal is not used: 'u_discount_core__in_ready'
+                                     : ... note: In instance 'top'
+   32 |   wire u_discount_core__in_ready;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:33:25: Signal is not driven: 'u_discount_core__reward'
+                                  : ... note: In instance 'top'
+   33 |   wire [DATA_WIDTH-1:0] u_discount_core__reward;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:34:25: Signal is not driven: 'u_discount_core__next_value'
+                                  : ... note: In instance 'top'
+   34 |   wire [DATA_WIDTH-1:0] u_discount_core__next_value;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:35:25: Signal is not driven: 'u_discount_core__gamma'
+                                  : ... note: In instance 'top'
+   35 |   wire [DATA_WIDTH-1:0] u_discount_core__gamma;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:36:8: Signal is not used: 'u_discount_core__out_valid'
+                                     : ... note: In instance 'top'
+   36 |   wire u_discount_core__out_valid;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:37:8: Signal is not driven: 'u_discount_core__out_ready'
+                                 : ... note: In instance 'top'
+   37 |   wire u_discount_core__out_ready;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:38:25: Signal is not used: 'u_discount_core__discounted_return'
+                                      : ... note: In instance 'top'
+   38 |   wire [DATA_WIDTH-1:0] u_discount_core__discounted_return;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:40:8: Signal is not used: 'u_td_update_core__in_ready'
+                                     : ... note: In instance 'top'
+   40 |   wire u_td_update_core__in_ready;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:41:25: Signal is not driven: 'u_td_update_core__discounted_return'
+                                  : ... note: In instance 'top'
+   41 |   wire [DATA_WIDTH-1:0] u_td_update_core__discounted_return;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:42:25: Signal is not driven: 'u_td_update_core__value'
+                                  : ... note: In instance 'top'
+   42 |   wire [DATA_WIDTH-1:0] u_td_update_core__value;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:43:25: Signal is not driven: 'u_td_update_core__alpha'
+                                  : ... note: In instance 'top'
+   43 |   wire [DATA_WIDTH-1:0] u_td_update_core__alpha;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:44:8: Signal is not used: 'u_td_update_core__out_valid'
+                                     : ... note: In instance 'top'
+   44 |   wire u_td_update_core__out_valid;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:45:8: Signal is not driven: 'u_td_update_core__out_ready'
+                                 : ... note: In instance 'top'
+   45 |   wire u_td_update_core__out_ready;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:46:25: Signal is not used: 'u_td_update_core__td_error'
+                                      : ... note: In instance 'top'
+   46 |   wire [DATA_WIDTH-1:0] u_td_update_core__td_error;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:47:25: Signal is not used: 'u_td_update_core__updated_value'
+                                      : ... note: In instance 'top'
+   47 |   wire [DATA_WIDTH-1:0] u_td_update_core__updated_value;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:49:8: Signal is not used: 'u_stream_stage__in_ready'
+                                     : ... note: In instance 'top'
+   49 |   wire u_stream_stage__in_ready;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:50:25: Signal is not driven: 'u_stream_stage__td_error'
+                                  : ... note: In instance 'top'
+   50 |   wire [DATA_WIDTH-1:0] u_stream_stage__td_error;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:51:25: Signal is not driven: 'u_stream_stage__updated_value'
+                                  : ... note: In instance 'top'
+   51 |   wire [DATA_WIDTH-1:0] u_stream_stage__updated_value;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:52:8: Signal is not used: 'u_stream_stage__out_valid'
+                                     : ... note: In instance 'top'
+   52 |   wire u_stream_stage__out_valid;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNDRIVEN: rtl/top.v:53:8: Signal is not driven: 'u_stream_stage__out_ready'
+                                 : ... note: In instance 'top'
+   53 |   wire u_stream_stage__out_ready;
+      |        ^~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:54:25: Signal is not used: 'u_stream_stage__td_error_out'
+                                      : ... note: In instance 'top'
+   54 |   wire [DATA_WIDTH-1:0] u_stream_stage__td_error_out;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Warning-UNUSEDSIGNAL: rtl/top.v:55:25: Signal is not used: 'u_stream_stage__updated_value_out'
+                                      : ... note: In instance 'top'
+   55 |   wire [DATA_WIDTH-1:0] u_stream_stage__updated_value_out;
+      |                         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+%Error: Exiting due to 48 warning(s)

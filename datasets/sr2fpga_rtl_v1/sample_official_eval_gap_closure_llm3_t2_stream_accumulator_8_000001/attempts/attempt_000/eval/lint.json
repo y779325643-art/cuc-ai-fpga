@@ -1,0 +1,16 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/accumulator_core.v"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "%Warning-MULTIDRIVEN: rtl/top.v:21:8: Bit [0] of signal 'top.accumulator__sample_valid' have multiple combinational drivers. This can cause performance degradation.\n                      rtl/top.v:27:36: ... Location of offending driver\n   27 |   assign accumulator__sample_valid = input_buffer__out_valid;\n      |                                    ^\n                      rtl/accumulator_core.v:15:25: ... Location of offending driver\n   15 |     assign sample_valid = sample_valid_in;\n      |                         ^\n                      ... For warning description see https://verilator.org/warn/MULTIDRIVEN?v=5.048\n                      ... Use \"/* verilator lint_off MULTIDRIVEN */\" and lint_on around source to disable this message.\n%Error: Exiting due to 1 warning(s)\n",
+  "duration_seconds": 0.11180504100047983
+}

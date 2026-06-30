@@ -1,0 +1,46 @@
+{
+  "run_id": "official-eval-gap-closure-deterministic-detfix-20260629",
+  "next_index": 14,
+  "completed_samples": [
+    "sample_official_eval_gap_closure_detfix_t1_event_counter_8_000001",
+    "sample_official_eval_gap_closure_detfix_t2_stream_accumulator_8_000002",
+    "sample_official_eval_gap_closure_detfix_t3_stream_fork_8_000003",
+    "sample_official_eval_gap_closure_detfix_t4_dual_stream_join_8_000004",
+    "sample_official_eval_gap_closure_detfix_t5_vector_mac_pipeline_8_000005",
+    "sample_official_eval_gap_closure_detfix_t6_td_update_core_8_000006",
+    "sample_official_eval_gap_closure_detfix_t7_policy_value_shell_8_000007",
+    "sample_official_eval_gap_closure_detfix_t8_replay_sample_shell_8_000008",
+    "sample_official_eval_gap_closure_detfix_t9_host_protocol_shell_8_000009",
+    "sample_official_eval_gap_closure_detfix_t10_rl_accelerator_shell_8_000010",
+    "sample_official_eval_gap_closure_detfix_t11_batch_rl_accelerator_shell_8_000011",
+    "sample_official_eval_gap_closure_detfix_t12_replay_arbiter_shell_8_000012",
+    "sample_official_eval_gap_closure_detfix_alu_control_unit_8_000013",
+    "sample_official_eval_gap_closure_detfix_crc_stream_checker_8_000014"
+  ],
+  "buckets": {
+    "success_l3": [
+      "sample_official_eval_gap_closure_detfix_t1_event_counter_8_000001",
+      "sample_official_eval_gap_closure_detfix_t2_stream_accumulator_8_000002",
+      "sample_official_eval_gap_closure_detfix_t3_stream_fork_8_000003",
+      "sample_official_eval_gap_closure_detfix_t4_dual_stream_join_8_000004",
+      "sample_official_eval_gap_closure_detfix_t5_vector_mac_pipeline_8_000005",
+      "sample_official_eval_gap_closure_detfix_t7_policy_value_shell_8_000007",
+      "sample_official_eval_gap_closure_detfix_t8_replay_sample_shell_8_000008",
+      "sample_official_eval_gap_closure_detfix_t9_host_protocol_shell_8_000009",
+      "sample_official_eval_gap_closure_detfix_t10_rl_accelerator_shell_8_000010",
+      "sample_official_eval_gap_closure_detfix_t11_batch_rl_accelerator_shell_8_000011",
+      "sample_official_eval_gap_closure_detfix_t12_replay_arbiter_shell_8_000012",
+      "sample_official_eval_gap_closure_detfix_alu_control_unit_8_000013",
+      "sample_official_eval_gap_closure_detfix_crc_stream_checker_8_000014"
+    ],
+    "repair_trajectory": [
+      "sample_official_eval_gap_closure_detfix_t6_td_update_core_8_000006"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "l0_contract_violation": 1
+  },
+  "exports_refreshed": true,
+  "config_fingerprint": "f08344df09541c2afa8194755fc732fe3dd45fa50c66f046b32e41d8c73b3817"
+}

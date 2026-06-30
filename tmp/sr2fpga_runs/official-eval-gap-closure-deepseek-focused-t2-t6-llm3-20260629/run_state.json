@@ -1,0 +1,19 @@
+{
+  "run_id": "official-eval-gap-closure-deepseek-focused-t2-t6-llm3-20260629",
+  "next_index": 1,
+  "completed_samples": [
+    "sample_official_eval_gap_closure_llm3_t2_stream_accumulator_8_000001"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_official_eval_gap_closure_llm3_t2_stream_accumulator_8_000001"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "lint_warning_as_error": 1
+  },
+  "exports_refreshed": false,
+  "config_fingerprint": "5a6928b935b70175eb87e20a45532cf57764b5af0b552d4b2bb8843d6d7f052e"
+}

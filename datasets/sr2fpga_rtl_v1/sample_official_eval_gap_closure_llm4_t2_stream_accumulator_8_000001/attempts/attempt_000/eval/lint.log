@@ -1,0 +1,11 @@
+%Warning-UNUSEDPARAM: rtl/skid_buffer.v:36:14: Parameter is not used: 'EMPTY'
+                                             : ... note: In instance 'top.input_buffer'
+   36 |   localparam EMPTY = 0;
+      |              ^~~~~
+                      ... For warning description see https://verilator.org/warn/UNUSEDPARAM?v=5.048
+                      ... Use "/* verilator lint_off UNUSEDPARAM */" and lint_on around source to disable this message.
+%Warning-UNUSEDPARAM: rtl/skid_buffer.v:37:14: Parameter is not used: 'FULL'
+                                             : ... note: In instance 'top.input_buffer'
+   37 |   localparam FULL = 0;
+      |              ^~~~
+%Error: Exiting due to 2 warning(s)
