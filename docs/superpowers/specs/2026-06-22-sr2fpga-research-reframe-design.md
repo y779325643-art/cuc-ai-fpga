@@ -1011,6 +1011,38 @@ unique correct answer, so ground truth is "passes the acceptance criteria,"
 never "matches a reference file." Input = NL requirement + machine-readable
 interface contract. Judgement = L0–L5 tool verdicts + functional testbench.
 
+**Prompt-information boundary (avoid "prompt contains the engineering answer").**
+SR2FPGA uses two requirement forms plus one internal contract, and each has a
+different evidential role:
+
+- **simple_prompt:** a user-style request that preserves realism, e.g. "generate a
+  CRC-8 stream-checker RTL project." It tests whether the model can infer the
+  missing engineering contract from ordinary user language.
+- **contract-rich normalized requirement:** the official-evaluation input. It may
+  specify externally checkable obligations: top-level interface, protocol rules,
+  artifact/package boundaries, logical constraints, and test scenario categories.
+  It must not specify implementation steps.
+- **System-HIS normalized contract:** the generated/checkable IR used for L0/L2
+  checks, REQ→HIS fidelity, deterministic lowering, and repair routing. It is not
+  treated as a hidden prompt answer; it is an intermediate artifact whose fidelity
+  to the original requirement is measured.
+
+Allowed normalized-requirement fields are **what must be externally checkable**:
+ports, widths, valid-ready/backpressure obligations, frame/reset behavior,
+`rtl_file_manifest` as an artifact-boundary requirement, and test-scenario classes
+such as reset, known sequence, wrong expected CRC, or output backpressure.
+
+Disallowed fields are **how the RTL must be internally implemented**: FSM state
+tables, always-block structure, line-level patch instructions, internal register
+names, exact datapath code, CRC update code, or module-internal wiring. File names
+such as `rtl/crc8_update.v` are artifact boundaries only; they do not prescribe
+the module body. Hidden/random/stress tests must instantiate concrete sequences,
+stall patterns, and corner cases that are not copied into the prompt.
+
+The claim discipline is: SR2FPGA specifies an engineering contract, not an
+implementation recipe. If performance improves only because the normalized prompt
+spells out the solution algorithm, the result is invalid for the System-HIS claim.
+
 ### 8.2 Production mechanism (compositional)
 
 - a **component library** of parameterized primitives (FIFO, arbiter, CDC
@@ -1652,6 +1684,11 @@ the benchmark and anchor QoR targets):
 
 - **System-HIS:** req→HIS→project vs req→project (proves System-HIS is a
   contribution, not decoration — this is what backs differentiation point 1).
+- **Prompt-information:** `simple_prompt` vs `contract-rich normalized
+  requirement` vs `contract-rich + System-HIS repair`. Report these separately so
+  gains from explicit engineering contracts are not mistaken for prompt leakage.
+  A normalized requirement is valid only if it fixes externally checkable
+  obligations without encoding FSM/datapath/code-level implementation steps.
 - **QoR prediction calibration:** predicted vs tool-measured correlation /
   calibration curve (predicted QoR must stay model-only, never leak measured
   results — preserve the existing `predicted_qor.json` / `measured_qor.json`
@@ -1875,11 +1912,17 @@ precedes training. Steps 1–6 gate the official (a)/(b)/(c) measurement; step 7
 schema freeze and the OpenXC7 spike already exist; the remaining gate is execution +
 scale, not more design.
 
-1. **Measurement freeze** — freeze prompts, seeds, timeout, repair budget, tool
-   versions, hidden tests, split policy, and pass/warn/fail semantics. Also ratify
-   v1.2 Tier-2 by exercising the provisional fields — `data_flow.timing`, structured
-   `control_flow`/FSM, guard grammar — on a real FSM/pipeline task; the RL-agent FSM
-   is the reference.
+1. **Measurement freeze** — freeze prompts, requirement schemas, seeds, timeout,
+   repair budget, tool versions, hidden tests, split policy, and pass/warn/fail
+   semantics. The freeze includes three distinct prompt/contract families:
+   `simple_prompt`, `contract-rich normalized requirement`, and System-HIS
+   canonicalization/fidelity rules. The normalized requirement may define
+   externally checkable interfaces, protocols, artifact boundaries, and test
+   scenario classes, but must not encode FSM tables, datapath code, always-block
+   structure, internal register names, or line-level fixes. Also ratify v1.2
+   Tier-2 by exercising the provisional fields — `data_flow.timing`, structured
+   `control_flow`/FSM, guard grammar — on a real FSM/pipeline task; the RL-agent
+   FSM is the reference.
 
 2. **Oracle hardening** — add REQ→HIS fidelity; add L2 hidden/random/stress tests +
    coverage targets; add the assertion library; add optional L2S post-synthesis
@@ -1957,3 +2000,4 @@ and the companion specs are forward pointers, not blockers.
 | 2026-06-25 | Reviewer-hardening update. Tightens verification oracle (L2 coverage-qualified, coverage targets, protocol assertion library), measurement protocol (frozen protocol, per-tier CI, survival curves), L4 physical-pass definition (WNS≥0, 9 criteria, no unconstrained paths, archived reports), data split policy (S1–S5), and claim discipline. Also adds L2F optional property checks, L2S post-synthesis netlist simulation, L2-core vs L2-UVM distinction, OpenXC7/Vivado commercial-reference requirement for TCAD-strong, and REQ→HIS fidelity sub-metric. |
 | 2026-06-26 | Artifact/data-release/model-stack update. Adds: (1) explicit IP/licensing/data-release policy (open_public / restricted_reference / internal_only tiers); (2) SR2FPGA tool-internalizing model stack definition (Actor / Critic / QoR-search head, with rationale for why this is a model *stack*); (3) full trajectory episode schema; (4) optional (c1)/(c2) measurement separating generation internalization from learned no-tool diagnosis; (5) failure-injection suite and natural/injected/toolchain failure-origin field; (6) L2F optional property-check layer; (7) artifact reproducibility + dataset card checklists. |
 | 2026-06-27 | **Document reorganized.** Content unchanged; sections restructured for navigability. `Paper ① Design` h2 (1527 lines) broken into 12 top-level sections (§1–§12). Episode schema moved from System-HIS to Data Engine (§9.2). Hardware-semantic gap taxonomy moved from Data Engine to Benchmark Design (§8.4). All L4 definition consolidated into §7.6 (previously split across 6 sub-sections). Immediate Next Steps renumbered 1–10. Changelog added. |
+| 2026-06-30 | Added prompt-information boundary: SR2FPGA separates `simple_prompt`, contract-rich normalized requirements, and System-HIS contracts; official prompts may specify externally checkable engineering obligations but must not encode implementation recipes. Added prompt-information ablation and measurement-freeze rules to prevent "prompt contains the engineering answer" critiques. |

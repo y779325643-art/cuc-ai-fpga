@@ -581,6 +581,18 @@ Diagnostic signals 不会提升 official pass level；它们只用于 failure ta
 
 单个 item 的形式是 verification-based，而不是 reference-matching。 RTL 没有唯一正确答案，因此 ground truth 是 “passes the acceptance criteria”，而不是“匹配某个 reference file”。输入 = NL requirement + machine-readable interface contract。判断 = L0–L5 tool verdicts + functional testbench。
 
+Prompt-information boundary，即避免被批评为“prompt 里已经吃掉工程答案”。SR2FPGA 使用两种 requirement 形式加一个内部 contract，三者证据角色不同：
+
+* simple_prompt：用户式请求，用于保留真实感。例如“生成一个 CRC-8 流校验 RTL 工程”。它测试模型能否从普通用户语言中推断缺失的工程 contract。
+* contract-rich normalized requirement：official evaluation 的输入。它可以规定外部可检查义务，包括顶层接口、协议规则、artifact/package 边界、逻辑约束和测试场景类别，但不能规定实现步骤。
+* System-HIS normalized contract：用于 L0/L2 检查、REQ→HIS fidelity、deterministic lowering 和 repair routing 的生成/可检查 IR。它不是隐藏的 prompt answer，而是一个中间 artifact，其对原始 requirement 的忠实度必须被测量。
+
+normalized requirement 允许写入的是必须外部可检查的内容：端口、位宽、valid-ready/backpressure 义务、frame/reset 行为、作为 artifact-boundary requirement 的 `rtl_file_manifest`，以及 reset、known sequence、wrong expected CRC、output backpressure 等 test-scenario classes。
+
+normalized requirement 禁止写入的是 RTL 内部如何实现：FSM state table、always block structure、line-level patch instructions、internal register names、exact datapath code、CRC update code、module-internal wiring。`rtl/crc8_update.v` 这类文件名只是 artifact boundary，不规定模块 body。hidden/random/stress tests 必须包含没有复制进 prompt 的具体 byte sequences、stall patterns 和 corner cases。
+
+claim discipline 是：SR2FPGA 规定的是 engineering contract，不是 implementation recipe。如果性能提升只来自 normalized prompt 直接写出了求解算法，那么该结果不能支撑 System-HIS claim。
+
 ### 8.2 生产机制：compositional
 
 * 一个参数化 primitive component library，包括 FIFO、arbiter、CDC synchronizer、pipeline stage、ALU slice、register file、protocol adapter、decoder 等；
@@ -1007,6 +1019,7 @@ Non-LLM sanity baselines，不作为 LLM baselines 比较，而用于验证 benc
 ### 11.4 Planned ablations
 
 * System-HIS： req→HIS→project vs req→project，证明 System-HIS 是贡献而非装饰；这支撑 differentiation point 1。
+* Prompt-information： simple_prompt vs contract-rich normalized requirement vs contract-rich + System-HIS repair。三组必须分开报告，避免把 explicit engineering contract 带来的提升误判成 prompt leakage。normalized requirement 只有在固定外部可检查义务、但不编码 FSM/datapath/code-level implementation steps 时才有效。
 * QoR prediction calibration： predicted vs tool-measured correlation / calibration curve。predicted QoR 必须保持 model-only，不能泄漏 measured results；保持 predicted_qor.json / measured_qor.json 分离。注意：generic Yosys-L3 LUT 是 vacuous，见 Finding G，因此真实 resource/timing calibration 需要 synth_xilinx 或 OpenXC7 L4 report。
 * REQ→HIS fidelity： generated System-HIS vs oracle/manual System-HIS。
 * Contract-preserving L0-by-construction： System-HIS-constrained skeleton generation vs free generation，证明它将 L0 structural error rate 推向 0，同时不损害 L2。
@@ -1172,7 +1185,7 @@ Dataset card 是命名 deliverable，不是事后补充。它使数据贡献能�
 Framing premise 和 component-library MVP 已验证；v1.2 freeze 已实现，Tier-1。顺序设计为：先加固 oracle，再 scale；先 scale，再训练。Steps 1–6 gate official (a)/(b)/(c) measurement；step 7 即 OpenXC7/Vivado L4-min 可并行运行且相互独立。Schema freeze 和 OpenXC7 spike 已有 specs/plans；剩余 gate 是执行 + scale，而不是继续设计。
 
 1. Measurement freeze
-    冻结 prompts、seeds、timeout、repair budget、tool versions、hidden tests、split policy 和 pass/warn/fail semantics。还需通过真实 FSM/pipeline task 运行 provisional fields 来 ratify v1.2 Tier-2，即 data_flow.timing、structured control_flow/FSM、guard grammar；RL-agent FSM 是 reference。
+    冻结 prompts、requirement schemas、seeds、timeout、repair budget、tool versions、hidden tests、split policy 和 pass/warn/fail semantics。freeze 必须区分三套 prompt/contract families：simple_prompt、contract-rich normalized requirement、System-HIS canonicalization/fidelity rules。normalized requirement 可以定义外部可检查的 interfaces、protocols、artifact boundaries 和 test scenario classes，但不能编码 FSM tables、datapath code、always-block structure、internal register names 或 line-level fixes。还需通过真实 FSM/pipeline task 运行 provisional fields 来 ratify v1.2 Tier-2，即 data_flow.timing、structured control_flow/FSM、guard grammar；RL-agent FSM 是 reference。
 2. Oracle hardening
     增加 REQ→HIS fidelity；增加 L2 hidden/random/stress tests + coverage targets；增加 assertion library；增加 optional L2S post-synthesis netlist simulation；最终确定 L2-core / optional L2-UVM split。
 3. IP/data-release discipline
@@ -1224,3 +1237,4 @@ sr2fpga-l4-openxc7-vivado-protocol.md	L4 run protocol、board shell spec、agree
 2026-06-25	Reviewer-hardening update。收紧 verification oracle，如 L2 coverage-qualified、coverage targets、protocol assertion library；measurement protocol，如 frozen protocol、per-tier CI、survival curves；L4 physical-pass definition，如 WNS≥0、9 条 criteria、no unconstrained paths、archived reports；data split policy S1–S5；claim discipline。还增加 L2F optional property checks、L2S post-synthesis netlist simulation、L2-core vs L2-UVM distinction、TCAD-strong 的 OpenXC7/Vivado commercial-reference requirement，以及 REQ→HIS fidelity sub-metric。
 2026-06-26	Artifact/data-release/model-stack update。新增：1. 显式 IP/licensing/data-release policy，即 open_public / restricted_reference / internal_only tiers；2. SR2FPGA tool-internalizing model stack 定义，即 Actor / Critic / QoR-search head，并解释为什么这是 model stack；3. 完整 trajectory episode schema；4. optional (c1)/(c2) measurement，将 generation internalization 与 learned no-tool diagnosis 分开；5. failure-injection suite 和 natural/injected/toolchain failure-origin 字段；6. L2F optional property-check layer；7. artifact reproducibility + dataset card checklists。
 2026-06-27	文档重组。 内容不变；章节为可导航性重构。Paper ① Design 这个 1527 行 h2 被拆成 12 个顶层章节 §1–§12。Episode schema 从 System-HIS 移到 Data Engine §9.2。Hardware-semantic gap taxonomy 从 Data Engine 移到 Benchmark Design §8.4。所有 L4 定义合并到 §7.6，之前分散在 6 个小节。Immediate Next Steps 重新编号为 1–10。加入 Changelog。
+2026-06-30	新增 prompt-information boundary：SR2FPGA 区分 simple_prompt、contract-rich normalized requirement 和 System-HIS contract；official prompt 可以规定外部可检查的工程义务，但不能编码 implementation recipe。新增 prompt-information ablation 和 measurement-freeze 规则，用于防止“prompt 里已经吃掉工程答案”的质疑。
