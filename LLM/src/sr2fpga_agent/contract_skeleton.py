@@ -21,7 +21,16 @@ def build_contract_skeleton_project(
     top_module = str(artifacts.get("top_module") or top.get("name") or "top")
     sources = _string_list(artifacts.get("rtl_sources")) or ["rtl/top.v"]
     components = [_mapping(component) for component in _list(system_his.get("components"))]
-    components_by_source = {str(component.get("source")): component for component in components}
+    components_by_source: dict[str, dict[str, Any]] = {}
+    for component in components:
+        source = str(component.get("source"))
+        if source in components_by_source:
+            raise ValueError(
+                f"System-HIS has two components with the same source path '{source}': "
+                f"'{components_by_source[source].get('name')}' and '{component.get('name')}'. "
+                "Each source file must belong to exactly one component."
+            )
+        components_by_source[source] = component
     component_names = {str(component.get("name")) for component in components}
 
     files: dict[str, str] = {
@@ -426,7 +435,7 @@ def _port_block(ports: list[Any]) -> str:
     for port in ports:
         port_map = _mapping(port)
         name = str(port_map.get("name", "")).strip()
-        direction = str(port_map.get("dir", port_map.get("direction", ""))).strip()
+        direction = str(port_map.get("dir", port_map.get("direction", "input"))).strip()
         if name and direction:
             declarations.append(f"    {direction} wire{_range(port_map.get('width'))} {name}")
     return ",\n".join(declarations)

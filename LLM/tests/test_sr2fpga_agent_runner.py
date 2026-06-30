@@ -6,6 +6,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from LLM.src.sr2fpga_agent.runner import (
+    PlannedSample,
     RunState,
     RunnerConfig,
     SourceConnection,
@@ -21,6 +22,8 @@ from LLM.src.sr2fpga_agent.runner import (
     write_run_state,
     _failure_family,
     _record_completed as _record_completed_for_test,
+    _sample_system_his_schema_version,
+    _source_auth_diagnostics,
     _summary as run_batch_summary_for_test,
 )
 
@@ -211,6 +214,78 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["system_his_schema_version"], "system-his-v1.2")
         self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
         self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "behavior_files")
+
+    def test_unvetted_openai_compat_source_is_quarantined(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("/tmp/test"),
+            export_root=Path("/tmp/test_exports"),
+            run_root=Path("/tmp/test_runs"),
+            provider="my_openai",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={},
+            tasks=[],
+            model="gpt-4",
+            base_url="https://api.openai.example/v1",
+            api_key_env="OPENAI_API_KEY",
+            sources={
+                "my_openai": SourceConnection(
+                    name="my_openai",
+                    kind="openai_compat",
+                    generation_mode="two_stage",
+                )
+            },
+        )
+        sample = PlannedSample(
+            sample_id="s1",
+            source="my_openai",
+            task_type="counter",
+            width=8,
+            project_name="counter_8",
+            requirement="Design a counter.",
+        )
+
+        schema = _sample_system_his_schema_version(sample, config)
+
+        self.assertEqual(schema, "system-his-v1.1")
+        self.assertEqual(sample.metadata(config)["training_split"], "quarantine")
+
+    def test_unknown_source_kind_fails_preflight_auth_diagnostics(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("/tmp/test"),
+            export_root=Path("/tmp/test_exports"),
+            run_root=Path("/tmp/test_runs"),
+            provider="bad_source",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={},
+            tasks=[],
+            sources={
+                "bad_source": SourceConnection(
+                    name="bad_source",
+                    kind="openai-compat",
+                    api_key_env="SOME_KEY",
+                    generation_mode="two_stage",
+                )
+            },
+        )
+        sample = PlannedSample(
+            sample_id="s1",
+            source="bad_source",
+            task_type="counter",
+            width=8,
+            project_name="counter_8",
+            requirement="Design a counter.",
+        )
+
+        _, errors = _source_auth_diagnostics(config, [sample], validate_provider=False)
+
+        self.assertTrue(
+            any("unsupported kind" in error for error in errors),
+            f"Expected unsupported source kind error, got: {errors}",
+        )
 
     def test_official_eval_gap_closure_config_covers_t1_t12_and_supplemental_tasks(self) -> None:
         config = load_runner_config(Path("configs/sr2fpga_official_eval_gap_closure.example.yaml"))

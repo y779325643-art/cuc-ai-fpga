@@ -71,6 +71,31 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertFalse(result.passed)
         self.assertIn("components[0].source 'library' is not in artifacts.rtl_sources", result.errors)
 
+    def test_duplicate_component_does_not_clobber_original_ports(self) -> None:
+        payload = _fixture()
+        payload["components"].append(
+            {
+                "name": "skid_buffer",
+                "semantic_kind": "stream_buffer",
+                "source": "rtl/skid_buffer_dup.v",
+                "parameters": [{"name": "DATA_WIDTH", "default": 8}],
+                "ports": [
+                    {"name": "clk", "dir": "input", "width": 1},
+                    {"name": "rst_n", "dir": "input", "width": 1},
+                ],
+                "intent": "duplicate component definition with fewer ports",
+            }
+        )
+        payload["artifacts"]["rtl_sources"].append("rtl/skid_buffer_dup.v")
+
+        result = check_system_his_v12(payload)
+
+        self.assertTrue(any("duplicate component 'skid_buffer'" in error for error in result.errors), result.errors)
+        self.assertFalse(
+            any("in0_buffer.in_data" in error or "in0_buffer.out_data" in error for error in result.errors),
+            f"Duplicate component clobbered original port map: {result.errors}",
+        )
+
     def test_rejects_data_flow_endpoint_that_uses_component_instead_of_instance(self) -> None:
         payload = _fixture()
         payload["data_flow"][0]["path"][1] = "skid_buffer.in_data"
@@ -220,6 +245,24 @@ class SystemHisV12CheckerTest(unittest.TestCase):
 
         self.assertFalse(result.passed)
         self.assertIn("state.fsms 'join_fsm'.owner 'missing_instance' is not top or an instance", result.errors)
+
+    def test_fsm_owner_top_valid_when_top_name_absent(self) -> None:
+        payload = _fixture()
+        payload["top"].pop("name", None)
+        payload["state"]["fsms"].append(
+            {
+                "owner": "top",
+                "name": "ctrl_fsm",
+                "states": ["IDLE", "RUN"],
+                "initial": "IDLE",
+                "reset_state": "IDLE",
+                "transitions": [],
+            }
+        )
+
+        result = check_system_his_v12(payload)
+
+        self.assertNotIn("state.fsms 'ctrl_fsm'.owner 'top' is not top or an instance", result.errors)
 
     def test_rejects_fsm_transition_to_missing_state(self) -> None:
         payload = _fixture_with_fsm()

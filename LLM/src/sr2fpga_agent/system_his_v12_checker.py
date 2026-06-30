@@ -118,7 +118,7 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
         for instance_name, component_name in instance_components.items()
     }
     state_names = _state_names(state, errors)
-    valid_fsm_owners = {str(top.get("name", "")).strip()} | set(instance_components)
+    valid_fsm_owners = {"top", str(top.get("name", "")).strip()} | set(instance_components)
     valid_fsm_owners.discard("")
     fsm_defs = _validate_fsms(state, state_names, valid_fsm_owners, errors)
     data_flow_names = _data_flow_names(data_flow, top_ports, instance_ports, errors)
@@ -300,6 +300,7 @@ def _component_ports(components: list[Any], rtl_sources: set[str], errors: list[
             continue
         if name in component_ports:
             errors.append(f"components duplicate component '{name}'")
+            continue
         if not str(component.get("semantic_kind", "")).strip():
             errors.append(f"components[{index}].semantic_kind is required")
         source = str(component.get("source", "")).strip()

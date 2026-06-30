@@ -92,7 +92,7 @@ class SourcesParsingTest(unittest.TestCase):
             config = load_runner_config(config_path)
             self.assertEqual(config.sources, {})
 
-    def test_openai_compat_without_generation_mode_defaults_to_two_stage(self) -> None:
+    def test_openai_compat_without_generation_mode_defaults_to_two_stage_quarantine(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
                 tmp,
@@ -112,8 +112,8 @@ class SourcesParsingTest(unittest.TestCase):
                 sample_id="s_claude", source="claude", task_type="counter", width=8,
                 project_name="p", requirement="r",
             ).metadata(config)
-            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
-            self.assertEqual(metadata["training_split"], "clean")
+            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
+            self.assertEqual(metadata["training_split"], "quarantine")
 
     def test_deepseek_his_v12_without_generation_mode_defaults_to_two_stage(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -401,7 +401,7 @@ class MetadataTest(unittest.TestCase):
             difficulty_tier="T1",
         )
 
-    def test_openai_compat_two_stage_is_clean_v12_natural_llm(self) -> None:
+    def test_openai_compat_two_stage_is_quarantined_until_vetted(self) -> None:
         claude = SourceConnection(
             name="claude", kind="openai_compat", model="claude-opus-4-8",
             base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_API_KEY",
@@ -410,8 +410,8 @@ class MetadataTest(unittest.TestCase):
         config = _base_config(sources={"claude": claude})
         metadata = self._sample("claude").metadata(config)
         self.assertEqual(metadata["failure_origin"], "natural_llm")
-        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
-        self.assertEqual(metadata["training_split"], "clean")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
+        self.assertEqual(metadata["training_split"], "quarantine")
         self.assertEqual(metadata["model"], "claude-opus-4-8")
 
     def test_deterministic_metadata_unchanged(self) -> None:

@@ -340,6 +340,78 @@ class ContractSkeletonTest(unittest.TestCase):
         self.assertIn("input wire clk", skeleton.files["rtl/top.v"])
         self.assertIn("input wire clk", skeleton.files["rtl/skid_buffer.v"])
 
+    def test_port_without_direction_defaults_to_input(self) -> None:
+        system_his = {
+            "schema_version": "system-his-v1.2",
+            "intent": "test",
+            "top": {
+                "name": "top",
+                "ports": [
+                    {"name": "clk"},
+                    {"name": "out", "dir": "output"},
+                ],
+                "clocks": [{"name": "clk", "target_fmax_mhz": 100}],
+                "resets": [],
+            },
+            "state": {"registers": [], "counters": [], "fsms": [], "buffers": [], "memories": []},
+            "components": [],
+            "instances": [],
+            "data_flow": [],
+            "control_flow": [],
+            "timing": {"target_fmax_mhz": 100},
+            "resources": {"optimization_goal": "area", "expected": {}},
+            "verification": {"testbench": "tb_top", "scenarios": [], "pass_condition": "all_pass"},
+            "artifacts": {"top_module": "top", "rtl_sources": ["rtl/top.v"]},
+        }
+        request = ProjectRequest(task_type="counter", width=8, project_name="p")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        project = build_contract_skeleton_project(request, platform, system_his)
+
+        self.assertIn("input wire clk", project.files["rtl/top.v"])
+        self.assertIn("output wire out", project.files["rtl/top.v"])
+
+    def test_duplicate_component_source_raises(self) -> None:
+        system_his = {
+            "schema_version": "system-his-v1.2",
+            "intent": "test",
+            "top": {
+                "name": "top",
+                "ports": [],
+                "clocks": [{"name": "clk", "target_fmax_mhz": 100}],
+                "resets": [],
+            },
+            "state": {"registers": [], "counters": [], "fsms": [], "buffers": [], "memories": []},
+            "components": [
+                {
+                    "name": "a",
+                    "semantic_kind": "logic",
+                    "source": "rtl/shared.v",
+                    "ports": [],
+                    "intent": "first",
+                },
+                {
+                    "name": "b",
+                    "semantic_kind": "logic",
+                    "source": "rtl/shared.v",
+                    "ports": [],
+                    "intent": "second",
+                },
+            ],
+            "instances": [],
+            "data_flow": [],
+            "control_flow": [],
+            "timing": {"target_fmax_mhz": 100},
+            "resources": {"optimization_goal": "area", "expected": {}},
+            "verification": {"testbench": "tb_top", "scenarios": [], "pass_condition": "all_pass"},
+            "artifacts": {"top_module": "top", "rtl_sources": ["rtl/top.v", "rtl/shared.v"]},
+        }
+        request = ProjectRequest(task_type="counter", width=8, project_name="p")
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        with self.assertRaisesRegex(ValueError, "same source path"):
+            build_contract_skeleton_project(request, platform, system_his)
+
     def test_merge_does_not_duplicate_fsm_localparams_from_behavior(self) -> None:
         system_his = _fixture()
         system_his["state"]["fsms"].append(

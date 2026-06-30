@@ -484,7 +484,13 @@ def _check_source_auth(
         return
     seen.add(source)
     connection = resolve_source_connection(config, source)
+    if connection.kind == "deterministic":
+        return
     if connection.kind not in LLM_SOURCE_KINDS:
+        errors.append(
+            f"Source '{source}' has unsupported kind '{connection.kind}'. "
+            f"Supported kinds: {sorted(LLM_SOURCE_KINDS)}."
+        )
         return
     api_key = os.environ.get(connection.api_key_env, "")
     if not api_key:
@@ -875,6 +881,8 @@ LLM_SOURCE_KINDS = {
     "deepseek-oracle-his-v12",
 }
 
+VETTED_TWO_STAGE_KINDS = {"deepseek-his-v12", "deepseek-oracle-his-v12"}
+
 
 def resolve_source_connection(config: RunnerConfig, source: str) -> SourceConnection:
     if source in config.sources:
@@ -1237,7 +1245,9 @@ def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
 
 def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
     connection = resolve_source_connection(config, sample.source)
-    if connection.kind == "deterministic" or connection.generation_mode in {"two_stage", "oracle_his2project"}:
+    if connection.kind == "deterministic":
+        return "system-his-v1.2"
+    if connection.kind in VETTED_TWO_STAGE_KINDS and connection.generation_mode in {"two_stage", "oracle_his2project"}:
         return "system-his-v1.2"
     return "system-his-v1.1"
 

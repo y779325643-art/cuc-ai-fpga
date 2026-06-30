@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import difflib
+import http.client
 import json
 import signal
 import ssl
@@ -241,6 +242,10 @@ class OpenAICompatibleClient:
             raise _TransientOpenAICompatibleError("OpenAI-compatible API request timed out") from exc
         except urllib.error.URLError as exc:
             raise _TransientOpenAICompatibleError(f"OpenAI-compatible API request failed: {exc.reason}") from exc
+        except http.client.IncompleteRead as exc:
+            raise _TransientOpenAICompatibleError(
+                f"OpenAI-compatible API response truncated (IncompleteRead): {exc}"
+            ) from exc
 
 
 @dataclass(frozen=True)
@@ -1170,6 +1175,7 @@ def _with_system_his_retry_feedback(
     task_guidance = _system_his_v12_retry_guidance(task_type)
     return [
         *messages,
+        {"role": "assistant", "content": previous_content or "{}"},
         {
             "role": "user",
             "content": (
@@ -1682,6 +1688,7 @@ def _with_his_project_retry_feedback(
 ) -> list[dict[str, str]]:
     return [
         *messages,
+        {"role": "assistant", "content": previous_content or "{}"},
         {
             "role": "user",
             "content": (

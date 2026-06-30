@@ -1,4 +1,5 @@
 import json
+import http.client
 import os
 import unittest
 import urllib.error
@@ -17,6 +18,7 @@ from LLM.src.sr2fpga_agent.deepseek import (
     OpenAICompatibleConfig,
     _his_project_messages,
     _system_his_v12_messages,
+    _with_his_project_retry_feedback,
     _with_system_his_retry_feedback,
     _project_messages,
     _repair_messages,
@@ -175,6 +177,33 @@ class DeepSeekProviderTest(unittest.TestCase):
             mock.patch(
                 "LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen",
                 side_effect=[transient_error, response],
+            ) as urlopen,
+        ):
+            content = client.chat([{"role": "user", "content": "hello"}])
+
+        self.assertEqual(content, '{"ok": true}')
+        self.assertEqual(urlopen.call_count, 2)
+
+    def test_openai_compatible_client_retries_incomplete_read(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=7,
+                transport_attempts=2,
+                retry_backoff_seconds=0,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen",
+                side_effect=[http.client.IncompleteRead(b"partial"), response],
             ) as urlopen,
         ):
             content = client.chat([{"role": "user", "content": "hello"}])
@@ -940,6 +969,35 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming", retry_prompt)
         self.assertIn("FSM owner must be top or an instances[].name", retry_prompt)
         self.assertIn("State names across registers, counters, fsms, buffers, and memories must be globally unique", retry_prompt)
+
+    def test_system_his_retry_feedback_interleaves_assistant_turn(self) -> None:
+        messages = [
+            {"role": "system", "content": "Return JSON."},
+            {"role": "user", "content": "Generate a System-HIS."},
+        ]
+
+        retry_messages = _with_system_his_retry_feedback(
+            messages,
+            "bad json",
+            '{"bad": true}',
+            task_type="counter",
+        )
+        roles = [message["role"] for message in retry_messages]
+
+        self.assertEqual(roles[-2:], ["assistant", "user"])
+        self.assertNotEqual(roles[-2], roles[-1])
+
+    def test_his_project_retry_feedback_interleaves_assistant_turn(self) -> None:
+        messages = [
+            {"role": "system", "content": "Return JSON."},
+            {"role": "user", "content": "Generate behavior files."},
+        ]
+
+        retry_messages = _with_his_project_retry_feedback(messages, "bad json", '{"bad": true}')
+        roles = [message["role"] for message in retry_messages]
+
+        self.assertEqual(roles[-2:], ["assistant", "user"])
+        self.assertNotEqual(roles[-2], roles[-1])
 
     def test_system_his_retry_feedback_includes_fsm_state_guidance_for_pipeline_tasks(self) -> None:
         messages = [
