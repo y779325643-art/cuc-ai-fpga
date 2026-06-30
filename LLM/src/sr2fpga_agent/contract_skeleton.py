@@ -36,7 +36,7 @@ def build_contract_skeleton_project(
         else:
             files[source] = _placeholder_module(source, component_names, system_his)
     files["constraints/timing.sdc"] = _timing_sdc(system_his)
-    files["sim/tb_top.v"] = _testbench(system_his, top_module)
+    files["sim/tb_top.v"] = _testbench(request, platform, system_his, top_module)
     files["reports/predicted_qor.json"] = _json(_predicted_qor(system_his))
     return GeneratedProject(project_name=request.project_name, files=files)
 
@@ -353,42 +353,43 @@ def _unused_clock_reset_line(ports: list[Any]) -> str:
     return f"  wire _unused_clock_reset = &{{1'b0, {', '.join(names)}}};"
 
 
-def _testbench(system_his: dict[str, Any], top_module: str) -> str:
-    top = _mapping(system_his.get("top"))
-    ports = _list(top.get("ports"))
-    components = [_mapping(component) for component in _list(system_his.get("components"))]
-    declarations = _testbench_parameter_lines(_merged_parameters(_list(top.get("parameters")), components))
-    connections = []
-    for port in ports:
-        port_map = _mapping(port)
-        name = str(port_map.get("name", "")).strip()
-        if not name:
-            continue
-        kind = "reg" if str(port_map.get("dir", port_map.get("direction"))) == "input" else "wire"
-        declarations.append(f"  {kind}{_range(port_map.get('width'))} {name};")
-        connections.append(f"    .{name}({name})")
+def _testbench(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+    system_his: dict[str, Any],
+    top_module: str,
+) -> str:
+    deterministic_testbench = _deterministic_functional_testbench(request, platform, top_module)
+    if deterministic_testbench:
+        return deterministic_testbench
+    return _fail_safe_testbench(request.task_type)
+
+
+def _deterministic_functional_testbench(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+    top_module: str,
+) -> str:
+    if top_module != "top":
+        return ""
+    try:
+        from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
+
+        return ProjectGenerator().generate(request, platform).files.get("sim/tb_top.v", "")
+    except ValueError:
+        return ""
+
+
+def _fail_safe_testbench(task_type: str) -> str:
+    safe_task_type = task_type.replace("\\", "\\\\").replace('"', '\\"')
     return (
         "module tb_top;\n"
-        + "\n".join(declarations)
-        + f"\n  {top_module} dut (\n"
-        + ",\n".join(connections)
-        + "\n  );\n"
-        + "  initial begin\n"
-        + "    $display(\"TEST_PASS\");\n"
-        + "  end\n"
-        + "endmodule\n"
+        "  initial begin\n"
+        f"    $display(\"TEST_FAIL missing independent functional oracle for {safe_task_type}\");\n"
+        "    $finish;\n"
+        "  end\n"
+        "endmodule\n"
     )
-
-
-def _testbench_parameter_lines(parameters: list[Any]) -> list[str]:
-    lines = []
-    for parameter in parameters:
-        parameter_map = _mapping(parameter)
-        name = str(parameter_map.get("name", "")).strip()
-        value = parameter_map.get("value", parameter_map.get("default", 0))
-        if name:
-            lines.append(f"  localparam {name} = {value};")
-    return lines
 
 
 def _merged_parameters(top_parameters: list[Any], components: Any) -> list[Any]:

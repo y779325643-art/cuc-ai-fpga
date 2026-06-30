@@ -142,6 +142,44 @@ class ContractSkeletonTest(unittest.TestCase):
         self.assertIn(".SCALE_SHIFT(SCALE_SHIFT)", top_rtl)
         self.assertNotIn(".SCALE_SHIFT(4)", top_rtl)
 
+    def test_td_update_skeleton_uses_independent_functional_testbench(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_td_update_core",
+            width=8,
+            project_name="td_update_8bit",
+            description="Generate a TD update datapath.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        oracle_project = ProjectGenerator().generate(request, platform)
+        system_his = json.loads(oracle_project.files["system_his.json"])
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        testbench = skeleton.files["sim/tb_top.v"]
+        self.assertIn("task send_update", testbench)
+        self.assertIn("task expect_update", testbench)
+        self.assertIn("TEST_FAIL", testbench)
+        self.assertIn("td_error !== expected_error", testbench)
+        self.assertIn("updated_value !== expected_value", testbench)
+        self.assertLess(testbench.find("expect_update"), testbench.find('$display("TEST_PASS")'))
+
+    def test_skeleton_testbench_fails_safe_without_functional_oracle(self) -> None:
+        system_his = _fixture()
+        system_his["task_type"] = "unsupported_contract_skeleton_task"
+        request = ProjectRequest(
+            task_type="unsupported_contract_skeleton_task",
+            width=8,
+            project_name="unsupported_8bit",
+            description="Unsupported behavior should not get a fake passing testbench.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        skeleton = build_contract_skeleton_project(request, platform, system_his)
+
+        testbench = skeleton.files["sim/tb_top.v"]
+        self.assertIn("TEST_FAIL missing independent functional oracle", testbench)
+        self.assertNotIn("TEST_PASS", testbench)
+
     def test_top_skeleton_replaces_default_valid_driver_with_explicit_flow(self) -> None:
         system_his = _fixture()
         for component in system_his["components"]:
@@ -246,7 +284,7 @@ class ContractSkeletonTest(unittest.TestCase):
 
         self.assertIn("wire _unused_clock_reset = &{1'b0, clk, rst_n};", skeleton.files["rtl/skid_buffer.v"])
 
-    def test_testbench_declares_top_parameters_used_in_port_ranges(self) -> None:
+    def test_testbench_materializes_parameterized_port_widths_in_functional_oracle(self) -> None:
         system_his = _fixture()
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
@@ -258,7 +296,11 @@ class ContractSkeletonTest(unittest.TestCase):
 
         skeleton = build_contract_skeleton_project(request, platform, system_his)
 
-        self.assertIn("localparam DATA_WIDTH = 8;", skeleton.files["sim/tb_top.v"])
+        testbench = skeleton.files["sim/tb_top.v"]
+        self.assertIn("reg [7:0] in0_data;", testbench)
+        self.assertIn("reg [7:0] in1_data;", testbench)
+        self.assertIn("wire [11:0] out_data;", testbench)
+        self.assertIn("TEST_FAIL", testbench)
 
     def test_top_inherits_component_parameters_used_by_internal_wires(self) -> None:
         system_his = _fixture()
