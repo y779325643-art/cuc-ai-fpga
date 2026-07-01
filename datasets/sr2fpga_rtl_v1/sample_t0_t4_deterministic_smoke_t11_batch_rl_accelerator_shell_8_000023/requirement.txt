@@ -1,0 +1,1 @@
+Generate an 8-bit FPGA RTL project with shared host configuration, two-lane batch sample capture, dual-lane policy/value scoring, dual-lane TD update, result staging, and irq reporting.

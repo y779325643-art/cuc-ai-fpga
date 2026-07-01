@@ -1,0 +1,6 @@
+{
+  "failure_type": "functional_mismatch",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL expected count=4 got 3\nsim/tb_top.v:30: $finish called at 55000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": []
+}

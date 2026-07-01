@@ -1,0 +1,17 @@
+{
+  "source": "deterministic",
+  "generator_provider": "deterministic",
+  "model": "",
+  "failure_origin": "deterministic",
+  "difficulty_tier": "T4",
+  "measurement_point": "a_first_attempt_no_tools",
+  "repair_provider": "none",
+  "failure_injectors": [],
+  "task_type": "composed_batch_rl_accelerator_shell",
+  "width": 8,
+  "system_his_schema_version": "system-his-v1.2",
+  "training_split": "clean",
+  "contract_skeleton_mode": "deterministic_template",
+  "topology_id": "t11_batch_rl_accelerator_shell",
+  "requirement_style": "simple_prompt"
+}

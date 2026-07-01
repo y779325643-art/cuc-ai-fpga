@@ -631,6 +631,7 @@ def _failure_family(failure_type: str, stage: str = "") -> str:
     if failure_type == "l0_contract_violation":
         return "artifact_contract_failure"
     if stage == "testbench_static_check" or failure_type in {
+        "testbench_missing_functional_oracle",
         "testbench_observation_race",
         "testbench_stimulus_reaccept_risk",
     }:
@@ -1039,6 +1040,42 @@ def _default_requirement(
 
 def _simple_prompt_requirement(task_type: str, width: int) -> str:
     prompts = {
+        "counter": (
+            f"Generate an {width}-bit FPGA RTL project that implements a synchronous counter with enable and reset."
+        ),
+        "fifo": (
+            f"Generate an {width}-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control."
+        ),
+        "simple_fsm": (
+            f"Generate a {width}-state FPGA RTL project that implements a simple command/state machine."
+        ),
+        "ram_read_write": (
+            f"Generate a {width}-bit FPGA RTL project that implements a small synchronous RAM with read and write access."
+        ),
+        "uart_tx": (
+            f"Generate an {width}-bit FPGA RTL project that implements a UART transmitter."
+        ),
+        "spi_master": (
+            f"Generate an {width}-bit FPGA RTL project that implements a simple SPI master."
+        ),
+        "pwm_controller": (
+            f"Generate an {width}-bit FPGA RTL project that implements a configurable PWM controller."
+        ),
+        "fir_filter": (
+            f"Generate an {width}-bit FPGA RTL project that implements a small streaming FIR filter."
+        ),
+        "streaming_valid_ready": (
+            f"Generate an {width}-bit FPGA RTL project that implements a valid-ready streaming datapath."
+        ),
+        "matrix_vector_mac": (
+            f"Generate an {width}-bit FPGA RTL project that implements a small matrix-vector multiply-accumulate datapath."
+        ),
+        "alu_control_unit": (
+            f"Generate an {width}-bit FPGA RTL project that implements an ALU with a simple control unit."
+        ),
+        "crc_stream_checker": (
+            f"Generate an {width}-bit FPGA RTL project that implements a streaming CRC checker."
+        ),
         "composed_event_counter": (
             f"Generate an {width}-bit FPGA RTL project that counts incoming event pulses."
         ),

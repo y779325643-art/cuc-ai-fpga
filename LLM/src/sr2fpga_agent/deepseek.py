@@ -5,6 +5,7 @@ from __future__ import annotations
 import difflib
 import http.client
 import json
+import select
 import signal
 import ssl
 import threading
@@ -450,7 +451,7 @@ def _read_streaming_chat_content(response: Any, timeout_seconds: int) -> str:
     chunks: list[str] = []
     started_at = time.monotonic()
     while True:
-        raw_line = response.readline()
+        raw_line = _read_streaming_line(response, timeout_seconds, started_at)
         if not raw_line:
             break
         if time.monotonic() - started_at > timeout_seconds:
@@ -480,6 +481,35 @@ def _read_streaming_chat_content(response: Any, timeout_seconds: int) -> str:
         if content is not None:
             chunks.append(str(content))
     return "".join(chunks)
+
+
+def _read_streaming_line(response: Any, timeout_seconds: int, started_at: float) -> bytes:
+    fd = _response_fileno(response)
+    if fd is not None and timeout_seconds > 0:
+        remaining = timeout_seconds - (time.monotonic() - started_at)
+        if remaining <= 0:
+            raise _TransientOpenAICompatibleError("OpenAI-compatible API response read timed out")
+        readable, _, _ = select.select([fd], [], [], remaining)
+        if not readable:
+            raise _TransientOpenAICompatibleError("OpenAI-compatible API response read timed out")
+    return response.readline()
+
+
+def _response_fileno(response: Any) -> int | None:
+    if hasattr(response, "fileno"):
+        try:
+            return int(response.fileno())
+        except (OSError, TypeError, ValueError):
+            return None
+    fp = getattr(response, "fp", None)
+    raw = getattr(fp, "raw", None)
+    sock = getattr(raw, "_sock", None)
+    if sock is None:
+        return None
+    try:
+        return int(sock.fileno())
+    except (OSError, TypeError, ValueError):
+        return None
 
 
 class DeepSeekProjectGenerator:
@@ -521,7 +551,7 @@ class DeepSeekSystemHisGenerator:
         messages = _system_his_v12_messages(request, platform)
         last_error: ValueError | None = None
         for attempt_id in range(self.max_attempts):
-            content = self.client.stream_chat(messages)
+            content = self.client.chat(messages)
             try:
                 system_his = parse_system_his_v12(content)
                 fidelity = check_system_his_req_fidelity(request, system_his)
@@ -571,7 +601,7 @@ class DeepSeekHisProjectGenerator:
         skeleton = build_contract_skeleton_project(request, platform, system_his)
         last_error: ValueError | None = None
         for _attempt in range(self.max_attempts):
-            content = self.client.stream_chat(messages)
+            content = self.client.chat(messages)
             try:
                 behavior_files = parse_behavior_files(content)
                 project = merge_behavior_files(skeleton, behavior_files)
@@ -1870,6 +1900,9 @@ def _icarus_testbench_rules() -> str:
         "accumulators cannot drop a sample between consecutive handshakes.\n"
         "- For streaming designs, check each output transaction against the expected "
         "sequence; do not only check the final output value.\n"
+        "- Do not print TEST_PASS unconditionally. The testbench must print "
+        "TEST_PASS only after conditional TEST_FAIL checks compare top-level "
+        "observable outputs and status signals against expected behavior.\n"
         "- Every wait loop must be bounded with a cycle counter and must print TEST_FAIL on timeout."
     )
 

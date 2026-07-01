@@ -1,0 +1,1 @@
+Generate an 8-bit FPGA RTL project with host configuration, sample capture, policy/value scoring, TD update, result streaming, and irq reporting.

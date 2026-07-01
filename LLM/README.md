@@ -416,6 +416,94 @@ persistent E drive:
 If this run finishes, the environment, tokenizer, dataset conversion, LoRA
 setup, and adapter saving path are all working.
 
+### SR2FPGA Export Dry-Run
+
+Before training on SR2FPGA trajectory exports, run a no-model dry-run over the
+converted chat JSONL. This validates the `messages` structure consumed by
+`train_lora.py` and reports estimated sequence lengths:
+
+```bash
+python -m LLM.src.training_dry_run \
+  --input tmp/t0_t4_requirement_to_project.chat.jsonl \
+  --max-seq-length 65536 \
+  --fail-on-truncation
+```
+
+The current deterministic T0-T4 `requirement_to_project` samples contain full
+project files on the assistant side, even though the canonical T0-T4
+requirements use short `simple_prompt` user intent. They do not fit short smoke
+settings such as `2048` estimated tokens; use long-context training or split the
+project-generation task before a real run.
+
+For a first short-context SR2FPGA SFT smoke, train the file-level `REQ2FILE`
+view and exclude `system_his.json` rows:
+
+```bash
+python -m LLM.src.prepare_dataset \
+  --input datasets/sr2fpga_rtl_v1_exports/requirement_to_file.jsonl \
+  --output LLM/data/t0_t4_req2file_short.chat.jsonl \
+  --sample-id-prefix sample_t0_t4_deterministic_smoke_ \
+  --exclude-file-path system_his.json
+
+python -m LLM.src.training_dry_run \
+  --config LLM/configs/train_qwen_req2file_short.yaml \
+  --fail-on-truncation
+
+bash LLM/scripts/train_lora.sh LLM/configs/train_qwen_req2file_short.yaml
+```
+
+Build the matching eval prompt set before serving the trained adapter:
+
+```bash
+python -m LLM.src.req2file_eval build \
+  --input datasets/sr2fpga_rtl_v1_exports/requirement_to_file.jsonl \
+  --output tmp/req2file_eval/t0_t4_req2file_eval.jsonl \
+  --sample-id-prefix sample_t0_t4_deterministic_smoke_ \
+  --exclude-file-path system_his.json
+```
+
+Run inference through the local OpenAI-compatible vLLM endpoint. The `infer`
+command does not request JSON-only output because `REQ2FILE` must generate
+Verilog, SDC, and JSON file contents:
+
+```bash
+python -m LLM.src.req2file_eval infer \
+  --input tmp/req2file_eval/t0_t4_req2file_eval.jsonl \
+  --output tmp/req2file_eval/t0_t4_req2file_predictions.jsonl \
+  --base-url http://127.0.0.1:8000/v1 \
+  --api-key EMPTY \
+  --model Qwen2.5-Coder-7B-Instruct \
+  --max-tokens 4096
+
+python -m LLM.src.req2file_eval score \
+  --input tmp/req2file_eval/t0_t4_req2file_predictions.jsonl \
+  --output tmp/req2file_eval/t0_t4_req2file_score.json
+
+python -m LLM.src.req2file_eval assemble \
+  --input tmp/req2file_eval/t0_t4_req2file_predictions.jsonl \
+  --output-root tmp/req2file_eval/assembled \
+  --reference-dataset-root datasets/sr2fpga_rtl_v1 \
+  --backfill-reference-path system_his.json
+
+python -m LLM.src.req2file_eval verify-static \
+  --project-root tmp/req2file_eval/assembled \
+  --output tmp/req2file_eval/t0_t4_req2file_static_report.json
+
+python -m LLM.src.req2file_eval verify-tools \
+  --project-root tmp/req2file_eval/assembled \
+  --output tmp/req2file_eval/t0_t4_req2file_tools_report.json
+
+python -m LLM.src.req2file_eval verify-synth \
+  --project-root tmp/req2file_eval/assembled \
+  --output tmp/req2file_eval/t0_t4_req2file_synth_report.json
+```
+
+`system_his.json` is backfilled from the reference dataset only for this
+project-consistency check; it is not part of the short-context `REQ2FILE`
+training target. `verify-tools` runs Verilator lint plus Icarus compile/run, and
+`verify-synth` runs Yosys synthesis and records parsed QoR cell counts when
+those tools are installed.
+
 ### Custom Training Data
 
 Prepare training data:

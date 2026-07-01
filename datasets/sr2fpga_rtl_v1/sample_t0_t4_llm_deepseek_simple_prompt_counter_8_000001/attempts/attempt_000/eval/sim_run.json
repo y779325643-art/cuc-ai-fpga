@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "/opt/homebrew/bin/vvp",
+    "sim.out"
+  ],
+  "status": "failed",
+  "exit_code": 0,
+  "stdout": "TEST_FAIL expected count=4 got 3\nsim/tb_top.v:30: $finish called at 55000 (1ps)\n",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "duration_seconds": 0.009506999995210208
+}

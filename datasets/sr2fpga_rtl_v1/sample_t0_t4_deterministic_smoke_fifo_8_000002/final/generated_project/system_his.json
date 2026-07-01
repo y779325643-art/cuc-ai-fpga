@@ -1,0 +1,412 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "fifo",
+  "project_name": "t0_t4_deterministic_smoke_fifo_8_000002",
+  "project": {
+    "name": "t0_t4_deterministic_smoke_fifo_8_000002",
+    "description": "Generate an 8-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control.",
+    "design_goal": "data written into the FIFO is read back in order",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "wr_en",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rd_en",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "din",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "dout",
+        "dir": "output",
+        "width": 8
+      },
+      {
+        "name": "full",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "empty",
+        "dir": "output",
+        "width": 1
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [
+      {
+        "name": "wr_ptr",
+        "owner": "top",
+        "width": 2
+      },
+      {
+        "name": "rd_ptr",
+        "owner": "top",
+        "width": 2
+      },
+      {
+        "name": "count",
+        "owner": "top",
+        "width": 3
+      }
+    ],
+    "fsms": [],
+    "buffers": [
+      {
+        "name": "fifo_storage",
+        "owner": "top",
+        "width": 8,
+        "depth": 4
+      }
+    ],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "wr_en",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rd_en",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "din",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "dout",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "full",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "empty",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    }
+  ],
+  "instances": [],
+  "data_flow": [
+    {
+      "name": "fifo_primary_path",
+      "path": [
+        "top.wr_en",
+        "top.dout"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one operation per cycle when enabled"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 8,
+      "ff": 40,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when data written into the FIFO is read back in order.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when data written into the FIFO is read back in order.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when data written into the FIFO is read back in order."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Generate an 8-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "wr_en",
+        "width": 1
+      },
+      {
+        "name": "rd_en",
+        "width": 1
+      },
+      {
+        "name": "din",
+        "width": 8
+      }
+    ],
+    "outputs": [
+      {
+        "name": "dout",
+        "width": 8
+      },
+      {
+        "name": "full",
+        "width": 1
+      },
+      {
+        "name": "empty",
+        "width": 1
+      }
+    ]
+  },
+  "architecture": {
+    "style": "single_module",
+    "top_module": "top",
+    "submodules": [],
+    "difficulty_tier": "T0"
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "wr_en",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rd_en",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "din",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "dout",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "full",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "empty",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    }
+  ],
+  "connections": [],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "wr_en",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rd_en",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "din",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "dout",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "full",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "empty",
+      "direction": "output",
+      "width": 1
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 8,
+      "ff": 40,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

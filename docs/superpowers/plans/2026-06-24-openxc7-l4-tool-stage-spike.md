@@ -6,7 +6,9 @@
 
 **Goal:** Validate the open-source OpenXC7 flow on XC7Z020 and add it as the L4 stage of the agent tool pipeline, producing batch, license-free, post-P&R labels (real LUT/FF/BRAM/DSP + Fmax).
 
-**Architecture:** A headless WSL2 OpenXC7 flow (Yosys `synth_xilinx` → nextpnr-xilinx → fasm → `.bit`) is wrapped by a single script; a new parser turns its report into `measured_qor`; a new `pnr` stage in `agent._run_pipeline` runs the wrapper via the existing `CommandRunner` (degrading to `missing_tool` where OpenXC7 is absent) and yields pass level L4. Vivado (already installed) is the trustworthiness oracle and the one-off board loader.
+**Architecture:** A headless WSL2 OpenXC7 flow (Yosys `synth_xilinx` → nextpnr-xilinx → fasm → `.bit`) is wrapped by a single script; a new parser turns its report into `measured_qor`; a new `pnr` stage in the current runner/local-tool pipeline runs the wrapper via the existing `CommandRunner`-style tool contract (degrading to `missing_tool` where OpenXC7 is absent) and yields pass level L4. Vivado (already installed) is the trustworthiness oracle and the one-off board loader.
+
+**Status note (2026-06-30):** This plan was written before the current runner/local-tool architecture settled. Treat any remaining `agent.py` / `_run_pipeline` references below as historical placeholders to remap during implementation, not as the authoritative integration target.
 
 **Tech Stack:** WSL2 (Ubuntu) + OpenXC7 (Yosys/nextpnr-xilinx/prjxray); Python 3 stdlib + `unittest` for the parser/stage; Vivado (Windows) for comparison and board loading.
 
@@ -26,7 +28,7 @@
 
 - Create `LLM/src/sr2fpga_agent/openxc7_report.py` — parse nextpnr-xilinx report/log → `{lut, ff, bram, dsp, fmax_mhz, wns_ns}` (sibling of `log_parser.parse_yosys_stats`).
 - Create `scripts/openxc7_pnr.sh` — headless flow wrapper invoked by the `pnr` stage; defined contract below.
-- Modify `LLM/src/sr2fpga_agent/agent.py` — add `pnr` stage to `_run_pipeline` after `synth`; merge the pnr report into `_measured_qor`; add `l4_timing_pass` + pass level `L4` in `_labels`.
+- Modify the current runner/local-tool pipeline — add `pnr` stage after `synth`; merge the pnr report into measured QoR; add `l4_timing_pass` + pass level `L4` in the current label builder. Re-check the exact files before implementation instead of assuming the older `LLM/src/sr2fpga_agent/agent.py` entry point.
 - Test `LLM/tests/test_sr2fpga_agent_openxc7_report.py`; extend an agent pipeline test for the L4 stage + missing_tool degradation.
 
 ---
@@ -195,4 +197,4 @@ def test_pipeline_records_l4_when_pnr_passes(monkeypatch):
 
 ## Reconciliation note for codex
 
-Task 3 touches `agent.py` (`_run_pipeline`/`_measured_qor`/`_labels`) — the same area the System-HIS v1.2 freeze plan modifies. Coordinate ordering: land the v1.2 freeze's agent changes first (or rebase), since both edit the pipeline. The parser (`openxc7_report.py`) and wrapper (`scripts/openxc7_pnr.sh`) are new files with no collision.
+Task 3 touches the active runner/local-tool pipeline, measured-QoR merge path, and label builder. The older `agent.py` (`_run_pipeline`/`_measured_qor`/`_labels`) names are retained only as historical hints from the first draft. Coordinate with the System-HIS v1.2 freeze changes before wiring L4. The parser (`openxc7_report.py`) and wrapper (`scripts/openxc7_pnr.sh`) are new files with no collision.

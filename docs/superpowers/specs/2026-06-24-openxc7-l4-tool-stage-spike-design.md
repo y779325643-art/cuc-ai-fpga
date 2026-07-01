@@ -11,8 +11,11 @@ toolchain decision in `2026-06-22-sr2fpga-research-reframe-design.md`.
 
 ## Why this matters
 
-The tool pipeline currently stops at L3 (`agent._run_pipeline`:
-lint → sim_compile → sim_run → synth, pass levels L0–L3). Two problems this spike
+The tool pipeline currently stops at L3 (the runner/tool-stage pipeline:
+lint → sim_compile → sim_run → synth, pass levels L0–L3). Older notes and the
+initial plan name `agent._run_pipeline`; before implementation, map the L4 hook to
+the current runner/local-tool architecture rather than assuming that legacy entry
+point still owns the pipeline. Two problems this spike
 addresses:
 
 1. **No L4 at scale.** Physical implementation (P&R timing + real utilization) is
@@ -97,7 +100,8 @@ Manual sparse path (the L5 proof — NOT automated):
 
 ### Stage 3 — batch readiness + tool-pipeline integration (no board)
 
-The integration target. OpenXC7 becomes a new stage in `agent._run_pipeline`:
+The integration target. OpenXC7 becomes a new stage in the current runner
+tool-stage pipeline:
 
 - New stage `pnr` (or `impl`) after `synth`, run via `CommandRunner`, returning a
   `ToolResult` (missing tools → `missing_tool`, never a crash — same contract as
@@ -105,7 +109,7 @@ The integration target. OpenXC7 becomes a new stage in `agent._run_pipeline`:
 - A new report parser (sibling of `parse_yosys_stats`) extracts post-P&R
   **LUT/FF/BRAM/DSP + Fmax/slack** from nextpnr output into `measured_qor` —
   replacing the vacuous L3 `lut:0` with a real number (closes Finding G).
-- `agent._labels` gains `l4_timing_pass` and pass level **L4**.
+- The label builder gains `l4_timing_pass` and pass level **L4**.
 - Must be **headless, deterministic, and parallelizable**; Stage 3 success = run
   unattended on a handful of samples and emit parseable L4 labels.
 
@@ -155,8 +159,11 @@ The integration target. OpenXC7 becomes a new stage in `agent._run_pipeline`:
 
 ## Relationship to existing work
 
-- Wires into `agent._run_pipeline` / `agent._labels` / `measured_qor` (the L1–L3
-  pattern extends to L4) and adds a parser beside `log_parser.parse_yosys_stats`.
+- Wires into the current runner/local-tool pipeline, label builder, and
+  `measured_qor` (the L1–L3 pattern extends to L4) and adds a parser beside
+  `log_parser.parse_yosys_stats`. Any legacy `agent._run_pipeline` reference in
+  the implementation plan is a historical integration hint, not an authoritative
+  code path.
 - Closes Finding G in `docs/research-issues-training-data-quality-2026-06-24.md`.
 - Realizes the L4 toolchain in the reframe spec
   (`2026-06-22-sr2fpga-research-reframe-design.md`): "L4 timing closure uses

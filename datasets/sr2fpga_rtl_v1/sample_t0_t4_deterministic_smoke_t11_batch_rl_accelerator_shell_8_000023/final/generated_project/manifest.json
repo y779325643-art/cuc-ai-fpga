@@ -1,0 +1,38 @@
+{
+  "project_name": "t0_t4_deterministic_smoke_t11_batch_rl_accelerator_shell_8_000023",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/batch_config_bank.v",
+    "rtl/batch_sample_buffer.v",
+    "rtl/dual_policy_value_core.v",
+    "rtl/dual_td_update_core.v",
+    "rtl/batch_result_stage.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "clock": {
+    "name": "clk",
+    "frequency_hz": 100000000
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  }
+}

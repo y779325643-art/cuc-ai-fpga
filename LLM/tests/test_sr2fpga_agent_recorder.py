@@ -12,6 +12,33 @@ from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 
 
 class DatasetRecorderTest(unittest.TestCase):
+    def test_write_final_replaces_previous_generated_project_snapshot(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter_8bit"),
+                platform,
+            )
+            sample_dir = recorder.start_sample("sample_replace_snapshot", "Design a counter.", platform)
+            stale_file = sample_dir / "final/generated_project/rtl/stale.v"
+            stale_file.parent.mkdir(parents=True, exist_ok=True)
+            stale_file.write_text("module stale; endmodule\n", encoding="utf-8")
+
+            recorder.write_final(
+                "sample_replace_snapshot",
+                project,
+                labels={"pass_level": "L3", "checks": {"l3_synth_pass": True}},
+                measured_qor={"lut": 1, "ff": 8},
+                tool_versions={},
+                trajectory={"attempts": []},
+            )
+
+            self.assertFalse(stale_file.exists())
+            self.assertTrue((sample_dir / "final/generated_project/reports/predicted_qor.json").exists())
+            self.assertTrue((sample_dir / "final/generated_project/sim/tb_top.v").exists())
+
     def test_records_attempt_final_outputs_and_training_views(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
@@ -125,6 +152,15 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertIn("system_his", requirement_row)
             self.assertEqual(requirement_row["metadata"]["failure_origin"], "natural_llm")
             self.assertEqual(requirement_row["metadata"]["training_split"], "quarantine")
+
+            file_rows = (export_dir / "requirement_to_file.jsonl").read_text(encoding="utf-8").splitlines()
+            self.assertGreaterEqual(len(file_rows), 6)
+            file_row = json.loads(file_rows[0])
+            self.assertEqual(file_row["sample_id"], "sample_000001")
+            self.assertEqual(file_row["requirement"], requirement)
+            self.assertIn("file_path", file_row)
+            self.assertIn("file_content", file_row)
+            self.assertEqual(file_row["metadata"]["difficulty_tier"], "T2")
 
             patch_rows = (export_dir / "failure_to_patch.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(patch_rows), 1)
@@ -1075,7 +1111,9 @@ class FakeLLMProjectGenerator:
             "constraints/timing.sdc": "create_clock -name clk -period 10.000 [get_ports clk]\n",
             "sim/tb_top.v": (
                 "module tb_top; reg clk; wire out; top dut(.clk(clk), .out(out)); "
-                "initial begin clk = 1'b0; $display(\"TEST_PASS\"); $finish; end endmodule\n"
+                "initial begin clk = 1'b0; #1; if (out !== 1'b0) begin $display(\"TEST_FAIL expected out=0\"); "
+                "$finish; end clk = 1'b1; #1; if (out !== 1'b1) begin $display(\"TEST_FAIL expected out=1\"); "
+                "$finish; end $display(\"TEST_PASS\"); $finish; end endmodule\n"
             ),
             "reports/predicted_qor.json": json.dumps(
                 {

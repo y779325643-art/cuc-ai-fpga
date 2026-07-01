@@ -352,6 +352,28 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(content, '{"files": {}}')
 
+    def test_openai_compatible_client_stream_chat_times_out_before_blocking_readline(self) -> None:
+        response = FakeBlockingSelectableHTTPResponse()
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                timeout_seconds=1,
+                transport_attempts=1,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
+            mock.patch("LLM.src.sr2fpga_agent.deepseek.select.select", return_value=([], [], [])),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "timed out"):
+                client.stream_chat([{"role": "user", "content": "hello"}])
+
+        self.assertFalse(response.readline_called)
+
     def test_parse_project_files_accepts_files_mapping(self) -> None:
         content = json.dumps(
             {
@@ -533,8 +555,8 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 1)
-        self.assertEqual(client.stream_call_count, 1)
-        self.assertEqual(client.chat_call_count, 0)
+        self.assertEqual(client.stream_call_count, 0)
+        self.assertEqual(client.chat_call_count, 1)
         self.assertIn("生成一个 8-bit 双路数据流合并并累加", client.messages[1]["content"])
         self.assertIn("Return only System-HIS JSON", client.messages[1]["content"])
         self.assertIn("Do not generate RTL", client.messages[1]["content"])
@@ -1079,8 +1101,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertNotIn("BEHAVIOR_HOLE", project.files["rtl/stream_join.v"])
         self.assertIn("assign out_valid", project.files["rtl/stream_join.v"])
         self.assertEqual(client.call_count, 1)
-        self.assertEqual(client.stream_call_count, 1)
-        self.assertEqual(client.chat_call_count, 0)
+        self.assertEqual(client.stream_call_count, 0)
+        self.assertEqual(client.chat_call_count, 1)
         self.assertIn('"schema_version": "system-his-v1.2"', client.messages[1]["content"])
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", client.messages[1]["content"])
 
@@ -1695,6 +1717,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("deassert or advance each input valid after its own input ready handshake", prompt)
         self.assertIn("Exercise back-to-back valid-ready transfers", prompt)
         self.assertIn("check each output transaction", prompt)
+        self.assertIn("Do not print TEST_PASS unconditionally", prompt)
+        self.assertIn("TEST_PASS only after conditional TEST_FAIL checks", prompt)
+        self.assertIn("top-level observable outputs", prompt)
 
     def test_his_project_prompt_requires_icarus_portable_testbench_arrays(self) -> None:
         request = ProjectRequest(task_type="composed_dual_stream_join", width=8, project_name="join_8bit")
@@ -1715,6 +1740,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("deassert or advance each input valid after its own input ready handshake", prompt)
         self.assertIn("Exercise back-to-back valid-ready transfers", prompt)
         self.assertIn("check each output transaction", prompt)
+        self.assertIn("Do not print TEST_PASS unconditionally", prompt)
+        self.assertIn("TEST_PASS only after conditional TEST_FAIL checks", prompt)
+        self.assertIn("top-level observable outputs", prompt)
 
     def test_repair_prompt_requires_icarus_portable_testbench_arrays(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -1740,6 +1768,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("deassert or advance each input valid after its own input ready handshake", prompt)
         self.assertIn("Exercise back-to-back valid-ready transfers", prompt)
         self.assertIn("check each output transaction", prompt)
+        self.assertIn("Do not print TEST_PASS unconditionally", prompt)
+        self.assertIn("TEST_PASS only after conditional TEST_FAIL checks", prompt)
+        self.assertIn("top-level observable outputs", prompt)
 
     def test_repair_prompt_keeps_unused_parameter_fixes_interface_consistent(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -2014,6 +2045,24 @@ class FakeStreamingHTTPResponse:
         if not self.lines:
             return b""
         return self.lines.pop(0)
+
+
+class FakeBlockingSelectableHTTPResponse:
+    def __init__(self) -> None:
+        self.readline_called = False
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, traceback):
+        return False
+
+    def fileno(self) -> int:
+        return 123
+
+    def readline(self) -> bytes:
+        self.readline_called = True
+        return b""
 
 
 class FakeNeverEndingHTTPResponse(FakeHTTPResponse):

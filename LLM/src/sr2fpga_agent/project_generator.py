@@ -56,7 +56,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_stream_accumulator": {
         "topology_id": "t2_stream_accumulator",
-        "difficulty_tier": "T2",
+        "difficulty_tier": "T1",
         "submodules": ["skid_buffer", "accumulator_core"],
         "nodes": [
             {"id": "skid", "component": "skid_buffer"},
@@ -73,7 +73,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_stream_fork": {
         "topology_id": "t3_stream_fork",
-        "difficulty_tier": "T3",
+        "difficulty_tier": "T2",
         "submodules": ["skid_buffer", "stream_fork", "stream_stage"],
         "nodes": [
             {"id": "skid", "component": "skid_buffer"},
@@ -100,7 +100,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_dual_stream_join": {
         "topology_id": "t4_dual_stream_join",
-        "difficulty_tier": "T4",
+        "difficulty_tier": "T2",
         "submodules": ["skid_buffer", "stream_join", "accumulator_core", "stream_stage"],
         "nodes": [
             {"id": "skid_a", "component": "skid_buffer"},
@@ -133,7 +133,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_vector_mac_pipeline": {
         "topology_id": "t5_vector_mac_pipeline",
-        "difficulty_tier": "T5",
+        "difficulty_tier": "T3",
         "submodules": ["skid_buffer", "vector_mac_core", "stream_stage"],
         "nodes": [
             {"id": "feature_buffer", "component": "skid_buffer"},
@@ -163,7 +163,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_td_update_core": {
         "topology_id": "t6_td_update_core",
-        "difficulty_tier": "T6",
+        "difficulty_tier": "T3",
         "submodules": ["td_input_stage", "discount_core", "td_update_core", "stream_stage"],
         "nodes": [
             {"id": "input_stage", "component": "td_input_stage"},
@@ -197,7 +197,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_policy_value_shell": {
         "topology_id": "t7_policy_value_shell",
-        "difficulty_tier": "T7",
+        "difficulty_tier": "T3",
         "submodules": [
             "config_reg_bank",
             "observation_stage",
@@ -243,7 +243,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_replay_sample_shell": {
         "topology_id": "t8_replay_sample_shell",
-        "difficulty_tier": "T8",
+        "difficulty_tier": "T3",
         "submodules": [
             "host_sample_stage",
             "replay_store",
@@ -298,7 +298,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_host_protocol_shell": {
         "topology_id": "t9_host_protocol_shell",
-        "difficulty_tier": "T9",
+        "difficulty_tier": "T4",
         "submodules": [
             "axi_lite_write_ctrl",
             "axi_lite_read_ctrl",
@@ -348,7 +348,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_rl_accelerator_shell": {
         "topology_id": "t10_rl_accelerator_shell",
-        "difficulty_tier": "T10",
+        "difficulty_tier": "T4",
         "submodules": [
             "host_config_bank",
             "sample_capture_stage",
@@ -405,7 +405,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_batch_rl_accelerator_shell": {
         "topology_id": "t11_batch_rl_accelerator_shell",
-        "difficulty_tier": "T11",
+        "difficulty_tier": "T4",
         "submodules": [
             "batch_config_bank",
             "batch_sample_buffer",
@@ -479,7 +479,7 @@ COMPONENT_TOPOLOGIES = {
     },
     "composed_replay_arbiter_shell": {
         "topology_id": "t12_replay_arbiter_shell",
-        "difficulty_tier": "T12",
+        "difficulty_tier": "T4",
         "submodules": [
             "host_transition_packetizer",
             "replay_index_allocator",
@@ -1586,6 +1586,7 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
         "style": "multi_module" if submodules[request.task_type] else "single_module",
         "top_module": "top",
         "submodules": submodules[request.task_type],
+        "difficulty_tier": "T0",
     }
     if request.task_type in COMPONENT_TOPOLOGIES:
         topology = COMPONENT_TOPOLOGIES[request.task_type]
@@ -1717,54 +1718,73 @@ def _timing_sdc(platform: PlatformProfile) -> str:
 
 def _testbench(request: ProjectRequest) -> str:
     if request.task_type == "counter":
-        return _counter_testbench(request.width)
-    if request.task_type == "fifo":
-        return _fifo_testbench(request.width)
-    if request.task_type == "simple_fsm":
-        return _simple_fsm_testbench(max(2, request.width))
-    if request.task_type == "ram_read_write":
-        return _ram_read_write_testbench(request.width)
-    if request.task_type == "uart_tx":
-        return _uart_tx_testbench()
-    if request.task_type == "spi_master":
-        return _spi_master_testbench()
-    if request.task_type == "pwm_controller":
-        return _pwm_controller_testbench(request.width)
-    if request.task_type == "fir_filter":
-        return _fir_filter_testbench(request.width)
-    if request.task_type == "streaming_valid_ready":
-        return _streaming_valid_ready_testbench(request.width)
-    if request.task_type == "matrix_vector_mac":
-        return _matrix_vector_mac_testbench(request.width)
-    if request.task_type == "alu_control_unit":
-        return _alu_control_unit_testbench(request.width)
-    if request.task_type == "crc_stream_checker":
-        return _crc_stream_checker_testbench(request.width)
-    if request.task_type == "composed_event_counter":
-        return _composed_event_counter_testbench(request.width)
-    if request.task_type == "composed_stream_accumulator":
-        return _composed_stream_accumulator_testbench(request.width)
-    if request.task_type == "composed_stream_fork":
-        return _composed_stream_fork_testbench(request.width)
-    if request.task_type == "composed_dual_stream_join":
-        return _composed_dual_stream_join_testbench(request.width)
-    if request.task_type == "composed_vector_mac_pipeline":
-        return _composed_vector_mac_pipeline_testbench(request.width)
-    if request.task_type == "composed_td_update_core":
-        return _composed_td_update_core_testbench(request.width)
-    if request.task_type == "composed_policy_value_shell":
-        return _composed_policy_value_shell_testbench(request.width)
-    if request.task_type == "composed_replay_sample_shell":
-        return _composed_replay_sample_shell_testbench(request.width)
-    if request.task_type == "composed_host_protocol_shell":
-        return _composed_host_protocol_shell_testbench(request.width)
-    if request.task_type == "composed_rl_accelerator_shell":
-        return _composed_rl_accelerator_shell_testbench(request.width)
-    if request.task_type == "composed_batch_rl_accelerator_shell":
-        return _composed_batch_rl_accelerator_shell_testbench(request.width)
-    if request.task_type == "composed_replay_arbiter_shell":
-        return _composed_replay_arbiter_shell_testbench(request.width)
-    raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
+        testbench = _counter_testbench(request.width)
+    elif request.task_type == "fifo":
+        testbench = _fifo_testbench(request.width)
+    elif request.task_type == "simple_fsm":
+        testbench = _simple_fsm_testbench(max(2, request.width))
+    elif request.task_type == "ram_read_write":
+        testbench = _ram_read_write_testbench(request.width)
+    elif request.task_type == "uart_tx":
+        testbench = _uart_tx_testbench()
+    elif request.task_type == "spi_master":
+        testbench = _spi_master_testbench()
+    elif request.task_type == "pwm_controller":
+        testbench = _pwm_controller_testbench(request.width)
+    elif request.task_type == "fir_filter":
+        testbench = _fir_filter_testbench(request.width)
+    elif request.task_type == "streaming_valid_ready":
+        testbench = _streaming_valid_ready_testbench(request.width)
+    elif request.task_type == "matrix_vector_mac":
+        testbench = _matrix_vector_mac_testbench(request.width)
+    elif request.task_type == "alu_control_unit":
+        testbench = _alu_control_unit_testbench(request.width)
+    elif request.task_type == "crc_stream_checker":
+        testbench = _crc_stream_checker_testbench(request.width)
+    elif request.task_type == "composed_event_counter":
+        testbench = _composed_event_counter_testbench(request.width)
+    elif request.task_type == "composed_stream_accumulator":
+        testbench = _composed_stream_accumulator_testbench(request.width)
+    elif request.task_type == "composed_stream_fork":
+        testbench = _composed_stream_fork_testbench(request.width)
+    elif request.task_type == "composed_dual_stream_join":
+        testbench = _composed_dual_stream_join_testbench(request.width)
+    elif request.task_type == "composed_vector_mac_pipeline":
+        testbench = _composed_vector_mac_pipeline_testbench(request.width)
+    elif request.task_type == "composed_td_update_core":
+        testbench = _composed_td_update_core_testbench(request.width)
+    elif request.task_type == "composed_policy_value_shell":
+        testbench = _composed_policy_value_shell_testbench(request.width)
+    elif request.task_type == "composed_replay_sample_shell":
+        testbench = _composed_replay_sample_shell_testbench(request.width)
+    elif request.task_type == "composed_host_protocol_shell":
+        testbench = _composed_host_protocol_shell_testbench(request.width)
+    elif request.task_type == "composed_rl_accelerator_shell":
+        testbench = _composed_rl_accelerator_shell_testbench(request.width)
+    elif request.task_type == "composed_batch_rl_accelerator_shell":
+        testbench = _composed_batch_rl_accelerator_shell_testbench(request.width)
+    elif request.task_type == "composed_replay_arbiter_shell":
+        testbench = _composed_replay_arbiter_shell_testbench(request.width)
+    else:
+        raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
+    return _with_testbench_timeout(testbench)
+
+
+def _with_testbench_timeout(testbench: str, timeout_ns: int = 100_000) -> str:
+    if "TEST_FAIL timeout" in testbench:
+        return testbench
+    watchdog = (
+        "\n"
+        "  initial begin\n"
+        f"    #{timeout_ns};\n"
+        '    $display("TEST_FAIL timeout waiting for expected input/output behavior");\n'
+        "    $finish;\n"
+        "  end\n"
+    )
+    endmodule = "\nendmodule\n"
+    if endmodule not in testbench:
+        return testbench
+    return testbench.replace(endmodule, f"{watchdog}{endmodule}", 1)
 
 
 def _counter_testbench(width: int) -> str:
@@ -2026,14 +2046,15 @@ def _simple_fsm_testbench(width: int) -> str:
             rst_n = 1'b1;
             @(negedge clk);
             start = 1'b1;
-            repeat (5) @(posedge clk);
+            repeat (6) @(posedge clk);
+            @(negedge clk);
             if (done !== 1'b1) begin
               $display("TEST_FAIL fsm did not reach done");
               $finish;
             end
-            @(negedge clk);
             start = 1'b0;
             repeat (2) @(posedge clk);
+            @(negedge clk);
             if (done !== 1'b0) begin
               $display("TEST_FAIL fsm did not return to idle");
               $finish;
@@ -9026,39 +9047,39 @@ def _default_description(request: ProjectRequest) -> str:
             "using a skid buffer, fork, and two registered output stages."
         ),
         "composed_dual_stream_join": (
-            f"Generate a {request.width}-bit T4 component-composed dual-stream join "
+            f"Generate a {request.width}-bit T2 component-composed dual-stream join "
             "using two skid buffers, a join, an accumulator, and an output stage."
         ),
         "composed_vector_mac_pipeline": (
-            f"Generate a {request.width}-bit T5 component-composed vector MAC feature pipeline "
+            f"Generate a {request.width}-bit T3 component-composed vector MAC feature pipeline "
             "using feature and weight skid buffers, a vector MAC core, and an output stage."
         ),
         "composed_td_update_core": (
-            f"Generate a {request.width}-bit T6 component-composed TD update datapath "
+            f"Generate a {request.width}-bit T3 component-composed TD update datapath "
             "using an input tuple stage, discount core, TD update core, and output stage."
         ),
         "composed_policy_value_shell": (
-            f"Generate a {request.width}-bit T7 component-composed policy/value accelerator shell "
+            f"Generate a {request.width}-bit T3 component-composed policy/value accelerator shell "
             "using config registers, observation capture, policy scoring, action selection, and output staging."
         ),
         "composed_replay_sample_shell": (
-            f"Generate a {request.width}-bit T8 component-composed replay sample shell "
+            f"Generate a {request.width}-bit T3 component-composed replay sample shell "
             "using host sample staging, a small replay store, sample packing, read staging, and occupancy reporting."
         ),
         "composed_host_protocol_shell": (
-            f"Generate a {request.width}-bit T9 component-composed host protocol shell "
+            f"Generate a {request.width}-bit T4 component-composed host protocol shell "
             "using AXI-lite-style control/status, AXI-stream-style output, and irq reporting."
         ),
         "composed_rl_accelerator_shell": (
-            f"Generate a {request.width}-bit T10 component-composed RL accelerator shell "
+            f"Generate a {request.width}-bit T4 component-composed RL accelerator shell "
             "using host config, sample capture, policy/value scoring, TD update, result streaming, and irq reporting."
         ),
         "composed_batch_rl_accelerator_shell": (
-            f"Generate a {request.width}-bit T11 component-composed batch RL accelerator shell "
+            f"Generate a {request.width}-bit T4 component-composed batch RL accelerator shell "
             "using shared config, two-lane sample capture, dual-lane policy/value and TD update, result staging, and irq reporting."
         ),
         "composed_replay_arbiter_shell": (
-            f"Generate a {request.width}-bit T12 component-composed replay arbiter shell "
+            f"Generate a {request.width}-bit T4 component-composed replay arbiter shell "
             "using host transition packetization, indexed sample requests, replay memory arbitration, and irq reporting."
         ),
     }

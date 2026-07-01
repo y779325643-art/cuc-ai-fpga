@@ -383,6 +383,7 @@ The recorder should export multiple JSONL views from the same dataset:
 - `requirement_to_his.jsonl`
 - `his_to_project.jsonl`
 - `requirement_to_project.jsonl`
+- `requirement_to_file.jsonl`
 - `failure_to_diagnosis.jsonl`
 - `failure_to_patch.jsonl`
 - `project_to_predicted_qor.jsonl`

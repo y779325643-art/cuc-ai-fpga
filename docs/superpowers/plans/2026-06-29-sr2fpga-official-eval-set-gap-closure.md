@@ -4,6 +4,10 @@
 
 **Goal:** Implement the approved official eval set gap closure by adding deterministic support for `alu_control_unit` and `crc_stream_checker`, then update prompt guidance, tests, docs, and eval config scaffolding.
 
+**Status note (2026-06-30):** This is an implementation plan and historical execution record for the gap-closure scaffold, not the final frozen official-eval aggregate. The actual scaffold file is `configs/sr2fpga_official_eval_gap_closure.example.yaml`. The public/reporting curriculum is compressed to T0-T4; legacy topology IDs t5-t12 remain implementation IDs. If the scaffold includes integrated T4 shell samples, report them as supplemental complexity evidence unless a later approved design grounds them in real workload references.
+
+**Prompt-information boundary:** Architecture guidance added here is valid for deterministic generation, REQ2HIS checks, and contract-rich/System-HIS treatment arms. Do not use module-level file lists, FSM tables, internal register names, always-block sketches, or line-level fix hints in the official `simple_prompt` baseline.
+
 **Architecture:** Follow the existing deterministic generator pattern in `LLM/src/sr2fpga_agent/project_generator.py`: register the task type, emit a multi-file RTL project, emit a self-checking testbench, and rely on existing System-HIS v1.2/L0 consistency builders. The new families are ordinary task types, not component topologies, so runner component-topology expansion should not change.
 
 **Tech Stack:** Python unittest, deterministic Verilog generation strings, System-HIS v1.2 checker, Icarus Verilog, optional Verilator, existing DeepSeek prompt guidance utilities.
@@ -25,10 +29,13 @@
   - Add prompt-guidance tests for the two new task families.
 - Modify: `LLM/tests/test_sr2fpga_agent_system_his_fidelity.py`
   - Add fidelity-gate tests if `system_his_fidelity.py` is updated.
-- Create: `configs/sr2fpga_official_eval_set.example.yaml`
-  - Add a frozen candidate official eval config after deterministic support passes.
+- Create: `configs/sr2fpga_official_eval_gap_closure.example.yaml`
+  - Add a gap-closure scaffold after deterministic support passes. Derive a
+    frozen official aggregate from it only after separating primary families from
+    supplemental integrated-shell results.
 - Modify: `README.md`
-  - Add the two new task families and note that official eval coverage is broader than T1-T4.
+  - Add the two new task families and note that official eval coverage is broader
+    than the legacy t1-t4 topology IDs.
 - Modify: `docs/current-status.md`
   - Record the gap-closure implementation and next official eval freeze step.
 
@@ -747,13 +754,13 @@ git commit -m "feat: guide official eval gap tasks through REQ2HIS"
 ### Task 5: Add Official Eval Config Scaffold And Docs
 
 **Files:**
-- Create: `configs/sr2fpga_official_eval_set.example.yaml`
+- Create: `configs/sr2fpga_official_eval_gap_closure.example.yaml`
 - Modify: `README.md`
 - Modify: `docs/current-status.md`
 
 - [ ] **Step 1: Add official eval config scaffold**
 
-Create `configs/sr2fpga_official_eval_set.example.yaml`:
+Create `configs/sr2fpga_official_eval_gap_closure.example.yaml`:
 
 ```yaml
 dataset_root: datasets/sr2fpga_rtl_v1
@@ -772,7 +779,7 @@ tasks:
     task_type: simple_fsm
     widths: [4]
     count: 1
-    difficulty_tier: T1
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -788,7 +795,7 @@ tasks:
     task_type: composed_stream_accumulator
     widths: [8]
     count: 1
-    difficulty_tier: T2
+    difficulty_tier: T1
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -796,7 +803,7 @@ tasks:
     task_type: composed_stream_fork
     widths: [8]
     count: 1
-    difficulty_tier: T3
+    difficulty_tier: T2
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -804,7 +811,7 @@ tasks:
     task_type: composed_dual_stream_join
     widths: [8]
     count: 1
-    difficulty_tier: T4
+    difficulty_tier: T2
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -812,7 +819,7 @@ tasks:
     task_type: fir_filter
     widths: [8]
     count: 1
-    difficulty_tier: T2
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -820,7 +827,7 @@ tasks:
     task_type: matrix_vector_mac
     widths: [8]
     count: 1
-    difficulty_tier: T3
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -828,7 +835,7 @@ tasks:
     task_type: composed_vector_mac_pipeline
     widths: [8]
     count: 1
-    difficulty_tier: T5
+    difficulty_tier: T3
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -836,7 +843,7 @@ tasks:
     task_type: fifo
     widths: [8]
     count: 1
-    difficulty_tier: T1
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -844,7 +851,7 @@ tasks:
     task_type: ram_read_write
     widths: [16]
     count: 1
-    difficulty_tier: T2
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -852,7 +859,7 @@ tasks:
     task_type: composed_replay_sample_shell
     widths: [8]
     count: 1
-    difficulty_tier: T8
+    difficulty_tier: T3
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -860,7 +867,7 @@ tasks:
     task_type: uart_tx
     widths: [8]
     count: 1
-    difficulty_tier: T2
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -868,7 +875,7 @@ tasks:
     task_type: spi_master
     widths: [8]
     count: 1
-    difficulty_tier: T2
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -876,7 +883,7 @@ tasks:
     task_type: composed_host_protocol_shell
     widths: [8]
     count: 1
-    difficulty_tier: T9
+    difficulty_tier: T4
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -884,7 +891,7 @@ tasks:
     task_type: alu_control_unit
     widths: [8]
     count: 1
-    difficulty_tier: T2
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -892,7 +899,7 @@ tasks:
     task_type: crc_stream_checker
     widths: [8]
     count: 1
-    difficulty_tier: T3
+    difficulty_tier: T0
     failure_origin: deterministic_reference
     measurement_point: a_first_attempt_no_tools
     requirement_style: contract
@@ -922,8 +929,9 @@ Add a compact bullet under current code state or current capability:
 ```markdown
 - Official eval set gap closure now adds `alu_control_unit` and
   `crc_stream_checker` as the only new V1 task families needed to cover
-  processor-like control and checksum/data-integrity categories. T10-T12 remain
-  supplemental complexity evidence rather than primary aggregate metrics.
+  processor-like control and checksum/data-integrity categories. Integrated T4
+  shell tasks remain supplemental complexity evidence rather than primary
+  aggregate metrics.
 ```
 
 - [ ] **Step 4: Run config preflight**
@@ -931,15 +939,17 @@ Add a compact bullet under current code state or current capability:
 Run:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_official_eval_set.example.yaml --run-id official-eval-set-dry-run --preflight
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_official_eval_gap_closure.example.yaml --run-id official-eval-gap-closure-dry-run --preflight
 ```
 
-Expected: `ok: true` and `planned_samples: 16`.
+Expected for the minimal deterministic scaffold: `ok: true` and `planned_samples: 16`.
+The current gap-closure scaffold may plan more samples if it also includes
+DeepSeek or supplemental integrated-shell arms.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add configs/sr2fpga_official_eval_set.example.yaml README.md docs/current-status.md
+git add configs/sr2fpga_official_eval_gap_closure.example.yaml README.md docs/current-status.md
 git commit -m "docs: scaffold official eval set config"
 ```
 
@@ -990,10 +1000,12 @@ Expected: compile succeeds with no syntax errors.
 Run:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_official_eval_set.example.yaml --run-id official-eval-set-dry-run --preflight
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_official_eval_gap_closure.example.yaml --run-id official-eval-gap-closure-dry-run --preflight
 ```
 
-Expected: `ok: true` and `planned_samples: 16`.
+Expected for the minimal deterministic scaffold: `ok: true` and `planned_samples: 16`.
+The current gap-closure scaffold may plan more samples if it also includes
+DeepSeek or supplemental integrated-shell arms.
 
 - [ ] **Step 5: Inspect final git diff**
 
@@ -1010,7 +1022,7 @@ Expected: worktree clean after commits; latest commits correspond to the tasks a
 
 ## Self-Review Checklist
 
-- Spec coverage: implements the two approved new families, keeps T10-T12 supplemental, avoids T13/T14, and separates deterministic support from scaled experiments.
+- Spec coverage: implements the two approved new families, keeps integrated T4 shells supplemental, avoids a post-T4 synthetic tier without a new design, and separates deterministic support from scaled experiments.
 - Unresolved marker scan: no open-ended markers remain in the plan.
 - Scope control: does not add CPU, RISC-V, AES, DDR, PCIe, Ethernet, or vendor IP.
 - Verification coverage: includes generator tests, L0/System-HIS consistency via existing aggregate tests, Icarus simulation, optional Verilator, DeepSeek prompt guidance, fidelity gates, and runner config preflight.

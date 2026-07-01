@@ -4,7 +4,9 @@ This checkpoint freezes the pre-OpenXC7 eval scaffold for the paper-facing task 
 
 ## Scope
 
-- T1-T12 component topologies remain the primary complexity ladder.
+- The public/reporting curriculum is compressed to T0-T4. Legacy topology IDs
+  t1-t12 remain implementation IDs; integrated T4 shell tasks are supplemental
+  complexity evidence rather than the primary official aggregate.
 - `alu_control_unit` and `crc_stream_checker` cover common official benchmark families not represented by the RL-oriented topologies.
 - The new config runs 14 deterministic reference samples and 14 `deepseek-his-v12` samples.
 - This stage targets local open-source L0-L3 labels only. OpenXC7/Vivado validation is a Windows follow-up.

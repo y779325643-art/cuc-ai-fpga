@@ -1,0 +1,739 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "uart_tx",
+  "project_name": "t0_t4_deterministic_smoke_uart_tx_8_000005",
+  "project": {
+    "name": "t0_t4_deterministic_smoke_uart_tx_8_000005",
+    "description": "Generate an 8-bit FPGA RTL project that implements a UART transmitter.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a UART transmitter.",
+    "design_goal": "start launches an 8-bit LSB-first UART frame with start and stop bits",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "start",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "data",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "tx",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "busy",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "done",
+        "dir": "output",
+        "width": 1
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "data",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "tx",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "busy",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "done",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "baud_tick_gen",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/baud_tick_gen.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "enable",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "tick",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "baud tick gen component in the generated RTL project"
+    },
+    {
+      "name": "uart_tx_core",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/uart_tx_core.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "baud_tick",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "data",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "tx",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "busy",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "done",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "uart tx core component in the generated RTL project"
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_baud_tick_gen",
+      "component": "baud_tick_gen",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_uart_tx_core",
+      "component": "uart_tx_core",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "u_baud_tick_gen_primary_path",
+      "path": [
+        "top.data",
+        "u_baud_tick_gen.enable",
+        "u_baud_tick_gen.tick",
+        "top.tx"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    },
+    {
+      "name": "u_uart_tx_core_primary_path",
+      "path": [
+        "top.data",
+        "u_uart_tx_core.baud_tick",
+        "u_uart_tx_core.tx",
+        "top.tx"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 16,
+      "ff": 24,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when start launches an 8-bit LSB-first UART frame with start and stop bits.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when start launches an 8-bit LSB-first UART frame with start and stop bits.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when start launches an 8-bit LSB-first UART frame with start and stop bits."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/baud_tick_gen.v",
+      "rtl/uart_tx_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Generate an 8-bit FPGA RTL project that implements a UART transmitter."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "start",
+        "width": 1
+      },
+      {
+        "name": "data",
+        "width": 8
+      }
+    ],
+    "outputs": [
+      {
+        "name": "tx",
+        "width": 1
+      },
+      {
+        "name": "busy",
+        "width": 1
+      },
+      {
+        "name": "done",
+        "width": 1
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "baud_tick_gen",
+      "uart_tx_core"
+    ],
+    "difficulty_tier": "T0"
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "data",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "tx",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "busy",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "done",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "baud_tick_gen",
+      "role": "submodule",
+      "source": "rtl/baud_tick_gen.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "enable",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "tick",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "baud tick gen component in the generated RTL project"
+    },
+    {
+      "name": "uart_tx_core",
+      "role": "submodule",
+      "source": "rtl/uart_tx_core.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "baud_tick",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "data",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "tx",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "busy",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "done",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "uart tx core component in the generated RTL project"
+    }
+  ],
+  "connections": [
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "baud_tick_gen",
+        "port": "clk",
+        "instance": "u_baud_tick_gen"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "uart_tx_core",
+        "port": "clk",
+        "instance": "u_uart_tx_core"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "baud_tick_gen",
+        "port": "rst_n",
+        "instance": "u_baud_tick_gen"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "uart_tx_core",
+        "port": "rst_n",
+        "instance": "u_uart_tx_core"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "uart_tx_core",
+        "port": "busy",
+        "instance": "u_uart_tx_core"
+      },
+      "to": {
+        "module": "top",
+        "port": "busy"
+      },
+      "signal": "busy",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "uart_tx_core",
+        "port": "busy",
+        "instance": "u_uart_tx_core"
+      },
+      "to": {
+        "module": "baud_tick_gen",
+        "port": "enable",
+        "instance": "u_baud_tick_gen"
+      },
+      "signal": "busy",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "baud_tick_gen",
+        "port": "tick",
+        "instance": "u_baud_tick_gen"
+      },
+      "to": {
+        "module": "uart_tx_core",
+        "port": "baud_tick",
+        "instance": "u_uart_tx_core"
+      },
+      "signal": "baud_tick",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "start"
+      },
+      "to": {
+        "module": "uart_tx_core",
+        "port": "start",
+        "instance": "u_uart_tx_core"
+      },
+      "signal": "start",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "data"
+      },
+      "to": {
+        "module": "uart_tx_core",
+        "port": "data",
+        "instance": "u_uart_tx_core"
+      },
+      "signal": "data",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "uart_tx_core",
+        "port": "tx",
+        "instance": "u_uart_tx_core"
+      },
+      "to": {
+        "module": "top",
+        "port": "tx"
+      },
+      "signal": "tx",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "uart_tx_core",
+        "port": "done",
+        "instance": "u_uart_tx_core"
+      },
+      "to": {
+        "module": "top",
+        "port": "done"
+      },
+      "signal": "done",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    }
+  ],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "start",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "data",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "tx",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "busy",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "done",
+      "direction": "output",
+      "width": 1
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 16,
+      "ff": 24,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

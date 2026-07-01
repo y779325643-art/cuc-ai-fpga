@@ -47,8 +47,31 @@ def check_testbench_observation_races(testbench: str) -> list[TestbenchObservati
 def check_testbench_static_issues(testbench: str) -> list[TestbenchObservationIssue]:
     """Run all static checks for generated self-checking testbenches."""
     return [
+        *check_testbench_missing_functional_oracle(testbench),
         *check_testbench_observation_races(testbench),
         *check_testbench_stimulus_reaccept_risks(testbench),
+    ]
+
+
+def check_testbench_missing_functional_oracle(testbench: str) -> list[TestbenchObservationIssue]:
+    """Find testbenches that can print TEST_PASS without any conditional oracle."""
+    pass_match = re.search(r'TEST_PASS', testbench)
+    if not pass_match:
+        return []
+    before_pass = testbench[: pass_match.start()]
+    has_conditional_failure = re.search(r"\bif\s*\([^)]*\).*TEST_FAIL", before_pass, re.DOTALL) is not None
+    if has_conditional_failure:
+        return []
+    line = testbench[: pass_match.start()].count("\n") + 1
+    return [
+        TestbenchObservationIssue(
+            line=line,
+            failure_type="testbench_missing_functional_oracle",
+            message=(
+                f"line {line}: TEST_PASS appears without a prior conditional TEST_FAIL oracle; "
+                "the testbench can pass without comparing expected top-level behavior"
+            ),
+        )
     ]
 
 

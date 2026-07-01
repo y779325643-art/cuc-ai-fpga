@@ -1,0 +1,1 @@
+Generate an 8-bit FPGA RTL project with a host-side replay sample write interface, a small replay store, fabric-side sample readout, and occupancy status.

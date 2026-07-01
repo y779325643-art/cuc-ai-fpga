@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -85,6 +86,7 @@ class DatasetRecorder:
         requirement_rows: list[dict[str, Any]] = []
         his_project_rows: list[dict[str, Any]] = []
         requirement_project_rows: list[dict[str, Any]] = []
+        requirement_file_rows: list[dict[str, Any]] = []
         diagnosis_rows: list[dict[str, Any]] = []
         patch_rows: list[dict[str, Any]] = []
         predicted_qor_rows: list[dict[str, Any]] = []
@@ -133,6 +135,17 @@ class DatasetRecorder:
                         "files": final_files,
                     }
                 )
+                for file_item in final_files:
+                    requirement_file_rows.append(
+                        {
+                            "sample_id": sample_id,
+                            "metadata": metadata,
+                            "episode": episode,
+                            "requirement": requirement,
+                            "file_path": file_item["path"],
+                            "file_content": file_item["content"],
+                        }
+                    )
 
             if final_files and predicted_qor_path.exists():
                 predicted_qor_rows.append(
@@ -187,6 +200,7 @@ class DatasetRecorder:
         _write_jsonl(output_dir / "requirement_to_his.jsonl", requirement_rows)
         _write_jsonl(output_dir / "his_to_project.jsonl", his_project_rows)
         _write_jsonl(output_dir / "requirement_to_project.jsonl", requirement_project_rows)
+        _write_jsonl(output_dir / "requirement_to_file.jsonl", requirement_file_rows)
         _write_jsonl(output_dir / "failure_to_diagnosis.jsonl", diagnosis_rows)
         _write_jsonl(output_dir / "failure_to_patch.jsonl", patch_rows)
         _write_jsonl(output_dir / "project_to_predicted_qor.jsonl", predicted_qor_rows)
@@ -194,6 +208,8 @@ class DatasetRecorder:
 
 
 def _write_project(project_dir: Path, project: GeneratedProject) -> None:
+    if project_dir.exists():
+        shutil.rmtree(project_dir)
     for relative_path, content in project.files.items():
         target = project_dir / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)

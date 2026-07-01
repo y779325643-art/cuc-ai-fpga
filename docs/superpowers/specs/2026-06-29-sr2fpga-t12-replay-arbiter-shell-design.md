@@ -2,6 +2,11 @@
 
 Date: 2026-06-29
 
+Status note (2026-06-30): this file keeps the legacy topology ID/name used by
+the implementation (`t12_replay_arbiter_shell`). For public reporting, dataset
+splits, and paper-facing discussion, it maps to compressed tier **T4: integrated
+host-facing system shells**.
+
 ## Purpose
 
 T12 is the next component-topology step after T11 toward the reinforcement-

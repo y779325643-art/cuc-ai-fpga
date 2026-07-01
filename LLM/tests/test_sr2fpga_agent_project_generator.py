@@ -7,7 +7,9 @@ import unittest
 from pathlib import Path
 
 from LLM.src.sr2fpga_agent import PlatformProfile, ProjectGenerator, ProjectRequest
+from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
+from LLM.src.sr2fpga_agent.testbench_checker import check_testbench_static_issues
 
 
 class ProjectGeneratorTest(unittest.TestCase):
@@ -347,7 +349,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t2_stream_accumulator")
-        self.assertEqual(architecture["difficulty_tier"], "T2")
+        self.assertEqual(architecture["difficulty_tier"], "T1")
         self.assertEqual(architecture["component_library"], "sr2fpga_deterministic_components_v1")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
@@ -411,7 +413,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t3_stream_fork")
-        self.assertEqual(architecture["difficulty_tier"], "T3")
+        self.assertEqual(architecture["difficulty_tier"], "T2")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["skid_buffer", "stream_fork", "stream_stage"],
@@ -450,7 +452,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t4_dual_stream_join")
-        self.assertEqual(architecture["difficulty_tier"], "T4")
+        self.assertEqual(architecture["difficulty_tier"], "T2")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["skid_buffer", "skid_buffer", "stream_join", "accumulator_core", "stream_stage"],
@@ -497,7 +499,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t5_vector_mac_pipeline")
-        self.assertEqual(architecture["difficulty_tier"], "T5")
+        self.assertEqual(architecture["difficulty_tier"], "T3")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["skid_buffer", "skid_buffer", "vector_mac_core", "stream_stage"],
@@ -552,7 +554,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t6_td_update_core")
-        self.assertEqual(architecture["difficulty_tier"], "T6")
+        self.assertEqual(architecture["difficulty_tier"], "T3")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["td_input_stage", "discount_core", "td_update_core", "stream_stage"],
@@ -617,7 +619,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t7_policy_value_shell")
-        self.assertEqual(architecture["difficulty_tier"], "T7")
+        self.assertEqual(architecture["difficulty_tier"], "T3")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["config_reg_bank", "observation_stage", "policy_score_core", "action_select_core", "stream_stage"],
@@ -677,7 +679,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t8_replay_sample_shell")
-        self.assertEqual(architecture["difficulty_tier"], "T8")
+        self.assertEqual(architecture["difficulty_tier"], "T3")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["host_sample_stage", "replay_store", "sample_pack_core", "sample_read_stage", "occupancy_counter"],
@@ -735,7 +737,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t9_host_protocol_shell")
-        self.assertEqual(architecture["difficulty_tier"], "T9")
+        self.assertEqual(architecture["difficulty_tier"], "T4")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["axi_lite_write_ctrl", "axi_lite_read_ctrl", "control_reg_bank", "sample_stream_adapter", "irq_status"],
@@ -793,7 +795,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t10_rl_accelerator_shell")
-        self.assertEqual(architecture["difficulty_tier"], "T10")
+        self.assertEqual(architecture["difficulty_tier"], "T4")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             [
@@ -857,7 +859,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t11_batch_rl_accelerator_shell")
-        self.assertEqual(architecture["difficulty_tier"], "T11")
+        self.assertEqual(architecture["difficulty_tier"], "T4")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             [
@@ -920,7 +922,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t12_replay_arbiter_shell")
-        self.assertEqual(architecture["difficulty_tier"], "T12")
+        self.assertEqual(architecture["difficulty_tier"], "T4")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             [
@@ -956,6 +958,66 @@ class ProjectGeneratorTest(unittest.TestCase):
                 _assert_manifest_sources_exist(self, project)
                 self.assertEqual(_manifest(project)["simulation"]["testbench"], "sim/tb_top.v")
                 self.assertIn("TEST_PASS", project.files["sim/tb_top.v"])
+
+    def test_all_supported_task_types_have_explicit_t0_to_t4_difficulty_tier(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        for task_type, width, project_name in _supported_task_cases():
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                architecture = _system_his(project)["architecture"]
+
+                self.assertIn(architecture["difficulty_tier"], {"T0", "T1", "T2", "T3", "T4"})
+                if not task_type.startswith("composed_"):
+                    self.assertEqual(architecture["difficulty_tier"], "T0")
+
+    def test_t0_t4_task_catalog_matches_supported_generator_cases(self) -> None:
+        catalog = json.loads(Path("docs/sr2fpga-t0-t4-task-catalog.json").read_text(encoding="utf-8"))
+        entries = catalog["tasks"]
+        supported_cases = _supported_task_cases()
+
+        self.assertEqual(catalog["taxonomy"], "T0-T4")
+        self.assertEqual(len(entries), len(supported_cases))
+        self.assertEqual([entry["task_type"] for entry in entries], [task_type for task_type, _, _ in supported_cases])
+
+        supported_widths = {task_type: width for task_type, width, _ in supported_cases}
+        for entry in entries:
+            task_type = entry["task_type"]
+            self.assertEqual(entry["default_width"], supported_widths[task_type])
+            self.assertIn(entry["tier"], {"T0", "T1", "T2", "T3", "T4"})
+            self.assertTrue(entry["rtl_category"])
+            self.assertTrue(entry["testbench_oracle"])
+
+            if task_type in COMPONENT_TOPOLOGIES:
+                topology = COMPONENT_TOPOLOGIES[task_type]
+                self.assertEqual(entry["topology_id"], topology["topology_id"])
+                self.assertEqual(entry["tier"], topology["difficulty_tier"])
+            else:
+                self.assertIsNone(entry["topology_id"])
+                self.assertEqual(entry["tier"], "T0")
+
+    def test_all_generated_testbenches_are_black_box_io_oracles_with_timeout(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        for task_type, width, project_name in _supported_task_cases():
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                testbench = project.files["sim/tb_top.v"]
+                static_issues = check_testbench_static_issues(testbench)
+
+                self.assertIn("top dut", testbench)
+                self.assertNotRegex(testbench, r"\bdut\.")
+                self.assertIn("TEST_PASS", testbench)
+                self.assertIn("TEST_FAIL", testbench)
+                self.assertIn("TEST_FAIL timeout", testbench)
+                self.assertRegex(testbench, r"!==|!=")
+                self.assertEqual(static_issues, [])
 
     def test_system_his_architecture_submodules_match_emitted_rtl_modules(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
@@ -1067,6 +1129,61 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertEqual(modules["top"]["parameters"], {})
         self.assertEqual(modules["skid_buffer"]["parameters"], {"WIDTH": 8})
         self.assertEqual(modules["accumulator_core"]["parameters"], {"WIDTH": 8, "SUM_WIDTH": 12})
+
+    @unittest.skipUnless(shutil.which("iverilog") and shutil.which("vvp"), "iverilog/vvp are not installed")
+    def test_basic_generated_testbenches_pass_under_icarus(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = [
+            ("counter", 8, "counter_8bit"),
+            ("fifo", 8, "fifo_8bit"),
+            ("simple_fsm", 4, "fsm_sequence_4bit"),
+            ("ram_read_write", 16, "ram_rw_16bit"),
+        ]
+
+        for task_type, width, project_name in cases:
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=width, project_name=project_name),
+                    platform,
+                )
+                with tempfile.TemporaryDirectory() as tmp:
+                    project_dir = Path(tmp)
+                    _write_project(project_dir, project)
+                    manifest = _manifest(project)
+                    compile_result = subprocess.run(
+                        [
+                            "iverilog",
+                            "-g2012",
+                            "-o",
+                            "sim.out",
+                            *manifest["sources"],
+                            manifest["simulation"]["testbench"],
+                        ],
+                        cwd=project_dir,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                    self.assertEqual(
+                        compile_result.returncode,
+                        0,
+                        f"{task_type} sim compile failed\n"
+                        f"STDOUT:\n{compile_result.stdout}\n"
+                        f"STDERR:\n{compile_result.stderr}",
+                    )
+                    run_result = subprocess.run(
+                        ["vvp", "sim.out"],
+                        cwd=project_dir,
+                        text=True,
+                        capture_output=True,
+                        check=False,
+                    )
+                self.assertEqual(
+                    run_result.returncode,
+                    0,
+                    f"{task_type} sim run failed\nSTDOUT:\n{run_result.stdout}\nSTDERR:\n{run_result.stderr}",
+                )
+                self.assertIn("TEST_PASS", run_result.stdout)
 
     @unittest.skipUnless(shutil.which("iverilog") and shutil.which("vvp"), "iverilog/vvp are not installed")
     def test_multimodule_generated_testbenches_pass_under_icarus(self) -> None:

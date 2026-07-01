@@ -2,7 +2,7 @@
 
 ## Status
 
-Approved direction; **last updated 2026-06-26.** The agreed research line for Paper ①,
+Approved direction; **last updated 2026-06-30.** The agreed research line for Paper ①,
 scoped from `docs/research-objective-sr2fpga-tcad.md`, decomposed into a publishable
 program with full spec. The Chinese companion
 (`2026-06-22-sr2fpga-research-reframe-design.zh.md`) is kept in sync. Where this
@@ -12,6 +12,9 @@ spec and the objective doc differ, this reframe governs near-term work.
 - System-HIS v1.2 frozen and implemented (Tier-1 ratification gate met)
 - L0–L3 data-generation agent runs with objective tool oracle; multi-teacher source merged
 - Discovery-level pilot findings documented (N≈1/tier, exploratory, not scaled evidence)
+- T0–T4 reporting tiers are implemented in the deterministic generator, with
+  explicit `difficulty_tier` metadata and black-box functional testbench
+  requirements.
 - **Not yet:** scaled trajectory data, trained model (c) / RQ3, L4 physical (OpenXC7 spike), data-quality fixes (F/E/G)
 - **Three gates to TCAD:** (1) train model at scale under frozen protocol; (2) build constrained decoding; (3) land verified L4/L5 with Vivado commercial reference
 
@@ -340,7 +343,8 @@ is answered, the field gap it fills, and current status.
   frontier models start failing across (i) the difficulty axes and (ii) the L0–L5
   verification depth / hardware-semantic gap (seq-comb, backpressure, memory, CDC,
   timing)?
-  *Answered by:* baseline (a) across T1–T4 + the per-level failure taxonomy
+  *Answered by:* baseline (a) across the compressed T0–T4 curriculum + the
+  per-level failure taxonomy
   (cross-file-consistency error rate + the hardware-semantic failure distribution).
   *Gap:* Representation Bottleneck only tested tiny single-module on Lattice
   (synthesis "transparent"); project-level/Zynq is the excluded regime where L4
@@ -1089,7 +1093,7 @@ items are mostly small/medium multi-module designs (an RL-sized accelerator is a
 *flagship case*, not the body). The existing deterministic `ProjectGenerator` is
 the seed of the component library.
 
-### 8.3 Difficulty tiers T1–T4
+### 8.3 Difficulty tiers T0–T4
 
 **Difficulty axes (all four, with the first two primary):**
 1. cross-module / cross-file consistency (number of interface/param contracts) — primary
@@ -1097,10 +1101,35 @@ the seed of the component library.
 3. protocol/control complexity (register → valid/ready → backpressured pipeline → AXI4-Lite/Stream)
 4. structural scale (submodule count / hierarchy depth) and CDC — high-difficulty tier
 
-**Difficulty tiers** map the axes onto **T1 Easy / T2 Medium / T3 Hard / T4 Stress**
-by submodule count, number of cross-module contracts, protocol class, and target Fmax
-(concrete thresholds fixed during the baseline (a) measurement). Pass rates are
-reported **per tier** so the knee where frontier models start failing is visible.
+**Difficulty tiers** are compressed into one public T-series:
+
+| Tier | Scope | Representative task families |
+| --- | --- | --- |
+| T0 | Basic RTL and benchmark coverage | `counter`, `simple_fsm`, `fifo`, `ram_read_write`, `uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`, `streaming_valid_ready`, `matrix_vector_mac`, `alu_control_unit`, `crc_stream_checker` |
+| T1 | Multi-module composition | `t1_event_counter`, `t2_stream_accumulator` |
+| T2 | Stream/control systems | `t3_stream_fork`, `t4_dual_stream_join` |
+| T3 | Datapath and memory shells | `t5_vector_mac_pipeline`, `t6_td_update_core`, `t7_policy_value_shell`, `t8_replay_sample_shell` |
+| T4 | Integrated host-facing system shells | `t9_host_protocol_shell`, `t10_rl_accelerator_shell`, `t11_batch_rl_accelerator_shell`, `t12_replay_arbiter_shell` |
+
+The legacy topology IDs t1-t12 remain implementation IDs; they are not public
+difficulty tiers. Pass rates are reported **per compressed tier** so the knee where
+frontier models start failing is visible.
+
+The executable task catalog for this tiering is
+`docs/sr2fpga-t0-t4-task-catalog.json`; the no-API deterministic coverage entry
+point is `configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml`.
+
+**T0–T4 testbench oracle contract:** every generated `sim/tb_top.v` must be a
+black-box functional oracle over top-level I/O and externally visible status
+signals. It must drive legal input transactions derived from the task contract /
+System-HIS, encode expected observable behavior, print `TEST_FAIL` with a reason
+on reset/handshake/output/order/status mismatch, and print `TEST_PASS` only after
+all required comparisons have succeeded. It must not read DUT internals such as
+`dut.u_*`. Every wait loop must be bounded and must print `TEST_FAIL timeout...`
+on timeout. Static checking rejects vacuous pass tests as
+`testbench_missing_functional_oracle` when `TEST_PASS` can occur without a prior
+conditional `TEST_FAIL` oracle. LLM project, HIS2PROJECT, and repair prompts must
+state the same rule so bad testbenches are discouraged before static checking.
 
 **Freeze protocol:** difficulty thresholds are calibrated once on a pilot set
 (using baseline (a) frontier-model pass rates) and **frozen before the official
@@ -1474,6 +1503,8 @@ Trained on tool-verified trajectories; responsible for generation and repair:
 
 - `REQ2HIS` — requirement → System-HIS (structured requirement understanding);
 - `HIS2PROJECT` — System-HIS → multi-file RTL project (skeleton-filling);
+- `REQ2FILE` — requirement + target file path → one project file, used as a
+  short-context companion to full-project generation;
 - `LOG2DIAG` — tool log → structured diagnosis (internalizes tool error semantics);
 - `FAILURE2PATCH` — structured diagnosis → patch (internalizes repair heuristics);
 - `ARCH_MUTATE` — HIS architecture-parameter mutation (feeds Paper ② search).
@@ -1568,8 +1599,8 @@ fine-tuning each add. Anchor: *distil the tool, not the LLM.*
 **Three registers (separate them when pressed):** (1) **data-generation method** —
 the tool-verified trajectory factory (done); (2) **evaluation method** — project-
 level L0–L5 + the L0 consistency checker + (a)/(b)/(c) (done); (3) **model-training
-method** — SFT on the trajectory tasks (REQ2HIS/HIS2PROJECT/LOG2DIAG/FAILURE2PATCH/
-QOR_PRED) (designed, not yet trained).
+method** — SFT on the trajectory tasks (REQ2HIS/HIS2PROJECT/REQ2FILE/LOG2DIAG/
+FAILURE2PATCH/QOR_PRED) (designed, not yet trained).
 
 **Is it a "new method"? — honest, granularity-dependent:**
 
@@ -1651,7 +1682,7 @@ and random seeds where applicable. Report:
 - **pass@1**; **pass@k** where applicable;
 - repair success within N iterations; median repair iterations;
 - **L0/L1/L2/L3/L4 survival curve**;
-- per-tier T1–T4 results; per-family results;
+- per-tier T0–T4 results; per-family results;
 - paired comparison for **b−a** and **c−a**;
 - bootstrap **95% confidence intervals** where sample size permits.
 
@@ -1785,9 +1816,11 @@ each is exactly an item the spec already marks as gated:
    Report (a)/(b)/(c) per tier with confidence intervals; freeze the prompt
    (prompt-leakage already observed, failure-repair Issue 4).
 2. **Build and validate constrained decoding** — the method-novelty core
-   (`2026-06-25-system-his-constrained-decoding-design.md`) is design-only; without
-   it the contribution is a *methodology*, not a *method*. Show it drives L0→~0 by
-   construction without hurting L2.
+   (`2026-06-25-system-his-constrained-decoding-design.md`) now has an initial
+   Tier A deterministic skeleton path, while Tier B logit-masked constrained
+   decoding remains gated on a local model with logit access. Without Tier B or a
+   validated equivalent, the contribution is still closer to a *methodology* than
+   a *method*. Show it drives L0→~0 by construction without hurting L2.
 3. **Land verified physical L4/L5 evidence with commercial reference.** The TCAD
    physical-realization claim cannot rely only on an unverified OpenXC7 spike.
    The minimum TCAD-strong gate is: one OpenXC7 L4/L5-min result, plus Vivado
@@ -1866,7 +1899,7 @@ should include or reference:
 - generator commit hash and random seeds.
 
 **Data:**
-- task split manifest (S1–S5, T1–T4 assignments);
+- task split manifest (S1–S5, T0–T4 assignments);
 - prompt versions (frozen before official evaluation);
 - repair budget, timeout, and tool-call accounting;
 - per-trajectory `data_release` tier markers;
@@ -1957,8 +1990,8 @@ scale, not more design.
    - use the result to define the first L4-open/L4-commercial labels
 
 9. **First SFT model** — produce the first (c) point; start with REQ2HIS,
-   HIS2PROJECT, LOG2DIAG, FAILURE2PATCH; evaluate under the frozen (a)/(b)/(c)
-   protocol (SFT on one 4090).
+   HIS2PROJECT, REQ2FILE, LOG2DIAG, FAILURE2PATCH; evaluate under the frozen
+   (a)/(b)/(c) protocol (SFT on one 4090).
 
 10. **Artifact packaging** — create the dataset card (§14.2); create the
     tool-version manifest; create reproduce-L0-L3 script with Docker/Nix
@@ -2001,3 +2034,6 @@ and the companion specs are forward pointers, not blockers.
 | 2026-06-26 | Artifact/data-release/model-stack update. Adds: (1) explicit IP/licensing/data-release policy (open_public / restricted_reference / internal_only tiers); (2) SR2FPGA tool-internalizing model stack definition (Actor / Critic / QoR-search head, with rationale for why this is a model *stack*); (3) full trajectory episode schema; (4) optional (c1)/(c2) measurement separating generation internalization from learned no-tool diagnosis; (5) failure-injection suite and natural/injected/toolchain failure-origin field; (6) L2F optional property-check layer; (7) artifact reproducibility + dataset card checklists. |
 | 2026-06-27 | **Document reorganized.** Content unchanged; sections restructured for navigability. `Paper ① Design` h2 (1527 lines) broken into 12 top-level sections (§1–§12). Episode schema moved from System-HIS to Data Engine (§9.2). Hardware-semantic gap taxonomy moved from Data Engine to Benchmark Design (§8.4). All L4 definition consolidated into §7.6 (previously split across 6 sub-sections). Immediate Next Steps renumbered 1–10. Changelog added. |
 | 2026-06-30 | Added prompt-information boundary: SR2FPGA separates `simple_prompt`, contract-rich normalized requirements, and System-HIS contracts; official prompts may specify externally checkable engineering obligations but must not encode implementation recipes. Added prompt-information ablation and measurement-freeze rules to prevent "prompt contains the engineering answer" critiques. |
+| 2026-06-30 | Synchronized compressed T0–T4 task coverage and testbench-oracle rules: T0 now lists all deterministic basic/benchmark task families, generated projects carry explicit `difficulty_tier`, and T0–T4 testbenches must be black-box functional oracles with mismatch/timeout `TEST_FAIL`, no DUT-internal peeking, vacuous-pass static rejection, and matching LLM/HIS2PROJECT/repair prompt requirements. |
+| 2026-06-30 | Added `docs/sr2fpga-t0-t4-task-catalog.json` and `configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml` as the executable catalog/config anchors for the 24-task T0-T4 deterministic curriculum. |
+| 2026-06-30 | Added `REQ2FILE` / `requirement_to_file.jsonl` as a short-context companion to full-project generation. The canonical T0–T4 smoke currently exports 211 file rows; excluding `system_his.json`, 187 rows fit a 2048-token dry-run gate. |

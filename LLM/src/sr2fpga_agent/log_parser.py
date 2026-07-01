@@ -15,6 +15,8 @@ def classify_failure(log_text: str) -> str:
         return "testbench_stimulus_reaccept_risk"
     if "testbench_observation_race" in text or "testbench observation race" in text:
         return "testbench_observation_race"
+    if "testbench_missing_functional_oracle" in text or "missing functional oracle" in text:
+        return "testbench_missing_functional_oracle"
     if "%error-pinnotfound" in text and "parameter not found" in text:
         return "parameter_mismatch"
     if "signal definition not found" in text or "implicit disabled" in text or "%warning-implicit" in text:

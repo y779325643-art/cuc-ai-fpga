@@ -1,0 +1,490 @@
+{
+  "sample_id": "sample_t0_t4_llm_deepseek_simple_prompt_counter_8_000001",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/counter.v",
+        "rtl/top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/iverilog",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/counter.v",
+        "rtl/top.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "failed",
+      "tool": "/opt/homebrew/bin/vvp",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/vvp",
+        "sim.out"
+      ],
+      "failure_type": "functional_mismatch",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a synchronous counter with enable and reset.",
+      "design_goal": "Implement an 8-bit synchronous up-counter with active-high enable and active-low synchronous reset, wrapping around at maximum count.",
+      "assumptions": [
+        "Enable is active high.",
+        "Reset is active low and synchronous.",
+        "Counter wraps from 255 to 0."
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "frequency_hz": 100000000,
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1,
+          "clock": "clk"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1,
+          "reset": "rst_n"
+        },
+        {
+          "name": "en",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": 8
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [],
+      "counters": [
+        {
+          "name": "cnt",
+          "width": 8,
+          "owner": "cnt_inst",
+          "description": "8-bit counter register."
+        }
+      ],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "counter",
+        "semantic_kind": "counter",
+        "source": "rtl/counter.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "type": "integer",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "en",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "count",
+            "direction": "output",
+            "width": "WIDTH"
+          }
+        ],
+        "intent": "Synchronous up-counter with enable and reset."
+      },
+      {
+        "name": "top",
+        "semantic_kind": "top",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1,
+            "clock": "clk"
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1,
+            "reset": "rst_n"
+          },
+          {
+            "name": "en",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "count",
+            "direction": "output",
+            "width": 8
+          }
+        ],
+        "intent": "Top-level wrapper that instantiates an 8-bit counter."
+      }
+    ],
+    "instances": [
+      {
+        "name": "cnt_inst",
+        "component": "counter",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "cnt"
+        ]
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "counter_data_path",
+        "path": [
+          "top.en",
+          "cnt_inst.en",
+          "cnt_inst.count",
+          "top.count"
+        ],
+        "payload": {
+          "name": "count_value",
+          "width": 8
+        },
+        "protocol": "continuous",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one count per cycle"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_counter",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "set",
+          "target": "cnt",
+          "value": 0
+        },
+        "related_state": [
+          "cnt"
+        ],
+        "related_flows": [
+          "counter_data_path"
+        ]
+      },
+      {
+        "name": "counter_increment",
+        "kind": "counter_update",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.rst_n",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.en",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "increment",
+          "target": "cnt"
+        },
+        "related_state": [
+          "cnt"
+        ],
+        "related_flows": [
+          "counter_data_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "low",
+        "ff": "low",
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        {
+          "name": "reset_test",
+          "description": "Assert reset and verify counter resets to 0.",
+          "stimuli": "Apply rst_n low for two cycles.",
+          "expect": "count == 0"
+        },
+        {
+          "name": "count_enabled",
+          "description": "With enable high and reset inactive, counter increments each cycle.",
+          "stimuli": "Drive rst_n high, en high, run for 10 cycles.",
+          "expect": "count == 10"
+        },
+        {
+          "name": "hold_disabled",
+          "description": "With enable low, counter holds its value.",
+          "stimuli": "After reaching count=5, set en low for 2 cycles.",
+          "expect": "count remains 5"
+        }
+      ],
+      "pass_condition": "All verification scenarios pass and no assertion failures."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/counter.v",
+        "rtl/top.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 514,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 88,
+        "behavior_holes": 0
+      },
+      "rtl/counter.v": {
+        "origin": "model_generated",
+        "bytes": 390,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 389,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 835,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 5924,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/counter.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.19707,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

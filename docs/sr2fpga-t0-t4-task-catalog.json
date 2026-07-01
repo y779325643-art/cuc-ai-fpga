@@ -1,0 +1,199 @@
+{
+  "taxonomy": "T0-T4",
+  "purpose": "Canonical SR2FPGA deterministic task catalog for generating verified RTL project samples that can be reused as model-training data.",
+  "testbench_contract": "Every generated testbench must act as a black-box input/output oracle for the RTL top module. TEST_PASS is legal only after bounded stimulus and explicit observable-output checks; TEST_FAIL is emitted on mismatches or timeout.",
+  "tasks": [
+    {
+      "tier": "T0",
+      "task_type": "counter",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "sequential state and reset behavior",
+      "testbench_oracle": "drive enable/reset cycles and compare the observable count sequence"
+    },
+    {
+      "tier": "T0",
+      "task_type": "fifo",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "buffering, flow control, and occupancy",
+      "testbench_oracle": "push and pop ordered data while checking full/empty and output ordering"
+    },
+    {
+      "tier": "T0",
+      "task_type": "simple_fsm",
+      "topology_id": null,
+      "default_width": 4,
+      "rtl_category": "finite-state control",
+      "testbench_oracle": "apply input transitions and compare state-dependent output behavior"
+    },
+    {
+      "tier": "T0",
+      "task_type": "ram_read_write",
+      "topology_id": null,
+      "default_width": 16,
+      "rtl_category": "memory read/write semantics",
+      "testbench_oracle": "write multiple addresses and compare subsequent read data"
+    },
+    {
+      "tier": "T0",
+      "task_type": "uart_tx",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "serial protocol transmitter",
+      "testbench_oracle": "start a byte transmission and compare start/data/stop bit timing"
+    },
+    {
+      "tier": "T0",
+      "task_type": "spi_master",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "synchronous serial protocol controller",
+      "testbench_oracle": "launch a transfer and compare chip-select, clocked MOSI data, and done signaling"
+    },
+    {
+      "tier": "T0",
+      "task_type": "pwm_controller",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "timer and duty-cycle control",
+      "testbench_oracle": "program duty/period values and compare the PWM high/low pattern"
+    },
+    {
+      "tier": "T0",
+      "task_type": "fir_filter",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "streaming arithmetic datapath",
+      "testbench_oracle": "feed sample windows and compare filtered output values"
+    },
+    {
+      "tier": "T0",
+      "task_type": "streaming_valid_ready",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "valid-ready handshake datapath",
+      "testbench_oracle": "exercise backpressure and compare accepted data movement"
+    },
+    {
+      "tier": "T0",
+      "task_type": "matrix_vector_mac",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "multiply-accumulate datapath",
+      "testbench_oracle": "load vector operands and compare accumulated dot-product outputs"
+    },
+    {
+      "tier": "T0",
+      "task_type": "alu_control_unit",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "ALU operation decode and status flags",
+      "testbench_oracle": "issue arithmetic/logic operations and compare result plus zero/carry flags"
+    },
+    {
+      "tier": "T0",
+      "task_type": "crc_stream_checker",
+      "topology_id": null,
+      "default_width": 8,
+      "rtl_category": "stream integrity checker",
+      "testbench_oracle": "feed byte streams and compare CRC accumulation and match/error status"
+    },
+    {
+      "tier": "T1",
+      "task_type": "composed_event_counter",
+      "topology_id": "t1_event_counter",
+      "default_width": 8,
+      "rtl_category": "single-stream stateful composition",
+      "testbench_oracle": "drive event pulses and compare valid event count outputs"
+    },
+    {
+      "tier": "T1",
+      "task_type": "composed_stream_accumulator",
+      "topology_id": "t2_stream_accumulator",
+      "default_width": 8,
+      "rtl_category": "single-stream accumulation composition",
+      "testbench_oracle": "drive valid samples and compare accumulated output values under ready/valid"
+    },
+    {
+      "tier": "T2",
+      "task_type": "composed_stream_fork",
+      "topology_id": "t3_stream_fork",
+      "default_width": 8,
+      "rtl_category": "multi-output stream routing",
+      "testbench_oracle": "drive one input stream and compare duplicated branch data and valid signaling"
+    },
+    {
+      "tier": "T2",
+      "task_type": "composed_dual_stream_join",
+      "topology_id": "t4_dual_stream_join",
+      "default_width": 8,
+      "rtl_category": "multi-input stream join and accumulation",
+      "testbench_oracle": "drive paired streams and compare joined output plus accumulated state"
+    },
+    {
+      "tier": "T3",
+      "task_type": "composed_vector_mac_pipeline",
+      "topology_id": "t5_vector_mac_pipeline",
+      "default_width": 8,
+      "rtl_category": "pipelined vector MAC subsystem",
+      "testbench_oracle": "load vector pairs and compare valid pipelined MAC results"
+    },
+    {
+      "tier": "T3",
+      "task_type": "composed_td_update_core",
+      "topology_id": "t6_td_update_core",
+      "default_width": 8,
+      "rtl_category": "reinforcement-learning TD update datapath",
+      "testbench_oracle": "drive reward/value inputs and compare TD error and updated value outputs"
+    },
+    {
+      "tier": "T3",
+      "task_type": "composed_policy_value_shell",
+      "topology_id": "t7_policy_value_shell",
+      "default_width": 8,
+      "rtl_category": "policy/value inference shell",
+      "testbench_oracle": "drive observation features and compare selected action/value outputs"
+    },
+    {
+      "tier": "T3",
+      "task_type": "composed_replay_sample_shell",
+      "topology_id": "t8_replay_sample_shell",
+      "default_width": 8,
+      "rtl_category": "replay-buffer sample path",
+      "testbench_oracle": "request samples and compare returned state/action/reward/next-state fields"
+    },
+    {
+      "tier": "T4",
+      "task_type": "composed_host_protocol_shell",
+      "topology_id": "t9_host_protocol_shell",
+      "default_width": 8,
+      "rtl_category": "host command/status protocol shell",
+      "testbench_oracle": "issue host commands and compare ready, status, and response payload behavior"
+    },
+    {
+      "tier": "T4",
+      "task_type": "composed_rl_accelerator_shell",
+      "topology_id": "t10_rl_accelerator_shell",
+      "default_width": 8,
+      "rtl_category": "integrated RL accelerator control shell",
+      "testbench_oracle": "drive observation/control transactions and compare action, value, and done outputs"
+    },
+    {
+      "tier": "T4",
+      "task_type": "composed_batch_rl_accelerator_shell",
+      "topology_id": "t11_batch_rl_accelerator_shell",
+      "default_width": 8,
+      "rtl_category": "batched RL accelerator shell",
+      "testbench_oracle": "drive batch issue streams and compare per-lane action/value/done outputs"
+    },
+    {
+      "tier": "T4",
+      "task_type": "composed_replay_arbiter_shell",
+      "topology_id": "t12_replay_arbiter_shell",
+      "default_width": 8,
+      "rtl_category": "host/replay arbitration shell",
+      "testbench_oracle": "drive competing host and replay requests and compare grant, ready, and response behavior"
+    }
+  ]
+}

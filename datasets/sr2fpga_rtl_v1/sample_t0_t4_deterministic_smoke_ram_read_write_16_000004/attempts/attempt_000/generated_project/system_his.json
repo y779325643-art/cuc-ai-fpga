@@ -1,0 +1,354 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "ram_read_write",
+  "project_name": "t0_t4_deterministic_smoke_ram_read_write_16_000004",
+  "project": {
+    "name": "t0_t4_deterministic_smoke_ram_read_write_16_000004",
+    "description": "Generate a 16-bit FPGA RTL project that implements a small synchronous RAM with read and write access.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Generate a 16-bit FPGA RTL project that implements a small synchronous RAM with read and write access.",
+    "design_goal": "data written to an address can be read back from the same address",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "we",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "addr",
+        "dir": "input",
+        "width": 2
+      },
+      {
+        "name": "wdata",
+        "dir": "input",
+        "width": 16
+      },
+      {
+        "name": "rdata",
+        "dir": "output",
+        "width": 16
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "rdata",
+        "owner": "top",
+        "width": 16
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": [
+      {
+        "name": "mem",
+        "owner": "top",
+        "width": 16,
+        "depth": 4
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "we",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "addr",
+          "dir": "input",
+          "width": 2
+        },
+        {
+          "name": "wdata",
+          "dir": "input",
+          "width": 16
+        },
+        {
+          "name": "rdata",
+          "dir": "output",
+          "width": 16
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    }
+  ],
+  "instances": [],
+  "data_flow": [
+    {
+      "name": "ram_read_write_primary_path",
+      "path": [
+        "top.we",
+        "top.rdata"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 16
+      },
+      "protocol": "register",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one operation per cycle when enabled"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 16,
+      "ff": 80,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when data written to an address can be read back from the same address.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when data written to an address can be read back from the same address.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when data written to an address can be read back from the same address."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Generate a 16-bit FPGA RTL project that implements a small synchronous RAM with read and write access."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "we",
+        "width": 1
+      },
+      {
+        "name": "addr",
+        "width": 2
+      },
+      {
+        "name": "wdata",
+        "width": 16
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rdata",
+        "width": 16
+      }
+    ]
+  },
+  "architecture": {
+    "style": "single_module",
+    "top_module": "top",
+    "submodules": [],
+    "difficulty_tier": "T0"
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "we",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "addr",
+          "direction": "input",
+          "width": 2
+        },
+        {
+          "name": "wdata",
+          "direction": "input",
+          "width": 16
+        },
+        {
+          "name": "rdata",
+          "direction": "output",
+          "width": 16
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    }
+  ],
+  "connections": [],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "we",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "addr",
+      "direction": "input",
+      "width": 2
+    },
+    {
+      "name": "wdata",
+      "direction": "input",
+      "width": 16
+    },
+    {
+      "name": "rdata",
+      "direction": "output",
+      "width": 16
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 16,
+      "ff": 80,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

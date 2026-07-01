@@ -44,6 +44,8 @@ Important project documents:
 
 - `docs/README.md` - documentation map and recommended reading order.
 - `docs/current-status.md` - living current engineering status.
+- `docs/sr2fpga-t0-t4-task-catalog.json` - canonical machine-readable T0-T4
+  task catalog used by the deterministic coverage smoke.
 - `docs/research-objective-sr2fpga-tcad.md` - project-level research objective.
 - `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md` -
   TCAD/TRETS research reframe and paper program.
@@ -83,26 +85,25 @@ Planned later levels:
 - `L5`: sparse representative board validation, initially targeting the
   AC820-ZYNQ / XC7Z020 line of work described in the research specs.
 
-Current task families include single-module and multi-module RTL projects:
+Current task families are organized as a compressed T0-T4 curriculum:
 
-- `counter`
-- `fifo`
-- `simple_fsm`
-- `ram_read_write`
-- `uart_tx`
-- `spi_master`
-- `pwm_controller`
-- `fir_filter`
-- `streaming_valid_ready`
-- `matrix_vector_mac`
-- `composed_event_counter`
-- `composed_stream_accumulator`
-- `composed_stream_fork`
-- `composed_dual_stream_join`
+- `T0`: 12 basic RTL and benchmark-coverage families, including counters,
+  FIFOs, FSMs, RAM, UART/SPI/PWM, FIR, valid-ready streaming, MAC, ALU control,
+  and CRC stream checking.
+- `T1`: multi-module composition (`t1_event_counter`,
+  `t2_stream_accumulator`).
+- `T2`: stream/control systems (`t3_stream_fork`, `t4_dual_stream_join`).
+- `T3`: datapath and memory shells (`t5_vector_mac_pipeline`,
+  `t6_td_update_core`, `t7_policy_value_shell`, `t8_replay_sample_shell`).
+- `T4`: integrated host-facing system shells (`t9_host_protocol_shell`,
+  `t10_rl_accelerator_shell`, `t11_batch_rl_accelerator_shell`,
+  `t12_replay_arbiter_shell`).
 
-The multi-module families are expected to emit `rtl/top.v` plus task-specific
-submodule `.v` files. The DeepSeek path rejects single-file responses for these
-families.
+The exact task list, default widths, RTL categories, topology IDs, and
+testbench-oracle expectations are tracked in
+`docs/sr2fpga-t0-t4-task-catalog.json`. The multi-module families are expected
+to emit `rtl/top.v` plus task-specific submodule `.v` files. The DeepSeek path
+rejects single-file responses for these families.
 
 ## Quick Start
 
@@ -123,8 +124,22 @@ python3 -m LLM.src.sr2fpga_agent.cli \
   --project-name local_counter_8bit
 ```
 
+Preview the full no-API deterministic T0-T4 coverage smoke:
+
+```bash
+python3 -m LLM.src.sr2fpga_agent.runner \
+  --config configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml \
+  --run-id t0-t4-deterministic-smoke \
+  --preflight
+```
+
+This canonical coverage smoke uses short `simple_prompt` requirements for all
+T0-T4 samples. The generated System-HIS and project artifacts carry the detailed
+contract; the user-facing requirement preview should not include artifact
+checklists or internal wiring such as `module_a.signal -> module_b.signal`.
+
 Run baseline (a), first attempt with no tool-loop repair, across the current
-T1-T4 component-topology tasks:
+Legacy t1-t4 component-topology tasks:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
@@ -138,7 +153,7 @@ python3 -m LLM.src.sr2fpga_agent.runner \
 ```
 
 The preflight command prints JSON with tool readiness, API-key readiness, run
-directory status, and a planned sample preview for the T1-T4 topology set. Each
+directory status, and a planned sample preview for the legacy t1-t4 topology set. Each
 preview includes the exact requirement text that will be sent to the generator,
 including topology nodes, edges, difficulty tier, and expected behavior.
 Baseline (a) uses the `natural_component` requirement style: a deterministic
@@ -249,6 +264,7 @@ Training views include:
 - `requirement_to_his.jsonl`
 - `his_to_project.jsonl`
 - `requirement_to_project.jsonl`
+- `requirement_to_file.jsonl`
 - `failure_to_diagnosis.jsonl`
 - `failure_to_patch.jsonl`
 - `project_to_predicted_qor.jsonl`

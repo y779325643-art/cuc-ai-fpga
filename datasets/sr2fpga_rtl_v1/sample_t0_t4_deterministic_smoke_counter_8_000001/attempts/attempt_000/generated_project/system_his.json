@@ -1,0 +1,294 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "counter",
+  "project_name": "t0_t4_deterministic_smoke_counter_8_000001",
+  "project": {
+    "name": "t0_t4_deterministic_smoke_counter_8_000001",
+    "description": "Generate an 8-bit FPGA RTL project that implements a synchronous counter with enable and reset.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a synchronous counter with enable and reset.",
+    "design_goal": "count increments when en is high and holds when en is low",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "en",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "count",
+        "dir": "output",
+        "width": 8
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [],
+    "counters": [
+      {
+        "name": "count",
+        "owner": "top",
+        "width": 8
+      }
+    ],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "en",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "dir": "output",
+          "width": 8
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    }
+  ],
+  "instances": [],
+  "data_flow": [
+    {
+      "name": "counter_primary_path",
+      "path": [
+        "top.en",
+        "top.count"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 4,
+      "ff": 8,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when count increments when en is high and holds when en is low.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when count increments when en is high and holds when en is low.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when count increments when en is high and holds when en is low."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Generate an 8-bit FPGA RTL project that implements a synchronous counter with enable and reset."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "en",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "count",
+        "width": 8
+      }
+    ]
+  },
+  "architecture": {
+    "style": "single_module",
+    "top_module": "top",
+    "submodules": [],
+    "difficulty_tier": "T0"
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "en",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "count",
+          "direction": "output",
+          "width": 8
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    }
+  ],
+  "connections": [],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "en",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "count",
+      "direction": "output",
+      "width": 8
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 4,
+      "ff": 8,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

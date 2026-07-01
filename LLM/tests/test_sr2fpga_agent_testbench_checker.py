@@ -7,6 +7,22 @@ from LLM.src.sr2fpga_agent.testbench_checker import (
 
 
 class TestbenchCheckerTest(unittest.TestCase):
+    def test_flags_unconditional_test_pass_without_functional_oracle(self) -> None:
+        testbench = """
+        module tb;
+          initial begin
+            $display("TEST_PASS");
+            $finish;
+          end
+        endmodule
+        """
+
+        issues = check_testbench_static_issues(testbench)
+
+        self.assertEqual(len(issues), 1)
+        self.assertEqual(issues[0].failure_type, "testbench_missing_functional_oracle")
+        self.assertIn("TEST_PASS", issues[0].message)
+
     def test_flags_wait_valid_then_next_posedge_before_data_check(self) -> None:
         testbench = """
         module tb;

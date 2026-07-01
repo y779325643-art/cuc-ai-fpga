@@ -1,0 +1,899 @@
+{
+  "sample_id": "sample_t0_t4_deterministic_smoke_matrix_vector_mac_8_000010",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/dot_product_engine.v",
+        "rtl/mac_unit.v",
+        "rtl/vector_rom.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/iverilog",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/dot_product_engine.v",
+        "rtl/mac_unit.v",
+        "rtl/vector_rom.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/vvp",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/vvp",
+        "sim.out"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/yosys",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/yosys",
+        "-p",
+        "read_verilog rtl/top.v rtl/dot_product_engine.v rtl/mac_unit.v rtl/vector_rom.v; synth -top top; stat"
+      ]
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "matrix_vector_mac",
+    "project_name": "t0_t4_deterministic_smoke_matrix_vector_mac_8_000010",
+    "project": {
+      "name": "t0_t4_deterministic_smoke_matrix_vector_mac_8_000010",
+      "description": "Generate an 8-bit FPGA RTL project that implements a small matrix-vector multiply-accumulate datapath.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small matrix-vector multiply-accumulate datapath.",
+      "design_goal": "start computes the fixed four-element dot product and pulses done",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "busy",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "done",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "dir": "output",
+          "width": 12
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "start",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "busy",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "done",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "dir": "output",
+            "width": 12
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "vector_rom",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/vector_rom.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "addr",
+            "dir": "input",
+            "width": 2
+          },
+          {
+            "name": "coefficient",
+            "dir": "output",
+            "width": 2
+          }
+        ],
+        "intent": "vector rom component in the generated RTL project"
+      },
+      {
+        "name": "mac_unit",
+        "semantic_kind": "mac",
+        "source": "rtl/mac_unit.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "sample",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "coefficient",
+            "dir": "input",
+            "width": 2
+          },
+          {
+            "name": "accum",
+            "dir": "input",
+            "width": "[ACC_WIDTH-1:0]"
+          },
+          {
+            "name": "result",
+            "dir": "output",
+            "width": "[ACC_WIDTH-1:0]"
+          }
+        ],
+        "intent": "mac unit component in the generated RTL project"
+      },
+      {
+        "name": "dot_product_engine",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/dot_product_engine.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8
+          },
+          {
+            "name": "RESULT_WIDTH",
+            "default": 12
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "start",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "busy",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "done",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "dir": "output",
+            "width": "[RESULT_WIDTH-1:0]"
+          }
+        ],
+        "intent": "dot product engine component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_dot_product_engine",
+        "component": "dot_product_engine",
+        "parameter_values": {
+          "WIDTH": 8,
+          "RESULT_WIDTH": 12
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_dot_product_engine_primary_path",
+        "path": [
+          "top.start",
+          "u_dot_product_engine.start",
+          "u_dot_product_engine.busy",
+          "top.result"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 32,
+        "ff": 32,
+        "bram": 0,
+        "dsp": 2
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when start computes the fixed four-element dot product and pulses done.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when start computes the fixed four-element dot product and pulses done.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when start computes the fixed four-element dot product and pulses done."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/dot_product_engine.v",
+        "rtl/mac_unit.v",
+        "rtl/vector_rom.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Generate an 8-bit FPGA RTL project that implements a small matrix-vector multiply-accumulate datapath."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "busy",
+          "width": 1
+        },
+        {
+          "name": "done",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "width": 12
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "vector_rom",
+        "mac_unit",
+        "dot_product_engine"
+      ],
+      "difficulty_tier": "T0"
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "start",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "busy",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "done",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "direction": "output",
+            "width": 12
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "vector_rom",
+        "role": "submodule",
+        "source": "rtl/vector_rom.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "addr",
+            "direction": "input",
+            "width": 2
+          },
+          {
+            "name": "coefficient",
+            "direction": "output",
+            "width": 2
+          }
+        ],
+        "intent": "vector rom component in the generated RTL project"
+      },
+      {
+        "name": "mac_unit",
+        "role": "submodule",
+        "source": "rtl/mac_unit.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "sample",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "coefficient",
+            "direction": "input",
+            "width": 2
+          },
+          {
+            "name": "accum",
+            "direction": "input",
+            "width": "[ACC_WIDTH-1:0]"
+          },
+          {
+            "name": "result",
+            "direction": "output",
+            "width": "[ACC_WIDTH-1:0]"
+          }
+        ],
+        "intent": "mac unit component in the generated RTL project"
+      },
+      {
+        "name": "dot_product_engine",
+        "role": "submodule",
+        "source": "rtl/dot_product_engine.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 8,
+          "RESULT_WIDTH": 12
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          },
+          {
+            "name": "RESULT_WIDTH",
+            "value": 12
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "start",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "busy",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "done",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "direction": "output",
+            "width": "[RESULT_WIDTH-1:0]"
+          }
+        ],
+        "intent": "dot product engine component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "dot_product_engine",
+          "port": "clk",
+          "instance": "u_dot_product_engine"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "dot_product_engine",
+          "port": "rst_n",
+          "instance": "u_dot_product_engine"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "start"
+        },
+        "to": {
+          "module": "dot_product_engine",
+          "port": "start",
+          "instance": "u_dot_product_engine"
+        },
+        "signal": "start",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "dot_product_engine",
+          "port": "busy",
+          "instance": "u_dot_product_engine"
+        },
+        "to": {
+          "module": "top",
+          "port": "busy"
+        },
+        "signal": "busy",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "dot_product_engine",
+          "port": "done",
+          "instance": "u_dot_product_engine"
+        },
+        "to": {
+          "module": "top",
+          "port": "done"
+        },
+        "signal": "done",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "dot_product_engine",
+          "port": "result",
+          "instance": "u_dot_product_engine"
+        },
+        "to": {
+          "module": "top",
+          "port": "result"
+        },
+        "signal": "result",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[RESULT_WIDTH-1:0]",
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "start",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "busy",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "done",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "result",
+        "direction": "output",
+        "width": 12
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 32,
+        "ff": 32,
+        "bram": 0,
+        "dsp": 2
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 738,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 502,
+        "behavior_holes": 0
+      },
+      "rtl/dot_product_engine.v": {
+        "origin": "model_generated",
+        "bytes": 1611,
+        "behavior_holes": 0
+      },
+      "rtl/mac_unit.v": {
+        "origin": "model_generated",
+        "bytes": 623,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 434,
+        "behavior_holes": 0
+      },
+      "rtl/vector_rom.v": {
+        "origin": "model_generated",
+        "bytes": 278,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 1095,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 13946,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/dot_product_engine.v",
+      "rtl/mac_unit.v",
+      "rtl/top.v",
+      "rtl/vector_rom.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.209585,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 0,
+      "ff": 28,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}
