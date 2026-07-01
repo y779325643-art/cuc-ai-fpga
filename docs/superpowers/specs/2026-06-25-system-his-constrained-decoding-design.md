@@ -2,13 +2,15 @@
 
 ## Status
 
-Proposed (2026-06-25); aligned with the 2026-06-26 reframe hardening pass. Expands
+Proposed (2026-06-25); aligned with the 2026-06-26 reframe hardening pass and the
+2026-06-30 prompt-information boundary. Expands
 the method-novelty candidate in the reframe spec
 (`2026-06-22-sr2fpga-research-reframe-design.md`). This is the lever that upgrades
 SR2FPGA from a *new methodology* to a *new method* in the strong sense TCAD
 requires: a decode-time mechanism that makes cross-file structural consistency hold
 **by construction**, rather than only being checked after the fact. It is currently
-**design-only**: Tier A is the immediate implementable step; Tier B is gated on a
+**partially implemented**: Tier A now has an initial deterministic
+contract-preserving skeleton path; Tier B remains design-only and is gated on a
 local fine-tuned model with logit access.
 
 ## Goal
@@ -189,10 +191,10 @@ constraint missed") and the **metric source** (cross-file-consistency error rate
 
 ## Feasibility and sequencing
 
-- **Tier A is the next System-HIS implementation step** (deterministic shell on
-  the LLM path), low risk, kills most observed L0 failures, and partly exists in
-  `ProjectGenerator`. Artifact metadata must record deterministic vs
-  model-generated regions so the B2 ablation is auditable.
+- **Tier A is the current System-HIS implementation hardening step**
+  (deterministic shell on the LLM path). An initial skeleton/body-merge path now
+  exists; the remaining work is to keep artifact metadata explicit about
+  deterministic vs model-generated regions so the B2 ablation is auditable.
 - **Tier B is the new method core** — needs the local fine-tuned model + a
   constrained-decoding engine (logit masking + incremental parser). Medium
   engineering. This is the step that earns the TCAD "new method" claim.
@@ -214,4 +216,18 @@ constraint missed") and the **metric source** (cross-file-consistency error rate
 - Distinct from CPPL (compile-time, circuit-level IR) — this acts at decode time
   from a requirement-level contract.
 - Gated like RQ3: needs the first local fine-tuned model before Tier B; Tier A can
-  start independently.
+  continue independently.
+
+## Prompt-information boundary
+
+This design must not turn official prompts into implementation recipes. For
+official measurement, use three separate views:
+
+- `simple_prompt`: externally checkable requirements only; no module-level recipe,
+  FSM table, always-block sketch, internal register list, or line-level fix hint.
+- contract-rich normalized requirement / System-HIS view: may expose the engineering
+  contract, ports, obligations, and expected files because that is the treatment
+  being evaluated.
+- Tier A/Tier B constrained generation: may use the System-HIS contract as the
+  constraint source, but reported gains must be separated from the simple-prompt
+  baseline by the prompt-information ablation in the reframe spec.

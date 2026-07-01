@@ -1,4 +1,4 @@
-# SR2FPGA Current Status - 2026-06-29
+# SR2FPGA Current Status - 2026-06-30
 
 ## Current Branch
 
@@ -49,9 +49,9 @@ Spec/plan: `docs/superpowers/specs/2026-06-25-sr2fpga-multi-teacher-source-desig
   `https://api.deepseek.com` returned `{"ok": true}` using the local
   `DEEPSEEK_API_KEY` environment variable.
 
-Live smoke findings (Qwen via DashScope, `qwen3-coder-plus`, T1-T4,
+Live smoke findings (Qwen via DashScope, `qwen3-coder-plus`, legacy t1-t4,
 `a_first_attempt_no_tools`): all four produced complete multi-file projects;
-tool labels caught natural failures — T1/T2/T3 `L0_FAIL`
+tool labels caught natural failures — legacy t1/t2/t3 `L0_FAIL`
 (`artifact_contract_failure`: instance-not-instantiated; `rtl_sources` `src/` vs
 `rtl/` path mismatch), T4 crossed L0 and hit `L1` Verilator lint
 (`wire x=x` circular logic + WIDTHTRUNC + UNUSEDSIGNAL). Reasoning teacher
@@ -86,7 +86,7 @@ Implemented and under active review:
   still design-only.
 - `configs/sr2fpga_l0_by_construction_ablation.example.yaml` is the paired
   first-attempt/no-repair entry point for the L0-by-construction ablation. It
-  runs the same T1-T4 component-topology task set twice: legacy DeepSeek
+  runs the same legacy t1-t4 component-topology task set twice: legacy DeepSeek
   full-project generation (`legacy_full_project`) and System-HIS v1.2 skeleton
   generation (`behavior_files`). Compare `calibration_matrix["contract_skeleton_mode"]`
   and L0/L2 outcomes after the run.
@@ -123,7 +123,7 @@ Implemented and under active review:
   initial and retry prompts also now state that v1.2 state names must be
   globally unique across state groups and that `control_flow.effect.target`
   should target declared data-flow or state names rather than ports/modules.
-- A narrow T3/T4 behavior-files rerun completed with run ID
+- A narrow legacy t3/t4 behavior-files rerun completed with run ID
   `l0-by-construction-t3-t4-after-state-hardening`: `total_completed=2`,
   `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
   `L0:2`. This confirms the latest state/control-flow hardening moved T3 from
@@ -133,7 +133,7 @@ Implemented and under active review:
   declarations/`endmodule` in behavior text and HIS2PROJECT appends retry
   feedback for that validation error. Compact write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-state-hardening-2026-06-28.md`.
-- A follow-up narrow T3/T4 behavior-files rerun completed with run ID
+- A follow-up narrow legacy t3/t4 behavior-files rerun completed with run ID
   `l0-by-construction-t3-t4-after-behavior-retry`: `total_completed=2`,
   `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
   `L0:2`. The nested-module failure signature is gone. Both samples now fail as
@@ -147,7 +147,7 @@ Implemented and under active review:
   clock/reset inputs with `_unused_clock_reset` reduction wires, keeping
   combinational components from failing Verilator solely because the contract
   exposes `clk`/`rst_n`.
-- A follow-up narrow T3/T4 behavior-files rerun completed with run ID
+- A follow-up narrow legacy t3/t4 behavior-files rerun completed with run ID
   `l0-by-construction-t3-t4-after-top-wiring`: `total_completed=2`,
   `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
   `L0:1, L1:1`. T4 crossed lint and reached sim compile; T3 now fails on a
@@ -157,7 +157,7 @@ Implemented and under active review:
   now runs the RTL reserved-identifier checker before returning so those
   behavior bodies can be retried. Compact write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-top-wiring-2026-06-28.md`.
-- A fresh narrow T3/T4 behavior-files rerun completed with run ID
+- A fresh narrow legacy t3/t4 behavior-files rerun completed with run ID
   `l0-by-construction-t3-t4-after-identifier-testbench`: `total_completed=2`,
   `success_l3=0`, `repair_trajectory=2`, `rejected=0`, and pass levels
   `L0:2`. This run exposed deterministic skeleton defects: duplicated
@@ -170,7 +170,7 @@ Implemented and under active review:
   behavior-body lint cleanliness rather than top/skeleton wiring. Compact
   write-up:
   `docs/sr2fpga-l0-by-construction-t3-t4-after-identifier-testbench-2026-06-29.md`.
-- A fresh narrow T3/T4 behavior-files rerun completed with run ID
+- A fresh narrow legacy t3/t4 behavior-files rerun completed with run ID
   `l0-by-construction-t3-t4-after-width-parameters`: `total_completed=2`,
   pass levels `L3:2`, `failure_types={}`, and `exports_refreshed=true`. This
   verifies the width-parameter hardening on new DeepSeek samples: the previous
@@ -183,7 +183,7 @@ Implemented and under active review:
 - REQ2HIS initial and retry prompts now explicitly require
   `top.clocks[].target_fmax_mhz` and `timing.target_fmax_mhz` to be positive
   numbers, and `instances[].owns_state` to be a JSON array. A fresh narrow
-  T3/T4 rerun with run ID
+  legacy t3/t4 rerun with run ID
   `l0-by-construction-t3-t4-after-req2his-schema-prompt` completed with
   `total_completed=2`, pass levels `L3:1, GEN_FAIL:1`, and
   `exports_refreshed=true`. The previous `target_fmax_mhz` / `owns_state`
@@ -200,75 +200,109 @@ Implemented and under active review:
 - Runner supports `task_type: component_topology` with `topology_ids`, expanding
   topology selections into concrete `composed_*` tasks while preserving
   `topology_id` in sample metadata.
-- The deterministic component-topology ladder now includes T5
-  `composed_vector_mac_pipeline` / `t5_vector_mac_pipeline`, the first
-  RL-shaped intermediate task. It accepts paired feature/weight valid-ready
-  streams, applies a fixed-length vector MAC plus bias in `vector_mac_core`, and
-  emits a score stream through `stream_stage`. Unit coverage verifies generator
-  output, runner topology expansion, REQ->HIS top-port fidelity, and DeepSeek
-  System-HIS prompt guidance. This is still a synthetic bridge, not the full
-  reinforcement-learning accelerator.
-- The ladder now also includes T6 `composed_td_update_core` /
-  `t6_td_update_core`, a synthetic TD-error/value-update datapath. It accepts
-  reward, value, next-value, gamma, and alpha inputs, computes a fixed-point
-  temporal-difference error, and emits an updated value through a valid-ready
-  output stage. Unit coverage verifies deterministic generation, runner
-  topology expansion, REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt
-  guidance. This advances RL update semantics but still excludes policy
-  selection, replay memory, ARM/environment handshakes, and board shell work.
-- T7 `composed_policy_value_shell` / `t7_policy_value_shell` is now the
-  synthetic policy/value accelerator shell step. It adds a config register bank
-  for weights, biases, and enable, captures two observation inputs, computes two
-  policy scores, selects an action, estimates value, and stages the output under
-  valid-ready flow control. Unit coverage verifies deterministic generation,
-  runner topology expansion, REQ->HIS top-port fidelity, and DeepSeek
-  System-HIS prompt guidance. It is still synthetic and must not be described as
-  a realistic RL accelerator without real workload/interface references.
-- T8 `composed_replay_sample_shell` / `t8_replay_sample_shell` is now the
-  synthetic replay/sample host-fabric boundary step. It accepts host-side
-  transition samples, stores them in a depth-4 replay store, reports occupancy,
-  and emits fabric-side samples in FIFO order under valid-ready flow control.
-  Unit coverage verifies deterministic generation, Icarus simulation, runner
-  topology expansion, REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt
-  guidance. It is still synthetic and excludes random replay sampling, AXI/DMA,
-  ARM software, board shell work, and real RL workload fidelity.
-- T9 `composed_host_protocol_shell` / `t9_host_protocol_shell` is now the
-  synthetic protocol-shaped host/fabric wrapper step. It exposes an
-  AXI-lite-style single-beat control/status subset, an AXI-stream-style one-beat
-  sample output, and an irq line. Unit coverage verifies deterministic
-  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
-  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
-  excludes full AXI compliance, DMA, ARM software, board shell work, and real RL
-  workload fidelity.
-- T10 `composed_rl_accelerator_shell` / `t10_rl_accelerator_shell` is now the
-  synthetic integrated RL accelerator shell step. It combines host config
-  registers, sample capture, policy/value scoring, TD-style value update, result
-  valid-ready output, episode done, and irq reporting. Unit coverage verifies
-  deterministic generation, Icarus simulation, runner topology expansion,
-  REQ->HIS top-port fidelity, and DeepSeek System-HIS prompt guidance. It is
-  still synthetic and should not be described as a realistic DQN, actor-critic,
-  PPO, SAC, DMA, or board-level accelerator without user-provided or cited
-  workload/interface references.
-- T11 `composed_batch_rl_accelerator_shell` /
-  `t11_batch_rl_accelerator_shell` is now the synthetic two-lane batch RL shell
-  step. It combines shared host config, two-lane batch sample capture, dual-lane
-  policy/value scoring, dual-lane TD-style update, vectorized result staging,
-  `batch_done`, and irq reporting. Unit coverage verifies deterministic
-  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
-  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
-  excludes stochastic replay, true neural-network layers, DMA/DDR, ARM software,
-  board shell work, and real RL workload fidelity.
-- T12 `composed_replay_arbiter_shell` / `t12_replay_arbiter_shell` is now the
-  synthetic replay-memory arbitration and host-packetization step. It accepts
-  host transition packets, allocates depth-4 replay write indices, arbitrates
-  indexed fabric sample requests behind host writes, stages sample packets, and
-  reports occupancy, write index, and irq. Unit coverage verifies deterministic
-  generation, Icarus simulation, runner topology expansion, REQ->HIS top-port
-  fidelity, and DeepSeek System-HIS prompt guidance. It is still synthetic and
-  excludes random/prioritized replay, DMA/DDR, ARM software, board shell work,
-  and real RL workload fidelity.
+- The deterministic component-topology curriculum now uses compressed reporting
+  tiers T0-T4. Legacy topology IDs remain specific (`t5_vector_mac_pipeline`,
+  `t12_replay_arbiter_shell`, etc.), but `difficulty_tier` is now grouped for
+  reporting and dataset splits:
+  - T0: basic RTL / benchmark coverage tasks: `counter`, `simple_fsm`, `fifo`,
+    `ram_read_write`, `uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`,
+    `streaming_valid_ready`, `matrix_vector_mac`, `alu_control_unit`, and
+    `crc_stream_checker`.
+  - T1: multi-module composition (`t1_event_counter`, `t2_stream_accumulator`).
+  - T2: stream/control systems (`t3_stream_fork`, `t4_dual_stream_join`).
+  - T3: datapath and memory shells (`t5_vector_mac_pipeline`,
+    `t6_td_update_core`, `t7_policy_value_shell`, `t8_replay_sample_shell`).
+  - T4: integrated host-facing system shells (`t9_host_protocol_shell`,
+    `t10_rl_accelerator_shell`, `t11_batch_rl_accelerator_shell`,
+    `t12_replay_arbiter_shell`).
+  T3/T4 integrated shells are still synthetic supplemental complexity evidence,
+  not realistic RL accelerator evidence without real workload/interface
+  references.
+- The canonical machine-readable task catalog is
+  `docs/sr2fpga-t0-t4-task-catalog.json`. The local no-API runner coverage
+  check is `configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml`, which
+  expands the catalog into 24 deterministic samples: T0=12, T1=2, T2=2, T3=4,
+  and T4=4. Its entries now use `requirement_style: simple_prompt`, so the
+  public requirement is a short user-intent request while the detailed contract
+  stays in System-HIS/project artifacts.
+- A fresh deterministic coverage smoke using the tracked config completed with
+  run ID `t0-t4-deterministic-smoke`: `total_completed=24`, `success_l3=24`,
+  `repair_trajectory=0`, `rejected=0`, and `failure_types={}`. The run uses the
+  canonical `sample_id_prefix: t0_t4_deterministic_smoke`, and the JSONL
+  training views were refreshed after the run. This result predates the
+  `simple_prompt` switch for canonical T0-T4 requirement text; rerun the
+  deterministic smoke to refresh the on-disk sample `requirement.txt` files and
+  exported JSONL rows.
+- For the canonical smoke prefix, the project-level positive training views
+  each contain 24 rows (`requirement_to_his`, `his_to_project`,
+  `requirement_to_project`, `project_to_predicted_qor`, and
+  `project_to_measured_qor`). The file-level positive view
+  `requirement_to_file` contains 211 rows. The failure views contain 0 rows by
+  design for this clean deterministic run
+  (`failure_to_diagnosis`, `failure_to_patch`).
+- `LLM/src/prepare_dataset.py` now converts all eight SR2FPGA
+  `DatasetRecorder` training-view schemas into chat fine-tuning JSONL:
+  requirement-to-HIS, HIS-to-project, requirement-to-project,
+  requirement-to-file, failure-to-diagnosis, failure-to-patch,
+  project-to-predicted-QoR, and project-to-measured-QoR. The current canonical
+  T0-T4 smoke rows pass a conversion sanity gate: the five project-level
+  non-empty views each convert 24 rows, and the file-level view converts 211
+  rows, into valid user/assistant message pairs.
+- `LLM/src/training_dry_run.py` now provides a no-model chat JSONL dry-run for
+  the training entry point: it validates `messages`, estimates token lengths,
+  reports truncation risk, and can fail with `--fail-on-truncation`. On the
+  canonical T0-T4 `requirement_to_project` chat JSONL, `max_seq_length=2048`
+  correctly fails (`24/24` rows over limit; estimated range `4132..41967`),
+  while `max_seq_length=65536` passes (`0/24` rows over limit). This means the
+  full-project training view needs long-context training or task splitting, not
+  the short smoke-training config. The new file-level
+  `requirement_to_file` view gives a short-context path: all 187 canonical
+  non-`system_his.json` rows fit `max_seq_length=2048` (`0/187` over limit;
+  estimated range `103..1651`). The 23 over-limit rows in the all-file dry-run
+  are all `system_his.json`, so System-HIS should use the dedicated REQ2HIS view
+  or a separate long-context/summary strategy.
+- `LLM/src/prepare_dataset.py` now has reusable filtering flags for this path:
+  `--sample-id-prefix sample_t0_t4_deterministic_smoke_` selects the canonical
+  smoke rows, and `--exclude-file-path system_his.json` builds the short-context
+  `REQ2FILE` set. `LLM/configs/train_qwen_req2file_short.yaml` points at
+  `LLM/data/t0_t4_req2file_short.chat.jsonl` with `max_seq_length=2048`; a
+  no-model dry-run converts 187 rows and reports `0` rows over limit.
+- `LLM/src/req2file_eval.py` now provides the first no-tool post-training
+  evaluation entry point. `build` creates 187 T0-T4 file-level eval prompts from
+  `requirement_to_file.jsonl` with the same prefix/path filters; `infer` calls a
+  local OpenAI-compatible endpoint without forcing JSON response format and
+  writes `predicted_file_content`; `score` reports exact match, non-empty rate,
+  JSON validity, Verilog module presence, testbench oracle markers, and SDC
+  clock presence. `assemble` groups prediction rows back into per-sample
+  `generated_project/` directories and can backfill reference `system_his.json`
+  for static project-consistency checking; `verify-static` then runs L0
+  System-HIS consistency, RTL identifier checks, and testbench static oracle
+  checks; `verify-tools` runs Verilator lint and Icarus compile/run for L1/L2
+  evidence, and `verify-synth` runs Yosys for L3 and parsed QoR cell counts when
+  tools are installed. The oracle baseline path reassembles 187 rows into 24
+  projects, backfills 24 `system_his.json` files, passes all 24 projects through
+  L0, RTL identifier, and testbench static checks, passes 24/24 lint, 24/24 sim
+  compile, 24/24 sim run (`72` tool stages passed), and passes 24/24 synthesis
+  on this machine. The oracle Yosys `cell_count` range is `22..2590`, with total
+  `8777`. This evaluates the first `REQ2FILE` adapter before reintroducing
+  slower P&R tools.
+- Deterministic testbenches are now governed by a T0-T4 black-box I/O oracle
+  contract: they must drive legal top-level inputs, compare expected observable
+  outputs/status, print `TEST_FAIL` with a reason on mismatch, print `TEST_PASS`
+  only after all comparisons succeed, avoid hierarchical `dut.*` internals, and
+  include a `TEST_FAIL timeout...` watchdog. The current generator injects the
+  timeout watchdog into every generated `sim/tb_top.v`.
+- The testbench static checker now treats vacuous pass testbenches as a
+  first-class `testbench_missing_functional_oracle` failure: if a generated
+  testbench can print `TEST_PASS` without a prior conditional `TEST_FAIL` oracle,
+  the pipeline classifies it as `testbench_failure` instead of a normal RTL
+  functional mismatch.
+- Direct project, HIS2PROJECT behavior, and repair prompts now share the same
+  testbench-oracle instruction: do not print `TEST_PASS` unconditionally; only
+  print it after conditional `TEST_FAIL` checks compare top-level observable
+  outputs and status signals against expected behavior.
 - `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
-  baseline (a) entry point for DeepSeek over the current T1-T4 component
+  baseline (a) entry point for DeepSeek over the current legacy t1-t4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
   surface rewrite that preserves topology contracts while making prompts read
   more like engineering requirements. It also declares `env_file: .env`, letting
@@ -277,14 +311,14 @@ Implemented and under active review:
 - A real baseline (a) run completed against DeepSeek with the local ignored
   `.env` key. `--preflight --validate-provider` confirmed provider auth before
   spending generation calls. The run ID is `deepseek-baseline-a`.
-- Baseline (a) generated four natural-component DeepSeek samples over T1-T4.
+- Baseline (a) generated four natural-component DeepSeek samples over legacy t1-t4.
   All four were recorded as `repair_trajectory` with pass level `L0` because
   DeepSeek generated incomplete/non-v1.1 `system_his.json` and manifest
   structures. This is a valid natural project-generation failure family for
   SR2FPGA repair, not merely noise: the model produced an incomplete FPGA
   project package even when some RTL files were present.
 - `configs/sr2fpga_baseline_b.example.yaml` is the tool-in-loop repair
-  baseline (b) entry point for the same T1-T4 natural-component tasks. It uses
+  baseline (b) entry point for the same legacy t1-t4 natural-component tasks. It uses
   `repair_provider: deepseek`, `max_attempts: 4`, measurement point
   `b_tool_in_loop_repair`, and `sample_id_prefix: baseline_b` so baseline (a)
   and (b) can coexist in one dataset root without sample ID collisions.
@@ -305,29 +339,29 @@ Implemented and under active review:
   `manifest.constraints.timing` must be present. The repair prompt has now been
   tightened to include those checker-level details.
 - `configs/sr2fpga_baseline_b_smoke.example.yaml` is the tightened-prompt
-  baseline (b) smoke run for T1/T2 only. It uses `sample_id_prefix:
+  baseline (b) smoke run for legacy t1/t2 only. It uses `sample_id_prefix:
   baseline_b_smoke` to keep smoke data separate from full baseline runs.
 - A real tightened-prompt smoke run completed with run ID
   `deepseek-baseline-b-smoke`: `total_completed = 2`, `success_l3 = 2`,
   `repair_trajectory = 0`, `rejected = 0`. Both samples began from natural
   DeepSeek failures and were repaired to L3 under the tool loop:
-  - T1 `event_counter`: L0 -> L0 -> L3.
-  - T2 `stream_accumulator`: L0 -> L1/lint failure -> L3.
+  - legacy t1 `event_counter`: L0 -> L0 -> L3.
+  - legacy t2 `stream_accumulator`: L0 -> L1/lint failure -> L3.
   This proves the baseline (b) repair path can repair project-package failures
   across L0 and continue into RTL/tool repair when the prompt is aligned with
   the checker.
-- `configs/sr2fpga_baseline_b_tightened.example.yaml` is the full T1-T4
+- `configs/sr2fpga_baseline_b_tightened.example.yaml` is the full legacy t1-t4
   tightened-prompt baseline (b) rerun. It uses `sample_id_prefix:
   baseline_b_tightened` to preserve the earlier failed full baseline (b) run.
 - A real full tightened baseline (b) run completed with run ID
   `deepseek-baseline-b-tightened`: `total_completed = 4`, `success_l3 = 2`,
   `repair_trajectory = 2`, `rejected = 0`. T1 and T2 repaired to L3; T3 and T4
-  remained repair trajectories. The observed repair knee is T3:
-  - T1 `event_counter`: repaired to L3 after two L0 failures.
-  - T2 `stream_accumulator`: repaired to L3 after two L0 failures.
-  - T3 `stream_fork`: crossed L0 but final attempt failed Verilator lint because
+  remained repair trajectories. The observed repair knee is legacy t3:
+  - legacy t1 `event_counter`: repaired to L3 after two L0 failures.
+  - legacy t2 `stream_accumulator`: repaired to L3 after two L0 failures.
+  - legacy t3 `stream_fork`: crossed L0 but final attempt failed Verilator lint because
     `rtl/top.v` used the Verilog reserved keyword `fork` as an instance name.
-  - T4 `dual_stream_join`: remained at L0; final System-HIS still used
+  - legacy t4 `dual_stream_join`: remained at L0; final System-HIS still used
     instance aliases such as `sb0`, `join`, `acc`, and `stg` as connection
     endpoint module names, and simplified parameterized widths instead of the
     exact parsed RTL ranges such as `[DATA_WIDTH-1:0]`.
@@ -336,15 +370,15 @@ Implemented and under active review:
   connection endpoints to use declared module names rather than instance
   aliases, and require width strings to match parsed RTL ranges exactly.
 - `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml` is the narrow repair-knee
-  smoke run for T3/T4 only. It uses `sample_id_prefix:
+  smoke run for legacy t3/t4 only. It uses `sample_id_prefix:
   baseline_b_t3_t4_smoke`.
-- A real T3/T4 narrow smoke run completed with run ID
+- A real legacy t3/t4 narrow smoke run completed with run ID
   `deepseek-baseline-b-t3-t4-smoke`: `total_completed = 2`, `success_l3 = 0`,
   `repair_trajectory = 2`, `rejected = 0`. The newest prompt changes moved T4
   forward from L0 to L1 but did not reach L3:
-  - T3 `stream_fork`: remained at L0; final errors were equivalent width
+  - legacy t3 `stream_fork`: remained at L0; final errors were equivalent width
     notation mismatches such as `[7:0]` versus `8` and top-port mismatch.
-  - T4 `dual_stream_join`: crossed L0 and lint, then failed simulation with
+  - legacy t4 `dual_stream_join`: crossed L0 and lint, then failed simulation with
     `TEST_FAIL: out_data=xx`.
 - L0 checker width normalization now treats numeric ranges like `[7:0]` as
   equivalent to integer width `8`. This addresses the T3 narrow-smoke residual
@@ -387,11 +421,11 @@ Implemented and under active review:
 - Manual side evaluation of the generated RTL, used only as deeper diagnostic
   labeling, showed additional failure signals inside the same generated
   projects:
-  - T1 `event_counter`: compiles and testbench prints `TEST_PASS`.
-  - T2 `stream_accumulator`: compiles but testbench prints `TEST_FAIL`.
-  - T3 `stream_fork`: compiles but testbench reports many data mismatches and
+  - legacy t1 `event_counter`: compiles and testbench prints `TEST_PASS`.
+  - legacy t2 `stream_accumulator`: compiles but testbench prints `TEST_FAIL`.
+  - legacy t3 `stream_fork`: compiles but testbench reports many data mismatches and
     prints `TEST_FAIL`.
-  - T4 `dual_stream_join`: fails Verilog compilation in `stream_stage.v`.
+  - legacy t4 `dual_stream_join`: fails Verilog compilation in `stream_stage.v`.
   This means the current DeepSeek baseline is already valuable as natural
   project-level repair data. The measurement pipeline should keep L0
   artifact/schema failures as first-class labels while optionally adding
@@ -692,7 +726,7 @@ Latest baseline (b) full tightened report:
 
 `tmp/sr2fpga_runs/deepseek-baseline-b-tightened/baseline_report.md`
 
-Latest baseline (b) T3/T4 narrow smoke report:
+Latest baseline (b) legacy t3/t4 narrow smoke report:
 
 `tmp/sr2fpga_runs/deepseek-baseline-b-t3-t4-smoke/baseline_report.md`
 
@@ -708,15 +742,15 @@ Latest v1.2 two-stage smoke report with stage-level generation events:
 
 `tmp/sr2fpga_runs/his-v12-smoke-10/baseline_report.md`
 
-Latest `deepseek-v4-pro` v1.2 repair T1-T4 report:
+Latest `deepseek-v4-pro` v1.2 repair legacy t1-t4 report:
 
 `tmp/sr2fpga_runs/deepseek-v4-pro-his-v12-repair-t1-t4/baseline_report.md`
 
-Latest T3/T4 behavior-files skeleton width-parameter rerun report:
+Latest legacy t3/t4 behavior-files skeleton width-parameter rerun report:
 
 `tmp/sr2fpga_runs/l0-by-construction-t3-t4-after-width-parameters/baseline_report.md`
 
-Latest T3/T4 behavior-files REQ2HIS schema-prompt rerun report:
+Latest legacy t3/t4 behavior-files REQ2HIS schema-prompt rerun report:
 
 `tmp/sr2fpga_runs/l0-by-construction-t3-t4-after-req2his-schema-prompt/baseline_report.md`
 
@@ -736,9 +770,9 @@ Key summary:
 - Tightened smoke result: no pass-rate knee observed above the 80% threshold;
   `failure_family | artifact_contract_failure | 2 | L3:2` and
   `failure_family | rtl_compile_failure | 1 | L3:1`.
-- Full tightened result: pass-rate knee is T3; T1/T2 are L3, T3/T4 are L0.
+- Full tightened result: pass-rate knee is legacy t3; legacy t1/t2 are L3, legacy t3/t4 are L0.
   Overall `measurement_point | b_tool_in_loop_repair | 4 | L0:2, L3:2`.
-- T3/T4 narrow smoke result: pass-rate knee remains T3; T3 is L0, T4 is L1.
+- legacy t3/t4 narrow smoke result: pass-rate knee remains T3; T3 is L0, T4 is L1.
   The T4 movement from L0 to L1 indicates the prompt changes improved project
   package repair, while the remaining frontier is RTL simulation semantics.
 - v1.2 two-stage smoke result: the short prompt -> System-HIS v1.2 -> project
@@ -746,8 +780,8 @@ Key summary:
   RTL lint. The reserved-identifier precheck now catches lexical legality before
   Verilator; the newest observed failure is strict warning hygiene under
   Verilator `-Wall`.
-- Latest T3/T4 behavior-files skeleton rerun result: both T3 `stream_fork` and
-  T4 `dual_stream_join` reached L3 on fresh samples after width-parameter
+- Latest legacy t3/t4 behavior-files skeleton rerun result: both legacy t3 `stream_fork` and
+  legacy t4 `dual_stream_join` reached L3 on fresh samples after width-parameter
   hardening. The remaining visible friction is retry dependence in REQ2HIS
   schema details, not deterministic skeleton wiring.
 - Latest REQ2HIS schema-prompt rerun result: T3 stayed L3; T4 stopped at
@@ -782,12 +816,12 @@ Key summary:
   HIS2PROJECT took about 362.5 seconds. Future live repair runs should use a
   command timeout above 15 minutes because the wrapper can time out even when
   the runner has written a completed summary.
-- Live `deepseek-v4-pro` v1.2 tool-loop repair T1-T4 baseline using local
+- Live `deepseek-v4-pro` v1.2 tool-loop repair legacy t1-t4 baseline using local
   `.env` and the ignored
   `configs/sr2fpga_his_v12_pro_repair_t1_t4.local.yaml` completed all four
-  samples: T1 `event_counter` reached L3, T2 `stream_accumulator` was rejected
-  at REQ2HIS validation (`GEN_FAIL`), T3 `stream_fork` stopped at L0 after a
-  repair-contract regression, and T4 `dual_stream_join` reached L3 after
+  samples: legacy t1 `event_counter` reached L3, legacy t2 `stream_accumulator` was rejected
+  at REQ2HIS validation (`GEN_FAIL`), legacy t3 `stream_fork` stopped at L0 after a
+  repair-contract regression, and legacy t4 `dual_stream_join` reached L3 after
   traversing lint, simulation-compile, and simulation-run failures. Overall:
   `success_l3=2`, `repair_trajectory=1`, `rejected=1`,
   `pass_level_breakdown={L3:2, GEN_FAIL:1, L0:1}`. The current pro-model repair
@@ -813,27 +847,28 @@ Key summary:
     deterministic control today; +Claude/GPT-5.5 after balance) and report the
     `calibration_matrix["source"]` table — the reviewer-facing evidence that
     addresses single-teacher bias. Also re-run T1 on `qwen3-coder-plus` so the
-    single-model distribution is consistent (T1 was `qwen3.7-plus`).
+    single-model distribution is consistent (legacy t1 was `qwen3.7-plus`).
 00c. **DeepSeek v4 pro repair blockers.** Before scaling the pro-model v1.2
-     repair baseline, tighten REQ2HIS feedback for T2 structured FSM/effect
-     targets and tighten HIS2PROJECT/repair feedback for T3 component names and
-     RTL endpoint alignment. Then rerun the ignored local T1-T4 config and only
-     expand sample count after T2/T3 stop dominating the small baseline.
+     repair baseline, tighten REQ2HIS feedback for legacy t2 structured FSM/effect
+     targets and tighten HIS2PROJECT/repair feedback for legacy t3 component names and
+     RTL endpoint alignment. Then rerun the ignored local legacy t1-t4 config and only
+     expand sample count after legacy t2/t3 stop dominating the small baseline.
 00d. **L0-by-construction ablation blockers.** The first paired ablation run
      reduced L0 failures but still failed to reach L1/L2/L3. Fix the observed
      blockers before rerunning at scale: single-bit width normalization
      (`1` versus `[1-1:0]`) in HIS↔RTL comparison, canonical reset
      `kind`/`polarity` guidance in REQ2HIS, missing module parameter
      declarations in `behavior_files`, and T4 FSM-state lowerability.
-00e. **Complex-task ladder toward the RL accelerator.** T5 is now the deterministic
-     vector-MAC feature-pipeline bridge, T6 is the deterministic TD-error /
-     value-update bridge, T7 is the deterministic policy/value shell, T8 is the
-     deterministic replay/sample host-fabric shell, T9 is the deterministic
-     host protocol shell, T10 is the deterministic integrated RL accelerator
-     shell, T11 is the deterministic two-lane batch RL shell, and T12 is the
-     deterministic replay arbiter shell. Next steps should either extend T12
-     with a real workload reference or add another synthetic bridge for host
-     register-map packetization / software-visible command lifecycle.
+00e. **Compressed T0-T4 curriculum.** Use T0-T4 as the public/reporting tier
+     sequence. T0 covers basic RTL and benchmark categories; T1 covers
+     multi-module composition; T2 covers stream/control systems; T3 covers
+     datapath and memory shells; T4 covers integrated host-facing system shells.
+     The old topology IDs t5-t12 remain implementation IDs only. legacy t3/t4 shell
+     tasks are supplemental complexity evidence rather than the primary official
+     aggregate. Do not add another synthetic bridge by default; any post-T4
+     curriculum extension needs a new approved design and should be grounded in a
+     real workload reference, such as host register-map packetization /
+     software-visible command lifecycle.
      Before claiming the full
      reinforcement-learning accelerator as realistic, request or cite a real
      workload reference: RL algorithm family, observation vector width, action
@@ -862,8 +897,9 @@ Key summary:
    DSP + Fmax — closes the Finding-G vacuous-LUT issue). Independent of the v1.2
    freeze and the highest-value physical-implementation de-risk. Critical gate:
    XC7Z020 prjxray chipdb availability (Task 1). Batch L0–L4 runs on WSL2; L5 board
-   load is a manual one-off via Vivado. Note: Task 3 edits `agent.py` `_run_pipeline`
-   — coordinate with the v1.2 freeze's agent changes to avoid collision.
+   load is a manual one-off via Vivado. Note: the original plan references
+   `agent.py` `_run_pipeline`; remap that hook to the current runner/local-tool
+   pipeline before implementation.
 1. Treat L0 project-package failures as first-class repair targets: missing or
    malformed `system_his.json`, manifest structure drift, missing source lists,
    missing constraints, incomplete reports, and cross-file inconsistency all
@@ -880,7 +916,7 @@ Key summary:
    separate diagnostic view so generated RTL can still receive L1/L2/L3 side
    labels when useful.
 6. Run a larger DeepSeek baseline now that project-file failures are confirmed
-   in scope, then expand variants around T1-T4 to estimate the natural failure
+   in scope, then expand variants around legacy t1-t4 to estimate the natural failure
    distribution.
 7. Keep synthetic failure injection disabled for main data collection and use
    it only for smoke tests, recorder/export validation, and controlled
@@ -928,7 +964,7 @@ Key summary:
 - Baseline (b) runner config: `configs/sr2fpga_baseline_b.example.yaml`
 - Baseline (b) smoke config: `configs/sr2fpga_baseline_b_smoke.example.yaml`
 - Baseline (b) full tightened config: `configs/sr2fpga_baseline_b_tightened.example.yaml`
-- Baseline (b) T3/T4 smoke config: `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
+- Baseline (b) legacy t3/t4 smoke config: `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
 - L0-by-construction ablation config: `configs/sr2fpga_l0_by_construction_ablation.example.yaml`
 - L0-by-construction ablation write-up: `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`
 - L0-by-construction after-fixes config: `configs/sr2fpga_l0_by_construction_ablation_after_fixes.example.yaml`

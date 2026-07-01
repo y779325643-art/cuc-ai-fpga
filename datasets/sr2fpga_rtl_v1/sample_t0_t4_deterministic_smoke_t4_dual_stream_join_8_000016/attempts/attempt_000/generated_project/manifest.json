@@ -1,0 +1,37 @@
+{
+  "project_name": "t0_t4_deterministic_smoke_t4_dual_stream_join_8_000016",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_join.v",
+    "rtl/accumulator_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "clock": {
+    "name": "clk",
+    "frequency_hz": 100000000
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  }
+}

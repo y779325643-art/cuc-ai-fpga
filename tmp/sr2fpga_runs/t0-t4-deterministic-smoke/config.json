@@ -1,0 +1,218 @@
+{
+  "dataset_root": "datasets/sr2fpga_rtl_v1",
+  "export_root": "datasets/sr2fpga_rtl_v1_exports",
+  "run_root": "tmp/sr2fpga_runs",
+  "provider": "deterministic",
+  "repair_provider": "none",
+  "max_attempts": 1,
+  "refresh_exports": true,
+  "line_b_targets": {
+    "l3_success_ratio": 1.0,
+    "repair_trajectory_ratio": 0.0,
+    "max_samples": 24
+  },
+  "tasks": [
+    {
+      "source": "deterministic",
+      "task_type": "counter",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "fifo",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "simple_fsm",
+      "widths": [
+        4
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "ram_read_write",
+      "widths": [
+        16
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "uart_tx",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "spi_master",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "pwm_controller",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "fir_filter",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "streaming_valid_ready",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "matrix_vector_mac",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "alu_control_unit",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "crc_stream_checker",
+      "widths": [
+        8
+      ],
+      "count": 1,
+      "failure_injectors": [],
+      "difficulty_tier": "T0",
+      "failure_origin": "deterministic",
+      "topology_ids": [],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    },
+    {
+      "source": "deterministic",
+      "task_type": "component_topology",
+      "widths": [
+        8
+      ],
+      "count": 12,
+      "failure_injectors": [],
+      "difficulty_tier": "T1",
+      "failure_origin": "deterministic",
+      "topology_ids": [
+        "t1_event_counter",
+        "t2_stream_accumulator",
+        "t3_stream_fork",
+        "t4_dual_stream_join",
+        "t5_vector_mac_pipeline",
+        "t6_td_update_core",
+        "t7_policy_value_shell",
+        "t8_replay_sample_shell",
+        "t9_host_protocol_shell",
+        "t10_rl_accelerator_shell",
+        "t11_batch_rl_accelerator_shell",
+        "t12_replay_arbiter_shell"
+      ],
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt"
+    }
+  ],
+  "model": "deterministic",
+  "base_url": "",
+  "api_key_env": "",
+  "platform": "generic_verilog",
+  "env_file": "",
+  "sample_id_prefix": "t0_t4_deterministic_smoke",
+  "sources": {}
+}

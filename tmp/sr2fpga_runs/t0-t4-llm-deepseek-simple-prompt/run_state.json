@@ -1,0 +1,19 @@
+{
+  "run_id": "t0-t4-llm-deepseek-simple-prompt",
+  "next_index": 1,
+  "completed_samples": [
+    "sample_t0_t4_llm_deepseek_simple_prompt_counter_8_000001"
+  ],
+  "buckets": {
+    "success_l3": [],
+    "repair_trajectory": [
+      "sample_t0_t4_llm_deepseek_simple_prompt_counter_8_000001"
+    ],
+    "rejected": []
+  },
+  "failure_types": {
+    "functional_mismatch": 1
+  },
+  "exports_refreshed": false,
+  "config_fingerprint": "a74312f553d58bbcb898a8195076164864eb6d278cb3d23fc386a92fc8c9ff5c"
+}

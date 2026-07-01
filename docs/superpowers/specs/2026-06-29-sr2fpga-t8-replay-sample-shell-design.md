@@ -2,6 +2,11 @@
 
 Date: 2026-06-29
 
+Status note (2026-06-30): this file keeps the legacy topology ID/name used by
+the implementation (`t8_replay_sample_shell`). For public reporting, dataset
+splits, and paper-facing discussion, it maps to compressed tier **T3: datapath
+and memory shells**.
+
 ## Purpose
 
 T8 is the next component-topology step after T7 toward the reinforcement-learning

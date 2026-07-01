@@ -1,0 +1,36 @@
+{
+  "project_name": "t0_t4_deterministic_smoke_alu_control_unit_8_000011",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/control_decode.v",
+    "rtl/alu_core.v",
+    "rtl/status_flags.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "clock": {
+    "name": "clk",
+    "frequency_hz": 100000000
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  }
+}

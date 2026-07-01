@@ -22,16 +22,21 @@ Read these first:
    - Short living status page for the current engineering state.
    - Use this before continuing code or dataset work.
 
-5. `research-issues-failure-repair-2026-06-24.md` and
+5. `sr2fpga-t0-t4-task-catalog.json`
+   - Canonical machine-readable task catalog for the compressed T0-T4
+     curriculum. It records the 24 deterministic task families, default widths,
+     topology IDs, RTL categories, and testbench-oracle expectations.
+
+6. `research-issues-failure-repair-2026-06-24.md` and
    `research-issues-training-data-quality-2026-06-24.md`
    - Research-significant issues found during natural LLM failure/repair runs and
      a review of the training-data contract; useful for paper motivation,
      benchmark design, ablations, and threats to validity.
 
-6. `sr2fpga-agent-handoff-2026-06-22.md`
+7. `sr2fpga-agent-handoff-2026-06-22.md`
    - Detailed handoff and historical run notes for the SR2FPGA data agent.
 
-7. `../CLAUDE.md`
+8. `../CLAUDE.md`
    - Agent-facing coding guidance, invariants, commands, and git hygiene.
 
 ## Core Research Docs
@@ -41,6 +46,10 @@ Read these first:
 
 - `research-objective-sr2fpga-tcad.md`
   - Concise objective summary aligned to the reframe spec.
+
+- `sr2fpga-t0-t4-task-catalog.json`
+  - Current T0-T4 task catalog used by
+    `../configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml`.
 
 - `superpowers/decisions/2026-06-22-sr2fpga-reframe-decision-log.md`
   - Decision trail explaining how the current research framing was chosen.

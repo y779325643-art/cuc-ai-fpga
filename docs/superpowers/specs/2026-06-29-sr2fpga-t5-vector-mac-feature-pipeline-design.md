@@ -2,6 +2,11 @@
 
 Date: 2026-06-29
 
+Status note (2026-06-30): this file keeps the legacy topology ID/name used by
+the implementation (`t5_vector_mac_pipeline`). For public reporting, dataset
+splits, and paper-facing discussion, it maps to compressed tier **T3: datapath
+and memory shells**.
+
 ## Purpose
 
 T5 is the first explicit bridge from the existing T1-T4 component-topology ladder
@@ -181,10 +186,14 @@ accelerator case. At that point, the useful inputs are:
 - target board constraints, clock target, DSP budget, BRAM budget, and I/O
   expectations.
 
-If no real reference is available, the ladder can still continue synthetically
-through T5 and T6. The full flagship case should not claim application realism
-until at least the workload shape and fabric/software boundary are grounded in
-user-provided or cited reference material.
+If no real reference is available, the already approved legacy t5-t12 bridge
+tasks map into compressed T3/T4 reporting tiers, but that ladder is supplemental
+complexity evidence rather than the paper's primary official aggregate. After
+compressed T4, do not add a new synthetic tier by default; a new step needs an
+approved design and should preferably be grounded in a real workload reference.
+The full flagship case should not claim application realism until at least the
+workload shape and fabric/software boundary are grounded in user-provided or
+cited reference material.
 
 ## Self-Review
 

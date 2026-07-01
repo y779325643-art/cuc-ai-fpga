@@ -1,0 +1,2308 @@
+{
+  "schema_version": "system-his-v1.2",
+  "task_type": "composed_host_protocol_shell",
+  "project_name": "t0_t4_deterministic_smoke_t9_host_protocol_shell_8_000021",
+  "project": {
+    "name": "t0_t4_deterministic_smoke_t9_host_protocol_shell_8_000021",
+    "description": "Generate an 8-bit FPGA RTL project with AXI-lite-style control/status writes and reads, AXI-stream-style sample output, and irq reporting.",
+    "top": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "resets": [
+    {
+      "name": "rst_n",
+      "polarity": "active_low",
+      "kind": "async"
+    }
+  ],
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project with AXI-lite-style control/status writes and reads, AXI-stream-style sample output, and irq reporting.",
+    "design_goal": "AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload is emitted, status can be read back, and irq remains asserted until cleared",
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axi_awvalid",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axi_awaddr",
+        "dir": "input",
+        "width": 4
+      },
+      {
+        "name": "s_axi_wvalid",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axi_wdata",
+        "dir": "input",
+        "width": 8
+      },
+      {
+        "name": "s_axi_wstrb",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axi_bready",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axi_arvalid",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axi_araddr",
+        "dir": "input",
+        "width": 4
+      },
+      {
+        "name": "s_axi_rready",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "m_axis_tready",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "s_axi_awready",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "s_axi_wready",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "s_axi_bvalid",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "s_axi_arready",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "s_axi_rvalid",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "s_axi_rdata",
+        "dir": "output",
+        "width": 8
+      },
+      {
+        "name": "m_axis_tvalid",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "m_axis_tdata",
+        "dir": "output",
+        "width": 16
+      },
+      {
+        "name": "m_axis_tlast",
+        "dir": "output",
+        "width": 1
+      },
+      {
+        "name": "irq",
+        "dir": "output",
+        "width": 1
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "ctrl",
+        "owner": "u_control_reg_bank",
+        "width": 8
+      },
+      {
+        "name": "sample0",
+        "owner": "u_control_reg_bank",
+        "width": 8
+      },
+      {
+        "name": "sample1",
+        "owner": "u_control_reg_bank",
+        "width": 8
+      },
+      {
+        "name": "busy",
+        "owner": "u_control_reg_bank",
+        "width": 1
+      },
+      {
+        "name": "done",
+        "owner": "u_control_reg_bank",
+        "width": 1
+      },
+      {
+        "name": "irq_state",
+        "owner": "u_control_reg_bank",
+        "width": 1
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_awvalid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_awaddr",
+          "dir": "input",
+          "width": 4
+        },
+        {
+          "name": "s_axi_wvalid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_wdata",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "s_axi_wstrb",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_bready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_arvalid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_araddr",
+          "dir": "input",
+          "width": 4
+        },
+        {
+          "name": "s_axi_rready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "m_axis_tready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_awready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_wready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_bvalid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_arready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_rvalid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_rdata",
+          "dir": "output",
+          "width": 8
+        },
+        {
+          "name": "m_axis_tvalid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "m_axis_tdata",
+          "dir": "output",
+          "width": 16
+        },
+        {
+          "name": "m_axis_tlast",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "axi_lite_write_ctrl",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/axi_lite_write_ctrl.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "awvalid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "awready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "awaddr",
+          "dir": "input",
+          "width": 4
+        },
+        {
+          "name": "wvalid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "wready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "wdata",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "wstrb",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "bvalid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "bready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "write_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "write_addr",
+          "dir": "output",
+          "width": 4
+        },
+        {
+          "name": "write_data",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        }
+      ],
+      "intent": "axi lite write ctrl component in the generated RTL project"
+    },
+    {
+      "name": "axi_lite_read_ctrl",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/axi_lite_read_ctrl.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "arvalid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "arready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "araddr",
+          "dir": "input",
+          "width": 4
+        },
+        {
+          "name": "rvalid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "rready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "read_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "read_addr",
+          "dir": "output",
+          "width": 4
+        }
+      ],
+      "intent": "axi lite read ctrl component in the generated RTL project"
+    },
+    {
+      "name": "control_reg_bank",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/control_reg_bank.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "write_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "write_addr",
+          "dir": "input",
+          "width": 4
+        },
+        {
+          "name": "write_data",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "read_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "read_addr",
+          "dir": "input",
+          "width": 4
+        },
+        {
+          "name": "read_data",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "stream_done",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "start_pulse",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "sample0",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "sample1",
+          "dir": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "irq_state",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "control reg bank component in the generated RTL project"
+    },
+    {
+      "name": "sample_stream_adapter",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/sample_stream_adapter.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "sample0",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "sample1",
+          "dir": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "tvalid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "tready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "tdata",
+          "dir": "output",
+          "width": "[(2*DATA_WIDTH)-1:0]"
+        },
+        {
+          "name": "tlast",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "stream_done",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "sample stream adapter component in the generated RTL project"
+    },
+    {
+      "name": "irq_status",
+      "semantic_kind": "rtl_component",
+      "source": "rtl/irq_status.v",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "irq_in",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "irq_out",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "intent": "irq status component in the generated RTL project"
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_axi_lite_write_ctrl",
+      "component": "axi_lite_write_ctrl",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_axi_lite_read_ctrl",
+      "component": "axi_lite_read_ctrl",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_control_reg_bank",
+      "component": "control_reg_bank",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_sample_stream_adapter",
+      "component": "sample_stream_adapter",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "u_irq_status",
+      "component": "irq_status",
+      "parameter_values": {},
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "u_axi_lite_write_ctrl_primary_path",
+      "path": [
+        "top.s_axi_wdata",
+        "u_axi_lite_write_ctrl.awvalid",
+        "u_axi_lite_write_ctrl.awready",
+        "top.s_axi_rdata"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_axi_lite_read_ctrl_primary_path",
+      "path": [
+        "top.s_axi_wdata",
+        "u_axi_lite_read_ctrl.arvalid",
+        "u_axi_lite_read_ctrl.arready",
+        "top.s_axi_rdata"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_control_reg_bank_primary_path",
+      "path": [
+        "top.s_axi_wdata",
+        "u_control_reg_bank.write_valid",
+        "u_control_reg_bank.read_data",
+        "top.s_axi_rdata"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_sample_stream_adapter_primary_path",
+      "path": [
+        "top.s_axi_wdata",
+        "u_sample_stream_adapter.start",
+        "u_sample_stream_adapter.tvalid",
+        "top.s_axi_rdata"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    },
+    {
+      "name": "u_irq_status_primary_path",
+      "path": [
+        "top.s_axi_wdata",
+        "u_irq_status.irq_in",
+        "u_irq_status.irq_out",
+        "top.s_axi_rdata"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_state",
+      "kind": "reset_rule",
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "related_state": [],
+      "related_flows": []
+    },
+    {
+      "name": "valid_ready_transfer",
+      "kind": "handshake_rule",
+      "condition": "valid && ready",
+      "effects": [
+        "advance each ready/valid flow by one payload"
+      ],
+      "related_state": [],
+      "related_flows": [
+        "u_axi_lite_write_ctrl_primary_path",
+        "u_axi_lite_read_ctrl_primary_path",
+        "u_control_reg_bank_primary_path",
+        "u_sample_stream_adapter_primary_path",
+        "u_irq_status_primary_path"
+      ]
+    },
+    {
+      "name": "backpressure_hold",
+      "kind": "stall_rule",
+      "condition": "valid && !ready",
+      "effects": [
+        "hold payload and valid state until downstream ready"
+      ],
+      "related_state": [],
+      "related_flows": [
+        "u_axi_lite_write_ctrl_primary_path",
+        "u_axi_lite_read_ctrl_primary_path",
+        "u_control_reg_bank_primary_path",
+        "u_sample_stream_adapter_primary_path",
+        "u_irq_status_primary_path"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 160,
+      "ff": 152,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload is emitted, status can be read back, and irq remains asserted until cleared.",
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload is emitted, status can be read back, and irq remains asserted until cleared.",
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when AXI-lite-style writes configure sample registers and start streaming; one AXI-stream-style payload is emitted, status can be read back, and irq remains asserted until cleared."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/axi_lite_write_ctrl.v",
+      "rtl/axi_lite_read_ctrl.v",
+      "rtl/control_reg_bank.v",
+      "rtl/sample_stream_adapter.v",
+      "rtl/irq_status.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "system": {
+    "description": "Generate an 8-bit FPGA RTL project with AXI-lite-style control/status writes and reads, AXI-stream-style sample output, and irq reporting."
+  },
+  "interface": {
+    "clock": "clk",
+    "reset": "rst_n",
+    "reset_polarity": "active_low",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "s_axi_awvalid",
+        "width": 1
+      },
+      {
+        "name": "s_axi_awaddr",
+        "width": 4
+      },
+      {
+        "name": "s_axi_wvalid",
+        "width": 1
+      },
+      {
+        "name": "s_axi_wdata",
+        "width": 8
+      },
+      {
+        "name": "s_axi_wstrb",
+        "width": 1
+      },
+      {
+        "name": "s_axi_bready",
+        "width": 1
+      },
+      {
+        "name": "s_axi_arvalid",
+        "width": 1
+      },
+      {
+        "name": "s_axi_araddr",
+        "width": 4
+      },
+      {
+        "name": "s_axi_rready",
+        "width": 1
+      },
+      {
+        "name": "m_axis_tready",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "s_axi_awready",
+        "width": 1
+      },
+      {
+        "name": "s_axi_wready",
+        "width": 1
+      },
+      {
+        "name": "s_axi_bvalid",
+        "width": 1
+      },
+      {
+        "name": "s_axi_arready",
+        "width": 1
+      },
+      {
+        "name": "s_axi_rvalid",
+        "width": 1
+      },
+      {
+        "name": "s_axi_rdata",
+        "width": 8
+      },
+      {
+        "name": "m_axis_tvalid",
+        "width": 1
+      },
+      {
+        "name": "m_axis_tdata",
+        "width": 16
+      },
+      {
+        "name": "m_axis_tlast",
+        "width": 1
+      },
+      {
+        "name": "irq",
+        "width": 1
+      }
+    ]
+  },
+  "architecture": {
+    "style": "multi_module",
+    "top_module": "top",
+    "submodules": [
+      "axi_lite_write_ctrl",
+      "axi_lite_read_ctrl",
+      "control_reg_bank",
+      "sample_stream_adapter",
+      "irq_status"
+    ],
+    "difficulty_tier": "T4",
+    "generator": "component_topology",
+    "topology_id": "t9_host_protocol_shell",
+    "component_library": "sr2fpga_deterministic_components_v1",
+    "topology": {
+      "nodes": [
+        {
+          "id": "write_ctrl",
+          "component": "axi_lite_write_ctrl"
+        },
+        {
+          "id": "read_ctrl",
+          "component": "axi_lite_read_ctrl"
+        },
+        {
+          "id": "regs",
+          "component": "control_reg_bank"
+        },
+        {
+          "id": "stream",
+          "component": "sample_stream_adapter"
+        },
+        {
+          "id": "irq",
+          "component": "irq_status"
+        }
+      ],
+      "edges": [
+        {
+          "from": "top.s_axi_awvalid",
+          "to": "axi_lite_write_ctrl.awvalid"
+        },
+        {
+          "from": "top.s_axi_awaddr",
+          "to": "axi_lite_write_ctrl.awaddr"
+        },
+        {
+          "from": "top.s_axi_wvalid",
+          "to": "axi_lite_write_ctrl.wvalid"
+        },
+        {
+          "from": "top.s_axi_wdata",
+          "to": "axi_lite_write_ctrl.wdata"
+        },
+        {
+          "from": "top.s_axi_wstrb",
+          "to": "axi_lite_write_ctrl.wstrb"
+        },
+        {
+          "from": "axi_lite_write_ctrl.awready",
+          "to": "top.s_axi_awready"
+        },
+        {
+          "from": "axi_lite_write_ctrl.wready",
+          "to": "top.s_axi_wready"
+        },
+        {
+          "from": "axi_lite_write_ctrl.bvalid",
+          "to": "top.s_axi_bvalid"
+        },
+        {
+          "from": "top.s_axi_bready",
+          "to": "axi_lite_write_ctrl.bready"
+        },
+        {
+          "from": "axi_lite_write_ctrl.write_valid",
+          "to": "control_reg_bank.write_valid"
+        },
+        {
+          "from": "axi_lite_write_ctrl.write_addr",
+          "to": "control_reg_bank.write_addr"
+        },
+        {
+          "from": "axi_lite_write_ctrl.write_data",
+          "to": "control_reg_bank.write_data"
+        },
+        {
+          "from": "top.s_axi_arvalid",
+          "to": "axi_lite_read_ctrl.arvalid"
+        },
+        {
+          "from": "top.s_axi_araddr",
+          "to": "axi_lite_read_ctrl.araddr"
+        },
+        {
+          "from": "axi_lite_read_ctrl.arready",
+          "to": "top.s_axi_arready"
+        },
+        {
+          "from": "axi_lite_read_ctrl.read_valid",
+          "to": "control_reg_bank.read_valid"
+        },
+        {
+          "from": "axi_lite_read_ctrl.read_addr",
+          "to": "control_reg_bank.read_addr"
+        },
+        {
+          "from": "control_reg_bank.read_data",
+          "to": "top.s_axi_rdata"
+        },
+        {
+          "from": "axi_lite_read_ctrl.rvalid",
+          "to": "top.s_axi_rvalid"
+        },
+        {
+          "from": "top.s_axi_rready",
+          "to": "axi_lite_read_ctrl.rready"
+        },
+        {
+          "from": "control_reg_bank.start_pulse",
+          "to": "sample_stream_adapter.start"
+        },
+        {
+          "from": "control_reg_bank.sample0",
+          "to": "sample_stream_adapter.sample0"
+        },
+        {
+          "from": "control_reg_bank.sample1",
+          "to": "sample_stream_adapter.sample1"
+        },
+        {
+          "from": "sample_stream_adapter.tvalid",
+          "to": "top.m_axis_tvalid"
+        },
+        {
+          "from": "top.m_axis_tready",
+          "to": "sample_stream_adapter.tready"
+        },
+        {
+          "from": "sample_stream_adapter.tdata",
+          "to": "top.m_axis_tdata"
+        },
+        {
+          "from": "sample_stream_adapter.tlast",
+          "to": "top.m_axis_tlast"
+        },
+        {
+          "from": "sample_stream_adapter.stream_done",
+          "to": "control_reg_bank.stream_done"
+        },
+        {
+          "from": "control_reg_bank.irq_state",
+          "to": "irq_status.irq_in"
+        },
+        {
+          "from": "irq_status.irq_out",
+          "to": "top.irq"
+        }
+      ]
+    }
+  },
+  "modules": [
+    {
+      "name": "top",
+      "role": "top",
+      "source": "rtl/top.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_awvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_awaddr",
+          "direction": "input",
+          "width": 4
+        },
+        {
+          "name": "s_axi_wvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_wdata",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "s_axi_wstrb",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_bready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_arvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_araddr",
+          "direction": "input",
+          "width": 4
+        },
+        {
+          "name": "s_axi_rready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "m_axis_tready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "s_axi_awready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_wready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_bvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_arready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_rvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "s_axi_rdata",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "m_axis_tvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "m_axis_tdata",
+          "direction": "output",
+          "width": 16
+        },
+        {
+          "name": "m_axis_tlast",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "irq",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "top-level integration wrapper for the generated RTL project"
+    },
+    {
+      "name": "axi_lite_write_ctrl",
+      "role": "submodule",
+      "source": "rtl/axi_lite_write_ctrl.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "awvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "awready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "awaddr",
+          "direction": "input",
+          "width": 4
+        },
+        {
+          "name": "wvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "wready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "wdata",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "wstrb",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "bvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "bready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "write_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "write_addr",
+          "direction": "output",
+          "width": 4
+        },
+        {
+          "name": "write_data",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        }
+      ],
+      "intent": "axi lite write ctrl component in the generated RTL project"
+    },
+    {
+      "name": "axi_lite_read_ctrl",
+      "role": "submodule",
+      "source": "rtl/axi_lite_read_ctrl.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "arvalid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "arready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "araddr",
+          "direction": "input",
+          "width": 4
+        },
+        {
+          "name": "rvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "rready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "read_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "read_addr",
+          "direction": "output",
+          "width": 4
+        }
+      ],
+      "intent": "axi lite read ctrl component in the generated RTL project"
+    },
+    {
+      "name": "control_reg_bank",
+      "role": "submodule",
+      "source": "rtl/control_reg_bank.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "write_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "write_addr",
+          "direction": "input",
+          "width": 4
+        },
+        {
+          "name": "write_data",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "read_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "read_addr",
+          "direction": "input",
+          "width": 4
+        },
+        {
+          "name": "read_data",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "stream_done",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "start_pulse",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "sample0",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "sample1",
+          "direction": "output",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "irq_state",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "control reg bank component in the generated RTL project"
+    },
+    {
+      "name": "sample_stream_adapter",
+      "role": "submodule",
+      "source": "rtl/sample_stream_adapter.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {
+        "DATA_WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "sample0",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "sample1",
+          "direction": "input",
+          "width": "[DATA_WIDTH-1:0]"
+        },
+        {
+          "name": "tvalid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "tready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "tdata",
+          "direction": "output",
+          "width": "[(2*DATA_WIDTH)-1:0]"
+        },
+        {
+          "name": "tlast",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "stream_done",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "sample stream adapter component in the generated RTL project"
+    },
+    {
+      "name": "irq_status",
+      "role": "submodule",
+      "source": "rtl/irq_status.v",
+      "clock": "clk",
+      "reset": "rst_n",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "name": "irq_in",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "irq_out",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "intent": "irq status component in the generated RTL project"
+    }
+  ],
+  "connections": [
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "clk",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "axi_lite_read_ctrl",
+        "port": "clk",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "clk",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "to": {
+        "module": "sample_stream_adapter",
+        "port": "clk",
+        "instance": "u_sample_stream_adapter"
+      },
+      "signal": "clk",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "rst_n",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "axi_lite_read_ctrl",
+        "port": "rst_n",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "rst_n",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "to": {
+        "module": "sample_stream_adapter",
+        "port": "rst_n",
+        "instance": "u_sample_stream_adapter"
+      },
+      "signal": "rst_n",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_awvalid"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "awvalid",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "s_axi_awvalid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_write_ctrl",
+        "port": "awready",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "to": {
+        "module": "top",
+        "port": "s_axi_awready"
+      },
+      "signal": "s_axi_awready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_awaddr"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "awaddr",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "s_axi_awaddr",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 4,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_wvalid"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "wvalid",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "s_axi_wvalid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_write_ctrl",
+        "port": "wready",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "to": {
+        "module": "top",
+        "port": "s_axi_wready"
+      },
+      "signal": "s_axi_wready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_wdata"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "wdata",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "s_axi_wdata",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 8,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_wstrb"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "wstrb",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "s_axi_wstrb",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_write_ctrl",
+        "port": "bvalid",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "to": {
+        "module": "top",
+        "port": "s_axi_bvalid"
+      },
+      "signal": "s_axi_bvalid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_bready"
+      },
+      "to": {
+        "module": "axi_lite_write_ctrl",
+        "port": "bready",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "signal": "s_axi_bready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_write_ctrl",
+        "port": "write_valid",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "write_valid",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "write_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_write_ctrl",
+        "port": "write_addr",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "write_addr",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "write_addr",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 4,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_write_ctrl",
+        "port": "write_data",
+        "instance": "u_axi_lite_write_ctrl"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "write_data",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "write_data",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_arvalid"
+      },
+      "to": {
+        "module": "axi_lite_read_ctrl",
+        "port": "arvalid",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "signal": "s_axi_arvalid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_read_ctrl",
+        "port": "arready",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "to": {
+        "module": "top",
+        "port": "s_axi_arready"
+      },
+      "signal": "s_axi_arready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_araddr"
+      },
+      "to": {
+        "module": "axi_lite_read_ctrl",
+        "port": "araddr",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "signal": "s_axi_araddr",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 4,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_read_ctrl",
+        "port": "rvalid",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "to": {
+        "module": "top",
+        "port": "s_axi_rvalid"
+      },
+      "signal": "s_axi_rvalid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "s_axi_rready"
+      },
+      "to": {
+        "module": "axi_lite_read_ctrl",
+        "port": "rready",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "signal": "s_axi_rready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_read_ctrl",
+        "port": "read_valid",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "read_valid",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "read_valid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "axi_lite_read_ctrl",
+        "port": "read_addr",
+        "instance": "u_axi_lite_read_ctrl"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "read_addr",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "read_addr",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 4,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "control_reg_bank",
+        "port": "read_data",
+        "instance": "u_control_reg_bank"
+      },
+      "to": {
+        "module": "top",
+        "port": "s_axi_rdata"
+      },
+      "signal": "s_axi_rdata",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "sample_stream_adapter",
+        "port": "stream_done",
+        "instance": "u_sample_stream_adapter"
+      },
+      "to": {
+        "module": "control_reg_bank",
+        "port": "stream_done",
+        "instance": "u_control_reg_bank"
+      },
+      "signal": "stream_done",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "control_reg_bank",
+        "port": "start_pulse",
+        "instance": "u_control_reg_bank"
+      },
+      "to": {
+        "module": "sample_stream_adapter",
+        "port": "start",
+        "instance": "u_sample_stream_adapter"
+      },
+      "signal": "start_pulse",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "control_reg_bank",
+        "port": "sample0",
+        "instance": "u_control_reg_bank"
+      },
+      "to": {
+        "module": "sample_stream_adapter",
+        "port": "sample0",
+        "instance": "u_sample_stream_adapter"
+      },
+      "signal": "sample0",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "control_reg_bank",
+        "port": "sample1",
+        "instance": "u_control_reg_bank"
+      },
+      "to": {
+        "module": "sample_stream_adapter",
+        "port": "sample1",
+        "instance": "u_sample_stream_adapter"
+      },
+      "signal": "sample1",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[DATA_WIDTH-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "control_reg_bank",
+        "port": "irq_state",
+        "instance": "u_control_reg_bank"
+      },
+      "to": {
+        "module": "irq_status",
+        "port": "irq_in",
+        "instance": "u_irq_status"
+      },
+      "signal": "irq_state",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "sample_stream_adapter",
+        "port": "tvalid",
+        "instance": "u_sample_stream_adapter"
+      },
+      "to": {
+        "module": "top",
+        "port": "m_axis_tvalid"
+      },
+      "signal": "m_axis_tvalid",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "top",
+        "port": "m_axis_tready"
+      },
+      "to": {
+        "module": "sample_stream_adapter",
+        "port": "tready",
+        "instance": "u_sample_stream_adapter"
+      },
+      "signal": "m_axis_tready",
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "sample_stream_adapter",
+        "port": "tdata",
+        "instance": "u_sample_stream_adapter"
+      },
+      "to": {
+        "module": "top",
+        "port": "m_axis_tdata"
+      },
+      "signal": "m_axis_tdata",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": "[(2*DATA_WIDTH)-1:0]",
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "sample_stream_adapter",
+        "port": "tlast",
+        "instance": "u_sample_stream_adapter"
+      },
+      "to": {
+        "module": "top",
+        "port": "m_axis_tlast"
+      },
+      "signal": "m_axis_tlast",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    },
+    {
+      "from": {
+        "module": "irq_status",
+        "port": "irq_out",
+        "instance": "u_irq_status"
+      },
+      "to": {
+        "module": "top",
+        "port": "irq"
+      },
+      "signal": "irq",
+      "kind": "port_connection",
+      "protocol": "register",
+      "width": 1,
+      "cdc": false
+    }
+  ],
+  "top_ports": [
+    {
+      "name": "clk",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "rst_n",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "s_axi_awvalid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "s_axi_awaddr",
+      "direction": "input",
+      "width": 4
+    },
+    {
+      "name": "s_axi_wvalid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "s_axi_wdata",
+      "direction": "input",
+      "width": 8
+    },
+    {
+      "name": "s_axi_wstrb",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "s_axi_bready",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "s_axi_arvalid",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "s_axi_araddr",
+      "direction": "input",
+      "width": 4
+    },
+    {
+      "name": "s_axi_rready",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "m_axis_tready",
+      "direction": "input",
+      "width": 1
+    },
+    {
+      "name": "s_axi_awready",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "s_axi_wready",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "s_axi_bvalid",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "s_axi_arready",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "s_axi_rvalid",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "s_axi_rdata",
+      "direction": "output",
+      "width": 8
+    },
+    {
+      "name": "m_axis_tvalid",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "m_axis_tdata",
+      "direction": "output",
+      "width": 16
+    },
+    {
+      "name": "m_axis_tlast",
+      "direction": "output",
+      "width": 1
+    },
+    {
+      "name": "irq",
+      "direction": "output",
+      "width": 1
+    }
+  ],
+  "qor_intent": {
+    "resources": {
+      "lut": 160,
+      "ff": 152,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "platform": {
+    "name": "generic_verilog",
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source",
+    "clock_hz": 100000000
+  }
+}

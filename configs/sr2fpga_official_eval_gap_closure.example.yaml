@@ -1,7 +1,10 @@
 # Official-eval gap-closure scaffold after adding ALU control and CRC stream
-# checker supplemental task families. This config is intentionally pre-OpenXC7:
-# it targets local open-source L0-L3 labels first. OpenXC7/Vivado board-level
-# checks should be run later from the Windows environment.
+# checker task families. This is not the final frozen official aggregate:
+# topology IDs t5-t12 map into compressed reporting tiers T3/T4, and integrated
+# shell entries remain supplemental complexity evidence unless a later approved
+# design grounds them in real workload references. This config is intentionally
+# pre-OpenXC7: it targets local open-source L0-L3 labels first. OpenXC7/Vivado
+# board-level checks should be run later from the Windows environment.
 dataset_root: datasets/sr2fpga_rtl_v1
 export_root: datasets/sr2fpga_rtl_v1_exports
 run_root: tmp/sr2fpga_runs
@@ -45,7 +48,7 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: alu_control_unit
-    difficulty_tier: S1
+    difficulty_tier: T0
     requirement_style: contract
     failure_origin: compositional_assembly
     measurement_point: a_first_attempt_no_tools
@@ -54,7 +57,7 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: crc_stream_checker
-    difficulty_tier: S1
+    difficulty_tier: T0
     requirement_style: contract
     failure_origin: compositional_assembly
     measurement_point: a_first_attempt_no_tools
@@ -84,7 +87,7 @@ tasks:
     failure_injectors: []
   - source: deepseek-his-v12
     task_type: alu_control_unit
-    difficulty_tier: S1
+    difficulty_tier: T0
     requirement_style: simple_prompt
     failure_origin: natural_llm
     measurement_point: a_first_attempt_no_tools
@@ -93,7 +96,7 @@ tasks:
     failure_injectors: []
   - source: deepseek-his-v12
     task_type: crc_stream_checker
-    difficulty_tier: S1
+    difficulty_tier: T0
     requirement_style: simple_prompt
     failure_origin: natural_llm
     measurement_point: a_first_attempt_no_tools

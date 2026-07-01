@@ -2,6 +2,11 @@
 
 Date: 2026-06-29
 
+Status note (2026-06-30): this file keeps the legacy topology ID/name used by
+the implementation (`t10_rl_accelerator_shell`). For public reporting, dataset
+splits, and paper-facing discussion, it maps to compressed tier **T4: integrated
+host-facing system shells**.
+
 ## Purpose
 
 T10 is the next component-topology step after T9 toward the reinforcement-

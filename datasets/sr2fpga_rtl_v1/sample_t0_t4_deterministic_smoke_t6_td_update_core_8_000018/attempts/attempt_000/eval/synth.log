@@ -1,0 +1,1505 @@
+
+ /----------------------------------------------------------------------------\
+ |  yosys -- Yosys Open SYnthesis Suite                                       |
+ |  Copyright (C) 2012 - 2026  Claire Xenia Wolf <claire@yosyshq.com>         |
+ |  Distributed under an ISC-like license, type "license" to see terms        |
+ \----------------------------------------------------------------------------/
+ Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+
+-- Running command `read_verilog rtl/top.v rtl/td_input_stage.v rtl/discount_core.v rtl/td_update_core.v rtl/stream_stage.v; synth -top top; stat' --
+
+1. Executing Verilog-2005 frontend: rtl/top.v
+Parsing Verilog input from `rtl/top.v' to AST representation.
+Generating RTLIL representation for module `\top'.
+Successfully finished Verilog frontend.
+
+2. Executing Verilog-2005 frontend: rtl/td_input_stage.v
+Parsing Verilog input from `rtl/td_input_stage.v' to AST representation.
+Generating RTLIL representation for module `\td_input_stage'.
+Successfully finished Verilog frontend.
+
+3. Executing Verilog-2005 frontend: rtl/discount_core.v
+Parsing Verilog input from `rtl/discount_core.v' to AST representation.
+Generating RTLIL representation for module `\discount_core'.
+Successfully finished Verilog frontend.
+
+4. Executing Verilog-2005 frontend: rtl/td_update_core.v
+Parsing Verilog input from `rtl/td_update_core.v' to AST representation.
+Generating RTLIL representation for module `\td_update_core'.
+Successfully finished Verilog frontend.
+
+5. Executing Verilog-2005 frontend: rtl/stream_stage.v
+Parsing Verilog input from `rtl/stream_stage.v' to AST representation.
+Generating RTLIL representation for module `\stream_stage'.
+Successfully finished Verilog frontend.
+
+6. Executing SYNTH pass.
+
+6.1. Executing HIERARCHY pass (managing design hierarchy).
+
+6.1.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     \stream_stage
+Used module:     \td_update_core
+Used module:     \discount_core
+Used module:     \td_input_stage
+Parameter \DATA_WIDTH = 8
+
+6.1.2. Executing AST frontend in derive mode using pre-parsed AST for module `\stream_stage'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Parameter \DATA_WIDTH = 8
+Parameter \SCALE_SHIFT = 4
+
+6.1.3. Executing AST frontend in derive mode using pre-parsed AST for module `\td_update_core'.
+Parameter \DATA_WIDTH = 8
+Parameter \SCALE_SHIFT = 4
+Generating RTLIL representation for module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Parameter \DATA_WIDTH = 8
+Parameter \SCALE_SHIFT = 4
+
+6.1.4. Executing AST frontend in derive mode using pre-parsed AST for module `\discount_core'.
+Parameter \DATA_WIDTH = 8
+Parameter \SCALE_SHIFT = 4
+Generating RTLIL representation for module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Parameter \DATA_WIDTH = 8
+
+6.1.5. Executing AST frontend in derive mode using pre-parsed AST for module `\td_input_stage'.
+Parameter \DATA_WIDTH = 8
+Generating RTLIL representation for module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+
+6.1.6. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+Used module:     $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+6.1.7. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+Used module:     $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Removing unused module `\stream_stage'.
+Removing unused module `\td_update_core'.
+Removing unused module `\discount_core'.
+Removing unused module `\td_input_stage'.
+Removed 4 unused modules.
+
+6.2. Executing PROC pass (convert processes to netlists).
+
+6.2.1. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Cleaned up 0 empty switches.
+
+6.2.2. Executing PROC_RMDEAD pass (remove dead branches from decision trees).
+Marked 1 switch rules as full_case in process $proc$rtl/td_input_stage.v:24$73 in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Marked 1 switch rules as full_case in process $proc$rtl/stream_stage.v:18$40 in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Removed a total of 0 dead cases.
+
+6.2.3. Executing PROC_PRUNE pass (remove redundant assignments in processes).
+Removed 0 redundant assignments.
+Promoted 0 assignments to connections.
+
+6.2.4. Executing PROC_INIT pass (extract init attributes).
+
+6.2.5. Executing PROC_ARST pass (detect async resets in processes).
+Found async reset \rst_n in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+Found async reset \rst_n in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:18$40'.
+
+6.2.6. Executing PROC_ROM pass (convert switches to ROMs).
+Converted 0 switches.
+<suppressed ~4 debug messages>
+
+6.2.7. Executing PROC_MUX pass (convert decision trees to multiplexers).
+Creating decoders for process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+     1/6: $0\alpha_out[7:0]
+     2/6: $0\gamma_out[7:0]
+     3/6: $0\next_value_out[7:0]
+     4/6: $0\value_out[7:0]
+     5/6: $0\reward_out[7:0]
+     6/6: $0\out_valid[0:0]
+Creating decoders for process `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:18$40'.
+     1/3: $0\updated_value_out[7:0]
+     2/3: $0\td_error_out[7:0]
+     3/3: $0\out_valid[0:0]
+
+6.2.8. Executing PROC_DLATCH pass (convert process syncs to latches).
+
+6.2.9. Executing PROC_DFF pass (convert process syncs to FFs).
+Creating register for signal `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\out_valid' using process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+  created $adff cell `$procdff$111' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\reward_out' using process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+  created $adff cell `$procdff$116' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\value_out' using process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+  created $adff cell `$procdff$121' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\next_value_out' using process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+  created $adff cell `$procdff$126' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\gamma_out' using process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+  created $adff cell `$procdff$131' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\alpha_out' using process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+  created $adff cell `$procdff$136' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\out_valid' using process `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:18$40'.
+  created $adff cell `$procdff$141' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\td_error_out' using process `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:18$40'.
+  created $adff cell `$procdff$146' with positive edge clock and positive level reset.
+Creating register for signal `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.\updated_value_out' using process `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:18$40'.
+  created $adff cell `$procdff$151' with positive edge clock and positive level reset.
+
+6.2.10. Executing PROC_MEMWR pass (convert process memory writes to cells).
+
+6.2.11. Executing PROC_CLEAN pass (remove empty switches from decision trees).
+Found and cleaned up 2 empty switches in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+Removing empty process `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/td_input_stage.v:24$73'.
+Found and cleaned up 2 empty switches in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:18$40'.
+Removing empty process `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.$proc$rtl/stream_stage.v:18$40'.
+Cleaned up 4 empty switches.
+
+6.2.12. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~12 debug messages>
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+<suppressed ~1 debug messages>
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+<suppressed ~1 debug messages>
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+<suppressed ~6 debug messages>
+Optimizing module top.
+
+6.3. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 11 unused cells and 64 unused wires.
+<suppressed ~15 debug messages>
+
+6.5. Executing CHECK pass (checking for obvious problems).
+Checking module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core...
+Checking module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core...
+Checking module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+6.6. Executing OPT pass (performing simple optimizations).
+
+6.6.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.6.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.6.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~31 debug messages>
+
+6.6.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+    New input vector for $reduce_or cell $reduce_or$rtl/discount_core.v:29$63: \gamma_next_product [15:11]
+    New input vector for $reduce_and cell $reduce_and$rtl/discount_core.v:32$65: \gamma_next_product [15:11]
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+    New input vector for $reduce_or cell $reduce_or$rtl/td_update_core.v:31$49: \alpha_error_product [15:11]
+    New input vector for $reduce_and cell $reduce_and$rtl/td_update_core.v:34$51: \alpha_error_product [15:11]
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+  Optimizing cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 4 changes.
+
+6.6.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.6.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.6.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.6.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.6.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+6.6.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~31 debug messages>
+
+6.6.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+  Optimizing cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+6.6.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.6.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.6.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.6.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.6.16. Finished fast OPT passes. (There is nothing left to do.)
+
+6.7. Executing FSM pass (extract and optimize FSM).
+
+6.7.1. Executing FSM_DETECT pass (finding FSMs in design).
+
+6.7.2. Executing FSM_EXTRACT pass (extracting FSM from design).
+
+6.7.3. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+6.7.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.7.5. Executing FSM_OPT pass (simple optimizations of FSMs).
+
+6.7.6. Executing FSM_RECODE pass (re-assigning FSM state encoding).
+
+6.7.7. Executing FSM_INFO pass (dumping all available information on FSM cells).
+
+6.7.8. Executing FSM_MAP pass (mapping FSMs to basic logic).
+
+6.8. Executing OPT pass (performing simple optimizations).
+
+6.8.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.8.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.8.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~31 debug messages>
+
+6.8.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+  Optimizing cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+6.8.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 10 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.8.6. Executing OPT_DFF pass (perform DFF optimizations).
+Adding EN signal on $procdff$116 ($adff) from module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \reward, Q = \reward_out).
+Adding EN signal on $procdff$121 ($adff) from module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \value, Q = \value_out).
+Adding EN signal on $procdff$126 ($adff) from module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \next_value, Q = \next_value_out).
+Adding EN signal on $procdff$111 ($adff) from module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \in_valid, Q = \out_valid).
+Adding EN signal on $procdff$131 ($adff) from module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \gamma, Q = \gamma_out).
+Adding EN signal on $procdff$136 ($adff) from module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \alpha, Q = \alpha_out).
+Adding EN signal on $procdff$141 ($adff) from module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \in_valid, Q = \out_valid).
+Adding EN signal on $procdff$151 ($adff) from module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \updated_value, Q = \updated_value_out).
+Adding EN signal on $procdff$146 ($adff) from module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000 (D = \td_error, Q = \td_error_out).
+
+6.8.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 16 unused cells and 16 unused wires.
+<suppressed ~18 debug messages>
+
+6.8.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.8.9. Rerunning OPT passes. (Maybe there is more to do..)
+
+6.8.10. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~6 debug messages>
+
+6.8.11. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+  Optimizing cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+6.8.12. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 13 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~12 debug messages>
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 7 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+<suppressed ~3 debug messages>
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 5 cells.
+
+6.8.13. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.8.14. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 5 unused wires.
+<suppressed ~2 debug messages>
+
+6.8.15. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.8.16. Rerunning OPT passes. (Maybe there is more to do..)
+
+6.8.17. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~6 debug messages>
+
+6.8.18. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+  Optimizing cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+6.8.19. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.8.20. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.8.21. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.8.22. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.8.23. Finished fast OPT passes. (There is nothing left to do.)
+
+6.9. Executing WREDUCE pass (reducing word size of cells).
+Removed top 7 bits (of 16) from port A of cell $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.$mul$rtl/discount_core.v:24$59 ($mul).
+Removed top 7 bits (of 16) from port A of cell $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.$mul$rtl/td_update_core.v:26$45 ($mul).
+
+6.10. Executing PEEPOPT pass (run peephole optimizers).
+
+6.11. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.12. Executing ALUMACC pass (create $alu and $macc cells).
+Extracting $alu and $macc cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core:
+  creating $macc model for $add$rtl/discount_core.v:36$70 ($add).
+  creating $macc model for $mul$rtl/discount_core.v:24$59 ($mul).
+  creating $alu model for $macc $add$rtl/discount_core.v:36$70.
+  creating $macc cell for $mul$rtl/discount_core.v:24$59: $auto$alumacc.cc:382:replace_macc$175
+  creating $alu cell for $add$rtl/discount_core.v:36$70: $auto$alumacc.cc:512:replace_alu$176
+  created 1 $alu and 1 $macc cells.
+Extracting $alu and $macc cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core:
+  creating $macc model for $add$rtl/td_update_core.v:38$56 ($add).
+  creating $macc model for $mul$rtl/td_update_core.v:26$45 ($mul).
+  creating $macc model for $sub$rtl/td_update_core.v:25$44 ($sub).
+  creating $alu model for $macc $sub$rtl/td_update_core.v:25$44.
+  creating $alu model for $macc $add$rtl/td_update_core.v:38$56.
+  creating $macc cell for $mul$rtl/td_update_core.v:26$45: $auto$alumacc.cc:382:replace_macc$179
+  creating $alu cell for $add$rtl/td_update_core.v:38$56: $auto$alumacc.cc:512:replace_alu$180
+  creating $alu cell for $sub$rtl/td_update_core.v:25$44: $auto$alumacc.cc:512:replace_alu$183
+  created 2 $alu and 1 $macc cells.
+Extracting $alu and $macc cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000:
+  created 0 $alu and 0 $macc cells.
+Extracting $alu and $macc cells in module top:
+  created 0 $alu and 0 $macc cells.
+
+6.13. Executing SHARE pass (SAT-based resource sharing).
+
+6.14. Executing OPT pass (performing simple optimizations).
+
+6.14.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.14.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.14.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~6 debug messages>
+
+6.14.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+  Optimizing cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+6.14.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.14.6. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.14.7. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.14.8. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.14.9. Finished fast OPT passes. (There is nothing left to do.)
+
+6.15. Executing MEMORY pass.
+
+6.15.1. Executing OPT_MEM pass (optimize memories).
+Performed a total of 0 transformations.
+
+6.15.2. Executing OPT_MEM_PRIORITY pass (removing unnecessary memory write priority relations).
+Performed a total of 0 transformations.
+
+6.15.3. Executing OPT_MEM_FEEDBACK pass (finding memory read-to-write feedback paths).
+
+6.15.4. Executing MEMORY_BMUX2ROM pass (converting muxes to ROMs).
+
+6.15.5. Executing MEMORY_DFF pass (merging $dff cells to $memrd).
+
+6.15.6. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.15.7. Executing MEMORY_SHARE pass (consolidating $memrd/$memwr cells).
+
+6.15.8. Executing OPT_MEM_WIDEN pass (optimize memories where all ports are wide).
+Performed a total of 0 transformations.
+
+6.15.9. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.15.10. Executing MEMORY_COLLECT pass (generating $mem cells).
+
+6.16. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.17. Executing OPT pass (performing simple optimizations).
+
+6.17.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.17.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.17.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.17.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.17.5. Finished fast OPT passes.
+
+6.18. Executing MEMORY_MAP pass (converting memories to logic and flip-flops).
+
+6.19. Executing OPT pass (performing simple optimizations).
+
+6.19.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.19.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.19.3. Executing OPT_MUXTREE pass (detect dead branches in mux trees).
+Running muxtree optimizer on module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+  Creating internal representation of mux trees.
+  Evaluating internal representation of mux trees.
+  Analyzing evaluation results.
+Running muxtree optimizer on module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Running muxtree optimizer on module \top..
+  Creating internal representation of mux trees.
+  No muxes found in this module.
+Removed 0 multiplexer ports.
+<suppressed ~6 debug messages>
+
+6.19.4. Executing OPT_REDUCE pass (consolidate $*mux and $reduce_* inputs).
+  Optimizing cells in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+  Optimizing cells in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+  Optimizing cells in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+  Optimizing cells in module \top.
+Performed a total of 0 changes.
+
+6.19.5. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 9 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 13 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 14 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 6 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.19.6. Executing OPT_SHARE pass.
+
+6.19.7. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.19.8. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+
+6.19.9. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.19.10. Finished fast OPT passes. (There is nothing left to do.)
+
+6.20. Executing TECHMAP pass (map to technology primitives).
+
+6.20.1. Executing Verilog-2005 frontend: /opt/homebrew/bin/../share/yosys/techmap.v
+Parsing Verilog input from `/opt/homebrew/bin/../share/yosys/techmap.v' to AST representation.
+Generating RTLIL representation for module `\_90_simplemap_bool_ops'.
+Generating RTLIL representation for module `\_90_simplemap_reduce_ops'.
+Generating RTLIL representation for module `\_90_simplemap_logic_ops'.
+Generating RTLIL representation for module `\_90_simplemap_compare_ops'.
+Generating RTLIL representation for module `\_90_simplemap_various'.
+Generating RTLIL representation for module `\_90_simplemap_registers'.
+Generating RTLIL representation for module `\_90_shift_ops_shr_shl_sshl_sshr'.
+Generating RTLIL representation for module `\_90_shift_shiftx'.
+Generating RTLIL representation for module `\_90_fa'.
+Generating RTLIL representation for module `\_90_lcu_brent_kung'.
+Generating RTLIL representation for module `\_90_alu'.
+Generating RTLIL representation for module `\_90_macc'.
+Generating RTLIL representation for module `\_90_alumacc'.
+Generating RTLIL representation for module `$__div_mod_u'.
+Generating RTLIL representation for module `$__div_mod_trunc'.
+Generating RTLIL representation for module `\_90_div'.
+Generating RTLIL representation for module `\_90_mod'.
+Generating RTLIL representation for module `$__div_mod_floor'.
+Generating RTLIL representation for module `\_90_divfloor'.
+Generating RTLIL representation for module `\_90_modfloor'.
+Generating RTLIL representation for module `\_90_pow'.
+Generating RTLIL representation for module `\_90_demux'.
+Generating RTLIL representation for module `\_90_lut'.
+Generating RTLIL representation for module `$connect'.
+Generating RTLIL representation for module `$input_port'.
+Successfully finished Verilog frontend.
+
+6.20.2. Continuing TECHMAP pass.
+Using extmapper simplemap for cells of type $adffe.
+Using extmapper simplemap for cells of type $reduce_and.
+Using extmapper simplemap for cells of type $logic_not.
+Using extmapper simplemap for cells of type $logic_or.
+Using template $paramod$08c2d337fba0d8fba53e35b89be96dd105931d9e\_90_alu for cells of type $alu.
+Using extmapper maccmap for cells of type $macc_v2.
+  add { 1'0 \alpha } * \td_error (9x8 bits, signed)
+Using extmapper simplemap for cells of type $and.
+Using extmapper simplemap for cells of type $or.
+Using extmapper simplemap for cells of type $reduce_or.
+Using extmapper simplemap for cells of type $logic_and.
+Using extmapper simplemap for cells of type $mux.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000010000 for cells of type $fa.
+Using template $paramod$6df0329addda9228fcc2546de2aaf14ad26c98e1\_90_alu for cells of type $alu.
+Using extmapper simplemap for cells of type $not.
+Using extmapper simplemap for cells of type $xor.
+Using template $paramod\_90_fa\WIDTH=32'00000000000000000000000000001000 for cells of type $fa.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000001000 for cells of type $lcu.
+Using extmapper simplemap for cells of type $pos.
+Using template $paramod\_90_lcu_brent_kung\WIDTH=32'00000000000000000000000000010000 for cells of type $lcu.
+  add { 1'0 \gamma } * \next_value (9x8 bits, signed)
+No more expansions possible.
+<suppressed ~795 debug messages>
+
+6.21. Executing OPT pass (performing simple optimizations).
+
+6.21.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+<suppressed ~517 debug messages>
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+<suppressed ~552 debug messages>
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.21.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 44 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 500 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 559 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 20 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.21.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.21.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 101 unused cells and 412 unused wires.
+<suppressed ~105 debug messages>
+
+6.21.5. Finished fast OPT passes.
+
+6.22. Executing ABC pass (technology mapping using ABC).
+
+6.22.1. Extracting gate netlist of module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+6.22.1.1. Executed ABC.
+Extracted 3 gates and 6 wires to a netlist network with 3 inputs and 2 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+6.22.1.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:        internal signals:        1
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        2
+Removing temp directory.
+
+6.22.2. Extracting gate netlist of module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core' to `<abc-temp-dir>/input.blif'..
+
+6.22.2.1. Executed ABC.
+Extracted 454 gates and 481 wires to a netlist network with 25 inputs and 9 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+6.22.2.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:       79
+ABC RESULTS:            ANDNOT cells:       10
+ABC RESULTS:               BUF cells:        1
+ABC RESULTS:               MUX cells:        1
+ABC RESULTS:              NAND cells:      165
+ABC RESULTS:               NOR cells:        2
+ABC RESULTS:               NOT cells:        1
+ABC RESULTS:                OR cells:        8
+ABC RESULTS:             ORNOT cells:        8
+ABC RESULTS:              XNOR cells:       17
+ABC RESULTS:               XOR cells:      108
+ABC RESULTS:        internal signals:      447
+ABC RESULTS:           input signals:       25
+ABC RESULTS:          output signals:        9
+Removing temp directory.
+
+6.22.3. Extracting gate netlist of module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core' to `<abc-temp-dir>/input.blif'..
+
+6.22.3.1. Executed ABC.
+Extracted 504 gates and 531 wires to a netlist network with 25 inputs and 17 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+6.22.3.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:       78
+ABC RESULTS:            ANDNOT cells:        9
+ABC RESULTS:               BUF cells:        1
+ABC RESULTS:              NAND cells:      183
+ABC RESULTS:                OR cells:        6
+ABC RESULTS:             ORNOT cells:       17
+ABC RESULTS:              XNOR cells:       25
+ABC RESULTS:               XOR cells:      115
+ABC RESULTS:        internal signals:      489
+ABC RESULTS:           input signals:       25
+ABC RESULTS:          output signals:       17
+Removing temp directory.
+
+6.22.4. Extracting gate netlist of module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000' to `<abc-temp-dir>/input.blif'..
+
+6.22.4.1. Executed ABC.
+Extracted 3 gates and 6 wires to a netlist network with 3 inputs and 2 outputs.
+Running ABC script: <abc-temp-dir>/abc.script
+ABC: ======== ABC command line "source <abc-temp-dir>/abc.script"
+ABC: + read_blif <abc-temp-dir>/input.blif 
+ABC: + read_library <abc-temp-dir>/stdcells.genlib 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &fraig -x 
+ABC: + &put 
+ABC: + scorr 
+ABC: Warning: The network is combinational (run "fraig" or "fraig_sweep").
+ABC: + dc2 
+ABC: + dretime 
+ABC: + strash 
+ABC: + &get -n 
+ABC: + &dch -f 
+ABC: + &nf 
+ABC: + &put 
+ABC: + write_blif <abc-temp-dir>/output.blif 
+
+6.22.4.2. Re-integrating ABC results.
+ABC RESULTS:               AND cells:        1
+ABC RESULTS:             ORNOT cells:        1
+ABC RESULTS:        internal signals:        1
+ABC RESULTS:           input signals:        3
+ABC RESULTS:          output signals:        2
+Removing temp directory.
+
+6.22.5. Extracting gate netlist of module `\top' to `<abc-temp-dir>/input.blif'..
+
+6.22.5.1. Executed ABC.
+Extracted 0 gates and 0 wires to a netlist network with 0 inputs and 0 outputs.
+Don't call ABC as there is nothing to map.
+Removing temp directory.
+Removing global temp directory.
+
+6.23. Executing OPT pass (performing simple optimizations).
+
+6.23.1. Executing OPT_EXPR pass (perform const folding).
+Optimizing module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core.
+Optimizing module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core.
+Optimizing module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000.
+Optimizing module top.
+
+6.23.2. Executing OPT_MERGE pass (detect identical cells).
+Finding identical cells in module `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 43 cells of `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Computing hashes of 399 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core'.
+Finding identical cells in module `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Computing hashes of 433 cells of `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding duplicate cells in `$paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core'.
+Finding identical cells in module `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Computing hashes of 19 cells of `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding duplicate cells in `$paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000'.
+Finding identical cells in module `\top'.
+Computing hashes of 4 cells of `\top'.
+Finding duplicate cells in `\top'.
+Removed a total of 0 cells.
+
+6.23.3. Executing OPT_DFF pass (perform DFF optimizations).
+
+6.23.4. Executing OPT_CLEAN pass (remove unused cells and wires).
+Finding unused cells or wires in module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core..
+Finding unused cells or wires in module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core..
+Finding unused cells or wires in module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000..
+Finding unused cells or wires in module \top..
+Removed 0 unused cells and 310 unused wires.
+<suppressed ~14 debug messages>
+
+6.23.5. Finished fast OPT passes.
+
+6.24. Executing HIERARCHY pass (managing design hierarchy).
+Attribute `top' found on module `top'. Setting top module to top.
+
+6.24.1. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+Used module:     $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+6.24.2. Analyzing design hierarchy..
+Top module:  \top
+Used module:     $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+Used module:     $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+Used module:     $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+Removed 0 unused modules.
+
+6.25. Printing statistics.
+
+=== $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       17 wires
+       87 wire bits
+       16 public wires
+       86 public wire bits
+       16 ports
+       86 port bits
+       43 cells
+        1   $_AND_
+       41   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      401 wires
+      459 wire bits
+       10 public wires
+       68 public wire bits
+        8 ports
+       36 port bits
+      399 cells
+       10   $_ANDNOT_
+       79   $_AND_
+        1   $_MUX_
+      165   $_NAND_
+        2   $_NOR_
+        1   $_NOT_
+        8   $_ORNOT_
+        8   $_OR_
+       17   $_XNOR_
+      108   $_XOR_
+
+=== $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      426 wires
+      461 wire bits
+        9 public wires
+       44 public wire bits
+        9 ports
+       44 port bits
+      433 cells
+        9   $_ANDNOT_
+       78   $_AND_
+      183   $_NAND_
+       17   $_ORNOT_
+        6   $_OR_
+       25   $_XNOR_
+      115   $_XOR_
+
+=== $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       39 wire bits
+       10 public wires
+       38 public wire bits
+       10 ports
+       38 port bits
+       19 cells
+        1   $_AND_
+       17   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       27 wires
+      132 wire bits
+       27 public wires
+      132 public wire bits
+       13 ports
+       62 port bits
+        4 submodules
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+        1   $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      894 top
+      399 $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+      433 $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+       19 $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+       43 $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+        +----------Count including submodules.
+        | 
+      882 wires
+     1178 wire bits
+       72 public wires
+      368 public wire bits
+       56 ports
+      266 port bits
+        - memories
+        - memory bits
+        - processes
+      894 cells
+       19   $_ANDNOT_
+      159   $_AND_
+       58   $_DFFE_PN0P_
+        1   $_MUX_
+      348   $_NAND_
+        2   $_NOR_
+        1   $_NOT_
+       27   $_ORNOT_
+       14   $_OR_
+       42   $_XNOR_
+      223   $_XOR_
+        4 submodules
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+        1   $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+6.26. Executing CHECK pass (checking for obvious problems).
+Checking module $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core...
+Checking module $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core...
+Checking module $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000...
+Checking module top...
+Found and reported 0 problems.
+
+7. Printing statistics.
+
+=== $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       17 wires
+       87 wire bits
+       16 public wires
+       86 public wire bits
+       16 ports
+       86 port bits
+       43 cells
+        1   $_AND_
+       41   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      401 wires
+      459 wire bits
+       10 public wires
+       68 public wire bits
+        8 ports
+       36 port bits
+      399 cells
+       10   $_ANDNOT_
+       79   $_AND_
+        1   $_MUX_
+      165   $_NAND_
+        2   $_NOR_
+        1   $_NOT_
+        8   $_ORNOT_
+        8   $_OR_
+       17   $_XNOR_
+      108   $_XOR_
+
+=== $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core ===
+
+        +----------Local Count, excluding submodules.
+        | 
+      426 wires
+      461 wire bits
+        9 public wires
+       44 public wire bits
+        9 ports
+       44 port bits
+      433 cells
+        9   $_ANDNOT_
+       78   $_AND_
+      183   $_NAND_
+       17   $_ORNOT_
+        6   $_OR_
+       25   $_XNOR_
+      115   $_XOR_
+
+=== $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000 ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       11 wires
+       39 wire bits
+       10 public wires
+       38 public wire bits
+       10 ports
+       38 port bits
+       19 cells
+        1   $_AND_
+       17   $_DFFE_PN0P_
+        1   $_ORNOT_
+
+=== top ===
+
+        +----------Local Count, excluding submodules.
+        | 
+       27 wires
+      132 wire bits
+       27 public wires
+      132 public wire bits
+       13 ports
+       62 port bits
+        4 submodules
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+        1   $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+=== design hierarchy ===
+
+        +----------Count including submodules.
+        | 
+      894 top
+      399 $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+      433 $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+       19 $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+       43 $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+        +----------Count including submodules.
+        | 
+      882 wires
+     1178 wire bits
+       72 public wires
+      368 public wire bits
+       56 ports
+      266 port bits
+        - memories
+        - memory bits
+        - processes
+      894 cells
+       19   $_ANDNOT_
+      159   $_AND_
+       58   $_DFFE_PN0P_
+        1   $_MUX_
+      348   $_NAND_
+        2   $_NOR_
+        1   $_NOT_
+       27   $_ORNOT_
+       14   $_OR_
+       42   $_XNOR_
+      223   $_XOR_
+        4 submodules
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\discount_core
+        1   $paramod$2e62ff35baa750a1c68e8ac2a7c82e12a8825112\td_update_core
+        1   $paramod\stream_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+        1   $paramod\td_input_stage\DATA_WIDTH=s32'00000000000000000000000000001000
+
+End of script. Logfile hash: 21ed967e66, time: 0.39s, user: 0.09s, system: 0.01s, MEM: 23.97 MB peak
+Yosys 0.66 (git sha1 7f8fdfd8d7bc08c749a2a969388d3425d4f369d5, clang++ 21.0.0 -fPIC -O3)
+Time spent: 78% 1x abc (0 sec), 4% 1x techmap (0 sec), ...

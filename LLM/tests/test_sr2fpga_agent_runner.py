@@ -215,6 +215,47 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
         self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "behavior_files")
 
+    def test_t0_t4_deterministic_smoke_config_covers_task_catalog_once(self) -> None:
+        catalog = json.loads(Path("docs/sr2fpga-t0-t4-task-catalog.json").read_text(encoding="utf-8"))
+        config = load_runner_config(Path("configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml"))
+        samples = planned_samples(config)
+
+        self.assertEqual(config.provider, "deterministic")
+        self.assertEqual(config.repair_provider, "none")
+        self.assertEqual(config.max_attempts, 1)
+        self.assertEqual(config.sample_id_prefix, "t0_t4_deterministic_smoke")
+        self.assertEqual(len(samples), 24)
+        self.assertEqual([sample.source for sample in samples], ["deterministic"] * 24)
+        self.assertEqual(
+            [(sample.task_type, sample.width) for sample in samples],
+            [(entry["task_type"], entry["default_width"]) for entry in catalog["tasks"]],
+        )
+        self.assertEqual(
+            [(sample.difficulty_tier, sample.topology_id) for sample in samples],
+            [(entry["tier"], entry["topology_id"] or "") for entry in catalog["tasks"]],
+        )
+        self.assertEqual({sample.measurement_point for sample in samples}, {"a_first_attempt_no_tools"})
+        self.assertEqual({sample.failure_origin for sample in samples}, {"deterministic"})
+        self.assertEqual({sample.requirement_style for sample in samples}, {"simple_prompt"})
+        self.assertEqual(
+            samples[0].requirement,
+            "Generate an 8-bit FPGA RTL project that implements a synchronous counter with enable and reset.",
+        )
+        self.assertNotIn("system_his.json", samples[0].requirement)
+        self.assertEqual(
+            samples[23].requirement,
+            "Generate an 8-bit FPGA RTL project with host transition packetization, indexed replay sample "
+            "requests, read/write arbitration, sample packet output, occupancy status, and irq reporting.",
+        )
+        self.assertNotIn("Preserve these interface contracts", samples[23].requirement)
+        self.assertNotIn("replay_request_arbiter", samples[23].requirement)
+        self.assertNotIn("->", samples[23].requirement)
+
+        tier_counts: dict[str, int] = {}
+        for sample in samples:
+            tier_counts[sample.difficulty_tier] = tier_counts.get(sample.difficulty_tier, 0) + 1
+        self.assertEqual(tier_counts, {"T0": 12, "T1": 2, "T2": 2, "T3": 4, "T4": 4})
+
     def test_unvetted_openai_compat_source_is_quarantined(self) -> None:
         config = RunnerConfig(
             dataset_root=Path("/tmp/test"),
@@ -640,9 +681,9 @@ class RunnerConfigTest(unittest.TestCase):
             [(sample.source, sample.task_type, sample.topology_id, sample.difficulty_tier) for sample in samples],
             [
                 ("deepseek", "composed_event_counter", "t1_event_counter", "T1"),
-                ("deepseek", "composed_stream_accumulator", "t2_stream_accumulator", "T2"),
-                ("deepseek", "composed_stream_fork", "t3_stream_fork", "T3"),
-                ("deepseek", "composed_dual_stream_join", "t4_dual_stream_join", "T4"),
+                ("deepseek", "composed_stream_accumulator", "t2_stream_accumulator", "T1"),
+                ("deepseek", "composed_stream_fork", "t3_stream_fork", "T2"),
+                ("deepseek", "composed_dual_stream_join", "t4_dual_stream_join", "T2"),
             ],
         )
 
@@ -991,16 +1032,16 @@ class RunnerConfigTest(unittest.TestCase):
             [(item["task_type"], item["topology_id"], item["difficulty_tier"]) for item in report["samples"]],
             [
                 ("composed_event_counter", "t1_event_counter", "T1"),
-                ("composed_stream_accumulator", "t2_stream_accumulator", "T2"),
-                ("composed_stream_fork", "t3_stream_fork", "T3"),
-                ("composed_dual_stream_join", "t4_dual_stream_join", "T4"),
+                ("composed_stream_accumulator", "t2_stream_accumulator", "T1"),
+                ("composed_stream_fork", "t3_stream_fork", "T2"),
+                ("composed_dual_stream_join", "t4_dual_stream_join", "T2"),
             ],
         )
         t4_requirement = report["samples"][3]["requirement"]
         self.assertEqual(report["samples"][3]["requirement_style"], "natural_component")
         self.assertIn("Build an 8-bit dual-stream join datapath", t4_requirement)
         self.assertIn("t4_dual_stream_join", t4_requirement)
-        self.assertIn("difficulty tier T4", t4_requirement)
+        self.assertIn("difficulty tier T2", t4_requirement)
         self.assertIn("skid_buffer", t4_requirement)
         self.assertIn("stream_join", t4_requirement)
         self.assertIn("accumulator_core", t4_requirement)
@@ -1214,62 +1255,62 @@ class RunnerConfigTest(unittest.TestCase):
                     "sample_runner_t2_stream_accumulator_8_000002",
                     "composed_stream_accumulator",
                     "t2_stream_accumulator",
-                    "T2",
+                    "T1",
                 ),
-                ("sample_runner_t3_stream_fork_8_000003", "composed_stream_fork", "t3_stream_fork", "T3"),
+                ("sample_runner_t3_stream_fork_8_000003", "composed_stream_fork", "t3_stream_fork", "T2"),
                 (
                     "sample_runner_t4_dual_stream_join_8_000004",
                     "composed_dual_stream_join",
                     "t4_dual_stream_join",
-                    "T4",
+                    "T2",
                 ),
                 (
                     "sample_runner_t5_vector_mac_pipeline_8_000005",
                     "composed_vector_mac_pipeline",
                     "t5_vector_mac_pipeline",
-                    "T5",
+                    "T3",
                 ),
                 (
                     "sample_runner_t6_td_update_core_8_000006",
                     "composed_td_update_core",
                     "t6_td_update_core",
-                    "T6",
+                    "T3",
                 ),
                 (
                     "sample_runner_t7_policy_value_shell_8_000007",
                     "composed_policy_value_shell",
                     "t7_policy_value_shell",
-                    "T7",
+                    "T3",
                 ),
                 (
                     "sample_runner_t8_replay_sample_shell_8_000008",
                     "composed_replay_sample_shell",
                     "t8_replay_sample_shell",
-                    "T8",
+                    "T3",
                 ),
                 (
                     "sample_runner_t9_host_protocol_shell_8_000009",
                     "composed_host_protocol_shell",
                     "t9_host_protocol_shell",
-                    "T9",
+                    "T4",
                 ),
                 (
                     "sample_runner_t10_rl_accelerator_shell_8_000010",
                     "composed_rl_accelerator_shell",
                     "t10_rl_accelerator_shell",
-                    "T10",
+                    "T4",
                 ),
                 (
                     "sample_runner_t11_batch_rl_accelerator_shell_8_000011",
                     "composed_batch_rl_accelerator_shell",
                     "t11_batch_rl_accelerator_shell",
-                    "T11",
+                    "T4",
                 ),
                 (
                     "sample_runner_t12_replay_arbiter_shell_8_000012",
                     "composed_replay_arbiter_shell",
                     "t12_replay_arbiter_shell",
-                    "T12",
+                    "T4",
                 ),
             ],
         )
@@ -1333,6 +1374,11 @@ class RunnerConfigTest(unittest.TestCase):
             _failure_family("testbench_stimulus_reaccept_risk", "testbench_static_check"),
             "testbench_failure",
         )
+        self.assertEqual(
+            _failure_family("testbench_missing_functional_oracle", "testbench_static_check"),
+            "testbench_failure",
+        )
+        self.assertEqual(_failure_family("testbench_missing_functional_oracle"), "testbench_failure")
 
     def test_initial_run_state_defaults(self) -> None:
         state = initial_run_state("run_test", config_fingerprint="abc123")
@@ -1476,7 +1522,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["metadata_breakdown"]["measurement_point"], {"a_first_attempt_no_tools": 2})
             self.assertEqual(summary["metadata_breakdown"]["requirement_style"], {"contract": 2})
             self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"], {"deterministic_template": 2})
-            self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"], {"T1": 1, "T2": 1})
+            self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"], {"T1": 2})
             self.assertEqual(
                 summary["metadata_breakdown"]["topology_id"],
                 {"t1_event_counter": 1, "t2_stream_accumulator": 1},
@@ -1485,18 +1531,8 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(
                 summary["calibration_matrix"]["difficulty_tier"]["T1"],
                 {
-                    "total": 1,
-                    "pass_levels": {"L3": 1},
-                    "l3_pass_rate": 1.0,
-                    "l0_contract_failures": 0,
-                    "cross_file_consistency_error_rate": 0.0,
-                },
-            )
-            self.assertEqual(
-                summary["calibration_matrix"]["difficulty_tier"]["T2"],
-                {
-                    "total": 1,
-                    "pass_levels": {"L3": 1},
+                    "total": 2,
+                    "pass_levels": {"L3": 2},
                     "l3_pass_rate": 1.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,

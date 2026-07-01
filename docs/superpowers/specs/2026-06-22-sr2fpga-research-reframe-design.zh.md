@@ -6,14 +6,16 @@
 
 ## 状态
 
-方向已批准；最后更新于 2026-06-26。 本文档是 Paper ① 的已确定研究路线，由 docs/research-objective-sr2fpga-tcad.md 收束而来，并被拆解为一个可发表的研究计划与完整 spec。中文 companion 文档 2026-06-22-sr2fpga-research-reframe-design.zh.md 将与本文保持同步。若本文档与 objective doc 存在不一致，则近期工作以本文档为准。
+方向已批准；最后更新于 2026-06-30。 本文档是 Paper ① 的已确定研究路线，由 docs/research-objective-sr2fpga-tcad.md 收束而来，并被拆解为一个可发表的研究计划与完整 spec。中文 companion 文档 2026-06-22-sr2fpga-research-reframe-design.zh.md 将与英文权威版保持同步。若本文档与 objective doc 或英文权威版存在不一致，则近期工作以英文 reframe spec 为准。
 
-当前状态（截至 2026-06-26）：
+当前状态（截至 2026-06-30）：
 
 * System-HIS v1.2 已冻结并实现，Tier-1 ratification gate 已满足。
 * L0–L3 数据生成 agent 已能基于客观工具 oracle 运行；multi-teacher source 已合并。
 * 已记录 discovery-level pilot findings，当前为 N≈1/tier、探索性协议、尚非规模化证据。
+* T0–T4 reporting tiers 已在 deterministic generator 中实现，包含显式 `difficulty_tier` metadata 和 black-box functional testbench 要求。
 * 尚未完成： 规模化 trajectory data、训练后的模型 (c) / RQ3、L4 物理实现 OpenXC7 spike、数据质量修复 F/E/G。
+* 已新增 prompt-information boundary：official `simple_prompt` 只能给外部可检查工程义务，不能编码实现 recipe；contract-rich / System-HIS treatment 需要与 simple-prompt baseline 分开报告。
 * 通向 TCAD 的三个 gate：
     1. 在冻结协议下进行规模化模型训练；
     2. 构建 constrained decoding；
@@ -174,14 +176,14 @@ Frontier-model 状态是定性的，需要测量，不能直接声称数字，�
 * RQ2 — 工具反馈价值，即 b−a。 EDA tool-in-the-loop repair loop 相比无工具首次生成，能在项目级工具接受度上提升多少？在哪个 level / difficulty tier 提升最大？
     回答方式： 固定迭代预算下测量 (b)−(a)，按 tier 报告。
     Gap： repair loop 已成熟，如 AutoChip/MAGE/VerilogCoder/PEFA-AI，但都偏单模块/仿真，不是 project-level/physical，也没有可复用 trajectory。
-    状态： baseline (a)/(b) pilot 已运行，T1/T2 repair→L3，knee 在 T3；prompt leakage 已被实验证实，见 failure-repair Issue 4，因此需要规模化和冻结 prompt。
+    状态： baseline (a)/(b) pilot 已运行，legacy t1/t2 repair→L3，knee 在 legacy t3；prompt leakage 已被实验证实，见 failure-repair Issue 4，因此需要规模化和冻结 prompt。
 * RQ3 — 内化，即 c−a、c vs b。 工具验证 fine-tuning 能否内化工具接受度，使首次生成、无工具 (c) 接近工具在环 (b)？一个微调后的小模型的 (c) 能否达到大 frontier model 的 (a)/(b)？
     回答方式： 在同一个 swappable generator 上比较 (c) 与 (a)/(b)。
     Gap： ChipSeek-R1 通过 per-attempt RL 内化工具反馈，但它是 ASIC/单模块，没有可复用数据集；Representation Bottleneck 认为 “IR-aware training > model scaling”。
     内化范围： generation + repair，只要 verdict 是模型生成内容的函数即可。包括 L0–L3，以及 L4 failure diagnosis/repair：nextpnr/Vivado 会输出结构化 P&R 错误，如 resource_overflow、routing_congestion、带 critical path 的 timing_violation、constraint_error，这些能映射到可执行 patch，例如减少资源、重构、增加 pipeline registers、修 XDC，形态与 L1–L3 的 diagnosis→patch 相同。不纳入 RQ3 的是 timing-pressured designs 的连续、seed-noisy 的精确 Fmax margin，这属于 RQ5 prediction。
     状态： 还没有训练模型，这是最大 open piece，也是 headline result。
 * RQ4 — 失败结构 / 难度校准。 在项目级，frontier models 会沿着哪些难度轴以及 L0–L5 verification depth / hardware-semantic gap 开始失败，例如 seq-comb、backpressure、memory、CDC、timing？
-    回答方式： baseline (a) 在 T1–T4 上运行，并统计 per-level failure taxonomy，即 cross-file-consistency error rate + hardware-semantic failure distribution。
+    回答方式： baseline (a) 在压缩后的 T0–T4 curriculum 上运行，并统计 per-level failure taxonomy，即 cross-file-consistency error rate + hardware-semantic failure distribution。
     Gap： Representation Bottleneck 只测试了 tiny single-module Lattice，认为 synthesis “transparent”；project-level/Zynq 是其排除的 regime，那里 L4 会成为约束。其 seq 2.3× / memory 43% 的梯度支持我们的难度轴。
     状态： pilot + taxonomy 已有；T4 failure frontier 已记录为 discovery，即 L0→lexical→lint→sim→functional；仍需 full-level diagnostic mode + scale。
 * RQ5 — QoR prediction / shift-left。 模型能否在工具执行前预测 QoR，即 LUT/FF/BRAM/DSP/Fmax？预测值与工具实测值相关性如何？
@@ -610,7 +612,7 @@ Sources 混合： compositional synthetic tasks 是主体，具有可控难度�
 
 Scale： thousands 到约 10k samples，而不是 millions，符合现实数据量。Benchmark items 主要是 small/medium multi-module designs，RL-sized accelerator 是 flagship case，不是主体。已有 deterministic ProjectGenerator 是 component library 的种子。
 
-### 8.3 Difficulty tiers T1–T4
+### 8.3 Difficulty tiers T0–T4
 
 四个 difficulty axes，前两个为 primary：
 
@@ -619,7 +621,21 @@ Scale： thousands 到约 10k samples，而不是 millions，符合现实数据�
 3. protocol/control complexity，从 register → valid/ready → backpressured pipeline → AXI4-Lite/Stream；
 4. structural scale，即 submodule count / hierarchy depth，以及 CDC，为高难度 tier。
 
-Difficulty tiers 将这些轴映射到 T1 Easy / T2 Medium / T3 Hard / T4 Stress，依据 submodule count、cross-module contracts 数量、protocol class、target Fmax 等。在 baseline (a) measurement 期间固定具体阈值。Pass rates 按 tier 报告，使 frontier models 开始失败的 knee 可见。
+Difficulty tiers 压缩为统一 T0–T4 序列：
+
+| Tier | 范围 | 代表任务 |
+| --- | --- | --- |
+| T0 | Basic RTL and benchmark coverage | `counter`, `simple_fsm`, `fifo`, `ram_read_write`, `uart_tx`, `spi_master`, `pwm_controller`, `fir_filter`, `streaming_valid_ready`, `matrix_vector_mac`, `alu_control_unit`, `crc_stream_checker` |
+| T1 | Multi-module composition | `t1_event_counter`, `t2_stream_accumulator` |
+| T2 | Stream/control systems | `t3_stream_fork`, `t4_dual_stream_join` |
+| T3 | Datapath and memory shells | `t5_vector_mac_pipeline`, `t6_td_update_core`, `t7_policy_value_shell`, `t8_replay_sample_shell` |
+| T4 | Integrated host-facing system shells | `t9_host_protocol_shell`, `t10_rl_accelerator_shell`, `t11_batch_rl_accelerator_shell`, `t12_replay_arbiter_shell` |
+
+legacy topology IDs t1-t12 只是实现 ID，不再作为公开 difficulty tier。Pass rates 按压缩后的 tier 报告，使 frontier models 开始失败的 knee 可见。
+
+该分级的可执行任务目录是 `docs/sr2fpga-t0-t4-task-catalog.json`；本地无 API 的 deterministic 覆盖入口是 `configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml`。
+
+T0–T4 testbench oracle contract：每个生成的 `sim/tb_top.v` 都必须是面向顶层 I/O 和外部可观察 status signals 的 black-box functional oracle。testbench 必须根据 task contract / System-HIS 驱动合法输入 transaction，编码 expected observable behavior，在 reset、handshake、output data、ordering 或 status mismatch 时打印带原因的 `TEST_FAIL`，并且只有所有必需的输入输出比对成功后才能打印 `TEST_PASS`。testbench 不得读取 `dut.u_*` 这类 DUT 内部层级。所有 wait loop 必须有 cycle bound，并在 timeout 时打印 `TEST_FAIL timeout...`。静态检查必须把 vacuous pass testbench 判为 `testbench_missing_functional_oracle`：即当 `TEST_PASS` 可能在没有先前 conditional `TEST_FAIL` oracle 的情况下出现时，直接作为 testbench failure。LLM project、HIS2PROJECT 和 repair prompts 也必须写入同一规则，从 prompt 层面降低坏 testbench 生成概率。
 
 Freeze protocol： difficulty thresholds 在 pilot set 上基于 baseline (a) frontier-model pass rates 校准一次，并在 official evaluation 前冻结。不得在看到 fine-tuned model results 后再调参。calibration run 记录每个 tier 的 expected submodule count、cross-file contract count、protocol class、target Fmax range 和 observed frontier pass-rate range，以便审稿人验证 freeze 早于 (c) measurement。
 
@@ -869,6 +885,7 @@ Actor 在 tool-verified trajectories 上训练，负责生成与修复：
 
 * REQ2HIS — requirement → System-HIS，即结构化需求理解；
 * HIS2PROJECT — System-HIS → multi-file RTL project，即 skeleton-filling；
+* REQ2FILE — requirement + target file path → 单个项目文件，是 full-project generation 的短上下文 companion；
 * LOG2DIAG — tool log → structured diagnosis，即内化工具错误语义；
 * FAILURE2PATCH — structured diagnosis → patch，即内化修复启发式；
 * ARCH_MUTATE — HIS architecture-parameter mutation，用于 Paper ② search。
@@ -943,7 +960,7 @@ Critic tasks 使 internalization 可测试：如果 PROJECT2LEVEL 准确，说�
 
 1. data-generation method — tool-verified trajectory factory，已完成；
 2. evaluation method — project-level L0–L5 + L0 consistency checker + (a)/(b)/(c)，已完成；
-3. model-training method — trajectory tasks 上的 SFT，即 REQ2HIS/HIS2PROJECT/LOG2DIAG/FAILURE2PATCH/QOR_PRED，已设计但未训练。
+3. model-training method — trajectory tasks 上的 SFT，即 REQ2HIS/HIS2PROJECT/REQ2FILE/LOG2DIAG/FAILURE2PATCH/QOR_PRED，已设计但未训练。
 
 它是不是“新方法”？诚实回答，取决于粒度：
 
@@ -995,7 +1012,7 @@ Optional learned-critic mode： 如果训练了 critic tasks，可以扩展出�
 * pass@1；可适用时报告 pass@k；
 * repair success within N iterations；median repair iterations；
 * L0/L1/L2/L3/L4 survival curve；
-* per-tier T1–T4 results；per-family results；
+* per-tier T0–T4 results；per-family results；
 * 对 b−a 和 c−a 做 paired comparison；
 * sample size 允许时报告 bootstrap 95% confidence intervals。
 
@@ -1144,7 +1161,7 @@ Environment：
 
 Data：
 
-* task split manifest，即 S1–S5、T1–T4 assignments；
+* task split manifest，即 S1–S5、T0–T4 assignments；
 * official evaluation 前冻结的 prompt versions；
 * repair budget、timeout、tool-call accounting；
 * per-trajectory data_release tier markers；
@@ -1206,7 +1223,7 @@ Framing premise 和 component-library MVP 已验证；v1.2 freeze 已实现，Ti
     * 分类 OpenXC7/Vivado agreement 或 disagreement；
     * 用该结果定义第一批 L4-open/L4-commercial labels。
 9. First SFT model
-    产出第一个 (c) 点；先从 REQ2HIS、HIS2PROJECT、LOG2DIAG、FAILURE2PATCH 开始；在冻结 (a)/(b)/(c) 协议下评价，使用单张 4090 进行 SFT。
+    产出第一个 (c) 点；先从 REQ2HIS、HIS2PROJECT、REQ2FILE、LOG2DIAG、FAILURE2PATCH 开始；在冻结 (a)/(b)/(c) 协议下评价，使用单张 4090 进行 SFT。
 10. Artifact packaging
     创建 dataset card，见 §14.2；创建 tool-version manifest；创建带 Docker/Nix environment 的 reproduce-L0-L3 script；创建 representative L4-open / L4-commercial evaluation script；锁定 board shell 版本。
 
@@ -1238,3 +1255,6 @@ sr2fpga-l4-openxc7-vivado-protocol.md	L4 run protocol、board shell spec、agree
 2026-06-26	Artifact/data-release/model-stack update。新增：1. 显式 IP/licensing/data-release policy，即 open_public / restricted_reference / internal_only tiers；2. SR2FPGA tool-internalizing model stack 定义，即 Actor / Critic / QoR-search head，并解释为什么这是 model stack；3. 完整 trajectory episode schema；4. optional (c1)/(c2) measurement，将 generation internalization 与 learned no-tool diagnosis 分开；5. failure-injection suite 和 natural/injected/toolchain failure-origin 字段；6. L2F optional property-check layer；7. artifact reproducibility + dataset card checklists。
 2026-06-27	文档重组。 内容不变；章节为可导航性重构。Paper ① Design 这个 1527 行 h2 被拆成 12 个顶层章节 §1–§12。Episode schema 从 System-HIS 移到 Data Engine §9.2。Hardware-semantic gap taxonomy 从 Data Engine 移到 Benchmark Design §8.4。所有 L4 定义合并到 §7.6，之前分散在 6 个小节。Immediate Next Steps 重新编号为 1–10。加入 Changelog。
 2026-06-30	新增 prompt-information boundary：SR2FPGA 区分 simple_prompt、contract-rich normalized requirement 和 System-HIS contract；official prompt 可以规定外部可检查的工程义务，但不能编码 implementation recipe。新增 prompt-information ablation 和 measurement-freeze 规则，用于防止“prompt 里已经吃掉工程答案”的质疑。
+2026-06-30	同步压缩后的 T0–T4 任务覆盖与 testbench-oracle 规则：T0 现在列出全部 deterministic basic/benchmark 任务族；生成项目显式写入 `difficulty_tier`；T0–T4 testbench 必须是 black-box functional oracle，包含 mismatch/timeout `TEST_FAIL`，不得窥探 DUT 内部层级，vacuous-pass 会被静态检查拒绝，并且 LLM/HIS2PROJECT/repair prompt 必须写入同一要求。
+2026-06-30	新增 `docs/sr2fpga-t0-t4-task-catalog.json` 和 `configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml`，作为 24 项 T0–T4 deterministic curriculum 的可执行任务目录与配置锚点。
+2026-06-30	新增 `REQ2FILE` / `requirement_to_file.jsonl`，作为 full-project generation 的短上下文 companion。当前 canonical T0–T4 smoke 导出 211 条 file rows；排除 `system_his.json` 后，187 条都通过 2048-token dry-run gate。

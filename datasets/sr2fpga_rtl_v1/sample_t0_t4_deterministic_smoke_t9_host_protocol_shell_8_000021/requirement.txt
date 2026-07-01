@@ -1,0 +1,1 @@
+Generate an 8-bit FPGA RTL project with AXI-lite-style control/status writes and reads, AXI-stream-style sample output, and irq reporting.

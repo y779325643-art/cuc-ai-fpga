@@ -1,0 +1,757 @@
+{
+  "sample_id": "sample_t0_t4_deterministic_smoke_pwm_controller_8_000007",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/pwm_timer.v",
+        "rtl/pwm_channel.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/iverilog",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/pwm_timer.v",
+        "rtl/pwm_channel.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/vvp",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/vvp",
+        "sim.out"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/yosys",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/yosys",
+        "-p",
+        "read_verilog rtl/top.v rtl/pwm_timer.v rtl/pwm_channel.v; synth -top top; stat"
+      ]
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "pwm_controller",
+    "project_name": "t0_t4_deterministic_smoke_pwm_controller_8_000007",
+    "project": {
+      "name": "t0_t4_deterministic_smoke_pwm_controller_8_000007",
+      "description": "Generate an 8-bit FPGA RTL project that implements a configurable PWM controller.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a configurable PWM controller.",
+      "design_goal": "pwm_out is high when the free-running counter is below duty",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "duty",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "pwm_out",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "duty",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "pwm_out",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "pwm_timer",
+        "semantic_kind": "pwm",
+        "source": "rtl/pwm_timer.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "counter",
+            "dir": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "pwm timer component in the generated RTL project"
+      },
+      {
+        "name": "pwm_channel",
+        "semantic_kind": "pwm",
+        "source": "rtl/pwm_channel.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "counter",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "duty",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "pwm_out",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "pwm channel component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_pwm_timer",
+        "component": "pwm_timer",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_pwm_channel",
+        "component": "pwm_channel",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_pwm_channel_primary_path",
+        "path": [
+          "top.duty",
+          "u_pwm_channel.counter",
+          "u_pwm_channel.pwm_out",
+          "top.pwm_out"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 8,
+        "ff": 16,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when pwm_out is high when the free-running counter is below duty.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when pwm_out is high when the free-running counter is below duty.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when pwm_out is high when the free-running counter is below duty."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/pwm_timer.v",
+        "rtl/pwm_channel.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Generate an 8-bit FPGA RTL project that implements a configurable PWM controller."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "duty",
+          "width": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pwm_out",
+          "width": 1
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "pwm_timer",
+        "pwm_channel"
+      ],
+      "difficulty_tier": "T0"
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "duty",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "pwm_out",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "pwm_timer",
+        "role": "submodule",
+        "source": "rtl/pwm_timer.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "counter",
+            "direction": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "pwm timer component in the generated RTL project"
+      },
+      {
+        "name": "pwm_channel",
+        "role": "submodule",
+        "source": "rtl/pwm_channel.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "counter",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "duty",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "pwm_out",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "pwm channel component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "pwm_timer",
+          "port": "clk",
+          "instance": "u_pwm_timer"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "pwm_timer",
+          "port": "rst_n",
+          "instance": "u_pwm_timer"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "pwm_timer",
+          "port": "counter",
+          "instance": "u_pwm_timer"
+        },
+        "to": {
+          "module": "pwm_channel",
+          "port": "counter",
+          "instance": "u_pwm_channel"
+        },
+        "signal": "counter",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "duty"
+        },
+        "to": {
+          "module": "pwm_channel",
+          "port": "duty",
+          "instance": "u_pwm_channel"
+        },
+        "signal": "duty",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "pwm_channel",
+          "port": "pwm_out",
+          "instance": "u_pwm_channel"
+        },
+        "to": {
+          "module": "top",
+          "port": "pwm_out"
+        },
+        "signal": "pwm_out",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "duty",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "pwm_out",
+        "direction": "output",
+        "width": 1
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 8,
+        "ff": 16,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 705,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 495,
+        "behavior_holes": 0
+      },
+      "rtl/pwm_channel.v": {
+        "origin": "model_generated",
+        "bytes": 195,
+        "behavior_holes": 0
+      },
+      "rtl/pwm_timer.v": {
+        "origin": "model_generated",
+        "bytes": 328,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 371,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 986,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 10884,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/pwm_channel.v",
+      "rtl/pwm_timer.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.134113,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 0,
+      "ff": 8,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

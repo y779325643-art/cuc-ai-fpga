@@ -1,0 +1,25 @@
+{
+  "project_name": "t0_t4_llm_deepseek_simple_prompt_counter_8_000001",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/counter.v",
+    "rtl/top.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "stage": "lint",
+  "command": [
+    "/opt/homebrew/bin/verilator",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/event_gate.v",
+    "rtl/counter_core.v"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "- V e r i l a t i o n   R e p o r t: Verilator 5.048 2026-04-26 rev vUNKNOWN-built20260426\n- Verilator: Built from 0.063 MB sources in 4 modules, into 0.008 MB in 3 C++ files needing 0.000 MB\n- Verilator: Walltime 0.004 s (elab=0.000, cvt=0.001, bld=0.000); cpu 0.004 s on 1 threads; allocated 9.656 MB\n",
+  "stderr": "",
+  "duration_seconds": 0.06286112499947194
+}

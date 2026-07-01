@@ -66,6 +66,10 @@ class ToolingTest(unittest.TestCase):
             "testbench_handshake_timeout",
         )
         self.assertEqual(
+            classify_failure("testbench_missing_functional_oracle: TEST_PASS appears without a prior conditional TEST_FAIL oracle"),
+            "testbench_missing_functional_oracle",
+        )
+        self.assertEqual(
             classify_failure("%Warning-UNUSEDSIGNAL: Signal is not used\n%Error: Exiting due to 1 warning(s)"),
             "lint_warning_as_error",
         )

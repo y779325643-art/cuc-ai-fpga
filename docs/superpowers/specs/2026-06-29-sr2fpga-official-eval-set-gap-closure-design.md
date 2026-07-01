@@ -15,16 +15,24 @@ This design records the approved Plan B:
 - stop extending the synthetic RL ladder by default;
 - add only two missing task families for processor-like and data-integrity
   coverage;
-- keep T10-T12 as supplemental complexity evidence rather than primary
-  aggregate metrics.
+- keep integrated T4 shell tasks as supplemental complexity evidence rather than
+  primary aggregate metrics.
+
+Status note (2026-06-30): the accompanying config is a **gap-closure scaffold**,
+not the final frozen official aggregate. The public/reporting curriculum is
+compressed to T0-T4; legacy topology IDs t5-t12 remain implementation IDs. The
+scaffold may include integrated T4 shell tasks so their supplemental results can
+be generated in the same dry run, but paper-facing primary aggregates must either
+exclude them or report them in a separate supplemental table until real workload
+references exist.
 
 ## Background
 
 SR2FPGA already supports a wider task surface than the current baseline configs
 exercise. The implementation includes simple RTL blocks, multi-module blocks,
 component topologies, and an RL-shaped synthetic ladder. The publication risk is
-that official experiments currently concentrate on T1-T4, which can look narrow
-when compared with HDLBits-derived, RTLLM-style, VerilogEval-style,
+that official experiments currently concentrate on the legacy t1-t4 topology IDs,
+which can look narrow when compared with HDLBits-derived, RTLLM-style, VerilogEval-style,
 AutoChip-style, ResBench-style, and repository-level RTL benchmarks.
 
 The fix should not be another open-ended synthetic ladder. The reframe protocol
@@ -47,9 +55,14 @@ before scaled official experiments.
 4. **No benchmark sprawl.** Do not compete with HDLBits/VerilogEval on number of
    small problems. SR2FPGA's differentiator is tool-verified project
    trajectories.
-5. **Clear reporting boundary.** T10-T12 are useful supplemental complexity
-   examples, but not the primary aggregate evaluation set until real workload
-   references exist.
+5. **Clear reporting boundary.** Integrated T4 shell tasks are useful
+   supplemental complexity examples, but not the primary aggregate evaluation set
+   until real workload references exist.
+6. **Prompt-information boundary.** Official `simple_prompt` baselines may state
+   externally checkable obligations, interfaces, and acceptance behavior, but must
+   not encode module-level implementation recipes. Contract-rich/System-HIS views
+   may expose structure because that is the evaluated treatment; report those
+   separately from the simple-prompt baseline.
 
 ## Literature-Aligned Coverage Categories
 
@@ -95,6 +108,9 @@ family plus parameter-heldout variants. That gives 16 families before parameter
 variants. If runtime or API cost is high, the TRETS-safe minimum can use a
 12-family subset by keeping one representative from each category and moving
 the remaining entries to supplemental per-family tables.
+
+The frozen aggregate should be derived from this table, not directly from any
+gap-closure scaffold config that also runs supplemental integrated-shell samples.
 
 ## New Task Family: `alu_control_unit`
 
@@ -179,8 +195,8 @@ testbench should verify:
 
 ## Supplemental Complexity Ladder
 
-T10-T12 remain useful, but they should not define the official aggregate result
-until real RL workload references exist.
+Integrated T4 shell tasks remain useful, but they should not define the official
+aggregate result until real RL workload references exist.
 
 | Family | Reporting role |
 | --- | --- |
@@ -188,9 +204,9 @@ until real RL workload references exist.
 | `composed_batch_rl_accelerator_shell` | Supplemental multi-lane synthetic shell. |
 | `composed_replay_arbiter_shell` | Supplemental replay arbitration and packetization shell. |
 
-Do not add T13/T14 by default. A future T13 requires an explicit real workload
-reference or a separate approved design that shows why the missing axis affects
-publication evidence.
+Do not add a new synthetic tier by default. Any future post-T4 curriculum
+extension requires an explicit real workload reference or a separate approved
+design that shows why the missing axis affects publication evidence.
 
 ## Split And Measurement Policy
 
@@ -251,7 +267,7 @@ This design does not:
 
 - create a general HDLBits replacement;
 - add CPU, RISC-V, DDR, PCIe, Ethernet, AES, or vendor-IP tasks;
-- claim realistic RL accelerator coverage from synthetic T10-T12;
+- claim realistic RL accelerator coverage from synthetic integrated-shell tasks;
 - change the System-HIS v1.2 schema;
 - change the official L0-L5 definitions;
 - start model fine-tuning;
@@ -280,7 +296,7 @@ The design is ready to hand off to implementation when:
 1. the official eval set table above is accepted as the frozen coverage target;
 2. `alu_control_unit` and `crc_stream_checker` are the only new V1 task
    families;
-3. T10-T12 are reported as supplemental complexity evidence;
-4. no T13/T14 work starts without a new approved design;
+3. integrated T4 shell tasks are reported as supplemental complexity evidence;
+4. no post-T4 synthetic tier starts without a new approved design;
 5. implementation is planned as deterministic support first, scaled experiment
    execution second.

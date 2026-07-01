@@ -1,0 +1,1133 @@
+{
+  "sample_id": "sample_t0_t4_deterministic_smoke_streaming_valid_ready_8_000009",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/verilator",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/verilator",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_stage.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/iverilog",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/iverilog",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_stage.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/vvp",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/vvp",
+        "sim.out"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "/opt/homebrew/bin/yosys",
+      "exit_code": 0,
+      "command": [
+        "/opt/homebrew/bin/yosys",
+        "-p",
+        "read_verilog rtl/top.v rtl/skid_buffer.v rtl/stream_stage.v; synth -top top; stat"
+      ]
+    }
+  ],
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "streaming_valid_ready",
+    "project_name": "t0_t4_deterministic_smoke_streaming_valid_ready_8_000009",
+    "project": {
+      "name": "t0_t4_deterministic_smoke_streaming_valid_ready_8_000009",
+      "description": "Generate an 8-bit FPGA RTL project that implements a valid-ready streaming datapath.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a valid-ready streaming datapath.",
+      "design_goal": "valid-ready transfers preserve data order across stalls",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "out_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "dir": "output",
+          "width": 8
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "dir": "output",
+            "width": 8
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "skid_buffer",
+        "semantic_kind": "buffer",
+        "source": "rtl/skid_buffer.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "dir": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "skid buffer component in the generated RTL project"
+      },
+      {
+        "name": "stream_stage",
+        "semantic_kind": "stage",
+        "source": "rtl/stream_stage.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "dir": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "stream stage component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_skid_buffer",
+        "component": "skid_buffer",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_stream_stage",
+        "component": "stream_stage",
+        "parameter_values": {
+          "WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_skid_buffer_primary_path",
+        "path": [
+          "top.in_data",
+          "u_skid_buffer.in_valid",
+          "u_skid_buffer.in_ready",
+          "top.out_data"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      },
+      {
+        "name": "u_stream_stage_primary_path",
+        "path": [
+          "top.in_data",
+          "u_stream_stage.in_valid",
+          "u_stream_stage.in_ready",
+          "top.out_data"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      },
+      {
+        "name": "valid_ready_transfer",
+        "kind": "handshake_rule",
+        "condition": "valid && ready",
+        "effects": [
+          "advance each ready/valid flow by one payload"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_skid_buffer_primary_path",
+          "u_stream_stage_primary_path"
+        ]
+      },
+      {
+        "name": "backpressure_hold",
+        "kind": "stall_rule",
+        "condition": "valid && !ready",
+        "effects": [
+          "hold payload and valid state until downstream ready"
+        ],
+        "related_state": [],
+        "related_flows": [
+          "u_skid_buffer_primary_path",
+          "u_stream_stage_primary_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 10,
+        "ff": 20,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when valid-ready transfers preserve data order across stalls.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when valid-ready transfers preserve data order across stalls.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when valid-ready transfers preserve data order across stalls."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/skid_buffer.v",
+        "rtl/stream_stage.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Generate an 8-bit FPGA RTL project that implements a valid-ready streaming datapath."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "name": "in_data",
+          "width": 8
+        },
+        {
+          "name": "out_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "name": "out_data",
+          "width": 8
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "skid_buffer",
+        "stream_stage"
+      ],
+      "difficulty_tier": "T0"
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": 8
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "skid_buffer",
+        "role": "submodule",
+        "source": "rtl/skid_buffer.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "skid buffer component in the generated RTL project"
+      },
+      {
+        "name": "stream_stage",
+        "role": "submodule",
+        "source": "rtl/stream_stage.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "in_data",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_data",
+            "direction": "output",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "intent": "stream stage component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "clk",
+          "instance": "u_skid_buffer"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "clk",
+          "instance": "u_stream_stage"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "rst_n",
+          "instance": "u_skid_buffer"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "rst_n",
+          "instance": "u_stream_stage"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "in_valid"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "in_valid",
+          "instance": "u_skid_buffer"
+        },
+        "signal": "in_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "in_ready",
+          "instance": "u_skid_buffer"
+        },
+        "to": {
+          "module": "top",
+          "port": "in_ready"
+        },
+        "signal": "in_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "in_data"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "in_data",
+          "instance": "u_skid_buffer"
+        },
+        "signal": "in_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "out_valid",
+          "instance": "u_skid_buffer"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "in_valid",
+          "instance": "u_stream_stage"
+        },
+        "signal": "skid_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "in_ready",
+          "instance": "u_stream_stage"
+        },
+        "to": {
+          "module": "skid_buffer",
+          "port": "out_ready",
+          "instance": "u_skid_buffer"
+        },
+        "signal": "skid_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "skid_buffer",
+          "port": "out_data",
+          "instance": "u_skid_buffer"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "in_data",
+          "instance": "u_stream_stage"
+        },
+        "signal": "skid_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[WIDTH-1:0]",
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "out_valid",
+          "instance": "u_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "out_valid"
+        },
+        "signal": "out_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "out_ready"
+        },
+        "to": {
+          "module": "stream_stage",
+          "port": "out_ready",
+          "instance": "u_stream_stage"
+        },
+        "signal": "out_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "stream_stage",
+          "port": "out_data",
+          "instance": "u_stream_stage"
+        },
+        "to": {
+          "module": "top",
+          "port": "out_data"
+        },
+        "signal": "out_data",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[WIDTH-1:0]",
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_data",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out_data",
+        "direction": "output",
+        "width": 8
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 10,
+        "ff": 20,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 715,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "deterministic",
+        "bytes": 510,
+        "behavior_holes": 0
+      },
+      "rtl/skid_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 688,
+        "behavior_holes": 0
+      },
+      "rtl/stream_stage.v": {
+        "origin": "model_generated",
+        "bytes": 597,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 792,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 1675,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 18955,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "reports/predicted_qor.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "rtl/skid_buffer.v",
+      "rtl/stream_stage.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.156425,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "not_run"
+      },
+      "stress": {
+        "status": "not_run"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 0,
+      "ff": 18,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "status": "fail"
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "status": "not_run"
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}
