@@ -10,7 +10,13 @@ from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenera
 from LLM.src.sr2fpga_agent.models import RepairResult as ModelRepairResult
 from LLM.src.sr2fpga_agent.models import ToolResult
 from LLM.src.sr2fpga_agent.oracles import OracleField, OracleScenarioSpec, write_oracle_bundle
-from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder, _write_jsonl
+from LLM.src.sr2fpga_agent.recorder import (
+    AttemptRecord,
+    DatasetRecorder,
+    _sanitize_oracle_profile,
+    _sanitize_training_payload,
+    _write_jsonl,
+)
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 
 
@@ -43,6 +49,199 @@ def _write_four_class_oracle_bundle(width: int, output_root: Path):
 
 
 class DatasetRecorderTest(unittest.TestCase):
+    def test_oracle_profile_export_uses_strict_fail_closed_schema(self) -> None:
+        valid_sha256 = "a" * 64
+        profile = _sanitize_oracle_profile(
+            {
+                "kind": "python_reference/../../private",
+                "status": "pass\nD:/private/oracle",
+                "family_id": "fir/filter",
+                "reference_model": "numeric.fir_filter",
+                "reference_version": "1.0",
+                "bundle_sha256": f"D:/private/{valid_sha256}",
+                "skip_reason": "blocked_before_oracle",
+                "failure_origin": "oracle_environment_failure",
+                "failure_type": "oracle_bundle_invalid",
+                "scenario_counts": {
+                    "public_smoke": 1,
+                    "stress": -1,
+                    "hidden_deterministic": True,
+                    "../../private": 4,
+                },
+                "class_status": {
+                    "public_smoke": "pass",
+                    "stress": "D:/private/status",
+                    "../../private": "pass",
+                },
+                "scenarios": [
+                    {
+                        "scenario_id": "public_001",
+                        "scenario_class": "public_smoke",
+                        "transaction_count": 1,
+                        "input_record_width_bits": 8,
+                        "expected_record_width_bits": 8,
+                        "input_sha256": valid_sha256,
+                        "expected_sha256": valid_sha256,
+                    },
+                    {
+                        "scenario_id": "D:/private/scenario",
+                        "scenario_class": "public_smoke/../../hidden",
+                    },
+                ],
+            }
+        )
+
+        self.assertEqual(profile["kind"], "python_reference")
+        self.assertEqual(profile["status"], "not_run")
+        self.assertNotIn("family_id", profile)
+        self.assertNotIn("bundle_sha256", profile)
+        self.assertEqual(profile["reference_model"], "numeric.fir_filter")
+        self.assertEqual(profile["scenario_counts"], {"public_smoke": 1})
+        self.assertEqual(profile["class_status"], {"public_smoke": "pass"})
+        self.assertEqual(len(profile["scenarios"]), 1)
+        self.assertEqual(profile["scenarios"][0]["input_sha256"], valid_sha256)
+        self.assertNotIn("D:/private", json.dumps(profile))
+
+    def test_independent_oracle_episode_does_not_reuse_label_mismatch_detail(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter"),
+                platform,
+            )
+            sample_id = "sample_oracle_label_bypass"
+            recorder.start_sample(sample_id, "Design a counter.", platform)
+            recorder.write_final(
+                sample_id,
+                project,
+                labels={
+                    "pass_level": "L2",
+                    "checks": {"l2_sim_pass": True},
+                    "l2_mismatch_detail": [
+                        {
+                            "scenario_class": "public_smoke",
+                            "expected": "HIDDEN_LABEL_EXPECTED",
+                            "actual": "HIDDEN_LABEL_ACTUAL",
+                            "raw_path": "D:/private/hidden-label.memh",
+                        }
+                    ],
+                },
+                measured_qor={},
+                tool_versions={},
+                trajectory={
+                    "oracle_profile": {
+                        "kind": "python_reference",
+                        "status": "pass",
+                        "bundle_sha256": "b" * 64,
+                    }
+                },
+            )
+
+            trajectory = json.loads(
+                (root / sample_id / "eval/trajectory.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(trajectory["verification"]["l2_core"]["public"]["mismatch_detail"], [])
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+            exported = "\n".join(path.read_text(encoding="utf-8") for path in export_dir.glob("*.jsonl"))
+            self.assertNotIn("HIDDEN_LABEL_EXPECTED", exported)
+            self.assertNotIn("HIDDEN_LABEL_ACTUAL", exported)
+            self.assertNotIn("hidden-label.memh", exported)
+
+    def test_independent_oracle_diagnosis_is_public_only_and_fail_closed(self) -> None:
+        nested = {
+            "stage": "sim_run",
+            "failure_type": "functional_mismatch",
+            "root_cause": "D:/private/hidden.memh expected=HIDDEN_ROOT_VALUE",
+            "public": {
+                "scenario_class": "public_smoke",
+                "structured_diagnosis": {
+                    "signal": "public_out",
+                    "expected": "PUBLIC_EXPECTED",
+                    "actual": "PUBLIC_ACTUAL",
+                    "root_cause": "PUBLIC_RAW_LOG_SHOULD_DROP",
+                },
+            },
+            "hidden": {
+                "scenario_class": "hidden_deterministic",
+                "expected": "HIDDEN_EXPECTED",
+                "actual": "HIDDEN_ACTUAL",
+                "payload": [1, 2],
+                "raw_path": "D:/private/hidden-input.memh",
+            },
+            "invalid": {
+                "scenario_class": "public_smoke/../../hidden",
+                "root_cause": "INVALID_CLASS_SECRET",
+            },
+            "tuple_wrapper": (
+                {
+                    "scenario_class": "stress",
+                    "seed": 998877,
+                    "stdout": "TUPLE_HIDDEN_STDOUT",
+                },
+            ),
+        }
+        directly_sanitized = _sanitize_training_payload(nested, independent_oracle=True)
+        direct_text = json.dumps(directly_sanitized)
+        self.assertIn("PUBLIC_EXPECTED", direct_text)
+        self.assertNotIn("HIDDEN_ROOT_VALUE", direct_text)
+        self.assertNotIn("TUPLE_HIDDEN_STDOUT", direct_text)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter"),
+                platform,
+            )
+            sample_id = "sample_oracle_diagnosis_bypass"
+            recorder.start_sample(sample_id, "Design a counter.", platform)
+            recorder.write_final(
+                sample_id,
+                project,
+                labels={"pass_level": "L2", "checks": {"l2_sim_pass": False}},
+                measured_qor={},
+                tool_versions={},
+                trajectory={
+                    "oracle_profile": {
+                        "kind": "python_reference",
+                        "status": "fail",
+                        "bundle_sha256": "c" * 64,
+                    }
+                },
+            )
+            attempt_dir = root / sample_id / "attempts/attempt_000"
+            attempt_dir.mkdir(parents=True)
+            (attempt_dir / "diagnosis.json").write_text(json.dumps(nested) + "\n", encoding="utf-8")
+            (attempt_dir / "patch.diff").write_text("--- a/rtl/top.v\n+++ b/rtl/top.v\n", encoding="utf-8")
+            (attempt_dir / "patch.json").write_text(
+                json.dumps({"diagnosis": nested, "status": "valid"}) + "\n",
+                encoding="utf-8",
+            )
+
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+            diagnosis_text = (export_dir / "failure_to_diagnosis.jsonl").read_text(encoding="utf-8")
+            patch_text = (export_dir / "failure_to_patch.jsonl").read_text(encoding="utf-8")
+            combined = diagnosis_text + patch_text
+            self.assertIn("PUBLIC_EXPECTED", combined)
+            self.assertIn("PUBLIC_ACTUAL", combined)
+            self.assertIn("functional_mismatch", combined)
+            for secret in (
+                "HIDDEN_ROOT_VALUE",
+                "HIDDEN_EXPECTED",
+                "HIDDEN_ACTUAL",
+                "hidden-input.memh",
+                "INVALID_CLASS_SECRET",
+                "PUBLIC_RAW_LOG_SHOULD_DROP",
+                "998877",
+                "TUPLE_HIDDEN_STDOUT",
+            ):
+                self.assertNotIn(secret, combined)
+
     def test_write_final_and_exports_remove_withheld_oracle_secrets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets"

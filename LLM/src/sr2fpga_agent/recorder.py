@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import uuid
 from dataclasses import asdict, dataclass
@@ -117,6 +118,7 @@ class DatasetRecorder:
             measured_qor_path = sample_dir / "eval" / "measured_qor.json"
             metadata = _read_metadata(sample_dir)
             episode = _read_episode(sample_dir)
+            independent_oracle = _is_independent_oracle_episode(episode)
             requirement = requirement_path.read_text(encoding="utf-8").strip() if requirement_path.exists() else ""
             system_his = json.loads(his_path.read_text(encoding="utf-8")) if his_path.exists() else None
             final_files = _read_project_files(final_project_dir) if final_project_dir.exists() else []
@@ -197,7 +199,8 @@ class DatasetRecorder:
                     patch_metadata_path = attempt_dir / "patch.json"
                     if diagnosis_path.exists():
                         diagnosis = _sanitize_training_payload(
-                            json.loads(diagnosis_path.read_text(encoding="utf-8"))
+                            json.loads(diagnosis_path.read_text(encoding="utf-8")),
+                            independent_oracle=independent_oracle,
                         )
                         diagnosis_rows.append(
                             {
@@ -216,12 +219,14 @@ class DatasetRecorder:
                                 "episode": episode,
                                 "attempt_id": attempt_dir.name,
                                 "diagnosis": _sanitize_training_payload(
-                                    json.loads(diagnosis_path.read_text(encoding="utf-8"))
+                                    json.loads(diagnosis_path.read_text(encoding="utf-8")),
+                                    independent_oracle=independent_oracle,
                                 ),
                                 "patch": patch_path.read_text(encoding="utf-8"),
                                 "patch_metadata": (
                                     _sanitize_training_payload(
-                                        json.loads(patch_metadata_path.read_text(encoding="utf-8"))
+                                        json.loads(patch_metadata_path.read_text(encoding="utf-8")),
+                                        independent_oracle=independent_oracle,
                                     )
                                     if patch_metadata_path.exists()
                                     else None
@@ -296,6 +301,8 @@ def _system_his_episode(
         _project_episode_metadata(generated_project),
     )
     episode.setdefault("verification", _verification_episode_metadata(labels, measured_qor))
+    if _is_independent_oracle_episode(episode):
+        episode["verification"] = _verification_without_label_mismatches(episode.get("verification"))
     episode.setdefault("data_release", _data_release_tiers())
     return episode
 
@@ -305,56 +312,90 @@ def _source_episode_id(sample_id: str, episode: dict[str, Any]) -> str:
     return episode_id or sample_id
 
 
+_ORACLE_KINDS = frozenset({"python_reference"})
+_ORACLE_STATUSES = frozenset({"pass", "fail", "not_run", "infrastructure_error"})
+_SCENARIO_STATUSES = frozenset({"pass", "fail", "not_run"})
+_SCENARIO_CLASSES = frozenset(
+    {"public_smoke", "hidden_deterministic", "randomized_fixed_seed", "stress"}
+)
+_SAFE_TOKEN = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+_SAFE_SHA256 = re.compile(r"^[0-9a-f]{64}$")
+
+
 def _sanitize_oracle_profile(value: Any) -> dict[str, Any]:
-    if not isinstance(value, dict):
-        return {
-            "kind": "python_reference",
-            "status": "not_run",
-            "hidden_vectors_exported": False,
-        }
-    safe_keys = (
-        "kind",
+    raw = value if isinstance(value, dict) else {}
+    kind = raw.get("kind")
+    status = raw.get("status")
+    valid_kind = isinstance(kind, str) and kind in _ORACLE_KINDS
+    profile: dict[str, Any] = {
+        "kind": kind if valid_kind else "python_reference",
+        "status": (
+            status
+            if valid_kind and isinstance(status, str) and status in _ORACLE_STATUSES
+            else "not_run"
+        ),
+    }
+    for key in (
         "family_id",
         "reference_model",
         "reference_version",
-        "bundle_sha256",
-        "status",
         "skip_reason",
         "failure_origin",
         "failure_type",
-    )
-    profile = {key: value[key] for key in safe_keys if isinstance(value.get(key), (str, int, float, bool))}
-    for key in ("scenario_counts", "class_status"):
-        item = value.get(key)
-        if isinstance(item, dict):
-            profile[key] = {
-                str(name): status
-                for name, status in item.items()
-                if isinstance(name, str) and isinstance(status, (str, int))
-            }
+    ):
+        token = _safe_token(raw.get(key))
+        if token is not None:
+            profile[key] = token
+    bundle_sha256 = raw.get("bundle_sha256")
+    if isinstance(bundle_sha256, str) and _SAFE_SHA256.fullmatch(bundle_sha256):
+        profile["bundle_sha256"] = bundle_sha256
+
+    scenario_counts = raw.get("scenario_counts")
+    if isinstance(scenario_counts, dict):
+        profile["scenario_counts"] = {
+            name: count
+            for name, count in scenario_counts.items()
+            if name in _SCENARIO_CLASSES and _is_non_negative_int(count)
+        }
+    class_status = raw.get("class_status")
+    if isinstance(class_status, dict):
+        profile["class_status"] = {
+            name: class_value
+            for name, class_value in class_status.items()
+            if name in _SCENARIO_CLASSES
+            and isinstance(class_value, str)
+            and class_value in _SCENARIO_STATUSES
+        }
     scenarios: list[dict[str, Any]] = []
-    raw_scenarios = value.get("scenarios")
+    raw_scenarios = raw.get("scenarios")
     if isinstance(raw_scenarios, list):
-        for raw in raw_scenarios:
-            if not isinstance(raw, dict):
+        for raw_scenario in raw_scenarios:
+            if not isinstance(raw_scenario, dict):
                 continue
-            scenario_class = str(raw.get("scenario_class", ""))
-            allowed = (
-                "scenario_id",
-                "scenario_class",
-                "transaction_count",
-                "input_record_width_bits",
-                "expected_record_width_bits",
-            )
-            scenario = {key: raw[key] for key in allowed if key in raw}
+            scenario_class = raw_scenario.get("scenario_class")
+            scenario_id = _safe_token(raw_scenario.get("scenario_id"))
+            if (
+                not isinstance(scenario_class, str)
+                or scenario_class not in _SCENARIO_CLASSES
+                or scenario_id is None
+            ):
+                continue
+            scenario: dict[str, Any] = {
+                "scenario_id": scenario_id,
+                "scenario_class": scenario_class,
+            }
+            for key in ("transaction_count", "input_record_width_bits", "expected_record_width_bits"):
+                if _is_non_negative_int(raw_scenario.get(key)):
+                    scenario[key] = raw_scenario[key]
             for key in ("input_fields", "expected_fields"):
-                fields = _sanitize_oracle_fields(raw.get(key))
+                fields = _sanitize_oracle_fields(raw_scenario.get(key))
                 if fields:
                     scenario[key] = fields
             if scenario_class == "public_smoke":
                 for key in ("input_sha256", "expected_sha256"):
-                    if isinstance(raw.get(key), str):
-                        scenario[key] = raw[key]
+                    digest = raw_scenario.get(key)
+                    if isinstance(digest, str) and _SAFE_SHA256.fullmatch(digest):
+                        scenario[key] = digest
             scenarios.append(scenario)
     if scenarios:
         profile["scenarios"] = scenarios
@@ -369,22 +410,30 @@ def _sanitize_oracle_fields(value: Any) -> list[dict[str, Any]]:
     for raw in value:
         if not isinstance(raw, dict):
             continue
-        field: dict[str, Any] = {}
-        if isinstance(raw.get("name"), str):
-            field["name"] = raw["name"]
-        for key in ("msb", "lsb"):
-            if isinstance(raw.get(key), int):
-                field[key] = raw[key]
-        if isinstance(raw.get("signed"), bool):
-            field["signed"] = raw["signed"]
-        if field:
-            fields.append(field)
+        name = _safe_token(raw.get("name"))
+        msb = raw.get("msb")
+        lsb = raw.get("lsb")
+        signed = raw.get("signed")
+        if (
+            name is not None
+            and _is_non_negative_int(msb)
+            and _is_non_negative_int(lsb)
+            and msb >= lsb
+            and isinstance(signed, bool)
+        ):
+            fields.append({"name": name, "msb": msb, "lsb": lsb, "signed": signed})
     return fields
 
 
-_WITHHELD_SCENARIO_CLASSES = frozenset(
-    {"hidden_deterministic", "randomized_fixed_seed", "stress"}
-)
+def _safe_token(value: Any) -> str | None:
+    return value if isinstance(value, str) and _SAFE_TOKEN.fullmatch(value) else None
+
+
+def _is_non_negative_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
+
+
+_WITHHELD_SCENARIO_CLASSES = _SCENARIO_CLASSES - {"public_smoke"}
 _WITHHELD_CONTEXT_KEYS = _WITHHELD_SCENARIO_CLASSES | {"hidden"}
 _WITHHELD_DIAGNOSTIC_KEYS = frozenset(
     {
@@ -401,6 +450,27 @@ _WITHHELD_DIAGNOSTIC_KEYS = frozenset(
         "tool_status",
     }
 )
+_PUBLIC_MISMATCH_KEYS = _WITHHELD_DIAGNOSTIC_KEYS | {"expected", "actual"}
+_SAFE_DIAGNOSTIC_TOKEN_KEYS = frozenset(
+    {
+        "scenario_id",
+        "scenario_class",
+        "status",
+        "failure_origin",
+        "failure_type",
+        "stage",
+        "signal",
+        "mismatch_type",
+        "tool_status",
+        "patch_id",
+        "diagnosis_id",
+        "format",
+    }
+)
+_SAFE_DIAGNOSTIC_INT_KEYS = frozenset({"cycle", "transaction_id"})
+_SAFE_DIAGNOSTIC_BOOL_KEYS = frozenset(
+    {"allowed_edit_regions_respected", "touched_trusted_artifacts", "automatic_pass_credit"}
+)
 _RAW_TRAINING_KEYS = frozenset(
     {
         "seed",
@@ -414,30 +484,106 @@ _RAW_TRAINING_KEYS = frozenset(
 )
 
 
-def _sanitize_training_payload(value: Any, *, withheld: bool = False) -> Any:
+def _sanitize_training_payload(
+    value: Any,
+    *,
+    withheld: bool = False,
+    independent_oracle: bool = False,
+    _scope: str | None = None,
+) -> Any:
+    scope = _scope or ("withheld" if withheld else "untrusted" if independent_oracle else "legacy")
     if isinstance(value, dict):
         scenario_class = value.get("scenario_class")
-        local_withheld = withheld or scenario_class in _WITHHELD_SCENARIO_CLASSES
+        if scenario_class == "public_smoke":
+            local_scope = "public"
+        elif isinstance(scenario_class, str) and scenario_class in _WITHHELD_SCENARIO_CLASSES:
+            local_scope = "withheld"
+        elif "scenario_class" in value:
+            local_scope = "untrusted"
+        else:
+            local_scope = scope
         result: dict[str, Any] = {}
         for raw_key, item in value.items():
             key = str(raw_key)
             normalized = key.lower().replace("-", "_")
-            child_withheld = local_withheld or normalized in _WITHHELD_CONTEXT_KEYS
             if _is_raw_training_key(normalized):
                 continue
-            if local_withheld and normalized not in _WITHHELD_DIAGNOSTIC_KEYS:
+            child_scope = "withheld" if normalized in _WITHHELD_CONTEXT_KEYS else local_scope
+            if isinstance(item, (dict, list, tuple)):
+                if local_scope == "withheld":
+                    continue
+                if _safe_token(normalized) is None:
+                    continue
+                sanitized = _sanitize_training_payload(
+                    item,
+                    independent_oracle=independent_oracle,
+                    _scope=child_scope,
+                )
+                if local_scope == "legacy" or sanitized not in ({}, []):
+                    result[key] = sanitized
                 continue
-            result[key] = _sanitize_training_payload(item, withheld=child_withheld)
+            if local_scope == "legacy":
+                result[key] = item
+            elif _safe_diagnostic_scalar(normalized, item, local_scope):
+                result[key] = item
         return result
     if isinstance(value, (list, tuple)):
-        return [_sanitize_training_payload(item, withheld=withheld) for item in value]
-    return value
+        sanitized_items = [
+            _sanitize_training_payload(
+                item,
+                independent_oracle=independent_oracle,
+                _scope=scope,
+            )
+            for item in value
+        ]
+        return [item for item in sanitized_items if item not in ({}, [])]
+    return value if scope == "legacy" else None
+
+
+def _safe_diagnostic_scalar(key: str, value: Any, scope: str) -> bool:
+    allowed = _PUBLIC_MISMATCH_KEYS if scope == "public" else _WITHHELD_DIAGNOSTIC_KEYS
+    if key not in allowed and key not in _SAFE_DIAGNOSTIC_BOOL_KEYS:
+        return False
+    if key in _SAFE_DIAGNOSTIC_TOKEN_KEYS:
+        if key == "scenario_class":
+            return value in _SCENARIO_CLASSES
+        if key == "status":
+            return value in _ORACLE_STATUSES
+        return _safe_token(value) is not None
+    if key in _SAFE_DIAGNOSTIC_INT_KEYS:
+        return _is_non_negative_int(value)
+    if key in _SAFE_DIAGNOSTIC_BOOL_KEYS:
+        return isinstance(value, bool)
+    if key in {"expected", "actual"}:
+        return value is None or isinstance(value, (bool, int, float)) or (
+            isinstance(value, str) and len(value) <= 256 and "\n" not in value and "\r" not in value
+        )
+    return False
 
 
 def _is_raw_training_key(key: str) -> bool:
     if key in _RAW_TRAINING_KEYS or key.endswith("_seed"):
         return True
     return key.startswith("raw_") and ("log" in key or "path" in key)
+
+
+def _is_independent_oracle_episode(episode: Any) -> bool:
+    if not isinstance(episode, dict):
+        return False
+    profile = episode.get("oracle_profile")
+    if not isinstance(profile, dict) or profile.get("kind") != "python_reference":
+        return False
+    return profile.get("skip_reason") not in {"disabled_by_config", "unsupported_family"}
+
+
+def _verification_without_label_mismatches(value: Any) -> dict[str, Any]:
+    verification = dict(value) if isinstance(value, dict) else {}
+    l2_core = dict(verification.get("l2_core")) if isinstance(verification.get("l2_core"), dict) else {}
+    public = dict(l2_core.get("public")) if isinstance(l2_core.get("public"), dict) else {}
+    public["mismatch_detail"] = []
+    l2_core["public"] = public
+    verification["l2_core"] = l2_core
+    return verification
 
 
 def _derived_training_views_metadata(sample_id: str, existing: Any) -> dict[str, Any]:
@@ -733,6 +879,8 @@ def _read_episode(sample_dir: Path) -> dict[str, Any]:
     result = dict(episode)
     if "oracle_profile" in result:
         result["oracle_profile"] = _sanitize_oracle_profile(result.get("oracle_profile"))
+    if _is_independent_oracle_episode(result):
+        result["verification"] = _verification_without_label_mismatches(result.get("verification"))
     return result
 
 
