@@ -4152,7 +4152,8 @@
         "reversed_template",
         "wrong_threshold",
         "off_by_one_peak",
-        "top_in_ready_stuck_high"
+        "top_in_ready_stuck_high",
+        "history_updates_while_stalled"
       ],
       "mutation_score_threshold": 0.85,
       "benchmark_role": "paper1_core",

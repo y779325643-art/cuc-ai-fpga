@@ -189,6 +189,17 @@ def test_signal_bundles_encode_reset_history_final_sample_and_first_tie(tmp_path
     assert (1, 30, 3) in [tuple(value) for expected, *value in radar_outputs if expected]
 
 
+def test_pulse_radar_stall_probe_participates_once_in_followup_frame(tmp_path: Path) -> None:
+    radar = build_pulse_radar_bundle(8, tmp_path / "radar")
+    stress = next(item for item in radar.scenarios if item.scenario_class == "stress")
+    expected = [
+        _unpack_peak(record, 18)
+        for record in _read_memh(radar.root / stress.expected_path)
+    ]
+
+    assert expected[3] == (1, 1, 18, 1)
+
+
 def test_generated_signal_testbenches_keep_legacy_and_add_oracle_mode() -> None:
     platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
     for task_type in ("matched_filter", "peak_detector", "pulse_radar_signal"):
@@ -267,6 +278,37 @@ def test_pulse_radar_top_ready_stuck_high_mutation_is_killed(tmp_path: Path) -> 
     )
     mutation = oracle_mutation_projects(reference, "p_pulse_radar_signal").get(
         "top_in_ready_stuck_high"
+    )
+    assert mutation is not None
+    assert _lint_project(mutation, tmp_path / "mutation") == "passed"
+
+    bundle = build_pulse_radar_bundle(8, tmp_path / "oracle")
+    compile_status, evidence_status = _compile_and_run(
+        mutation,
+        tmp_path / "mutation",
+        bundle,
+    )
+
+    assert compile_status == "passed"
+    assert evidence_status == "failed"
+
+
+@pytest.mark.skipif(
+    not shutil.which("iverilog") or not shutil.which("vvp") or not shutil.which("verilator"),
+    reason="iverilog/vvp/verilator are not installed",
+)
+def test_pulse_radar_history_update_while_stalled_mutation_is_killed(tmp_path: Path) -> None:
+    platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+    reference = ProjectGenerator().generate(
+        ProjectRequest(
+            task_type="pulse_radar_signal",
+            width=8,
+            project_name="pulse_radar_history_stall",
+        ),
+        platform,
+    )
+    mutation = oracle_mutation_projects(reference, "p_pulse_radar_signal").get(
+        "history_updates_while_stalled"
     )
     assert mutation is not None
     assert _lint_project(mutation, tmp_path / "mutation") == "passed"

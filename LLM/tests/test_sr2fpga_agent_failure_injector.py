@@ -230,7 +230,13 @@ class FailureInjectorTest(unittest.TestCase):
             ("peak_detector", ("wrong_threshold", "off_by_one_peak", "wrong_tie_break")),
             (
                 "pulse_radar_signal",
-                ("reversed_template", "wrong_threshold", "off_by_one_peak", "top_in_ready_stuck_high"),
+                (
+                    "reversed_template",
+                    "wrong_threshold",
+                    "off_by_one_peak",
+                    "top_in_ready_stuck_high",
+                    "history_updates_while_stalled",
+                ),
             ),
         )
 
@@ -257,6 +263,9 @@ class FailureInjectorTest(unittest.TestCase):
                         self.assertEqual(mutation.files["sim/tb_top.v"], project.files["sim/tb_top.v"])
                         if mutation_name == "top_in_ready_stuck_high":
                             self.assertEqual(changed_paths, {"rtl/top.v"})
+                            continue
+                        if mutation_name == "history_updates_while_stalled":
+                            self.assertEqual(changed_paths, {"rtl/matched_filter_core.v"})
                             continue
                         output = _run_generated_testbench(mutation)
                         self.assertNotIn("TEST_PASS", output)
@@ -329,7 +338,13 @@ class FailureInjectorTest(unittest.TestCase):
 
         self.assertEqual(
             tuple(mutations),
-            ("reversed_template", "wrong_threshold", "off_by_one_peak", "top_in_ready_stuck_high"),
+            (
+                "reversed_template",
+                "wrong_threshold",
+                "off_by_one_peak",
+                "top_in_ready_stuck_high",
+                "history_updates_while_stalled",
+            ),
         )
         self.assertIn("TEST_PASS", _run_generated_testbench(project))
         for mutation_name, mutation in mutations.items():
@@ -344,6 +359,9 @@ class FailureInjectorTest(unittest.TestCase):
                 self.assertEqual(mutation.files["sim/tb_top.v"], project.files["sim/tb_top.v"])
                 if mutation_name == "top_in_ready_stuck_high":
                     self.assertEqual(changed_paths, {"rtl/top.v"})
+                    continue
+                if mutation_name == "history_updates_while_stalled":
+                    self.assertEqual(changed_paths, {"rtl/matched_filter_core.v"})
                     continue
                 output = _run_generated_testbench(mutation)
                 self.assertNotIn("TEST_PASS", output)

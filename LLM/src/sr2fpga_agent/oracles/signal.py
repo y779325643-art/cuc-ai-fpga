@@ -217,6 +217,7 @@ def build_pulse_radar_bundle(width: int, root: Path) -> OracleBundle:
                 (4, False, True, 0),
                 (-3, False, False, 0),
                 (-10, True, True, 3),
+                (0, True, False, 0),
                 (4, False, False, 0),
                 (-3, False, False, 0),
                 (2, False, False, 0),
@@ -382,6 +383,12 @@ def _radar_scenario(
         if in_last:
             history = [0, 0, 0, 0]
             correlations.clear()
+            if stall_cycles > 0:
+                fill_sample = signed((~sample) & ((1 << width) - 1), width)
+                history = [fill_sample, *history[:3]]
+                correlations.append(
+                    sum(value * coefficient for value, coefficient in zip(history, MATCHED_TEMPLATE))
+                )
     return OracleScenarioSpec(
         scenario_id=scenario_id,
         scenario_class=scenario_class,

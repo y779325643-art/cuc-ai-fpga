@@ -1001,9 +1001,6 @@ def pulse_radar_signal_testbench(width: int) -> str:
                     $display("TEST_FAIL out_valid did not clear");
                     $finish;
                   end
-                  if (oracle_stall_cycles > 0) begin
-                    reset_dut;
-                  end
                 end
               end
               $display("TEST_PASS");

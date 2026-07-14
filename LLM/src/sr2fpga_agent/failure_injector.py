@@ -230,6 +230,17 @@ def _oracle_dut_mutation(
                 (".in_ready(in_ready),", ".in_ready(pipeline_in_ready),"),
             ),
         ),
+        ("p_pulse_radar_signal", "history_updates_while_stalled"): (
+            "rtl/matched_filter_core.v",
+            ((
+                "        end\n      end\n    end\n  end\nendmodule",
+                "        end\n      end\n    end else if (in_valid) begin\n"
+                "      sample_d2 <= sample_d1;\n"
+                "      sample_d1 <= sample_d0;\n"
+                "      sample_d0 <= in_sample_extended;\n"
+                "    end\n  end\nendmodule",
+            ),),
+        ),
         ("sobel_threshold", "swap_x_y_gradient"): (
             "rtl/sobel_threshold_core.v",
             (
