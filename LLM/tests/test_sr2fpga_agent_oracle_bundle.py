@@ -1,3 +1,4 @@
+import hashlib
 import json
 from dataclasses import FrozenInstanceError
 from pathlib import Path
@@ -17,11 +18,34 @@ from LLM.src.sr2fpga_agent.oracles import (
 )
 
 
+def _canonical_bundle_hash(manifest: dict[str, object]) -> str:
+    payload = dict(manifest)
+    payload.pop("bundle_sha256", None)
+    canonical = json.dumps(
+        payload,
+        allow_nan=False,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _rewrite_manifest(root: Path, manifest: dict[str, object]) -> None:
+    manifest["bundle_sha256"] = _canonical_bundle_hash(manifest)
+    (root / "manifest.json").write_text(
+        json.dumps(manifest, indent=2, allow_nan=False, ensure_ascii=False, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def _scenario(
     *,
     scenario_id: str = "public_smoke_001",
     scenario_class: str = "public_smoke",
     seed: int = 7,
+    input_record_width_bits: int = 8,
+    expected_record_width_bits: int = 12,
     input_fields: tuple[OracleField, ...] | None = None,
     expected_fields: tuple[OracleField, ...] | None = None,
     input_records: tuple[int, ...] = (0x05, 0xFC),
@@ -31,10 +55,12 @@ def _scenario(
         scenario_id=scenario_id,
         scenario_class=scenario_class,
         seed=seed,
-        input_record_width_bits=8,
-        expected_record_width_bits=12,
-        input_fields=input_fields or (OracleField("sample", 7, 0, True),),
-        expected_fields=expected_fields or (OracleField("result", 11, 0, True),),
+        input_record_width_bits=input_record_width_bits,
+        expected_record_width_bits=expected_record_width_bits,
+        input_fields=input_fields
+        or (OracleField("sample", input_record_width_bits - 1, 0, True),),
+        expected_fields=expected_fields
+        or (OracleField("result", expected_record_width_bits - 1, 0, True),),
         input_records=input_records,
         expected_records=expected_records,
     )
@@ -187,6 +213,23 @@ def test_load_rejects_modified_record_file(tmp_path):
         load_oracle_bundle(bundle.root)
 
 
+def test_load_rejects_memh_value_that_exceeds_non_nibble_record_width(tmp_path):
+    scenario = _scenario(
+        input_record_width_bits=5,
+        input_records=(0x1F,),
+        expected_records=(0x001,),
+    )
+    bundle = _write_bundle(tmp_path, (scenario,))
+    input_path = bundle.root / bundle.scenarios[0].input_path
+    input_path.write_bytes(b"ff\n")
+    manifest = json.loads((bundle.root / "manifest.json").read_text(encoding="utf-8"))
+    manifest["scenarios"][0]["input_sha256"] = hashlib.sha256(b"ff\n").hexdigest()
+    _rewrite_manifest(bundle.root, manifest)
+
+    with pytest.raises(ValueError, match="exceeds its declared record width"):
+        load_oracle_bundle(bundle.root)
+
+
 def test_load_rejects_modified_manifest_bundle_hash(tmp_path):
     bundle = _write_bundle(tmp_path)
     manifest_path = bundle.root / "manifest.json"
@@ -207,29 +250,146 @@ def test_load_rejects_malformed_json(tmp_path):
         load_oracle_bundle(root)
 
 
-def test_sanitize_oracle_profile_hides_withheld_seed_paths_and_payloads(tmp_path):
+@pytest.mark.parametrize(
+    "scenario_class",
+    ("hidden_deterministic", "randomized_fixed_seed", "stress"),
+)
+def test_sanitize_oracle_profile_hides_withheld_seed_paths_payloads_and_hashes(
+    tmp_path,
+    scenario_class,
+):
     public = _scenario()
-    hidden = _scenario(
-        scenario_id="hidden_boundary_001",
-        scenario_class="hidden_deterministic",
+    withheld = _scenario(
+        scenario_id=f"{scenario_class}_001",
+        scenario_class=scenario_class,
         seed=101,
     )
-    bundle = _write_bundle(tmp_path, (public, hidden))
+    bundle = _write_bundle(tmp_path, (public, withheld))
 
     profile = sanitize_oracle_profile(bundle)
-    hidden_profile = next(
+    withheld_profile = next(
         scenario
         for scenario in profile["scenarios"]
-        if scenario["scenario_id"] == "hidden_boundary_001"
+        if scenario["scenario_id"] == withheld.scenario_id
     )
 
-    assert "seed" not in hidden_profile
-    assert len(hidden_profile["seed_sha256"]) == 64
-    assert "input_path" not in hidden_profile
-    assert "expected_path" not in hidden_profile
-    assert "input_records" not in hidden_profile
-    assert "expected_records" not in hidden_profile
-    assert hidden_profile["transaction_count"] == 2
+    assert "seed" not in withheld_profile
+    assert len(withheld_profile["seed_sha256"]) == 64
+    assert "input_path" not in withheld_profile
+    assert "expected_path" not in withheld_profile
+    assert "input_records" not in withheld_profile
+    assert "expected_records" not in withheld_profile
+    assert "input_sha256" not in withheld_profile
+    assert "expected_sha256" not in withheld_profile
+    assert withheld_profile["transaction_count"] == 2
+
+
+@pytest.mark.parametrize(
+    "scenario_id",
+    (
+        "trailing.",
+        "trailing ",
+        "CON",
+        "con.txt",
+        "PRN",
+        "AUX.log",
+        "NUL",
+        "COM1",
+        "com9.trace",
+        "LPT1",
+        "lpt9.log",
+        "stream:payload",
+    ),
+)
+def test_write_rejects_scenario_ids_that_are_not_windows_portable(tmp_path, scenario_id):
+    with pytest.raises(ValueError, match="Windows-portable"):
+        _write_bundle(tmp_path, (_scenario(scenario_id=scenario_id),))
+
+
+def test_write_rejects_case_insensitive_duplicate_scenario_ids(tmp_path):
+    with pytest.raises(ValueError, match="case-insensitive duplicate oracle scenario id"):
+        _write_bundle(
+            tmp_path,
+            (
+                _scenario(scenario_id="Boundary"),
+                _scenario(scenario_id="boundary", scenario_class="stress"),
+            ),
+        )
+
+
+def test_load_rejects_case_insensitive_duplicate_scenario_ids(tmp_path):
+    bundle = _write_bundle(
+        tmp_path,
+        (
+            _scenario(scenario_id="Boundary"),
+            _scenario(scenario_id="Other", scenario_class="stress"),
+        ),
+    )
+    manifest = json.loads((bundle.root / "manifest.json").read_text(encoding="utf-8"))
+    second = manifest["scenarios"][1]
+    source = bundle.root / "stress" / "Other"
+    destination = bundle.root / "stress" / "boundary"
+    source.rename(destination)
+    second["scenario_id"] = "boundary"
+    second["input_path"] = "stress/boundary/input.memh"
+    second["expected_path"] = "stress/boundary/expected.memh"
+    _rewrite_manifest(bundle.root, manifest)
+
+    with pytest.raises(ValueError, match="case-insensitive duplicate oracle scenario id"):
+        load_oracle_bundle(bundle.root)
+
+
+def test_load_rejects_noncanonical_scenario_record_path(tmp_path):
+    bundle = _write_bundle(tmp_path)
+    manifest = json.loads((bundle.root / "manifest.json").read_text(encoding="utf-8"))
+    alternate = bundle.root / "public" / "alternate"
+    alternate.mkdir()
+    source = bundle.root / bundle.scenarios[0].input_path
+    (alternate / "input.memh").write_bytes(source.read_bytes())
+    manifest["scenarios"][0]["input_path"] = "public/alternate/input.memh"
+    _rewrite_manifest(bundle.root, manifest)
+
+    with pytest.raises(ValueError, match="canonical path"):
+        load_oracle_bundle(bundle.root)
+
+
+def test_write_rejects_nonfinite_task_parameters(tmp_path):
+    with pytest.raises(ValueError, match="finite JSON values"):
+        write_oracle_bundle(
+            root=tmp_path / "oracle",
+            family_id="fir_filter",
+            reference_model="numeric.fir_filter",
+            reference_version="1",
+            task_parameters={"threshold": float("nan")},
+            scenarios=(_scenario(),),
+        )
+
+
+def test_load_rejects_duplicate_manifest_keys(tmp_path):
+    bundle = _write_bundle(tmp_path)
+    manifest_path = bundle.root / "manifest.json"
+    text = manifest_path.read_text(encoding="utf-8")
+    text = text.replace(
+        '"family_id": "fir_filter",',
+        '"family_id": "fir_filter",\n  "family_id": "other",',
+        1,
+    )
+    manifest_path.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="duplicate key in oracle manifest: family_id"):
+        load_oracle_bundle(bundle.root)
+
+
+@pytest.mark.parametrize("constant", ("NaN", "Infinity", "-Infinity"))
+def test_load_rejects_nonfinite_manifest_numbers(tmp_path, constant):
+    bundle = _write_bundle(tmp_path)
+    manifest_path = bundle.root / "manifest.json"
+    text = manifest_path.read_text(encoding="utf-8")
+    text = text.replace('"width": 8', f'"width": {constant}', 1)
+    manifest_path.write_text(text, encoding="utf-8")
+
+    with pytest.raises(ValueError, match="non-finite number in oracle manifest"):
+        load_oracle_bundle(bundle.root)
 
 
 def test_reference_builder_registry_starts_empty_for_unknown_family(tmp_path):

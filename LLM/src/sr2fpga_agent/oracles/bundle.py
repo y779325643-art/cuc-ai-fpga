@@ -25,6 +25,11 @@ _SCENARIO_DIRECTORIES = {
     "stress": "stress",
 }
 _SCENARIO_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
+_WINDOWS_RESERVED_NAMES = frozenset(
+    {"CON", "PRN", "AUX", "NUL"}
+    | {f"COM{index}" for index in range(1, 10)}
+    | {f"LPT{index}" for index in range(1, 10)}
+)
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _TOP_LEVEL_KEYS = {
     "schema_version",
@@ -56,11 +61,14 @@ def _canonical_json(value: object) -> bytes:
     try:
         text = json.dumps(
             value,
+            allow_nan=False,
             ensure_ascii=False,
             separators=(",", ":"),
             sort_keys=True,
         )
-    except (TypeError, ValueError) as exc:
+    except ValueError as exc:
+        raise ValueError("oracle manifest values must contain only finite JSON values") from exc
+    except TypeError as exc:
         raise ValueError("oracle manifest values must be JSON serializable") from exc
     return text.encode("utf-8")
 
@@ -76,15 +84,19 @@ def _bundle_hash(manifest: dict[str, object]) -> str:
 
 
 def _memh_text(records: tuple[int, ...], width: int) -> str:
+    _validate_records(records, width)
+    digits = (width + 3) // 4
+    return "".join(f"{record:0{digits}x}\n" for record in records)
+
+
+def _validate_records(records: tuple[int, ...], width: int) -> None:
     if not _is_int(width) or width <= 0:
         raise ValueError("oracle record width must be a positive integer")
-    if not records:
+    if not isinstance(records, tuple) or not records:
         raise ValueError("oracle scenario must contain at least one transaction")
     limit = 1 << width
     if any(not _is_int(record) or record < 0 or record >= limit for record in records):
         raise ValueError("oracle records must fit the declared unsigned bit pattern")
-    digits = (width + 3) // 4
-    return "".join(f"{record:0{digits}x}\n" for record in records)
 
 
 def _safe_bundle_path(root: Path, relative_path: str) -> Path:
@@ -122,9 +134,16 @@ def _require_string(value: object, label: str) -> str:
 
 
 def _validate_scenario_id(value: object) -> str:
-    scenario_id = _require_string(value, "oracle scenario id")
-    if not _SCENARIO_ID_RE.fullmatch(scenario_id):
-        raise ValueError("oracle scenario id contains unsupported characters")
+    if not isinstance(value, str) or not value or value != value.strip():
+        raise ValueError("oracle scenario id must be Windows-portable")
+    scenario_id = value
+    basename = scenario_id.split(".", 1)[0].upper()
+    if (
+        not _SCENARIO_ID_RE.fullmatch(scenario_id)
+        or scenario_id.endswith((".", " "))
+        or basename in _WINDOWS_RESERVED_NAMES
+    ):
+        raise ValueError("oracle scenario id must be Windows-portable")
     return scenario_id
 
 
@@ -153,7 +172,6 @@ def _validate_fields(
 ) -> None:
     if not fields:
         raise ValueError(f"{label} must declare at least one oracle field")
-    occupied: set[int] = set()
     names: set[str] = set()
     for field in fields:
         if not isinstance(field, OracleField):
@@ -168,10 +186,10 @@ def _validate_fields(
             raise ValueError("oracle field range must fit the declared record width")
         if not isinstance(field.signed, bool):
             raise ValueError("oracle field signed flag must be boolean")
-        field_bits = set(range(field.lsb, field.msb + 1))
-        if occupied & field_bits:
+    fields_by_range = sorted(fields, key=lambda field: (field.lsb, field.msb))
+    for previous, current in zip(fields_by_range, fields_by_range[1:]):
+        if current.lsb <= previous.msb:
             raise ValueError("overlapping oracle field ranges")
-        occupied.update(field_bits)
 
 
 def _field_dict(field: OracleField) -> dict[str, object]:
@@ -214,8 +232,8 @@ def _validate_spec(scenario: OracleScenarioSpec) -> None:
         raise ValueError("oracle scenario must contain at least one transaction")
     if len(scenario.input_records) != len(scenario.expected_records):
         raise ValueError("oracle input and expected record counts must match")
-    _memh_text(scenario.input_records, input_width)
-    _memh_text(scenario.expected_records, expected_width)
+    _validate_records(scenario.input_records, input_width)
+    _validate_records(scenario.expected_records, expected_width)
 
 
 def write_oracle_bundle(
@@ -242,9 +260,12 @@ def write_oracle_bundle(
     scenario_ids: set[str] = set()
     for scenario in scenarios:
         _validate_spec(scenario)
-        if scenario.scenario_id in scenario_ids:
-            raise ValueError(f"duplicate oracle scenario id: {scenario.scenario_id}")
-        scenario_ids.add(scenario.scenario_id)
+        scenario_key = scenario.scenario_id.casefold()
+        if scenario_key in scenario_ids:
+            raise ValueError(
+                f"case-insensitive duplicate oracle scenario id: {scenario.scenario_id}"
+            )
+        scenario_ids.add(scenario_key)
 
     root.mkdir(parents=True, exist_ok=True)
     scenario_entries: list[dict[str, object]] = []
@@ -293,10 +314,30 @@ def write_oracle_bundle(
     }
     manifest["bundle_sha256"] = _bundle_hash(manifest)
     (root / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False, sort_keys=True) + "\n",
+        json.dumps(
+            manifest,
+            indent=2,
+            allow_nan=False,
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        + "\n",
         encoding="utf-8",
     )
     return load_oracle_bundle(root)
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    value: dict[str, object] = {}
+    for key, item in pairs:
+        if key in value:
+            raise ValueError(f"duplicate key in oracle manifest: {key}")
+        value[key] = item
+    return value
+
+
+def _reject_nonfinite_number(value: str) -> object:
+    raise ValueError(f"non-finite number in oracle manifest: {value}")
 
 
 def _read_manifest(root: Path) -> dict[str, object]:
@@ -305,7 +346,11 @@ def _read_manifest(root: Path) -> dict[str, object]:
     except (OSError, UnicodeError) as exc:
         raise ValueError("missing or unreadable oracle manifest") from exc
     try:
-        manifest = json.loads(raw)
+        manifest = json.loads(
+            raw,
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_nonfinite_number,
+        )
     except json.JSONDecodeError as exc:
         raise ValueError("malformed oracle manifest JSON") from exc
     if not isinstance(manifest, dict):
@@ -339,6 +384,9 @@ def _read_record_file(
     record_re = re.compile(rf"^[0-9a-f]{{{digits}}}$")
     if len(lines) != transaction_count or any(not record_re.fullmatch(line) for line in lines):
         raise ValueError(f"oracle record file has invalid fixed-width memh data: {relative_path}")
+    limit = 1 << record_width_bits
+    if any(int(line, 16) >= limit for line in lines):
+        raise ValueError(f"oracle record exceeds its declared record width: {relative_path}")
 
 
 def _scenario_from_dict(root: Path, value: object) -> OracleScenarioManifest:
@@ -370,6 +418,11 @@ def _scenario_from_dict(root: Path, value: object) -> OracleScenarioManifest:
     expected_path = value["expected_path"]
     _safe_bundle_path(root, input_path)
     _safe_bundle_path(root, expected_path)
+    directory = _SCENARIO_DIRECTORIES[scenario_class]
+    canonical_input_path = f"{directory}/{scenario_id}/input.memh"
+    canonical_expected_path = f"{directory}/{scenario_id}/expected.memh"
+    if input_path != canonical_input_path or expected_path != canonical_expected_path:
+        raise ValueError("oracle scenario record path must equal its canonical path")
     input_sha256 = value["input_sha256"]
     expected_sha256 = value["expected_sha256"]
     if not isinstance(input_sha256, str) or not _SHA256_RE.fullmatch(input_sha256):
@@ -413,9 +466,9 @@ def load_oracle_bundle(root: Path) -> OracleBundle:
     if not isinstance(raw_scenarios, list) or not raw_scenarios:
         raise ValueError("oracle bundle must contain at least one scenario")
     scenarios = tuple(_scenario_from_dict(root, item) for item in raw_scenarios)
-    scenario_ids = [scenario.scenario_id for scenario in scenarios]
+    scenario_ids = [scenario.scenario_id.casefold() for scenario in scenarios]
     if len(scenario_ids) != len(set(scenario_ids)):
-        raise ValueError("duplicate oracle scenario id in manifest")
+        raise ValueError("case-insensitive duplicate oracle scenario id in manifest")
     bundle_sha256 = manifest["bundle_sha256"]
     if not isinstance(bundle_sha256, str) or not _SHA256_RE.fullmatch(bundle_sha256):
         raise ValueError("oracle bundle_sha256 must be a lowercase SHA-256 digest")
@@ -440,22 +493,26 @@ def sanitize_oracle_profile(bundle: OracleBundle) -> dict[str, Any]:
     scenarios: list[dict[str, object]] = []
     for scenario in bundle.scenarios:
         scenario_counts[scenario.scenario_class] += 1
-        scenarios.append(
-            {
-                "scenario_id": scenario.scenario_id,
-                "scenario_class": scenario.scenario_class,
-                "seed_sha256": _sha256(
-                    f"sr2fpga-oracle-seed-v1:{scenario.seed}".encode("ascii")
-                ),
-                "transaction_count": scenario.transaction_count,
-                "input_record_width_bits": scenario.input_record_width_bits,
-                "expected_record_width_bits": scenario.expected_record_width_bits,
-                "input_fields": [_field_dict(field) for field in scenario.input_fields],
-                "expected_fields": [_field_dict(field) for field in scenario.expected_fields],
-                "input_sha256": scenario.input_sha256,
-                "expected_sha256": scenario.expected_sha256,
-            }
-        )
+        scenario_profile: dict[str, object] = {
+            "scenario_id": scenario.scenario_id,
+            "scenario_class": scenario.scenario_class,
+            "seed_sha256": _sha256(
+                f"sr2fpga-oracle-seed-v1:{scenario.seed}".encode("ascii")
+            ),
+            "transaction_count": scenario.transaction_count,
+            "input_record_width_bits": scenario.input_record_width_bits,
+            "expected_record_width_bits": scenario.expected_record_width_bits,
+            "input_fields": [_field_dict(field) for field in scenario.input_fields],
+            "expected_fields": [_field_dict(field) for field in scenario.expected_fields],
+        }
+        if scenario.scenario_class == "public_smoke":
+            scenario_profile.update(
+                {
+                    "input_sha256": scenario.input_sha256,
+                    "expected_sha256": scenario.expected_sha256,
+                }
+            )
+        scenarios.append(scenario_profile)
     return {
         "kind": "python_reference",
         "family_id": bundle.family_id,
