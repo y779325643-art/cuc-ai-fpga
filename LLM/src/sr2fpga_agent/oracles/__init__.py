@@ -18,9 +18,16 @@ from LLM.src.sr2fpga_agent.oracles.types import (
     OracleScenarioManifest,
     OracleScenarioSpec,
 )
+from LLM.src.sr2fpga_agent.oracles.numeric import (
+    build_fir_filter_bundle,
+    build_matrix_vector_mac_bundle,
+)
 
 
-REFERENCE_BUILDERS: dict[str, Callable[[int, Path], OracleBundle]] = {}
+REFERENCE_BUILDERS: dict[str, Callable[[int, Path], OracleBundle]] = {
+    "fir_filter": build_fir_filter_bundle,
+    "matrix_vector_mac": build_matrix_vector_mac_bundle,
+}
 
 
 def build_oracle_bundle_for_request(
@@ -40,6 +47,8 @@ __all__ = [
     "OracleScenarioManifest",
     "OracleScenarioSpec",
     "build_oracle_bundle_for_request",
+    "build_fir_filter_bundle",
+    "build_matrix_vector_mac_bundle",
     "load_oracle_bundle",
     "sanitize_oracle_profile",
     "write_oracle_bundle",
