@@ -251,6 +251,37 @@ def test_signal_reference_and_all_declared_mutations_are_scoreable(
         assert (compile_status, evidence_status) != ("passed", "passed"), mutation_name
 
 
+@pytest.mark.skipif(
+    not shutil.which("iverilog") or not shutil.which("vvp") or not shutil.which("verilator"),
+    reason="iverilog/vvp/verilator are not installed",
+)
+def test_pulse_radar_top_ready_stuck_high_mutation_is_killed(tmp_path: Path) -> None:
+    platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+    reference = ProjectGenerator().generate(
+        ProjectRequest(
+            task_type="pulse_radar_signal",
+            width=8,
+            project_name="pulse_radar_ready_stuck_high",
+        ),
+        platform,
+    )
+    mutation = oracle_mutation_projects(reference, "p_pulse_radar_signal").get(
+        "top_in_ready_stuck_high"
+    )
+    assert mutation is not None
+    assert _lint_project(mutation, tmp_path / "mutation") == "passed"
+
+    bundle = build_pulse_radar_bundle(8, tmp_path / "oracle")
+    compile_status, evidence_status = _compile_and_run(
+        mutation,
+        tmp_path / "mutation",
+        bundle,
+    )
+
+    assert compile_status == "passed"
+    assert evidence_status == "failed"
+
+
 def _read_memh(path: Path) -> list[int]:
     return [int(line, 16) for line in path.read_text(encoding="ascii").splitlines()]
 
@@ -296,3 +327,17 @@ def _compile_and_run(
         return compile_result.status, "not_run"
     evidence, _ = run_oracle_scenarios(runner, project_dir, bundle)
     return compile_result.status, evidence.status
+
+
+def _lint_project(project: GeneratedProject, project_dir: Path) -> str:
+    project_dir.mkdir(parents=True, exist_ok=True)
+    for relative_path, source in project.files.items():
+        destination = project_dir / relative_path
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_text(source, encoding="utf-8")
+    manifest = json.loads(project.files["manifest.json"])
+    return CommandRunner().run(
+        ["verilator", "--lint-only", "-Wall", *manifest["sources"]],
+        cwd=project_dir,
+        stage="lint",
+    ).status

@@ -7,6 +7,8 @@ import re
 from dataclasses import dataclass
 
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.task_catalog import task_family_spec_for_family_id
+from LLM.src.sr2fpga_agent.task_families import family_id_for_task_type
 
 
 @dataclass(frozen=True)
@@ -15,6 +17,10 @@ class FailureInjectingProjectGenerator:
 
     base_generator: object
     injectors: list[str]
+
+    @property
+    def his_source_used_for_generation(self) -> object:
+        return getattr(self.base_generator, "his_source_used_for_generation", "generated")
 
     def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
         project = self.base_generator.generate(request, platform)
@@ -41,6 +47,353 @@ def apply_failure_injectors(project: GeneratedProject, injectors: list[str]) -> 
         else:
             raise ValueError(f"Unsupported failure injector: {injector}")
     return GeneratedProject(project_name=project.project_name, files=files)
+
+
+def oracle_mutation_projects(project: GeneratedProject, task_type: str) -> dict[str, GeneratedProject | None]:
+    """Create catalog-declared DUT-only mutants and expose unsupported cases."""
+    family = _task_family_spec(task_type)
+    if family is None:
+        return {}
+    mutations: dict[str, GeneratedProject | None] = {}
+    for mutation_name in family.mutation_suite:
+        files = _oracle_dut_mutation(project.files, family.family_id, mutation_name)
+        mutations[mutation_name] = (
+            None if files is None else GeneratedProject(project_name=project.project_name, files=files)
+        )
+    return mutations
+
+
+def _task_family_spec(task_type: str):
+    try:
+        return task_family_spec_for_family_id(family_id_for_task_type(task_type))
+    except KeyError:
+        try:
+            return task_family_spec_for_family_id(task_type)
+        except KeyError:
+            return None
+
+
+def _oracle_dut_mutation(
+    files: dict[str, str],
+    family_id: str,
+    mutation_name: str,
+) -> dict[str, str] | None:
+    replacements = {
+        ("sync_fifo", "remove_full_guard"): ("rtl/top.v", (("wr_en && !full", "wr_en"),)),
+        ("sync_fifo", "remove_empty_guard"): ("rtl/top.v", (("rd_en && !empty", "rd_en"),)),
+        ("sync_fifo", "wrong_pointer_update"): (
+            "rtl/top.v",
+            (("rd_ptr <= rd_ptr + 2'd1;", "rd_ptr <= rd_ptr;"),),
+        ),
+        ("sync_fifo", "same_cycle_push_pop_bug"): (
+            "rtl/top.v",
+            (("default: count <= count;", "default: count <= count + 3'd1;"),),
+        ),
+        ("valid_ready_stream_stage", "valid_drops_under_stall"): (
+            "rtl/stream_stage.v",
+            ((
+                "end else if (in_ready) begin",
+                "end else if (!out_ready) begin\n      out_valid <= 1'b0;\n    end else if (in_ready) begin",
+            ),),
+        ),
+        ("valid_ready_stream_stage", "payload_changes_under_stall"): (
+            "rtl/stream_stage.v",
+            ((
+                "end else if (in_ready) begin",
+                "end else if (!out_ready && out_valid) begin\n"
+                "      out_data <= out_data + {{(WIDTH-1){1'b0}}, 1'b1};\n"
+                "    end else if (in_ready) begin",
+            ),),
+        ),
+        ("valid_ready_stream_stage", "drop_transaction"): (
+            "rtl/stream_stage.v",
+            (("out_valid <= in_valid;", "out_valid <= 1'b0;"),),
+        ),
+        ("fir_filter", "wrong_coeff_order"): (
+            "rtl/fir_filter_core.v",
+            (
+                ("COEFF_NEW = 3'sd3;", "COEFF_NEW = 3'sd1;"),
+                ("COEFF_OLD = 3'sd1;", "COEFF_OLD = 3'sd3;"),
+            ),
+        ),
+        ("fir_filter", "truncate_accumulator"): (
+            "rtl/fir_filter_core.v",
+            ((
+                "result <= filtered_result;",
+                "result <= {{(RESULT_WIDTH-WIDTH){filtered_result[WIDTH-1]}}, filtered_result[WIDTH-1:0]};",
+            ),),
+        ),
+        ("fir_filter", "remove_signed_cast"): (
+            "rtl/mac_unit.v",
+            ((
+                "$signed(sample) * $signed(coefficient)",
+                "sample * coefficient",
+            ),),
+        ),
+        ("fir_filter", "missing_stall"): (
+            "rtl/fir_filter_core.v",
+            (("end else if (sample_ready) begin", "end else begin"),),
+        ),
+        ("fir_filter", "off_by_one_latency"): (
+            "rtl/fir_filter_core.v",
+            (
+                (
+                    "reg signed [WIDTH-1:0] sample_d1;",
+                    "reg signed [WIDTH-1:0] sample_d1;\n  reg delayed_valid;",
+                ),
+                (
+                    "result_valid <= 1'b0;\n      result <= {RESULT_WIDTH{1'b0}};",
+                    "result_valid <= 1'b0;\n      delayed_valid <= 1'b0;\n      result <= {RESULT_WIDTH{1'b0}};",
+                ),
+                (
+                    "result_valid <= sample_valid;",
+                    "result_valid <= delayed_valid;\n      delayed_valid <= sample_valid;",
+                ),
+            ),
+        ),
+        ("matched_filter", "reversed_template"): (
+            "rtl/matched_filter_core.v",
+            (
+                ("parameter TAP0 = -1,", "parameter TAP0 = 4,"),
+                ("parameter TAP3 = 4", "parameter TAP3 = -1"),
+            ),
+        ),
+        ("matched_filter", "truncate_correlation"): (
+            "rtl/matched_filter_core.v",
+            ((
+                "out_correlation <= correlation_sum;",
+                "out_correlation <= {{(ACC_WIDTH-WIDTH){correlation_sum[WIDTH-1]}}, correlation_sum[WIDTH-1:0]};",
+            ),),
+        ),
+        ("matched_filter", "wrong_latency"): (
+            "rtl/matched_filter_core.v",
+            (
+                (
+                    "reg signed [ACC_WIDTH-1:0] sample_d2;",
+                    "reg signed [ACC_WIDTH-1:0] sample_d2;\n  reg delayed_valid;",
+                ),
+                (
+                    "out_valid <= 1'b0;\n      out_correlation",
+                    "out_valid <= 1'b0;\n      delayed_valid <= 1'b0;\n      out_correlation",
+                ),
+                (
+                    "out_valid <= in_valid;",
+                    "out_valid <= delayed_valid;\n      delayed_valid <= in_valid;",
+                ),
+            ),
+        ),
+        ("matched_filter", "missing_stall"): (
+            "rtl/matched_filter_core.v",
+            (("end else if (in_ready) begin", "end else begin"),),
+        ),
+        ("peak_detector", "wrong_threshold"): (
+            "rtl/peak_detector_core.v",
+            (("$signed(in_sample) >= THRESHOLD", "$signed(in_sample) > THRESHOLD"),),
+        ),
+        ("peak_detector", "off_by_one_peak"): (
+            "rtl/peak_detector_core.v",
+            ((
+                "out_peak_value <= candidate_found ? (candidate_is_new_peak ? candidate_value : peak_value) : {WIDTH{1'b0}};",
+                "out_peak_value <= candidate_found ? peak_value : {WIDTH{1'b0}};",
+            ),),
+        ),
+        ("peak_detector", "wrong_tie_break"): (
+            "rtl/peak_detector_core.v",
+            (("candidate_value > peak_value", "candidate_value >= peak_value"),),
+        ),
+        ("p_pulse_radar_signal", "reversed_template"): (
+            "rtl/matched_filter_core.v",
+            (
+                ("parameter TAP0 = -1,", "parameter TAP0 = 4,"),
+                ("parameter TAP3 = 4", "parameter TAP3 = -1"),
+            ),
+        ),
+        ("p_pulse_radar_signal", "wrong_threshold"): (
+            "rtl/threshold_comparator.v",
+            (("$signed(in_sample) >= $signed(threshold_value)", "$signed(in_sample) > $signed(threshold_value)"),),
+        ),
+        ("p_pulse_radar_signal", "off_by_one_peak"): (
+            "rtl/peak_detector_core.v",
+            ((
+                "out_peak_value <= candidate_found ? (candidate_is_new_peak ? candidate_value : peak_value) : {WIDTH{1'b0}};",
+                "out_peak_value <= candidate_found ? peak_value : {WIDTH{1'b0}};",
+            ),),
+        ),
+        ("p_pulse_radar_signal", "top_in_ready_stuck_high"): (
+            "rtl/top.v",
+            (
+                (
+                    "wire threshold_last;",
+                    "wire threshold_last;\n  wire pipeline_in_ready;\n  assign in_ready = 1'b1;",
+                ),
+                (".in_valid(in_valid),", ".in_valid(in_valid && pipeline_in_ready),"),
+                (".in_ready(in_ready),", ".in_ready(pipeline_in_ready),"),
+            ),
+        ),
+        ("sobel_threshold", "swap_x_y_gradient"): (
+            "rtl/sobel_threshold_core.v",
+            (
+                ("assign abs_gx = gx[10] ? -gx : gx;", "assign abs_gx = gy[10] ? -gy : gy;"),
+                ("assign abs_gy = gy[10] ? -gy : gy;", "assign abs_gy = gx[10] ? -gx : gx;"),
+            ),
+        ),
+        ("sobel_threshold", "wrong_border_policy"): (
+            "rtl/top.v",
+            (("if (row_index == 16'd0) begin\n            out_edge <= 1'b0;", "if (row_index == 16'd0) begin\n            out_edge <= 1'b1;"),),
+        ),
+        ("sobel_threshold", "wrong_threshold"): (
+            "rtl/sobel_threshold_core.v",
+            (("assign out_edge = magnitude >= THRESHOLD;", "assign out_edge = magnitude > THRESHOLD;"),),
+        ),
+        ("sobel_threshold", "accumulator_truncation"): (
+            "rtl/sobel_threshold_core.v",
+            (("assign magnitude = abs_gx + abs_gy;", "assign magnitude = {8'd0, abs_gx[3:0] + abs_gy[3:0]};"),),
+        ),
+        ("p_vision_defect_core", "wrong_line_order"): (
+            "rtl/sobel_window.v",
+            (("assign select_line0 = !row_index[0];", "assign select_line0 = 1'b0;"),),
+        ),
+        ("p_vision_defect_core", "wrong_threshold"): (
+            "rtl/sobel_threshold_core.v",
+            (("assign out_edge = magnitude >= THRESHOLD;", "assign out_edge = magnitude > THRESHOLD;"),),
+        ),
+        ("p_vision_defect_core", "missing_defect"): (
+            "rtl/vision_defect_accumulator.v",
+            (("pixel_accept && pixel_edge && !defect_present", "pixel_accept && pixel_edge && !defect_present && 1'b0"),),
+        ),
+        ("p_vision_defect_core", "wrong_bbox"): (
+            "rtl/vision_defect_accumulator.v",
+            (("first_defect_x <= pixel_x;", "first_defect_x <= pixel_x + 16'd1;"),),
+        ),
+        ("pattern_matcher", "wrong_pattern_order"): (
+            "rtl/pattern_matcher.v",
+            (("token0 == TOKEN0 && token1 == TOKEN1 && token2 == TOKEN2", "token0 == TOKEN2 && token1 == TOKEN1 && token2 == TOKEN0"),),
+        ),
+        ("pattern_matcher", "false_positive"): (
+            "rtl/pattern_matcher.v",
+            (("in_data == TOKEN3", "in_data != TOKEN3"),),
+        ),
+        ("pattern_matcher", "miss_overlap"): (
+            "rtl/pattern_matcher.v",
+            (("token0 <= token1;", "token0 <= {WIDTH{1'b0}};"),),
+        ),
+        ("pattern_matcher", "missing_stall"): (
+            "rtl/pattern_matcher.v",
+            (("assign in_ready = !match_valid || match_ready;", "assign in_ready = !match_valid || match_ready || match_valid;"),),
+        ),
+        ("p_stream_trigger_filter", "wrong_pattern_order"): (
+            "rtl/pattern_matcher.v",
+            (("token0 == TOKEN0 && token1 == TOKEN1 && token2 == TOKEN2", "token0 == TOKEN2 && token1 == TOKEN1 && token2 == TOKEN0"),),
+        ),
+        ("p_stream_trigger_filter", "false_trigger"): (
+            "rtl/trigger_fsm.v",
+            (("trigger_valid <= match_valid;", "trigger_valid <= 1'b1;"),),
+        ),
+        ("p_stream_trigger_filter", "missing_backpressure"): (
+            "rtl/stream_packer.v",
+            (("assign event_ready = !out_valid || out_ready;", "assign event_ready = !out_valid || out_ready || out_valid;"),),
+        ),
+        ("p_stream_trigger_filter", "drop_transaction"): (
+            "rtl/stream_packer.v",
+            (("out_match_word <= event_word;", "out_match_word <= event_word ^ event_word;"),),
+        ),
+        ("matrix_vector_mac", "wrong_index_order"): (
+            "rtl/dot_product_engine.v",
+            ((".addr(index)", ".addr(2'd3 - index)"),),
+        ),
+        ("matrix_vector_mac", "truncate_accumulator"): (
+            "rtl/dot_product_engine.v",
+            ((
+                "accum <= next_accum;",
+                "accum <= {{(RESULT_WIDTH-WIDTH){next_accum[WIDTH-1]}}, next_accum[WIDTH-1:0]};",
+            ),),
+        ),
+        ("matrix_vector_mac", "wrong_lane_reduction"): (
+            "rtl/dot_product_engine.v",
+            (("result <= next_accum;", "result <= accum;"),),
+        ),
+        ("matrix_vector_mac", "missing_stall"): (
+            "rtl/dot_product_engine.v",
+            ((
+                "assign sample_ready = !result_valid || result_ready;",
+                "assign sample_ready = 1'b1;",
+            ),),
+        ),
+        ("uart_tx", "wrong_bit_order"): (
+            "rtl/uart_tx_core.v",
+            (
+                ("tx <= shifter[0];", "tx <= shifter[7];"),
+                ("shifter <= {1'b0, shifter[7:1]};", "shifter <= {shifter[6:0], 1'b0};"),
+            ),
+        ),
+        ("uart_tx", "missing_stop_bit"): (
+            "rtl/uart_tx_core.v",
+            (("STOP: begin\n          if (baud_tick) begin\n            tx <= 1'b1;", "STOP: begin\n          if (baud_tick) begin\n            tx <= 1'b0;"),),
+        ),
+        ("uart_tx", "wrong_baud_tick"): (
+            "rtl/uart_tx_core.v",
+            (("DATA: begin\n          if (baud_tick) begin", "DATA: begin\n          if (1'b1) begin"),),
+        ),
+        ("uart_rx", "wrong_sampling_point"): (
+            "rtl/uart_rx_core.v",
+            (("localparam [15:0] HALF_CLKS_PER_BIT = CLKS_PER_BIT_16 / 2;", "localparam [15:0] HALF_CLKS_PER_BIT = 16'd1;"),),
+        ),
+        ("uart_rx", "ignore_start_bit"): (
+            "rtl/uart_rx_core.v",
+            (("if (!rx) begin\n              bit_index <= 3'd0;", "if (1'b1) begin\n              bit_index <= 3'd0;"),),
+        ),
+        ("uart_rx", "wrong_shift_direction"): (
+            "rtl/uart_rx_core.v",
+            (("data[bit_index] <= rx;", "data[3'd7 - bit_index] <= rx;"),),
+        ),
+        ("uart_fifo_loopback", "fifo_drop_byte"): (
+            "rtl/top.v",
+            ((
+                ".wr_en(rx_data_valid && !fifo_full && !rx_framing_error),",
+                ".wr_en(rx_data_valid && !fifo_full && !rx_framing_error && 1'b0),",
+            ),),
+        ),
+        ("uart_fifo_loopback", "wrong_uart_bit_order"): (
+            "rtl/uart_tx_core.v",
+            (
+                ("tx <= shifter[0];", "tx <= shifter[7];"),
+                ("tx <= shifter[bit_index + 3'd1];", "tx <= shifter[3'd6 - bit_index];"),
+            ),
+        ),
+        ("uart_fifo_loopback", "fifo_order_swap"): (
+            "rtl/sync_fifo_core.v",
+            (("assign dout = mem[rd_ptr];", "assign dout = mem[rd_ptr + 2'd1];"),),
+        ),
+        ("spi_master", "wrong_bit_order"): (
+            "rtl/spi_master_core.v",
+            (
+                ("tx_shift <= {tx_data[6:0], 1'b0};", "tx_shift <= {1'b0, tx_data[7:1]};"),
+                ("mosi <= tx_data[7];", "mosi <= tx_data[0];"),
+                ("mosi <= tx_shift[7];", "mosi <= tx_shift[0];"),
+                ("tx_shift <= {tx_shift[6:0], 1'b0};", "tx_shift <= {1'b0, tx_shift[7:1]};"),
+            ),
+        ),
+        ("spi_master", "cpol_cpha_mismatch"): (
+            "rtl/spi_master_core.v",
+            (("if (sclk == 1'b0) begin", "if (sclk == 1'b1) begin"),),
+        ),
+        ("spi_master", "missing_cs_framing"): (
+            "rtl/spi_master_core.v",
+            (("busy <= 1'b1;\n          cs_n <= 1'b0;", "busy <= 1'b1;\n          cs_n <= 1'b1;"),),
+        ),
+    }
+    replacement = replacements.get((family_id, mutation_name))
+    if replacement is None:
+        return None
+    path, edits = replacement
+    source = files.get(path)
+    if source is None or any(old not in source for old, _ in edits):
+        return None
+    updated = dict(files)
+    for old, new in edits:
+        source = source.replace(old, new, 1)
+    updated[path] = source
+    return updated
 
 
 def _rename_reset_port(files: dict[str, str]) -> dict[str, str]:

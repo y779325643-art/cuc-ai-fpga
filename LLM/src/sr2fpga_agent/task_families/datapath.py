@@ -116,8 +116,8 @@ def matched_filter_testbench(width: int) -> str:
                 $display("TEST_FAIL invalid oracle transaction count");
                 $finish;
               end
-              $readmemh(oracle_input_path, oracle_inputs);
-              $readmemh(oracle_expected_path, oracle_expected);
+              $readmemh(oracle_input_path, oracle_inputs, 0, oracle_transaction_count - 1);
+              $readmemh(oracle_expected_path, oracle_expected, 0, oracle_transaction_count - 1);
               repeat (2) @(posedge clk);
               rst_n = 1'b1;
               for (oracle_item_index = 0; oracle_item_index < oracle_transaction_count; oracle_item_index = oracle_item_index + 1) begin
@@ -507,8 +507,8 @@ def peak_detector_testbench(width: int) -> str:
                 $display("TEST_FAIL invalid oracle transaction count");
                 $finish;
               end
-              $readmemh(oracle_input_path, oracle_inputs);
-              $readmemh(oracle_expected_path, oracle_expected);
+              $readmemh(oracle_input_path, oracle_inputs, 0, oracle_transaction_count - 1);
+              $readmemh(oracle_expected_path, oracle_expected, 0, oracle_transaction_count - 1);
               repeat (2) @(posedge clk);
               rst_n = 1'b1;
               for (oracle_item_index = 0; oracle_item_index < oracle_transaction_count; oracle_item_index = oracle_item_index + 1) begin
@@ -922,8 +922,8 @@ def pulse_radar_signal_testbench(width: int) -> str:
                 $display("TEST_FAIL invalid oracle transaction count");
                 $finish;
               end
-              $readmemh(oracle_input_path, oracle_inputs);
-              $readmemh(oracle_expected_path, oracle_expected);
+              $readmemh(oracle_input_path, oracle_inputs, 0, oracle_transaction_count - 1);
+              $readmemh(oracle_expected_path, oracle_expected, 0, oracle_transaction_count - 1);
               repeat (2) @(posedge clk);
               rst_n = 1'b1;
               for (oracle_item_index = 0; oracle_item_index < oracle_transaction_count; oracle_item_index = oracle_item_index + 1) begin
@@ -974,26 +974,35 @@ def pulse_radar_signal_testbench(width: int) -> str:
                   $finish;
                 end
                 if (oracle_expected_record[{2 * acc_width + 1}]) begin
+                  if (oracle_stall_cycles > 0) begin
+                    in_sample = ~oracle_input_record[{width - 1}:0];
+                    in_last = 1'b0;
+                    in_valid = 1'b1;
+                  end
                   for (oracle_stall_index = 0; oracle_stall_index < oracle_stall_cycles; oracle_stall_index = oracle_stall_index + 1) begin
                     @(posedge clk);
                     #1;
                     if (out_valid !== 1'b1 || peak_found !== held_found || peak_value !== held_value ||
-                        peak_index !== held_index) begin
-                    $display("SR2FPGA_MISMATCH {{\\\"scenario_id\\\":\\\"%0s\\\",\\\"class\\\":\\\"%0s\\\",\\\"item_index\\\":%0d,\\\"expected\\\":{{\\\"found\\\":%0d,\\\"value\\\":\\\"0x%0h\\\",\\\"index\\\":%0d}},\\\"actual\\\":{{\\\"found\\\":\\\"%0b\\\",\\\"value\\\":\\\"0x%0h\\\",\\\"index\\\":\\\"0x%0h\\\"}}}}",
+                        peak_index !== held_index || in_ready !== 1'b0) begin
+                    $display("SR2FPGA_MISMATCH {{\\\"scenario_id\\\":\\\"%0s\\\",\\\"class\\\":\\\"%0s\\\",\\\"item_index\\\":%0d,\\\"expected\\\":{{\\\"found\\\":%0d,\\\"value\\\":\\\"0x%0h\\\",\\\"index\\\":%0d,\\\"in_ready\\\":0}},\\\"actual\\\":{{\\\"found\\\":\\\"%0b\\\",\\\"value\\\":\\\"0x%0h\\\",\\\"index\\\":\\\"0x%0h\\\",\\\"in_ready\\\":\\\"%0b\\\"}}}}",
                                oracle_scenario_id, oracle_scenario_class, oracle_item_index,
-                               held_found, held_value, held_index, peak_found, peak_value, peak_index);
+                               held_found, held_value, held_index, peak_found, peak_value, peak_index, in_ready);
                       $display("TEST_FAIL result changed under backpressure");
                       $finish;
                     end
                   end
                   @(negedge clk);
                   in_valid = 1'b0;
+                  in_last = 1'b0;
                   out_ready = 1'b1;
                   @(posedge clk);
                   #1;
                   if (out_valid !== 1'b0) begin
                     $display("TEST_FAIL out_valid did not clear");
                     $finish;
+                  end
+                  if (oracle_stall_cycles > 0) begin
+                    reset_dut;
                   end
                 end
               end
