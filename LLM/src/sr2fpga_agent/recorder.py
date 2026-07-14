@@ -491,14 +491,24 @@ def _sanitize_training_payload(
     independent_oracle: bool = False,
     _scope: str | None = None,
 ) -> Any:
-    scope = _scope or ("withheld" if withheld else "untrusted" if independent_oracle else "legacy")
+    scope = _scope or ("withheld" if withheld else "root" if independent_oracle else "legacy")
     if isinstance(value, dict):
         scenario_class = value.get("scenario_class")
-        if scenario_class == "public_smoke":
+        if scope == "withheld":
+            local_scope = "withheld"
+        elif scope == "untrusted":
+            local_scope = (
+                "withheld"
+                if isinstance(scenario_class, str) and scenario_class in _WITHHELD_SCENARIO_CLASSES
+                else "untrusted"
+            )
+        elif scenario_class == "public_smoke":
             local_scope = "public"
         elif isinstance(scenario_class, str) and scenario_class in _WITHHELD_SCENARIO_CLASSES:
             local_scope = "withheld"
         elif "scenario_class" in value:
+            local_scope = "untrusted"
+        elif scope == "candidate":
             local_scope = "untrusted"
         else:
             local_scope = scope
@@ -508,7 +518,13 @@ def _sanitize_training_payload(
             normalized = key.lower().replace("-", "_")
             if _is_raw_training_key(normalized):
                 continue
-            child_scope = "withheld" if normalized in _WITHHELD_CONTEXT_KEYS else local_scope
+            child_scope = (
+                "withheld"
+                if normalized in _WITHHELD_CONTEXT_KEYS
+                else "candidate"
+                if local_scope == "root"
+                else local_scope
+            )
             if isinstance(item, (dict, list, tuple)):
                 if local_scope == "withheld":
                     continue
@@ -528,11 +544,12 @@ def _sanitize_training_payload(
                 result[key] = item
         return result
     if isinstance(value, (list, tuple)):
+        item_scope = "candidate" if scope == "root" else scope
         sanitized_items = [
             _sanitize_training_payload(
                 item,
                 independent_oracle=independent_oracle,
-                _scope=scope,
+                _scope=item_scope,
             )
             for item in value
         ]

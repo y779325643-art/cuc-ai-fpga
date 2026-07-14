@@ -242,6 +242,31 @@ class DatasetRecorderTest(unittest.TestCase):
             ):
                 self.assertNotIn(secret, combined)
 
+    def test_oracle_diagnosis_trust_scope_cannot_upgrade_below_untrusted_parent(self) -> None:
+        sanitized = _sanitize_training_payload(
+            {
+                "legal_public_sibling": {
+                    "scenario_class": "public_smoke",
+                    "expected": "PUBLIC_EXPECTED_SURVIVES",
+                    "actual": "PUBLIC_ACTUAL_SURVIVES",
+                },
+                "unknown_parent": {
+                    "nested_public_claim": {
+                        "scenario_class": "public_smoke",
+                        "expected": "HIDDEN_EXPECTED_MUST_DROP",
+                        "actual": "HIDDEN_ACTUAL_MUST_DROP",
+                    }
+                },
+            },
+            independent_oracle=True,
+        )
+        exported = json.dumps(sanitized)
+
+        self.assertIn("PUBLIC_EXPECTED_SURVIVES", exported)
+        self.assertIn("PUBLIC_ACTUAL_SURVIVES", exported)
+        self.assertNotIn("HIDDEN_EXPECTED_MUST_DROP", exported)
+        self.assertNotIn("HIDDEN_ACTUAL_MUST_DROP", exported)
+
     def test_write_final_and_exports_remove_withheld_oracle_secrets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets"
