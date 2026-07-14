@@ -22,11 +22,19 @@ from LLM.src.sr2fpga_agent.oracles.numeric import (
     build_fir_filter_bundle,
     build_matrix_vector_mac_bundle,
 )
+from LLM.src.sr2fpga_agent.oracles.signal import (
+    build_matched_filter_bundle,
+    build_peak_detector_bundle,
+    build_pulse_radar_bundle,
+)
 
 
 REFERENCE_BUILDERS: dict[str, Callable[[int, Path], OracleBundle]] = {
     "fir_filter": build_fir_filter_bundle,
     "matrix_vector_mac": build_matrix_vector_mac_bundle,
+    "matched_filter": build_matched_filter_bundle,
+    "peak_detector": build_peak_detector_bundle,
+    "p_pulse_radar_signal": build_pulse_radar_bundle,
 }
 
 
@@ -49,6 +57,9 @@ __all__ = [
     "build_oracle_bundle_for_request",
     "build_fir_filter_bundle",
     "build_matrix_vector_mac_bundle",
+    "build_matched_filter_bundle",
+    "build_peak_detector_bundle",
+    "build_pulse_radar_bundle",
     "load_oracle_bundle",
     "sanitize_oracle_profile",
     "write_oracle_bundle",
