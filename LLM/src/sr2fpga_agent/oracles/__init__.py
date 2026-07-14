@@ -27,6 +27,10 @@ from LLM.src.sr2fpga_agent.oracles.signal import (
     build_peak_detector_bundle,
     build_pulse_radar_bundle,
 )
+from LLM.src.sr2fpga_agent.oracles.image import (
+    build_sobel_threshold_bundle,
+    build_vision_defect_bundle,
+)
 
 
 REFERENCE_BUILDERS: dict[str, Callable[[int, Path], OracleBundle]] = {
@@ -35,6 +39,8 @@ REFERENCE_BUILDERS: dict[str, Callable[[int, Path], OracleBundle]] = {
     "matched_filter": build_matched_filter_bundle,
     "peak_detector": build_peak_detector_bundle,
     "p_pulse_radar_signal": build_pulse_radar_bundle,
+    "sobel_threshold": build_sobel_threshold_bundle,
+    "p_vision_defect_core": build_vision_defect_bundle,
 }
 
 
@@ -60,6 +66,8 @@ __all__ = [
     "build_matched_filter_bundle",
     "build_peak_detector_bundle",
     "build_pulse_radar_bundle",
+    "build_sobel_threshold_bundle",
+    "build_vision_defect_bundle",
     "load_oracle_bundle",
     "sanitize_oracle_profile",
     "write_oracle_bundle",
