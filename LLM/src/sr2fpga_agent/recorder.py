@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import json
 import shutil
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ToolResult
+from LLM.src.sr2fpga_agent.models import GeneratedProject, PatchMetadata, PlatformProfile, ToolResult
+from LLM.src.sr2fpga_agent.path_safety import project_file_target, validate_sample_id
 
 
 @dataclass(frozen=True)
@@ -20,6 +22,7 @@ class AttemptRecord:
     tool_results: dict[str, ToolResult]
     diagnosis: dict[str, Any] | None = None
     patch_diff: str = ""
+    patch_metadata: PatchMetadata | None = None
 
 
 class DatasetRecorder:
@@ -35,6 +38,7 @@ class DatasetRecorder:
         platform_profile: PlatformProfile,
         metadata: dict[str, Any] | None = None,
     ) -> Path:
+        validate_sample_id(sample_id)
         sample_dir = self.dataset_root / sample_id
         sample_dir.mkdir(parents=True, exist_ok=True)
         (sample_dir / "requirement.txt").write_text(requirement.rstrip() + "\n", encoding="utf-8")
@@ -44,8 +48,10 @@ class DatasetRecorder:
         return sample_dir
 
     def write_attempt(self, sample_id: str, attempt: AttemptRecord) -> Path:
+        validate_sample_id(sample_id)
         attempt_dir = self.dataset_root / sample_id / "attempts" / f"attempt_{attempt.attempt_id:03d}"
-        _write_project(attempt_dir / "generated_project", attempt.generated_project)
+        project_dir = attempt_dir / "generated_project"
+        _write_project(project_dir, attempt.generated_project, replace_existing=False)
         eval_dir = attempt_dir / "eval"
         eval_dir.mkdir(parents=True, exist_ok=True)
         for stage, result in attempt.tool_results.items():
@@ -59,7 +65,16 @@ class DatasetRecorder:
             _write_json(attempt_dir / "diagnosis.json", attempt.diagnosis)
         if attempt.patch_diff:
             (attempt_dir / "patch.diff").write_text(attempt.patch_diff, encoding="utf-8")
+        if attempt.patch_metadata is not None:
+            _write_json(attempt_dir / "patch.json", attempt.patch_metadata.to_dict())
         return attempt_dir
+
+    def update_patch_metadata(self, sample_id: str, attempt_id: int, patch_metadata: PatchMetadata) -> None:
+        validate_sample_id(sample_id)
+        _write_json(
+            self.dataset_root / sample_id / "attempts" / f"attempt_{attempt_id:03d}" / "patch.json",
+            patch_metadata.to_dict(),
+        )
 
     def write_final(
         self,
@@ -70,6 +85,7 @@ class DatasetRecorder:
         tool_versions: dict[str, str],
         trajectory: dict[str, Any],
     ) -> Path:
+        validate_sample_id(sample_id)
         sample_dir = self.dataset_root / sample_id
         _write_project(sample_dir / "final" / "generated_project", generated_project)
         eval_dir = sample_dir / "eval"
@@ -139,6 +155,10 @@ class DatasetRecorder:
                     requirement_file_rows.append(
                         {
                             "sample_id": sample_id,
+                            "source_episode_id": _source_episode_id(sample_id, episode),
+                            "view": "req2file",
+                            "official_eval_unit": False,
+                            "standalone_pass_credit": False,
                             "metadata": metadata,
                             "episode": episode,
                             "requirement": requirement,
@@ -174,6 +194,7 @@ class DatasetRecorder:
                 for attempt_dir in sorted(path for path in attempts_dir.iterdir() if path.is_dir()):
                     diagnosis_path = attempt_dir / "diagnosis.json"
                     patch_path = attempt_dir / "patch.diff"
+                    patch_metadata_path = attempt_dir / "patch.json"
                     if diagnosis_path.exists():
                         diagnosis = json.loads(diagnosis_path.read_text(encoding="utf-8"))
                         diagnosis_rows.append(
@@ -194,6 +215,11 @@ class DatasetRecorder:
                                 "attempt_id": attempt_dir.name,
                                 "diagnosis": json.loads(diagnosis_path.read_text(encoding="utf-8")),
                                 "patch": patch_path.read_text(encoding="utf-8"),
+                                "patch_metadata": (
+                                    json.loads(patch_metadata_path.read_text(encoding="utf-8"))
+                                    if patch_metadata_path.exists()
+                                    else None
+                                ),
                             }
                         )
 
@@ -207,11 +233,11 @@ class DatasetRecorder:
         _write_jsonl(output_dir / "project_to_measured_qor.jsonl", measured_qor_rows)
 
 
-def _write_project(project_dir: Path, project: GeneratedProject) -> None:
-    if project_dir.exists():
+def _write_project(project_dir: Path, project: GeneratedProject, *, replace_existing: bool = True) -> None:
+    if replace_existing and project_dir.exists():
         shutil.rmtree(project_dir)
     for relative_path, content in project.files.items():
-        target = project_dir / relative_path
+        target = project_file_target(project_dir, relative_path)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(content, encoding="utf-8")
 
@@ -222,9 +248,15 @@ def _write_json(path: Path, payload: dict[str, Any]) -> None:
 
 
 def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    with path.open("w", encoding="utf-8") as output:
-        for row in rows:
-            output.write(json.dumps(row, ensure_ascii=False) + "\n")
+    temp_path = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        with temp_path.open("w", encoding="utf-8") as output:
+            for row in rows:
+                output.write(json.dumps(row, ensure_ascii=False) + "\n")
+        temp_path.replace(path)
+    finally:
+        if temp_path.exists():
+            temp_path.unlink()
 
 
 def _episode_without_verification(episode: dict[str, Any]) -> dict[str, Any]:
@@ -245,7 +277,14 @@ def _system_his_episode(
     generated_his = _read_project_json(generated_project, "system_his.json")
     episode.setdefault("oracle_his", None)
     episode.setdefault("generated_his", generated_his)
+    episode.setdefault("his_validation", _his_validation_from_labels(labels))
     episode.setdefault("req_his_fidelity", _empty_req_his_fidelity())
+    if "oracle_profile" in episode:
+        episode["oracle_profile"] = _sanitize_oracle_profile(episode.get("oracle_profile"))
+    episode["derived_training_views"] = _derived_training_views_metadata(
+        sample_id,
+        episode.get("derived_training_views"),
+    )
     episode["project"] = _merge_project_episode_metadata(
         episode.get("project"),
         _project_episode_metadata(generated_project),
@@ -253,6 +292,82 @@ def _system_his_episode(
     episode.setdefault("verification", _verification_episode_metadata(labels, measured_qor))
     episode.setdefault("data_release", _data_release_tiers())
     return episode
+
+
+def _source_episode_id(sample_id: str, episode: dict[str, Any]) -> str:
+    episode_id = str(episode.get("sample_id", "")).strip()
+    return episode_id or sample_id
+
+
+def _sanitize_oracle_profile(value: Any) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        return {
+            "kind": "python_reference",
+            "status": "not_run",
+            "hidden_vectors_exported": False,
+        }
+    safe_keys = (
+        "kind",
+        "family_id",
+        "reference_model",
+        "reference_version",
+        "bundle_sha256",
+        "status",
+        "skip_reason",
+        "failure_origin",
+        "failure_type",
+    )
+    profile = {key: value[key] for key in safe_keys if isinstance(value.get(key), (str, int, float, bool))}
+    for key in ("scenario_counts", "class_status"):
+        item = value.get(key)
+        if isinstance(item, dict):
+            profile[key] = {
+                str(name): status
+                for name, status in item.items()
+                if isinstance(name, str) and isinstance(status, (str, int))
+            }
+    scenarios: list[dict[str, Any]] = []
+    raw_scenarios = value.get("scenarios")
+    if isinstance(raw_scenarios, list):
+        for raw in raw_scenarios:
+            if not isinstance(raw, dict):
+                continue
+            scenario_class = str(raw.get("scenario_class", ""))
+            allowed = (
+                "scenario_id",
+                "scenario_class",
+                "transaction_count",
+                "input_record_width_bits",
+                "expected_record_width_bits",
+                "input_fields",
+                "expected_fields",
+            )
+            scenario = {key: raw[key] for key in allowed if key in raw}
+            if scenario_class == "public_smoke":
+                for key in ("input_sha256", "expected_sha256"):
+                    if isinstance(raw.get(key), str):
+                        scenario[key] = raw[key]
+            scenarios.append(scenario)
+    if scenarios:
+        profile["scenarios"] = scenarios
+    profile["hidden_vectors_exported"] = False
+    return profile
+
+
+def _derived_training_views_metadata(sample_id: str, existing: Any) -> dict[str, Any]:
+    views = dict(existing) if isinstance(existing, dict) else {}
+    req2file = views.get("req2file")
+    req2file = dict(req2file) if isinstance(req2file, dict) else {}
+    req2file.update(
+        {
+            "available": True,
+            "official_eval_unit": False,
+            "standalone_pass_credit": False,
+            "source_episode_id": sample_id,
+        }
+    )
+    views["req2file"] = req2file
+    return views
 
 
 def _read_project_json(project: GeneratedProject, path: str) -> dict[str, Any] | None:
@@ -274,6 +389,13 @@ def _empty_req_his_fidelity() -> dict[str, Any]:
         "behavior_intent_fidelity": None,
         "verification_intent_fidelity": None,
         "constraint_fidelity": None,
+    }
+
+
+def _his_validation_from_labels(labels: dict[str, Any]) -> dict[str, Any]:
+    return {
+        stage: {"status": str(labels.get(f"{stage}_status", "not_run")), "diagnostics": []}
+        for stage in ("h0", "h1", "h2", "h3")
     }
 
 
@@ -324,10 +446,14 @@ def _project_file_metadata(path: str, content: str) -> dict[str, Any]:
 def _project_file_origin(path: str) -> str:
     if path == "system_his.json" or path == "manifest.json":
         return "deterministic"
-    if path.startswith("constraints/") or path.startswith("reports/"):
+    if path.startswith("constraints/"):
         return "deterministic"
     if path.startswith("rtl/") or path.startswith("sim/"):
         return "model_generated"
+    if path == "reports/predicted_qor.json":
+        return "model_generated"
+    if path.startswith("reports/"):
+        return "deterministic"
     return "unknown"
 
 
@@ -345,12 +471,15 @@ def _verification_episode_metadata(labels: dict[str, Any], measured_qor: dict[st
         "l0": {"status": _check_status(checks.get("l0_complete")), "errors": []},
         "l1": {
             "status": _check_status(checks.get("l1_lint_pass")),
-            "warnings": [],
+            "warnings": _dict_list(labels.get("l1_warnings")),
             "errors": [],
         },
         "l2_core": {
             "status": _check_status(checks.get("l2_sim_pass")),
-            "public": {"status": _check_status(checks.get("l2_sim_pass")), "mismatch_detail": []},
+            "public": {
+                "status": _check_status(checks.get("l2_sim_pass")),
+                "mismatch_detail": _dict_list(labels.get("l2_mismatch_detail")),
+            },
             "hidden": {"status": _check_status(checks.get("l2_hidden_pass"))},
             "stress": {"status": _check_status(checks.get("l2_stress_pass"))},
             "coverage": {
@@ -369,18 +498,82 @@ def _verification_episode_metadata(labels: dict[str, Any], measured_qor: dict[st
             "bram": measured_qor.get("bram"),
             "dsp": measured_qor.get("dsp"),
             "cells": measured_qor.get("cells"),
-            "bram_miss": False,
+            "warnings": _dict_list(labels.get("l3_warnings")),
+            "bram_miss": bool(labels.get("l3_bram_miss", False)),
         },
-        "l4_open": {
-            "tool": str(checks.get("l4_open_tool", "openxc7_nextpnr")),
-            "status": _check_status(_first_present(checks, "l4_open_pass", "l4_lite_timing_pass")),
-        },
-        "l4_commercial": {
-            "tool": str(checks.get("l4_commercial_tool", "vivado")),
-            "status": _check_status(_first_present(checks, "l4_commercial_pass", "vivado_timing_pass")),
-        },
+        "l4_open": _l4_open_verification_metadata(labels, measured_qor, checks),
+        "l4_commercial": _l4_commercial_verification_metadata(labels, measured_qor, checks),
         "l4_agreement": {"class": str(checks.get("l4_agreement_class", "not_applicable"))},
         "l5": {"status": "not_run", "log_path": None},
+    }
+
+
+def _l4_open_verification_metadata(
+    labels: dict[str, Any], measured_qor: dict[str, Any], checks: dict[str, Any]
+) -> dict[str, Any]:
+    qor = measured_qor.get("l4_openxc7", {})
+    qor = qor if isinstance(qor, dict) else {}
+    status = labels.get("l4_open_status")
+    if status not in {"pass", "fail", "not_run"}:
+        legacy_pass = _first_present(checks, "l4_open_pass", "l4_lite_timing_pass")
+        if legacy_pass is True:
+            status = "pass"
+        elif labels.get("l4_failure_family") or qor.get("status") == "fail":
+            status = "fail"
+        else:
+            status = "not_run"
+    skip_reason = labels.get("l4_open_skip_reason", qor.get("skip_reason"))
+    if status == "not_run" and not isinstance(skip_reason, str):
+        skip_reason = "l3_failed" if checks.get("l3_synth_pass") is False else "not_selected_by_policy"
+    return {
+        "tool": str(qor.get("tool", checks.get("l4_open_tool", "openxc7_nextpnr"))),
+        "board_profile": qor.get("board_profile"),
+        "constraint_scope": str(qor.get("constraint_scope", "logical_only")),
+        "board_constraints_applied": qor.get("board_constraints_applied") is True,
+        "status": status,
+        "skip_reason": skip_reason if status == "not_run" else None,
+        "wns_ns": qor.get("wns_ns"),
+        "fmax_mhz": qor.get("fmax_mhz"),
+        "lut": qor.get("lut"),
+        "ff": qor.get("ff"),
+        "bram": qor.get("bram"),
+        "dsp": qor.get("dsp"),
+        "drc_warnings": _string_list(qor.get("drc_warnings")),
+        "critical_warnings": _string_list(qor.get("critical_warnings")),
+        "runtime_sec": qor.get("runtime_sec"),
+        "report_paths": _string_list(qor.get("report_paths")),
+        "failure_family": labels.get("l4_failure_family", qor.get("failure_family")),
+    }
+
+
+def _l4_commercial_verification_metadata(
+    labels: dict[str, Any], measured_qor: dict[str, Any], checks: dict[str, Any]
+) -> dict[str, Any]:
+    qor = measured_qor.get("l4_commercial", {})
+    qor = qor if isinstance(qor, dict) else {}
+    status = labels.get("l4_commercial_status", qor.get("status"))
+    if status not in {"pass", "fail", "not_run"}:
+        status = _check_status(_first_present(checks, "l4_commercial_pass", "vivado_timing_pass"))
+    skip_reason = labels.get("l4_commercial_skip_reason", qor.get("skip_reason"))
+    return {
+        "tool": str(qor.get("tool", checks.get("l4_commercial_tool", "vivado"))),
+        "constraint_scope": str(qor.get("constraint_scope", "logical_only")),
+        "board_constraints_applied": qor.get("board_constraints_applied") is True,
+        "official_board_ready": qor.get("official_board_ready") is True,
+        "status": status,
+        "skip_reason": skip_reason if status == "not_run" else None,
+        "wns_ns": qor.get("wns_ns"),
+        "fmax_mhz": qor.get("fmax_mhz"),
+        "lut": qor.get("lut"),
+        "ff": qor.get("ff"),
+        "bram": qor.get("bram"),
+        "dsp": qor.get("dsp"),
+        "drc_warnings": _string_list(qor.get("drc_warnings")),
+        "expected_board_drc_exceptions": _string_list(qor.get("expected_board_drc_exceptions")),
+        "invalidating_critical_warnings": _string_list(qor.get("invalidating_critical_warnings")),
+        "methodology_warnings": _string_list(qor.get("methodology_warnings")),
+        "runtime_sec": qor.get("runtime_sec"),
+        "report_paths": _string_list(qor.get("report_paths")),
     }
 
 
@@ -403,6 +596,12 @@ def _string_list(value: Any) -> list[str]:
     return [item for item in value if isinstance(item, str)]
 
 
+def _dict_list(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, list):
+        return []
+    return [item for item in value if isinstance(item, dict)]
+
+
 def _check_status(value: Any) -> str:
     if value is True:
         return "pass"
@@ -416,6 +615,7 @@ def _data_release_tiers() -> dict[str, str]:
         "requirement": "open_public",
         "oracle_his": "open_public",
         "generated_his": "open_public",
+        "his_validation": "open_public",
         "req_his_fidelity": "open_public",
         "generated_project": "open_public",
         "open_tool_labels": "open_public",
@@ -442,7 +642,12 @@ def _read_episode(sample_dir: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     episode = json.loads(path.read_text(encoding="utf-8"))
-    return episode if isinstance(episode, dict) else {}
+    if not isinstance(episode, dict):
+        return {}
+    result = dict(episode)
+    if "oracle_profile" in result:
+        result["oracle_profile"] = _sanitize_oracle_profile(result.get("oracle_profile"))
+    return result
 
 
 def _read_project_files(project_dir: Path) -> list[dict[str, str]]:

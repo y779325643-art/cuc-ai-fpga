@@ -70,6 +70,12 @@ class ToolingTest(unittest.TestCase):
             "testbench_missing_functional_oracle",
         )
         self.assertEqual(
+            classify_failure(
+                "testbench_internal_signal_access: line 12: dut.u_core.state reads below the DUT top-level interface"
+            ),
+            "testbench_internal_signal_access",
+        )
+        self.assertEqual(
             classify_failure("%Warning-UNUSEDSIGNAL: Signal is not used\n%Error: Exiting due to 1 warning(s)"),
             "lint_warning_as_error",
         )

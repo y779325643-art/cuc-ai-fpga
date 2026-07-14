@@ -2,16 +2,125 @@ import json
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from LLM.src.sr2fpga_agent import GeneratedProject, PlatformProfile, ProjectGenerator, ProjectRequest
 from LLM.src.sr2fpga_agent.agent import DataGenerationAgent, RepairResult
+from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
 from LLM.src.sr2fpga_agent.models import RepairResult as ModelRepairResult
 from LLM.src.sr2fpga_agent.models import ToolResult
-from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
+from LLM.src.sr2fpga_agent.oracles import OracleField, OracleScenarioSpec, write_oracle_bundle
+from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder, _write_jsonl
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 
 
+def _write_four_class_oracle_bundle(width: int, output_root: Path):
+    field = OracleField("sample", width - 1, 0, False)
+    scenarios = tuple(
+        OracleScenarioSpec(
+            scenario_id=f"{scenario_class}_001",
+            scenario_class=scenario_class,
+            seed=index + 11,
+            input_record_width_bits=width,
+            expected_record_width_bits=width,
+            input_fields=(field,),
+            expected_fields=(field,),
+            input_records=(index + 1,),
+            expected_records=(index + 1,),
+        )
+        for index, scenario_class in enumerate(
+            ("public_smoke", "hidden_deterministic", "randomized_fixed_seed", "stress")
+        )
+    )
+    return write_oracle_bundle(
+        root=output_root,
+        family_id="fir_filter",
+        reference_model="numeric.fir_filter",
+        reference_version="1",
+        task_parameters={"width": width},
+        scenarios=scenarios,
+    )
+
+
 class DatasetRecorderTest(unittest.TestCase):
+    def test_write_final_and_exports_remove_withheld_oracle_secrets(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter"),
+                platform,
+            )
+            recorder.start_sample("sample_oracle_sanitize", "Design a counter.", platform)
+            malformed_profile = {
+                "kind": "python_reference",
+                "bundle_sha256": "bundle-digest",
+                "raw_evaluator_path": "D:/private/oracle/hidden/input.memh",
+                "scenarios": [
+                    {
+                        "scenario_id": "hidden_001",
+                        "scenario_class": "hidden_deterministic",
+                        "seed": 424242,
+                        "seed_sha256": "seed-digest",
+                        "input_path": "hidden/input.memh",
+                        "expected_path": "hidden/expected.memh",
+                        "input_sha256": "input-digest",
+                        "expected_sha256": "expected-digest",
+                        "input_records": [1, 2],
+                        "expected_records": [3, 4],
+                    }
+                ],
+            }
+            recorder.write_final(
+                "sample_oracle_sanitize",
+                project,
+                labels={"pass_level": "L2", "checks": {"l2_sim_pass": True}},
+                measured_qor={},
+                tool_versions={},
+                trajectory={"oracle_profile": malformed_profile},
+            )
+
+            trajectory_text = (root / "sample_oracle_sanitize/eval/trajectory.json").read_text(encoding="utf-8")
+            trajectory = json.loads(trajectory_text)
+            hidden = trajectory["oracle_profile"]["scenarios"][0]
+            for key in (
+                "seed",
+                "seed_sha256",
+                "input_path",
+                "expected_path",
+                "input_sha256",
+                "expected_sha256",
+                "input_records",
+                "expected_records",
+            ):
+                self.assertNotIn(key, hidden)
+            self.assertNotIn("raw_evaluator_path", trajectory["oracle_profile"])
+
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+            exported = "\n".join(path.read_text(encoding="utf-8") for path in export_dir.glob("*.jsonl"))
+            self.assertNotIn("424242", exported)
+            self.assertNotIn("D:/private/oracle", exported)
+            self.assertNotIn("hidden/input.memh", exported)
+
+    def test_write_jsonl_replaces_existing_file_without_opening_target_for_truncate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_path = Path(tmp) / "exports" / "his_to_project.jsonl"
+            output_path.parent.mkdir(parents=True)
+            output_path.write_text('{"old": true}\n', encoding="utf-8")
+            original_open = Path.open
+
+            def guarded_open(path: Path, mode: str = "r", *args, **kwargs):
+                if path == output_path and "w" in mode:
+                    raise OSError(22, "Invalid argument", str(path))
+                return original_open(path, mode, *args, **kwargs)
+
+            with mock.patch.object(Path, "open", guarded_open):
+                _write_jsonl(output_path, [{"new": True}])
+
+            self.assertEqual(output_path.read_text(encoding="utf-8"), '{"new": true}\n')
+
     def test_write_final_replaces_previous_generated_project_snapshot(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
@@ -38,6 +147,58 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertFalse(stale_file.exists())
             self.assertTrue((sample_dir / "final/generated_project/reports/predicted_qor.json").exists())
             self.assertTrue((sample_dir / "final/generated_project/sim/tb_top.v").exists())
+
+    def test_write_attempt_preserves_tool_outputs_created_in_project_directory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter_8bit"),
+                platform,
+            )
+            sample_dir = recorder.start_sample("sample_attempt_outputs", "Design a counter.", platform)
+            routed_design = sample_dir / "attempts/attempt_000/generated_project/eval/openxc7_routed.json"
+            routed_design.parent.mkdir(parents=True, exist_ok=True)
+            routed_design.write_text('{"routed": true}\n', encoding="utf-8")
+
+            recorder.write_attempt(
+                "sample_attempt_outputs",
+                AttemptRecord(attempt_id=0, generated_project=project, tool_results={}),
+            )
+
+            self.assertEqual(routed_design.read_text(encoding="utf-8"), '{"routed": true}\n')
+            self.assertTrue((sample_dir / "attempts/attempt_000/generated_project/rtl/top.v").exists())
+
+    def test_start_sample_rejects_unsafe_sample_id(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            with self.assertRaisesRegex(ValueError, "unsafe sample_id"):
+                recorder.start_sample("../escape", "Design a counter.", platform)
+
+            self.assertFalse((Path(tmp) / "datasets" / "escape").exists())
+
+    def test_write_attempt_rejects_unsafe_project_file_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+            recorder.start_sample("sample_safe", "Design a counter.", platform)
+            project = GeneratedProject(
+                project_name="unsafe",
+                files={"../escape.v": "module escape; endmodule\n"},
+            )
+
+            with self.assertRaisesRegex(ValueError, "unsafe project file path"):
+                recorder.write_attempt(
+                    "sample_safe",
+                    AttemptRecord(attempt_id=0, generated_project=project, tool_results={}),
+                )
+
+            self.assertFalse((root / "sample_safe" / "attempts" / "escape.v").exists())
 
     def test_records_attempt_final_outputs_and_training_views(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -142,7 +303,16 @@ class DatasetRecorderTest(unittest.TestCase):
             )
             self.assertTrue((sample_dir / "eval/trajectory.json").exists())
             saved_trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
-            self.assertEqual(saved_trajectory["verification"]["l4_open"]["status"], "fail")
+            self.assertEqual(saved_trajectory["verification"]["l4_open"]["status"], "not_run")
+            self.assertEqual(
+                saved_trajectory["derived_training_views"]["req2file"],
+                {
+                    "available": True,
+                    "official_eval_unit": False,
+                    "standalone_pass_credit": False,
+                    "source_episode_id": "sample_000001",
+                },
+            )
             self.assertEqual(json.loads((sample_dir / "metadata.json").read_text(encoding="utf-8")), metadata)
 
             requirement_rows = (export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8").splitlines()
@@ -160,6 +330,10 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(file_row["requirement"], requirement)
             self.assertIn("file_path", file_row)
             self.assertIn("file_content", file_row)
+            self.assertEqual(file_row["source_episode_id"], "sample_000001")
+            self.assertEqual(file_row["view"], "req2file")
+            self.assertFalse(file_row["official_eval_unit"])
+            self.assertFalse(file_row["standalone_pass_credit"])
             self.assertEqual(file_row["metadata"]["difficulty_tier"], "T2")
 
             patch_rows = (export_dir / "failure_to_patch.jsonl").read_text(encoding="utf-8").splitlines()
@@ -209,7 +383,7 @@ class DatasetRecorderTest(unittest.TestCase):
 
             row = json.loads((export_dir / "project_to_predicted_qor.jsonl").read_text(encoding="utf-8"))
             self.assertNotIn("verification", row["episode"])
-            self.assertNotIn("99", json.dumps(row["episode"], sort_keys=True))
+            self.assertNotIn("measured_qor", row["episode"])
 
     def test_behavior_hole_count_no_double_count(self) -> None:
         from LLM.src.sr2fpga_agent.recorder import _behavior_hole_count
@@ -217,6 +391,24 @@ class DatasetRecorderTest(unittest.TestCase):
         self.assertEqual(_behavior_hole_count("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here."), 1)
         self.assertEqual(_behavior_hole_count("  // __BEHAVIOR_HOLE__"), 1)
         self.assertEqual(_behavior_hole_count("  // __BEHAVIOR_HOLE__\n  // __BEHAVIOR_HOLE__"), 2)
+
+    def test_project_metadata_marks_predicted_qor_as_model_generated_for_llm_source(self) -> None:
+        from LLM.src.sr2fpga_agent.recorder import _project_episode_metadata
+
+        project = GeneratedProject(
+            project_name="llm_project",
+            files={
+                "system_his.json": "{}\n",
+                "manifest.json": "{}\n",
+                "rtl/top.v": "module top; endmodule\n",
+                "reports/predicted_qor.json": "{\"lut\": 10}\n",
+            },
+        )
+
+        metadata = _project_episode_metadata(project)
+
+        self.assertEqual(metadata["files"]["reports/predicted_qor.json"]["origin"], "model_generated")
+        self.assertIn("reports/predicted_qor.json", metadata["model_generated_artifacts"])
 
     def test_l0_checker_rejects_manifest_that_violates_system_his_contract(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
@@ -538,6 +730,103 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(diagnosis["stage"], "l0_consistency")
             self.assertEqual(runner.calls, [])
 
+    def test_agent_stops_before_l0_when_h3_fidelity_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=MutatingSystemHisGenerator(_break_stream_width_for_h3),
+            )
+            request = ProjectRequest(
+                task_type="composed_stream_accumulator",
+                width=8,
+                project_name="stream_accum_8bit",
+            )
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_h3_fail",
+                requirement="Build an 8-bit stream accumulator with valid-ready input and output.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_h3_fail"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "H3_FAIL")
+            self.assertTrue(labels["h0_pass"])
+            self.assertTrue(labels["h1_pass"])
+            self.assertTrue(labels["h2_pass"])
+            self.assertFalse(labels["h3_pass"])
+            self.assertEqual(trajectory["his_validation"]["h3"]["status"], "fail")
+            self.assertEqual(runner.calls, [])
+
+    def test_agent_stops_before_l0_when_h3_reset_fidelity_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=MutatingSystemHisGenerator(_break_reset_polarity_for_h3),
+            )
+            request = ProjectRequest(
+                task_type="composed_stream_accumulator",
+                width=8,
+                project_name="stream_accum_8bit",
+            )
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one(
+                sample_id="sample_h3_reset_fail",
+                requirement="Build an 8-bit stream accumulator with valid-ready input and output.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_h3_reset_fail"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(result["pass_level"], "H3_FAIL")
+            self.assertFalse(labels["h3_pass"])
+            self.assertEqual(trajectory["his_validation"]["h3"]["scores"]["clock_reset_fidelity"], 0.0)
+            self.assertEqual(runner.calls, [])
+
+    def test_agent_marks_oracle_fallback_as_not_generated_his_pass_credit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=runner,
+                project_generator=FailureInjectingProjectGenerator(OracleFallbackGenerator(), []),
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one(
+                sample_id="sample_oracle_fallback",
+                requirement="Design an 8-bit counter with enable.",
+                request=request,
+                platform=platform,
+            )
+
+            sample_dir = root / "sample_oracle_fallback"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+
+            self.assertFalse(labels["generated_his_pass_credit"])
+            self.assertEqual(labels["pass_level"], "L3")
+            self.assertEqual(labels["highest_official_level"], "L3")
+            self.assertEqual(labels["generated_his_pass_level"], "NO_CREDIT_ORACLE_FALLBACK")
+            self.assertEqual(labels["generated_his_no_credit_reason"], "oracle_fallback")
+            self.assertEqual(trajectory["his_validation"]["his_source_used_for_generation"], "oracle_fallback")
+
     def test_agent_records_repair_failure_without_crashing_batch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
@@ -775,6 +1064,258 @@ class DatasetRecorderTest(unittest.TestCase):
             )
             self.assertEqual([call["stage"] for call in runner.calls], ["lint", "sim_compile", "sim_run", "synth"])
 
+    def test_agent_independent_oracle_builds_once_and_reuses_bundle_for_mutations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            runner = FakeRunner()
+            build_roots: list[Path] = []
+
+            def builder(family_id, request, output_root):
+                build_roots.append(Path(output_root))
+                return _write_four_class_oracle_bundle(request.width, Path(output_root))
+
+            agent = DataGenerationAgent(root, command_runner=runner, enable_independent_oracle=True)
+            with mock.patch("LLM.src.sr2fpga_agent.agent.build_oracle_bundle_for_request", builder):
+                result = agent.run_one(
+                    "sample_fir_independent_oracle",
+                    "Implement the declared FIR stream contract.",
+                    ProjectRequest(task_type="fir_filter", width=8, project_name="fir"),
+                    PlatformProfile(name="generic", vendor="generic", toolchain="open_source"),
+                    metadata={"family_id": "fir_filter", "evaluation_line": "line_a"},
+                )
+
+            sample_dir = Path(result["sample_dir"])
+            oracle_root = sample_dir / "attempts/attempt_000/eval/oracle"
+            self.assertEqual(build_roots, [oracle_root])
+            self.assertTrue((oracle_root / "manifest.json").is_file())
+            self.assertTrue((oracle_root / "evidence.json").is_file())
+            self.assertFalse((sample_dir / "final/generated_project/oracle").exists())
+            vvp_calls = [call["command"] for call in runner.calls if call["stage"] == "sim_run"]
+            self.assertGreaterEqual(len(vvp_calls), 4)
+            self.assertTrue(
+                all(
+                    any(
+                        Path(arg.split("=", 1)[1]).resolve().is_relative_to(oracle_root.resolve())
+                        for arg in call
+                        if arg.startswith("+ORACLE_INPUT=")
+                    )
+                    for call in vvp_calls
+                )
+            )
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertEqual(set(trajectory["oracle_profile"]["class_status"].values()), {"pass"})
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            self.assertTrue(labels["checks"]["l2_hidden_pass"])
+            self.assertTrue(labels["checks"]["l2_randomized_pass"])
+            self.assertTrue(labels["checks"]["l2_stress_pass"])
+
+    def test_agent_independent_oracle_unsupported_family_keeps_legacy_simulation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            runner = FakeRunner()
+            agent = DataGenerationAgent(root, command_runner=runner, enable_independent_oracle=True)
+            with mock.patch(
+                "LLM.src.sr2fpga_agent.agent.build_oracle_bundle_for_request",
+                return_value=None,
+            ):
+                result = agent.run_one(
+                    "sample_counter_no_independent_oracle",
+                    "Design a counter.",
+                    ProjectRequest(task_type="counter", width=8, project_name="counter"),
+                    PlatformProfile(name="generic", vendor="generic", toolchain="open_source"),
+                    metadata={"family_id": "counter", "evaluation_line": "line_b"},
+                )
+
+            sample_dir = Path(result["sample_dir"])
+            vvp_calls = [call["command"] for call in runner.calls if call["stage"] == "sim_run"]
+            self.assertEqual(vvp_calls, [["vvp", "sim.out"]])
+            profile = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))["oracle_profile"]
+            self.assertEqual(profile["status"], "not_run")
+            self.assertEqual(profile["skip_reason"], "unsupported_family")
+
+    def test_agent_independent_oracle_build_failure_revokes_credit_without_model_failure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            agent = DataGenerationAgent(root, command_runner=FakeRunner(), enable_independent_oracle=True)
+            with mock.patch(
+                "LLM.src.sr2fpga_agent.agent.build_oracle_bundle_for_request",
+                side_effect=ValueError("reference model could not build vectors"),
+            ):
+                result = agent.run_one(
+                    "sample_fir_oracle_build_failure",
+                    "Implement the declared FIR stream contract.",
+                    ProjectRequest(task_type="fir_filter", width=8, project_name="fir"),
+                    PlatformProfile(name="generic", vendor="generic", toolchain="open_source"),
+                    metadata={"family_id": "fir_filter", "evaluation_line": "line_a"},
+                )
+
+            labels = json.loads(
+                (Path(result["sample_dir"]) / "eval/labels.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(labels["pass_level"], "ORACLE_ERROR")
+            self.assertFalse(labels["automatic_pass_credit"])
+            self.assertEqual(labels["independent_oracle_status"], "infrastructure_error")
+            self.assertEqual(labels["failure_origin"], "oracle_environment_failure")
+            self.assertFalse(labels["checks"]["l2_sim_pass"])
+
+    def test_agent_l4_open_disabled_records_auditable_not_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(dataset_root=root, command_runner=FakeRunner(), enable_openxc7_l4=False)
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_l4_open_disabled", "Design a counter.", request, platform)
+
+            sample_dir = root / "sample_l4_open_disabled"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertTrue(labels["checks"]["l3_synth_pass"])
+            self.assertEqual(labels["l4_open_status"], "not_run")
+            self.assertFalse(labels["l4_open_pass"])
+            self.assertEqual(trajectory["verification"]["l4_open"]["skip_reason"], "disabled_by_config")
+
+    def test_agent_l4_commercial_disabled_records_auditable_not_run(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(dataset_root=root, command_runner=FakeRunner())
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            result = agent.run_one("sample_l4_commercial_disabled", "Design a counter.", request, platform)
+
+            sample_dir = root / "sample_l4_commercial_disabled"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            measured_qor = json.loads((sample_dir / "eval/measured_qor.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(labels["l4_commercial_status"], "not_run")
+            self.assertFalse(labels["l4_commercial_pass"])
+            self.assertEqual(labels["l4_commercial_skip_reason"], "disabled_by_config")
+            self.assertEqual(measured_qor["l4_commercial"]["status"], "not_run")
+            self.assertEqual(
+                trajectory["verification"]["l4_commercial"]["skip_reason"],
+                "disabled_by_config",
+            )
+
+    def test_agent_l4_commercial_success_records_reference_without_upgrading_pass_level(self) -> None:
+        vivado_report = {
+            "tool": "vivado",
+            "status": "pass",
+            "constraint_scope": "logical_only",
+            "board_constraints_applied": False,
+            "official_board_ready": False,
+            "wns_ns": 5.79,
+            "fmax_mhz": 237.53,
+            "lut": 34,
+            "ff": 28,
+            "bram": 0,
+            "dsp": 0,
+            "drc_warnings": ["NSTD-1", "UCIO-1", "ZPS7-1"],
+            "expected_board_drc_exceptions": ["NSTD-1", "UCIO-1"],
+            "invalidating_critical_warnings": [],
+            "methodology_warnings": ["TIMING-18"],
+            "runtime_sec": 12.5,
+            "report_paths": ["eval/vivado/vivado_report.json", "eval/vivado/vivado_timing_summary.rpt"],
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=FakeRunner(),
+                enable_vivado_l4=True,
+                vivado_command="vivado",
+                vivado_part="XC7Z020CLG484-2",
+                vivado_timeout_seconds=90,
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            with mock.patch.dict("os.environ", {"SR2FPGA_VIVADO_COMMAND": "C:/tools/vivado.bat"}):
+                with mock.patch(
+                    "LLM.src.sr2fpga_agent.agent.run_vivado_reference",
+                    return_value=vivado_report,
+                ) as run_vivado:
+                    result = agent.run_one("sample_l4_commercial_pass", "Design a counter.", request, platform)
+
+            sample_dir = root / "sample_l4_commercial_pass"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            measured_qor = json.loads((sample_dir / "eval/measured_qor.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(labels["l4_commercial_status"], "pass")
+            self.assertTrue(labels["l4_commercial_pass"])
+            self.assertEqual(measured_qor["l4_commercial"]["wns_ns"], 5.79)
+            self.assertFalse(trajectory["verification"]["l4_commercial"]["official_board_ready"])
+            self.assertEqual(
+                trajectory["verification"]["l4_commercial"]["report_paths"],
+                [
+                    "attempts/attempt_000/generated_project/eval/vivado/vivado_report.json",
+                    "attempts/attempt_000/generated_project/eval/vivado/vivado_timing_summary.rpt",
+                ],
+            )
+            run_vivado.assert_called_once()
+            self.assertEqual(run_vivado.call_args.kwargs["vivado_command"], "C:/tools/vivado.bat")
+
+    def test_agent_l4_open_l3_failed_records_auditable_not_run(self) -> None:
+        class SynthFailingRunner(FakeRunner):
+            def run(self, command, cwd, stage, timeout_seconds=30):
+                result = super().run(command, cwd, stage, timeout_seconds)
+                if stage == "synth":
+                    return ToolResult(
+                        stage=stage,
+                        command=list(command),
+                        status="failed",
+                        exit_code=1,
+                        stdout="",
+                        stderr="synthesis failed",
+                        duration_seconds=0.01,
+                    )
+                return result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(dataset_root=root, command_runner=SynthFailingRunner(), enable_openxc7_l4=True)
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_l4_open_l3_failed", "Design a counter.", request, platform)
+
+            sample_dir = root / "sample_l4_open_l3_failed"
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertFalse(labels["checks"]["l3_synth_pass"])
+            self.assertEqual(labels["l4_open_status"], "not_run")
+            self.assertEqual(trajectory["verification"]["l4_open"]["skip_reason"], "l3_failed")
+
+    def test_agent_l4_open_disabled_reason_takes_precedence_over_l3_failure(self) -> None:
+        class SynthFailingRunner(FakeRunner):
+            def run(self, command, cwd, stage, timeout_seconds=30):
+                result = super().run(command, cwd, stage, timeout_seconds)
+                if stage == "synth":
+                    return ToolResult(
+                        stage=stage,
+                        command=list(command),
+                        status="failed",
+                        exit_code=1,
+                        stdout="",
+                        stderr="synthesis failed",
+                        duration_seconds=0.01,
+                    )
+                return result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(dataset_root=root, command_runner=SynthFailingRunner(), enable_openxc7_l4=False)
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_l4_disabled_l3_failed", "Design a counter.", request, platform)
+
+            trajectory = json.loads((root / "sample_l4_disabled_l3_failed/eval/trajectory.json").read_text(encoding="utf-8"))
+            self.assertEqual(trajectory["verification"]["l4_open"]["status"], "not_run")
+            self.assertEqual(trajectory["verification"]["l4_open"]["skip_reason"], "disabled_by_config")
+
     def test_agent_records_project_from_injected_llm_generator(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
@@ -793,7 +1334,7 @@ class DatasetRecorderTest(unittest.TestCase):
             )
             platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-            result = agent.run_one(
+            agent.run_one(
                 sample_id="sample_llm_000001",
                 requirement=request.description,
                 request=request,
@@ -805,12 +1346,15 @@ class DatasetRecorderTest(unittest.TestCase):
             system_his = json.loads(
                 (sample_dir / "final/generated_project/system_his.json").read_text(encoding="utf-8")
             )
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(result["pass_level"], "L3")
             self.assertEqual(llm_generator.call_count, 1)
             self.assertIn("LLM_GENERATED_MARKER", top_rtl)
-            self.assertEqual(system_his["system"]["description"], request.description)
             self.assertNotIn("count <= count +", top_rtl)
+            self.assertEqual(system_his["schema_version"], "system-his-v1.2")
+            self.assertEqual(system_his["intent"]["user_prompt"], request.description)
+            self.assertEqual(system_his["system"]["description"], request.description)
+            self.assertEqual(trajectory["his_validation"]["his_source_used_for_generation"], "generated")
 
     def test_agent_records_failed_attempt_patch_and_repaired_attempt(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -844,11 +1388,16 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(labels["final_attempt_id"], 1)
             self.assertEqual(labels["failure_count"], 1)
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            patch_metadata = json.loads((sample_dir / "attempts/attempt_000/patch.json").read_text(encoding="utf-8"))
             first_failed = next(item for item in trajectory["attempts"] if item["status"] == "failed")
             self.assertEqual(first_failed["attempt_id"], 0)
             self.assertEqual(first_failed["stage"], "lint")
             self.assertEqual(trajectory["attempts"][-1]["attempt_id"], 1)
             self.assertEqual(trajectory["attempts"][-1]["stage"], "synth")
+            self.assertEqual(patch_metadata["tool_result_before"]["lint"], "failed")
+            self.assertEqual(patch_metadata["tool_result_after"]["synth"], "passed")
+            self.assertTrue(patch_metadata["repair_regression"]["fixed_target"])
+            self.assertEqual(trajectory["patches"][0]["patch_id"], "p001")
 
             export_dir = Path(tmp) / "exports"
             DatasetRecorder(root).export_training_views(export_dir)
@@ -858,6 +1407,100 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(patch_row["sample_id"], "sample_000002")
             self.assertEqual(patch_row["diagnosis"]["failure_type"], "port_mismatch")
             self.assertIn("fix reset port", patch_row["patch"])
+            self.assertEqual(patch_row["patch_metadata"]["repair_regression"]["regressed_levels"], [])
+
+    def test_agent_credits_successful_l0_repair_target(self) -> None:
+        class BrokenWidthGenerator:
+            def generate(self, request, platform):
+                project = ProjectGenerator().generate(request, platform)
+                files = dict(project.files)
+                files["rtl/top.v"] = files["rtl/top.v"].replace(
+                    "output reg [7:0] count",
+                    "output reg [6:0] count",
+                )
+                return GeneratedProject(project_name=project.project_name, files=files)
+
+        class WidthRepairer:
+            def repair(self, project, diagnosis):
+                files = dict(project.files)
+                files["rtl/top.v"] = files["rtl/top.v"].replace(
+                    "output reg [6:0] count",
+                    "output reg [7:0] count",
+                )
+                return RepairResult(
+                    generated_project=GeneratedProject(project_name=project.project_name, files=files),
+                    patch_diff="diff --git a/rtl/top.v b/rtl/top.v\n# restore count width\n",
+                )
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=FakeRunner(),
+                project_generator=BrokenWidthGenerator(),
+                repairer=WidthRepairer(),
+                max_attempts=2,
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_l0_repair", "Design an 8-bit counter.", request, platform)
+
+            patch_metadata = json.loads(
+                (root / "sample_l0_repair/attempts/attempt_000/patch.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(patch_metadata["repair_regression"]["target_failure"], "l0_consistency")
+            self.assertEqual(patch_metadata["tool_result_after"]["l0_consistency"], "passed")
+            self.assertTrue(patch_metadata["repair_regression"]["fixed_target"])
+            self.assertTrue(patch_metadata["automatic_pass_credit"])
+
+    def test_agent_rejects_invalid_repair_and_preserves_original_project(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=FailThenPassRunner(),
+                repairer=InvalidSurfaceRepairer(),
+                max_attempts=2,
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_invalid_repair", "Design an 8-bit counter.", request, platform)
+
+            sample_dir = root / "sample_invalid_repair"
+            original = (sample_dir / "attempts/attempt_000/generated_project/sim/tb_top.v").read_text(encoding="utf-8")
+            final = (sample_dir / "final/generated_project/sim/tb_top.v").read_text(encoding="utf-8")
+            patch = json.loads((sample_dir / "attempts/attempt_000/patch.json").read_text(encoding="utf-8"))
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+
+            self.assertEqual(final, original)
+            self.assertEqual(patch["status"], "invalid_edit_surface")
+            self.assertFalse(patch["automatic_pass_credit"])
+            self.assertFalse(labels["automatic_pass_credit"])
+
+    def test_agent_revokes_credit_for_failed_and_regressing_rtl_repair(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
+            agent = DataGenerationAgent(
+                dataset_root=root,
+                command_runner=SimFailThenLintFailRunner(),
+                repairer=RtlChangingRepairer(),
+                max_attempts=2,
+            )
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_regressing_repair", "Design an 8-bit counter.", request, platform)
+
+            sample_dir = root / "sample_regressing_repair"
+            patch = json.loads((sample_dir / "attempts/attempt_000/patch.json").read_text(encoding="utf-8"))
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+
+            self.assertFalse(patch["automatic_pass_credit"])
+            self.assertFalse(patch["repair_regression"]["fixed_target"])
+            self.assertEqual(patch["repair_regression"]["regressed_levels"], ["lint"])
+            self.assertFalse(labels["automatic_pass_credit"])
 
     def test_agent_treats_test_fail_output_as_failed_simulation(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1053,77 +1696,57 @@ class FakeLLMProjectGenerator:
 
     def generate(self, request, platform):
         self.call_count += 1
-        files = {
-            "system_his.json": json.dumps(
-                {
-                    "schema_version": "system-his-v1.1",
-                    "project": {"name": request.project_name, "description": request.description, "top": "top"},
-                    "clocks": [{"name": "clk", "target_fmax_mhz": 100.0}],
-                    "resets": [{"name": "rst_n", "polarity": "active_low", "kind": "async"}],
-                    "project_name": request.project_name,
-                    "task_type": request.task_type,
-                    "system": {"description": request.description},
-                    "interface": {"clock": "clk", "reset": "rst_n", "ports": []},
-                    "architecture": {"top_module": "top", "submodules": []},
-                    "modules": [
-                        {
-                            "name": "top",
-                            "role": "top",
-                            "source": "rtl/top.v",
-                            "clock": "clk",
-                            "reset": "rst_n",
-                            "parameters": {},
-                            "params": [],
-                            "ports": [
-                                {"name": "clk", "direction": "input", "width": 1},
-                                {"name": "out", "direction": "output", "width": 1},
-                            ],
-                            "intent": "top-level integration wrapper for a fake LLM project",
-                        }
-                    ],
-                    "connections": [],
-                    "top_ports": [
-                        {"name": "clk", "direction": "input", "width": 1},
-                        {"name": "out", "direction": "output", "width": 1},
-                    ],
-                    "platform": {"name": platform.name},
-                    "verification": {
-                        "testbench": "sim/tb_top.v",
-                        "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
-                        "test_pass_means": "Self-checking testbench prints TEST_PASS only when out follows clk.",
-                    },
-                    "qor_intent": {"resources": {"lut": 1, "ff": 0, "bram": 0, "dsp": 0}},
-                }
-            )
-            + "\n",
-            "manifest.json": json.dumps(
-                {
-                    "project_name": request.project_name,
-                    "top_module": "top",
-                    "sources": ["rtl/top.v"],
-                    "constraints": {"timing": "constraints/timing.sdc"},
-                    "simulation": {"testbench": "sim/tb_top.v"},
-                    "reports": {"predicted_qor": "reports/predicted_qor.json"},
-                }
-            )
-            + "\n",
-            "rtl/top.v": "module top(input wire clk, output wire out); assign out = clk; endmodule // LLM_GENERATED_MARKER\n",
-            "constraints/timing.sdc": "create_clock -name clk -period 10.000 [get_ports clk]\n",
-            "sim/tb_top.v": (
-                "module tb_top; reg clk; wire out; top dut(.clk(clk), .out(out)); "
-                "initial begin clk = 1'b0; #1; if (out !== 1'b0) begin $display(\"TEST_FAIL expected out=0\"); "
-                "$finish; end clk = 1'b1; #1; if (out !== 1'b1) begin $display(\"TEST_FAIL expected out=1\"); "
-                "$finish; end $display(\"TEST_PASS\"); $finish; end endmodule\n"
-            ),
-            "reports/predicted_qor.json": json.dumps(
-                {
-                    "project_name": request.project_name,
-                    "predicted": {"lut": 1, "ff": 0, "bram": 0, "dsp": 0},
-                    "assumptions": {"generator": "fake_llm"},
-                }
-            )
-            + "\n",
-        }
+        project = ProjectGenerator().generate(request, platform)
+        files = dict(project.files)
+        system_his = json.loads(files["system_his.json"])
+        system_his["intent"]["user_prompt"] = request.description
+        system_his["system"] = {"description": request.description}
+        files["system_his.json"] = json.dumps(system_his) + "\n"
+        files["rtl/top.v"] = """module top (
+    input wire clk,
+    input wire rst_n,
+    input wire en,
+    output reg [7:0] count
+);
+
+  always @(posedge clk or negedge rst_n) begin
+    if (!rst_n) begin
+      count <= 8'd0;
+    end else begin
+      count <= {7'd0, en};
+    end
+  end
+
+endmodule
+
+// LLM_GENERATED_MARKER
+"""
+        files["sim/tb_top.v"] = """module tb_top;
+  reg clk;
+  reg rst_n;
+  reg en;
+  wire [7:0] count;
+  top dut(.clk(clk), .rst_n(rst_n), .en(en), .count(count));
+  initial begin
+    clk = 1'b0;
+    forever #5 clk = ~clk;
+  end
+  initial begin
+    rst_n = 1'b0;
+    en = 1'b0;
+    repeat (2) @(posedge clk);
+    rst_n = 1'b1;
+    en = 1'b1;
+    @(posedge clk);
+    if (count !== 8'd1) begin $display("TEST_FAIL expected count=1"); $finish; end
+    en = 1'b0;
+    @(posedge clk);
+    if (count !== 8'd0) begin $display("TEST_FAIL expected count=0"); $finish; end
+    $display("TEST_PASS");
+    $finish;
+  end
+endmodule
+"""
         return GeneratedProject(project_name=request.project_name, files=files)
 
 
@@ -1161,7 +1784,44 @@ class SemanticFailRunner(FakeRunner):
 
 class FakeRepairer:
     def repair(self, project, diagnosis):
-        return RepairResult(generated_project=project, patch_diff="diff --git a/rtl/top.v b/rtl/top.v\n# fix reset port\n")
+        files = dict(project.files)
+        files["rtl/top.v"] += "\n// fix reset port\n"
+        return RepairResult(
+            generated_project=GeneratedProject(project_name=project.project_name, files=files),
+            patch_diff="diff --git a/rtl/top.v b/rtl/top.v\n# fix reset port\n",
+        )
+
+
+class InvalidSurfaceRepairer:
+    def repair(self, project, diagnosis):
+        files = dict(project.files)
+        files["sim/tb_top.v"] = "module tb_top; initial $display(\"TEST_PASS\"); endmodule\n"
+        return RepairResult(
+            generated_project=GeneratedProject(project_name=project.project_name, files=files),
+            patch_diff="diff --git a/sim/tb_top.v b/sim/tb_top.v\n# weaken testbench\n",
+        )
+
+
+class RtlChangingRepairer:
+    def repair(self, project, diagnosis):
+        files = dict(project.files)
+        files["rtl/top.v"] += "\n// attempted repair\n"
+        return RepairResult(
+            generated_project=GeneratedProject(project_name=project.project_name, files=files),
+            patch_diff="diff --git a/rtl/top.v b/rtl/top.v\n# attempted repair\n",
+        )
+
+
+class SimFailThenLintFailRunner(FakeRunner):
+    def run(self, command, cwd, stage, timeout_seconds=30):
+        self.calls.append({"command": command, "cwd": cwd, "stage": stage, "timeout_seconds": timeout_seconds})
+        if len(self.calls) == 1 and stage == "lint":
+            return ToolResult(stage, list(command), "passed", 0, "", "", 0.01)
+        if len(self.calls) == 2 and stage == "sim_compile":
+            return ToolResult(stage, list(command), "passed", 0, "", "", 0.01)
+        if len(self.calls) == 3 and stage == "sim_run":
+            return ToolResult(stage, list(command), "failed", 1, "", "target still failing", 0.01)
+        return ToolResult(stage, list(command), "failed", 1, "", "new lint regression", 0.01)
 
 
 class FailingRepairer:
@@ -1185,6 +1845,34 @@ class BrokenManifestGenerator:
         manifest["top_module"] = "missing_top"
         files["manifest.json"] = json.dumps(manifest) + "\n"
         return GeneratedProject(project_name=project.project_name, files=files)
+
+
+class MutatingSystemHisGenerator:
+    def __init__(self, mutate) -> None:
+        self.mutate = mutate
+
+    def generate(self, request, platform):
+        project = ProjectGenerator().generate(request, platform)
+        files = dict(project.files)
+        system_his = json.loads(files["system_his.json"])
+        self.mutate(system_his)
+        files["system_his.json"] = json.dumps(system_his) + "\n"
+        return GeneratedProject(project_name=project.project_name, files=files)
+
+
+class OracleFallbackGenerator:
+    his_source_used_for_generation = "oracle_fallback"
+
+    def generate(self, request, platform):
+        return ProjectGenerator().generate(request, platform)
+
+
+def _break_stream_width_for_h3(system_his: dict) -> None:
+    next(port for port in system_his["top"]["ports"] if port["name"] == "in_data")["width"] = 7
+
+
+def _break_reset_polarity_for_h3(system_his: dict) -> None:
+    system_his["top"]["resets"][0]["polarity"] = "active_high"
 
 
 class FailingProjectGenerator:
