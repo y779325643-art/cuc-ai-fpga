@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import re
 import tempfile
 
 from LLM.src.sr2fpga_agent.log_parser import parse_test_fail_mismatches
@@ -83,11 +84,9 @@ def validate_oracle_simulation_output(
     """Normalize simulator markers while preserving failure provenance."""
 
     log_text = f"{result.stdout}\n{result.stderr}"
-    markers = {
-        line.strip()
-        for line in log_text.splitlines()
-        if line.strip() in {"TEST_PASS", "TEST_FAIL"}
-    }
+    lines = log_text.splitlines()
+    has_fail_marker = any(re.match(r"^\s*TEST_FAIL(?:\s|$)", line) for line in lines)
+    has_pass_marker = any(line.strip() == "TEST_PASS" for line in lines)
     if result.status == "missing_tool":
         return (
             _failed_result(result),
@@ -96,7 +95,7 @@ def validate_oracle_simulation_output(
         )
     if result.status == "timeout":
         return _failed_result(result), "natural_model_failure", "testbench_timeout"
-    if "TEST_FAIL" in markers:
+    if has_fail_marker:
         failure_type = "testbench_timeout" if "timeout" in log_text.lower() else "functional_mismatch"
         return _failed_result(result), "natural_model_failure", failure_type
     if result.status != "passed":
@@ -105,7 +104,7 @@ def validate_oracle_simulation_output(
             "toolchain_environment_failure",
             "simulator_execution_failure",
         )
-    if "TEST_PASS" not in markers:
+    if not has_pass_marker:
         return (
             _failed_result(result, stderr_suffix="Simulation did not report TEST_PASS."),
             "natural_model_failure",

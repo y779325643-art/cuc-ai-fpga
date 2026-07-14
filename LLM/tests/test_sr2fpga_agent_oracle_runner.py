@@ -240,6 +240,41 @@ def test_strict_fail_marker_takes_priority_over_strict_pass_marker(tmp_path):
     assert evidence.failure_type == "functional_mismatch"
 
 
+def test_fail_marker_with_details_takes_priority_and_nonzero_is_model_failure(tmp_path):
+    bundle = _bundle(tmp_path)
+    runner = FakeCommandRunner(
+        [
+            _tool_result(
+                status="failed",
+                exit_code=1,
+                stdout="TEST_PASS\nTEST_FAIL expected=1 actual=0\n",
+            )
+        ]
+        + [_tool_result(stdout="TEST_PASS\n") for _ in range(3)]
+    )
+
+    evidence, tool_result = run_oracle_scenarios(runner, tmp_path, bundle)
+
+    assert tool_result.status == "failed"
+    assert evidence.failure_origin == "natural_model_failure"
+    assert evidence.failure_type == "functional_mismatch"
+    assert evidence.scenario_results[0].mismatch_detail == (
+        {"expected": "1", "actual": "0"},
+    )
+
+
+def test_not_test_fail_is_not_a_failure_marker(tmp_path):
+    bundle = _bundle(tmp_path)
+    runner = FakeCommandRunner(
+        [_tool_result(stdout="NOT_TEST_FAIL expected=1 actual=0\nTEST_PASS\n") for _ in range(4)]
+    )
+
+    evidence, tool_result = run_oracle_scenarios(runner, tmp_path, bundle)
+
+    assert tool_result.status == "passed"
+    assert evidence.status == "passed"
+
+
 def test_write_oracle_run_evidence_uses_stable_json(tmp_path):
     bundle = _bundle(tmp_path)
     evidence, _ = run_oracle_scenarios(FakeCommandRunner(), tmp_path, bundle)

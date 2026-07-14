@@ -14,6 +14,9 @@ class PatchAsPrTest(unittest.TestCase):
             "sim/checkers/protocol.sv",
             "sim/scoreboards/stream.sv",
             "sim/uvm/stream_agent.sv",
+            "tests/checkers/protocol.py",
+            "verification/checkers/protocol.sv",
+            "uvm/stream_agent.sv",
         ):
             metadata = build_patch_metadata(
                 GeneratedProject("demo", {path: "before\n"}),
@@ -24,8 +27,14 @@ class PatchAsPrTest(unittest.TestCase):
             self.assertTrue(metadata.touched_trusted_artifacts, path)
 
     def test_rtl_names_containing_checker_scoreboard_or_uvm_remain_editable(self) -> None:
-        for filename in ("packet_checker.v", "scoreboard_counter.v", "uvm_adapter.v"):
-            path = f"rtl/{filename}"
+        for path in (
+            "rtl/packet_checker.v",
+            "rtl/scoreboard_counter.v",
+            "rtl/uvm_adapter.v",
+            "rtl/checkers/protocol.v",
+            "rtl/scoreboards/counter.v",
+            "rtl/uvm/adapter.v",
+        ):
             old = f"module core(input wire a, output wire y); assign y = a; endmodule\n"
             new = f"module core(input wire a, output wire y); assign y = ~a; endmodule\n"
             metadata = build_patch_metadata(

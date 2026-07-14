@@ -12,6 +12,20 @@ from LLM.src.sr2fpga_agent.models import GeneratedProject, PatchMetadata
 _SAFE_SAMPLE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]*$")
 _SAFE_PATH_PART = re.compile(r"^[A-Za-z0-9_.-]+$")
 _SAFE_VERILOG_IDENTIFIER = re.compile(r"^[A-Za-z_][A-Za-z0-9_$]*$")
+_TRUSTED_VERIFICATION_ROOTS = (
+    "checkers",
+    "scoreboards",
+    "sim/checkers",
+    "sim/scoreboards",
+    "sim/uvm",
+    "tests/checkers",
+    "tests/scoreboards",
+    "tests/uvm",
+    "uvm",
+    "verification/checkers",
+    "verification/scoreboards",
+    "verification/uvm",
+)
 
 
 def validate_sample_id(sample_id: str) -> str:
@@ -228,10 +242,11 @@ def _rtl_interface_signature(content: str) -> tuple[tuple[str, ...], ...]:
 def _is_trusted_artifact(path: str) -> bool:
     normalized = path.replace("\\", "/").lower().lstrip("./")
     padded = f"/{normalized.strip('/')}/"
-    parts = PurePosixPath(normalized).parts
-    parent_parts = set(parts[:-1])
     filename_stem = PurePosixPath(normalized).stem
-    verification_directory = bool(parent_parts & {"checkers", "scoreboards", "uvm"})
+    verification_directory = any(
+        normalized == root or normalized.startswith(f"{root}/")
+        for root in _TRUSTED_VERIFICATION_ROOTS
+    )
     verification_file = normalized.startswith("sim/") and (
         filename_stem in {"checker", "scoreboard", "uvm"}
         or filename_stem.endswith("_checker")
