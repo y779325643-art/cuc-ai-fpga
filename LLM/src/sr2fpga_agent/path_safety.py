@@ -228,6 +228,16 @@ def _rtl_interface_signature(content: str) -> tuple[tuple[str, ...], ...]:
 def _is_trusted_artifact(path: str) -> bool:
     normalized = path.replace("\\", "/").lower().lstrip("./")
     padded = f"/{normalized.strip('/')}/"
+    parts = PurePosixPath(normalized).parts
+    parent_parts = set(parts[:-1])
+    filename_stem = PurePosixPath(normalized).stem
+    verification_directory = bool(parent_parts & {"checkers", "scoreboards", "uvm"})
+    verification_file = normalized.startswith("sim/") and (
+        filename_stem in {"checker", "scoreboard", "uvm"}
+        or filename_stem.endswith("_checker")
+        or filename_stem.endswith("_scoreboard")
+        or filename_stem.startswith("uvm_")
+    )
     return (
         normalized == "sim/tb_top.v"
         or normalized == "oracle"
@@ -237,9 +247,8 @@ def _is_trusted_artifact(path: str) -> bool:
         or normalized.startswith("models/")
         or normalized.startswith("hidden/")
         or normalized.startswith("tests/hidden/")
-        or "scoreboard" in normalized
-        or "checker" in normalized
-        or "uvm" in normalized
+        or verification_directory
+        or verification_file
         or normalized.startswith("board/")
         or normalized.startswith("constraints/")
         or normalized.startswith("data_release/")

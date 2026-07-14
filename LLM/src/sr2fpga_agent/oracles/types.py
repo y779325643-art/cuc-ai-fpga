@@ -133,6 +133,21 @@ class OracleRunEvidence:
         bundle: OracleBundle,
         results: tuple[OracleScenarioResult, ...],
     ) -> "OracleRunEvidence":
+        present_classes = {result.scenario_class for result in results}
+        missing_classes = sorted(SCENARIO_CLASSES - present_classes)
+        if missing_classes:
+            return cls(
+                family_id=bundle.family_id,
+                bundle_sha256=bundle.bundle_sha256,
+                status="failed",
+                failure_origin="oracle_environment_failure",
+                failure_type="oracle_scenario_class_missing",
+                scenario_results=results,
+                diagnostics=(
+                    "missing required oracle scenario classes: "
+                    + ", ".join(missing_classes),
+                ),
+            )
         failed = tuple(result for result in results if result.status != "passed")
         failure = _primary_failure(failed)
         return cls(

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
+import tempfile
 
 from LLM.src.sr2fpga_agent.log_parser import parse_test_fail_mismatches
 from LLM.src.sr2fpga_agent.models import ToolResult
@@ -81,6 +83,11 @@ def validate_oracle_simulation_output(
     """Normalize simulator markers while preserving failure provenance."""
 
     log_text = f"{result.stdout}\n{result.stderr}"
+    markers = {
+        line.strip()
+        for line in log_text.splitlines()
+        if line.strip() in {"TEST_PASS", "TEST_FAIL"}
+    }
     if result.status == "missing_tool":
         return (
             _failed_result(result),
@@ -89,7 +96,7 @@ def validate_oracle_simulation_output(
         )
     if result.status == "timeout":
         return _failed_result(result), "natural_model_failure", "testbench_timeout"
-    if "TEST_FAIL" in log_text:
+    if "TEST_FAIL" in markers:
         failure_type = "testbench_timeout" if "timeout" in log_text.lower() else "functional_mismatch"
         return _failed_result(result), "natural_model_failure", failure_type
     if result.status != "passed":
@@ -98,7 +105,7 @@ def validate_oracle_simulation_output(
             "toolchain_environment_failure",
             "simulator_execution_failure",
         )
-    if "TEST_PASS" not in log_text:
+    if "TEST_PASS" not in markers:
         return (
             _failed_result(result, stderr_suffix="Simulation did not report TEST_PASS."),
             "natural_model_failure",
@@ -151,10 +158,27 @@ def write_oracle_run_evidence(path: Path, evidence: OracleRunEvidence) -> None:
 
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(evidence.to_dict(), indent=2, ensure_ascii=False, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    payload = (
+        json.dumps(evidence.to_dict(), indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+    ).encode("utf-8")
+    temporary_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="wb",
+            dir=path.parent,
+            prefix=f".{path.name}.",
+            suffix=".tmp",
+            delete=False,
+        ) as handle:
+            temporary_path = Path(handle.name)
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary_path, path)
+    except BaseException:
+        if temporary_path is not None:
+            temporary_path.unlink(missing_ok=True)
+        raise
 
 
 def _oracle_failure_type(exc: Exception) -> str:

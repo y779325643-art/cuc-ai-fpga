@@ -9,6 +9,34 @@ from LLM.src.sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
 
 
 class PatchAsPrTest(unittest.TestCase):
+    def test_explicit_checker_scoreboard_and_uvm_directories_are_trusted(self) -> None:
+        for path in (
+            "sim/checkers/protocol.sv",
+            "sim/scoreboards/stream.sv",
+            "sim/uvm/stream_agent.sv",
+        ):
+            metadata = build_patch_metadata(
+                GeneratedProject("demo", {path: "before\n"}),
+                GeneratedProject("demo", {path: "after\n"}),
+                diagnosis={},
+            )
+
+            self.assertTrue(metadata.touched_trusted_artifacts, path)
+
+    def test_rtl_names_containing_checker_scoreboard_or_uvm_remain_editable(self) -> None:
+        for filename in ("packet_checker.v", "scoreboard_counter.v", "uvm_adapter.v"):
+            path = f"rtl/{filename}"
+            old = f"module core(input wire a, output wire y); assign y = a; endmodule\n"
+            new = f"module core(input wire a, output wire y); assign y = ~a; endmodule\n"
+            metadata = build_patch_metadata(
+                GeneratedProject("demo", {path: old}),
+                GeneratedProject("demo", {path: new}),
+                diagnosis={},
+            )
+
+            self.assertEqual(metadata.status, "valid", path)
+            self.assertFalse(metadata.touched_trusted_artifacts, path)
+
     def test_oracle_bundle_and_runtime_source_patches_are_trusted(self) -> None:
         for path in (
             "oracle/manifest.json",

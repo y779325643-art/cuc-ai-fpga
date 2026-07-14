@@ -1,6 +1,9 @@
 import json
 from pathlib import Path
 
+import pytest
+
+import LLM.src.sr2fpga_agent.oracle_runner as oracle_runner_module
 from LLM.src.sr2fpga_agent.models import ToolResult
 from LLM.src.sr2fpga_agent.oracle_runner import (
     run_oracle_scenarios,
@@ -48,7 +51,7 @@ def _tool_result(*, status="passed", stdout="", stderr="", exit_code=0):
     )
 
 
-def _bundle(tmp_path):
+def _bundle(tmp_path, scenario_classes=SCENARIO_CLASSES, *, root_name="oracle"):
     scenarios = tuple(
         OracleScenarioSpec(
             scenario_id=f"{scenario_class}_001",
@@ -61,10 +64,10 @@ def _bundle(tmp_path):
             input_records=(index,),
             expected_records=(index,),
         )
-        for index, scenario_class in enumerate(SCENARIO_CLASSES)
+        for index, scenario_class in enumerate(scenario_classes)
     )
     return write_oracle_bundle(
-        root=tmp_path / "oracle",
+        root=tmp_path / root_name,
         family_id="fir_filter",
         reference_model="numeric.fir_filter",
         reference_version="1",
@@ -111,7 +114,7 @@ def test_one_dut_mismatch_fails_aggregate_and_keeps_structured_detail(tmp_path):
                     'SR2FPGA_MISMATCH {"scenario_id":"hidden_deterministic_001",'
                     '"class":"hidden_deterministic","item_index":2,'
                     '"expected":"0a","actual":"09"}\n'
-                    "TEST_FAIL expected=0a actual=09\n"
+                    "TEST_FAIL\n"
                 ),
             ),
             _tool_result(stdout="TEST_PASS\n"),
@@ -186,34 +189,55 @@ def test_missing_simulator_is_toolchain_environment_failure(tmp_path):
     assert all(result.failure_origin == "toolchain_environment_failure" for result in evidence.scenario_results)
 
 
-def test_class_status_requires_a_present_scenario(tmp_path):
+@pytest.mark.parametrize("missing_class", SCENARIO_CLASSES)
+def test_each_missing_scenario_class_is_an_oracle_qualification_failure(
+    tmp_path,
+    missing_class,
+):
+    present_classes = tuple(item for item in SCENARIO_CLASSES if item != missing_class)
+    bundle = _bundle(tmp_path, present_classes)
+
+    evidence, tool_result = run_oracle_scenarios(FakeCommandRunner(), tmp_path, bundle)
+
+    assert tool_result.status == "failed"
+    assert evidence.status == "failed"
+    assert evidence.failure_origin == "oracle_environment_failure"
+    assert evidence.failure_type == "oracle_scenario_class_missing"
+    assert evidence.class_status(missing_class) == "not_run"
+    assert missing_class in evidence.diagnostics[0]
+
+
+@pytest.mark.parametrize(
+    "stdout",
+    (
+        "NOT_TEST_PASS\n",
+        "Narrative text says TEST_PASS but is not a marker.\n",
+        "prefix TEST_PASS\n",
+    ),
+)
+def test_pass_marker_must_be_an_independent_line(tmp_path, stdout):
     bundle = _bundle(tmp_path)
-    public_only = write_oracle_bundle(
-        root=tmp_path / "public_only",
-        family_id=bundle.family_id,
-        reference_model=bundle.reference_model,
-        reference_version=bundle.reference_version,
-        task_parameters=bundle.task_parameters,
-        scenarios=(
-            OracleScenarioSpec(
-                scenario_id="public_smoke_only",
-                scenario_class="public_smoke",
-                seed=1,
-                input_record_width_bits=8,
-                expected_record_width_bits=8,
-                input_fields=(OracleField("sample", 7, 0, False),),
-                expected_fields=(OracleField("result", 7, 0, False),),
-                input_records=(1,),
-                expected_records=(1,),
-            ),
-        ),
+    runner = FakeCommandRunner([_tool_result(stdout=stdout) for _ in range(4)])
+
+    evidence, tool_result = run_oracle_scenarios(runner, tmp_path, bundle)
+
+    assert tool_result.status == "failed"
+    assert evidence.failure_origin == "natural_model_failure"
+    assert evidence.failure_type == "testbench_missing_pass_marker"
+
+
+def test_strict_fail_marker_takes_priority_over_strict_pass_marker(tmp_path):
+    bundle = _bundle(tmp_path)
+    runner = FakeCommandRunner(
+        [_tool_result(stdout="TEST_PASS\nTEST_FAIL\n")]
+        + [_tool_result(stdout="TEST_PASS\n") for _ in range(3)]
     )
 
-    evidence, tool_result = run_oracle_scenarios(FakeCommandRunner(), tmp_path, public_only)
+    evidence, tool_result = run_oracle_scenarios(runner, tmp_path, bundle)
 
-    assert tool_result.status == "passed"
-    assert evidence.class_status("public_smoke") == "pass"
-    assert evidence.class_status("stress") == "not_run"
+    assert tool_result.status == "failed"
+    assert evidence.failure_origin == "natural_model_failure"
+    assert evidence.failure_type == "functional_mismatch"
 
 
 def test_write_oracle_run_evidence_uses_stable_json(tmp_path):
@@ -228,3 +252,34 @@ def test_write_oracle_run_evidence_uses_stable_json(tmp_path):
     assert payload["bundle_sha256"] == bundle.bundle_sha256
     assert payload["status"] == "passed"
     assert len(payload["scenario_results"]) == 4
+
+
+def test_write_oracle_run_evidence_is_byte_stable_across_rewrites(tmp_path):
+    bundle = _bundle(tmp_path)
+    evidence, _ = run_oracle_scenarios(FakeCommandRunner(), tmp_path, bundle)
+    target = tmp_path / "eval" / "oracle_run.json"
+
+    write_oracle_run_evidence(target, evidence)
+    first = target.read_bytes()
+    write_oracle_run_evidence(target, evidence)
+
+    assert target.read_bytes() == first
+
+
+def test_atomic_evidence_replace_failure_preserves_previous_file(tmp_path, monkeypatch):
+    bundle = _bundle(tmp_path)
+    evidence, _ = run_oracle_scenarios(FakeCommandRunner(), tmp_path, bundle)
+    target = tmp_path / "eval" / "oracle_run.json"
+    target.parent.mkdir(parents=True)
+    target.write_bytes(b"previous evidence\n")
+
+    def fail_replace(source, destination):
+        raise OSError("replace failed")
+
+    monkeypatch.setattr(oracle_runner_module.os, "replace", fail_replace)
+
+    with pytest.raises(OSError, match="replace failed"):
+        write_oracle_run_evidence(target, evidence)
+
+    assert target.read_bytes() == b"previous evidence\n"
+    assert list(target.parent.glob(f".{target.name}.*.tmp")) == []
