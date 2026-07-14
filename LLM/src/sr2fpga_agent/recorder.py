@@ -196,7 +196,9 @@ class DatasetRecorder:
                     patch_path = attempt_dir / "patch.diff"
                     patch_metadata_path = attempt_dir / "patch.json"
                     if diagnosis_path.exists():
-                        diagnosis = json.loads(diagnosis_path.read_text(encoding="utf-8"))
+                        diagnosis = _sanitize_training_payload(
+                            json.loads(diagnosis_path.read_text(encoding="utf-8"))
+                        )
                         diagnosis_rows.append(
                             {
                                 "sample_id": sample_id,
@@ -213,10 +215,14 @@ class DatasetRecorder:
                                 "metadata": metadata,
                                 "episode": episode,
                                 "attempt_id": attempt_dir.name,
-                                "diagnosis": json.loads(diagnosis_path.read_text(encoding="utf-8")),
+                                "diagnosis": _sanitize_training_payload(
+                                    json.loads(diagnosis_path.read_text(encoding="utf-8"))
+                                ),
                                 "patch": patch_path.read_text(encoding="utf-8"),
                                 "patch_metadata": (
-                                    json.loads(patch_metadata_path.read_text(encoding="utf-8"))
+                                    _sanitize_training_payload(
+                                        json.loads(patch_metadata_path.read_text(encoding="utf-8"))
+                                    )
                                     if patch_metadata_path.exists()
                                     else None
                                 ),
@@ -339,10 +345,12 @@ def _sanitize_oracle_profile(value: Any) -> dict[str, Any]:
                 "transaction_count",
                 "input_record_width_bits",
                 "expected_record_width_bits",
-                "input_fields",
-                "expected_fields",
             )
             scenario = {key: raw[key] for key in allowed if key in raw}
+            for key in ("input_fields", "expected_fields"):
+                fields = _sanitize_oracle_fields(raw.get(key))
+                if fields:
+                    scenario[key] = fields
             if scenario_class == "public_smoke":
                 for key in ("input_sha256", "expected_sha256"):
                     if isinstance(raw.get(key), str):
@@ -352,6 +360,84 @@ def _sanitize_oracle_profile(value: Any) -> dict[str, Any]:
         profile["scenarios"] = scenarios
     profile["hidden_vectors_exported"] = False
     return profile
+
+
+def _sanitize_oracle_fields(value: Any) -> list[dict[str, Any]]:
+    if not isinstance(value, (list, tuple)):
+        return []
+    fields: list[dict[str, Any]] = []
+    for raw in value:
+        if not isinstance(raw, dict):
+            continue
+        field: dict[str, Any] = {}
+        if isinstance(raw.get("name"), str):
+            field["name"] = raw["name"]
+        for key in ("msb", "lsb"):
+            if isinstance(raw.get(key), int):
+                field[key] = raw[key]
+        if isinstance(raw.get("signed"), bool):
+            field["signed"] = raw["signed"]
+        if field:
+            fields.append(field)
+    return fields
+
+
+_WITHHELD_SCENARIO_CLASSES = frozenset(
+    {"hidden_deterministic", "randomized_fixed_seed", "stress"}
+)
+_WITHHELD_CONTEXT_KEYS = _WITHHELD_SCENARIO_CLASSES | {"hidden"}
+_WITHHELD_DIAGNOSTIC_KEYS = frozenset(
+    {
+        "scenario_id",
+        "scenario_class",
+        "status",
+        "failure_origin",
+        "failure_type",
+        "stage",
+        "signal",
+        "cycle",
+        "transaction_id",
+        "mismatch_type",
+        "tool_status",
+    }
+)
+_RAW_TRAINING_KEYS = frozenset(
+    {
+        "seed",
+        "stdout",
+        "stderr",
+        "command",
+        "raw_log",
+        "raw_path",
+        "evaluator_path",
+    }
+)
+
+
+def _sanitize_training_payload(value: Any, *, withheld: bool = False) -> Any:
+    if isinstance(value, dict):
+        scenario_class = value.get("scenario_class")
+        local_withheld = withheld or scenario_class in _WITHHELD_SCENARIO_CLASSES
+        result: dict[str, Any] = {}
+        for raw_key, item in value.items():
+            key = str(raw_key)
+            normalized = key.lower().replace("-", "_")
+            child_withheld = local_withheld or normalized in _WITHHELD_CONTEXT_KEYS
+            if _is_raw_training_key(normalized):
+                continue
+            if local_withheld and normalized not in _WITHHELD_DIAGNOSTIC_KEYS:
+                continue
+            result[key] = _sanitize_training_payload(item, withheld=child_withheld)
+        return result
+    if isinstance(value, (list, tuple)):
+        return [_sanitize_training_payload(item, withheld=withheld) for item in value]
+    return value
+
+
+def _is_raw_training_key(key: str) -> bool:
+    if key in _RAW_TRAINING_KEYS or key.endswith("_seed"):
+        return True
+    return key.startswith("raw_") and ("log" in key or "path" in key)
 
 
 def _derived_training_views_metadata(sample_id: str, existing: Any) -> dict[str, Any]:

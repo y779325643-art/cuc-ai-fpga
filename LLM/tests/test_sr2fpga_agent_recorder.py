@@ -104,6 +104,76 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertNotIn("D:/private/oracle", exported)
             self.assertNotIn("hidden/input.memh", exported)
 
+    def test_training_exports_deeply_redact_withheld_diagnostics_but_keep_public_structure(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic", vendor="generic", toolchain="open_source")
+            project = ProjectGenerator().generate(
+                ProjectRequest(task_type="counter", width=8, project_name="counter"),
+                platform,
+            )
+            sample_id = "sample_nested_oracle_secrets"
+            recorder.start_sample(sample_id, "Design a counter.", platform)
+            recorder.write_final(
+                sample_id,
+                project,
+                labels={"pass_level": "L1", "checks": {"l1_lint_pass": True}},
+                measured_qor={},
+                tool_versions={},
+                trajectory={},
+            )
+            attempt_dir = root / sample_id / "attempts/attempt_000"
+            attempt_dir.mkdir(parents=True)
+            malicious = {
+                "public": {
+                    "scenario_class": "public_smoke",
+                    "structured_diagnosis": {"signal": "public_out", "cycle": 3, "failure_type": "mismatch"},
+                },
+                "hidden": {
+                    "scenario_class": "hidden_deterministic",
+                    "nested": [
+                        {
+                            "seed": 987654,
+                            "raw_path": "D:/private/hidden/input.memh",
+                            "payload": [1, 2],
+                            "expected": 7,
+                            "actual": 6,
+                            "stdout": "HIDDEN_STDOUT_TOKEN",
+                            "command": ["vvp", "+ORACLE_INPUT=secret.memh"],
+                            "deeper": ({"input_sha256": "HIDDEN_HASH_TOKEN"},),
+                        }
+                    ],
+                    "failure_type": "functional_mismatch",
+                    "signal": "hidden_out",
+                },
+            }
+            (attempt_dir / "diagnosis.json").write_text(json.dumps(malicious) + "\n", encoding="utf-8")
+            (attempt_dir / "patch.diff").write_text("--- a/rtl/top.v\n+++ b/rtl/top.v\n", encoding="utf-8")
+            (attempt_dir / "patch.json").write_text(
+                json.dumps({"diagnosis": malicious, "status": "valid"}) + "\n",
+                encoding="utf-8",
+            )
+
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+            diagnosis_text = (export_dir / "failure_to_diagnosis.jsonl").read_text(encoding="utf-8")
+            patch_text = (export_dir / "failure_to_patch.jsonl").read_text(encoding="utf-8")
+            combined = diagnosis_text + patch_text
+
+            self.assertIn("public_out", combined)
+            self.assertIn("functional_mismatch", combined)
+            for secret in (
+                "987654",
+                "D:/private/hidden/input.memh",
+                "HIDDEN_STDOUT_TOKEN",
+                "HIDDEN_HASH_TOKEN",
+                "+ORACLE_INPUT=secret.memh",
+                '"expected": 7',
+                '"actual": 6',
+            ):
+                self.assertNotIn(secret, combined)
+
     def test_write_jsonl_replaces_existing_file_without_opening_target_for_truncate(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_path = Path(tmp) / "exports" / "his_to_project.jsonl"
@@ -1157,6 +1227,88 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(labels["independent_oracle_status"], "infrastructure_error")
             self.assertEqual(labels["failure_origin"], "oracle_environment_failure")
             self.assertFalse(labels["checks"]["l2_sim_pass"])
+
+    def test_agent_pre_oracle_lint_failure_is_blocked_not_infrastructure_error(self) -> None:
+        class LintFailRunner(FakeRunner):
+            def run(self, command, cwd, stage, timeout_seconds=30):
+                result = super().run(command, cwd, stage, timeout_seconds)
+                if stage == "lint":
+                    return ToolResult(
+                        stage="lint",
+                        command=list(command),
+                        status="failed",
+                        exit_code=1,
+                        stdout="",
+                        stderr="%Error: model RTL lint failure",
+                        duration_seconds=0.01,
+                    )
+                return result
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            agent = DataGenerationAgent(root, command_runner=LintFailRunner(), enable_independent_oracle=True)
+            with mock.patch(
+                "LLM.src.sr2fpga_agent.agent.build_oracle_bundle_for_request",
+                side_effect=lambda family_id, request, output_root: _write_four_class_oracle_bundle(
+                    request.width,
+                    Path(output_root),
+                ),
+            ):
+                result = agent.run_one(
+                    "sample_fir_blocked_before_oracle",
+                    "Implement the declared FIR stream contract.",
+                    ProjectRequest(task_type="fir_filter", width=8, project_name="fir"),
+                    PlatformProfile(name="generic", vendor="generic", toolchain="open_source"),
+                    metadata={"family_id": "fir_filter", "evaluation_line": "line_a"},
+                )
+
+            sample_dir = Path(result["sample_dir"])
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+            diagnosis = json.loads(
+                (sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(labels["pass_level"], "L0")
+            self.assertTrue(labels["automatic_pass_credit"])
+            self.assertEqual(labels["independent_oracle_status"], "not_run")
+            self.assertEqual(trajectory["oracle_profile"]["skip_reason"], "blocked_before_oracle")
+            self.assertEqual(diagnosis["stage"], "lint")
+            self.assertIn("model RTL lint failure", diagnosis["root_cause"])
+
+    def test_agent_oracle_runner_and_evidence_writer_exceptions_become_stable_oracle_error(self) -> None:
+        cases = (
+            ("run_oracle_scenarios", RuntimeError("scenario runner crashed")),
+            ("write_oracle_run_evidence", OSError("evidence disk unavailable")),
+            ("sanitize_oracle_profile", ValueError("oracle profile is invalid")),
+        )
+        for index, (target, error) in enumerate(cases):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp) / "datasets"
+                agent = DataGenerationAgent(root, command_runner=FakeRunner(), enable_independent_oracle=True)
+                sample_id = f"sample_fir_oracle_boundary_{index}"
+                with mock.patch(
+                    "LLM.src.sr2fpga_agent.agent.build_oracle_bundle_for_request",
+                    side_effect=lambda family_id, request, output_root: _write_four_class_oracle_bundle(
+                        request.width,
+                        Path(output_root),
+                    ),
+                ), mock.patch(f"LLM.src.sr2fpga_agent.agent.{target}", side_effect=error):
+                    result = agent.run_one(
+                        sample_id,
+                        "Implement the declared FIR stream contract.",
+                        ProjectRequest(task_type="fir_filter", width=8, project_name="fir"),
+                        PlatformProfile(name="generic", vendor="generic", toolchain="open_source"),
+                        metadata={"family_id": "fir_filter", "evaluation_line": "line_a"},
+                    )
+
+                sample_dir = Path(result["sample_dir"])
+                labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+                trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
+                self.assertEqual(labels["pass_level"], "ORACLE_ERROR")
+                self.assertFalse(labels["automatic_pass_credit"])
+                self.assertEqual(labels["independent_oracle_status"], "infrastructure_error")
+                self.assertEqual(labels["failure_origin"], "oracle_environment_failure")
+                self.assertEqual(trajectory["oracle_profile"]["status"], "infrastructure_error")
 
     def test_agent_l4_open_disabled_records_auditable_not_run(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

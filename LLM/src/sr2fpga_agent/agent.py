@@ -178,12 +178,15 @@ class DataGenerationAgent:
                             oracle_evidence_path=(oracle_root / "evidence.json") if attempt_oracle_bundle else None,
                         )
                         attempt_oracle_evidence = evidence_out[0] if evidence_out else None
-                        oracle_infrastructure_failure = _oracle_evidence_is_infrastructure(attempt_oracle_evidence)
-                        final_oracle_profile = _oracle_profile(
-                            family_id,
-                            attempt_oracle_bundle,
-                            attempt_oracle_evidence,
-                        )
+                        if attempt_oracle_bundle is not None and attempt_oracle_evidence is None and "sim_run" not in tool_results:
+                            final_oracle_profile = _oracle_not_run_profile(family_id, "blocked_before_oracle")
+                        else:
+                            final_oracle_profile = _oracle_profile(
+                                family_id,
+                                attempt_oracle_bundle,
+                                attempt_oracle_evidence,
+                            )
+                        oracle_infrastructure_failure = final_oracle_profile.get("status") == "infrastructure_error"
                 else:
                     tool_results = self._run_pipeline(project, project_dir, platform)
             elif l0_result is not None:
@@ -497,15 +500,34 @@ class DataGenerationAgent:
             )
             results["sim_run"] = _validate_simulation_output(results["sim_run"])
         else:
-            evidence, results["sim_run"] = run_oracle_scenarios(
-                self.command_runner,
-                project_dir,
-                oracle_bundle,
-            )
+            try:
+                evidence, sim_result = run_oracle_scenarios(
+                    self.command_runner,
+                    project_dir,
+                    oracle_bundle,
+                )
+            except Exception as exc:
+                evidence = _oracle_boundary_failure_evidence(
+                    oracle_bundle,
+                    exc,
+                    failure_type="oracle_runner_exception",
+                )
+                sim_result = _oracle_boundary_failure_tool_result(exc, "oracle_runner_exception")
+            else:
+                if oracle_evidence_path is not None:
+                    try:
+                        write_oracle_run_evidence(oracle_evidence_path, evidence)
+                    except Exception as exc:
+                        evidence = _oracle_boundary_failure_evidence(
+                            oracle_bundle,
+                            exc,
+                            failure_type="oracle_evidence_write_failed",
+                            scenario_results=evidence.scenario_results,
+                        )
+                        sim_result = _oracle_boundary_failure_tool_result(exc, "oracle_evidence_write_failed")
+            results["sim_run"] = sim_result
             if oracle_evidence_out is not None:
                 oracle_evidence_out.append(evidence)
-            if oracle_evidence_path is not None:
-                write_oracle_run_evidence(oracle_evidence_path, evidence)
         if results["sim_run"].status != "passed":
             return results
 
@@ -589,13 +611,18 @@ def _oracle_not_run_profile(family_id: str, skip_reason: str) -> dict[str, Any]:
     }
 
 
-def _oracle_error_profile(family_id: str, exc: Exception) -> dict[str, Any]:
+def _oracle_error_profile(
+    family_id: str,
+    exc: Exception,
+    *,
+    failure_type: str = "oracle_bundle_invalid",
+) -> dict[str, Any]:
     return {
         "kind": "python_reference",
         "family_id": family_id,
         "status": "infrastructure_error",
         "failure_origin": "oracle_environment_failure",
-        "failure_type": "oracle_bundle_invalid",
+        "failure_type": failure_type,
         "diagnostics": [str(exc)],
         "scenario_counts": {},
         "class_status": {},
@@ -610,7 +637,10 @@ def _oracle_profile(
 ) -> dict[str, Any]:
     if bundle is None:
         return _oracle_not_run_profile(family_id, "unsupported_family")
-    profile = sanitize_oracle_profile(bundle)
+    try:
+        profile = sanitize_oracle_profile(bundle)
+    except Exception as exc:
+        return _oracle_error_profile(family_id, exc, failure_type="oracle_profile_invalid")
     if evidence is None:
         profile.update(
             {
@@ -646,6 +676,36 @@ def _oracle_profile(
         }
     )
     return profile
+
+
+def _oracle_boundary_failure_evidence(
+    bundle: OracleBundle,
+    exc: Exception,
+    *,
+    failure_type: str,
+    scenario_results: tuple[Any, ...] = (),
+) -> OracleRunEvidence:
+    return OracleRunEvidence(
+        family_id=bundle.family_id,
+        bundle_sha256=bundle.bundle_sha256,
+        status="failed",
+        failure_origin="oracle_environment_failure",
+        failure_type=failure_type,
+        scenario_results=scenario_results,
+        diagnostics=(str(exc),),
+    )
+
+
+def _oracle_boundary_failure_tool_result(exc: Exception, failure_type: str) -> ToolResult:
+    return ToolResult(
+        stage="sim_run",
+        command=["python_reference_oracle"],
+        status="failed",
+        exit_code=1,
+        stdout="",
+        stderr=f"{failure_type}: {exc}",
+        duration_seconds=0.0,
+    )
 
 
 def _oracle_evidence_is_infrastructure(evidence: OracleRunEvidence | None) -> bool:
