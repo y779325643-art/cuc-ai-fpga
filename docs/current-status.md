@@ -39,9 +39,25 @@ controlled-ablation aid, not as the main repair-learning data source.
 | Implemented families | 31 |
 | Paper 1 core implemented | 14/14 (denominator: v0.2 catalog `recommended_sets.paper1_core`) |
 | Paper 1 core executable / L3 | 14/14 |
-| Mutation-qualified families | 15 |
+| Mutation-qualified families | 17 |
+| Independent Python oracle qualified | 9 |
 | Dual-tool L4 families (OpenXC7 and Vivado) | 2 |
 | L5 families | 0 |
+
+## Phase C Independent Oracle Qualification (2026-07-16)
+
+- Fresh run `phase-c-independent-oracle-20260714-v1` completed all nine target
+  families at L3 with `rejected=0` and no oracle infrastructure errors.
+- Numeric, signal, image, and RL domains each passed public, hidden,
+  fixed-seed randomized, and stress scenarios. Independent Python-reference
+  coverage is 9/9 target families.
+- Trusted oracles killed 45/45 declared mutations with zero survivor and zero
+  non-scoreable mutation; all nine families are Line-A ready.
+- Export inspection found no hidden `.memh` paths, withheld seeds, or complete
+  hidden vector contents. The local artifact audit completed with zero issues.
+- FIR and matrix-vector MAC retain their previously verified OpenXC7/Vivado L4
+  status; this Phase C batch itself ran L0-L3 only and does not add L4/L5 claims.
+- Evidence report: `docs/sr2fpga-phase-c-independent-oracle-evidence-2026-07-14.md`.
 
 ## Multi-Teacher Source (NEW, merged to `main` 2026-06-26)
 

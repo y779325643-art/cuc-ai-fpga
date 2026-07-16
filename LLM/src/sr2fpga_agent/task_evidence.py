@@ -558,7 +558,16 @@ def _audit_sample_labels(
     if not isinstance(labels, dict):
         return [f"invalid labels.json for sample: {sample_dir.name}"]
 
-    expected_rank = VERIFICATION_LEVEL_RANK[entry.highest_verified_level]
+    expected_level = entry.highest_verified_level
+    if (
+        expected_level == "L4"
+        and entry.independent_oracle_evidence.status == "qualified"
+        and (entry.l4_open_status == "pass" or entry.l4_commercial_status == "pass")
+    ):
+        # The latest Phase C run refreshes L0-L3 oracle evidence while the
+        # separately proven physical result remains the ledger's highest level.
+        expected_level = "L3"
+    expected_rank = VERIFICATION_LEVEL_RANK[expected_level]
     levels = (labels.get("pass_level"), labels.get("highest_official_level"))
     if not all(isinstance(level, str) and level in VERIFICATION_LEVEL_RANK for level in levels):
         return [f"labels.json has invalid verification level for sample: {sample_dir.name}"]
@@ -568,7 +577,7 @@ def _audit_sample_labels(
         issues.append(
             f"sample labels do not reach ledger highest_verified_level for family_id: {entry.family_id}"
         )
-    if entry.highest_verified_level == "L3" and (
+    if expected_level == "L3" and (
         summary is None or sample_dir.name not in _summary_success_l3_ids(summary)
     ):
         issues.append(
