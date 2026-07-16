@@ -260,6 +260,30 @@ def _oracle_dut_mutation(
             "rtl/sobel_threshold_core.v",
             (("assign magnitude = abs_gx + abs_gy;", "assign magnitude = {8'd0, abs_gx[3:0] + abs_gy[3:0]};"),),
         ),
+        ("sobel_threshold", "input_backpressure_error"): (
+            "rtl/top.v",
+            (("(!produces_output || !out_valid || out_ready);", "1'b1;"),),
+        ),
+        ("sobel_threshold", "ignore_in_last"): (
+            "rtl/top.v",
+            (("final_input_last <= in_last;", "final_input_last <= in_last | 1'b1;"),),
+        ),
+        ("sobel_threshold", "ignore_subsequent_reset"): (
+            "rtl/top.v",
+            (
+                (
+                    "reg [15:0] bottom_flush_column;",
+                    "reg [15:0] bottom_flush_column;\n  reg mutation_reset_seen;",
+                ),
+                (
+                    "always @(posedge clk or negedge rst_n) begin\n    if (!rst_n) begin\n      row_index",
+                    "always @(posedge clk or negedge rst_n) begin\n"
+                    "    if (!rst_n && mutation_reset_seen !== 1'b1) begin\n"
+                    "      mutation_reset_seen <= 1'b1;\n"
+                    "      row_index",
+                ),
+            ),
+        ),
         ("p_vision_defect_core", "wrong_line_order"): (
             "rtl/sobel_window.v",
             (("assign select_line0 = !row_index[0];", "assign select_line0 = 1'b0;"),),
@@ -275,6 +299,43 @@ def _oracle_dut_mutation(
         ("p_vision_defect_core", "wrong_bbox"): (
             "rtl/vision_defect_accumulator.v",
             (("first_defect_x <= pixel_x;", "first_defect_x <= pixel_x + 16'd1;"),),
+        ),
+        ("p_vision_defect_core", "hardcoded_first_coordinate"): (
+            "rtl/vision_defect_accumulator.v",
+            (
+                (
+                    "first_defect_x <= pixel_x;",
+                    "first_defect_x <= pixel_x[0] ? pixel_x : pixel_x - 16'd1;",
+                ),
+                (
+                    "first_defect_y <= pixel_y;",
+                    "first_defect_y <= pixel_y[0] ? pixel_y : pixel_y + 16'd1;",
+                ),
+            ),
+        ),
+        ("p_vision_defect_core", "input_backpressure_error"): (
+            "rtl/top.v",
+            (("(!produces_output || !out_valid || out_ready);", "1'b1;"),),
+        ),
+        ("p_vision_defect_core", "ignore_in_last"): (
+            "rtl/top.v",
+            (("final_input_last <= in_last;", "final_input_last <= in_last | 1'b1;"),),
+        ),
+        ("p_vision_defect_core", "ignore_subsequent_reset"): (
+            "rtl/top.v",
+            (
+                (
+                    "reg [15:0] bottom_flush_column;",
+                    "reg [15:0] bottom_flush_column;\n  reg mutation_reset_seen;",
+                ),
+                (
+                    "always @(posedge clk or negedge rst_n) begin\n    if (!rst_n) begin\n      row_index",
+                    "always @(posedge clk or negedge rst_n) begin\n"
+                    "    if (!rst_n && mutation_reset_seen !== 1'b1) begin\n"
+                    "      mutation_reset_seen <= 1'b1;\n"
+                    "      row_index",
+                ),
+            ),
         ),
         ("pattern_matcher", "wrong_pattern_order"): (
             "rtl/pattern_matcher.v",

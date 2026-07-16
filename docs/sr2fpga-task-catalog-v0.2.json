@@ -2035,7 +2035,10 @@
         "swap_x_y_gradient",
         "wrong_border_policy",
         "wrong_threshold",
-        "accumulator_truncation"
+        "accumulator_truncation",
+        "input_backpressure_error",
+        "ignore_in_last",
+        "ignore_subsequent_reset"
       ],
       "mutation_score_threshold": 0.85,
       "benchmark_role": "paper1_core",
@@ -4233,7 +4236,11 @@
         "wrong_line_order",
         "wrong_threshold",
         "missing_defect",
-        "wrong_bbox"
+        "wrong_bbox",
+        "hardcoded_first_coordinate",
+        "input_backpressure_error",
+        "ignore_in_last",
+        "ignore_subsequent_reset"
       ],
       "mutation_score_threshold": 0.85,
       "benchmark_role": "eval_subset",

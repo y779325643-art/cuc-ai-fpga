@@ -378,7 +378,15 @@ class FailureInjectorTest(unittest.TestCase):
 
         self.assertEqual(
             tuple(mutations),
-            ("swap_x_y_gradient", "wrong_border_policy", "wrong_threshold", "accumulator_truncation"),
+            (
+                "swap_x_y_gradient",
+                "wrong_border_policy",
+                "wrong_threshold",
+                "accumulator_truncation",
+                "input_backpressure_error",
+                "ignore_in_last",
+                "ignore_subsequent_reset",
+            ),
         )
         self.assertIn("TEST_PASS", _run_generated_testbench(project))
         for mutation_name, mutation in mutations.items():
@@ -404,7 +412,19 @@ class FailureInjectorTest(unittest.TestCase):
         )
         mutations = oracle_mutation_projects(project, "vision_defect_core")
 
-        self.assertEqual(tuple(mutations), ("wrong_line_order", "wrong_threshold", "missing_defect", "wrong_bbox"))
+        self.assertEqual(
+            tuple(mutations),
+            (
+                "wrong_line_order",
+                "wrong_threshold",
+                "missing_defect",
+                "wrong_bbox",
+                "hardcoded_first_coordinate",
+                "input_backpressure_error",
+                "ignore_in_last",
+                "ignore_subsequent_reset",
+            ),
+        )
         self.assertIn("TEST_PASS", _run_generated_testbench(project))
         for mutation_name, mutation in mutations.items():
             with self.subTest(mutation=mutation_name):
@@ -414,6 +434,9 @@ class FailureInjectorTest(unittest.TestCase):
                 self.assertTrue(changed_paths)
                 self.assertTrue(all(path.startswith("rtl/") for path in changed_paths))
                 self.assertEqual(mutation.files["sim/tb_top.v"], project.files["sim/tb_top.v"])
+                if mutation_name in {"hardcoded_first_coordinate", "ignore_in_last"}:
+                    # These reviewer mutants target the independent C3 operation-record scenarios.
+                    continue
                 output = _run_generated_testbench(mutation)
                 self.assertNotIn("TEST_PASS", output)
                 self.assertIn("TEST_FAIL", output)

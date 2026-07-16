@@ -1143,7 +1143,7 @@ def vision_defect_core_testbench() -> str:
 
 
 def _add_image_oracle_mode(testbench: str, *, vision: bool) -> str:
-    expected_width = 35 if vision else 3
+    expected_width = 36 if vision else 4
     declaration_marker = "  reg [15:0] held_y;\n" if vision else "  reg held_last;\n"
     declarations = dedent(
         f"""\
@@ -1154,14 +1154,19 @@ def _add_image_oracle_mode(testbench: str, *, vision: bool) -> str:
           integer oracle_transaction_count;
           integer oracle_mode;
           reg oracle_active;
-          reg [11:0] oracle_input_memory [0:4095];
+          reg [23:0] oracle_input_memory [0:4095];
           reg [{expected_width - 1}:0] oracle_expected_memory [0:4095];
-          reg [11:0] oracle_input_record;
+          reg [23:0] oracle_input_record;
           integer oracle_output_index;
+          integer oracle_expected_output_count;
+          integer oracle_expected_final_frame_count;
           integer oracle_frame_output_count;
           integer oracle_wait_count;
           integer oracle_stall_index;
           integer oracle_stall_cycles;
+          integer oracle_drain_target;
+          localparam integer ORACLE_EXPECT_OUTPUT_BIT = {35 if vision else 3};
+          localparam integer ORACLE_OUT_LAST_BIT = {1 if vision else 2};
         """
     )
     testbench = _insert_after_once(testbench, declaration_marker, declarations)
@@ -1206,7 +1211,7 @@ def _sobel_oracle_monitor() -> str:
         """\
           always @(posedge clk) begin
             if (rst_n && oracle_active && out_valid && out_ready) begin
-              if (oracle_output_index >= oracle_transaction_count || oracle_frame_output_count >= 25) begin
+              if (oracle_output_index >= oracle_expected_output_count || oracle_frame_output_count >= 25) begin
                 $display("SR2FPGA_MISMATCH {\\\"scenario_id\\\":\\\"%0s\\\",\\\"class\\\":\\\"%0s\\\",\\\"item_index\\\":%0d,\\\"field\\\":\\\"output_count\\\",\\\"expected\\\":\\\"at_most_25_per_frame\\\",\\\"actual\\\":\\\"overflow\\\"}",
                          oracle_scenario_id, oracle_scenario_class, oracle_output_index);
                 $display("TEST_FAIL emitted more than 25 pixels");
@@ -1237,7 +1242,7 @@ def _vision_oracle_monitor() -> str:
         """\
           always @(posedge clk) begin
             if (rst_n && oracle_active && out_valid && out_ready) begin
-              if (oracle_output_index >= oracle_transaction_count || oracle_frame_output_count >= 25) begin
+              if (oracle_output_index >= oracle_expected_output_count || oracle_frame_output_count >= 25) begin
                 $display("SR2FPGA_MISMATCH {\\\"scenario_id\\\":\\\"%0s\\\",\\\"class\\\":\\\"%0s\\\",\\\"item_index\\\":%0d,\\\"field\\\":\\\"output_count\\\",\\\"expected\\\":\\\"at_most_25_per_frame\\\",\\\"actual\\\":\\\"overflow\\\"}",
                          oracle_scenario_id, oracle_scenario_class, oracle_output_index);
                 $display("TEST_FAIL emitted more than 25 pixels");
@@ -1273,14 +1278,26 @@ def _oracle_driver_task() -> str:
         """\
           task run_oracle_scenario;
             integer oracle_item_index;
+            integer oracle_scan_index;
             begin
-              if (oracle_transaction_count <= 0 || oracle_transaction_count > 4096 ||
-                  (oracle_transaction_count % 25) != 0) begin
+              if (oracle_transaction_count <= 0 || oracle_transaction_count > 4096) begin
                 $display("ORACLE_ERROR invalid image transaction count=%0d", oracle_transaction_count);
                 $finish;
               end
               $readmemh(oracle_input_path, oracle_input_memory, 0, oracle_transaction_count - 1);
               $readmemh(oracle_expected_path, oracle_expected_memory, 0, oracle_transaction_count - 1);
+              oracle_expected_output_count = 0;
+              oracle_expected_final_frame_count = 0;
+              for (oracle_scan_index = 0; oracle_scan_index < oracle_transaction_count;
+                   oracle_scan_index = oracle_scan_index + 1) begin
+                if (oracle_expected_memory[oracle_scan_index][ORACLE_EXPECT_OUTPUT_BIT]) begin
+                  oracle_expected_output_count = oracle_expected_output_count + 1;
+                  if (oracle_expected_memory[oracle_scan_index][ORACLE_OUT_LAST_BIT])
+                    oracle_expected_final_frame_count = 0;
+                  else
+                    oracle_expected_final_frame_count = oracle_expected_final_frame_count + 1;
+                end
+              end
               rst_n = 1'b0;
               in_valid = 1'b0;
               in_pixel = 8'd0;
@@ -1297,15 +1314,21 @@ def _oracle_driver_task() -> str:
                    oracle_item_index = oracle_item_index + 1) begin
                 oracle_input_record = oracle_input_memory[oracle_item_index];
                 if (oracle_input_record[9]) begin
+                  oracle_drain_target = oracle_input_record[23:12];
+                  if (oracle_drain_target < oracle_output_index ||
+                      oracle_drain_target > oracle_expected_output_count) begin
+                    $display("ORACLE_ERROR invalid reset drain target=%0d", oracle_drain_target);
+                    $finish;
+                  end
                   oracle_wait_count = 0;
-                  while (oracle_output_index < oracle_item_index && oracle_wait_count < 500) begin
-                    @(posedge clk);
+                  while (oracle_output_index < oracle_drain_target && oracle_wait_count < 500) begin
+                    @(negedge clk);
                     oracle_wait_count = oracle_wait_count + 1;
                   end
-                  if (oracle_output_index != oracle_item_index) begin
+                  if (oracle_output_index != oracle_drain_target) begin
                     $display("SR2FPGA_MISMATCH {\\\"scenario_id\\\":\\\"%0s\\\",\\\"class\\\":\\\"%0s\\\",\\\"item_index\\\":%0d,\\\"field\\\":\\\"pre_reset_drain\\\",\\\"expected\\\":%0d,\\\"actual\\\":%0d}",
                              oracle_scenario_id, oracle_scenario_class, oracle_item_index,
-                             oracle_item_index, oracle_output_index);
+                             oracle_drain_target, oracle_output_index);
                     $display("TEST_FAIL timeout before reset");
                     $finish;
                   end
@@ -1315,6 +1338,7 @@ def _oracle_driver_task() -> str:
                   out_ready = 1'b1;
                   repeat (2) @(posedge clk);
                   @(negedge clk);
+                  oracle_frame_output_count = 0;
                   rst_n = 1'b1;
                 end
                 @(negedge clk);
@@ -1338,24 +1362,43 @@ def _oracle_driver_task() -> str:
                 in_last = 1'b0;
                 oracle_stall_cycles = oracle_input_record[11:10];
                 if (oracle_stall_cycles > 0) begin
+                  if (oracle_item_index + 1 >= oracle_transaction_count ||
+                      oracle_input_memory[oracle_item_index + 1][9] ||
+                      oracle_input_memory[oracle_item_index + 1][7:0] == oracle_input_record[7:0]) begin
+                    $display("ORACLE_ERROR output stall requires a changed pending input pixel");
+                    $finish;
+                  end
                   out_ready = 1'b0;
+                  in_pixel = oracle_input_memory[oracle_item_index + 1][7:0];
+                  in_last = oracle_input_memory[oracle_item_index + 1][8];
+                  in_valid = 1'b1;
                   for (oracle_stall_index = 0; oracle_stall_index < oracle_stall_cycles;
                        oracle_stall_index = oracle_stall_index + 1) begin
                     @(posedge clk);
+                    if (out_valid !== 1'b1 || in_ready !== 1'b0) begin
+                      $display("SR2FPGA_MISMATCH {\\\"scenario_id\\\":\\\"%0s\\\",\\\"class\\\":\\\"%0s\\\",\\\"item_index\\\":%0d,\\\"field\\\":\\\"input_backpressure\\\",\\\"expected\\\":0,\\\"actual\\\":\\\"%0b\\\"}",
+                               oracle_scenario_id, oracle_scenario_class, oracle_item_index + 1, in_ready);
+                      $display("TEST_FAIL input accepted while output stalled");
+                      $finish;
+                    end
                   end
                   @(negedge clk);
+                  in_valid = 1'b0;
+                  in_last = 1'b0;
                   out_ready = 1'b1;
                 end
               end
               oracle_wait_count = 0;
-              while (oracle_output_index < oracle_transaction_count && oracle_wait_count < 1000) begin
-                @(posedge clk);
+              while (oracle_output_index < oracle_expected_output_count && oracle_wait_count < 1000) begin
+                @(negedge clk);
                 oracle_wait_count = oracle_wait_count + 1;
               end
-              if (oracle_output_index != oracle_transaction_count || oracle_frame_output_count != 0) begin
+              repeat (10) @(posedge clk);
+              if (oracle_output_index != oracle_expected_output_count ||
+                  oracle_frame_output_count != oracle_expected_final_frame_count) begin
                 $display("SR2FPGA_MISMATCH {\\\"scenario_id\\\":\\\"%0s\\\",\\\"class\\\":\\\"%0s\\\",\\\"item_index\\\":%0d,\\\"field\\\":\\\"output_count\\\",\\\"expected\\\":%0d,\\\"actual\\\":%0d}",
                          oracle_scenario_id, oracle_scenario_class, oracle_output_index,
-                         oracle_transaction_count, oracle_output_index);
+                         oracle_expected_output_count, oracle_output_index);
                 $display("TEST_FAIL timeout outputs=%0d", oracle_output_index);
                 $finish;
               end
