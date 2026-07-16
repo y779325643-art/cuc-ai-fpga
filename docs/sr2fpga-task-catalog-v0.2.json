@@ -3032,13 +3032,18 @@
       "family_id": "qtable_update_core",
       "display_name": "Q-table 更新核心",
       "task_kind": "module_family",
-      "category": "host_facing_accelerator",
+      "category": "numeric_datapath",
       "module_difficulty": "M5",
       "project_difficulty": null,
       "sr2fpga_tier": "T3",
-      "system_his_profile": "host_facing_accelerator",
+      "system_his_profile": "streaming_datapath",
       "skeleton_level": "S3_architecture_skeleton",
-      "core_modules": [],
+      "core_modules": [
+        "td_input_stage",
+        "discount_core",
+        "td_update_core",
+        "stream_stage"
+      ],
       "oracle_kind": [
         "python_rl_golden"
       ],
@@ -3046,8 +3051,8 @@
       "architecture_obligations": [
         "td_update_formula",
         "fixed_point_numeric_format",
-        "qtable_bram_mapping",
-        "done_status_protocol"
+        "signed_saturation",
+        "valid_ready_backpressure"
       ],
       "coverage_targets": [
         "reset_sequence",
@@ -3079,15 +3084,13 @@
         "vivado_reference_required_if_selected": false
       },
       "l4_value": [
-        "bram_mapping",
-        "fixed_point_datapath_timing",
-        "host_shell_physical_binding"
+        "fixed_point_datapath_timing"
       ],
       "mutation_suite": [
         "wrong_td_formula",
-        "wrong_argmax_tie_break",
         "accumulator_truncation",
-        "missing_done"
+        "wrong_signed_shift",
+        "missing_saturation"
       ],
       "mutation_score_threshold": 0.9,
       "benchmark_role": "flagship_core",
@@ -4792,12 +4795,11 @@
       "system_his_profile": "host_facing_accelerator",
       "skeleton_level": "S3_architecture_skeleton",
       "core_modules": [
-        "axi_lite_regblock",
-        "qtable_update_core",
-        "rl_reward_policy_update",
-        "qtable_bram",
-        "argmax_core",
-        "update_control_fsm"
+        "host_config_bank",
+        "sample_capture_stage",
+        "policy_value_core",
+        "td_update_core",
+        "result_stream_stage"
       ],
       "oracle_kind": [
         "python_rl_golden",
@@ -4805,11 +4807,12 @@
       ],
       "oracle_readiness": "ready",
       "architecture_obligations": [
-        "qtable_bram_mapping",
         "fixed_point_numeric_format",
         "done_status_protocol",
         "host_register_map",
-        "td_update_formula"
+        "td_update_formula",
+        "argmax_first_tie_break",
+        "result_backpressure"
       ],
       "coverage_targets": [
         "reset_sequence",
@@ -4841,7 +4844,6 @@
         "vivado_reference_required_if_selected": false
       },
       "l4_value": [
-        "bram_mapping",
         "fixed_point_datapath_timing",
         "host_shell_physical_binding"
       ],

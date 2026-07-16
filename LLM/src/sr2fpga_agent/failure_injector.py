@@ -369,6 +369,79 @@ def _oracle_dut_mutation(
             "rtl/stream_packer.v",
             (("out_match_word <= event_word;", "out_match_word <= event_word ^ event_word;"),),
         ),
+        ("qtable_update_core", "wrong_td_formula"): (
+            "rtl/td_update_core.v",
+            (("assign td_error_full = discounted_return -", "assign td_error_full = discounted_return +"),),
+        ),
+        ("qtable_update_core", "accumulator_truncation"): (
+            "rtl/td_update_core.v",
+            (
+                (
+                    "assign td_error_full = discounted_return -\n"
+                    "    {{(DATA_WIDTH+1){value[DATA_WIDTH-1]}}, value};",
+                    "assign td_error_full =\n"
+                    "    {{((2*DATA_WIDTH)-3){discounted_return[3]}}, discounted_return[3:0]} +\n"
+                    "    {{(2*DATA_WIDTH){1'b0}}, ^discounted_return[(2*DATA_WIDTH):4]} -\n"
+                    "    {{(DATA_WIDTH+1){value[DATA_WIDTH-1]}}, value};",
+                ),
+            ),
+        ),
+        ("qtable_update_core", "wrong_signed_shift"): (
+            "rtl/discount_core.v",
+            (("gamma_next_product >>> SCALE_SHIFT", "gamma_next_product >> SCALE_SHIFT"),),
+        ),
+        ("qtable_update_core", "missing_saturation"): (
+            "rtl/td_update_core.v",
+            (
+                (
+                    "assign updated_value =\n"
+                    "    (!updated_value_full[DATA_WIDTH] && updated_value_full[DATA_WIDTH-1]) ?\n"
+                    "      {1'b0, {(DATA_WIDTH-1){1'b1}}} :\n"
+                    "    (updated_value_full[DATA_WIDTH] && !updated_value_full[DATA_WIDTH-1]) ?\n"
+                    "      {1'b1, {(DATA_WIDTH-1){1'b0}}} :\n"
+                    "      updated_value_full[DATA_WIDTH-1:0];",
+                    "assign updated_value =\n"
+                    "    (!updated_value_full[DATA_WIDTH] && updated_value_full[DATA_WIDTH-1]) ?\n"
+                    "      {1'b0, {(DATA_WIDTH-2){1'b1}}, 1'b0} :\n"
+                    "    (updated_value_full[DATA_WIDTH] && !updated_value_full[DATA_WIDTH-1]) ?\n"
+                    "      {1'b1, {(DATA_WIDTH-2){1'b0}}, 1'b1} :\n"
+                    "      updated_value_full[DATA_WIDTH-1:0];",
+                ),
+            ),
+        ),
+        ("p_rl_qlearning_accel", "wrong_td_formula"): (
+            "rtl/td_update_core.v",
+            (
+                (
+                    "$signed({2'b00, next_value}) -\n"
+                    "                         $signed({2'b00, value_estimate});",
+                    "$signed({2'b00, next_value}) +\n"
+                    "                         $signed({2'b00, value_estimate});",
+                ),
+            ),
+        ),
+        ("p_rl_qlearning_accel", "wrong_argmax_tie_break"): (
+            "rtl/policy_value_core.v",
+            (("assign selected_action = (score1 > score0)", "assign selected_action = (score1 >= score0)"),),
+        ),
+        ("p_rl_qlearning_accel", "accumulator_truncation"): (
+            "rtl/td_update_core.v",
+            (
+                (
+                    "assign update_product = alpha * td_error_nonnegative;",
+                    "assign update_product = (alpha * td_error_nonnegative) &\n"
+                    "                          {{((2*DATA_WIDTH)-3){1'b0}}, 4'hf};",
+                ),
+            ),
+        ),
+        ("p_rl_qlearning_accel", "missing_done"): (
+            "rtl/result_stream_stage.v",
+            (("episode_done_out <= done_in;", "episode_done_out <= done_in && 1'b0;"),),
+        ),
+        ("p_rl_qlearning_accel", "wrong_register_offset"): (
+            "rtl/host_config_bank.v",
+            (("3'd0: weight0 <= cfg_data;", "3'd0: bias0 <= cfg_data;"),),
+        ),
         ("matrix_vector_mac", "wrong_index_order"): (
             "rtl/dot_product_engine.v",
             ((".addr(index)", ".addr(2'd3 - index)"),),
