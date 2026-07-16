@@ -322,7 +322,7 @@ def render_task_evidence_markdown(
         "# SR2FPGA Task Evidence Status",
         "",
         "Generated from the task catalog and evidence ledger. Target intent, "
-        "current implementation, and verification proof are reported separately.",
+        "current implementation, and ledger-declared verification claims are reported separately.",
         "",
         "## Summary",
         "",
@@ -380,7 +380,10 @@ def render_task_evidence_markdown(
     lines.extend(
         [
             "",
-            "## Verification Evidence Matrix",
+            "## Ledger-Declared Verification Claims",
+            "",
+            "This matrix is not an audit of local artifacts. Artifact-backed proof "
+            "requires `audit_local_run_artifacts()` against the relevant run root.",
             "",
             "| Family | Mutation | Score | Independent oracle | Level | L4-open | L4-commercial | L5 | Run |",
             "| --- | --- | --- | --- | --- | --- | --- | --- |",
@@ -471,9 +474,6 @@ def _audit_entry_artifacts(
         for reference in entry.evidence_refs
         if Path(reference).name == "oracle_mutations"
     ]
-    if not trajectory_paths and not mutation_roots:
-        return []
-
     issues: list[str] = []
     qualified_independent_oracle = (
         entry.independent_oracle_evidence.status == "qualified"

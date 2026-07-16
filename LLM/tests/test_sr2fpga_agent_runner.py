@@ -6,6 +6,8 @@ from pathlib import Path
 from unittest.mock import patch
 
 from LLM.src.sr2fpga_agent.baseline_report import baseline_rows, render_markdown
+from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 from LLM.src.sr2fpga_agent.runner import (
     L4CommercialConfig,
     L4OpenConfig,
@@ -37,7 +39,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class RunnerConfigTest(unittest.TestCase):
-    def test_phase_c_independent_oracle_config_plans_nine_explicit_aliases(self) -> None:
+    def test_phase_c_independent_oracle_config_generates_every_planned_sample(self) -> None:
         config = load_runner_config(
             REPO_ROOT
             / "configs"
@@ -65,10 +67,27 @@ class RunnerConfigTest(unittest.TestCase):
                 "pulse_radar_signal",
                 "sobel_threshold",
                 "vision_defect_core",
-                "t6_td_update_core",
-                "t10_rl_accelerator_shell",
+                "composed_td_update_core",
+                "composed_rl_accelerator_shell",
             ],
         )
+        generator = ProjectGenerator()
+        for sample in planned_samples(config):
+            with self.subTest(task_type=sample.task_type):
+                project = generator.generate(
+                    ProjectRequest(
+                        task_type=sample.task_type,
+                        width=sample.width,
+                        project_name=sample.project_name,
+                        description=sample.requirement,
+                    ),
+                    PlatformProfile(
+                        name="generic_verilog",
+                        vendor="generic",
+                        toolchain="open_source",
+                    ),
+                )
+                self.assertIn("manifest.json", project.files)
 
     def test_load_runner_config_from_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

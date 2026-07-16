@@ -708,7 +708,8 @@ def test_renderer_separates_target_implementation_and_evidence():
 
     assert "## Target Task Map" in markdown
     assert "## Current Implementation Matrix" in markdown
-    assert "## Verification Evidence Matrix" in markdown
+    assert "## Ledger-Declared Verification Claims" in markdown
+    assert "not an audit of local artifacts" in markdown
     assert "Implemented families | 31 / 71" in markdown
     assert "Paper 1 core implemented | 14 / 14" in markdown
     assert "OpenXC7 L4 pass | 2" in markdown
@@ -777,6 +778,31 @@ def test_local_artifact_audit_accepts_qualified_independent_oracle_artifacts(tmp
     entry, run_root, _, _ = _qualified_independent_oracle_audit_fixture(tmp_path)
 
     assert audit_local_run_artifacts((entry,), run_root) == ()
+
+
+def test_local_artifact_audit_rejects_qualified_mutation_without_artifact_references(tmp_path):
+    entry, run_root, _, _ = _qualified_audit_fixture(tmp_path)
+    entry = replace(entry, evidence_refs=())
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any(
+        "qualified evidence missing trajectory.json" in issue for issue in issues
+    )
+    assert any(
+        "qualified evidence missing oracle_mutations" in issue for issue in issues
+    )
+
+
+def test_local_artifact_audit_rejects_qualified_independent_oracle_without_artifact_references(tmp_path):
+    entry, run_root, _, _ = _qualified_independent_oracle_audit_fixture(tmp_path)
+    entry = replace(entry, evidence_refs=())
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any(
+        "qualified evidence missing trajectory.json" in issue for issue in issues
+    )
 
 
 def test_local_artifact_audit_rejects_independent_oracle_hidden_vector_leakage(tmp_path):

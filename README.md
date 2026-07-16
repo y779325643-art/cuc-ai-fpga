@@ -128,7 +128,7 @@ Preview the full no-API deterministic T0-T4 coverage smoke:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml \
+  --config configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml \
   --run-id t0-t4-deterministic-smoke \
   --preflight
 ```
@@ -143,12 +143,12 @@ Legacy t1-t4 component-topology tasks:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_baseline_a.example.yaml \
+  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a \
   --preflight
 
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_baseline_a.example.yaml \
+  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a
 ```
 
@@ -164,7 +164,7 @@ Run the autonomous batch runner with the tool-loop example config:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_agent.example.yaml \
+  --config configs/legacy/sr2fpga_agent.example.yaml \
   --run-id deepseek-tool-loop-smoke
 ```
 
@@ -190,7 +190,7 @@ before generation:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_baseline_a.example.yaml \
+  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a \
   --preflight \
   --validate-provider
@@ -206,7 +206,7 @@ The runner is the preferred control entry for producing more than one sample:
 
 ```bash
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_baseline_a.example.yaml \
+  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id <run-id>
 ```
 

@@ -212,20 +212,20 @@ source .env
 set +a
 
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_baseline_a.example.yaml \
+  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a \
   --preflight
 
 python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/sr2fpga_baseline_a.example.yaml \
+  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a
 ```
 
-Use `configs/sr2fpga_baseline_a.example.yaml` for measurement point (a): a
+Use `configs/legacy/sr2fpga_baseline_a.example.yaml` for measurement point (a): a
 frontier-model first attempt with `repair_provider: none`, `max_attempts: 1`,
 synthetic failure injection disabled, and `env_file: .env` so the runner can
 load the local ignored DeepSeek key file automatically. Use
-`configs/sr2fpga_agent.example.yaml` for the tool-loop repair smoke path,
+`configs/legacy/sr2fpga_agent.example.yaml` for the tool-loop repair smoke path,
 measurement point (b). The preflight output includes a planned sample preview
 with `sample_id`, source, task type, requirement style, requirement text,
 difficulty tier, topology ID, failure origin, and measurement point. Baseline
