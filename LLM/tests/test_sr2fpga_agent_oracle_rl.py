@@ -244,7 +244,9 @@ def test_missing_saturation_mutation_bypasses_overflow_clamp() -> None:
     assert mutation is not None
     assert (
         "assign updated_value =\n"
-        "    {updated_value_full[DATA_WIDTH], updated_value_full[DATA_WIDTH-1:0]}[DATA_WIDTH-1:0];"
+        "    updated_value_full[DATA_WIDTH] ?\n"
+        "      updated_value_full[DATA_WIDTH-1:0] :\n"
+        "      updated_value_full[DATA_WIDTH-1:0];"
     ) in mutation.files[
         "rtl/td_update_core.v"
     ]
@@ -354,7 +356,8 @@ def test_rl_reference_and_all_declared_mutations_are_scoreable(
             tmp_path / "mutations" / family_id / mutation_name,
             bundle,
         )
-        assert (compile_status, evidence_status) != ("passed", "passed"), mutation_name
+        assert compile_status == "passed", mutation_name
+        assert evidence_status == "failed", mutation_name
 
 
 def _read_memh(path: Path) -> list[int]:

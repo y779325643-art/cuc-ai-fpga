@@ -401,7 +401,9 @@ def _oracle_dut_mutation(
                     "      {1'b1, {(DATA_WIDTH-1){1'b0}}} :\n"
                     "      updated_value_full[DATA_WIDTH-1:0];",
                     "assign updated_value =\n"
-                    "    {updated_value_full[DATA_WIDTH], updated_value_full[DATA_WIDTH-1:0]}[DATA_WIDTH-1:0];",
+                    "    updated_value_full[DATA_WIDTH] ?\n"
+                    "      updated_value_full[DATA_WIDTH-1:0] :\n"
+                    "      updated_value_full[DATA_WIDTH-1:0];",
                 ),
             ),
         ),
