@@ -232,6 +232,61 @@ def test_generated_rl_testbenches_keep_legacy_and_add_oracle_mode() -> None:
         assert '$display("TEST_PASS")' in testbench
 
 
+def test_missing_saturation_mutation_bypasses_overflow_clamp() -> None:
+    platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+    reference = ProjectGenerator().generate(
+        ProjectRequest(task_type="composed_td_update_core", width=8, project_name="qtable_update_core"),
+        platform,
+    )
+
+    mutation = oracle_mutation_projects(reference, "qtable_update_core")["missing_saturation"]
+
+    assert mutation is not None
+    assert (
+        "assign updated_value =\n"
+        "    {updated_value_full[DATA_WIDTH], updated_value_full[DATA_WIDTH-1:0]}[DATA_WIDTH-1:0];"
+    ) in mutation.files[
+        "rtl/td_update_core.v"
+    ]
+
+
+def test_rl_catalog_coverage_matches_declared_core_and_host_stream_contracts() -> None:
+    catalog_path = Path(__file__).resolve().parents[2] / "docs" / "sr2fpga-task-catalog-v0.2.json"
+    families = {
+        family["family_id"]: family
+        for family in json.loads(catalog_path.read_text(encoding="utf-8"))["task_families"]
+    }
+
+    assert families["qtable_update_core"]["coverage_targets"] == [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "max_reward",
+    ]
+    assert families["p_rl_qlearning_accel"]["coverage_targets"] == [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "sample_valid",
+        "episode_done",
+        "irq",
+        "host_signature",
+        "terminal_state",
+        "equal_q_values",
+        "back_to_back_commands",
+    ]
+
+
 @pytest.mark.skipif(
     not shutil.which("iverilog") or not shutil.which("vvp"),
     reason="iverilog/vvp are not installed",

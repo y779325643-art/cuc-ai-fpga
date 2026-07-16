@@ -3064,8 +3064,6 @@
         "signed_unsigned_cases",
         "overflow_truncation_cases",
         "latency_alignment",
-        "terminal_state",
-        "equal_q_values",
         "max_reward"
       ],
       "target_l_level": {
@@ -4822,7 +4820,9 @@
         "back_to_back_transactions",
         "reset_during_transaction",
         "register_map_access",
-        "start_done_status",
+        "sample_valid",
+        "episode_done",
+        "irq",
         "host_signature",
         "terminal_state",
         "equal_q_values",
