@@ -1,7 +1,7 @@
 # SR2FPGA Phase C Independent Oracle Evidence
 
 Generated on 2026-07-16 from the fresh qualification run
-`phase-c-independent-oracle-20260714-v1` using
+`phase-c-independent-oracle-20260716-v2` using
 `configs/current/sr2fpga_phase_c_independent_oracle.example.yaml`.
 
 ## Scope
@@ -27,6 +27,8 @@ Previously verified dual-tool L4 evidence for `fir_filter` and
 | Critical survivors | 0 |
 | Critical non-scoreable mutations | 0 |
 | Line-A ready | 9 / 9 |
+| Paper-1 core mutation-qualified | 14 / 14 |
+| All mutation-qualified families | 21 |
 | Hidden vector/seed export findings | 0 |
 | Local evidence audit issues | 0 |
 
@@ -55,23 +57,60 @@ Previously verified dual-tool L4 evidence for `fir_filter` and
 | `p_rl_qlearning_accel` | RL | `0d81ef12461af2b560e7061295c906c33cd4f546f2c7abc4371d21c55e49df3b` | L3 | L3 | 5 / 5 |
 
 Every bundle was reloaded with `load_oracle_bundle()`, which recomputes the
-canonical bundle and file hashes. Every `evidence.json`, `labels.json`, and
-`trajectory.json` agreed on family identity, bundle hash, scenario status, and
-the L3 verdict.
+canonical bundle and file hashes. The artifact audit checks the current v2
+summary membership, sample metadata family identity, mutation details, bundle
+hash, scenario classes, per-scenario seed hashes, and L3 labels against the
+matching trajectory. It separately validates the retained FIR and matrix-vector
+MAC L4 claims against the historical dual-tool summary, labels, trajectories,
+and every referenced OpenXC7/Vivado report path.
+
+## Paper-1 Core Mutation Closure
+
+The catalog-defined `recommended_sets.paper1_core` denominator contains 14
+families. Four implemented families lacked artifact-backed mutation evidence in
+the previous ledger. Run `phase-c-core-mutation-closure-20260716-v2` closes that
+gap without changing the denominator.
+
+| Family | Mutations killed | L3 | Line-A ready |
+| --- | ---: | ---: | ---: |
+| `single_dual_port_ram` | 3 / 3 | pass | yes |
+| `valid_ready_stream_accumulator` | 4 / 4 | pass | yes |
+| `stream_fork_join` | 4 / 4 | pass | yes |
+| `mac_array` | 4 / 4 | pass | yes |
+| **Total** | **15 / 15** | **4 / 4** | **4 / 4** |
+
+Qualification is backed by each mutation directory's `sim_compile.json` and
+`sim_run.json`: compilation must pass and simulation must report `TEST_FAIL`.
+The accumulator reference now exposes an `accum_ready` backpressure input; its
+testbench fills the skid buffer while `accum_ready=0` and verifies that valid and
+the running sum remain stable before releasing the held transaction. Its two
+stall mutations therefore alter behavior only during a real `valid && !ready`
+interval.
+
+After this run all 14 catalog Paper-1-core families are mutation-qualified.
+Across the full 71-family catalog, 21 implemented families now carry qualified
+mutation evidence.
 
 ## Leakage Audit
 
-The audit scanned all generated export files and the evaluator-local bundles.
-Exports contained no `.memh` paths, actual non-public scenario seeds, hidden
-input/expected paths, or complete hidden/random/stress vector contents.
+The audit parses every JSONL export below the audit root and compares its values
+against each evaluator-local bundle. It detects withheld seeds serialized as
+numbers or decimal strings, normalizes Windows/POSIX path separators, and rejects
+complete hidden vectors even when embedded in larger strings. Exports contained
+no actual non-public scenario seed, hidden input/expected path, or complete
+hidden/random/stress `.memh` vector. Sanitized `seed_sha256` values are retained
+in trajectories and training views so runs remain auditable without disclosing the original seeds.
 Evaluator-local `.memh` files remain under each attempt's trusted oracle folder
 and are not model-visible training exports.
 
 ## Artifact Roots
 
-- Run summary: `tmp/sr2fpga_phase_c_independent_oracle/runs/phase-c-independent-oracle-20260714-v1/summary.json`
-- Sample data: `tmp/sr2fpga_phase_c_independent_oracle/dataset/`
-- Training exports: `tmp/sr2fpga_phase_c_independent_oracle/exports/`
+- Independent-oracle run summary: `tmp/sr2fpga_phase_c_independent_oracle_v2/runs/phase-c-independent-oracle-20260716-v2/summary.json`
+- Independent-oracle samples: `tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/`
+- Independent-oracle exports: `tmp/sr2fpga_phase_c_independent_oracle_v2/exports/`
+- Core-mutation run summary: `tmp/sr2fpga_phase_c_core_mutation_closure_v2/runs/phase-c-core-mutation-closure-20260716-v2/summary.json`
+- Core-mutation samples: `tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/`
+- Retained dual-tool L4 summary: `tmp/sr2fpga_line_a_l4_dual_tool/runs/line-a-l4-dual-tool-20260713-v2/summary.json`
 - Per-family trajectory: `<sample>/eval/trajectory.json`
 - Oracle manifest/evidence: `<sample>/attempts/attempt_000/eval/oracle/{manifest,evidence}.json`
 - Mutation evidence: `<sample>/oracle_mutations/`
@@ -83,8 +122,9 @@ runtime artifact is `evidence.json`. The audit rejects obsolete-only
 ## Commands
 
 ```powershell
-python -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_phase_c_independent_oracle.example.yaml --run-id phase-c-independent-oracle-20260714-v1 --preflight
-python -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_phase_c_independent_oracle.example.yaml --run-id phase-c-independent-oracle-20260714-v1
+python -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_phase_c_independent_oracle.example.yaml --run-id phase-c-independent-oracle-20260716-v2 --preflight
+python -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_phase_c_independent_oracle.example.yaml --run-id phase-c-independent-oracle-20260716-v2
+python -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_phase_c_core_mutation_closure.example.yaml --run-id phase-c-core-mutation-closure-20260716-v2
 python -m LLM.src.sr2fpga_agent.task_evidence --output docs/sr2fpga-task-evidence-status.md --audit-run-root tmp
 ```
 
@@ -104,5 +144,5 @@ the run. Improving version capture is a recorder follow-up, not a Phase C gate.
 
 - This is one width-8 deterministic sample per family, not a statistical model comparison.
 - Phase C validates benchmark independence and oracle strength; it does not claim LLM first-attempt success.
-- L4 and L5 were not run in this batch. Only FIR and matrix-vector MAC retain prior dual-tool L4 evidence.
+- L4 and L5 were not run in either 2026-07-16 batch. Only FIR and matrix-vector MAC retain artifact-backed dual-tool L4 evidence from `line-a-l4-dual-tool-20260713-v2`.
 - Hidden vectors are intentionally evaluator-local, so public exports expose hashes and scenario metadata rather than the withheld contents.

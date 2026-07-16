@@ -503,6 +503,125 @@ class FailureInjectorTest(unittest.TestCase):
                         self.assertNotIn("TEST_PASS", output)
                         self.assertIn("TEST_FAIL", output)
 
+    @unittest.skipUnless(
+        shutil.which("verilator") and shutil.which("iverilog") and shutil.which("vvp"),
+        "Verilator and iverilog/vvp are required",
+    )
+    def test_remaining_paper1_core_mutation_suites_are_dut_only_lint_clean_and_killed(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        cases = {
+            "ram_read_write": (
+                "single_dual_port_ram",
+                (
+                    "async_read_in_sync_bram_family",
+                    "wrong_read_during_write",
+                    "wrong_address_width",
+                ),
+            ),
+            "composed_stream_accumulator": (
+                "valid_ready_stream_accumulator",
+                (
+                    "payload_changes_under_stall",
+                    "valid_drops_under_stall",
+                    "drop_transaction",
+                    "wrong_accumulation",
+                ),
+            ),
+            "composed_dual_stream_join": (
+                "stream_fork_join",
+                (
+                    "drop_one_branch",
+                    "duplicate_transaction",
+                    "wrong_join_order",
+                    "missing_backpressure",
+                ),
+            ),
+            "composed_vector_mac_pipeline": (
+                "mac_array",
+                (
+                    "remove_signed_cast",
+                    "truncate_accumulator",
+                    "wrong_latency",
+                    "wrong_operand_order",
+                ),
+            ),
+        }
+
+        for task_type, (family_id, mutation_names) in cases.items():
+            with self.subTest(task_type=task_type):
+                project = ProjectGenerator().generate(
+                    ProjectRequest(task_type=task_type, width=8, project_name=f"phase_c_{family_id}"),
+                    platform,
+                )
+                self.assertIn("TEST_PASS", _run_generated_testbench(project))
+                mutations = oracle_mutation_projects(project, task_type)
+                self.assertEqual(tuple(mutations), mutation_names)
+                if family_id == "valid_ready_stream_accumulator":
+                    payload_mutant = mutations["payload_changes_under_stall"]
+                    valid_mutant = mutations["valid_drops_under_stall"]
+                    assert payload_mutant is not None
+                    assert valid_mutant is not None
+                    self.assertIn(
+                        "else if (valid_r && !out_ready)",
+                        payload_mutant.files["rtl/skid_buffer.v"],
+                    )
+                    self.assertIn(
+                        "else if (valid_r && !out_ready)",
+                        valid_mutant.files["rtl/skid_buffer.v"],
+                    )
+                for mutation_name, mutation in mutations.items():
+                    with self.subTest(task_type=task_type, mutation=mutation_name):
+                        self.assertIsNotNone(mutation)
+                        assert mutation is not None
+                        changed_paths = {
+                            path for path, source in mutation.files.items() if source != project.files[path]
+                        }
+                        self.assertTrue(changed_paths)
+                        self.assertTrue(all(path.startswith("rtl/") for path in changed_paths))
+                        self.assertEqual(mutation.files["sim/tb_top.v"], project.files["sim/tb_top.v"])
+                        _run_verilator_lint(mutation)
+                        output = _run_generated_testbench(mutation)
+                        self.assertIn("TEST_FAIL", output)
+                        self.assertNotIn("TEST_PASS", output)
+
+    def test_oracle_mutations_reject_conflicting_requested_family(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        ram = ProjectGenerator().generate(
+            ProjectRequest(task_type="ram_read_write", width=8, project_name="ram"),
+            platform,
+        )
+
+        self.assertEqual(oracle_mutation_projects(ram, "mac_array"), {})
+
+    def test_oracle_mutations_reject_unknown_requested_family(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        ram = ProjectGenerator().generate(
+            ProjectRequest(task_type="ram_read_write", width=8, project_name="ram"),
+            platform,
+        )
+
+        self.assertEqual(oracle_mutation_projects(ram, "not_a_real_family"), {})
+
+    def test_oracle_mutations_reject_unreadable_or_untyped_system_his(self) -> None:
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        ram = ProjectGenerator().generate(
+            ProjectRequest(task_type="ram_read_write", width=8, project_name="ram"),
+            platform,
+        )
+        unreadable = GeneratedProject(
+            project_name=ram.project_name,
+            files={**ram.files, "system_his.json": "{"},
+        )
+        untyped_payload = json.loads(ram.files["system_his.json"])
+        del untyped_payload["task_type"]
+        untyped = GeneratedProject(
+            project_name=ram.project_name,
+            files={**ram.files, "system_his.json": json.dumps(untyped_payload)},
+        )
+
+        self.assertEqual(oracle_mutation_projects(unreadable, "ram_read_write"), {})
+        self.assertEqual(oracle_mutation_projects(untyped, "ram_read_write"), {})
+
 
 def _counter_project(width: int = 4) -> GeneratedProject:
     request = ProjectRequest(task_type="counter", width=width, project_name=f"counter_{width}bit")

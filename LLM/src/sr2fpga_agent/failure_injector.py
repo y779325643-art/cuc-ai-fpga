@@ -51,7 +51,7 @@ def apply_failure_injectors(project: GeneratedProject, injectors: list[str]) -> 
 
 def oracle_mutation_projects(project: GeneratedProject, task_type: str) -> dict[str, GeneratedProject | None]:
     """Create catalog-declared DUT-only mutants and expose unsupported cases."""
-    family = _task_family_spec(task_type)
+    family = _task_family_spec_for_project(project, task_type)
     if family is None:
         return {}
     mutations: dict[str, GeneratedProject | None] = {}
@@ -61,6 +61,25 @@ def oracle_mutation_projects(project: GeneratedProject, task_type: str) -> dict[
             None if files is None else GeneratedProject(project_name=project.project_name, files=files)
         )
     return mutations
+
+
+def _task_family_spec_for_project(project: GeneratedProject, task_type: str):
+    requested_family = _task_family_spec(task_type)
+    if requested_family is None:
+        return None
+    system_his = project.files.get("system_his.json")
+    if system_his is not None:
+        try:
+            declared_task_type = json.loads(system_his).get("task_type")
+        except (json.JSONDecodeError, AttributeError):
+            return None
+        if not isinstance(declared_task_type, str):
+            return None
+        declared_family = _task_family_spec(declared_task_type)
+        if declared_family is None or declared_family.family_id != requested_family.family_id:
+            return None
+        return declared_family
+    return requested_family
 
 
 def _task_family_spec(task_type: str):
@@ -78,7 +97,142 @@ def _oracle_dut_mutation(
     family_id: str,
     mutation_name: str,
 ) -> dict[str, str] | None:
+    if family_id == "single_dual_port_ram" and mutation_name == "async_read_in_sync_bram_family":
+        source = files.get("rtl/top.v")
+        if source is None:
+            return None
+        source, output_count = re.subn(
+            r"output reg (\[[^\]]+\]) rdata",
+            r"output wire \1 rdata",
+            source,
+            count=1,
+        )
+        source, reset_count = re.subn(r"^\s*rdata <= \d+'d0;\r?\n", "", source, count=1, flags=re.MULTILINE)
+        source, read_count = re.subn(r"^\s*rdata <= mem\[addr\];\r?\n", "", source, count=1, flags=re.MULTILINE)
+        source, assign_count = re.subn(
+            r"(\s+integer i;\r?\n)",
+            r"\1\n  assign rdata = mem[addr];\n",
+            source,
+            count=1,
+        )
+        if (output_count, reset_count, read_count, assign_count) != (1, 1, 1, 1):
+            return None
+        updated = dict(files)
+        updated["rtl/top.v"] = source
+        return updated
+
     replacements = {
+        ("single_dual_port_ram", "wrong_read_during_write"): (
+            "rtl/top.v",
+            (("rdata <= mem[addr];", "rdata <= we ? wdata : mem[addr];"),),
+        ),
+        ("single_dual_port_ram", "wrong_address_width"): (
+            "rtl/top.v",
+            (("mem[addr]", "mem[{1'b0, addr[0]}]"),),
+        ),
+        ("valid_ready_stream_accumulator", "payload_changes_under_stall"): (
+            "rtl/skid_buffer.v",
+            ((
+                """    end else if (in_ready) begin
+      valid_r <= in_valid;
+      if (in_valid) begin
+        data_r <= in_data;
+      end
+    end""",
+                """    end else if (in_ready) begin
+      valid_r <= in_valid;
+      if (in_valid) begin
+        data_r <= in_data;
+      end
+    end else if (valid_r && !out_ready) begin
+      data_r <= data_r + {{(WIDTH-1){1'b0}}, 1'b1};
+    end""",
+            ),),
+        ),
+        ("valid_ready_stream_accumulator", "valid_drops_under_stall"): (
+            "rtl/skid_buffer.v",
+            ((
+                """    end else if (in_ready) begin
+      valid_r <= in_valid;
+      if (in_valid) begin
+        data_r <= in_data;
+      end
+    end""",
+                """    end else if (in_ready) begin
+      valid_r <= in_valid;
+      if (in_valid) begin
+        data_r <= in_data;
+      end
+    end else if (valid_r && !out_ready) begin
+      valid_r <= 1'b0;
+    end""",
+            ),),
+        ),
+        ("valid_ready_stream_accumulator", "drop_transaction"): (
+            "rtl/accumulator_core.v",
+            ((
+                "end else if (sample_valid && sample_ready) begin",
+                "end else if (sample_valid && sample_ready && sample[0]) begin",
+            ),),
+        ),
+        ("valid_ready_stream_accumulator", "wrong_accumulation"): (
+            "rtl/accumulator_core.v",
+            (("sum <= sum +", "sum <= sum -"),),
+        ),
+        ("stream_fork_join", "drop_one_branch"): (
+            "rtl/stream_join.v",
+            ((
+                "assign out_data = in0_data + in1_data;",
+                "assign out_data = in0_data + {WIDTH{^in1_data}};",
+            ),),
+        ),
+        ("stream_fork_join", "duplicate_transaction"): (
+            "rtl/stream_join.v",
+            ((
+                "assign out_data = in0_data + in1_data;",
+                "assign out_data = in0_data + in0_data + {WIDTH{^in1_data}};",
+            ),),
+        ),
+        ("stream_fork_join", "wrong_join_order"): (
+            "rtl/stream_join.v",
+            (("assign out_data = in0_data + in1_data;", "assign out_data = in0_data - in1_data;"),),
+        ),
+        ("stream_fork_join", "missing_backpressure"): (
+            "rtl/stream_join.v",
+            (
+                (
+                    "assign in0_ready = out_ready && in1_valid;",
+                    "assign in0_ready = in1_valid && (out_ready || in0_data[0]);",
+                ),
+                (
+                    "assign in1_ready = out_ready && in0_valid;",
+                    "assign in1_ready = in0_valid && (out_ready || in1_data[0]);",
+                ),
+            ),
+        ),
+        ("mac_array", "remove_signed_cast"): (
+            "rtl/vector_mac_core.v",
+            (("$signed(feature_data) * $signed(weight_data)", "feature_data * weight_data"),),
+        ),
+        ("mac_array", "truncate_accumulator"): (
+            "rtl/vector_mac_core.v",
+            ((
+                "assign next_accumulator = $signed(accumulator) + product;",
+                "assign next_accumulator = ($signed(accumulator) + product) & "
+                "{{(SCORE_WIDTH-DATA_WIDTH){1'b0}}, {DATA_WIDTH{1'b1}}};",
+            ),),
+        ),
+        ("mac_array", "wrong_latency"): (
+            "rtl/vector_mac_core.v",
+            (("localparam [1:0] LAST_INDEX = 2'd3;", "localparam [1:0] LAST_INDEX = 2'd2;"),),
+        ),
+        ("mac_array", "wrong_operand_order"): (
+            "rtl/vector_mac_core.v",
+            ((
+                "$signed(weight_data)",
+                "$signed({weight_data[DATA_WIDTH-2:0], weight_data[DATA_WIDTH-1]})",
+            ),),
+        ),
         ("sync_fifo", "remove_full_guard"): ("rtl/top.v", (("wr_en && !full", "wr_en"),)),
         ("sync_fifo", "remove_empty_guard"): ("rtl/top.v", (("rd_en && !empty", "rd_en"),)),
         ("sync_fifo", "wrong_pointer_update"): (

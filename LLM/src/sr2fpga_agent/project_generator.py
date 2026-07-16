@@ -123,7 +123,8 @@ COMPONENT_TOPOLOGIES = {
             {"from": "top.in_data", "to": "skid_buffer.in_data"},
             {"from": "skid_buffer.out_valid", "to": "accumulator_core.sample_valid"},
             {"from": "skid_buffer.out_data", "to": "accumulator_core.sample"},
-            {"from": "accumulator_core.sample_ready", "to": "skid_buffer.out_ready"},
+            {"from": "top.accum_ready", "to": "skid_buffer.out_ready"},
+            {"from": "top.accum_ready", "to": "accumulator_core.sample_ready"},
             {"from": "accumulator_core.sum", "to": "top.sum"},
         ],
     },
@@ -2843,6 +2844,7 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                     {"name": "rst_n", "width": 1},
                     {"name": "in_valid", "width": 1},
                     {"name": "in_data", "width": request.width},
+                    {"name": "accum_ready", "width": 1},
                 ],
                 "outputs": [
                     {"name": "in_ready", "width": 1},
@@ -3174,7 +3176,8 @@ def _expected_behavior(request: ProjectRequest) -> str:
         ),
         "composed_event_counter": "event_valid pulses pass through an event gate and increment the counter core",
         "composed_stream_accumulator": (
-            "valid input samples pass through a skid buffer and accumulate into the running sum"
+            "valid input samples remain stable under accumulator backpressure, pass through a skid buffer, "
+            "and accumulate into the running sum when accepted"
         ),
         "composed_stream_fork": (
             "valid input samples pass through a skid buffer and are duplicated to two output stages"

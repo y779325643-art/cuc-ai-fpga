@@ -39,6 +39,30 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class RunnerConfigTest(unittest.TestCase):
+    def test_phase_c_core_mutation_closure_config_targets_remaining_core_families(self) -> None:
+        config = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_c_core_mutation_closure.example.yaml"
+        )
+        samples = planned_samples(config)
+
+        self.assertEqual(config.provider, "deterministic")
+        self.assertFalse(config.run_independent_oracle)
+        self.assertFalse(config.run_l4_open)
+        self.assertFalse(config.run_l4_commercial)
+        self.assertEqual({sample.evaluation_line for sample in samples}, {"line_a"})
+        self.assertEqual(
+            [(sample.family_id, sample.difficulty_tier) for sample in samples],
+            [
+                ("single_dual_port_ram", "T0"),
+                ("valid_ready_stream_accumulator", "T2"),
+                ("stream_fork_join", "T2"),
+                ("mac_array", "T3"),
+            ],
+        )
+
     def test_phase_c_independent_oracle_config_generates_every_planned_sample(self) -> None:
         config = load_runner_config(
             REPO_ROOT

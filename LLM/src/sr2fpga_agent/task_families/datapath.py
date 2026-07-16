@@ -1370,6 +1370,22 @@ def composed_vector_mac_pipeline_testbench(width: int) -> str:
             send_pair({width}'d3, {width}'d4);
             expect_score({score_width}'d17);
 
+            // Signed operands must retain two's-complement semantics.
+            bias = {score_width}'sd100;
+            send_pair(-{width}'sd2, {width}'sd3);
+            send_pair({width}'sd4, {width}'sd5);
+            send_pair({width}'sd1, {width}'sd2);
+            send_pair({width}'sd3, {width}'sd4);
+            expect_score({score_width}'sd128);
+
+            // Exercise accumulator bits above DATA_WIDTH.
+            bias = {score_width}'sd7;
+            send_pair({width}'sd100, {width}'sd3);
+            send_pair({width}'sd100, {width}'sd3);
+            send_pair({width}'sd100, {width}'sd3);
+            send_pair({width}'sd100, {width}'sd3);
+            expect_score({score_width}'sd1207);
+
             $display("TEST_PASS");
             $finish;
           end
@@ -1601,18 +1617,18 @@ def composed_vector_mac_pipeline_rtl_files(width: int) -> dict[str, str]:
             output reg [SCORE_WIDTH-1:0] score_data
         );
 
-          reg [SCORE_WIDTH-1:0] accumulator;
+          reg signed [SCORE_WIDTH-1:0] accumulator;
           reg [1:0] vector_index;
           localparam [1:0] LAST_INDEX = 2'd3;
           wire accept_pair;
-          wire [SCORE_WIDTH-1:0] product;
-          wire [SCORE_WIDTH-1:0] next_accumulator;
+          wire signed [SCORE_WIDTH-1:0] product;
+          wire signed [SCORE_WIDTH-1:0] next_accumulator;
 
           assign feature_ready = weight_valid && !score_valid;
           assign weight_ready = feature_valid && !score_valid;
           assign accept_pair = feature_valid && feature_ready && weight_valid && weight_ready;
-          assign product = feature_data * weight_data;
-          assign next_accumulator = accumulator + product;
+          assign product = $signed(feature_data) * $signed(weight_data);
+          assign next_accumulator = $signed(accumulator) + product;
 
           always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin

@@ -9,7 +9,8 @@ Generated from the task catalog and evidence ledger. Target intent, current impl
 | Catalog families | 71 |
 | Implemented families | 31 / 71 |
 | Paper 1 core implemented | 14 / 14 |
-| Mutation-qualified families | 17 |
+| Paper 1 core mutation-qualified | 14 / 14 |
+| Mutation-qualified families | 21 |
 | Independent Python oracle qualified | 9 |
 | OpenXC7 L4 pass | 2 |
 | Commercial L4 pass | 2 |
@@ -185,22 +186,22 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | uart_fifo_loopback | qualified (phase-b-core-closure-20260713-v4) | 1 | not_run | L3 | not_run | not_run | not_run | phase-b-core-closure-20260713-v4 |
 | sync_fifo | qualified (line-a-oracle-evidence-20260713-v2) | 1 | not_run | L3 | not_run | not_run | not_run | line-a-oracle-evidence-20260713-v2 |
 | async_fifo_cdc | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| single_dual_port_ram | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
+| single_dual_port_ram | qualified (phase-c-core-mutation-closure-20260716-v2) | 1 | not_run | L3 | not_run | not_run | not_run | phase-c-core-mutation-closure-20260716-v2 |
 | vga_timing | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | pixel_generator_basic | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | hdmi_tmds_basic | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | valid_ready_stream_stage | qualified (line-a-oracle-evidence-20260713-v2) | 1 | not_run | L3 | not_run | not_run | not_run | line-a-oracle-evidence-20260713-v2 |
-| valid_ready_stream_accumulator | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| stream_fork_join | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| mac_array | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| matrix_vector_mac | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L4 | pass | pass | not_run | phase-c-independent-oracle-20260714-v1 |
-| fir_filter | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L4 | pass | pass | not_run | phase-c-independent-oracle-20260714-v1 |
+| valid_ready_stream_accumulator | qualified (phase-c-core-mutation-closure-20260716-v2) | 1 | not_run | L3 | not_run | not_run | not_run | phase-c-core-mutation-closure-20260716-v2 |
+| stream_fork_join | qualified (phase-c-core-mutation-closure-20260716-v2) | 1 | not_run | L3 | not_run | not_run | not_run | phase-c-core-mutation-closure-20260716-v2 |
+| mac_array | qualified (phase-c-core-mutation-closure-20260716-v2) | 1 | not_run | L3 | not_run | not_run | not_run | phase-c-core-mutation-closure-20260716-v2 |
+| matrix_vector_mac | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L4 | pass | pass | not_run | phase-c-independent-oracle-20260716-v2 |
+| fir_filter | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L4 | pass | pass | not_run | phase-c-independent-oracle-20260716-v2 |
 | spi_master | qualified (line-a-oracle-evidence-20260713-v2) | 1 | not_run | L3 | not_run | not_run | not_run | line-a-oracle-evidence-20260713-v2 |
 | i2c_master | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | line_frame_buffer | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| sobel_threshold | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260714-v1 |
-| matched_filter | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260714-v1 |
-| peak_detector | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260714-v1 |
+| sobel_threshold | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
+| matched_filter | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
+| peak_detector | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
 | pattern_matcher | qualified (phase-b-core-closure-20260713-v4) | 1 | not_run | L3 | not_run | not_run | not_run | phase-b-core-closure-20260713-v4 |
 | conv2d_core | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | pooling_activation | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
@@ -213,7 +214,7 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | population_eval_parallel | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | fft_ifft_simplified | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | qam_mapping_equalizer | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| qtable_update_core | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260714-v1 |
+| qtable_update_core | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
 | small_nn_accelerator | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | rl_reward_policy_update | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
 | cpu_axi_soc_shell | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
@@ -228,8 +229,8 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | p_fifo_ram_app | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_fir_filter | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_sd_spi_controller | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| p_pulse_radar_signal | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260714-v1 |
-| p_vision_defect_core | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260714-v1 |
+| p_pulse_radar_signal | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
+| p_vision_defect_core | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
 | p_pong_game | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_simple_cnn_pipeline | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_stream_trigger_filter | qualified (phase-b-core-closure-20260713-v4) | 1 | not_run | L3 | not_run | not_run | not_run | phase-b-core-closure-20260713-v4 |
@@ -237,7 +238,7 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | p_ofdm_modem_subset | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_sensor_fusion_obstacle | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_riscv_soc_shell | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| p_rl_qlearning_accel | qualified (phase-c-independent-oracle-20260714-v1) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260714-v1 |
+| p_rl_qlearning_accel | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
 | alu_control_unit | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
 | crc_stream_checker | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
 | t1_event_counter | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |

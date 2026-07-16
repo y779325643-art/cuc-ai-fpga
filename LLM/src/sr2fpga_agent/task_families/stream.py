@@ -250,6 +250,7 @@ def composed_stream_accumulator_testbench(width: int) -> str:
           reg in_valid;
           wire in_ready;
           reg [{msb}:0] in_data;
+          reg accum_ready;
           wire sample_valid;
           wire [{sum_msb}:0] sum;
 
@@ -259,6 +260,7 @@ def composed_stream_accumulator_testbench(width: int) -> str:
             .in_valid(in_valid),
             .in_ready(in_ready),
             .in_data(in_data),
+            .accum_ready(accum_ready),
             .sample_valid(sample_valid),
             .sum(sum)
           );
@@ -272,6 +274,7 @@ def composed_stream_accumulator_testbench(width: int) -> str:
             input [{msb}:0] value;
             begin
               @(negedge clk);
+              while (!in_ready) @(negedge clk);
               in_valid = 1'b1;
               in_data = value;
               @(negedge clk);
@@ -284,12 +287,33 @@ def composed_stream_accumulator_testbench(width: int) -> str:
             rst_n = 1'b0;
             in_valid = 1'b0;
             in_data = {width}'d0;
+            accum_ready = 1'b1;
             repeat (2) @(posedge clk);
             rst_n = 1'b1;
 
             send_sample({width}'d3);
+            wait (sum == {width + 4}'d3);
+
+            @(negedge clk);
+            accum_ready = 1'b0;
             send_sample({width}'d4);
-            repeat (2) @(posedge clk);
+            repeat (3) begin
+              @(posedge clk);
+              #1;
+              if (sample_valid !== 1'b1) begin
+                $display("TEST_FAIL stalled sample_valid dropped");
+                $finish;
+              end
+              if (sum !== {width + 4}'d3) begin
+                $display("TEST_FAIL accumulator advanced while stalled sum=%0d", sum);
+                $finish;
+              end
+            end
+
+            @(negedge clk);
+            accum_ready = 1'b1;
+            @(posedge clk);
+            #1;
             #1;
 
             if (sum !== {width + 4}'d7) begin
@@ -319,11 +343,11 @@ def composed_stream_accumulator_rtl_files(width: int) -> dict[str, str]:
             input wire in_valid,
             output wire in_ready,
             input wire [{msb}:0] in_data,
+            input wire accum_ready,
             output wire sample_valid,
             output wire [{sum_msb}:0] sum
         );
 
-          wire sample_ready;
           wire [{msb}:0] sample_data;
 
           skid_buffer #(
@@ -335,7 +359,7 @@ def composed_stream_accumulator_rtl_files(width: int) -> dict[str, str]:
             .in_ready(in_ready),
             .in_data(in_data),
             .out_valid(sample_valid),
-            .out_ready(sample_ready),
+            .out_ready(accum_ready),
             .out_data(sample_data)
           );
 
@@ -346,7 +370,7 @@ def composed_stream_accumulator_rtl_files(width: int) -> dict[str, str]:
             .clk(clk),
             .rst_n(rst_n),
             .sample_valid(sample_valid),
-            .sample_ready(sample_ready),
+            .sample_ready(accum_ready),
             .sample(sample_data),
             .sum(sum)
           );
@@ -400,17 +424,15 @@ def composed_stream_accumulator_rtl_files(width: int) -> dict[str, str]:
             input wire clk,
             input wire rst_n,
             input wire sample_valid,
-            output wire sample_ready,
+            input wire sample_ready,
             input wire [WIDTH-1:0] sample,
             output reg [SUM_WIDTH-1:0] sum
         );
 
-          assign sample_ready = 1'b1;
-
           always @(posedge clk or negedge rst_n) begin
             if (!rst_n) begin
               sum <= {SUM_WIDTH{1'b0}};
-            end else if (sample_valid) begin
+            end else if (sample_valid && sample_ready) begin
               sum <= sum + {{(SUM_WIDTH-WIDTH){1'b0}}, sample};
             end
           end
@@ -582,6 +604,7 @@ def composed_dual_stream_join_testbench(width: int) -> str:
           reg out_ready;
           wire [{sum_msb}:0] out_data;
           integer wait_cycles;
+          reg [{sum_msb}:0] held_out_data;
 
           top dut (
             .clk(clk),
@@ -638,8 +661,42 @@ def composed_dual_stream_join_testbench(width: int) -> str:
               $display("TEST_FAIL expected joined sum=%0d got %0d", {expected_pair_sum}, out_data);
               $finish;
             end
-            if (in0_ready !== 1'b1 || in1_ready !== 1'b1) begin
-              $display("TEST_FAIL joined inputs not ready");
+
+            // Stall the output, fill both one-entry input buffers, and verify
+            // that a third pair cannot overwrite the buffered transaction.
+            @(negedge clk);
+            out_ready = 1'b0;
+            held_out_data = out_data;
+            in0_valid = 1'b1;
+            in0_data = {width}'d7;
+            in1_valid = 1'b1;
+            in1_data = {width}'d2;
+            @(negedge clk);
+            in0_valid = 1'b0;
+            in1_valid = 1'b0;
+            if (in0_ready !== 1'b0 || in1_ready !== 1'b0) begin
+              $display("TEST_FAIL join missing_backpressure in0_ready=%0b in1_ready=%0b", in0_ready, in1_ready);
+              $finish;
+            end
+            repeat (2) begin
+              @(posedge clk);
+              #1;
+              if (out_valid !== 1'b1 || out_data !== held_out_data) begin
+                $display("TEST_FAIL join output_changed_under_stall expected=%0d actual=%0d", held_out_data, out_data);
+                $finish;
+              end
+            end
+
+            @(negedge clk);
+            out_ready = 1'b1;
+            wait_cycles = 0;
+            while ((out_valid !== 1'b1 || out_data !== {sum_width}'d17) && wait_cycles < 12) begin
+              @(posedge clk);
+              #1;
+              wait_cycles = wait_cycles + 1;
+            end
+            if (out_valid !== 1'b1 || out_data !== {sum_width}'d17) begin
+              $display("TEST_FAIL joined cumulative_sum expected=17 actual=%0d", out_data);
               $finish;
             end
             $display("TEST_PASS");

@@ -384,6 +384,9 @@ def _sanitize_oracle_profile(value: Any) -> dict[str, Any]:
                 "scenario_id": scenario_id,
                 "scenario_class": scenario_class,
             }
+            seed_sha256 = raw_scenario.get("seed_sha256")
+            if isinstance(seed_sha256, str) and _SAFE_SHA256.fullmatch(seed_sha256):
+                scenario["seed_sha256"] = seed_sha256
             for key in ("transaction_count", "input_record_width_bits", "expected_record_width_bits"):
                 if _is_non_negative_int(raw_scenario.get(key)):
                     scenario[key] = raw_scenario[key]

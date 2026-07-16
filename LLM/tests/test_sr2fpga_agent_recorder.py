@@ -286,7 +286,7 @@ class DatasetRecorderTest(unittest.TestCase):
                         "scenario_id": "hidden_001",
                         "scenario_class": "hidden_deterministic",
                         "seed": 424242,
-                        "seed_sha256": "seed-digest",
+                        "seed_sha256": "a" * 64,
                         "input_path": "hidden/input.memh",
                         "expected_path": "hidden/expected.memh",
                         "input_sha256": "input-digest",
@@ -310,7 +310,6 @@ class DatasetRecorderTest(unittest.TestCase):
             hidden = trajectory["oracle_profile"]["scenarios"][0]
             for key in (
                 "seed",
-                "seed_sha256",
                 "input_path",
                 "expected_path",
                 "input_sha256",
@@ -319,12 +318,14 @@ class DatasetRecorderTest(unittest.TestCase):
                 "expected_records",
             ):
                 self.assertNotIn(key, hidden)
+            self.assertEqual(hidden["seed_sha256"], "a" * 64)
             self.assertNotIn("raw_evaluator_path", trajectory["oracle_profile"])
 
             export_dir = Path(tmp) / "exports"
             recorder.export_training_views(export_dir)
             exported = "\n".join(path.read_text(encoding="utf-8") for path in export_dir.glob("*.jsonl"))
             self.assertNotIn("424242", exported)
+            self.assertIn("a" * 64, exported)
             self.assertNotIn("D:/private/oracle", exported)
             self.assertNotIn("hidden/input.memh", exported)
 

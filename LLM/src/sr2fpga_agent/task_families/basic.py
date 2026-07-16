@@ -263,6 +263,38 @@ def ram_read_write_testbench(width: int) -> str:
             repeat (2) @(posedge clk);
             rst_n = 1'b1;
 
+            // Write-first behavior is not allowed: the synchronous read returns
+            // the old word on the write edge.
+            @(negedge clk);
+            addr = 2'd0;
+            wdata = {width}'d17;
+            we = 1'b1;
+            @(negedge clk);
+            if (rdata !== {width}'d0) begin
+              $display("TEST_FAIL ram read_during_write expected=0 actual=%0d", rdata);
+              $finish;
+            end
+            we = 1'b0;
+            @(negedge clk);
+            if (rdata !== {width}'d17) begin
+              $display("TEST_FAIL ram sync_read expected=17 actual=%0d", rdata);
+              $finish;
+            end
+
+            // Changing the address must not change rdata until a clock edge.
+            addr = 2'd1;
+            #1;
+            if (rdata !== {width}'d17) begin
+              $display("TEST_FAIL ram async_read_detected expected=17 actual=%0d", rdata);
+              $finish;
+            end
+            @(negedge clk);
+            if (rdata !== {width}'d0) begin
+              $display("TEST_FAIL ram address1 expected=0 actual=%0d", rdata);
+              $finish;
+            end
+
+            // Address 2 must be independent from address 0.
             @(negedge clk);
             addr = 2'd2;
             wdata = {width}'d99;
@@ -271,7 +303,13 @@ def ram_read_write_testbench(width: int) -> str:
             we = 1'b0;
             @(negedge clk);
             if (rdata !== {width}'d99) begin
-              $display("TEST_FAIL expected rdata=99 got %0d", rdata);
+              $display("TEST_FAIL ram address2 expected=99 actual=%0d", rdata);
+              $finish;
+            end
+            addr = 2'd0;
+            @(negedge clk);
+            if (rdata !== {width}'d17) begin
+              $display("TEST_FAIL ram address0_preserved expected=17 actual=%0d", rdata);
               $finish;
             end
             $display("TEST_PASS");

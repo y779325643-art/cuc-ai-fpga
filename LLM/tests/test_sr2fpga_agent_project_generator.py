@@ -617,6 +617,9 @@ class ProjectGeneratorTest(unittest.TestCase):
         self.assertEqual(architecture["topology_id"], "t2_stream_accumulator")
         self.assertEqual(architecture["difficulty_tier"], "T2")
         self.assertEqual(architecture["component_library"], "sr2fpga_deterministic_components_v1")
+        self.assertIn("input wire accum_ready", project.files["rtl/top.v"])
+        self.assertIn("accum_ready = 1'b0", project.files["sim/tb_top.v"])
+        self.assertIn("TEST_FAIL stalled sample_valid dropped", project.files["sim/tb_top.v"])
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["skid_buffer", "accumulator_core"],

@@ -1,4 +1,5 @@
 import json
+import shutil
 import unittest
 from dataclasses import replace
 from pathlib import Path
@@ -18,7 +19,7 @@ from LLM.src.sr2fpga_agent.task_evidence import (
 )
 from LLM.src.sr2fpga_agent.task_families import TASK_FAMILY_IDS
 from LLM.src.sr2fpga_agent.oracle_runner import write_oracle_run_evidence
-from LLM.src.sr2fpga_agent.oracles.bundle import write_oracle_bundle
+from LLM.src.sr2fpga_agent.oracles.bundle import sanitize_oracle_profile, write_oracle_bundle
 from LLM.src.sr2fpga_agent.oracles.types import (
     OracleField,
     OracleRunEvidence,
@@ -111,7 +112,24 @@ def _qualified_audit_fixture(
     mutations = sample_dir / "oracle_mutations"
     trajectory.parent.mkdir(parents=True)
     for name in ("wrong_data", "missing_stall"):
-        (mutations / name).mkdir(parents=True)
+        mutation_eval = mutations / name / "eval"
+        mutation_eval.mkdir(parents=True)
+        (mutation_eval / "sim_compile.json").write_text(
+            json.dumps({"stage": "sim_compile", "status": "passed", "exit_code": 0}),
+            encoding="utf-8",
+        )
+        (mutation_eval / "sim_run.json").write_text(
+            json.dumps(
+                {
+                    "stage": "sim_run",
+                    "status": "failed",
+                    "exit_code": 0,
+                    "stdout": "TEST_FAIL injected mutation detected",
+                    "stderr": "Simulation reported TEST_FAIL",
+                }
+            ),
+            encoding="utf-8",
+        )
     (sample_dir / "metadata.json").write_text(
         json.dumps({"family_id": "family", "task_type": "family_alias"}),
         encoding="utf-8",
@@ -214,15 +232,13 @@ def _qualified_independent_oracle_audit_fixture(tmp_path):
         OracleRunEvidence.from_results(bundle, results),
     )
     payload = json.loads(trajectory.read_text(encoding="utf-8"))
-    payload["oracle_profile"] = {
-        "kind": "python_reference",
-        "status": "pass",
-        "family_id": "family",
-        "bundle_sha256": bundle.bundle_sha256,
-        "scenario_counts": {scenario_class: 1 for scenario_class in classes},
-        "class_status": {scenario_class: "pass" for scenario_class in classes},
-        "hidden_vectors_exported": False,
-    }
+    payload["oracle_profile"] = sanitize_oracle_profile(bundle)
+    payload["oracle_profile"].update(
+        {
+            "status": "pass",
+            "class_status": {scenario_class: "pass" for scenario_class in classes},
+        }
+    )
     trajectory.write_text(json.dumps(payload), encoding="utf-8")
     return (
         replace(
@@ -620,7 +636,7 @@ def test_only_proven_open_l4_families_are_marked_pass():
     assert actual == {"fir_filter", "matrix_vector_mac"}
 
 
-def test_qualified_mutation_evidence_matches_the_proven_seventeen_family_set():
+def test_qualified_mutation_evidence_matches_the_proven_twenty_one_family_set():
     entries = load_task_family_evidence()
     expected = {
         "sync_fifo",
@@ -640,6 +656,10 @@ def test_qualified_mutation_evidence_matches_the_proven_seventeen_family_set():
         "p_stream_trigger_filter",
         "qtable_update_core",
         "p_rl_qlearning_accel",
+        "single_dual_port_ram",
+        "valid_ready_stream_accumulator",
+        "stream_fork_join",
+        "mac_array",
     }
     qualified = {
         entry.family_id
@@ -665,11 +685,19 @@ def test_qualified_mutation_evidence_matches_the_proven_seventeen_family_set():
         "pattern_matcher",
         "p_stream_trigger_filter",
     }
+    phase_c_core_mutation_closure = {
+        "single_dual_port_ram",
+        "valid_ready_stream_accumulator",
+        "stream_fork_join",
+        "mac_array",
+    }
     for entry in entries:
         if entry.family_id in expected:
             assert entry.mutation_evidence.score == 1.0
             if entry.family_id in phase_c_independent_oracle:
-                expected_run = "phase-c-independent-oracle-20260714-v1"
+                expected_run = "phase-c-independent-oracle-20260716-v2"
+            elif entry.family_id in phase_c_core_mutation_closure:
+                expected_run = "phase-c-core-mutation-closure-20260716-v2"
             elif entry.family_id in phase_b_core_closure:
                 expected_run = "phase-b-core-closure-20260713-v4"
             else:
@@ -692,12 +720,24 @@ def test_l4_pass_evidence_matches_the_proven_dual_tool_family_set():
             assert entry.l4_open_status == "pass"
             assert entry.l4_commercial_status == "pass"
             assert entry.highest_verified_level == "L4"
-            assert entry.last_verified_run == "phase-c-independent-oracle-20260714-v1"
+            assert entry.last_verified_run == "phase-c-independent-oracle-20260716-v2"
             assert entry.independent_oracle_evidence.status == "qualified"
-            assert {
-                "docs/current-status.md",
-                "docs/sr2fpga-line-a-oracle-l4-evidence-2026-07-13.md",
-            } <= set(entry.evidence_refs)
+            assert any(
+                reference.endswith(
+                    "/runs/line-a-l4-dual-tool-20260713-v2/summary.json"
+                )
+                for reference in entry.evidence_refs
+            )
+            assert any(
+                "tmp/sr2fpga_line_a_l4_dual_tool/dataset/" in reference
+                and reference.endswith("/eval/trajectory.json")
+                for reference in entry.evidence_refs
+            )
+            assert any(
+                "tmp/sr2fpga_line_a_l4_dual_tool/dataset/" in reference
+                and reference.endswith("/eval/labels.json")
+                for reference in entry.evidence_refs
+            )
         else:
             assert entry.l4_open_status != "pass"
             assert entry.l4_commercial_status != "pass"
@@ -755,7 +795,8 @@ def test_current_status_names_the_paper1_core_denominator():
         "`recommended_sets.paper1_core`) |" in text
     )
     assert "| Paper 1 core executable / L3 | 14/14 |" in text
-    assert "| Mutation-qualified families | 17 |" in text
+    assert "| Paper 1 core mutation-qualified | 14/14 |" in text
+    assert "| Mutation-qualified families | 21 |" in text
     assert "| Independent Python oracle qualified | 9 |" in text
     assert "`recommended_sets.paper1_core`" in text
 
@@ -763,7 +804,7 @@ def test_current_status_names_the_paper1_core_denominator():
 def test_local_artifact_audit_is_explicit(tmp_path):
     issues = audit_local_run_artifacts(load_task_family_evidence(), tmp_path)
 
-    assert any("phase-c-independent-oracle-20260714-v1" in issue for issue in issues)
+    assert any("phase-c-independent-oracle-20260716-v2" in issue for issue in issues)
 
 
 def test_local_artifact_audit_matches_summary_run_id(tmp_path):
@@ -783,6 +824,36 @@ def test_local_artifact_audit_accepts_qualified_trajectory_and_mutations(tmp_pat
     entry, run_root, _, _ = _qualified_audit_fixture(tmp_path)
 
     assert audit_local_run_artifacts((entry,), run_root) == ()
+
+
+def test_local_artifact_audit_rejects_qualified_mutation_without_tool_evidence(tmp_path):
+    entry, run_root, _, mutations = _qualified_audit_fixture(tmp_path)
+    (mutations / "wrong_data" / "eval" / "sim_run.json").unlink()
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any("missing mutation sim_run.json" in issue for issue in issues)
+
+
+def test_local_artifact_audit_rejects_mutation_that_tool_run_did_not_kill(tmp_path):
+    entry, run_root, _, mutations = _qualified_audit_fixture(tmp_path)
+    sim_run = mutations / "wrong_data" / "eval" / "sim_run.json"
+    sim_run.write_text(
+        json.dumps(
+            {
+                "stage": "sim_run",
+                "status": "passed",
+                "exit_code": 0,
+                "stdout": "TEST_PASS",
+                "stderr": "",
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any("mutation tool evidence is not killed" in issue for issue in issues)
 
 
 def test_local_artifact_audit_accepts_qualified_independent_oracle_artifacts(tmp_path):
@@ -827,6 +898,78 @@ def test_local_artifact_audit_rejects_independent_oracle_hidden_vector_leakage(t
     assert any("hidden vectors were exported" in issue for issue in issues)
 
 
+def test_local_artifact_audit_rejects_missing_independent_oracle_seed_hash(tmp_path):
+    entry, run_root, trajectory, _ = _qualified_independent_oracle_audit_fixture(tmp_path)
+    payload = json.loads(trajectory.read_text(encoding="utf-8"))
+    del payload["oracle_profile"]["scenarios"][1]["seed_sha256"]
+    trajectory.write_text(json.dumps(payload), encoding="utf-8")
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any("seed_sha256 does not match" in issue for issue in issues)
+
+
+@pytest.mark.parametrize("leak_kind", ("seed", "path", "vector"))
+def test_local_artifact_audit_inspects_exports_for_withheld_oracle_leakage(
+    tmp_path, leak_kind
+):
+    entry, run_root, _, oracle_root = _qualified_independent_oracle_audit_fixture(tmp_path)
+    manifest = json.loads((oracle_root / "manifest.json").read_text(encoding="utf-8"))
+    hidden = next(
+        scenario
+        for scenario in manifest["scenarios"]
+        if scenario["scenario_class"] == "hidden_deterministic"
+    )
+    if leak_kind == "seed":
+        leaked = hidden["seed"]
+    elif leak_kind == "path":
+        leaked = hidden["input_path"]
+    else:
+        leaked = (oracle_root / hidden["input_path"]).read_text(encoding="utf-8").strip()
+    export_path = run_root / "exports" / "failure_to_diagnosis.jsonl"
+    export_path.parent.mkdir(parents=True)
+    export_path.write_text(json.dumps({"leaked": leaked}) + "\n", encoding="utf-8")
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any(f"withheld oracle {leak_kind} leaked" in issue for issue in issues)
+
+
+@pytest.mark.parametrize(
+    ("leak_kind", "encode"),
+    (
+        ("seed", lambda hidden, oracle_root: str(hidden["seed"])),
+        ("path", lambda hidden, oracle_root: hidden["input_path"].replace("/", "\\")),
+        (
+            "vector",
+            lambda hidden, oracle_root: "prefix="
+            + (oracle_root / hidden["input_path"]).read_text(encoding="utf-8").strip()
+            + ";suffix",
+        ),
+    ),
+)
+def test_local_artifact_audit_rejects_equivalent_withheld_oracle_serializations(
+    tmp_path, leak_kind, encode
+):
+    entry, run_root, _, oracle_root = _qualified_independent_oracle_audit_fixture(tmp_path)
+    manifest = json.loads((oracle_root / "manifest.json").read_text(encoding="utf-8"))
+    hidden = next(
+        scenario
+        for scenario in manifest["scenarios"]
+        if scenario["scenario_class"] == "hidden_deterministic"
+    )
+    export_path = run_root / "exports" / "failure_to_diagnosis.jsonl"
+    export_path.parent.mkdir(parents=True)
+    export_path.write_text(
+        json.dumps({"leaked": encode(hidden, oracle_root)}) + "\n",
+        encoding="utf-8",
+    )
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any(f"withheld oracle {leak_kind} leaked" in issue for issue in issues)
+
+
 def test_local_artifact_audit_rejects_independent_oracle_bundle_hash_mismatch(tmp_path):
     entry, run_root, _, _ = _qualified_independent_oracle_audit_fixture(tmp_path)
     entry = replace(
@@ -866,7 +1009,7 @@ def test_local_artifact_audit_uses_generic_level_order_for_higher_ledger_levels(
     assert any("sample labels do not reach ledger highest_verified_level" in issue for issue in issues)
 
 
-def test_independent_oracle_refresh_retains_previously_proven_l4_level(tmp_path):
+def test_independent_oracle_refresh_rejects_unbacked_l4_level(tmp_path):
     entry, run_root, _, _ = _qualified_independent_oracle_audit_fixture(tmp_path)
     entry = replace(
         entry,
@@ -874,6 +1017,74 @@ def test_independent_oracle_refresh_retains_previously_proven_l4_level(tmp_path)
         l4_open_status="pass",
         l4_commercial_status="pass",
         evidence_refs=entry.evidence_refs + ("docs/historical-l4-evidence.md",),
+    )
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any("L4 evidence is not artifact-backed" in issue for issue in issues)
+
+
+def test_independent_oracle_refresh_accepts_artifact_backed_l4_level(tmp_path):
+    entry, run_root, _, _ = _qualified_independent_oracle_audit_fixture(tmp_path)
+    historical_run_id = "line-a-l4-reference"
+    historical_sample_id = "sample_line_a_l4_family"
+    summary = run_root / historical_run_id / "summary.json"
+    summary.parent.mkdir(parents=True)
+    summary.write_text(
+        json.dumps(
+            {
+                "run_id": historical_run_id,
+                "buckets": {
+                    "success_l3": [historical_sample_id],
+                    "repair_trajectory": [],
+                    "rejected": [],
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    sample_dir = tmp_path / "l4_dataset" / historical_sample_id
+    labels = sample_dir / "eval" / "labels.json"
+    trajectory = sample_dir / "eval" / "trajectory.json"
+    labels.parent.mkdir(parents=True)
+    (sample_dir / "metadata.json").write_text(
+        json.dumps({"family_id": "family", "task_type": "family_alias"}),
+        encoding="utf-8",
+    )
+    labels.write_text(
+        json.dumps({"pass_level": "L4", "highest_official_level": "L4"}),
+        encoding="utf-8",
+    )
+    open_report = sample_dir / "reports" / "openxc7.json"
+    commercial_report = sample_dir / "reports" / "vivado.json"
+    open_report.parent.mkdir(parents=True)
+    open_report.write_text("{}", encoding="utf-8")
+    commercial_report.write_text("{}", encoding="utf-8")
+    trajectory.write_text(
+        json.dumps(
+            {
+                "sample_id": historical_sample_id,
+                "verification": {
+                    "l4_open": {
+                        "status": "pass",
+                        "report_paths": ["reports/openxc7.json"],
+                    },
+                    "l4_commercial": {
+                        "status": "pass",
+                        "report_paths": ["reports/vivado.json"],
+                    },
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    entry = replace(
+        entry,
+        highest_verified_level="L4",
+        l4_open_status="pass",
+        l4_commercial_status="pass",
+        evidence_refs=entry.evidence_refs
+        + (str(summary), str(trajectory), str(labels)),
     )
 
     assert audit_local_run_artifacts((entry,), run_root) == ()
@@ -909,7 +1120,7 @@ def test_local_artifact_audit_reports_trajectory_family_mismatch(tmp_path):
 
 def test_local_artifact_audit_reports_missing_declared_mutation_artifact(tmp_path):
     entry, run_root, _, mutations = _qualified_audit_fixture(tmp_path)
-    (mutations / "missing_stall").rmdir()
+    shutil.rmtree(mutations / "missing_stall")
 
     issues = audit_local_run_artifacts((entry,), run_root)
 
@@ -974,7 +1185,7 @@ def test_cli_audit_returns_one_and_reports_missing_declared_run(tmp_path, capsys
     assert main(["--output", str(output), "--audit-run-root", str(tmp_path)]) == 1
 
     captured = capsys.readouterr()
-    assert "phase-c-independent-oracle-20260714-v1" in captured.err
+    assert "phase-c-independent-oracle-20260716-v2" in captured.err
     assert output.read_text(encoding="utf-8") == render_task_evidence_markdown()
 
 
@@ -1047,7 +1258,7 @@ def test_phase_b_core_closure_evidence_is_retained_or_superseded_by_phase_c():
     for family_id in phase_c_promoted:
         entry = entries[family_id]
         assert entry.golden_model_status == "python_reference"
-        assert entry.last_verified_run == "phase-c-independent-oracle-20260714-v1"
+        assert entry.last_verified_run == "phase-c-independent-oracle-20260716-v2"
         assert entry.independent_oracle_evidence.status == "qualified"
 
 
@@ -1077,8 +1288,8 @@ def test_phase_c_promotes_exactly_nine_independent_python_reference_families():
         assert entry.golden_model_status == "python_reference"
         assert entry.mutation_evidence.status == "qualified"
         assert entry.mutation_evidence.score == 1.0
-        assert entry.mutation_evidence.run_id == "phase-c-independent-oracle-20260714-v1"
-        assert entry.last_verified_run == "phase-c-independent-oracle-20260714-v1"
+        assert entry.mutation_evidence.run_id == "phase-c-independent-oracle-20260716-v2"
+        assert entry.last_verified_run == "phase-c-independent-oracle-20260716-v2"
         assert set(oracle.scenario_classes) == {
             "public_smoke",
             "hidden_deterministic",
@@ -1091,3 +1302,17 @@ def test_phase_c_promotes_exactly_nine_independent_python_reference_families():
         assert any(reference.endswith("/eval/oracle/manifest.json") for reference in entry.evidence_refs)
         assert any(reference.endswith("/eval/oracle/evidence.json") for reference in entry.evidence_refs)
         assert any(reference.endswith("/oracle_mutations") for reference in entry.evidence_refs)
+
+
+def test_all_catalog_paper1_core_families_are_mutation_qualified():
+    catalog = json.loads(
+        (REPO_ROOT / "docs" / "sr2fpga-task-catalog-v0.2.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    entries = {entry.family_id: entry for entry in load_task_family_evidence()}
+
+    for family_id in catalog["recommended_sets"]["paper1_core"]:
+        evidence = entries[family_id].mutation_evidence
+        assert evidence.status == "qualified"
+        assert evidence.score == 1.0

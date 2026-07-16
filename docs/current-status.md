@@ -1,8 +1,8 @@
-# SR2FPGA Current Status - 2026-06-30
+# SR2FPGA Current Status - 2026-07-16
 
 ## Current Branch
 
-`codex/sr2fpga-data-agent`
+`codex/phase-c-c5-evidence`
 
 ## Current Focus
 
@@ -39,14 +39,15 @@ controlled-ablation aid, not as the main repair-learning data source.
 | Implemented families | 31 |
 | Paper 1 core implemented | 14/14 (denominator: v0.2 catalog `recommended_sets.paper1_core`) |
 | Paper 1 core executable / L3 | 14/14 |
-| Mutation-qualified families | 17 |
+| Paper 1 core mutation-qualified | 14/14 |
+| Mutation-qualified families | 21 |
 | Independent Python oracle qualified | 9 |
 | Dual-tool L4 families (OpenXC7 and Vivado) | 2 |
 | L5 families | 0 |
 
 ## Phase C Independent Oracle Qualification (2026-07-16)
 
-- Fresh run `phase-c-independent-oracle-20260714-v1` completed all nine target
+- Fresh run `phase-c-independent-oracle-20260716-v2` completed all nine target
   families at L3 with `rejected=0` and no oracle infrastructure errors.
 - Numeric, signal, image, and RL domains each passed public, hidden,
   fixed-seed randomized, and stress scenarios. Independent Python-reference
@@ -56,7 +57,14 @@ controlled-ablation aid, not as the main repair-learning data source.
 - Export inspection found no hidden `.memh` paths, withheld seeds, or complete
   hidden vector contents. The local artifact audit completed with zero issues.
 - FIR and matrix-vector MAC retain their previously verified OpenXC7/Vivado L4
-  status; this Phase C batch itself ran L0-L3 only and does not add L4/L5 claims.
+  status through artifact-backed references to
+  `line-a-l4-dual-tool-20260713-v2`; this Phase C batch itself ran L0-L3 only
+  and does not add L4/L5 claims.
+- Run `phase-c-core-mutation-closure-20260716-v2` added tool-artifact-backed mutation
+  evidence for RAM, valid-ready accumulator, stream fork/join, and MAC. It
+  killed 15/15 mutations and closes the catalog-defined Paper-1-core gate at
+  14/14; 21 families are mutation-qualified overall. The accumulator test now
+  creates real downstream backpressure before scoring its two stall mutations.
 - Evidence report: `docs/sr2fpga-phase-c-independent-oracle-evidence-2026-07-14.md`.
 
 ## Multi-Teacher Source (NEW, merged to `main` 2026-06-26)

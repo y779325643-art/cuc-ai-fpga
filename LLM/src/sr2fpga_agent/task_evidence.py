@@ -12,7 +12,7 @@ from pathlib import Path
 
 from .task_catalog import CATALOG_PATH
 from .task_families import family_id_for_task_type
-from .oracles.bundle import load_oracle_bundle
+from .oracles.bundle import load_oracle_bundle, sanitize_oracle_profile
 
 
 EVIDENCE_PATH = (
@@ -309,6 +309,10 @@ def render_task_evidence_markdown(
     mutation_qualified = sum(
         entry.mutation_evidence.status == "qualified" for entry in entries
     )
+    paper1_mutation_qualified = sum(
+        evidence_by_family[family_id].mutation_evidence.status == "qualified"
+        for family_id in paper1_core
+    )
     independent_oracle_qualified = sum(
         entry.independent_oracle_evidence.status == "qualified" for entry in entries
     )
@@ -332,6 +336,10 @@ def render_task_evidence_markdown(
         _markdown_row("Implemented families", f"{implemented} / {len(families)}"),
         _markdown_row(
             "Paper 1 core implemented", f"{paper1_implemented} / {len(paper1_core)}"
+        ),
+        _markdown_row(
+            "Paper 1 core mutation-qualified",
+            f"{paper1_mutation_qualified} / {len(paper1_core)}",
         ),
         _markdown_row("Mutation-qualified families", str(mutation_qualified)),
         _markdown_row(
@@ -439,17 +447,25 @@ def audit_local_run_artifacts(
     """Audit declared runs and artifact-backed qualified evidence locally."""
     declared_run_ids = _declared_run_ids(entries)
     summaries: dict[str, dict[str, object]] = {}
+    summary_paths: dict[str, Path] = {}
     run_root = Path(run_root)
-    if run_root.is_dir():
-        for summary_path in run_root.rglob("summary.json"):
-            try:
-                with summary_path.open(encoding="utf-8") as handle:
-                    summary = json.load(handle)
-            except (OSError, json.JSONDecodeError):
-                continue
-            run_id = summary.get("run_id") if isinstance(summary, dict) else None
-            if isinstance(run_id, str):
-                summaries.setdefault(run_id, summary)
+    referenced_summaries = {
+        _resolve_evidence_ref(reference)
+        for entry in entries
+        for reference in entry.evidence_refs
+        if Path(reference).name == "summary.json"
+    }
+    for summary_path in referenced_summaries:
+        if _is_lexically_within(summary_path, run_root):
+            _record_summary(summary_path, summaries, summary_paths)
+
+    missing_run_ids = declared_run_ids - summaries.keys()
+    if missing_run_ids and run_root.is_dir():
+        for summary_path in _fallback_summary_paths(run_root):
+            _record_summary(summary_path, summaries, summary_paths)
+            if not (declared_run_ids - summaries.keys()):
+                break
+    export_paths_by_run = _referenced_export_paths(summary_paths, run_root)
 
     issues = [
         f"missing local summary.json for declared run_id: {run_id}"
@@ -457,12 +473,74 @@ def audit_local_run_artifacts(
         if run_id not in summaries
     ]
     for entry in entries:
-        issues.extend(_audit_entry_artifacts(entry, summaries.get(entry.last_verified_run)))
+        issues.extend(
+            _audit_entry_artifacts(
+                entry,
+                summaries.get(entry.last_verified_run),
+                summaries,
+                export_paths_by_run.get(entry.last_verified_run, ()),
+            )
+        )
     return tuple(issues)
 
 
+def _record_summary(
+    summary_path: Path,
+    summaries: dict[str, dict[str, object]],
+    summary_paths: dict[str, Path],
+) -> None:
+    try:
+        with summary_path.open(encoding="utf-8") as handle:
+            summary = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return
+    run_id = summary.get("run_id") if isinstance(summary, dict) else None
+    if isinstance(run_id, str) and run_id not in summaries:
+        summaries[run_id] = summary
+        summary_paths[run_id] = summary_path
+
+
+def _is_lexically_within(path: Path, root: Path) -> bool:
+    try:
+        path.absolute().relative_to(root.absolute())
+    except ValueError:
+        return False
+    return True
+
+
+def _fallback_summary_paths(run_root: Path) -> tuple[Path, ...]:
+    candidates: set[Path] = set()
+    for pattern in (
+        "summary.json",
+        "*/summary.json",
+        "*/runs/*/summary.json",
+        "*/*/runs/*/summary.json",
+    ):
+        candidates.update(run_root.glob(pattern))
+    return tuple(sorted(candidates, key=str))
+
+
+def _referenced_export_paths(
+    summary_paths: dict[str, Path], run_root: Path
+) -> dict[str, tuple[Path, ...]]:
+    exports_by_run: dict[str, tuple[Path, ...]] = {}
+    for run_id, summary_path in summary_paths.items():
+        if summary_path.parent.parent.name == "runs":
+            export_root = summary_path.parent.parent.parent / "exports"
+            if export_root.is_dir():
+                exports_by_run[run_id] = tuple(export_root.rglob("*.jsonl"))
+    conventional_root = run_root / "exports"
+    if conventional_root.is_dir() and len(summary_paths) == 1:
+        only_run_id = next(iter(summary_paths))
+        exports_by_run.setdefault(only_run_id, tuple(conventional_root.rglob("*.jsonl")))
+    return exports_by_run
+
+
 def _audit_entry_artifacts(
-    entry: TaskFamilyEvidence, summary: dict[str, object] | None
+    entry: TaskFamilyEvidence,
+    summary: dict[str, object] | None,
+    summaries: dict[str, dict[str, object]],
+    export_paths: Sequence[Path],
 ) -> list[str]:
     trajectory_paths = [
         _resolve_evidence_ref(reference)
@@ -487,12 +565,114 @@ def _audit_entry_artifacts(
         if entry.mutation_evidence.run_id != entry.last_verified_run:
             issues.append(f"qualified evidence run_id differs from last_verified_run for family_id: {entry.family_id}")
 
+    retained_l4 = (
+        entry.highest_verified_level == "L4"
+        and entry.independent_oracle_evidence.status == "qualified"
+        and (entry.l4_open_status == "pass" or entry.l4_commercial_status == "pass")
+    )
+    if retained_l4:
+        issues.extend(_audit_retained_l4_evidence(entry, summaries))
+    current_sample_ids = _summary_sample_ids(summary) if summary is not None else set()
     for trajectory_path in trajectory_paths:
-        issues.extend(_audit_trajectory(entry, summary, trajectory_path, mutation_roots))
+        if retained_l4 and trajectory_path.parent.parent.name not in current_sample_ids:
+            continue
+        issues.extend(
+            _audit_trajectory(
+                entry,
+                summary,
+                trajectory_path,
+                mutation_roots,
+                export_paths,
+            )
+        )
     for mutation_root in mutation_roots:
         if not mutation_root.is_dir():
             issues.append(f"missing oracle_mutations evidence artifact: {mutation_root}")
     return issues
+
+
+def _audit_retained_l4_evidence(
+    entry: TaskFamilyEvidence,
+    summaries: dict[str, dict[str, object]],
+) -> list[str]:
+    summary_paths = [
+        _resolve_evidence_ref(reference)
+        for reference in entry.evidence_refs
+        if Path(reference).name == "summary.json"
+    ]
+    trajectory_paths = [
+        _resolve_evidence_ref(reference)
+        for reference in entry.evidence_refs
+        if Path(reference).name == "trajectory.json"
+    ]
+    label_paths = [
+        _resolve_evidence_ref(reference)
+        for reference in entry.evidence_refs
+        if Path(reference).name == "labels.json"
+    ]
+    referenced_run_ids: set[str] = set()
+    for summary_path in summary_paths:
+        try:
+            payload = json.loads(summary_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        run_id = payload.get("run_id") if isinstance(payload, dict) else None
+        if isinstance(run_id, str) and summaries.get(run_id) == payload:
+            referenced_run_ids.add(run_id)
+
+    for trajectory_path in trajectory_paths:
+        sample_dir = trajectory_path.parent.parent
+        labels_path = sample_dir / "eval" / "labels.json"
+        if not any(_same_path(path, labels_path) for path in label_paths):
+            continue
+        try:
+            trajectory = json.loads(trajectory_path.read_text(encoding="utf-8"))
+            labels = json.loads(labels_path.read_text(encoding="utf-8"))
+            metadata = json.loads((sample_dir / "metadata.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not all(isinstance(value, dict) for value in (trajectory, labels, metadata)):
+            continue
+        if metadata.get("family_id") != entry.family_id:
+            continue
+        if labels.get("pass_level") != "L4" or labels.get("highest_official_level") != "L4":
+            continue
+        sample_id = trajectory.get("sample_id")
+        if not isinstance(sample_id, str) or sample_id != sample_dir.name:
+            continue
+        if not any(
+            run_id in referenced_run_ids
+            and sample_id in _summary_sample_ids(summaries[run_id])
+            for run_id in summaries
+        ):
+            continue
+        verification = trajectory.get("verification")
+        if not isinstance(verification, dict):
+            continue
+        valid = True
+        for level_key, expected_status in (
+            ("l4_open", entry.l4_open_status),
+            ("l4_commercial", entry.l4_commercial_status),
+        ):
+            if expected_status != "pass":
+                continue
+            level = verification.get(level_key)
+            if not isinstance(level, dict) or level.get("status") != "pass":
+                valid = False
+                break
+            report_paths = level.get("report_paths")
+            if not isinstance(report_paths, list) or not report_paths:
+                valid = False
+                break
+            if not all(
+                isinstance(path, str) and (sample_dir / path).is_file()
+                for path in report_paths
+            ):
+                valid = False
+                break
+        if valid:
+            return []
+    return [f"L4 evidence is not artifact-backed for family_id: {entry.family_id}"]
 
 
 def _audit_trajectory(
@@ -500,6 +680,7 @@ def _audit_trajectory(
     summary: dict[str, object] | None,
     trajectory_path: Path,
     mutation_roots: list[Path],
+    export_paths: Sequence[Path],
 ) -> list[str]:
     if not trajectory_path.is_file():
         return [f"missing trajectory.json evidence artifact: {trajectory_path}"]
@@ -542,8 +723,104 @@ def _audit_trajectory(
     if entry.mutation_evidence.status == "qualified":
         issues.extend(_audit_qualified_oracle(entry, oracle, sample_dir, mutation_roots))
     if entry.independent_oracle_evidence.status == "qualified":
-        issues.extend(_audit_qualified_independent_oracle(entry, trajectory, sample_dir))
+        issues.extend(
+            _audit_qualified_independent_oracle(
+                entry,
+                trajectory,
+                sample_dir,
+                export_paths,
+            )
+        )
     return issues
+
+
+def _audit_withheld_oracle_exports(
+    family_id: str,
+    bundle: object,
+    export_paths: Sequence[Path],
+) -> list[str]:
+    exported_values: list[object] = []
+    exported_text: list[str] = []
+    for export_path in export_paths:
+        try:
+            text = export_path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        exported_text.append(text)
+        for line in text.splitlines():
+            try:
+                payload = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            exported_values.extend(_nested_json_values(payload))
+
+    issues: list[str] = []
+    combined_text = "\n".join(exported_text)
+    exported_strings = [value for value in exported_values if isinstance(value, str)]
+    for scenario in bundle.scenarios:
+        if scenario.scenario_class == "public_smoke":
+            continue
+        if any(
+            _exported_value_matches_seed(value, scenario.seed)
+            for value in exported_values
+        ):
+            issues.append(
+                f"withheld oracle seed leaked for family_id: {family_id}, "
+                f"scenario_id: {scenario.scenario_id}"
+            )
+        for secret_path in (scenario.input_path, scenario.expected_path):
+            normalized_secret = _normalize_export_text(secret_path)
+            if normalized_secret in _normalize_export_text(combined_text) or any(
+                normalized_secret in _normalize_export_text(value)
+                for value in exported_strings
+            ):
+                issues.append(
+                    f"withheld oracle path leaked for family_id: {family_id}, "
+                    f"scenario_id: {scenario.scenario_id}"
+                )
+                break
+        for vector_path in (bundle.root / scenario.input_path, bundle.root / scenario.expected_path):
+            try:
+                vector_text = vector_path.read_text(encoding="ascii").strip()
+            except OSError:
+                continue
+            normalized_vector = _normalize_export_text(vector_text).strip()
+            if normalized_vector and any(
+                normalized_vector in _normalize_export_text(value)
+                for value in exported_strings
+            ):
+                issues.append(
+                    f"withheld oracle vector leaked for family_id: {family_id}, "
+                    f"scenario_id: {scenario.scenario_id}"
+                )
+                break
+    return issues
+
+
+def _exported_value_matches_seed(value: object, seed: int) -> bool:
+    if isinstance(value, int) and not isinstance(value, bool):
+        return value == seed
+    if isinstance(value, str) and re.fullmatch(r"[+-]?\d+", value.strip()):
+        return int(value.strip()) == seed
+    return False
+
+
+def _normalize_export_text(value: str) -> str:
+    return value.replace("\\", "/").replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _nested_json_values(value: object) -> list[object]:
+    values: list[object] = []
+    if isinstance(value, dict):
+        for key, child in value.items():
+            values.append(key)
+            values.extend(_nested_json_values(child))
+    elif isinstance(value, list):
+        for child in value:
+            values.extend(_nested_json_values(child))
+    else:
+        values.append(value)
+    return values
 
 
 def _audit_sample_labels(
@@ -638,13 +915,48 @@ def _audit_qualified_oracle(
             or not artifact_path.is_dir()
         ):
             issues.append(f"missing declared mutation artifact for {name}: {artifact_path}")
+            continue
+        issues.extend(_audit_mutation_tool_evidence(name, artifact_path))
     return issues
+
+
+def _audit_mutation_tool_evidence(name: str, artifact_path: Path) -> list[str]:
+    eval_dir = artifact_path / "eval"
+    compile_path = eval_dir / "sim_compile.json"
+    run_path = eval_dir / "sim_run.json"
+    issues: list[str] = []
+    compile_result = _read_json_object(compile_path)
+    run_result = _read_json_object(run_path)
+    if compile_result is None:
+        issues.append(f"missing mutation sim_compile.json for {name}: {compile_path}")
+    elif compile_result.get("stage") != "sim_compile" or compile_result.get("status") != "passed":
+        issues.append(f"mutation compile evidence is not passed for {name}: {compile_path}")
+    if run_result is None:
+        issues.append(f"missing mutation sim_run.json for {name}: {run_path}")
+    else:
+        output = f"{run_result.get('stdout', '')}\n{run_result.get('stderr', '')}"
+        if (
+            run_result.get("stage") != "sim_run"
+            or run_result.get("status") != "failed"
+            or "TEST_FAIL" not in output
+        ):
+            issues.append(f"mutation tool evidence is not killed for {name}: {run_path}")
+    return issues
+
+
+def _read_json_object(path: Path) -> dict[str, object] | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    return payload if isinstance(payload, dict) else None
 
 
 def _audit_qualified_independent_oracle(
     entry: TaskFamilyEvidence,
     trajectory: dict[str, object],
     sample_dir: Path,
+    export_paths: Sequence[Path],
 ) -> list[str]:
     oracle = entry.independent_oracle_evidence
     profile = trajectory.get("oracle_profile")
@@ -696,6 +1008,23 @@ def _audit_qualified_independent_oracle(
         issues.append(
             f"qualified independent oracle bundle is missing scenario classes for family_id: {entry.family_id}"
         )
+    expected_scenarios = {
+        scenario["scenario_id"]: scenario
+        for scenario in sanitize_oracle_profile(bundle)["scenarios"]
+    }
+    actual_scenarios = {
+        scenario.get("scenario_id"): scenario
+        for scenario in profile.get("scenarios", [])
+        if isinstance(scenario, dict) and isinstance(scenario.get("scenario_id"), str)
+    }
+    for scenario_id, expected in expected_scenarios.items():
+        actual = actual_scenarios.get(scenario_id)
+        if not isinstance(actual, dict) or actual.get("seed_sha256") != expected.get("seed_sha256"):
+            issues.append(
+                f"qualified independent oracle seed_sha256 does not match for "
+                f"family_id: {entry.family_id}, scenario_id: {scenario_id}"
+            )
+    issues.extend(_audit_withheld_oracle_exports(entry.family_id, bundle, export_paths))
 
     evidence_path = oracle_root / "evidence.json"
     try:

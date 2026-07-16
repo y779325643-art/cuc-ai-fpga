@@ -1,8 +1,8 @@
 # Deterministic Phase C independent Python-oracle qualification batch.
 # Task aliases are explicit; the catalog supplies their T3/T4 family metadata.
-dataset_root: tmp/sr2fpga_phase_c_independent_oracle/dataset
-export_root: tmp/sr2fpga_phase_c_independent_oracle/exports
-run_root: tmp/sr2fpga_phase_c_independent_oracle/runs
+dataset_root: tmp/sr2fpga_phase_c_independent_oracle_v2/dataset
+export_root: tmp/sr2fpga_phase_c_independent_oracle_v2/exports
+run_root: tmp/sr2fpga_phase_c_independent_oracle_v2/runs
 provider: deterministic
 repair_provider: none
 model: deterministic
@@ -12,7 +12,7 @@ env_file: ""
 platform: generic_verilog
 max_attempts: 1
 refresh_exports: true
-sample_id_prefix: phase_c_independent_oracle
+sample_id_prefix: phase_c_independent_oracle_v2
 run_independent_oracle: true
 run_l4_open: false
 run_l4_commercial: false
