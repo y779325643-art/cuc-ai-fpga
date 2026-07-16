@@ -23,7 +23,6 @@ line_b_targets:
 tasks:
   - source: deterministic
     task_type: counter
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -32,7 +31,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: fifo
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -41,7 +39,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: simple_fsm
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [4]
@@ -50,7 +47,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: ram_read_write
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [16]
@@ -59,7 +55,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: uart_tx
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -68,7 +63,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: spi_master
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -77,7 +71,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: pwm_controller
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -86,7 +79,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: fir_filter
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -95,7 +87,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: streaming_valid_ready
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -104,7 +95,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: matrix_vector_mac
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -113,7 +103,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: alu_control_unit
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]
@@ -122,7 +111,6 @@ tasks:
     failure_injectors: []
   - source: deterministic
     task_type: crc_stream_checker
-    difficulty_tier: T0
     failure_origin: deterministic
     measurement_point: a_first_attempt_no_tools
     widths: [8]

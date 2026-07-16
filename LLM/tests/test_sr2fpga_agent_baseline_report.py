@@ -134,6 +134,165 @@ class BaselineReportTest(unittest.TestCase):
         self.assertIn("| issue_type | count |", markdown)
         self.assertIn("| testbench_observation_race | 5 |", markdown)
 
+    def test_render_markdown_surfaces_line_a_readiness_counts(self) -> None:
+        summary = _summary_fixture()
+        summary["oracle_strength"] = {
+            "samples": 2,
+            "reference_passed": 2,
+            "mutation_cases": 4,
+            "killed": 3,
+            "mutation_score": 0.75,
+            "surviving_mutations": {"survives": 1},
+            "non_scoreable_mutations": {"compile_only": 1},
+            "line_a_ready": 1,
+            "line_a_not_ready": 1,
+        }
+
+        markdown = render_markdown("oracle-readiness", baseline_rows(summary), summary=summary)
+
+        self.assertIn("| samples | reference passed | mutation cases | killed | mutation score | Line A ready | Line A not ready |", markdown)
+        self.assertIn("| 2 | 2 | 4 | 3 | 75.0% | 1 | 1 |", markdown)
+        self.assertIn("| compile_only | 1 |", markdown)
+
+    def test_render_markdown_includes_patch_repair_metrics(self) -> None:
+        summary = _summary_fixture()
+        summary["repair_metrics"] = {
+            "total_patches": 5,
+            "valid_patches": 4,
+            "invalid_edit_surface": 1,
+            "fixed_target": 3,
+            "automatic_pass_credit": 2,
+            "regressing_patches": 1,
+            "regression_rate": 0.25,
+        }
+
+        markdown = render_markdown("patch-metrics", baseline_rows(summary), summary=summary)
+
+        self.assertIn("## Patch-as-PR Repair", markdown)
+        self.assertIn(
+            "| total patches | valid patches | invalid edit surface | fixed target | automatic pass credit | regressing patches | regression rate |",
+            markdown,
+        )
+        self.assertIn("| 5 | 4 | 1 | 3 | 2 | 1 | 25.0% |", markdown)
+
+    def test_render_markdown_includes_l4_open_counts_and_skip_histogram(self) -> None:
+        summary = _summary_fixture()
+        summary["l4_open"] = {"pass": 2, "fail": 1, "not_run": 3}
+        summary["l4_open_skip_reasons"] = {"disabled_by_config": 2, "l3_failed": 1}
+
+        markdown = render_markdown(
+            "deepseek-baseline-a",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## L4-open", markdown)
+        self.assertIn("| pass | fail | not_run |", markdown)
+        self.assertIn("| 2 | 1 | 3 |", markdown)
+        self.assertIn("| skip_reason | count |", markdown)
+        self.assertIn("| disabled_by_config | 2 |", markdown)
+        self.assertIn("| l3_failed | 1 |", markdown)
+
+    def test_render_markdown_includes_l4_commercial_counts_and_skip_histogram(self) -> None:
+        summary = _summary_fixture()
+        summary["l4_commercial"] = {"pass": 2, "fail": 1, "not_run": 4}
+        summary["l4_commercial_skip_reasons"] = {
+            "disabled_by_config": 3,
+            "l3_failed": 1,
+        }
+
+        markdown = render_markdown(
+            "commercial-reference",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## L4-commercial", markdown)
+        self.assertIn("| 2 | 1 | 4 |", markdown)
+        self.assertIn("| disabled_by_config | 3 |", markdown)
+        self.assertIn("| l3_failed | 1 |", markdown)
+
+    def test_render_markdown_marks_req2file_as_derived_without_project_pass_credit(self) -> None:
+        summary = _summary_fixture()
+        summary["derived_training_views"] = {
+            "req2file": {
+                "available": True,
+                "rows": 8,
+                "file_level_passed": 8,
+                "official_eval_unit": False,
+                "standalone_pass_credit": False,
+            }
+        }
+
+        markdown = render_markdown(
+            "deepseek-baseline-a",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## Derived Training Views", markdown)
+        self.assertIn("| view | available | official eval unit | standalone pass credit | rows | file-level passed |", markdown)
+        self.assertIn("| req2file | yes | no | no | 8 | 8 |", markdown)
+        self.assertNotIn("| req2file | yes | yes |", markdown)
+
+    def test_render_markdown_includes_l0_l4_survival_curve(self) -> None:
+        summary = _summary_fixture()
+        summary["levels"] = {
+            "l0": {"pass": 4, "fail": 1},
+            "l1": {"pass": 3, "fail": 2},
+            "l2": {"pass": 2, "fail": 3},
+            "l3": {"pass": 2, "fail": 3},
+            "l4_open": {"pass": 1, "fail": 1, "not_run": 3},
+        }
+
+        markdown = render_markdown(
+            "deepseek-baseline-a",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## L0-L4 Survival", markdown)
+        self.assertIn("| level | pass | fail | not_run |", markdown)
+        self.assertIn("| l3 | 2 | 3 | 0 |", markdown)
+        self.assertIn("| l4_open | 1 | 1 | 3 |", markdown)
+
+    def test_render_markdown_includes_h_stage_summary(self) -> None:
+        summary = _summary_fixture()
+        summary["h_stage"] = {
+            "h0": {"pass": 4, "fail": 0},
+            "h1": {"pass": 3, "fail": 1},
+            "h2": {"pass": 3, "fail": 1},
+            "h3": {"pass": 2, "fail": 1, "not_applicable": 1},
+        }
+
+        markdown = render_markdown(
+            "deepseek-baseline-a",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## H0-H3 Summary", markdown)
+        self.assertIn("| stage | pass | fail | not_applicable |", markdown)
+        self.assertIn("| h3 | 2 | 1 | 1 |", markdown)
+
+    def test_render_markdown_includes_generated_his_credit_summary(self) -> None:
+        summary = _summary_fixture()
+        summary["generated_his_credit"] = {"credited": 3, "no_credit_oracle_fallback": 1}
+        summary["generated_his_pass_level_breakdown"] = {"L3": 2, "H3_FAIL": 1}
+
+        markdown = render_markdown(
+            "deepseek-baseline-a",
+            baseline_rows(summary),
+            summary=summary,
+        )
+
+        self.assertIn("## Generated-HIS Credit", markdown)
+        self.assertIn("| credit_bucket | count |", markdown)
+        self.assertIn("| credited | 3 |", markdown)
+        self.assertIn("| no_credit_oracle_fallback | 1 |", markdown)
+        self.assertIn("| generated_his_pass_level | count |", markdown)
+        self.assertIn("| L3 | 2 |", markdown)
+
     def test_render_markdown_includes_contract_skeleton_ablation_summary(self) -> None:
         summary = _summary_fixture()
         summary["calibration_matrix"]["contract_skeleton_mode"]["legacy_full_project"] = {

@@ -1,0 +1,46 @@
+# Deterministic Line-A OpenXC7 evidence for catalog-selected representative tasks.
+dataset_root: tmp/sr2fpga_line_a_l4_representative/dataset
+export_root: tmp/sr2fpga_line_a_l4_representative/exports
+run_root: tmp/sr2fpga_line_a_l4_representative/runs
+provider: deterministic
+repair_provider: none
+model: deterministic
+base_url: ""
+api_key_env: ""
+env_file: ""
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: line_a_l4_representative
+run_l4_open: true
+
+l4_open:
+  tool: openxc7_nextpnr
+  target_part: XC7Z020CLG484-2
+  board_profile: ac820_zynq
+  run_policy: representative_subset
+  timeout_seconds: 600
+
+line_b_targets:
+  l3_success_ratio: 1.0
+  repair_trajectory_ratio: 0.0
+  max_samples: 2
+
+tasks:
+  - source: deterministic
+    task_type: fir_filter
+    widths: [8]
+    count: 1
+    evaluation_line: line_a
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    requirement_style: simple_prompt
+
+  - source: deterministic
+    task_type: matrix_vector_mac
+    widths: [8]
+    count: 1
+    evaluation_line: line_a
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    requirement_style: simple_prompt

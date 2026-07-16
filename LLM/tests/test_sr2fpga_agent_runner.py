@@ -33,7 +33,43 @@ from LLM.src.sr2fpga_agent.runner import (
 )
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
 class RunnerConfigTest(unittest.TestCase):
+    def test_phase_c_independent_oracle_config_plans_nine_explicit_aliases(self) -> None:
+        config = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_c_independent_oracle.example.yaml"
+        )
+
+        self.assertEqual(config.provider, "deterministic")
+        self.assertTrue(
+            all(sample.evaluation_line == "line_a" for sample in planned_samples(config))
+        )
+        self.assertTrue(config.run_independent_oracle)
+        self.assertFalse(config.run_l4_open)
+        self.assertFalse(config.run_l4_commercial)
+        self.assertEqual(config.max_attempts, 1)
+        self.assertEqual(len(config.tasks), 9)
+        self.assertEqual(len(planned_samples(config)), 9)
+        self.assertEqual(
+            [sample.task_type for sample in planned_samples(config)],
+            [
+                "fir_filter",
+                "matrix_vector_mac",
+                "matched_filter",
+                "peak_detector",
+                "pulse_radar_signal",
+                "sobel_threshold",
+                "vision_defect_core",
+                "t6_td_update_core",
+                "t10_rl_accelerator_shell",
+            ],
+        )
+
     def test_load_runner_config_from_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "runner.json"

@@ -7,6 +7,42 @@ from LLM.src.sr2fpga_agent.testbench_checker import (
 
 
 class TestbenchCheckerTest(unittest.TestCase):
+    def test_flags_hierarchical_dut_internal_signal_access(self) -> None:
+        testbench = """
+        module tb;
+          initial begin
+            if (dut.u_core.state !== 2'd1) begin
+              $display("TEST_FAIL internal state mismatch");
+            end
+            $display("TEST_PASS");
+          end
+        endmodule
+        """
+
+        issues = check_testbench_static_issues(testbench)
+
+        internal_issues = [
+            issue for issue in issues if issue.failure_type == "testbench_internal_signal_access"
+        ]
+        self.assertEqual(len(internal_issues), 1)
+        self.assertIn("dut.u_core.state", internal_issues[0].message)
+
+    def test_allows_direct_dut_top_level_port_access(self) -> None:
+        testbench = """
+        module tb;
+          initial begin
+            if (dut.out_data !== expected) begin
+              $display("TEST_FAIL output mismatch");
+            end
+            $display("TEST_PASS");
+          end
+        endmodule
+        """
+
+        issues = check_testbench_static_issues(testbench)
+
+        self.assertNotIn("testbench_internal_signal_access", {issue.failure_type for issue in issues})
+
     def test_flags_unconditional_test_pass_without_functional_oracle(self) -> None:
         testbench = """
         module tb;

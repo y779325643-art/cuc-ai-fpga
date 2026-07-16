@@ -13,12 +13,16 @@ from typing import Any, Protocol
 import urllib.error
 import urllib.request
 
-from LLM.src.sr2fpga_agent.models import GeneratedProject
+from LLM.src.sr2fpga_agent.models import GeneratedProject, ToolResult
+from LLM.src.sr2fpga_agent.path_safety import build_yosys_script, project_file_target, validate_sample_id
 from LLM.src.sr2fpga_agent.log_parser import parse_yosys_stats
 from LLM.src.sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
 from LLM.src.sr2fpga_agent.system_his_checker import check_project_l0
 from LLM.src.sr2fpga_agent.testbench_checker import check_testbench_static_issues
 from LLM.src.sr2fpga_agent.tool_runner import CommandRunner
+
+REQ2FILE_EVAL_UNIT = "derived_training_view"
+REQ2FILE_VIEW = "req2file"
 
 
 class ChatClient(Protocol):
@@ -45,14 +49,20 @@ def build_eval_set(
             row = json.loads(line)
             if sample_id_prefix and not str(row.get("sample_id", "")).startswith(sample_id_prefix):
                 continue
-            file_path = str(row.get("file_path", "")).strip()
+            file_path = str(row.get("file_path", "")).strip().replace("\\", "/")
             if file_path in excluded_paths:
                 continue
+            prompt_row = dict(row)
+            prompt_row["file_path"] = file_path
             eval_row = {
                 "sample_id": str(row.get("sample_id", "")),
+                "source_episode_id": _source_episode_id(row),
+                "eval_unit": REQ2FILE_EVAL_UNIT,
+                "official_eval_unit": False,
+                "standalone_pass_credit": False,
                 "file_path": file_path,
                 "requirement": str(row.get("requirement", "")).strip(),
-                "messages": [{"role": "user", "content": _req2file_prompt(row)}],
+                "messages": [{"role": "user", "content": _req2file_prompt(prompt_row)}],
                 "expected_file_content": str(row.get("file_content", "")),
             }
             output_file.write(json.dumps(eval_row, ensure_ascii=False) + "\n")
@@ -82,7 +92,7 @@ def score_predictions(predictions: Path) -> dict[str, Any]:
             if not line.strip():
                 continue
             row = json.loads(line)
-            file_path = str(row.get("file_path", "")).strip()
+            file_path = str(row.get("file_path", "")).strip().replace("\\", "/")
             expected = str(row.get("expected_file_content", "")).strip()
             predicted = _prediction_text(row, line_number).strip()
             counters["rows"] += 1
@@ -108,6 +118,9 @@ def score_predictions(predictions: Path) -> dict[str, Any]:
                     counters["sdc_clock_present"] += 1
 
     report: dict[str, Any] = dict(counters)
+    report["eval_unit"] = REQ2FILE_EVAL_UNIT
+    report["official_eval_unit"] = False
+    report["standalone_pass_credit"] = False
     rows = int(counters["rows"])
     report["exact_match_ratio"] = round(int(counters["exact_match"]) / rows, 4) if rows else 0.0
     report["non_empty_ratio"] = round(int(counters["non_empty"]) / rows, 4) if rows else 0.0
@@ -153,6 +166,7 @@ def assemble_predictions(
     *,
     reference_dataset_root: Path | None = None,
     backfill_reference_paths: set[str] | None = None,
+    clean_output_root: bool = False,
 ) -> dict[str, Any]:
     """Write predicted REQ2FILE rows into per-sample generated_project dirs."""
     grouped: dict[str, dict[str, str]] = {}
@@ -162,39 +176,95 @@ def assemble_predictions(
                 continue
             row = json.loads(line)
             sample_id = str(row.get("sample_id", "")).strip()
-            file_path = str(row.get("file_path", "")).strip()
+            file_path = str(row.get("file_path", "")).strip().replace("\\", "/")
             if not sample_id or not file_path:
                 raise ValueError(f"Prediction row {line_number} is missing sample_id or file_path")
+            validate_sample_id(sample_id)
+            project_file_target(Path("generated_project"), file_path)
             grouped.setdefault(sample_id, {})[file_path] = _prediction_text(row, line_number)
 
     if output_root.exists():
+        if not clean_output_root:
+            raise ValueError(f"output root already exists: {output_root}")
         shutil.rmtree(output_root)
+
+    assembly_plans: dict[str, dict[str, Any]] = {}
+    requested_backfill_paths = backfill_reference_paths or set()
+    missing_backfills: list[str] = []
+    for sample_id, files in sorted(grouped.items()):
+        reference_project_dir: Path | None = None
+        reference_paths: set[str] = set()
+        backfill_paths: set[str] = set()
+        available_backfills: set[str] = set()
+        if reference_dataset_root is not None:
+            reference_project_dir = reference_dataset_root / sample_id / "final" / "generated_project"
+            reference_paths = _reference_project_paths(reference_project_dir)
+            if not reference_paths:
+                raise ValueError(f"reference final project is missing or empty for {sample_id}: {reference_project_dir}")
+            backfill_paths = requested_backfill_paths or reference_paths
+            for relative_path in backfill_paths:
+                if relative_path in files:
+                    continue
+                reference_path = reference_project_dir / relative_path
+                if reference_path.exists():
+                    available_backfills.add(relative_path)
+                else:
+                    missing_backfills.append(f"{sample_id}:{relative_path}")
+        else:
+            reference_paths = _predicted_required_project_paths(files)
+
+        assembled_paths = set(files) | available_backfills
+        missing_required_paths = sorted(reference_paths - assembled_paths)
+        if missing_required_paths:
+            raise ValueError(
+                "incomplete REQ2FILE project assembly for {sample_id}: missing {paths}".format(
+                    sample_id=sample_id,
+                    paths=", ".join(missing_required_paths),
+                )
+            )
+        assembly_plans[sample_id] = {
+            "reference_project_dir": str(reference_project_dir) if reference_project_dir is not None else "",
+            "required_project_files": sorted(reference_paths),
+            "predicted_files": sorted(files),
+            "backfill_files": sorted(available_backfills),
+            "assembled_files": sorted(assembled_paths),
+        }
+
     output_root.mkdir(parents=True, exist_ok=True)
 
     written_files = 0
     backfilled_files = 0
-    missing_backfills: list[str] = []
-    backfill_paths = backfill_reference_paths or set()
+    assembly_manifest_count = 0
     for sample_id, files in sorted(grouped.items()):
         project_dir = output_root / sample_id / "generated_project"
         for relative_path, content in sorted(files.items()):
             _write_project_file(project_dir, relative_path, content)
             written_files += 1
-        if reference_dataset_root is not None:
-            for relative_path in sorted(backfill_paths):
+        plan = assembly_plans[sample_id]
+        reference_project_dir_text = str(plan["reference_project_dir"])
+        reference_project_dir = Path(reference_project_dir_text) if reference_project_dir_text else None
+        if reference_project_dir is not None:
+            for relative_path in plan["backfill_files"]:
                 if (project_dir / relative_path).exists():
                     continue
-                reference_path = reference_dataset_root / sample_id / "final" / "generated_project" / relative_path
-                if not reference_path.exists():
-                    missing_backfills.append(f"{sample_id}:{relative_path}")
-                    continue
+                reference_path = reference_project_dir / relative_path
                 _write_project_file(project_dir, relative_path, reference_path.read_text(encoding="utf-8"))
                 backfilled_files += 1
+        _write_json(
+            output_root / sample_id / "req2file_assembly_manifest.json",
+            _assembly_manifest(sample_id, plan),
+        )
+        assembly_manifest_count += 1
 
     return {
+        "derived_training_view": REQ2FILE_VIEW,
+        "official_eval_unit": False,
+        "standalone_pass_credit": False,
+        "project_level_pass_credit": False,
         "projects": len(grouped),
         "written_files": written_files,
         "backfilled_files": backfilled_files,
+        "assembly_manifests": assembly_manifest_count,
         "missing_backfills": missing_backfills,
         "output_root": str(output_root),
     }
@@ -205,18 +275,23 @@ def verify_assembled_projects(project_root: Path) -> dict[str, Any]:
     project_results: list[dict[str, Any]] = []
     for project_dir in sorted(project_root.glob("*/generated_project")):
         sample_id = project_dir.parent.name
+        manifest_error = _assembly_manifest_error(project_dir)
+        if manifest_error:
+            project_results.append(_req2file_project_result(_assembly_manifest_static_failure(sample_id, manifest_error)))
+            continue
         files = _read_project_files(project_dir)
         project = GeneratedProject(project_name=sample_id, files=files)
         result = _verify_one_project(sample_id, project)
-        project_results.append(result)
+        project_results.append(_req2file_project_result(result))
 
     return {
+        **_req2file_report_metadata(),
         "projects": len(project_results),
-        "l0_passed": sum(1 for item in project_results if item["checks"]["l0"]["passed"]),
-        "rtl_identifier_passed": sum(
+        "file_level_l0_passed": sum(1 for item in project_results if item["checks"]["l0"]["passed"]),
+        "file_level_rtl_identifier_passed": sum(
             1 for item in project_results if item["checks"]["rtl_identifier"]["passed"]
         ),
-        "testbench_static_passed": sum(
+        "file_level_testbench_static_passed": sum(
             1 for item in project_results if item["checks"]["testbench_static"]["passed"]
         ),
         "project_results": project_results,
@@ -232,15 +307,22 @@ def verify_assembled_projects_with_tools(
     runner = command_runner or CommandRunner()
     project_results: list[dict[str, Any]] = []
     for project_dir in sorted(project_root.glob("*/generated_project")):
-        project_results.append(_verify_one_project_with_tools(project_dir, runner))
+        manifest_error = _assembly_manifest_error(project_dir)
+        if manifest_error:
+            project_results.append(
+                _req2file_project_result(_assembly_manifest_tools_failure(project_dir.parent.name, manifest_error))
+            )
+            continue
+        project_results.append(_req2file_project_result(_verify_one_project_with_tools(project_dir, runner)))
 
     return {
+        **_req2file_report_metadata(),
         "projects": len(project_results),
-        "lint_passed": sum(1 for item in project_results if _stage_status(item, "lint") == "passed"),
-        "sim_compile_passed": sum(
+        "file_level_lint_passed": sum(1 for item in project_results if _stage_status(item, "lint") == "passed"),
+        "file_level_sim_compile_passed": sum(
             1 for item in project_results if _stage_status(item, "sim_compile") == "passed"
         ),
-        "sim_run_passed": sum(1 for item in project_results if _stage_status(item, "sim_run") == "passed"),
+        "file_level_sim_run_passed": sum(1 for item in project_results if _stage_status(item, "sim_run") == "passed"),
         "project_results": project_results,
     }
 
@@ -254,11 +336,18 @@ def verify_assembled_projects_with_synth(
     runner = command_runner or CommandRunner()
     project_results: list[dict[str, Any]] = []
     for project_dir in sorted(project_root.glob("*/generated_project")):
-        project_results.append(_verify_one_project_with_synth(project_dir, runner))
+        manifest_error = _assembly_manifest_error(project_dir)
+        if manifest_error:
+            project_results.append(
+                _req2file_project_result(_assembly_manifest_synth_failure(project_dir.parent.name, manifest_error))
+            )
+            continue
+        project_results.append(_req2file_project_result(_verify_one_project_with_synth(project_dir, runner)))
 
     return {
+        **_req2file_report_metadata(),
         "projects": len(project_results),
-        "synth_passed": sum(1 for item in project_results if item["stage"]["status"] == "passed"),
+        "file_level_synth_passed": sum(1 for item in project_results if item["stage"]["status"] == "passed"),
         "project_results": project_results,
     }
 
@@ -269,6 +358,151 @@ def _req2file_prompt(row: dict[str, Any]) -> str:
         f"SR2FPGA requirement:\n{str(row.get('requirement', '')).strip()}\n\n"
         f"File path:\n{str(row.get('file_path', '')).strip()}"
     )
+
+
+def _source_episode_id(row: dict[str, Any]) -> str:
+    episode = row.get("episode", {})
+    if isinstance(episode, dict):
+        episode_id = str(episode.get("sample_id", "")).strip()
+        if episode_id:
+            return episode_id
+    return str(row.get("source_episode_id") or row.get("source_episode") or row.get("sample_id", "")).strip()
+
+
+def _reference_project_paths(project_dir: Path) -> set[str]:
+    if not project_dir.exists():
+        return set()
+    return {
+        path.relative_to(project_dir).as_posix()
+        for path in project_dir.rglob("*")
+        if path.is_file() and not any(part.startswith(".") for part in path.relative_to(project_dir).parts)
+    }
+
+
+def _predicted_required_project_paths(files: dict[str, str]) -> set[str]:
+    required = {"manifest.json", "system_his.json"}
+    manifest = _load_manifest(files.get("manifest.json", ""))
+    if not manifest:
+        return required
+    required.update(str(item) for item in manifest.get("sources", []) if str(item).strip())
+    simulation = manifest.get("simulation")
+    if isinstance(simulation, dict) and str(simulation.get("testbench", "")).strip():
+        required.add(str(simulation["testbench"]))
+    constraints = manifest.get("constraints")
+    if isinstance(constraints, dict) and str(constraints.get("timing", "")).strip():
+        required.add(str(constraints["timing"]))
+    return {path.replace("\\", "/") for path in required}
+
+
+def _assembly_manifest(sample_id: str, plan: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "sample_id": sample_id,
+        **_req2file_report_metadata(),
+        "reference_project_dir": plan["reference_project_dir"],
+        "required_project_files": plan["required_project_files"],
+        "predicted_files": plan["predicted_files"],
+        "backfilled_files": plan["backfill_files"],
+        "assembled_files": plan["assembled_files"],
+        "complete": True,
+    }
+
+
+def _write_json(path: Path, payload: dict[str, Any]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def _req2file_report_metadata() -> dict[str, Any]:
+    return {
+        "derived_training_view": REQ2FILE_VIEW,
+        "official_eval_unit": False,
+        "standalone_pass_credit": False,
+        "project_level_pass_credit": False,
+    }
+
+
+def _req2file_project_result(result: dict[str, Any]) -> dict[str, Any]:
+    contextual = dict(result)
+    if "status" in contextual:
+        contextual["file_level_status"] = contextual.pop("status")
+    contextual.update(_req2file_report_metadata())
+    return contextual
+
+
+def _assembly_manifest_error(project_dir: Path) -> str:
+    manifest_path = project_dir.parent / "req2file_assembly_manifest.json"
+    if not manifest_path.exists():
+        return f"missing req2file_assembly_manifest.json for {project_dir.parent.name}"
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        return f"invalid req2file_assembly_manifest.json: {exc}"
+    if not isinstance(manifest, dict):
+        return "invalid req2file_assembly_manifest.json: expected object"
+    if manifest.get("complete") is not True:
+        return "incomplete REQ2FILE project assembly: manifest complete is not true"
+    required_files = _manifest_file_set(manifest.get("required_project_files"))
+    assembled_files = _manifest_file_set(manifest.get("assembled_files"))
+    if required_files is None or assembled_files is None:
+        return "invalid req2file_assembly_manifest.json: required_project_files and assembled_files must be lists"
+    missing_from_manifest = sorted(required_files - assembled_files)
+    if missing_from_manifest:
+        return "incomplete REQ2FILE project assembly: manifest missing {paths}".format(
+            paths=", ".join(missing_from_manifest)
+        )
+    missing_on_disk = sorted(path for path in required_files if not (project_dir / path).is_file())
+    if missing_on_disk:
+        return "incomplete REQ2FILE project assembly: files missing on disk {paths}".format(
+            paths=", ".join(missing_on_disk)
+        )
+    return ""
+
+
+def _manifest_file_set(value: Any) -> set[str] | None:
+    if not isinstance(value, list):
+        return None
+    return {str(item).replace("\\", "/") for item in value if str(item).strip()}
+
+
+def _assembly_manifest_static_failure(sample_id: str, error: str) -> dict[str, Any]:
+    return {
+        "sample_id": sample_id,
+        "status": "failed",
+        "assembly_manifest": {"passed": False, "error": error},
+        "checks": {
+            "l0": {"passed": False, "errors": [error], "warnings": []},
+            "rtl_identifier": {"passed": False, "issues": []},
+            "testbench_static": {"passed": False, "issues": []},
+        },
+    }
+
+
+def _assembly_manifest_tools_failure(sample_id: str, error: str) -> dict[str, Any]:
+    return {
+        "sample_id": sample_id,
+        "status": "failed",
+        "assembly_manifest": {"passed": False, "error": error},
+        "stages": [],
+    }
+
+
+def _assembly_manifest_synth_failure(sample_id: str, error: str) -> dict[str, Any]:
+    synth = ToolResult(
+        stage="synth",
+        command=[],
+        status="failed",
+        exit_code=1,
+        stdout="",
+        stderr=error,
+        duration_seconds=0.0,
+    )
+    return {
+        "sample_id": sample_id,
+        "status": "failed",
+        "assembly_manifest": {"passed": False, "error": error},
+        "stage": _tool_result_dict(synth),
+        "measured_qor": {},
+    }
 
 
 def _prediction_text(row: dict[str, Any], line_number: int) -> str:
@@ -301,14 +535,14 @@ def _validate_eval_messages(messages: Any) -> list[dict[str, str]]:
 
 
 def _write_project_file(project_dir: Path, relative_path: str, content: str) -> None:
-    target = project_dir / relative_path
+    target = project_file_target(project_dir, relative_path)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(content, encoding="utf-8")
 
 
 def _read_project_files(project_dir: Path) -> dict[str, str]:
     return {
-        str(path.relative_to(project_dir)): path.read_text(encoding="utf-8")
+        path.relative_to(project_dir).as_posix(): path.read_text(encoding="utf-8")
         for path in sorted(project_dir.rglob("*"))
         if path.is_file()
     }
@@ -404,7 +638,25 @@ def _verify_one_project_with_synth(project_dir: Path, runner: CommandRunner) -> 
     manifest = _load_manifest((project_dir / "manifest.json").read_text(encoding="utf-8") if (project_dir / "manifest.json").exists() else "")
     sources = [str(item) for item in manifest.get("sources", [])] if isinstance(manifest, dict) else []
     top_module = str(manifest.get("top_module", "top")) if isinstance(manifest, dict) else "top"
-    yosys_script = f"read_verilog {' '.join(sources)}; synth -top {top_module}; stat"
+    try:
+        yosys_script = build_yosys_script(sources, top_module)
+    except ValueError as exc:
+        synth = ToolResult(
+            stage="synth",
+            command=["yosys"],
+            status="failed",
+            exit_code=1,
+            stdout="",
+            stderr=str(exc),
+            duration_seconds=0.0,
+        )
+        return {
+            "sample_id": sample_id,
+            "status": "failed",
+            "top_module": top_module,
+            "stage": _tool_result_dict(synth),
+            "measured_qor": {},
+        }
     synth = runner.run(["yosys", "-p", yosys_script], cwd=project_dir, stage="synth", timeout_seconds=60)
     measured_qor = parse_yosys_stats(f"{synth.stdout}\n{synth.stderr}") if synth.status == "passed" else {}
     return {
@@ -564,6 +816,7 @@ def main() -> None:
     assemble_parser.add_argument("--output-root", required=True, type=Path)
     assemble_parser.add_argument("--reference-dataset-root", type=Path)
     assemble_parser.add_argument("--backfill-reference-path", action="append", default=[])
+    assemble_parser.add_argument("--force-clean", action="store_true")
 
     verify_parser = subparsers.add_parser("verify-static", help="Run no-EDA static checks over assembled projects.")
     verify_parser.add_argument("--project-root", required=True, type=Path)
@@ -609,6 +862,7 @@ def main() -> None:
             args.output_root,
             reference_dataset_root=args.reference_dataset_root,
             backfill_reference_paths=set(args.backfill_reference_path),
+            clean_output_root=args.force_clean,
         )
         print(json.dumps(report, ensure_ascii=False, indent=2))
         return

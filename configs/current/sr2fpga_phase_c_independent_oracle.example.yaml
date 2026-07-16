@@ -1,0 +1,34 @@
+# Deterministic Phase C independent Python-oracle qualification batch.
+# Task aliases are explicit; the catalog supplies their T3/T4 family metadata.
+dataset_root: tmp/sr2fpga_phase_c_independent_oracle/dataset
+export_root: tmp/sr2fpga_phase_c_independent_oracle/exports
+run_root: tmp/sr2fpga_phase_c_independent_oracle/runs
+provider: deterministic
+repair_provider: none
+model: deterministic
+base_url: ""
+api_key_env: ""
+env_file: ""
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: phase_c_independent_oracle
+run_independent_oracle: true
+run_l4_open: false
+run_l4_commercial: false
+
+line_b_targets:
+  l3_success_ratio: 1.0
+  repair_trajectory_ratio: 0.0
+  max_samples: 9
+
+tasks:
+  - {source: deterministic, task_type: fir_filter, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: matrix_vector_mac, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: matched_filter, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: peak_detector, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: pulse_radar_signal, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: sobel_threshold, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: vision_defect_core, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: t6_td_update_core, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: t10_rl_accelerator_shell, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}

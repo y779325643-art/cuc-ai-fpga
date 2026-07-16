@@ -60,6 +60,8 @@ class ContractSkeletonTest(unittest.TestCase):
         )
 
         self.assertNotIn("BEHAVIOR_HOLE", project.files["rtl/stream_join.v"])
+        self.assertIn("// SR2FPGA_BEHAVIOR_BEGIN", project.files["rtl/stream_join.v"])
+        self.assertIn("// SR2FPGA_BEHAVIOR_END", project.files["rtl/stream_join.v"])
         self.assertIn("assign out_valid = in0_valid && in1_valid;", project.files["rtl/stream_join.v"])
         self.assertIn("module top", project.files["rtl/top.v"])
         self.assertEqual(project.files["manifest.json"], skeleton.files["manifest.json"])

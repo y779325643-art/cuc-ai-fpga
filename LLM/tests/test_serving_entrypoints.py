@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 import os
 from pathlib import Path
 import subprocess
@@ -41,16 +42,21 @@ class ServingEntrypointsTest(unittest.TestCase):
             fake_vllm.write_text(
                 '#!/usr/bin/env bash\nprintf "%s\\n" "$@" > "$CAPTURE_FILE"\n',
                 encoding="utf-8",
+                newline="\n",
             )
             fake_vllm.chmod(0o755)
 
-            env = executable_env(os.environ.copy())
-            env["PATH"] = os.pathsep.join([str(temp_path), env["PATH"]])
-            env["CAPTURE_FILE"] = str(capture_file)
+            bash = _bash_executable()
+            env = _env_for_bash(os.environ.copy(), bash, prepend_path=temp_path)
+            env["CAPTURE_FILE"] = _path_for_bash(capture_file, bash)
+            if _is_windows_wsl_bash(bash):
+                _add_wslenv_entries(env, ["CAPTURE_FILE"])
             if extra_env:
                 env.update(extra_env)
+                if _is_windows_wsl_bash(bash):
+                    _add_wslenv_entries(env, extra_env.keys())
             subprocess.run(
-                [_bash_executable(), str(script)],
+                _bash_command(script, bash),
                 cwd=REPO_ROOT,
                 env=env,
                 check=True,
@@ -70,13 +76,15 @@ class ServingEntrypointsTest(unittest.TestCase):
         self.assertNotIn("/mnt/c/Users/models/gemma-4-12B-it", args)
 
     def test_qwen_vllm_has_stable_coder_defaults(self) -> None:
+        bash = _bash_executable()
         with tempfile.TemporaryDirectory() as model_dir:
+            model_path = _path_for_bash(model_dir, bash)
             args = self._capture_vllm_args(
                 REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh",
-                {"QWEN_MODEL_PATH": model_dir},
+                {"QWEN_MODEL_PATH": model_path},
             )
 
-        self.assertEqual(args[0:2], ["serve", model_dir])
+        self.assertEqual(args[0:2], ["serve", model_path])
         self.assertIn("--max-model-len", args)
         self.assertEqual(args[args.index("--max-model-len") + 1], "4096")
         self.assertEqual(args[args.index("--served-model-name") + 1], "cuc-ai-fpga")
@@ -95,11 +103,12 @@ class ServingEntrypointsTest(unittest.TestCase):
         missing_path = "/tmp/definitely-missing-qwen-model"
         env = os.environ.copy()
         env["QWEN_MODEL_PATH"] = missing_path
+        bash = _bash_executable()
 
         result = subprocess.run(
-            [_bash_executable(), str(REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh")],
+            _bash_command(REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh", bash),
             cwd=REPO_ROOT,
-            env=executable_env(env),
+            env=_env_for_bash(env, bash),
             capture_output=True,
             text=True,
         )
@@ -131,6 +140,88 @@ class ServingEntrypointsTest(unittest.TestCase):
 def _bash_executable() -> str:
     bash = resolve_executable("bash")
     return str(bash) if bash is not None else "bash"
+
+
+def _bash_command(script: Path, bash: str) -> list[str]:
+    return [bash, _path_for_bash(script, bash)]
+
+
+def _env_for_bash(
+    base_env: dict[str, str],
+    bash: str,
+    *,
+    prepend_path: Path | None = None,
+) -> dict[str, str]:
+    env = executable_env(base_env)
+    if not _is_windows_wsl_bash(bash):
+        if prepend_path is not None:
+            env["PATH"] = os.pathsep.join([str(prepend_path), env.get("PATH", "")])
+        return env
+
+    path_entries = []
+    if prepend_path is not None:
+        path_entries.append(_path_for_bash(prepend_path, bash))
+    path_entries.extend(
+        [
+            "/usr/local/sbin",
+            "/usr/local/bin",
+            "/usr/sbin",
+            "/usr/bin",
+            "/sbin",
+            "/bin",
+        ]
+    )
+    env["PATH"] = ":".join(path_entries)
+    _add_wslenv_entries(
+        env,
+        [
+            "PATH",
+            *(
+                key
+                for key in ("LLM_VENV_PATH", "MODEL_PATH", "QWEN_MODEL_PATH")
+                if key in env
+            ),
+        ],
+    )
+    return env
+
+
+def _path_for_bash(path: Path | str, bash: str) -> str:
+    path_text = str(path)
+    if _is_windows_wsl_bash(bash):
+        return _windows_path_to_wsl(path_text)
+    return path_text
+
+
+def _is_windows_wsl_bash(bash: str) -> bool:
+    normalized = bash.replace("/", "\\").lower()
+    return os.name == "nt" and (
+        "\\windowsapps\\bash" in normalized or "\\system32\\bash" in normalized
+    )
+
+
+def _windows_path_to_wsl(path: str) -> str:
+    if path.startswith("/"):
+        return path
+    path = str(Path(path).resolve(strict=False))
+    drive, tail = os.path.splitdrive(path)
+    if not drive:
+        return path.replace("\\", "/")
+    tail = tail.replace("\\", "/").lstrip("/")
+    return f"/mnt/{drive[0].lower()}/{tail}"
+
+
+def _add_wslenv_entries(env: dict[str, str], names: Iterable[object]) -> None:
+    existing = [entry for entry in env.get("WSLENV", "").split(":") if entry]
+    seen = {entry.split("/", 1)[0] for entry in existing}
+    for name in names:
+        name_text = str(name)
+        if not name_text or name_text in seen:
+            continue
+        existing.append(name_text)
+        seen.add(name_text)
+    if existing:
+        env["WSLENV"] = ":".join(existing)
 
 
 if __name__ == "__main__":

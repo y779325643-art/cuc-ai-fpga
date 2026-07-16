@@ -87,9 +87,17 @@ def render_markdown(
                 l0_failures=row["l0_contract_failures"],
                 l0_rate=_format_rate(row["cross_file_consistency_error_rate"]),
             )
-        )
+    )
     _append_contract_skeleton_ablation_section(lines, summary or {})
     _append_latent_testbench_issue_section(lines, summary or {})
+    _append_oracle_strength_section(lines, summary or {})
+    _append_repair_metrics_section(lines, summary or {})
+    _append_l0_l4_survival_section(lines, summary or {})
+    _append_generated_his_credit_section(lines, summary or {})
+    _append_h_stage_section(lines, summary or {})
+    _append_l4_open_section(lines, summary or {})
+    _append_l4_commercial_section(lines, summary or {})
+    _append_derived_training_views_section(lines, summary or {})
     return "\n".join(lines) + "\n"
 
 
@@ -228,6 +236,226 @@ def _append_latent_testbench_issue_section(lines: list[str], summary: dict[str, 
     )
     for issue_type in sorted(issues):
         lines.append(f"| {issue_type} | {int(issues[issue_type])} |")
+
+
+def _append_oracle_strength_section(lines: list[str], summary: dict[str, Any]) -> None:
+    strength = summary.get("oracle_strength", {})
+    if not isinstance(strength, dict) or not strength.get("samples"):
+        return
+    lines.extend(
+        [
+            "",
+            "## Testbench Oracle Strength",
+            "",
+            "| samples | reference passed | mutation cases | killed | mutation score | Line A ready | Line A not ready |",
+            "|---:|---:|---:|---:|---:|---:|---:|",
+            "| {samples} | {reference_passed} | {mutation_cases} | {killed} | {score:.1%} | {line_a_ready} | {line_a_not_ready} |".format(
+                samples=int(strength.get("samples", 0)),
+                reference_passed=int(strength.get("reference_passed", 0)),
+                mutation_cases=int(strength.get("mutation_cases", 0)),
+                killed=int(strength.get("killed", 0)),
+                score=float(strength.get("mutation_score", 0.0)),
+                line_a_ready=int(strength.get("line_a_ready", 0)),
+                line_a_not_ready=int(strength.get("line_a_not_ready", 0)),
+            ),
+            "",
+            "| surviving_mutation | samples |",
+            "|---|---:|",
+        ]
+    )
+    survivors = strength.get("surviving_mutations", {})
+    if isinstance(survivors, dict):
+        for name in sorted(survivors):
+            lines.append(f"| {name} | {int(survivors[name])} |")
+    non_scoreable = strength.get("non_scoreable_mutations", {})
+    if isinstance(non_scoreable, dict) and non_scoreable:
+        lines.extend(
+            [
+                "",
+                "| non_scoreable_mutation | samples |",
+                "|---|---:|",
+            ]
+        )
+        for name in sorted(non_scoreable):
+            lines.append(f"| {name} | {int(non_scoreable[name])} |")
+
+
+def _append_repair_metrics_section(lines: list[str], summary: dict[str, Any]) -> None:
+    metrics = summary.get("repair_metrics", {})
+    if not isinstance(metrics, dict) or not metrics.get("total_patches"):
+        return
+    lines.extend(
+        [
+            "",
+            "## Patch-as-PR Repair",
+            "",
+            "| total patches | valid patches | invalid edit surface | fixed target | automatic pass credit | regressing patches | regression rate |",
+            "|---:|---:|---:|---:|---:|---:|---:|",
+            "| {total} | {valid} | {invalid} | {fixed} | {credit} | {regressing} | {rate} |".format(
+                total=int(metrics.get("total_patches", 0)),
+                valid=int(metrics.get("valid_patches", 0)),
+                invalid=int(metrics.get("invalid_edit_surface", 0)),
+                fixed=int(metrics.get("fixed_target", 0)),
+                credit=int(metrics.get("automatic_pass_credit", 0)),
+                regressing=int(metrics.get("regressing_patches", 0)),
+                rate=_format_rate(float(metrics.get("regression_rate", 0.0))),
+            ),
+        ]
+    )
+
+
+def _append_l4_open_section(lines: list[str], summary: dict[str, Any]) -> None:
+    counts = summary.get("l4_open", {})
+    if not isinstance(counts, dict):
+        return
+    skip_reasons = summary.get("l4_open_skip_reasons", {})
+    skip_reasons = skip_reasons if isinstance(skip_reasons, dict) else {}
+    lines.extend(
+        [
+            "",
+            "## L4-open",
+            "",
+            "| pass | fail | not_run |",
+            "|---:|---:|---:|",
+            f"| {int(counts.get('pass', 0))} | {int(counts.get('fail', 0))} | {int(counts.get('not_run', 0))} |",
+            "",
+            "| skip_reason | count |",
+            "|---|---:|",
+        ]
+    )
+    for reason in sorted(skip_reasons):
+        lines.append(f"| {reason} | {int(skip_reasons[reason])} |")
+
+
+def _append_l4_commercial_section(lines: list[str], summary: dict[str, Any]) -> None:
+    counts = summary.get("l4_commercial", {})
+    if not isinstance(counts, dict):
+        return
+    skip_reasons = summary.get("l4_commercial_skip_reasons", {})
+    skip_reasons = skip_reasons if isinstance(skip_reasons, dict) else {}
+    lines.extend(
+        [
+            "",
+            "## L4-commercial",
+            "",
+            "| pass | fail | not_run |",
+            "|---:|---:|---:|",
+            f"| {int(counts.get('pass', 0))} | {int(counts.get('fail', 0))} | {int(counts.get('not_run', 0))} |",
+            "",
+            "| skip_reason | count |",
+            "|---|---:|",
+        ]
+    )
+    for reason in sorted(skip_reasons):
+        lines.append(f"| {reason} | {int(skip_reasons[reason])} |")
+
+
+def _append_h_stage_section(lines: list[str], summary: dict[str, Any]) -> None:
+    h_stage = summary.get("h_stage", {})
+    if not isinstance(h_stage, dict) or not h_stage:
+        return
+    lines.extend(
+        [
+            "",
+            "## H0-H3 Summary",
+            "",
+            "| stage | pass | fail | not_applicable |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+    for stage in ("h0", "h1", "h2", "h3"):
+        counts = h_stage.get(stage, {})
+        counts = counts if isinstance(counts, dict) else {}
+        lines.append(
+            "| {stage} | {passed} | {failed} | {not_applicable} |".format(
+                stage=stage,
+                passed=int(counts.get("pass", 0)),
+                failed=int(counts.get("fail", 0)),
+                not_applicable=int(counts.get("not_applicable", 0)),
+            )
+        )
+
+
+def _append_l0_l4_survival_section(lines: list[str], summary: dict[str, Any]) -> None:
+    levels = summary.get("levels", {})
+    if not isinstance(levels, dict) or not levels:
+        return
+    lines.extend(
+        [
+            "",
+            "## L0-L4 Survival",
+            "",
+            "| level | pass | fail | not_run |",
+            "|---|---:|---:|---:|",
+        ]
+    )
+    for level in ("l0", "l1", "l2", "l3", "l4_open"):
+        counts = levels.get(level, {})
+        counts = counts if isinstance(counts, dict) else {}
+        lines.append(
+            f"| {level} | {int(counts.get('pass', 0))} | {int(counts.get('fail', 0))} | {int(counts.get('not_run', 0))} |"
+        )
+
+
+def _append_generated_his_credit_section(lines: list[str], summary: dict[str, Any]) -> None:
+    credit = summary.get("generated_his_credit", {})
+    pass_levels = summary.get("generated_his_pass_level_breakdown", {})
+    if not isinstance(credit, dict) or not credit:
+        return
+    pass_levels = pass_levels if isinstance(pass_levels, dict) else {}
+    lines.extend(
+        [
+            "",
+            "## Generated-HIS Credit",
+            "",
+            "| credit_bucket | count |",
+            "|---|---:|",
+        ]
+    )
+    for bucket, count in sorted(credit.items()):
+        lines.append(f"| {bucket} | {int(count)} |")
+    lines.extend(
+        [
+            "",
+            "| generated_his_pass_level | count |",
+            "|---|---:|",
+        ]
+    )
+    for pass_level, count in sorted(pass_levels.items()):
+        lines.append(f"| {pass_level} | {int(count)} |")
+
+
+def _append_derived_training_views_section(lines: list[str], summary: dict[str, Any]) -> None:
+    views = summary.get("derived_training_views", {})
+    if not isinstance(views, dict) or not views:
+        return
+    lines.extend(
+        [
+            "",
+            "## Derived Training Views",
+            "",
+            "| view | available | official eval unit | standalone pass credit | rows | file-level passed |",
+            "|---|---|---|---|---:|---:|",
+        ]
+    )
+    for view_name in sorted(views):
+        view = views[view_name]
+        if not isinstance(view, dict):
+            continue
+        lines.append(
+            "| {view} | {available} | {official} | {credit} | {rows} | {file_passed} |".format(
+                view=str(view_name),
+                available=_yes_no(view.get("available")),
+                official=_yes_no(view.get("official_eval_unit")),
+                credit=_yes_no(view.get("standalone_pass_credit")),
+                rows=int(view.get("rows", 0)),
+                file_passed=int(view.get("file_level_passed", 0)),
+            )
+        )
+
+
+def _yes_no(value: Any) -> str:
+    return "yes" if value is True else "no"
 
 
 if __name__ == "__main__":

@@ -195,7 +195,7 @@ class SourcesParsingTest(unittest.TestCase):
             self.assertEqual(config.sources["claude"].generation_mode, "two_stage")
 
     def test_multi_teacher_example_uses_anthropic_client_for_official_claude_endpoint(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_multi_teacher.example.yaml"))
+        config = load_runner_config(Path("configs/legacy/sr2fpga_multi_teacher.example.yaml"))
         claude = config.sources["claude"]
 
         self.assertEqual(claude.kind, "anthropic_compat")

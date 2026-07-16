@@ -1,0 +1,25 @@
+dataset_root: tmp/sr2fpga_phase_b_core_closure/dataset
+export_root: tmp/sr2fpga_phase_b_core_closure/exports
+run_root: tmp/sr2fpga_phase_b_core_closure/runs
+provider: deterministic
+repair_provider: none
+model: deterministic
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: phase_b_core_closure
+run_l4_open: false
+line_b_targets:
+  l3_success_ratio: 1.0
+  repair_trajectory_ratio: 0.0
+  max_samples: 9
+tasks:
+  - {source: deterministic, task_type: uart_rx, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: uart_fifo_loopback, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: matched_filter, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: peak_detector, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: pulse_radar_signal, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: sobel_threshold, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: vision_defect_core, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: pattern_matcher, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: stream_trigger_filter, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
