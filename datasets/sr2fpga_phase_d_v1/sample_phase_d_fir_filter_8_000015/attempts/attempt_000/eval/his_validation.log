@@ -1,0 +1,4 @@
+H2 lowerability: components[0] has unsupported semantic_kind 'arithmetic'
+H2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'impulse_response_test', 'description': 'Test impulse response to verify filter coefficients', 'stimulus': 'single high input sample followed by zeros', 'expected_behavior': 'output matches expected convolution result'}'
+H2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'step_response_test', 'description': 'Test step response to verify filter stability', 'stimulus': 'constant input value', 'expected_behavior': 'output reaches steady state after filter delay'}'
+H2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'throughput_test', 'description': 'Verify maximum throughput capability', 'stimulus': 'continuous valid input samples', 'expected_behavior': 'output samples available every cycle after initial latency'}'

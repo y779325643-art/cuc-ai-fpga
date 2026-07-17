@@ -1,0 +1,1491 @@
+{
+  "sample_id": "sample_phase_d_control_sobel_threshold_8_000005",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "<oss-cad-suite>\\bin\\verilator.EXE",
+      "exit_code": 0,
+      "command": [
+        "<oss-cad-suite>\\bin\\verilator.EXE",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/sobel_line_buffer.v",
+        "rtl/sobel_window.v",
+        "rtl/sobel_threshold_core.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "<oss-cad-suite>\\bin\\iverilog.EXE",
+      "exit_code": 0,
+      "command": [
+        "<oss-cad-suite>\\bin\\iverilog.EXE",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/sobel_line_buffer.v",
+        "rtl/sobel_window.v",
+        "rtl/sobel_threshold_core.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "vvp",
+      "exit_code": 0,
+      "command": [
+        "vvp",
+        "sim.out",
+        "<independent-oracle-scenarios>"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "<oss-cad-suite>\\bin\\yosys.EXE",
+      "exit_code": 0,
+      "command": [
+        "<oss-cad-suite>\\bin\\yosys.EXE",
+        "-p",
+        "read_verilog rtl/top.v rtl/sobel_line_buffer.v rtl/sobel_window.v rtl/sobel_threshold_core.v; synth -top top; stat"
+      ]
+    }
+  ],
+  "measurement": {
+    "initial": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "L3",
+      "highest_level": "L3",
+      "failure_type": "none",
+      "failure_class": null,
+      "automatic_pass_credit": true
+    },
+    "final": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "L3",
+      "highest_level": "L3",
+      "failure_type": "none",
+      "failure_class": null,
+      "automatic_pass_credit": true
+    },
+    "repair_attempts_used": 0,
+    "repair_success": false,
+    "repair_eligible": false,
+    "repair_skip_reason": "initial_or_current_attempt_passed",
+    "regressions": [],
+    "scoreable": true,
+    "infrastructure_status": "scoreable",
+    "l4_open": {
+      "status": "not_run",
+      "skip_reason": "disabled_by_config"
+    }
+  },
+  "oracle_strength": {
+    "reference_pass": true,
+    "mutation_cases": 7,
+    "killed": 7,
+    "mutation_score": 1.0,
+    "surviving_mutations": [],
+    "non_scoreable_mutations": [],
+    "task_family": "sobel_threshold",
+    "threshold": 0.85,
+    "line_a_ready": true,
+    "mutation_details": {
+      "swap_x_y_gradient": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [],
+        "artifact_dir": "oracle_mutations/swap_x_y_gradient"
+      },
+      "wrong_border_policy": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [],
+        "artifact_dir": "oracle_mutations/wrong_border_policy"
+      },
+      "wrong_threshold": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [],
+        "artifact_dir": "oracle_mutations/wrong_threshold"
+      },
+      "accumulator_truncation": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [],
+        "artifact_dir": "oracle_mutations/accumulator_truncation"
+      },
+      "input_backpressure_error": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [],
+        "artifact_dir": "oracle_mutations/input_backpressure_error"
+      },
+      "ignore_in_last": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [],
+        "artifact_dir": "oracle_mutations/ignore_in_last"
+      },
+      "ignore_subsequent_reset": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [],
+        "artifact_dir": "oracle_mutations/ignore_subsequent_reset"
+      }
+    }
+  },
+  "his_validation": {
+    "his_source_used_for_generation": "generated",
+    "h0": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h1": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h2": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h3": {
+      "status": "not_applicable",
+      "scores": {
+        "interface_extraction": null,
+        "clock_reset_fidelity": null,
+        "parameter_fidelity": null,
+        "behavior_intent_fidelity": null,
+        "verification_intent_fidelity": null,
+        "constraint_fidelity": null
+      },
+      "diagnostics": [],
+      "metrics": {
+        "interface_extraction": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "clock_reset_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "parameter_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "behavior_intent_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "verification_intent_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "constraint_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        }
+      }
+    },
+    "passed": true
+  },
+  "oracle_profile": {
+    "kind": "python_reference",
+    "status": "pass",
+    "family_id": "sobel_threshold",
+    "reference_model": "python_image_reference",
+    "reference_version": "1.1.0",
+    "bundle_sha256": "2c61e0e0657b32ea3c09234de8971c1810540dfdc4a9ddc382233d1c2628a2ec",
+    "scenario_counts": {
+      "public_smoke": 1,
+      "hidden_deterministic": 1,
+      "randomized_fixed_seed": 1,
+      "stress": 1
+    },
+    "class_status": {
+      "hidden_deterministic": "pass",
+      "public_smoke": "pass",
+      "randomized_fixed_seed": "pass",
+      "stress": "pass"
+    },
+    "scenarios": [
+      {
+        "scenario_id": "sobel_public_flat_vertical",
+        "scenario_class": "public_smoke",
+        "seed_sha256": "67f9f4c0d98b422c8d67efad804a15f30b56baa0b0d7867bc999252dba8e8951",
+        "transaction_count": 50,
+        "input_record_width_bits": 24,
+        "expected_record_width_bits": 4,
+        "input_fields": [
+          {
+            "name": "pixel",
+            "msb": 7,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "in_last",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "reset_before",
+            "msb": 9,
+            "lsb": 9,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 11,
+            "lsb": 10,
+            "signed": false
+          },
+          {
+            "name": "drain_target",
+            "msb": 23,
+            "lsb": 12,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "edge",
+            "msb": 0,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "axis",
+            "msb": 1,
+            "lsb": 1,
+            "signed": false
+          },
+          {
+            "name": "out_last",
+            "msb": 2,
+            "lsb": 2,
+            "signed": false
+          },
+          {
+            "name": "expect_output",
+            "msb": 3,
+            "lsb": 3,
+            "signed": false
+          }
+        ],
+        "input_sha256": "6824e2d6c16a37a9b1bdeb7ff49f8886aee23ea0c8e644dc3b2b8b30032bc5b3",
+        "expected_sha256": "2b1cab2e211bfea13b937498e2904ff687176c63507f688e3e5942581b57c7c4"
+      },
+      {
+        "scenario_id": "sobel_hidden_horizontal_maximum",
+        "scenario_class": "hidden_deterministic",
+        "seed_sha256": "7a946ee8a3506d74dcf1a513c6d5648c56d875c14a6045dc5b284a43bb0e05b2",
+        "transaction_count": 25,
+        "input_record_width_bits": 24,
+        "expected_record_width_bits": 4,
+        "input_fields": [
+          {
+            "name": "pixel",
+            "msb": 7,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "in_last",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "reset_before",
+            "msb": 9,
+            "lsb": 9,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 11,
+            "lsb": 10,
+            "signed": false
+          },
+          {
+            "name": "drain_target",
+            "msb": 23,
+            "lsb": 12,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "edge",
+            "msb": 0,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "axis",
+            "msb": 1,
+            "lsb": 1,
+            "signed": false
+          },
+          {
+            "name": "out_last",
+            "msb": 2,
+            "lsb": 2,
+            "signed": false
+          },
+          {
+            "name": "expect_output",
+            "msb": 3,
+            "lsb": 3,
+            "signed": false
+          }
+        ]
+      },
+      {
+        "scenario_id": "sobel_randomized_seeded",
+        "scenario_class": "randomized_fixed_seed",
+        "seed_sha256": "cc6ca424ee00d9b1f33a653d9f26c6a680c2fe328c8c27df573d8e372d0253d6",
+        "transaction_count": 50,
+        "input_record_width_bits": 24,
+        "expected_record_width_bits": 4,
+        "input_fields": [
+          {
+            "name": "pixel",
+            "msb": 7,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "in_last",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "reset_before",
+            "msb": 9,
+            "lsb": 9,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 11,
+            "lsb": 10,
+            "signed": false
+          },
+          {
+            "name": "drain_target",
+            "msb": 23,
+            "lsb": 12,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "edge",
+            "msb": 0,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "axis",
+            "msb": 1,
+            "lsb": 1,
+            "signed": false
+          },
+          {
+            "name": "out_last",
+            "msb": 2,
+            "lsb": 2,
+            "signed": false
+          },
+          {
+            "name": "expect_output",
+            "msb": 3,
+            "lsb": 3,
+            "signed": false
+          }
+        ]
+      },
+      {
+        "scenario_id": "sobel_stress_reset_stall",
+        "scenario_class": "stress",
+        "seed_sha256": "67d44f9ea5d8d8b2a44f0e4a57ed017b284287bbcb7afa66089d4204c351d515",
+        "transaction_count": 35,
+        "input_record_width_bits": 24,
+        "expected_record_width_bits": 4,
+        "input_fields": [
+          {
+            "name": "pixel",
+            "msb": 7,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "in_last",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "reset_before",
+            "msb": 9,
+            "lsb": 9,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 11,
+            "lsb": 10,
+            "signed": false
+          },
+          {
+            "name": "drain_target",
+            "msb": 23,
+            "lsb": 12,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "edge",
+            "msb": 0,
+            "lsb": 0,
+            "signed": false
+          },
+          {
+            "name": "axis",
+            "msb": 1,
+            "lsb": 1,
+            "signed": false
+          },
+          {
+            "name": "out_last",
+            "msb": 2,
+            "lsb": 2,
+            "signed": false
+          },
+          {
+            "name": "expect_output",
+            "msb": 3,
+            "lsb": 3,
+            "signed": false
+          }
+        ]
+      }
+    ],
+    "hidden_vectors_exported": false
+  },
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "sobel_threshold",
+    "project_name": "phase_d_control_sobel_threshold_8_000005",
+    "project": {
+      "name": "phase_d_control_sobel_threshold_8_000005",
+      "description": "Generate an 8-bit sobel_threshold FPGA RTL project.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Generate an 8-bit sobel_threshold FPGA RTL project.",
+      "design_goal": "each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [
+        {
+          "name": "IMAGE_WIDTH",
+          "default": 5
+        },
+        {
+          "name": "IMAGE_HEIGHT",
+          "default": 5
+        },
+        {
+          "name": "THRESHOLD",
+          "default": 100
+        }
+      ],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_pixel",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "in_last",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "out_edge",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "edge_axis",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "out_last",
+          "dir": "output",
+          "width": 1
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_pixel",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "in_last",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_edge",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "edge_axis",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "out_last",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "sobel_line_buffer",
+        "semantic_kind": "buffer",
+        "source": "rtl/sobel_line_buffer.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "write_en",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "address",
+            "dir": "input",
+            "width": "[ADDR_WIDTH-1:0]"
+          },
+          {
+            "name": "write_pixel",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "read_pixel",
+            "dir": "output",
+            "width": 8
+          }
+        ],
+        "intent": "sobel line buffer component in the generated RTL project"
+      },
+      {
+        "name": "sobel_window",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/sobel_window.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "accept",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "row_index",
+            "dir": "input",
+            "width": 16
+          },
+          {
+            "name": "column_index",
+            "dir": "input",
+            "width": 16
+          },
+          {
+            "name": "in_pixel",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "window_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "gx",
+            "dir": "output",
+            "width": 11
+          },
+          {
+            "name": "gy",
+            "dir": "output",
+            "width": 11
+          }
+        ],
+        "intent": "sobel window component in the generated RTL project"
+      },
+      {
+        "name": "sobel_threshold_core",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/sobel_threshold_core.v",
+        "parameters": [
+          {
+            "name": "THRESHOLD",
+            "default": "THRESHOLD"
+          }
+        ],
+        "ports": [
+          {
+            "name": "gx",
+            "dir": "input",
+            "width": 11
+          },
+          {
+            "name": "gy",
+            "dir": "input",
+            "width": 11
+          },
+          {
+            "name": "out_edge",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "edge_axis",
+            "dir": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sobel threshold core component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_sobel_threshold_core",
+        "component": "sobel_threshold_core",
+        "parameter_values": {
+          "THRESHOLD": "THRESHOLD"
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_sobel_threshold_core_primary_path",
+        "path": [
+          "top.in_valid",
+          "u_sobel_threshold_core.gx",
+          "u_sobel_threshold_core.out_edge",
+          "top.out_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 96,
+        "ff": 80,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "flat_image",
+        "axis_sensitive_edges",
+        "threshold_boundary",
+        "border_policy",
+        "stall_stability",
+        "frame_boundary",
+        "missing_final_in_last",
+        "reset_during_frame"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/sobel_line_buffer.v",
+        "rtl/sobel_window.v",
+        "rtl/sobel_threshold_core.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Generate an 8-bit sobel_threshold FPGA RTL project."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "name": "in_pixel",
+          "width": 8
+        },
+        {
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "name": "out_edge",
+          "width": 1
+        },
+        {
+          "name": "edge_axis",
+          "width": 1
+        },
+        {
+          "name": "out_last",
+          "width": 1
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "sobel_line_buffer",
+        "sobel_window",
+        "sobel_threshold_core"
+      ],
+      "task_family_id": "sobel_threshold",
+      "difficulty_tier": "T3",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "oracle_kind": [
+        "image_golden"
+      ],
+      "obligations": [
+        "two_line_buffer_window",
+        "row_major_zero_border",
+        "signed_sobel_magnitude",
+        "edge_axis_semantics",
+        "in_last_gated_frame_flush",
+        "one_entry_output_stall_stability"
+      ]
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_pixel",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "in_last",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_edge",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "edge_axis",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "out_last",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "sobel_line_buffer",
+        "role": "submodule",
+        "source": "rtl/sobel_line_buffer.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "write_en",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "address",
+            "direction": "input",
+            "width": "[ADDR_WIDTH-1:0]"
+          },
+          {
+            "name": "write_pixel",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "read_pixel",
+            "direction": "output",
+            "width": 8
+          }
+        ],
+        "intent": "sobel line buffer component in the generated RTL project"
+      },
+      {
+        "name": "sobel_window",
+        "role": "submodule",
+        "source": "rtl/sobel_window.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "accept",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "row_index",
+            "direction": "input",
+            "width": 16
+          },
+          {
+            "name": "column_index",
+            "direction": "input",
+            "width": 16
+          },
+          {
+            "name": "in_pixel",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "window_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "gx",
+            "direction": "output",
+            "width": 11
+          },
+          {
+            "name": "gy",
+            "direction": "output",
+            "width": 11
+          }
+        ],
+        "intent": "sobel window component in the generated RTL project"
+      },
+      {
+        "name": "sobel_threshold_core",
+        "role": "submodule",
+        "source": "rtl/sobel_threshold_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "THRESHOLD": "THRESHOLD"
+        },
+        "params": [
+          {
+            "name": "THRESHOLD",
+            "value": "THRESHOLD"
+          }
+        ],
+        "ports": [
+          {
+            "name": "gx",
+            "direction": "input",
+            "width": 11
+          },
+          {
+            "name": "gy",
+            "direction": "input",
+            "width": 11
+          },
+          {
+            "name": "out_edge",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "edge_axis",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "intent": "sobel threshold core component in the generated RTL project"
+      }
+    ],
+    "connections": [],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_pixel",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "in_last",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out_edge",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "edge_axis",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "out_last",
+        "direction": "output",
+        "width": 1
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 96,
+        "ff": 80,
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "standalone_pass_credit": false,
+      "source_episode_id": "sample_phase_d_control_sobel_threshold_8_000005"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 739,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "model_generated",
+        "bytes": 488,
+        "behavior_holes": 0
+      },
+      "rtl/sobel_line_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 487,
+        "behavior_holes": 0
+      },
+      "rtl/sobel_threshold_core.v": {
+        "origin": "model_generated",
+        "bytes": 533,
+        "behavior_holes": 0
+      },
+      "rtl/sobel_window.v": {
+        "origin": "model_generated",
+        "bytes": 2410,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 4204,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 16657,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 16739,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/sobel_line_buffer.v",
+      "rtl/sobel_threshold_core.v",
+      "rtl/sobel_window.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.58564,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "pass"
+      },
+      "stress": {
+        "status": "pass"
+      },
+      "coverage": {
+        "scenario_profile": "independent_python_reference",
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 0,
+      "ff": 184,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "warnings": [],
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "board_profile": "ac820_zynq",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "critical_warnings": [],
+      "runtime_sec": null,
+      "report_paths": [],
+      "failure_family": null
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "official_board_ready": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "expected_board_drc_exceptions": [],
+      "invalidating_critical_warnings": [],
+      "methodology_warnings": [],
+      "runtime_sec": null,
+      "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "his_validation": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

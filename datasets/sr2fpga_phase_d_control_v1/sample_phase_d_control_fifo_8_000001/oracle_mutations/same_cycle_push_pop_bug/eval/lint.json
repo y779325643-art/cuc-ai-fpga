@@ -1,0 +1,14 @@
+{
+  "stage": "lint",
+  "command": [
+    "<oss-cad-suite>\\bin\\verilator.EXE",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "- V e r i l a t i o n   R e p o r t: Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)\n- Verilator: Built from 0.033 MB sources in 2 modules, into 0.014 MB in 3 C++ files needing 0.000 MB\n- Verilator: Walltime 0.033 s (elab=0.001, cvt=0.006, bld=0.000); cpu 0.000 s on 1 threads; allocated 13.406 MB\n",
+  "stderr": "",
+  "duration_seconds": 0.06468700000550598
+}

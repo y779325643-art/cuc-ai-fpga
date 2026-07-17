@@ -1,0 +1,17 @@
+{
+  "failure_type": "functional_mismatch",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL underflow guard advanced read pointer\nsim/tb_top.v:103: $finish called at 251000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": [],
+  "tool": "<oss-cad-suite>\\bin\\vvp.EXE",
+  "tool_status": "failed",
+  "structured_diagnosis": {
+    "failure_type": "functional_mismatch",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

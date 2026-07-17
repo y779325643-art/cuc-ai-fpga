@@ -1,0 +1,1475 @@
+{
+  "sample_id": "sample_phase_d_control_fir_filter_8_000004",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker",
+      "exit_code": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "<oss-cad-suite>\\bin\\verilator.EXE",
+      "exit_code": 0,
+      "command": [
+        "<oss-cad-suite>\\bin\\verilator.EXE",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/fir_filter_core.v",
+        "rtl/mac_unit.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker",
+      "exit_code": 0,
+      "command": [
+        "testbench_static_checker"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "<oss-cad-suite>\\bin\\iverilog.EXE",
+      "exit_code": 0,
+      "command": [
+        "<oss-cad-suite>\\bin\\iverilog.EXE",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/fir_filter_core.v",
+        "rtl/mac_unit.v",
+        "sim/tb_top.v"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "vvp",
+      "exit_code": 0,
+      "command": [
+        "vvp",
+        "sim.out",
+        "<independent-oracle-scenarios>"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "<oss-cad-suite>\\bin\\yosys.EXE",
+      "exit_code": 0,
+      "command": [
+        "<oss-cad-suite>\\bin\\yosys.EXE",
+        "-p",
+        "read_verilog rtl/top.v rtl/fir_filter_core.v rtl/mac_unit.v; synth -top top; stat"
+      ]
+    },
+    {
+      "attempt_id": 0,
+      "stage": "pnr",
+      "status": "passed",
+      "tool": "wsl.exe",
+      "exit_code": 0,
+      "command": [
+        "wsl.exe",
+        "bash",
+        "<repo>/scripts/openxc7_pnr.sh",
+        "<repo>/datasets/sr2fpga_phase_d_control_v1/sample_phase_d_control_fir_filter_8_000004/attempts/attempt_000/generated_project",
+        "XC7Z020CLG484-2",
+        "10.000"
+      ]
+    }
+  ],
+  "measurement": {
+    "initial": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "L3",
+      "highest_level": "L3",
+      "failure_type": "none",
+      "failure_class": null,
+      "automatic_pass_credit": true
+    },
+    "final": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "L3",
+      "highest_level": "L3",
+      "failure_type": "none",
+      "failure_class": null,
+      "automatic_pass_credit": true
+    },
+    "repair_attempts_used": 0,
+    "repair_success": false,
+    "repair_eligible": false,
+    "repair_skip_reason": "initial_or_current_attempt_passed",
+    "regressions": [],
+    "scoreable": true,
+    "infrastructure_status": "scoreable",
+    "l4_open": {
+      "status": "pass",
+      "skip_reason": null
+    }
+  },
+  "oracle_strength": {
+    "reference_pass": true,
+    "mutation_cases": 5,
+    "killed": 5,
+    "mutation_score": 1.0,
+    "surviving_mutations": [],
+    "non_scoreable_mutations": [],
+    "task_family": "fir_filter",
+    "threshold": 0.85,
+    "line_a_ready": true,
+    "mutation_details": {
+      "wrong_coeff_order": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [
+          {
+            "scenario_id": "fir_public_smoke",
+            "class": "public_smoke",
+            "item_index": 0,
+            "expected": "0xf",
+            "actual": "0x5"
+          },
+          {
+            "scenario_id": "fir_hidden_edges",
+            "class": "hidden_deterministic",
+            "item_index": 0,
+            "expected": "0x680",
+            "actual": "0x780"
+          },
+          {
+            "scenario_id": "fir_randomized_seeded",
+            "class": "randomized_fixed_seed",
+            "item_index": 0,
+            "expected": "0x78b",
+            "actual": "0x7d9"
+          },
+          {
+            "scenario_id": "fir_stress_reset_stall",
+            "class": "stress",
+            "item_index": 0,
+            "expected": "0x17d",
+            "actual": "0x7f"
+          }
+        ],
+        "artifact_dir": "oracle_mutations/wrong_coeff_order"
+      },
+      "truncate_accumulator": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [
+          {
+            "scenario_id": "fir_hidden_edges",
+            "class": "hidden_deterministic",
+            "item_index": 0,
+            "expected": "0x680",
+            "actual": "0x780"
+          },
+          {
+            "scenario_id": "fir_randomized_seeded",
+            "class": "randomized_fixed_seed",
+            "item_index": 3,
+            "expected": "0x131",
+            "actual": "0x31"
+          },
+          {
+            "scenario_id": "fir_stress_reset_stall",
+            "class": "stress",
+            "item_index": 0,
+            "expected": "0x17d",
+            "actual": "0x7d"
+          }
+        ],
+        "artifact_dir": "oracle_mutations/truncate_accumulator"
+      },
+      "remove_signed_cast": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [
+          {
+            "scenario_id": "fir_public_smoke",
+            "class": "public_smoke",
+            "item_index": 1,
+            "expected": "0x7ea",
+            "actual": "0x312"
+          },
+          {
+            "scenario_id": "fir_hidden_edges",
+            "class": "hidden_deterministic",
+            "item_index": 0,
+            "expected": "0x680",
+            "actual": "0x180"
+          },
+          {
+            "scenario_id": "fir_randomized_seeded",
+            "class": "randomized_fixed_seed",
+            "item_index": 0,
+            "expected": "0x78b",
+            "actual": "0x28b"
+          },
+          {
+            "scenario_id": "fir_stress_reset_stall",
+            "class": "stress",
+            "item_index": 1,
+            "expected": "0x582",
+            "actual": "0x47a"
+          }
+        ],
+        "artifact_dir": "oracle_mutations/remove_signed_cast"
+      },
+      "missing_stall": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [
+          {
+            "scenario_id": "fir_randomized_seeded",
+            "class": "randomized_fixed_seed",
+            "item_index": 3,
+            "expected": "0x131",
+            "actual": "0x131"
+          },
+          {
+            "scenario_id": "fir_stress_reset_stall",
+            "class": "stress",
+            "item_index": 0,
+            "expected": "0x17d",
+            "actual": "0x17d"
+          }
+        ],
+        "artifact_dir": "oracle_mutations/missing_stall"
+      },
+      "off_by_one_latency": {
+        "outcome": "killed",
+        "sim_run_status": "failed",
+        "first_failure_stage": "sim_run",
+        "failure_type": "functional_mismatch",
+        "mismatch_detail": [
+          {
+            "scenario_id": "fir_public_smoke",
+            "class": "public_smoke",
+            "item_index": 0,
+            "expected": "0xf",
+            "actual": "0xf"
+          },
+          {
+            "scenario_id": "fir_hidden_edges",
+            "class": "hidden_deterministic",
+            "item_index": 0,
+            "expected": "0x680",
+            "actual": "0x680"
+          },
+          {
+            "scenario_id": "fir_randomized_seeded",
+            "class": "randomized_fixed_seed",
+            "item_index": 0,
+            "expected": "0x78b",
+            "actual": "0x78b"
+          },
+          {
+            "scenario_id": "fir_stress_reset_stall",
+            "class": "stress",
+            "item_index": 0,
+            "expected": "0x17d",
+            "actual": "0x17d"
+          }
+        ],
+        "artifact_dir": "oracle_mutations/off_by_one_latency"
+      }
+    }
+  },
+  "his_validation": {
+    "his_source_used_for_generation": "generated",
+    "h0": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h1": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h2": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h3": {
+      "status": "not_applicable",
+      "scores": {
+        "interface_extraction": null,
+        "clock_reset_fidelity": null,
+        "parameter_fidelity": null,
+        "behavior_intent_fidelity": null,
+        "verification_intent_fidelity": null,
+        "constraint_fidelity": null
+      },
+      "diagnostics": [],
+      "metrics": {
+        "interface_extraction": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "clock_reset_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "parameter_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "behavior_intent_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "verification_intent_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        },
+        "constraint_fidelity": {
+          "status": "not_applicable",
+          "errors": []
+        }
+      }
+    },
+    "passed": true
+  },
+  "oracle_profile": {
+    "kind": "python_reference",
+    "status": "pass",
+    "family_id": "fir_filter",
+    "reference_model": "python_numeric_reference",
+    "reference_version": "1.0.0",
+    "bundle_sha256": "2d345802bb8c7ccd202caa44622b2e39ea71885cb38bbdc13c88538b01623904",
+    "scenario_counts": {
+      "public_smoke": 1,
+      "hidden_deterministic": 1,
+      "randomized_fixed_seed": 1,
+      "stress": 1
+    },
+    "class_status": {
+      "hidden_deterministic": "pass",
+      "public_smoke": "pass",
+      "randomized_fixed_seed": "pass",
+      "stress": "pass"
+    },
+    "scenarios": [
+      {
+        "scenario_id": "fir_public_smoke",
+        "scenario_class": "public_smoke",
+        "seed_sha256": "67f9f4c0d98b422c8d67efad804a15f30b56baa0b0d7867bc999252dba8e8951",
+        "transaction_count": 3,
+        "input_record_width_bits": 11,
+        "expected_record_width_bits": 12,
+        "input_fields": [
+          {
+            "name": "sample",
+            "msb": 7,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "reset_before",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 10,
+            "lsb": 9,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "result",
+            "msb": 10,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "expect_output",
+            "msb": 11,
+            "lsb": 11,
+            "signed": false
+          }
+        ],
+        "input_sha256": "819c794fb0040e927253080a8fd27a57abde79a208496cd864e468c5c24a6d48",
+        "expected_sha256": "f103a23e106de02ed469260b3760e28860fd230e43cfba214677155b00dabe31"
+      },
+      {
+        "scenario_id": "fir_hidden_edges",
+        "scenario_class": "hidden_deterministic",
+        "seed_sha256": "7e8030e7d655e3e7cfff09e3da875fefaa9db90716037307dacdf309e8589045",
+        "transaction_count": 4,
+        "input_record_width_bits": 11,
+        "expected_record_width_bits": 12,
+        "input_fields": [
+          {
+            "name": "sample",
+            "msb": 7,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "reset_before",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 10,
+            "lsb": 9,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "result",
+            "msb": 10,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "expect_output",
+            "msb": 11,
+            "lsb": 11,
+            "signed": false
+          }
+        ]
+      },
+      {
+        "scenario_id": "fir_randomized_seeded",
+        "scenario_class": "randomized_fixed_seed",
+        "seed_sha256": "8b87673e54dd55425839a65b0e190158bce914d4d0a30a1d72cdc1ef08732801",
+        "transaction_count": 16,
+        "input_record_width_bits": 11,
+        "expected_record_width_bits": 12,
+        "input_fields": [
+          {
+            "name": "sample",
+            "msb": 7,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "reset_before",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 10,
+            "lsb": 9,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "result",
+            "msb": 10,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "expect_output",
+            "msb": 11,
+            "lsb": 11,
+            "signed": false
+          }
+        ]
+      },
+      {
+        "scenario_id": "fir_stress_reset_stall",
+        "scenario_class": "stress",
+        "seed_sha256": "958a58fb4e3fbe4abea1f4b1e4d324614b02559a558022b7bcf39d12b3f13fcd",
+        "transaction_count": 5,
+        "input_record_width_bits": 11,
+        "expected_record_width_bits": 12,
+        "input_fields": [
+          {
+            "name": "sample",
+            "msb": 7,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "reset_before",
+            "msb": 8,
+            "lsb": 8,
+            "signed": false
+          },
+          {
+            "name": "stall_cycles",
+            "msb": 10,
+            "lsb": 9,
+            "signed": false
+          }
+        ],
+        "expected_fields": [
+          {
+            "name": "result",
+            "msb": 10,
+            "lsb": 0,
+            "signed": true
+          },
+          {
+            "name": "expect_output",
+            "msb": 11,
+            "lsb": 11,
+            "signed": false
+          }
+        ]
+      }
+    ],
+    "hidden_vectors_exported": false
+  },
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "task_type": "fir_filter",
+    "project_name": "phase_d_control_fir_filter_8_000004",
+    "project": {
+      "name": "phase_d_control_fir_filter_8_000004",
+      "description": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter.",
+      "top": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "async"
+      }
+    ],
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter.",
+      "design_goal": "signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure",
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "async"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "sample",
+          "dir": "input",
+          "width": 8
+        },
+        {
+          "name": "result_ready",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "sample_ready",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "dir": "output",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "dir": "output",
+          "width": 11
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "top",
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample",
+            "dir": "input",
+            "width": 8
+          },
+          {
+            "name": "result_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "result_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "dir": "output",
+            "width": 11
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "mac_unit",
+        "semantic_kind": "mac",
+        "source": "rtl/mac_unit.v",
+        "parameters": [],
+        "ports": [
+          {
+            "name": "sample",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "coefficient",
+            "dir": "input",
+            "width": 3
+          },
+          {
+            "name": "accum",
+            "dir": "input",
+            "width": "[ACC_WIDTH-1:0]"
+          },
+          {
+            "name": "result",
+            "dir": "output",
+            "width": "[ACC_WIDTH-1:0]"
+          }
+        ],
+        "intent": "mac unit component in the generated RTL project"
+      },
+      {
+        "name": "fir_filter_core",
+        "semantic_kind": "rtl_component",
+        "source": "rtl/fir_filter_core.v",
+        "parameters": [
+          {
+            "name": "WIDTH",
+            "default": 8
+          },
+          {
+            "name": "RESULT_WIDTH",
+            "default": 11
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "sample",
+            "dir": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "result_valid",
+            "dir": "output",
+            "width": 1
+          },
+          {
+            "name": "result_ready",
+            "dir": "input",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "dir": "output",
+            "width": "[RESULT_WIDTH-1:0]"
+          }
+        ],
+        "intent": "fir filter core component in the generated RTL project"
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_fir_filter_core",
+        "component": "fir_filter_core",
+        "parameter_values": {
+          "WIDTH": 8,
+          "RESULT_WIDTH": 11
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_fir_filter_core_primary_path",
+        "path": [
+          "top.sample_valid",
+          "u_fir_filter_core.sample_valid",
+          "u_fir_filter_core.sample_ready",
+          "top.result_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_state",
+        "kind": "reset_rule",
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "related_state": [],
+        "related_flows": []
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": 24,
+        "ff": 24,
+        "bram": 0,
+        "dsp": 2
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure.",
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure.",
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/fir_filter_core.v",
+        "rtl/mac_unit.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    },
+    "system": {
+      "description": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter."
+    },
+    "interface": {
+      "clock": "clk",
+      "reset": "rst_n",
+      "reset_polarity": "active_low",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "name": "sample",
+          "width": 8
+        },
+        {
+          "name": "result_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "sample_ready",
+          "width": 1
+        },
+        {
+          "name": "result_valid",
+          "width": 1
+        },
+        {
+          "name": "result",
+          "width": 11
+        }
+      ]
+    },
+    "architecture": {
+      "style": "multi_module",
+      "top_module": "top",
+      "submodules": [
+        "mac_unit",
+        "fir_filter_core"
+      ],
+      "task_family_id": "fir_filter",
+      "difficulty_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "oracle_kind": [
+        "python_numpy_golden",
+        "transaction_scoreboard"
+      ]
+    },
+    "modules": [
+      {
+        "name": "top",
+        "role": "top",
+        "source": "rtl/top.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "result_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "result_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "direction": "output",
+            "width": 11
+          }
+        ],
+        "intent": "top-level integration wrapper for the generated RTL project"
+      },
+      {
+        "name": "mac_unit",
+        "role": "submodule",
+        "source": "rtl/mac_unit.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "name": "sample",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "coefficient",
+            "direction": "input",
+            "width": 3
+          },
+          {
+            "name": "accum",
+            "direction": "input",
+            "width": "[ACC_WIDTH-1:0]"
+          },
+          {
+            "name": "result",
+            "direction": "output",
+            "width": "[ACC_WIDTH-1:0]"
+          }
+        ],
+        "intent": "mac unit component in the generated RTL project"
+      },
+      {
+        "name": "fir_filter_core",
+        "role": "submodule",
+        "source": "rtl/fir_filter_core.v",
+        "clock": "clk",
+        "reset": "rst_n",
+        "parameters": {
+          "WIDTH": 8,
+          "RESULT_WIDTH": 11
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          },
+          {
+            "name": "RESULT_WIDTH",
+            "value": 11
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_valid",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "sample_ready",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "sample",
+            "direction": "input",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "name": "result_valid",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "result_ready",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "result",
+            "direction": "output",
+            "width": "[RESULT_WIDTH-1:0]"
+          }
+        ],
+        "intent": "fir filter core component in the generated RTL project"
+      }
+    ],
+    "connections": [
+      {
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "to": {
+          "module": "fir_filter_core",
+          "port": "clk",
+          "instance": "u_fir_filter_core"
+        },
+        "signal": "clk",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "to": {
+          "module": "fir_filter_core",
+          "port": "rst_n",
+          "instance": "u_fir_filter_core"
+        },
+        "signal": "rst_n",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "sample_valid"
+        },
+        "to": {
+          "module": "fir_filter_core",
+          "port": "sample_valid",
+          "instance": "u_fir_filter_core"
+        },
+        "signal": "sample_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "fir_filter_core",
+          "port": "sample_ready",
+          "instance": "u_fir_filter_core"
+        },
+        "to": {
+          "module": "top",
+          "port": "sample_ready"
+        },
+        "signal": "sample_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "sample"
+        },
+        "to": {
+          "module": "fir_filter_core",
+          "port": "sample",
+          "instance": "u_fir_filter_core"
+        },
+        "signal": "sample",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": 8,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "fir_filter_core",
+          "port": "result_valid",
+          "instance": "u_fir_filter_core"
+        },
+        "to": {
+          "module": "top",
+          "port": "result_valid"
+        },
+        "signal": "result_valid",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "top",
+          "port": "result_ready"
+        },
+        "to": {
+          "module": "fir_filter_core",
+          "port": "result_ready",
+          "instance": "u_fir_filter_core"
+        },
+        "signal": "result_ready",
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "width": 1,
+        "cdc": false
+      },
+      {
+        "from": {
+          "module": "fir_filter_core",
+          "port": "result",
+          "instance": "u_fir_filter_core"
+        },
+        "to": {
+          "module": "top",
+          "port": "result"
+        },
+        "signal": "result",
+        "kind": "port_connection",
+        "protocol": "register",
+        "width": "[RESULT_WIDTH-1:0]",
+        "cdc": false
+      }
+    ],
+    "top_ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "sample_valid",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "sample",
+        "direction": "input",
+        "width": 8
+      },
+      {
+        "name": "result_ready",
+        "direction": "input",
+        "width": 1
+      },
+      {
+        "name": "sample_ready",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "result_valid",
+        "direction": "output",
+        "width": 1
+      },
+      {
+        "name": "result",
+        "direction": "output",
+        "width": 11
+      }
+    ],
+    "qor_intent": {
+      "resources": {
+        "lut": 24,
+        "ff": 24,
+        "bram": 0,
+        "dsp": 2
+      }
+    },
+    "platform": {
+      "name": "generic_verilog",
+      "vendor": "generic",
+      "family": "generic",
+      "part": "generic",
+      "board": "generic",
+      "toolchain": "open_source",
+      "clock_hz": 100000000
+    }
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "standalone_pass_credit": false,
+      "source_episode_id": "sample_phase_d_control_fir_filter_8_000004"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 54,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 694,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "model_generated",
+        "bytes": 478,
+        "behavior_holes": 0
+      },
+      "rtl/fir_filter_core.v": {
+        "origin": "model_generated",
+        "bytes": 1757,
+        "behavior_holes": 0
+      },
+      "rtl/mac_unit.v": {
+        "origin": "model_generated",
+        "bytes": 395,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 611,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 6781,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 15696,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/fir_filter_core.v",
+      "rtl/mac_unit.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.378675,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "errors": []
+    },
+    "l1": {
+      "status": "pass",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "pass",
+      "public": {
+        "status": "pass",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "pass"
+      },
+      "stress": {
+        "status": "pass"
+      },
+      "coverage": {
+        "scenario_profile": "independent_python_reference",
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "pass",
+      "lut": 30,
+      "ff": 28,
+      "bram": 0,
+      "dsp": 3,
+      "cells": null,
+      "warnings": [],
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "board_profile": "ac820_zynq",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "status": "pass",
+      "skip_reason": null,
+      "wns_ns": 7.637999858279992,
+      "fmax_mhz": 423.37,
+      "lut": 30,
+      "ff": 28,
+      "bram": 0,
+      "dsp": 3,
+      "drc_warnings": [],
+      "critical_warnings": [],
+      "runtime_sec": 20.425450299982913,
+      "report_paths": [
+        "attempts/attempt_000/generated_project/eval/openxc7_nextpnr.log",
+        "attempts/attempt_000/generated_project/eval/openxc7_report.json"
+      ],
+      "failure_family": null
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "official_board_ready": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "expected_board_drc_exceptions": [],
+      "invalidating_critical_warnings": [],
+      "methodology_warnings": [],
+      "runtime_sec": null,
+      "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "his_validation": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

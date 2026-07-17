@@ -1,0 +1,1118 @@
+{
+  "sample_id": "sample_phase_d_fir_filter_8_000016",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "his_validation",
+      "status": "failed",
+      "tool": "system_his_h_stage_validator",
+      "exit_code": 1,
+      "command": [
+        "system_his_h_stage_validator"
+      ],
+      "failure_type": "his_validation_failed",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "measurement": {
+    "initial": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "final": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "repair_attempts_used": 0,
+    "repair_success": false,
+    "repair_eligible": false,
+    "repair_skip_reason": "h_stage_failed",
+    "regressions": [],
+    "scoreable": true,
+    "infrastructure_status": "scoreable",
+    "l4_open": {
+      "status": "not_run",
+      "skip_reason": "l3_failed"
+    }
+  },
+  "his_validation": {
+    "his_source_used_for_generation": "generated",
+    "h0": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h1": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h2": {
+      "status": "fail",
+      "diagnostics": [
+        "H2 lowerability: components[0] has unsupported semantic_kind 'shift_register'",
+        "H2 lowerability: components[1] has unsupported semantic_kind 'rom'",
+        "H2 lowerability: components[2] has unsupported semantic_kind 'arithmetic'",
+        "H2 lowerability: components[3] has unsupported semantic_kind 'register_bank'",
+        "H2 lowerability: data_flow[1] has unsupported protocol 'combinational'",
+        "H2 lowerability: data_flow[2] has unsupported protocol 'combinational'",
+        "H2 lowerability: data_flow[3] has unsupported protocol 'combinational'",
+        "H2 lowerability: verification.scenarios[0] unsupported scenario 'Apply random streaming data and verify output matches expected FIR response using a software model.'",
+        "H2 lowerability: verification.scenarios[1] unsupported scenario 'Test backpressure by deasserting m_axis_tready and confirm correct resumption.'",
+        "H2 lowerability: verification.scenarios[2] unsupported scenario 'Reset while in middle of streaming and ensure clean restart.'"
+      ]
+    },
+    "h3": {
+      "status": "not_run",
+      "diagnostics": []
+    },
+    "passed": false
+  },
+  "oracle_profile": {
+    "kind": "python_reference",
+    "status": "not_run",
+    "family_id": "fir_filter",
+    "skip_reason": "unsupported_family",
+    "scenario_counts": {},
+    "class_status": {},
+    "hidden_vectors_exported": false
+  },
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter.",
+      "design_goal": "Implement an 8-bit streaming FIR filter with configurable taps (fixed in this instance) using valid/ready handshake, optimized for area.",
+      "assumptions": [
+        "Fixed coefficients",
+        "3-tap FIR filter",
+        "Synchronous reset",
+        "Valid/ready handshake with backpressure",
+        "Output same width as input (truncated from internal wider arithmetic)"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "value": 8,
+          "description": "Width of data samples"
+        },
+        {
+          "name": "COEFF_WIDTH",
+          "value": 8,
+          "description": "Width of filter coefficients"
+        },
+        {
+          "name": "NUM_TAPS",
+          "value": 3,
+          "description": "Number of filter taps"
+        },
+        {
+          "name": "OUTPUT_WIDTH",
+          "value": 8,
+          "description": "Width of output data (truncated from MAC result)"
+        }
+      ],
+      "clocks": [
+        {
+          "name": "clk",
+          "frequency_hz": 100000000,
+          "target_fmax_mhz": 100
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "clock_relation": "clk"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "s_axis_tvalid",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "s_axis_tready",
+          "direction": "output",
+          "type": "wire",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "s_axis_tdata",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "m_axis_tvalid",
+          "direction": "output",
+          "type": "wire",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "m_axis_tready",
+          "direction": "input",
+          "type": "wire",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "m_axis_tdata",
+          "direction": "output",
+          "type": "wire",
+          "width": {
+            "expr": "OUTPUT_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "tap_delay_0",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "initial": 0,
+          "reset_value": 0,
+          "description": "Most recent input sample"
+        },
+        {
+          "name": "tap_delay_1",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "initial": 0,
+          "reset_value": 0,
+          "description": "Delayed input sample (1 cycle)"
+        },
+        {
+          "name": "tap_delay_2",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "initial": 0,
+          "reset_value": 0,
+          "description": "Delayed input sample (2 cycles)"
+        },
+        {
+          "name": "out_reg",
+          "width": {
+            "expr": "OUTPUT_WIDTH",
+            "resolved": 8
+          },
+          "initial": 0,
+          "reset_value": 0,
+          "description": "Output pipeline register"
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": [
+        {
+          "name": "coefficient_memory",
+          "width": {
+            "expr": "COEFF_WIDTH",
+            "resolved": 8
+          },
+          "depth": {
+            "expr": "NUM_TAPS",
+            "resolved": 3
+          },
+          "initial": [
+            1,
+            2,
+            3
+          ],
+          "description": "ROM storing fixed filter coefficients"
+        }
+      ]
+    },
+    "components": [
+      {
+        "name": "shift_register",
+        "semantic_kind": "shift_register",
+        "source": "rtl/shift_register.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "description": "Width of each data sample",
+            "default": 8
+          },
+          {
+            "name": "DEPTH",
+            "description": "Number of taps/delay elements",
+            "default": 3
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "shift_en",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "data_in",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "tap_0",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "tap_1",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "tap_2",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ],
+        "intent": "Shift register for FIR tap delay line, advances on shift_en when valid and ready."
+      },
+      {
+        "name": "coefficient_rom",
+        "semantic_kind": "rom",
+        "source": "rtl/coefficient_rom.v",
+        "parameters": [
+          {
+            "name": "COEFF_WIDTH",
+            "description": "Width of each coefficient",
+            "default": 8
+          },
+          {
+            "name": "NUM_TAPS",
+            "description": "Number of coefficients",
+            "default": 3
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "coeff_0",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "COEFF_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "coeff_1",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "COEFF_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "coeff_2",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "COEFF_WIDTH",
+              "resolved": 8
+            }
+          }
+        ],
+        "intent": "Read-only memory providing fixed filter coefficients; clock and reset ports included for consistency but may not be used internally."
+      },
+      {
+        "name": "multiply_add_tree",
+        "semantic_kind": "arithmetic",
+        "source": "rtl/multiply_add_tree.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "description": "Width of data inputs",
+            "default": 8
+          },
+          {
+            "name": "COEFF_WIDTH",
+            "description": "Width of coefficient inputs",
+            "default": 8
+          },
+          {
+            "name": "NUM_TAPS",
+            "description": "Number of taps",
+            "default": 3
+          },
+          {
+            "name": "OUTPUT_WIDTH",
+            "description": "Width of result output (before truncation)",
+            "default": 16
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "data_0",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "data_1",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "data_2",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "coeff_0",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "COEFF_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "coeff_1",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "COEFF_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "coeff_2",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "COEFF_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "result",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "OUTPUT_WIDTH",
+              "resolved": 16
+            }
+          }
+        ],
+        "intent": "Combinational multiply-adder tree computing sum of data_i * coeff_i; clock/reset unused in this instance."
+      },
+      {
+        "name": "pipeline_register",
+        "semantic_kind": "register_bank",
+        "source": "rtl/pipeline_register.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "description": "Width of data path",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "s_axis_tvalid",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "s_axis_tready",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "s_axis_tdata",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "m_axis_tvalid",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "m_axis_tready",
+            "direction": "input",
+            "type": "wire",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "m_axis_tdata",
+            "direction": "output",
+            "type": "wire",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ],
+        "intent": "Register stage with valid/ready handshake for pipeline."
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_shift",
+        "component": "shift_register",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "DEPTH": 3
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "tap_delay_0",
+          "tap_delay_1",
+          "tap_delay_2"
+        ]
+      },
+      {
+        "name": "u_coeff_rom",
+        "component": "coefficient_rom",
+        "parameter_values": {
+          "COEFF_WIDTH": 8,
+          "NUM_TAPS": 3
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "coefficient_memory"
+        ]
+      },
+      {
+        "name": "u_mac",
+        "component": "multiply_add_tree",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "COEFF_WIDTH": 8,
+          "NUM_TAPS": 3,
+          "OUTPUT_WIDTH": 16
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "u_out_reg",
+        "component": "pipeline_register",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "out_reg"
+        ]
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "fir_data_path",
+        "path": [
+          "top.s_axis_tdata",
+          "u_shift.data_in",
+          "u_shift.tap_0",
+          "u_mac.data_0",
+          "u_mac.result",
+          "u_out_reg.s_axis_tdata",
+          "u_out_reg.m_axis_tdata",
+          "top.m_axis_tdata"
+        ],
+        "payload": {
+          "name": "filtered_sample",
+          "width": {
+            "expr": "OUTPUT_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 2,
+          "initiation_interval": 1,
+          "throughput": "one sample per cycle after pipeline fill"
+        }
+      },
+      {
+        "name": "coefficient_0_flow",
+        "path": [
+          "u_coeff_rom.coeff_0",
+          "u_mac.coeff_0"
+        ],
+        "payload": {
+          "name": "coeff_0",
+          "width": {
+            "expr": "COEFF_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "combinational",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1
+        }
+      },
+      {
+        "name": "coefficient_1_flow",
+        "path": [
+          "u_coeff_rom.coeff_1",
+          "u_mac.coeff_1"
+        ],
+        "payload": {
+          "name": "coeff_1",
+          "width": {
+            "expr": "COEFF_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "combinational",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1
+        }
+      },
+      {
+        "name": "coefficient_2_flow",
+        "path": [
+          "u_coeff_rom.coeff_2",
+          "u_mac.coeff_2"
+        ],
+        "payload": {
+          "name": "coeff_2",
+          "width": {
+            "expr": "COEFF_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "combinational",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "reset_tap_delay_0",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "reset",
+          "target": "tap_delay_0"
+        },
+        "related_state": [
+          "tap_delay_0"
+        ],
+        "related_flows": []
+      },
+      {
+        "name": "reset_tap_delay_1",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "reset",
+          "target": "tap_delay_1"
+        },
+        "related_state": [
+          "tap_delay_1"
+        ],
+        "related_flows": []
+      },
+      {
+        "name": "reset_tap_delay_2",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "reset",
+          "target": "tap_delay_2"
+        },
+        "related_state": [
+          "tap_delay_2"
+        ],
+        "related_flows": []
+      },
+      {
+        "name": "reset_out_reg",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "reset",
+          "target": "out_reg"
+        },
+        "related_state": [
+          "out_reg"
+        ],
+        "related_flows": []
+      },
+      {
+        "name": "advance_fir_data",
+        "kind": "enable_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.s_axis_tvalid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "u_out_reg.s_axis_tready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "enable",
+          "target": "fir_data_path"
+        },
+        "related_state": [
+          "tap_delay_0",
+          "tap_delay_1",
+          "tap_delay_2"
+        ],
+        "related_flows": [
+          "fir_data_path"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "low",
+        "ff": "low",
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        "Apply random streaming data and verify output matches expected FIR response using a software model.",
+        "Test backpressure by deasserting m_axis_tready and confirm correct resumption.",
+        "Reset while in middle of streaming and ensure clean restart."
+      ],
+      "pass_condition": "Testbench prints TEST_PASS and no TEST_FAIL after all scenarios."
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/shift_register.v",
+        "rtl/coefficient_rom.v",
+        "rtl/multiply_add_tree.v",
+        "rtl/pipeline_register.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "standalone_pass_credit": false,
+      "source_episode_id": "sample_phase_d_fir_filter_8_000016"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 590,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "model_generated",
+        "bytes": 88,
+        "behavior_holes": 0
+      },
+      "rtl/coefficient_rom.v": {
+        "origin": "model_generated",
+        "bytes": 440,
+        "behavior_holes": 0
+      },
+      "rtl/multiply_add_tree.v": {
+        "origin": "model_generated",
+        "bytes": 895,
+        "behavior_holes": 0
+      },
+      "rtl/pipeline_register.v": {
+        "origin": "model_generated",
+        "bytes": 1035,
+        "behavior_holes": 0
+      },
+      "rtl/shift_register.v": {
+        "origin": "model_generated",
+        "bytes": 924,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 2811,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 6781,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 18427,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/coefficient_rom.v",
+      "rtl/multiply_add_tree.v",
+      "rtl/pipeline_register.v",
+      "rtl/shift_register.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.404919,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "fail",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "fail"
+      },
+      "stress": {
+        "status": "fail"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "warnings": [],
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "board_profile": "ac820_zynq",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "status": "not_run",
+      "skip_reason": "l3_failed",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "critical_warnings": [],
+      "runtime_sec": null,
+      "report_paths": [],
+      "failure_family": null
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "official_board_ready": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "expected_board_drc_exceptions": [],
+      "invalidating_critical_warnings": [],
+      "methodology_warnings": [],
+      "runtime_sec": null,
+      "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "his_validation": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

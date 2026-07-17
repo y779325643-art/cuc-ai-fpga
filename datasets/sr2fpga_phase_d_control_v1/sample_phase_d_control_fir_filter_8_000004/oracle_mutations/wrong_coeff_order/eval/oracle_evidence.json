@@ -1,0 +1,138 @@
+{
+  "bundle_sha256": "2d345802bb8c7ccd202caa44622b2e39ea71885cb38bbdc13c88538b01623904",
+  "class_status": {
+    "hidden_deterministic": "fail",
+    "public_smoke": "fail",
+    "randomized_fixed_seed": "fail",
+    "stress": "fail"
+  },
+  "diagnostics": [],
+  "failure_origin": "natural_model_failure",
+  "failure_type": "functional_mismatch",
+  "family_id": "fir_filter",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_public_smoke",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=3"
+      ],
+      "duration_seconds": 0.049407999991672114,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0x5",
+          "class": "public_smoke",
+          "expected": "0xf",
+          "item_index": 0,
+          "scenario_id": "fir_public_smoke"
+        }
+      ],
+      "scenario_class": "public_smoke",
+      "scenario_id": "fir_public_smoke",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_public_smoke\",\"class\":\"public_smoke\",\"item_index\":0,\"expected\":\"0xf\",\"actual\":\"0x5\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_hidden_edges",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=4"
+      ],
+      "duration_seconds": 0.05041930000879802,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0x780",
+          "class": "hidden_deterministic",
+          "expected": "0x680",
+          "item_index": 0,
+          "scenario_id": "fir_hidden_edges"
+        }
+      ],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "fir_hidden_edges",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_hidden_edges\",\"class\":\"hidden_deterministic\",\"item_index\":0,\"expected\":\"0x680\",\"actual\":\"0x780\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=16"
+      ],
+      "duration_seconds": 0.047438700014026836,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0x7d9",
+          "class": "randomized_fixed_seed",
+          "expected": "0x78b",
+          "item_index": 0,
+          "scenario_id": "fir_randomized_seeded"
+        }
+      ],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "fir_randomized_seeded",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":0,\"expected\":\"0x78b\",\"actual\":\"0x7d9\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_stress_reset_stall",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=5"
+      ],
+      "duration_seconds": 0.04654209999716841,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0x7f",
+          "class": "stress",
+          "expected": "0x17d",
+          "item_index": 0,
+          "scenario_id": "fir_stress_reset_stall"
+        }
+      ],
+      "scenario_class": "stress",
+      "scenario_id": "fir_stress_reset_stall",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_stress_reset_stall\",\"class\":\"stress\",\"item_index\":0,\"expected\":\"0x17d\",\"actual\":\"0x7f\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    }
+  ],
+  "status": "failed"
+}

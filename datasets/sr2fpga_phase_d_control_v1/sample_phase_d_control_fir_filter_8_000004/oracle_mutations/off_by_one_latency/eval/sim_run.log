@@ -1,0 +1,20 @@
+[fir_public_smoke] WARNING: sim/tb_top.v:104: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\public\fir_public_smoke\input.memh): Not enough words in the file for the requested range [0:4095].
+WARNING: sim/tb_top.v:105: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\public\fir_public_smoke\expected.memh): Not enough words in the file for the requested range [0:4095].
+SR2FPGA_MISMATCH {"scenario_id":"fir_public_smoke","class":"public_smoke","item_index":0,"expected":"0xf","actual":"0xf"}
+TEST_FAIL functional mismatch
+sim/tb_top.v:129: $finish called at 56000 (1ps)
+[fir_hidden_edges] WARNING: sim/tb_top.v:104: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\hidden\fir_hidden_edges\input.memh): Not enough words in the file for the requested range [0:4095].
+WARNING: sim/tb_top.v:105: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\hidden\fir_hidden_edges\expected.memh): Not enough words in the file for the requested range [0:4095].
+SR2FPGA_MISMATCH {"scenario_id":"fir_hidden_edges","class":"hidden_deterministic","item_index":0,"expected":"0x680","actual":"0x680"}
+TEST_FAIL functional mismatch
+sim/tb_top.v:129: $finish called at 56000 (1ps)
+[fir_randomized_seeded] WARNING: sim/tb_top.v:104: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\randomized\fir_randomized_seeded\input.memh): Not enough words in the file for the requested range [0:4095].
+WARNING: sim/tb_top.v:105: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\randomized\fir_randomized_seeded\expected.memh): Not enough words in the file for the requested range [0:4095].
+SR2FPGA_MISMATCH {"scenario_id":"fir_randomized_seeded","class":"randomized_fixed_seed","item_index":0,"expected":"0x78b","actual":"0x78b"}
+TEST_FAIL functional mismatch
+sim/tb_top.v:129: $finish called at 56000 (1ps)
+[fir_stress_reset_stall] WARNING: sim/tb_top.v:104: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\stress\fir_stress_reset_stall\input.memh): Not enough words in the file for the requested range [0:4095].
+WARNING: sim/tb_top.v:105: $readmemh(<repo>\datasets\sr2fpga_phase_d_control_v1\sample_phase_d_control_fir_filter_8_000004\attempts\attempt_000\eval\oracle\stress\fir_stress_reset_stall\expected.memh): Not enough words in the file for the requested range [0:4095].
+SR2FPGA_MISMATCH {"scenario_id":"fir_stress_reset_stall","class":"stress","item_index":0,"expected":"0x17d","actual":"0x17d"}
+TEST_FAIL functional mismatch
+sim/tb_top.v:129: $finish called at 56000 (1ps)

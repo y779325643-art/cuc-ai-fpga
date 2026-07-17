@@ -1,0 +1,1517 @@
+{
+  "sample_id": "sample_phase_d_t6_td_update_core_8_000022",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "his_validation",
+      "status": "failed",
+      "tool": "system_his_h_stage_validator",
+      "exit_code": 1,
+      "command": [
+        "system_his_h_stage_validator"
+      ],
+      "failure_type": "his_validation_failed",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "measurement": {
+    "initial": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "final": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "repair_attempts_used": 0,
+    "repair_success": false,
+    "repair_eligible": false,
+    "repair_skip_reason": "h_stage_failed",
+    "regressions": [],
+    "scoreable": true,
+    "infrastructure_status": "scoreable",
+    "l4_open": {
+      "status": "not_run",
+      "skip_reason": "disabled_by_config"
+    }
+  },
+  "his_validation": {
+    "his_source_used_for_generation": "generated",
+    "h0": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h1": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h2": {
+      "status": "fail",
+      "diagnostics": [
+        "H2 lowerability: components[0] has unsupported semantic_kind 'stream_input_capture'",
+        "H2 lowerability: components[1] has unsupported semantic_kind 'fixed_point_multiplier'",
+        "H2 lowerability: components[2] has unsupported semantic_kind 'td_update_arithmetic'",
+        "H2 lowerability: components[3] has unsupported semantic_kind 'stream_output_register'",
+        "H2 lowerability: data_flow[1] has unsupported protocol 'combinational_operand'",
+        "H2 lowerability: data_flow[2] has unsupported protocol 'combinational_operand'",
+        "H2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'reset_behavior', 'description': 'Drive rst_n low on clk edges and verify output valid state and captured tuple state reset to empty.', 'pass_condition': 'out_valid is deasserted after reset and no stale td_error or updated_value transfer is reported.'}'",
+        "H2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'single_tuple_update', 'description': 'Apply one valid input tuple with out_ready asserted and compare td_error and updated_value against the fixed-point TD update model.', 'pass_condition': 'One output transfer occurs with expected td_error and updated_value.'}'",
+        "H2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'back_to_back_tuples', 'description': 'Apply consecutive valid input tuples while out_ready remains asserted.', 'pass_condition': 'The design produces one ordered output tuple per accepted input tuple with no bubbles after pipeline fill.'}'",
+        "H2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'output_backpressure', 'description': 'Hold out_ready low while an output tuple is valid, then release it.', 'pass_condition': 'out_valid remains asserted, td_error and updated_value remain stable, and in_ready reflects inability to overwrite the held result.'}'",
+        "H2 lowerability: verification.scenarios[4] unsupported scenario '{'name': 'signed_td_error_cases', 'description': 'Exercise cases where reward plus discounted_next_value is less than value and cases where it is greater than value.', 'pass_condition': 'td_error matches the architectural signed fixed-point reference behavior.'}'",
+        "H2 lowerability: verification.scenarios[5] unsupported scenario '{'name': 'alpha_gamma_extremes', 'description': 'Exercise gamma and alpha values at zero, mid-scale, and maximum Q0.8 codes.', 'pass_condition': 'discounted and updated results match the reference model for all selected extremes.'}'"
+      ]
+    },
+    "h3": {
+      "status": "not_run",
+      "diagnostics": []
+    },
+    "passed": false
+  },
+  "oracle_profile": {
+    "kind": "python_reference",
+    "status": "not_run",
+    "family_id": "composed_td_update_core",
+    "skip_reason": "unsupported_family",
+    "scenario_counts": {},
+    "class_status": {},
+    "hidden_vectors_exported": false
+  },
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "pass",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "pass",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "pass",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that accepts reward, value, next_value, gamma, and alpha inputs, computes TD error, and emits an updated value stream.",
+      "design_goal": "Define a composed 8-bit temporal-difference update datapath with valid-ready streaming, tuple capture, discount calculation, TD error computation, update calculation, and registered output staging for a generic open-source Verilog FPGA target.",
+      "assumptions": [
+        "DATA_WIDTH is 8 bits for reward, value, next_value, gamma, alpha, td_error, and updated_value top-level payloads.",
+        "reward, value, next_value, td_error, and updated_value use signed two's-complement fixed-point integer interpretation at the architectural boundary.",
+        "gamma and alpha use unsigned Q0.8 fractional interpretation.",
+        "discounted_next_value is computed as the DATA_WIDTH result of gamma multiplied by next_value with fractional scaling applied internally.",
+        "td_error is computed as reward plus discounted_next_value minus value, with implementation-defined saturation or wrapping to DATA_WIDTH unless later refined.",
+        "updated_value is computed as value plus alpha multiplied by td_error with fractional scaling applied internally, with implementation-defined saturation or wrapping to DATA_WIDTH unless later refined.",
+        "Reset is synchronous active-low as required by the target platform.",
+        "The composed pipeline is intended to accept one input tuple per cycle when downstream ready permits."
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8,
+          "intent": "Payload width for all external numeric ports."
+        }
+      ],
+      "clocks": [
+        {
+          "name": "clk",
+          "frequency_hz": 100000000,
+          "target_fmax_mhz": 100
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "clock"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "reset"
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "input_valid"
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "input_ready"
+        },
+        {
+          "name": "reward",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "input_payload"
+        },
+        {
+          "name": "value",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "input_payload"
+        },
+        {
+          "name": "next_value",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "input_payload"
+        },
+        {
+          "name": "gamma",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "input_payload"
+        },
+        {
+          "name": "alpha",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "input_payload"
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "output_valid"
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "output_ready"
+        },
+        {
+          "name": "td_error",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "output_payload"
+        },
+        {
+          "name": "updated_value",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "output_payload"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "input_stream",
+          "protocol": "valid_ready",
+          "clock": "clk",
+          "reset": "rst_n",
+          "valid": "in_valid",
+          "ready": "in_ready",
+          "payload": [
+            "reward",
+            "value",
+            "next_value",
+            "gamma",
+            "alpha"
+          ]
+        },
+        {
+          "name": "output_stream",
+          "protocol": "valid_ready",
+          "clock": "clk",
+          "reset": "rst_n",
+          "valid": "out_valid",
+          "ready": "out_ready",
+          "payload": [
+            "td_error",
+            "updated_value"
+          ]
+        }
+      ]
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "input_reward_reg",
+          "owner": "input_stage",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Captured reward field for an accepted input tuple."
+        },
+        {
+          "name": "input_value_reg",
+          "owner": "input_stage",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Captured current value field for an accepted input tuple."
+        },
+        {
+          "name": "input_next_value_reg",
+          "owner": "input_stage",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Captured next value field for an accepted input tuple."
+        },
+        {
+          "name": "input_gamma_reg",
+          "owner": "input_stage",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Captured discount factor field for an accepted input tuple."
+        },
+        {
+          "name": "input_alpha_reg",
+          "owner": "input_stage",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Captured learning-rate field for an accepted input tuple."
+        },
+        {
+          "name": "input_tuple_valid_reg",
+          "owner": "input_stage",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "reset_value": 0,
+          "intent": "Validity bit for the captured input tuple."
+        },
+        {
+          "name": "output_td_error_reg",
+          "owner": "output_stage",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Registered TD error presented on the output stream."
+        },
+        {
+          "name": "output_updated_value_reg",
+          "owner": "output_stage",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Registered updated value presented on the output stream."
+        },
+        {
+          "name": "output_valid_reg",
+          "owner": "output_stage",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "reset_value": 0,
+          "intent": "Validity bit for registered output payload."
+        }
+      ],
+      "counters": [],
+      "fsms": [
+        {
+          "name": "output_stage_fsm",
+          "owner": "output_stage",
+          "states": [
+            "IDLE",
+            "VALID"
+          ],
+          "initial": "IDLE",
+          "reset_state": "IDLE",
+          "intent": "Tracks whether output_stage is empty or holding a valid TD update result."
+        }
+      ],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "td_input_stage",
+        "semantic_kind": "stream_input_capture",
+        "source": "rtl/td_input_stage.v",
+        "intent": "Capture input valid-ready tuples and provide stable reward, value, next_value, gamma, and alpha operands to downstream compute stages.",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "in_ready",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "reward_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "value_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "next_value_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "gamma_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "alpha_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "tuple_valid_o",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "tuple_ready_i",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "reward_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "value_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "next_value_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "gamma_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "alpha_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ]
+      },
+      {
+        "name": "discount_core",
+        "semantic_kind": "fixed_point_multiplier",
+        "source": "rtl/discount_core.v",
+        "intent": "Compute discounted_next_value from gamma and next_value for the TD error expression.",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "next_value_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "gamma_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "discounted_next_value_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ]
+      },
+      {
+        "name": "td_update_core",
+        "semantic_kind": "td_update_arithmetic",
+        "source": "rtl/td_update_core.v",
+        "intent": "Compute TD error and updated value from captured operands and discounted next value.",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "reward_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "value_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "alpha_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "discounted_next_value_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "td_error_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "updated_value_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ]
+      },
+      {
+        "name": "stream_stage",
+        "semantic_kind": "stream_output_register",
+        "source": "rtl/stream_stage.v",
+        "intent": "Register TD update outputs and provide valid-ready backpressure to the input capture stage.",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "result_valid_i",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "result_ready_o",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "td_error_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "updated_value_i",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "out_valid",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "out_ready",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "td_error_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "updated_value_o",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ]
+      }
+    ],
+    "instances": [
+      {
+        "name": "input_stage",
+        "component": "td_input_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "input_reward_reg",
+          "input_value_reg",
+          "input_next_value_reg",
+          "input_gamma_reg",
+          "input_alpha_reg",
+          "input_tuple_valid_reg"
+        ]
+      },
+      {
+        "name": "discount",
+        "component": "discount_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "update",
+        "component": "td_update_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": []
+      },
+      {
+        "name": "output_stage",
+        "component": "stream_stage",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "output_td_error_reg",
+          "output_updated_value_reg",
+          "output_valid_reg",
+          "output_stage_fsm"
+        ]
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "tuple_capture_flow",
+        "path": [
+          "top.reward",
+          "top.value",
+          "top.next_value",
+          "top.gamma",
+          "top.alpha",
+          "input_stage.reward_i",
+          "input_stage.value_i",
+          "input_stage.next_value_i",
+          "input_stage.gamma_i",
+          "input_stage.alpha_i",
+          "input_stage.reward_o",
+          "input_stage.value_o",
+          "input_stage.next_value_o",
+          "input_stage.gamma_o",
+          "input_stage.alpha_o"
+        ],
+        "payload": {
+          "name": "td_input_tuple",
+          "fields": [
+            {
+              "name": "reward",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            },
+            {
+              "name": "value",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            },
+            {
+              "name": "next_value",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            },
+            {
+              "name": "gamma",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            },
+            {
+              "name": "alpha",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            }
+          ]
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one accepted input tuple per cycle when input_stage and output_stage are ready"
+        }
+      },
+      {
+        "name": "discount_calculation_flow",
+        "path": [
+          "input_stage.next_value_o",
+          "input_stage.gamma_o",
+          "discount.next_value_i",
+          "discount.gamma_i",
+          "discount.discounted_next_value_o"
+        ],
+        "payload": {
+          "name": "discounted_next_value",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "combinational_operand",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1,
+          "throughput": "one discounted next-value result per valid captured tuple"
+        }
+      },
+      {
+        "name": "td_update_flow",
+        "path": [
+          "input_stage.reward_o",
+          "input_stage.value_o",
+          "input_stage.alpha_o",
+          "discount.discounted_next_value_o",
+          "update.reward_i",
+          "update.value_i",
+          "update.alpha_i",
+          "update.discounted_next_value_i",
+          "update.td_error_o",
+          "update.updated_value_o"
+        ],
+        "payload": {
+          "name": "td_update_result",
+          "fields": [
+            {
+              "name": "td_error",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            },
+            {
+              "name": "updated_value",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            }
+          ]
+        },
+        "protocol": "combinational_operand",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1,
+          "throughput": "one TD update result per valid captured tuple"
+        }
+      },
+      {
+        "name": "output_staging_flow",
+        "path": [
+          "update.td_error_o",
+          "update.updated_value_o",
+          "output_stage.td_error_i",
+          "output_stage.updated_value_i",
+          "output_stage.td_error_o",
+          "output_stage.updated_value_o",
+          "top.td_error",
+          "top.updated_value"
+        ],
+        "payload": {
+          "name": "output_tuple",
+          "fields": [
+            {
+              "name": "td_error",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            },
+            {
+              "name": "updated_value",
+              "width": {
+                "expr": "DATA_WIDTH",
+                "resolved": 8
+              }
+            }
+          ]
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one output tuple per cycle when out_ready is asserted or the output stage is empty"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "synchronous_reset_clears_input_capture",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "clear",
+          "target": "input_tuple_valid_reg"
+        },
+        "related_state": [
+          "input_reward_reg",
+          "input_value_reg",
+          "input_next_value_reg",
+          "input_gamma_reg",
+          "input_alpha_reg",
+          "input_tuple_valid_reg"
+        ],
+        "related_flows": [
+          "tuple_capture_flow"
+        ]
+      },
+      {
+        "name": "synchronous_reset_clears_output_stage",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "clear",
+          "target": "output_valid_reg"
+        },
+        "related_state": [
+          "output_td_error_reg",
+          "output_updated_value_reg",
+          "output_valid_reg",
+          "output_stage_fsm"
+        ],
+        "related_flows": [
+          "output_staging_flow"
+        ]
+      },
+      {
+        "name": "input_tuple_acceptance",
+        "kind": "handshake_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.in_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.in_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "capture",
+          "target": "tuple_capture_flow"
+        },
+        "related_state": [
+          "input_reward_reg",
+          "input_value_reg",
+          "input_next_value_reg",
+          "input_gamma_reg",
+          "input_alpha_reg",
+          "input_tuple_valid_reg"
+        ],
+        "related_flows": [
+          "tuple_capture_flow"
+        ]
+      },
+      {
+        "name": "input_backpressure_from_output_stage",
+        "kind": "stall_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "output_valid_reg",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.out_ready",
+              "op": "==",
+              "value": 0
+            }
+          ]
+        },
+        "effect": {
+          "action": "stall",
+          "target": "tuple_capture_flow"
+        },
+        "related_state": [
+          "output_valid_reg",
+          "input_tuple_valid_reg"
+        ],
+        "related_flows": [
+          "tuple_capture_flow",
+          "output_staging_flow"
+        ]
+      },
+      {
+        "name": "compute_when_tuple_valid",
+        "kind": "enable_rule",
+        "when": {
+          "signal": "input_tuple_valid_reg",
+          "op": "==",
+          "value": 1
+        },
+        "effect": {
+          "action": "enable",
+          "target": "td_update_flow"
+        },
+        "related_state": [
+          "input_tuple_valid_reg"
+        ],
+        "related_flows": [
+          "discount_calculation_flow",
+          "td_update_flow"
+        ]
+      },
+      {
+        "name": "output_result_acceptance",
+        "kind": "handshake_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "input_tuple_valid_reg",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "output_stage.result_ready_o",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "capture",
+          "target": "output_staging_flow"
+        },
+        "related_state": [
+          "output_td_error_reg",
+          "output_updated_value_reg",
+          "output_valid_reg",
+          "output_stage_fsm"
+        ],
+        "related_flows": [
+          "td_update_flow",
+          "output_staging_flow"
+        ]
+      },
+      {
+        "name": "output_transfer",
+        "kind": "handshake_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.out_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.out_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "transfer",
+          "target": "output_staging_flow"
+        },
+        "related_state": [
+          "output_valid_reg",
+          "output_stage_fsm"
+        ],
+        "related_flows": [
+          "output_staging_flow"
+        ]
+      },
+      {
+        "name": "output_fsm_idle_to_valid",
+        "kind": "fsm_transition",
+        "fsm": "output_stage_fsm",
+        "from": "IDLE",
+        "to": "VALID",
+        "when": {
+          "all_of": [
+            {
+              "signal": "input_tuple_valid_reg",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "output_stage.result_ready_o",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "set_state",
+          "target": "output_stage_fsm"
+        },
+        "related_state": [
+          "output_stage_fsm",
+          "output_valid_reg"
+        ],
+        "related_flows": [
+          "output_staging_flow"
+        ]
+      },
+      {
+        "name": "output_fsm_valid_to_idle",
+        "kind": "fsm_transition",
+        "fsm": "output_stage_fsm",
+        "from": "VALID",
+        "to": "IDLE",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.out_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.out_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "set_state",
+          "target": "output_stage_fsm"
+        },
+        "related_state": [
+          "output_stage_fsm",
+          "output_valid_reg"
+        ],
+        "related_flows": [
+          "output_staging_flow"
+        ]
+      },
+      {
+        "name": "output_fsm_valid_hold",
+        "kind": "fsm_transition",
+        "fsm": "output_stage_fsm",
+        "from": "VALID",
+        "to": "VALID",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.out_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.out_ready",
+              "op": "==",
+              "value": 0
+            }
+          ]
+        },
+        "effect": {
+          "action": "hold_state",
+          "target": "output_stage_fsm"
+        },
+        "related_state": [
+          "output_stage_fsm",
+          "output_valid_reg"
+        ],
+        "related_flows": [
+          "output_staging_flow"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "low",
+        "ff": "low",
+        "bram": 0,
+        "dsp": 0
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        {
+          "name": "reset_behavior",
+          "description": "Drive rst_n low on clk edges and verify output valid state and captured tuple state reset to empty.",
+          "pass_condition": "out_valid is deasserted after reset and no stale td_error or updated_value transfer is reported."
+        },
+        {
+          "name": "single_tuple_update",
+          "description": "Apply one valid input tuple with out_ready asserted and compare td_error and updated_value against the fixed-point TD update model.",
+          "pass_condition": "One output transfer occurs with expected td_error and updated_value."
+        },
+        {
+          "name": "back_to_back_tuples",
+          "description": "Apply consecutive valid input tuples while out_ready remains asserted.",
+          "pass_condition": "The design produces one ordered output tuple per accepted input tuple with no bubbles after pipeline fill."
+        },
+        {
+          "name": "output_backpressure",
+          "description": "Hold out_ready low while an output tuple is valid, then release it.",
+          "pass_condition": "out_valid remains asserted, td_error and updated_value remain stable, and in_ready reflects inability to overwrite the held result."
+        },
+        {
+          "name": "signed_td_error_cases",
+          "description": "Exercise cases where reward plus discounted_next_value is less than value and cases where it is greater than value.",
+          "pass_condition": "td_error matches the architectural signed fixed-point reference behavior."
+        },
+        {
+          "name": "alpha_gamma_extremes",
+          "description": "Exercise gamma and alpha values at zero, mid-scale, and maximum Q0.8 codes.",
+          "pass_condition": "discounted and updated results match the reference model for all selected extremes."
+        }
+      ],
+      "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/td_input_stage.v",
+        "rtl/discount_core.v",
+        "rtl/td_update_core.v",
+        "rtl/stream_stage.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "standalone_pass_credit": false,
+      "source_episode_id": "sample_phase_d_t6_td_update_core_8_000022"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 587,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "model_generated",
+        "bytes": 88,
+        "behavior_holes": 0
+      },
+      "rtl/discount_core.v": {
+        "origin": "model_generated",
+        "bytes": 1030,
+        "behavior_holes": 0
+      },
+      "rtl/stream_stage.v": {
+        "origin": "model_generated",
+        "bytes": 1995,
+        "behavior_holes": 0
+      },
+      "rtl/td_input_stage.v": {
+        "origin": "model_generated",
+        "bytes": 2115,
+        "behavior_holes": 0
+      },
+      "rtl/td_update_core.v": {
+        "origin": "model_generated",
+        "bytes": 2394,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 3831,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 8073,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 30087,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/discount_core.v",
+      "rtl/stream_stage.v",
+      "rtl/td_input_stage.v",
+      "rtl/td_update_core.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.388577,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "fail",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "fail"
+      },
+      "stress": {
+        "status": "fail"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "warnings": [],
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "board_profile": "ac820_zynq",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "critical_warnings": [],
+      "runtime_sec": null,
+      "report_paths": [],
+      "failure_family": null
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "official_board_ready": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "expected_board_drc_exceptions": [],
+      "invalidating_critical_warnings": [],
+      "methodology_warnings": [],
+      "runtime_sec": null,
+      "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "his_validation": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

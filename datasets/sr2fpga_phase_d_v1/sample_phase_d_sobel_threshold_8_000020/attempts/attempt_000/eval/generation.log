@@ -1,0 +1,1 @@
+HIS2PROJECT RTL failed System-HIS v1.2 cross-check: state.fsms 'top_fsm' state 'IDLE' is not found in RTL module 'top'; state.fsms 'top_fsm' state 'ACTIVE' is not found in RTL module 'top'

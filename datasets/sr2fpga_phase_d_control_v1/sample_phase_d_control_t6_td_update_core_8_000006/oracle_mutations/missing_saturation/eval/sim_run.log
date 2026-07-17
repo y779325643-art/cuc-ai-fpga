@@ -1,0 +1,9 @@
+[td_public_declared_examples] TEST_PASS
+sim/tb_top.v:212: $finish called at 110000 (1ps)
+[td_hidden_signed_saturation] SR2FPGA_MISMATCH {"scenario_id":"td_hidden_signed_saturation","class":"hidden_deterministic","item_index":2,"expected":{"td_error":-64,"updated_value":-128},"actual":{"td_error":-64,"updated_value":96}}
+TEST_FAIL functional mismatch
+sim/tb_top.v:186: $finish called at 126000 (1ps)
+[td_randomized_seeded] TEST_PASS
+sim/tb_top.v:212: $finish called at 260000 (1ps)
+[td_stress_reset_stall_bounds] TEST_PASS
+sim/tb_top.v:212: $finish called at 230000 (1ps)

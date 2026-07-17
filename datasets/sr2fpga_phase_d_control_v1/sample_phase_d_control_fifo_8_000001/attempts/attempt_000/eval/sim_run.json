@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "<oss-cad-suite>\\bin\\vvp.EXE",
+    "sim.out"
+  ],
+  "status": "passed",
+  "exit_code": 0,
+  "stdout": "TEST_PASS\nsim/tb_top.v:126: $finish called at 311000 (1ps)\n",
+  "stderr": "",
+  "duration_seconds": 0.11160800000652671
+}

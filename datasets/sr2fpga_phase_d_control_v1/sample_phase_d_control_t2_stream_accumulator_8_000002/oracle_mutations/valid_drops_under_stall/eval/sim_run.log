@@ -1,0 +1,3 @@
+TEST_FAIL stalled sample_valid dropped
+sim/tb_top.v:61: $finish called at 66000 (1ps)
+Simulation reported TEST_FAIL

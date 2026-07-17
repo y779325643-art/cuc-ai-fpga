@@ -1,0 +1,11 @@
+{
+  "stage": "his_validation",
+  "command": [
+    "system_his_h_stage_validator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "H2 lowerability: components[0] has unsupported semantic_kind 'shift_register'\nH2 lowerability: components[1] has unsupported semantic_kind 'rom'\nH2 lowerability: components[2] has unsupported semantic_kind 'arithmetic'\nH2 lowerability: components[3] has unsupported semantic_kind 'register_bank'\nH2 lowerability: data_flow[1] has unsupported protocol 'combinational'\nH2 lowerability: data_flow[2] has unsupported protocol 'combinational'\nH2 lowerability: data_flow[3] has unsupported protocol 'combinational'\nH2 lowerability: verification.scenarios[0] unsupported scenario 'Apply random streaming data and verify output matches expected FIR response using a software model.'\nH2 lowerability: verification.scenarios[1] unsupported scenario 'Test backpressure by deasserting m_axis_tready and confirm correct resumption.'\nH2 lowerability: verification.scenarios[2] unsupported scenario 'Reset while in middle of streaming and ensure clean restart.'",
+  "duration_seconds": 0.0
+}

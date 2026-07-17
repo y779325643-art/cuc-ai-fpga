@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "<oss-cad-suite>\\bin\\vvp.EXE",
+    "sim.out"
+  ],
+  "status": "failed",
+  "exit_code": 0,
+  "stdout": "TEST_FAIL join missing_backpressure in0_ready=1 in1_ready=0\nsim/tb_top.v:88: $finish called at 50000 (1ps)\n",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "duration_seconds": 0.04645669998717494
+}

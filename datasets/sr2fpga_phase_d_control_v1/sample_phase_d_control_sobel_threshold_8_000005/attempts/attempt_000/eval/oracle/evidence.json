@@ -1,0 +1,106 @@
+{
+  "bundle_sha256": "2c61e0e0657b32ea3c09234de8971c1810540dfdc4a9ddc382233d1c2628a2ec",
+  "class_status": {
+    "hidden_deterministic": "pass",
+    "public_smoke": "pass",
+    "randomized_fixed_seed": "pass",
+    "stress": "pass"
+  },
+  "diagnostics": [],
+  "failure_origin": null,
+  "failure_type": null,
+  "family_id": "sobel_threshold",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\public\\sobel_public_flat_vertical\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\public\\sobel_public_flat_vertical\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_public_flat_vertical",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=50"
+      ],
+      "duration_seconds": 0.05651999998372048,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "public_smoke",
+      "scenario_id": "sobel_public_flat_vertical",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\hidden\\sobel_hidden_horizontal_maximum\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\hidden\\sobel_hidden_horizontal_maximum\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_hidden_horizontal_maximum",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=25"
+      ],
+      "duration_seconds": 0.058845499996095896,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "sobel_hidden_horizontal_maximum",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:399: $finish called at 665000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\randomized\\sobel_randomized_seeded\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\randomized\\sobel_randomized_seeded\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=50"
+      ],
+      "duration_seconds": 0.0592047999962233,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "sobel_randomized_seeded",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\stress\\sobel_stress_reset_stall\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\stress\\sobel_stress_reset_stall\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_stress_reset_stall",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=35"
+      ],
+      "duration_seconds": 0.052261499979067594,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "stress",
+      "scenario_id": "sobel_stress_reset_stall",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:399: $finish called at 975000 (1ps)\n"
+    }
+  ],
+  "status": "passed"
+}

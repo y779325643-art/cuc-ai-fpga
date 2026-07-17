@@ -1,0 +1,22 @@
+{
+  "failure_type": "functional_mismatch",
+  "stage": "sim_run",
+  "root_cause": "TEST_FAIL expected dout=11 got 10\nsim/tb_top.v:51: $finish called at 151000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "affected_files": [],
+  "tool": "<oss-cad-suite>\\bin\\vvp.EXE",
+  "tool_status": "failed",
+  "structured_diagnosis": {
+    "failure_type": "functional_mismatch",
+    "warnings": [],
+    "mismatch_detail": [
+      {
+        "expected": "dout=11",
+        "actual": "10"
+      }
+    ],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

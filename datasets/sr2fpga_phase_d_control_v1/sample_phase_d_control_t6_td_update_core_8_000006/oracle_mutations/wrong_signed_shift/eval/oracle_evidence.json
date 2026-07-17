@@ -1,0 +1,148 @@
+{
+  "bundle_sha256": "1eb99fdc074868d921bfd996eb89d6bbd3d54ec68a5a2d65ed79f4fa61bb7bbf",
+  "class_status": {
+    "hidden_deterministic": "fail",
+    "public_smoke": "pass",
+    "randomized_fixed_seed": "fail",
+    "stress": "fail"
+  },
+  "diagnostics": [],
+  "failure_origin": "natural_model_failure",
+  "failure_type": "functional_mismatch",
+  "family_id": "qtable_update_core",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\public\\td_public_declared_examples\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\public\\td_public_declared_examples\\expected.memh",
+        "+ORACLE_SCENARIO_ID=td_public_declared_examples",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=2"
+      ],
+      "duration_seconds": 0.04983350000111386,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "public_smoke",
+      "scenario_id": "td_public_declared_examples",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:212: $finish called at 110000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\hidden\\td_hidden_signed_saturation\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\hidden\\td_hidden_signed_saturation\\expected.memh",
+        "+ORACLE_SCENARIO_ID=td_hidden_signed_saturation",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=4"
+      ],
+      "duration_seconds": 0.048100799991516396,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": {
+            "td_error": 127,
+            "updated_value": 67
+          },
+          "class": "hidden_deterministic",
+          "expected": {
+            "td_error": -14,
+            "updated_value": -3
+          },
+          "item_index": 0,
+          "scenario_id": "td_hidden_signed_saturation"
+        }
+      ],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "td_hidden_signed_saturation",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "SR2FPGA_MISMATCH {\"scenario_id\":\"td_hidden_signed_saturation\",\"class\":\"hidden_deterministic\",\"item_index\":0,\"expected\":{\"td_error\":-14,\"updated_value\":-3},\"actual\":{\"td_error\":127,\"updated_value\":67}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\randomized\\td_randomized_seeded\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\randomized\\td_randomized_seeded\\expected.memh",
+        "+ORACLE_SCENARIO_ID=td_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=6"
+      ],
+      "duration_seconds": 0.04775090000475757,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": {
+            "td_error": 127,
+            "updated_value": 97
+          },
+          "class": "randomized_fixed_seed",
+          "expected": {
+            "td_error": 60,
+            "updated_value": 51
+          },
+          "item_index": 1,
+          "scenario_id": "td_randomized_seeded"
+        }
+      ],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "td_randomized_seeded",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "SR2FPGA_MISMATCH {\"scenario_id\":\"td_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":1,\"expected\":{\"td_error\":60,\"updated_value\":51},\"actual\":{\"td_error\":127,\"updated_value\":97}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 96000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\stress\\td_stress_reset_stall_bounds\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_t6_td_update_core_8_000006\\attempts\\attempt_000\\eval\\oracle\\stress\\td_stress_reset_stall_bounds\\expected.memh",
+        "+ORACLE_SCENARIO_ID=td_stress_reset_stall_bounds",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=3"
+      ],
+      "duration_seconds": 0.04823660000693053,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": {
+            "td_error": 127,
+            "updated_value": 127
+          },
+          "class": "stress",
+          "expected": {
+            "td_error": -128,
+            "updated_value": -1
+          },
+          "item_index": 0,
+          "scenario_id": "td_stress_reset_stall_bounds"
+        }
+      ],
+      "scenario_class": "stress",
+      "scenario_id": "td_stress_reset_stall_bounds",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "SR2FPGA_MISMATCH {\"scenario_id\":\"td_stress_reset_stall_bounds\",\"class\":\"stress\",\"item_index\":0,\"expected\":{\"td_error\":-128,\"updated_value\":-1},\"actual\":{\"td_error\":127,\"updated_value\":127}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n"
+    }
+  ],
+  "status": "failed"
+}

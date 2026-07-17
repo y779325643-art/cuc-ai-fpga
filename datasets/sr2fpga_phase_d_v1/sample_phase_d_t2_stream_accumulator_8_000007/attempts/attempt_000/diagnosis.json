@@ -1,0 +1,8 @@
+{
+  "failure_type": "generation_failed",
+  "stage": "generation",
+  "root_cause": "DeepSeek System-HIS REQ2HIS fidelity failed: REQ2HIS fidelity: component accumulator_core.sample_ready direction must be input",
+  "affected_files": [
+    "system_his.json"
+  ]
+}

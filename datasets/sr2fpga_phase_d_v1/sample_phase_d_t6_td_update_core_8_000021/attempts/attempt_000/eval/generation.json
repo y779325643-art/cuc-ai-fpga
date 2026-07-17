@@ -1,0 +1,11 @@
+{
+  "stage": "generation",
+  "command": [
+    "project_generator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "DeepSeek System-HIS output is not valid JSON: Expecting property name enclosed in double quotes",
+  "duration_seconds": 0.0
+}

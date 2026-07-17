@@ -1,0 +1,29 @@
+{
+  "project_name": "phase_d_sobel_threshold_8_000018",
+  "top_module": "top",
+  "language": "verilog",
+  "target": {
+    "vendor": "generic",
+    "family": "generic",
+    "part": "generic",
+    "board": "generic",
+    "toolchain": "open_source"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/stream_control.v",
+    "rtl/line_buffer.v",
+    "rtl/window_3x3.v",
+    "rtl/sobel_core.v",
+    "rtl/threshold_core.v"
+  ],
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v"
+  },
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

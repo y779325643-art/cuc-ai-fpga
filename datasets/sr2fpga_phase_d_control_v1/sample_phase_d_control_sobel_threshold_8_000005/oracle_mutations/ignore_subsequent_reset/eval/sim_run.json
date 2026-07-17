@@ -1,0 +1,13 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "[sobel_public_flat_vertical] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_hidden_horizontal_maximum] TEST_PASS\nsim/tb_top.v:399: $finish called at 665000 (1ps)\n[sobel_randomized_seeded] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_stress_reset_stall] SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_stress_reset_stall\",\"class\":\"stress\",\"item_index\":6,\"expected\":{\"edge\":0,\"axis\":0,\"out_last\":0},\"actual\":{\"edge\":\"0\",\"axis\":\"1\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 345000 (1ps)",
+  "stderr": "",
+  "duration_seconds": 0.22542669999529608
+}

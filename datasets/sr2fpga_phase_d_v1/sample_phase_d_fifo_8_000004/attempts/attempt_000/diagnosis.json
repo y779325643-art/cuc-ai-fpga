@@ -1,0 +1,6 @@
+{
+  "failure_type": "generation_failed",
+  "stage": "generation",
+  "root_cause": "behavior file 'rtl/top.v' does not contain a BEHAVIOR_HOLE",
+  "affected_files": []
+}

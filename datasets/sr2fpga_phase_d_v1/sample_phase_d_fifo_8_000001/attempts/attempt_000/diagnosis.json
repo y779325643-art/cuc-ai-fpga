@@ -1,0 +1,17 @@
+{
+  "failure_type": "his_validation_failed",
+  "stage": "his_validation",
+  "root_cause": "H2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'reset_clears_fifo', 'description': 'Apply active-low reset and confirm FIFO reports empty with rd_valid deaserted and wr_ready asserted.', 'pass_condition': 'After reset, rd_valid == 0 and wr_ready == 1 and occupancy == 0.'}'\nH2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'single_write_read', 'description': 'Write one word then read it back, checking data integrity through the FIFO.', 'pass_condition': 'rd_data equals the written wr_data and occupancy returns to 0 after read.'}'\nH2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'fill_to_full', 'description': 'Write until FIFO reaches depth and verify wr_ready deasserts at full.', 'pass_condition': 'wr_ready == 0 when occupancy == DEPTH and no further writes are accepted.'}'\nH2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'drain_to_empty', 'description': 'Read all entries and verify rd_valid deaserts at empty.', 'pass_condition': 'rd_valid == 0 when occupancy == 0 and no further reads are accepted.'}'\nH2 lowerability: verification.scenarios[4] unsupported scenario '{'name': 'fifo_ordering', 'description': 'Write a sequence of words and read them back, verifying first-in-first-out order.', 'pass_condition': 'Read data sequence matches written data sequence in order.'}'\nH2 lowerability: verification.scenarios[5] unsupported scenario '{'name': 'backpressure', 'description': 'Hold rd_ready low while writing and verify data is retained until reads resume.', 'pass_condition': 'No data loss; all words read in order once rd_ready reaserts.'}'",
+  "affected_files": [
+    "system_his.json"
+  ],
+  "structured_diagnosis": {
+    "failure_type": "his_validation_failed",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

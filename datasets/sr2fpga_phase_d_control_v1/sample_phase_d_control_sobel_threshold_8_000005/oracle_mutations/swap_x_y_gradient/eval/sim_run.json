@@ -1,0 +1,13 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "[sobel_public_flat_vertical] SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_public_flat_vertical\",\"class\":\"public_smoke\",\"item_index\":32,\"expected\":{\"edge\":1,\"axis\":1,\"out_last\":0},\"actual\":{\"edge\":\"1\",\"axis\":\"0\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 885000 (1ps)\n[sobel_hidden_horizontal_maximum] SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_hidden_horizontal_maximum\",\"class\":\"hidden_deterministic\",\"item_index\":6,\"expected\":{\"edge\":1,\"axis\":0,\"out_last\":0},\"actual\":{\"edge\":\"1\",\"axis\":\"1\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 315000 (1ps)\n[sobel_randomized_seeded] SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":6,\"expected\":{\"edge\":1,\"axis\":0,\"out_last\":0},\"actual\":{\"edge\":\"1\",\"axis\":\"1\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 315000 (1ps)\n[sobel_stress_reset_stall] SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_stress_reset_stall\",\"class\":\"stress\",\"item_index\":12,\"expected\":{\"edge\":1,\"axis\":1,\"out_last\":0},\"actual\":{\"edge\":\"1\",\"axis\":\"0\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 595000 (1ps)",
+  "stderr": "",
+  "duration_seconds": 0.20008509999024682
+}

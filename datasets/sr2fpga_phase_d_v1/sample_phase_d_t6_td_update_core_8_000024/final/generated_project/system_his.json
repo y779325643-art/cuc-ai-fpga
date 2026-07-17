@@ -1,0 +1,793 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that accepts reward, value, next_value, gamma, and alpha inputs, computes TD error, and emits an updated value stream.",
+    "design_goal": "Implement an 8-bit TD update core with discounted reward and streaming output.",
+    "assumptions": []
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "description": "Width of data paths"
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0,
+        "description": "Primary system clock"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1,
+        "description": "Clock signal"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1,
+        "description": "Active low synchronous reset"
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": 1,
+        "description": "Input valid"
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": 1,
+        "description": "Ready to accept input"
+      },
+      {
+        "name": "reward",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Reward signal"
+      },
+      {
+        "name": "value",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Current value"
+      },
+      {
+        "name": "next_value",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Next state value"
+      },
+      {
+        "name": "gamma",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Discount factor"
+      },
+      {
+        "name": "alpha",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Learning rate"
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": 1,
+        "description": "Output valid"
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": 1,
+        "description": "Output ready from downstream"
+      },
+      {
+        "name": "td_error",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "TD error"
+      },
+      {
+        "name": "updated_value",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "description": "Updated value"
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "captured_reward",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "owner": "input_stage",
+        "description": "Captured reward input"
+      },
+      {
+        "name": "captured_value",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "owner": "input_stage",
+        "description": "Captured value input"
+      },
+      {
+        "name": "captured_next_value",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "owner": "input_stage",
+        "description": "Captured next_value input"
+      },
+      {
+        "name": "td_error_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "owner": "output_stage",
+        "description": "Registered TD error output"
+      },
+      {
+        "name": "updated_value_reg",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "owner": "output_stage",
+        "description": "Registered updated value output"
+      }
+    ],
+    "counters": [],
+    "fsms": [
+      {
+        "name": "output_fsm",
+        "owner": "output_stage",
+        "states": [
+          "IDLE",
+          "VALID"
+        ],
+        "initial": "IDLE",
+        "reset_state": "IDLE",
+        "description": "Controls output valid signal handshake"
+      }
+    ],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "td_input_stage",
+      "semantic_kind": "input_stage",
+      "source": "rtl/td_input_stage.v",
+      "intent": "Capture input tuple and provide valid signal",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "reward",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "value",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "next_value",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "tuple_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "tuple_reward",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "tuple_value",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "tuple_next_value",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "discount_core",
+      "semantic_kind": "arithmetic",
+      "source": "rtl/discount_core.v",
+      "intent": "Compute discounted_value = gamma * next_value",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "gamma",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "next_value",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "discounted_value",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "td_update_core",
+      "semantic_kind": "arithmetic",
+      "source": "rtl/td_update_core.v",
+      "intent": "Compute TD error and update value",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "reward",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "value",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "discounted_value",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "alpha",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "td_error",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "updated_value",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    },
+    {
+      "name": "stream_stage",
+      "semantic_kind": "output_stage",
+      "source": "rtl/stream_stage.v",
+      "intent": "Register output signals and manage output handshake",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "td_error_in",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "updated_value_in",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "td_error_out",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "updated_value_out",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "input_stage",
+      "component": "td_input_stage",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "captured_reward",
+        "captured_value",
+        "captured_next_value"
+      ]
+    },
+    {
+      "name": "discount",
+      "component": "discount_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "update",
+      "component": "td_update_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": []
+    },
+    {
+      "name": "output_stage",
+      "component": "stream_stage",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "td_error_reg",
+        "updated_value_reg",
+        "output_fsm"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "tuple_capture",
+      "path": [
+        "top.in_valid",
+        "top.in_ready",
+        "top.reward",
+        "top.value",
+        "top.next_value",
+        "input_stage.in_valid",
+        "input_stage.in_ready",
+        "input_stage.reward",
+        "input_stage.value",
+        "input_stage.next_value",
+        "input_stage.tuple_valid",
+        "input_stage.tuple_reward",
+        "input_stage.tuple_value",
+        "input_stage.tuple_next_value"
+      ],
+      "payload": {
+        "name": "input_tuple",
+        "width": {
+          "expr": "3*DATA_WIDTH",
+          "resolved": 24
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    },
+    {
+      "name": "discount_calculation",
+      "path": [
+        "top.gamma",
+        "input_stage.tuple_next_value",
+        "discount.gamma",
+        "discount.next_value",
+        "discount.discounted_value"
+      ],
+      "payload": {
+        "name": "discounted_value",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "combinational",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one result per cycle after inputs change"
+      }
+    },
+    {
+      "name": "td_update_calculation",
+      "path": [
+        "input_stage.tuple_reward",
+        "input_stage.tuple_value",
+        "discount.discounted_value",
+        "top.alpha",
+        "update.reward",
+        "update.value",
+        "update.discounted_value",
+        "update.alpha",
+        "update.td_error",
+        "update.updated_value"
+      ],
+      "payload": {
+        "name": "td_error_and_updated_value",
+        "width": {
+          "expr": "2*DATA_WIDTH",
+          "resolved": 16
+        }
+      },
+      "protocol": "combinational",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one result per cycle after inputs change"
+      }
+    },
+    {
+      "name": "output_staging",
+      "path": [
+        "update.td_error",
+        "update.updated_value",
+        "output_stage.td_error_in",
+        "output_stage.updated_value_in",
+        "output_stage.out_valid",
+        "output_stage.out_ready",
+        "output_stage.td_error_out",
+        "output_stage.updated_value_out",
+        "top.out_valid",
+        "top.out_ready",
+        "top.td_error",
+        "top.updated_value"
+      ],
+      "payload": {
+        "name": "td_error_and_updated_value",
+        "width": {
+          "expr": "2*DATA_WIDTH",
+          "resolved": 16
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "reset_rule",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "reset",
+        "target": "output_fsm"
+      },
+      "related_state": [
+        "output_fsm"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "capture_enable",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "enable",
+        "target": "tuple_capture"
+      },
+      "related_state": [
+        "captured_reward",
+        "captured_value",
+        "captured_next_value"
+      ],
+      "related_flows": [
+        "tuple_capture"
+      ]
+    },
+    {
+      "name": "output_fsm_idle_to_valid",
+      "kind": "fsm_transition",
+      "fsm": "output_fsm",
+      "from": "IDLE",
+      "to": "VALID",
+      "when": {
+        "signal": "output_stage.in_valid",
+        "op": "==",
+        "value": 1
+      },
+      "effect": {
+        "action": "assert",
+        "target": "output_staging"
+      },
+      "related_state": [
+        "output_fsm"
+      ],
+      "related_flows": [
+        "output_staging"
+      ]
+    },
+    {
+      "name": "output_fsm_valid_to_idle",
+      "kind": "fsm_transition",
+      "fsm": "output_fsm",
+      "from": "VALID",
+      "to": "IDLE",
+      "when": {
+        "all_of": [
+          {
+            "signal": "output_stage.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "deassert",
+        "target": "output_staging"
+      },
+      "related_state": [
+        "output_fsm"
+      ],
+      "related_flows": [
+        "output_staging"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "basic_td_update",
+        "description": "Apply a sequence of reward, value, next_value, gamma, alpha inputs and verify td_error and updated_value outputs match expected values calculated offline."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/td_input_stage.v",
+      "rtl/discount_core.v",
+      "rtl/td_update_core.v",
+      "rtl/stream_stage.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}
