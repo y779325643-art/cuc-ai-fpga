@@ -136,6 +136,9 @@ class PlannedSample:
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
         connection = resolve_source_connection(config, self.source)
         schema_version = _sample_system_his_schema_version(self, config)
+        repair_provider_resolved = (
+            self.source if config.repair_provider == "same_as_source" else config.repair_provider
+        )
         return {
             "source": self.source,
             "generator_provider": self.source,
@@ -146,6 +149,8 @@ class PlannedSample:
             "measurement_point": self.measurement_point or _measurement_point(config),
             "evaluation_line": self.evaluation_line,
             "repair_provider": config.repair_provider,
+            "repair_provider_policy": config.repair_provider,
+            "repair_provider_resolved": repair_provider_resolved,
             "failure_injectors": list(self.failure_injectors),
             "task_type": self.task_type,
             "width": self.width,
@@ -337,7 +342,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
 
     samples = planned_samples(config)
     project_generators: dict[str, object | None] = {}
-    repairer = _repairer_for_config(config)
+    repairers: dict[str, object | None] = {}
 
     for index, sample in enumerate(samples):
         if index < state.next_index or should_skip_sample(state, sample.sample_id):
@@ -349,10 +354,11 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             continue
 
         sample_project_generator = _project_generator_for_sample(project_generators, config, sample, events_path)
+        sample_repairer = _repairer_for_sample(repairers, config, sample)
         agent = DataGenerationAgent(
             config.dataset_root,
             project_generator=sample_project_generator,
-            repairer=repairer,
+            repairer=sample_repairer,
             max_attempts=config.max_attempts,
             enable_openxc7_l4=_l4_open_enabled_for_sample(config, sample),
             openxc7_tool=config.l4_open.tool,
@@ -532,7 +538,7 @@ def _source_auth_diagnostics(
     seen: set[str] = set()
     for sample in samples:
         _check_source_auth(config, sample.source, seen, diagnostics, errors, validate_provider)
-    if config.repair_provider and config.repair_provider != "none":
+    if config.repair_provider and config.repair_provider not in {"none", "same_as_source"}:
         _check_source_auth(config, config.repair_provider, seen, diagnostics, errors, validate_provider)
     return diagnostics, errors
 
@@ -1907,6 +1913,22 @@ def _repairer_for_config(config: RunnerConfig):
         base_url=config.base_url,
         api_key_env=config.api_key_env,
     )
+
+
+def _repairer_for_sample(
+    repairers: dict[str, object | None],
+    config: RunnerConfig,
+    sample: PlannedSample,
+) -> object | None:
+    provider_name = config.repair_provider
+    if provider_name == "same_as_source":
+        provider_name = sample.source
+    if provider_name in {"", "none", "deterministic"}:
+        return None
+    if provider_name not in repairers:
+        connection = resolve_source_connection(config, provider_name)
+        repairers[provider_name] = build_repairer_for_connection(connection)
+    return repairers[provider_name]
 
 
 def _generation_event_sink(events_path: Path, sample: PlannedSample, config: RunnerConfig):
