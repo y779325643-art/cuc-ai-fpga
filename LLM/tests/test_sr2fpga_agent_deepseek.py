@@ -6,6 +6,7 @@ import unittest
 import urllib.error
 from unittest import mock
 
+from LLM.src.sr2fpga_agent import providers
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleClient,
     AnthropicCompatibleConfig,
@@ -83,6 +84,82 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(payload["system"], "Return strict JSON.")
         self.assertEqual(payload["messages"], [{"role": "user", "content": "Return ok."}])
         self.assertEqual(content, '{"ok": true}')
+
+    def test_anthropic_stream_reader_collects_text_deltas(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b"event: message_start\n",
+                b'data: {"type":"message_start","message":{"content":[]}}\n',
+                b"\n",
+                b"event: content_block_delta\n",
+                b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"ok\\":"}}\n',
+                b"\n",
+                b"event: content_block_delta\n",
+                b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"true}"}}\n',
+                b"\n",
+                b"event: message_stop\n",
+                b'data: {"type":"message_stop"}\n',
+                b"\n",
+            ]
+        )
+
+        self.assertEqual(providers._read_anthropic_streaming_text(response, 5), '{"ok":true}')
+
+    def test_anthropic_stream_reader_surfaces_error_event(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b"event: error\n",
+                b'data: {"type":"error","error":{"type":"overloaded_error","message":"busy"}}\n',
+                b"\n",
+            ]
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "overloaded_error: busy"):
+            providers._read_anthropic_streaming_text(response, 5)
+
+    def test_anthropic_stream_chat_retries_and_sends_stream_true(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b"event: content_block_delta\n",
+                b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"ok\\":true}"}}\n',
+                b"\n",
+                b"event: message_stop\n",
+                b'data: {"type":"message_stop"}\n',
+                b"\n",
+            ]
+        )
+        transient_error = urllib.error.HTTPError(
+            url="https://w.ciykj.cn/v1/messages",
+            code=502,
+            msg="Bad Gateway",
+            hdrs=None,
+            fp=FakeHTTPResponse(b'{"error":"upstream"}'),
+        )
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key="fake-key",
+                model="claude-opus-4-8",
+                base_url="https://w.ciykj.cn/v1",
+                timeout_seconds=7,
+                transport_attempts=2,
+                retry_backoff_seconds=0,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen",
+                side_effect=[transient_error, response],
+            ) as urlopen,
+        ):
+            content = client.stream_chat([{"role": "user", "content": "Return JSON."}])
+
+        self.assertEqual(content, '{"ok":true}')
+        self.assertEqual(urlopen.call_count, 2)
+        for call in urlopen.call_args_list:
+            payload = json.loads(call.args[0].data.decode("utf-8"))
+            self.assertIs(payload["stream"], True)
 
     def test_openai_compatible_client_passes_ssl_context_to_urlopen(self) -> None:
         ssl_context = object()

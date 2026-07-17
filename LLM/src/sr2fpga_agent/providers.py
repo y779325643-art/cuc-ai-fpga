@@ -147,18 +147,26 @@ class AnthropicCompatibleClient:
         self.config = config
 
     def chat(self, messages: list[dict[str, str]]) -> str:
-        data = self._request_with_retries(_anthropic_messages_payload(self.config, messages))
+        data = self._request_with_retries(
+            _anthropic_messages_payload(self.config, messages),
+            lambda response: _read_chat_completion_json(response, self.config.timeout_seconds),
+        )
         return _read_anthropic_message_text(data)
 
     def stream_chat(self, messages: list[dict[str, str]]) -> str:
-        return self.chat(messages)
+        payload = _anthropic_messages_payload(self.config, messages)
+        payload["stream"] = True
+        return self._request_with_retries(
+            payload,
+            lambda response: _read_anthropic_streaming_text(response, self.config.timeout_seconds),
+        )
 
-    def _request_with_retries(self, payload: dict[str, Any]) -> Any:
+    def _request_with_retries(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
         last_error: _TransientOpenAICompatibleError | None = None
         attempts = max(1, self.config.transport_attempts)
         for attempt in range(attempts):
             try:
-                return self._request_once(payload)
+                return self._request_once(payload, reader)
             except _TransientOpenAICompatibleError as exc:
                 last_error = exc
                 if attempt + 1 >= attempts:
@@ -170,7 +178,7 @@ class AnthropicCompatibleClient:
             raise RuntimeError(str(last_error)) from last_error
         raise RuntimeError("Anthropic-compatible API request did not run")
 
-    def _request_once(self, payload: dict[str, Any]) -> Any:
+    def _request_once(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
         url = self.config.base_url.rstrip("/") + "/messages"
         request = urllib.request.Request(
             url,
@@ -188,7 +196,13 @@ class AnthropicCompatibleClient:
                 timeout=self.config.timeout_seconds,
                 context=_default_ssl_context(),
             ) as response:
-                return _read_chat_completion_json(response, self.config.timeout_seconds)
+                try:
+                    with _response_read_deadline(self.config.timeout_seconds):
+                        return reader(response)
+                except TimeoutError as exc:
+                    raise _TransientOpenAICompatibleError(
+                        "Anthropic-compatible API response read timed out"
+                    ) from exc
         except urllib.error.HTTPError as exc:
             body = exc.read().decode("utf-8", errors="replace")
             message = f"Anthropic-compatible API request failed with HTTP {exc.code}: {body}"
@@ -199,6 +213,10 @@ class AnthropicCompatibleClient:
             raise _TransientOpenAICompatibleError("Anthropic-compatible API request timed out") from exc
         except urllib.error.URLError as exc:
             raise _TransientOpenAICompatibleError(f"Anthropic-compatible API request failed: {exc.reason}") from exc
+        except http.client.IncompleteRead as exc:
+            raise _TransientOpenAICompatibleError(
+                f"Anthropic-compatible API response truncated (IncompleteRead): {exc}"
+            ) from exc
 
 
 def _default_ssl_context() -> ssl.SSLContext:
@@ -327,6 +345,39 @@ def _read_anthropic_message_text(data: Any) -> str:
         if chunks:
             return "".join(chunks)
     raise RuntimeError("Anthropic-compatible API response did not contain text content")
+
+
+def _read_anthropic_streaming_text(response: Any, timeout_seconds: int) -> str:
+    chunks: list[str] = []
+    started_at = time.monotonic()
+    while True:
+        raw_line = _read_streaming_line(response, timeout_seconds, started_at)
+        if not raw_line:
+            break
+        line = raw_line.decode("utf-8", errors="replace").strip()
+        if not line or line.startswith(":") or not line.startswith("data:"):
+            continue
+        data = line.removeprefix("data:").strip()
+        try:
+            event = json.loads(data)
+        except json.JSONDecodeError as exc:
+            raise RuntimeError("Anthropic-compatible streaming response contained invalid event data") from exc
+        event_type = str(event.get("type", "")) if isinstance(event, dict) else ""
+        if event_type == "content_block_delta":
+            delta = event.get("delta", {})
+            if isinstance(delta, dict) and delta.get("type") == "text_delta":
+                chunks.append(str(delta.get("text", "")))
+        elif event_type == "error":
+            error = event.get("error", {})
+            if isinstance(error, dict):
+                raise RuntimeError(f"{error.get('type', 'error')}: {error.get('message', '')}")
+            raise RuntimeError(f"Anthropic-compatible streaming response error: {error}")
+        elif event_type == "message_stop":
+            break
+    text = "".join(chunks)
+    if not text:
+        raise RuntimeError("Anthropic-compatible streaming response contained no text")
+    return text
 
 
 def _read_streaming_chat_content(response: Any, timeout_seconds: int) -> str:

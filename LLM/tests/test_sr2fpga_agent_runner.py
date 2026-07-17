@@ -1461,10 +1461,12 @@ class RunnerConfigTest(unittest.TestCase):
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
                 patch("LLM.src.sr2fpga_agent.runner.OpenAICompatibleClient") as client_cls,
             ):
-                client_cls.return_value.chat.return_value = '{"ok": true}'
+                client_cls.return_value.stream_chat.return_value = '{"ok": true}'
                 report = runner_preflight(config, run_id="auth_ok", validate_provider=True)
 
             self.assertTrue(report["ok"])
+            client_cls.return_value.stream_chat.assert_called_once()
+            client_cls.return_value.chat.assert_not_called()
             client_config = client_cls.call_args.args[0]
             self.assertEqual(client_config.timeout_seconds, 120)
 
@@ -1499,10 +1501,12 @@ class RunnerConfigTest(unittest.TestCase):
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
                 patch("LLM.src.sr2fpga_agent.runner.AnthropicCompatibleClient") as client_cls,
             ):
-                client_cls.return_value.chat.return_value = '{"ok": true}'
+                client_cls.return_value.stream_chat.return_value = '{"ok": true}'
                 report = runner_preflight(config, run_id="auth_ok", validate_provider=True)
 
             self.assertTrue(report["ok"])
+            client_cls.return_value.stream_chat.assert_called_once()
+            client_cls.return_value.chat.assert_not_called()
             client_config = client_cls.call_args.args[0]
             self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
             self.assertEqual(client_config.api_key, "shell-fake-key")
@@ -1560,7 +1564,7 @@ class RunnerConfigTest(unittest.TestCase):
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
                 patch("LLM.src.sr2fpga_agent.runner.OpenAICompatibleClient") as client_cls,
             ):
-                client_cls.return_value.chat.side_effect = RuntimeError("auth failed for shell-fake-key")
+                client_cls.return_value.stream_chat.side_effect = RuntimeError("auth failed for shell-fake-key")
                 report = runner_preflight(config, run_id="auth_fail", validate_provider=True)
 
             self.assertFalse(report["ok"])

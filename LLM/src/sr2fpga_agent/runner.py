@@ -570,7 +570,7 @@ def _check_source_auth(
         return
     client = _preflight_client(connection, api_key)
     try:
-        client.chat(
+        client.stream_chat(
             [
                 {"role": "system", "content": "Return a tiny JSON object for authentication preflight."},
                 {"role": "user", "content": "Return {\"ok\": true}."},
