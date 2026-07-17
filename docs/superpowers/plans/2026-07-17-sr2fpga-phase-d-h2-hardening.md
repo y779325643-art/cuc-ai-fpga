@@ -27,10 +27,10 @@
 - Consumes: `validate_system_his_h_stages(request, project)`
 - Produces: H2 diagnostics based on canonical semantic kind, protocol, and scenario identifiers.
 
-- [ ] Add failing tests for canonical structured scenarios, unknown structured scenarios, reviewed aliases, and unknown aliases.
-- [ ] Run `python -m pytest LLM/tests/test_sr2fpga_agent_his_validation.py -q` and verify the new tests fail for the expected reasons.
-- [ ] Implement minimal fail-closed normalization helpers and alias maps.
-- [ ] Re-run the targeted test file and verify it passes.
+- [x] Add failing tests for canonical structured scenarios, unknown structured scenarios, reviewed aliases, and unknown aliases.
+- [x] Run `python -m pytest LLM/tests/test_sr2fpga_agent_his_validation.py -q` and verify the new tests fail for the expected reasons.
+- [x] Implement minimal fail-closed normalization helpers and alias maps.
+- [x] Re-run the targeted test file and verify it passes.
 
 ### Task 2: Prompt Alignment
 
@@ -42,10 +42,10 @@
 - Consumes: `_system_his_v12_messages()` and retry prompt construction.
 - Produces: prompt text containing exact canonical H2 vocabularies and scenario format rules.
 
-- [ ] Add failing assertions for initial and retry prompt vocabulary guidance.
-- [ ] Run the prompt test file and verify the assertions fail before implementation.
-- [ ] Add one shared prompt guidance string derived from the H2 canonical sets.
-- [ ] Re-run prompt tests and verify they pass.
+- [x] Add failing assertions for initial and retry prompt vocabulary guidance.
+- [x] Run the prompt test file and verify the assertions fail before implementation.
+- [x] Add one shared prompt guidance string derived from the H2 canonical sets.
+- [x] Re-run prompt tests and verify they pass.
 
 ### Task 3: Frozen Pilot Replay And Report
 
@@ -58,19 +58,18 @@
 - Consumes: frozen dataset root and existing trajectory/metadata/System-HIS artifacts.
 - Produces: JSON analysis containing phase/source/family distributions and before/after H2 diagnostics without writing into the dataset root.
 
-- [ ] Add a failing test with a temporary miniature pilot dataset and expected aggregate output.
-- [ ] Verify the test fails because the analysis script is absent.
-- [ ] Implement the read-only analyzer using structured JSON parsing.
-- [ ] Run the analyzer on all 24 frozen episodes and save output outside the frozen dataset.
-- [ ] Write the result report with exact before/after counts and remaining failure classes.
+- [x] Add a failing test with a temporary miniature pilot dataset and expected aggregate output.
+- [x] Verify the test fails because the analysis script is absent.
+- [x] Implement the read-only analyzer using structured JSON parsing.
+- [x] Run the analyzer on all 24 frozen episodes and save output outside the frozen dataset.
+- [x] Write the result report with exact before/after counts and remaining failure classes.
 
 ### Task 4: Verification
 
 **Files:**
 - Verify all files changed above.
 
-- [ ] Run targeted H2, prompt, and analyzer tests.
-- [ ] Run `python -m pytest LLM/tests -q`.
-- [ ] Run `git diff --check`.
-- [ ] Verify frozen pilot tracked/untracked artifact hashes were not changed by checking `git status` and analyzer behavior.
-
+- [x] Run targeted H2, prompt, and analyzer tests.
+- [x] Run `python -m pytest LLM/tests -q`.
+- [x] Run `git diff --check`.
+- [x] Verify frozen pilot tracked/untracked artifact hashes were not changed by checking `git status` and analyzer behavior.
