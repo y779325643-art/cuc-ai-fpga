@@ -366,7 +366,7 @@ sources:
   claude:
     kind: anthropic_compat
     model: claude-opus-4-8
-    base_url: https://api.anthropic.com/v1
+    base_url: https://example.invalid/v1
     api_key_env: ANTHROPIC_API_KEY
     generation_mode: two_stage
     timeout_seconds: 600
@@ -375,7 +375,7 @@ sources:
   gpt:
     kind: openai_compat
     model: gpt-5.5
-    base_url: https://api.openai.com/v1
+    base_url: https://example.invalid/v1
     api_key_env: OPENAI_API_KEY
     generation_mode: two_stage
     timeout_seconds: 600
@@ -384,7 +384,7 @@ sources:
   qwen:
     kind: openai_compat
     model: qwen3-coder-plus
-    base_url: https://dashscope.aliyuncs.com/compatible-mode/v1
+    base_url: https://example.invalid/v1
     api_key_env: DASHSCOPE_API_KEY
     generation_mode: two_stage
     timeout_seconds: 600
@@ -393,7 +393,7 @@ sources:
   deepseek:
     kind: deepseek-his-v12
     model: deepseek-v4-pro
-    base_url: https://api.deepseek.com
+    base_url: https://example.invalid/v1
     api_key_env: DEEPSEEK_API_KEY
     generation_mode: two_stage
     timeout_seconds: 600
@@ -431,7 +431,7 @@ tasks:
   - {source: deepseek, task_type: component_topology, topology_ids: [t6_td_update_core], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
 ```
 
-The full file also sets `dataset_root`, `export_root`, `run_root`, `platform`, `refresh_exports`, `sample_id_prefix`, and `line_b_targets` using the same field names as existing committed runner configs. The four public endpoint defaults above are documentation-safe; the ignored local config replaces them with the user's gateway endpoint. No API key value is committed. The six families and runner mappings are:
+The full file also sets `dataset_root`, `export_root`, `run_root`, `platform`, `refresh_exports`, `sample_id_prefix`, and `line_b_targets` using the same field names as existing committed runner configs. The committed source table deliberately uses `example.invalid`; the ignored local config replaces it with the user's gateway endpoint. No real endpoint or API key value is committed. The six families and runner mappings are:
 
 ```text
 sync_fifo -> task_type fifo

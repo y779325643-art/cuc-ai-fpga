@@ -39,6 +39,41 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class RunnerConfigTest(unittest.TestCase):
+    def test_phase_d_configs_expand_frozen_pilot_and_controls(self) -> None:
+        pilot = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_d_multiteacher_pilot.example.yaml"
+        )
+        control = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_d_control.example.yaml"
+        )
+
+        pilot_samples = planned_samples(pilot)
+        control_samples = planned_samples(control)
+
+        self.assertEqual(len(pilot_samples), 24)
+        self.assertEqual(len(control_samples), 6)
+        self.assertEqual(
+            {source: sum(sample.source == source for sample in pilot_samples) for source in pilot.sources},
+            {"claude": 6, "gpt": 6, "qwen": 6, "deepseek": 6},
+        )
+        self.assertEqual(len({sample.family_id for sample in pilot_samples}), 6)
+        self.assertEqual({sample.source for sample in control_samples}, {"deterministic"})
+        self.assertEqual(pilot.repair_provider, "same_as_source")
+        self.assertEqual(pilot.max_attempts, 3)
+        self.assertEqual(control.repair_provider, "none")
+        self.assertEqual(control.max_attempts, 1)
+        for family_id in {sample.family_id for sample in pilot_samples}:
+            family = [sample for sample in pilot_samples if sample.family_id == family_id]
+            self.assertEqual(len(family), 4)
+            self.assertEqual(len({sample.requirement_sha256 for sample in family}), 1)
+            self.assertEqual(len({sample.paired_requirement_id for sample in family}), 1)
+
     def test_phase_c_core_mutation_closure_config_targets_remaining_core_families(self) -> None:
         config = load_runner_config(
             REPO_ROOT
@@ -1740,6 +1775,59 @@ class RunnerConfigTest(unittest.TestCase):
             ],
         )
         self.assertEqual(samples[0].metadata(config)["family_id"], "fir_filter")
+
+    def test_paired_requirement_identity_is_source_independent(self) -> None:
+        sources = {
+            name: SourceConnection(
+                name=name,
+                kind="anthropic_compat" if name == "claude" else "openai_compat",
+                model={
+                    "claude": "claude-opus-4-8",
+                    "gpt": "gpt-5.5",
+                    "qwen": "qwen3-coder-plus",
+                    "deepseek": "deepseek-v4-pro",
+                }[name],
+                base_url="https://example.invalid/v1",
+                api_key_env=f"{name.upper()}_API_KEY",
+                generation_mode="two_stage",
+            )
+            for name in ("claude", "gpt", "qwen", "deepseek")
+        }
+        config = RunnerConfig(
+            dataset_root=Path("datasets/sr2fpga_phase_d_v1"),
+            export_root=Path("datasets/sr2fpga_phase_d_v1_exports"),
+            run_root=Path("tmp/sr2fpga_runs"),
+            provider="deterministic",
+            repair_provider="same_as_source",
+            max_attempts=3,
+            refresh_exports=True,
+            line_b_targets={"max_samples": 4},
+            tasks=[
+                TaskConfig(
+                    source=source,
+                    task_type="fir_filter",
+                    widths=[8],
+                    count=1,
+                    requirement_style="simple_prompt",
+                )
+                for source in sources
+            ],
+            sources=sources,
+        )
+
+        samples = planned_samples(config)
+
+        self.assertEqual(len(samples), 4)
+        self.assertEqual(len({sample.source for sample in samples}), 4)
+        self.assertEqual(len({sample.sample_id for sample in samples}), 4)
+        self.assertEqual(len({sample.requirement for sample in samples}), 1)
+        self.assertEqual(len({sample.requirement_sha256 for sample in samples}), 1)
+        self.assertEqual(len({sample.paired_requirement_id for sample in samples}), 1)
+        self.assertEqual(len(samples[0].requirement_sha256), 64)
+        self.assertEqual(
+            samples[0].metadata(config)["paired_requirement_id"],
+            samples[0].paired_requirement_id,
+        )
 
     def test_planned_samples_cycle_widths_and_respect_max_samples(self) -> None:
         config = RunnerConfig(

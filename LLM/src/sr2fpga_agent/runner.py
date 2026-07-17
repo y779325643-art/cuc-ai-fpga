@@ -132,6 +132,8 @@ class PlannedSample:
     measurement_point: str = ""
     requirement_style: str = "contract"
     evaluation_line: str = "line_b"
+    paired_requirement_id: str = ""
+    requirement_sha256: str = ""
 
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
         connection = resolve_source_connection(config, self.source)
@@ -159,6 +161,8 @@ class PlannedSample:
             "contract_skeleton_mode": _contract_skeleton_mode(self, config),
             "topology_id": self.topology_id,
             "requirement_style": self.requirement_style,
+            "paired_requirement_id": self.paired_requirement_id,
+            "requirement_sha256": self.requirement_sha256,
         }
 
 
@@ -1533,6 +1537,13 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                 sample_key = topology_id or task_type
                 sample_id = f"sample_{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
                 project_name = f"{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
+                requirement = _default_requirement(
+                    task_type,
+                    width,
+                    topology_id=topology_id,
+                    requirement_style=task.requirement_style,
+                )
+                requirement_sha256 = hashlib.sha256(requirement.encode("utf-8")).hexdigest()
                 samples.append(
                     PlannedSample(
                         sample_id=sample_id,
@@ -1540,12 +1551,7 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                         task_type=task_type,
                         width=width,
                         project_name=project_name,
-                        requirement=_default_requirement(
-                            task_type,
-                            width,
-                            topology_id=topology_id,
-                            requirement_style=task.requirement_style,
-                        ),
+                        requirement=requirement,
                         failure_injectors=list(task.failure_injectors),
                         family_id=family_id,
                         difficulty_tier=difficulty_tier,
@@ -1554,6 +1560,8 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                         measurement_point=task.measurement_point,
                         requirement_style=task.requirement_style,
                         evaluation_line=task.evaluation_line,
+                        paired_requirement_id=f"{family_id}:{requirement_sha256[:16]}",
+                        requirement_sha256=requirement_sha256,
                     )
                 )
                 sequence += 1
