@@ -91,6 +91,14 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(pilot.repair_provider, "same_as_source")
         self.assertEqual(pilot.max_attempts, 3)
         self.assertEqual(pilot.l4_open.family_ids, ("fir_filter",))
+        self.assertEqual(
+            {sample.metadata(pilot)["system_his_schema_version"] for sample in pilot_samples},
+            {"system-his-v1.2"},
+        )
+        self.assertEqual(
+            {sample.metadata(pilot)["training_split"] for sample in pilot_samples},
+            {"clean"},
+        )
         self.assertEqual(control.repair_provider, "none")
         self.assertEqual(control.max_attempts, 1)
         for family_id in {sample.family_id for sample in pilot_samples}:

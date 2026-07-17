@@ -76,6 +76,7 @@ class SourceConnection:
     timeout_seconds: int = 120
     transport_attempts: int = 3
     max_tokens: int = 0
+    system_his_schema_version: str = ""
 
 
 @dataclass(frozen=True)
@@ -1629,6 +1630,11 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             )
         if not generation_mode:
             generation_mode = _GENERATION_MODE_BY_KIND.get(kind, "")
+        system_his_schema_version = str(item.get("system_his_schema_version", ""))
+        if system_his_schema_version not in {"", "system-his-v1.1", "system-his-v1.2"}:
+            raise SystemExit(
+                f"Source {name!r}: system_his_schema_version must be system-his-v1.1 or system-his-v1.2"
+            )
         sources[str(name)] = SourceConnection(
             name=str(name),
             kind=kind,
@@ -1639,6 +1645,7 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             timeout_seconds=int(item.get("timeout_seconds", 120)),
             transport_attempts=int(item.get("transport_attempts", 3)),
             max_tokens=int(item.get("max_tokens", 0)),
+            system_his_schema_version=system_his_schema_version,
         )
     return sources
 
@@ -1992,6 +1999,8 @@ def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
 
 def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
     connection = resolve_source_connection(config, sample.source)
+    if connection.system_his_schema_version:
+        return connection.system_his_schema_version
     if connection.kind == "deterministic":
         return "system-his-v1.2"
     if connection.kind in VETTED_TWO_STAGE_KINDS and connection.generation_mode in {"two_stage", "oracle_his2project"}:

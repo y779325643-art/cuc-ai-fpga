@@ -31,6 +31,7 @@ sources:
     timeout_seconds: 600
     transport_attempts: 3
     max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
   gpt:
     kind: openai_compat
     model: gpt-5.5
@@ -40,6 +41,7 @@ sources:
     timeout_seconds: 600
     transport_attempts: 3
     max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
   qwen:
     kind: openai_compat
     model: qwen3-coder-plus
@@ -49,6 +51,7 @@ sources:
     timeout_seconds: 600
     transport_attempts: 3
     max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
   deepseek:
     kind: deepseek-his-v12
     model: deepseek-v4-pro
@@ -58,6 +61,7 @@ sources:
     timeout_seconds: 600
     transport_attempts: 3
     max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
 
 l4_open:
   tool: openxc7_nextpnr
