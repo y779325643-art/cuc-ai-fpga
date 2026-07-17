@@ -389,6 +389,91 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(captured_kwargs["openxc7_board_profile"], "ac820_zynq")
             self.assertEqual(captured_kwargs["openxc7_timeout_seconds"], 9)
 
+    def test_run_batch_writes_measurement_freeze_before_first_agent_call(self) -> None:
+        observed: dict[str, object] = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, *args, **kwargs):
+                self.dataset_root = Path(dataset_root)
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                freeze_path = root / "runs" / "phase_d_freeze" / "measurement_freeze.json"
+                observed["freeze_existed_before_agent"] = freeze_path.is_file()
+                observed["metadata"] = dict(metadata or {})
+                eval_dir = self.dataset_root / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "l4_open_status": "not_run",
+                            "l4_open_skip_reason": "disabled_by_config",
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (self.dataset_root / sample_id / "metadata.json").write_text(
+                    json.dumps(metadata or {}) + "\n",
+                    encoding="utf-8",
+                )
+                return {"sample_dir": str(self.dataset_root / sample_id), "pass_level": "L3"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+
+            with patch("LLM.src.sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+                summary = run_batch(config, run_id="phase_d_freeze", resume=False)
+
+            freeze = json.loads(
+                (root / "runs" / "phase_d_freeze" / "measurement_freeze.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertIs(observed["freeze_existed_before_agent"], True)
+        self.assertEqual(freeze["sample_count"], 1)
+        self.assertEqual(len(freeze["samples"][0]["requirement_sha256"]), 64)
+        self.assertNotIn("base_url", json.dumps(freeze).lower())
+        self.assertNotIn("api_key", json.dumps(freeze).lower())
+        self.assertEqual(observed["metadata"]["freeze_fingerprint"], freeze["freeze_fingerprint"])
+        self.assertEqual(summary["freeze_fingerprint"], freeze["freeze_fingerprint"])
+
+    def test_run_batch_rejects_tampered_measurement_freeze_on_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 0},
+                tasks=[],
+            )
+            run_batch(config, run_id="phase_d_freeze", resume=False)
+            freeze_path = root / "runs" / "phase_d_freeze" / "measurement_freeze.json"
+            frozen = json.loads(freeze_path.read_text(encoding="utf-8"))
+            frozen["max_attempts"] = 99
+            freeze_path.write_text(json.dumps(frozen), encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "measurement freeze mismatch"):
+                run_batch(config, run_id="phase_d_freeze", resume=True)
+
     def test_run_batch_passes_independent_oracle_config_to_agent(self) -> None:
         captured_kwargs: dict[str, object] = {}
 

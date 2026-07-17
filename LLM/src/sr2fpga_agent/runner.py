@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +28,10 @@ from LLM.src.sr2fpga_agent.deepseek import (
 )
 from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
 from LLM.src.sr2fpga_agent.local_tools import resolve_executable
+from LLM.src.sr2fpga_agent.measurement_freeze import (
+    build_measurement_freeze,
+    write_or_validate_freeze,
+)
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
@@ -330,8 +335,9 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     summary_path = run_dir / "summary.json"
     config_fingerprint = _config_fingerprint(config)
     run_dir.mkdir(parents=True, exist_ok=True)
+    existing_run = state_path.exists()
 
-    if resume and state_path.exists():
+    if resume and existing_run:
         state = read_run_state(state_path)
         if state.config_fingerprint and state.config_fingerprint != config_fingerprint:
             raise SystemExit(
@@ -345,6 +351,12 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
     samples = planned_samples(config)
+    freeze_manifest = _measurement_freeze_manifest(config, run_id, config_fingerprint, samples)
+    freeze_fingerprint = write_or_validate_freeze(
+        run_dir / "measurement_freeze.json",
+        freeze_manifest,
+        resume=resume and existing_run,
+    )
     project_generators: dict[str, object | None] = {}
     repairers: dict[str, object | None] = {}
 
@@ -376,6 +388,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             vivado_timeout_seconds=config.l4_commercial.timeout_seconds,
             enable_independent_oracle=config.run_independent_oracle,
         )
+        sample_metadata = sample.metadata(config)
+        sample_metadata["freeze_fingerprint"] = freeze_fingerprint
         result = agent.run_one(
             sample_id=sample.sample_id,
             requirement=sample.requirement,
@@ -386,7 +400,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 description=sample.requirement,
             ),
             platform=PlatformProfile(name=config.platform, vendor="generic", toolchain="open_source"),
-            metadata=sample.metadata(config),
+            metadata=sample_metadata,
         )
         labels = _read_labels(config.dataset_root / sample.sample_id)
         bucket = classify_sample_bucket(labels)
@@ -421,6 +435,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         write_run_state(state_path, state)
 
     summary = _summary(config, state)
+    summary["freeze_fingerprint"] = freeze_fingerprint
     _write_json(summary_path, summary)
     (run_dir / "baseline_report.md").write_text(
         render_markdown(str(summary["run_id"]), baseline_rows(summary), summary=summary),
@@ -485,6 +500,88 @@ def _config_to_jsonable(config: RunnerConfig) -> dict[str, Any]:
 def _config_fingerprint(config: RunnerConfig) -> str:
     payload = json.dumps(_config_to_jsonable(config), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _measurement_freeze_manifest(
+    config: RunnerConfig,
+    run_id: str,
+    config_fingerprint: str,
+    samples: list[PlannedSample],
+) -> dict[str, Any]:
+    source_names = sorted({sample.source for sample in samples})
+    source_records = []
+    for source_name in source_names:
+        connection = resolve_source_connection(config, source_name)
+        source_records.append(
+            {
+                "name": source_name,
+                "kind": connection.kind,
+                "model": connection.model or connection.kind,
+                "generation_mode": connection.generation_mode,
+                "timeout_seconds": connection.timeout_seconds,
+                "transport_attempts": connection.transport_attempts,
+                "max_tokens": connection.max_tokens,
+            }
+        )
+    sample_records = [
+        {
+            "sample_id": sample.sample_id,
+            "source": sample.source,
+            "family_id": sample.family_id,
+            "task_type": sample.task_type,
+            "topology_id": sample.topology_id,
+            "width": sample.width,
+            "requirement_style": sample.requirement_style,
+            "paired_requirement_id": sample.paired_requirement_id,
+            "requirement_sha256": sample.requirement_sha256,
+        }
+        for sample in samples
+    ]
+    timeouts = {
+        f"source:{record['name']}": int(record["timeout_seconds"])
+        for record in source_records
+    }
+    timeouts["l4_open"] = config.l4_open.timeout_seconds
+    return build_measurement_freeze(
+        run_id=run_id,
+        config_fingerprint=config_fingerprint,
+        sample_records=sample_records,
+        source_records=source_records,
+        max_attempts=config.max_attempts,
+        timeouts=timeouts,
+        tool_versions=_measurement_tool_versions(config),
+        l4_family_ids=list(getattr(config.l4_open, "family_ids", ())),
+    )
+
+
+def _measurement_tool_versions(config: RunnerConfig) -> dict[str, str]:
+    commands = {
+        "verilator": ["verilator", "--version"],
+        "iverilog": ["iverilog", "-V"],
+        "vvp": ["vvp", "-V"],
+        "yosys": ["yosys", "-V"],
+    }
+    versions: dict[str, str] = {}
+    for name, command in commands.items():
+        executable = resolve_executable(command[0])
+        if executable is None:
+            versions[name] = "missing"
+            continue
+        try:
+            completed = subprocess.run(
+                [str(executable), *command[1:]],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            versions[name] = f"unavailable:{type(exc).__name__}"
+            continue
+        output = (completed.stdout or completed.stderr).strip().splitlines()
+        versions[name] = output[0] if output else f"exit:{completed.returncode}"
+    versions["l4_open"] = config.l4_open.tool if config.run_l4_open else "disabled"
+    return versions
 
 
 def _load_env_file(path: Path) -> set[str]:
