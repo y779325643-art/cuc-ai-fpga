@@ -90,6 +90,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual({sample.source for sample in control_samples}, {"deterministic"})
         self.assertEqual(pilot.repair_provider, "same_as_source")
         self.assertEqual(pilot.max_attempts, 3)
+        self.assertEqual(pilot.l4_open.family_ids, ("fir_filter",))
         self.assertEqual(control.repair_provider, "none")
         self.assertEqual(control.max_attempts, 1)
         for family_id in {sample.family_id for sample in pilot_samples}:
@@ -716,6 +717,46 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertFalse(_l4_open_enabled_for_sample(config, counter))
         self.assertTrue(_l4_open_enabled_for_sample(config, fir))
         self.assertTrue(_l4_open_enabled_for_sample(config, flagship))
+
+    def test_phase_d_explicit_l4_allowlist_selects_only_fir(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("datasets"),
+            export_root=Path("exports"),
+            run_root=Path("runs"),
+            provider="deterministic",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={"max_samples": 2},
+            tasks=[],
+            enable_openxc7_l4=True,
+            run_l4_open=True,
+            l4_open=L4OpenConfig(
+                run_policy="representative_subset",
+                family_ids=("fir_filter",),
+            ),
+        )
+        fir = PlannedSample(
+            "fir-1",
+            "deterministic",
+            "fir_filter",
+            8,
+            "fir",
+            "fir",
+            family_id="fir_filter",
+        )
+        sobel = PlannedSample(
+            "sobel-1",
+            "deterministic",
+            "sobel_threshold",
+            8,
+            "sobel",
+            "sobel",
+            family_id="sobel_threshold",
+        )
+
+        self.assertTrue(_l4_open_enabled_for_sample(config, fir))
+        self.assertFalse(_l4_open_enabled_for_sample(config, sobel))
 
     def test_load_runner_config_rejects_unknown_l4_open_policy(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

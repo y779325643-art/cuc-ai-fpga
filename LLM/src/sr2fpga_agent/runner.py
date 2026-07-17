@@ -85,6 +85,7 @@ class L4OpenConfig:
     board_profile: str = "ac820_zynq"
     run_policy: str = "never"
     timeout_seconds: int = 600
+    family_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -1466,12 +1467,18 @@ def _load_l4_open_config(raw: Any, default_run_policy: str = "never") -> L4OpenC
     allowed_policies = {"never", "after_l3_pass", "representative_subset", "always"}
     if run_policy not in allowed_policies:
         raise SystemExit("l4_open.run_policy must be one of: never, after_l3_pass, representative_subset, always")
+    raw_family_ids = raw.get("family_ids", [])
+    if not isinstance(raw_family_ids, list) or not all(
+        isinstance(family_id, str) and family_id.strip() for family_id in raw_family_ids
+    ):
+        raise SystemExit("l4_open.family_ids must be a list of non-empty strings")
     return L4OpenConfig(
         tool=str(raw.get("tool", "openxc7_nextpnr")),
         target_part=str(raw.get("target_part", "XC7Z020CLG484-2")),
         board_profile=str(raw.get("board_profile", "ac820_zynq")),
         run_policy=run_policy,
         timeout_seconds=int(raw.get("timeout_seconds", 600)),
+        family_ids=tuple(str(family_id).strip() for family_id in raw_family_ids),
     )
 
 
@@ -1502,6 +1509,10 @@ def _l4_open_enabled_for_config(config: RunnerConfig) -> bool:
 
 
 def _l4_open_enabled_for_sample(config: RunnerConfig, sample: PlannedSample) -> bool:
+    if not config.enable_openxc7_l4 or config.l4_open.run_policy == "never":
+        return False
+    if config.l4_open.family_ids:
+        return sample.family_id in config.l4_open.family_ids
     if _l4_open_enabled_for_config(config):
         return True
     if not config.enable_openxc7_l4 or config.l4_open.run_policy != "representative_subset":
