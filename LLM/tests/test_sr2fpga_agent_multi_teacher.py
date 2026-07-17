@@ -5,6 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from LLM.src.sr2fpga_agent import runner as runner_module
 from LLM.src.sr2fpga_agent.cli import build_project_generator_for_connection
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleConfig,
@@ -195,7 +196,7 @@ class SourcesParsingTest(unittest.TestCase):
             self.assertEqual(config.sources["claude"].generation_mode, "two_stage")
 
     def test_multi_teacher_example_uses_anthropic_client_for_official_claude_endpoint(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_multi_teacher.example.yaml"))
+        config = load_runner_config(Path("configs/legacy/sr2fpga_multi_teacher.example.yaml"))
         claude = config.sources["claude"]
 
         self.assertEqual(claude.kind, "anthropic_compat")
@@ -354,6 +355,46 @@ class ConnectionBuilderTest(unittest.TestCase):
         self.assertEqual(client_config.model, "claude-opus-4-8")
         self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
 
+    def test_repairer_inherits_frozen_transport_and_token_settings(self) -> None:
+        from LLM.src.sr2fpga_agent.cli import build_repairer_for_connection
+
+        connections = [
+            SourceConnection(
+                name="claude-repair",
+                kind="anthropic_compat",
+                model="claude-opus-4-8",
+                base_url="https://api.anthropic.com/v1",
+                api_key_env="ANTHROPIC_API_KEY",
+                generation_mode="two_stage",
+                timeout_seconds=600,
+                transport_attempts=5,
+                max_tokens=32768,
+            ),
+            SourceConnection(
+                name="gpt-repair",
+                kind="openai_compat",
+                model="gpt-5.5",
+                base_url="https://api.openai.com/v1",
+                api_key_env="OPENAI_API_KEY",
+                generation_mode="two_stage",
+                timeout_seconds=600,
+                transport_attempts=5,
+                max_tokens=32768,
+            ),
+        ]
+
+        with patch.dict(
+            os.environ,
+            {"ANTHROPIC_API_KEY": "sk-a", "OPENAI_API_KEY": "sk-o"},
+            clear=False,
+        ):
+            repairers = [build_repairer_for_connection(connection) for connection in connections]
+
+        for repairer in repairers:
+            self.assertEqual(repairer.client.config.timeout_seconds, 600)
+            self.assertEqual(repairer.client.config.transport_attempts, 5)
+            self.assertEqual(repairer.client.config.max_tokens, 32768)
+
 
 class PerSampleDispatchTest(unittest.TestCase):
     def test_two_different_teachers_resolve_to_different_endpoints(self) -> None:
@@ -391,6 +432,111 @@ class PerSampleDispatchTest(unittest.TestCase):
             "https://api.anthropic.com/v1",
         )
         self.assertEqual(gen_gpt.his_project_generator.client.config.model, "gpt-5.5")
+
+
+class SameSourceRepairTest(unittest.TestCase):
+    def _sample(self, source: str) -> PlannedSample:
+        return PlannedSample(
+            sample_id=f"sample_{source}",
+            source=source,
+            task_type="counter",
+            width=8,
+            project_name=f"project_{source}",
+            requirement="Generate an 8-bit counter.",
+            requirement_style="simple_prompt",
+        )
+
+    def test_same_as_source_builds_and_caches_each_teachers_repairer(self) -> None:
+        sources = {
+            "gpt": SourceConnection(
+                name="gpt",
+                kind="openai_compat",
+                model="gpt-5.5",
+                base_url="https://api.openai.com/v1",
+                api_key_env="OPENAI_API_KEY",
+                generation_mode="two_stage",
+            ),
+            "claude": SourceConnection(
+                name="claude",
+                kind="anthropic_compat",
+                model="claude-opus-4-8",
+                base_url="https://api.anthropic.com/v1",
+                api_key_env="ANTHROPIC_API_KEY",
+                generation_mode="two_stage",
+            ),
+        }
+        config = _base_config(repair_provider="same_as_source", max_attempts=3, sources=sources)
+        built: list[str] = []
+
+        def build(connection: SourceConnection) -> object:
+            built.append(connection.name)
+            return object()
+
+        cache: dict[str, object | None] = {}
+        with patch.object(runner_module, "build_repairer_for_connection", side_effect=build):
+            gpt_first = runner_module._repairer_for_sample(cache, config, self._sample("gpt"))
+            gpt_second = runner_module._repairer_for_sample(cache, config, self._sample("gpt"))
+            claude = runner_module._repairer_for_sample(cache, config, self._sample("claude"))
+
+        self.assertIs(gpt_first, gpt_second)
+        self.assertIsNot(gpt_first, claude)
+        self.assertEqual(built, ["gpt", "claude"])
+        self.assertEqual(set(cache), {"gpt", "claude"})
+
+    def test_same_as_source_returns_none_for_deterministic_sample(self) -> None:
+        config = _base_config(repair_provider="same_as_source", max_attempts=3)
+
+        repairer = runner_module._repairer_for_sample({}, config, self._sample("deterministic"))
+
+        self.assertIsNone(repairer)
+
+    def test_same_as_source_is_not_checked_as_a_literal_provider(self) -> None:
+        source = SourceConnection(
+            name="gpt",
+            kind="openai_compat",
+            model="gpt-5.5",
+            base_url="https://api.openai.com/v1",
+            api_key_env="OPENAI_API_KEY",
+            generation_mode="two_stage",
+        )
+        config = _base_config(
+            repair_provider="same_as_source",
+            max_attempts=3,
+            sources={"gpt": source},
+            tasks=[TaskConfig(source="gpt", task_type="counter", widths=[8], count=1)],
+        )
+        sample = self._sample("gpt")
+
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=True):
+            diagnostics, errors = runner_module._source_auth_diagnostics(
+                config,
+                [sample],
+                validate_provider=False,
+            )
+
+        self.assertEqual(errors, [])
+        self.assertEqual(set(diagnostics), {"gpt"})
+        self.assertNotIn("same_as_source", diagnostics)
+
+    def test_same_as_source_metadata_records_policy_and_resolved_source(self) -> None:
+        source = SourceConnection(
+            name="gpt",
+            kind="openai_compat",
+            model="gpt-5.5",
+            base_url="https://api.openai.com/v1",
+            api_key_env="OPENAI_API_KEY",
+            generation_mode="two_stage",
+        )
+        config = _base_config(
+            repair_provider="same_as_source",
+            max_attempts=3,
+            sources={"gpt": source},
+        )
+
+        metadata = self._sample("gpt").metadata(config)
+
+        self.assertEqual(metadata["repair_provider_policy"], "same_as_source")
+        self.assertEqual(metadata["repair_provider_resolved"], "gpt")
 
 
 class MetadataTest(unittest.TestCase):

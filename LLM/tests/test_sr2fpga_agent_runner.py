@@ -5,7 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from LLM.src.sr2fpga_agent.baseline_report import baseline_rows, render_markdown
+from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 from LLM.src.sr2fpga_agent.runner import (
+    L4CommercialConfig,
+    L4OpenConfig,
     PlannedSample,
     RunState,
     RunnerConfig,
@@ -21,6 +26,8 @@ from LLM.src.sr2fpga_agent.runner import (
     should_skip_sample,
     write_run_state,
     _failure_family,
+    _l4_open_enabled_for_config,
+    _l4_open_enabled_for_sample,
     _record_completed as _record_completed_for_test,
     _sample_system_his_schema_version,
     _source_auth_diagnostics,
@@ -28,7 +35,152 @@ from LLM.src.sr2fpga_agent.runner import (
 )
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
 class RunnerConfigTest(unittest.TestCase):
+    def test_phase_d_same_source_run_writes_paired_results_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="same_as_source",
+                max_attempts=3,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 0},
+                tasks=[],
+            )
+
+            summary = run_batch(config, run_id="phase_d_empty_contract", resume=False)
+
+            paired_path = root / "runs" / "phase_d_empty_contract" / "paired_results.json"
+            self.assertTrue(paired_path.exists())
+            paired = json.loads(paired_path.read_text(encoding="utf-8"))
+            self.assertEqual(paired["schema_version"], "sr2fpga-phase-d-paired-v1")
+            self.assertEqual(paired["episode_count"], 0)
+            self.assertEqual(summary["paired_results"], paired)
+
+    def test_phase_d_configs_expand_frozen_pilot_and_controls(self) -> None:
+        pilot = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_d_multiteacher_pilot.example.yaml"
+        )
+        control = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_d_control.example.yaml"
+        )
+
+        pilot_samples = planned_samples(pilot)
+        control_samples = planned_samples(control)
+
+        self.assertEqual(len(pilot_samples), 24)
+        self.assertEqual(len(control_samples), 6)
+        self.assertEqual(
+            {source: sum(sample.source == source for sample in pilot_samples) for source in pilot.sources},
+            {"claude": 6, "gpt": 6, "qwen": 6, "deepseek": 6},
+        )
+        self.assertEqual(len({sample.family_id for sample in pilot_samples}), 6)
+        self.assertEqual({sample.source for sample in control_samples}, {"deterministic"})
+        self.assertEqual(pilot.repair_provider, "same_as_source")
+        self.assertEqual(pilot.max_attempts, 3)
+        self.assertEqual(pilot.l4_open.family_ids, ("fir_filter",))
+        self.assertEqual(
+            {sample.metadata(pilot)["system_his_schema_version"] for sample in pilot_samples},
+            {"system-his-v1.2"},
+        )
+        self.assertEqual(
+            {sample.metadata(pilot)["training_split"] for sample in pilot_samples},
+            {"clean"},
+        )
+        self.assertEqual(control.repair_provider, "none")
+        self.assertEqual(control.max_attempts, 1)
+        for family_id in {sample.family_id for sample in pilot_samples}:
+            family = [sample for sample in pilot_samples if sample.family_id == family_id]
+            self.assertEqual(len(family), 4)
+            self.assertEqual(len({sample.requirement_sha256 for sample in family}), 1)
+            self.assertEqual(len({sample.paired_requirement_id for sample in family}), 1)
+
+    def test_phase_c_core_mutation_closure_config_targets_remaining_core_families(self) -> None:
+        config = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_c_core_mutation_closure.example.yaml"
+        )
+        samples = planned_samples(config)
+
+        self.assertEqual(config.provider, "deterministic")
+        self.assertFalse(config.run_independent_oracle)
+        self.assertFalse(config.run_l4_open)
+        self.assertFalse(config.run_l4_commercial)
+        self.assertEqual({sample.evaluation_line for sample in samples}, {"line_a"})
+        self.assertEqual(
+            [(sample.family_id, sample.difficulty_tier) for sample in samples],
+            [
+                ("single_dual_port_ram", "T0"),
+                ("valid_ready_stream_accumulator", "T2"),
+                ("stream_fork_join", "T2"),
+                ("mac_array", "T3"),
+            ],
+        )
+
+    def test_phase_c_independent_oracle_config_generates_every_planned_sample(self) -> None:
+        config = load_runner_config(
+            REPO_ROOT
+            / "configs"
+            / "current"
+            / "sr2fpga_phase_c_independent_oracle.example.yaml"
+        )
+
+        self.assertEqual(config.provider, "deterministic")
+        self.assertTrue(
+            all(sample.evaluation_line == "line_a" for sample in planned_samples(config))
+        )
+        self.assertTrue(config.run_independent_oracle)
+        self.assertFalse(config.run_l4_open)
+        self.assertFalse(config.run_l4_commercial)
+        self.assertEqual(config.max_attempts, 1)
+        self.assertEqual(len(config.tasks), 9)
+        self.assertEqual(len(planned_samples(config)), 9)
+        self.assertEqual(
+            [sample.task_type for sample in planned_samples(config)],
+            [
+                "fir_filter",
+                "matrix_vector_mac",
+                "matched_filter",
+                "peak_detector",
+                "pulse_radar_signal",
+                "sobel_threshold",
+                "vision_defect_core",
+                "composed_td_update_core",
+                "composed_rl_accelerator_shell",
+            ],
+        )
+        generator = ProjectGenerator()
+        for sample in planned_samples(config):
+            with self.subTest(task_type=sample.task_type):
+                project = generator.generate(
+                    ProjectRequest(
+                        task_type=sample.task_type,
+                        width=sample.width,
+                        project_name=sample.project_name,
+                        description=sample.requirement,
+                    ),
+                    PlatformProfile(
+                        name="generic_verilog",
+                        vendor="generic",
+                        toolchain="open_source",
+                    ),
+                )
+                self.assertIn("manifest.json", project.files)
+
     def test_load_runner_config_from_json(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             config_path = Path(tmp) / "runner.json"
@@ -79,11 +231,559 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(config.tasks[0].widths, [4, 8])
             self.assertEqual(config.tasks[0].count, 2)
             self.assertEqual(config.tasks[0].failure_injectors, [])
-            self.assertEqual(config.tasks[0].difficulty_tier, "T1")
+            self.assertEqual(config.tasks[0].difficulty_tier, "")
             self.assertEqual(config.tasks[0].failure_origin, "")
             self.assertEqual(config.tasks[0].topology_ids, [])
             self.assertEqual(config.tasks[0].measurement_point, "")
             self.assertEqual(config.tasks[0].requirement_style, "contract")
+            self.assertFalse(config.run_independent_oracle)
+
+    def test_load_runner_config_parses_independent_oracle_switch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "datasets/sr2fpga_rtl_v1_exports",
+                        "run_root": "tmp/sr2fpga_runs",
+                        "run_independent_oracle": True,
+                        "line_b_targets": {"max_samples": 1},
+                        "tasks": [{"task_type": "counter", "widths": [8], "count": 1}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+
+            self.assertTrue(config.run_independent_oracle)
+
+    def test_load_runner_config_parses_openxc7_l4_switch(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "datasets/sr2fpga_rtl_v1_exports",
+                        "run_root": "tmp/sr2fpga_runs",
+                        "provider": "deterministic",
+                        "repair_provider": "none",
+                        "max_attempts": 1,
+                        "refresh_exports": True,
+                        "enable_openxc7_l4": True,
+                        "line_b_targets": {"max_samples": 1},
+                        "tasks": [{"task_type": "counter", "widths": [8], "count": 1}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+
+            self.assertTrue(config.enable_openxc7_l4)
+            self.assertEqual(config.l4_open.run_policy, "after_l3_pass")
+            self.assertTrue(_l4_open_enabled_for_config(config))
+
+    def test_load_runner_config_parses_l4_open_policy_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "datasets/sr2fpga_rtl_v1_exports",
+                        "run_root": "tmp/sr2fpga_runs",
+                        "provider": "deterministic",
+                        "repair_provider": "none",
+                        "max_attempts": 1,
+                        "refresh_exports": True,
+                        "run_l4_open": True,
+                        "l4_open": {
+                            "tool": "openxc7_nextpnr",
+                            "target_part": "XC7Z020CLG484-2",
+                            "board_profile": "ac820_zynq",
+                            "run_policy": "after_l3_pass",
+                            "timeout_seconds": 600,
+                        },
+                        "line_b_targets": {"max_samples": 1},
+                        "tasks": [{"task_type": "counter", "widths": [8], "count": 1}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+
+            self.assertTrue(config.enable_openxc7_l4)
+            self.assertTrue(config.run_l4_open)
+            self.assertEqual(config.l4_open.tool, "openxc7_nextpnr")
+            self.assertEqual(config.l4_open.target_part, "XC7Z020CLG484-2")
+            self.assertEqual(config.l4_open.board_profile, "ac820_zynq")
+            self.assertEqual(config.l4_open.run_policy, "after_l3_pass")
+            self.assertEqual(config.l4_open.timeout_seconds, 600)
+
+    def test_load_runner_config_parses_l4_commercial_policy_block(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "datasets/sr2fpga_rtl_v1_exports",
+                        "run_root": "tmp/sr2fpga_runs",
+                        "provider": "deterministic",
+                        "repair_provider": "none",
+                        "max_attempts": 1,
+                        "refresh_exports": True,
+                        "run_l4_commercial": True,
+                        "l4_commercial": {
+                            "tool": "vivado",
+                            "command": "vivado.bat",
+                            "target_part": "XC7Z020CLG484-2",
+                            "run_policy": "representative_subset",
+                            "timeout_seconds": 1800,
+                        },
+                        "line_b_targets": {"max_samples": 1},
+                        "tasks": [{"task_type": "fir_filter", "widths": [8], "count": 1}],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+
+            self.assertTrue(config.run_l4_commercial)
+            self.assertEqual(config.l4_commercial.tool, "vivado")
+            self.assertEqual(config.l4_commercial.command, "vivado.bat")
+            self.assertEqual(config.l4_commercial.target_part, "XC7Z020CLG484-2")
+            self.assertEqual(config.l4_commercial.run_policy, "representative_subset")
+            self.assertEqual(config.l4_commercial.timeout_seconds, 1800)
+
+    def test_run_batch_passes_l4_open_config_to_agent(self) -> None:
+        captured_kwargs: dict[str, object] = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, *args, **kwargs):
+                self.dataset_root = Path(dataset_root)
+                captured_kwargs.update(kwargs)
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                eval_dir = self.dataset_root / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "l4_open_status": "not_run",
+                            "l4_open_skip_reason": "not_selected_by_policy",
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (self.dataset_root / sample_id / "metadata.json").write_text(
+                    json.dumps(metadata or {}) + "\n",
+                    encoding="utf-8",
+                )
+                return {"sample_dir": str(self.dataset_root / sample_id), "pass_level": "L3"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+                enable_openxc7_l4=True,
+                run_l4_open=True,
+                l4_open=L4OpenConfig(
+                    tool="openxc7_nextpnr",
+                    target_part="XC7Z020CLG484-2",
+                    board_profile="ac820_zynq",
+                    run_policy="after_l3_pass",
+                    timeout_seconds=9,
+                ),
+            )
+
+            with patch("LLM.src.sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+                run_batch(config, run_id="run_l4_config")
+
+            self.assertTrue(captured_kwargs["enable_openxc7_l4"])
+            self.assertEqual(captured_kwargs["openxc7_tool"], "openxc7_nextpnr")
+            self.assertEqual(captured_kwargs["openxc7_part"], "XC7Z020CLG484-2")
+            self.assertEqual(captured_kwargs["openxc7_board_profile"], "ac820_zynq")
+            self.assertEqual(captured_kwargs["openxc7_timeout_seconds"], 9)
+
+    def test_run_batch_writes_measurement_freeze_before_first_agent_call(self) -> None:
+        observed: dict[str, object] = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, *args, **kwargs):
+                self.dataset_root = Path(dataset_root)
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                freeze_path = root / "runs" / "phase_d_freeze" / "measurement_freeze.json"
+                observed["freeze_existed_before_agent"] = freeze_path.is_file()
+                observed["metadata"] = dict(metadata or {})
+                eval_dir = self.dataset_root / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "l4_open_status": "not_run",
+                            "l4_open_skip_reason": "disabled_by_config",
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (self.dataset_root / sample_id / "metadata.json").write_text(
+                    json.dumps(metadata or {}) + "\n",
+                    encoding="utf-8",
+                )
+                return {"sample_dir": str(self.dataset_root / sample_id), "pass_level": "L3"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+
+            with patch("LLM.src.sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+                summary = run_batch(config, run_id="phase_d_freeze", resume=False)
+
+            freeze = json.loads(
+                (root / "runs" / "phase_d_freeze" / "measurement_freeze.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertIs(observed["freeze_existed_before_agent"], True)
+        self.assertEqual(freeze["sample_count"], 1)
+        self.assertEqual(len(freeze["samples"][0]["requirement_sha256"]), 64)
+        self.assertNotIn("base_url", json.dumps(freeze).lower())
+        self.assertNotIn("api_key", json.dumps(freeze).lower())
+        self.assertEqual(observed["metadata"]["freeze_fingerprint"], freeze["freeze_fingerprint"])
+        self.assertEqual(summary["freeze_fingerprint"], freeze["freeze_fingerprint"])
+
+    def test_run_batch_rejects_tampered_measurement_freeze_on_resume(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 0},
+                tasks=[],
+            )
+            run_batch(config, run_id="phase_d_freeze", resume=False)
+            freeze_path = root / "runs" / "phase_d_freeze" / "measurement_freeze.json"
+            frozen = json.loads(freeze_path.read_text(encoding="utf-8"))
+            frozen["max_attempts"] = 99
+            freeze_path.write_text(json.dumps(frozen), encoding="utf-8")
+
+            with self.assertRaisesRegex(RuntimeError, "measurement freeze mismatch"):
+                run_batch(config, run_id="phase_d_freeze", resume=True)
+
+    def test_run_batch_passes_independent_oracle_config_to_agent(self) -> None:
+        captured_kwargs: dict[str, object] = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, *args, **kwargs):
+                self.dataset_root = Path(dataset_root)
+                captured_kwargs.update(kwargs)
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                eval_dir = self.dataset_root / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "independent_oracle_status": "not_run",
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (self.dataset_root / sample_id / "metadata.json").write_text(
+                    json.dumps(metadata or {}) + "\n",
+                    encoding="utf-8",
+                )
+                return {"sample_dir": str(self.dataset_root / sample_id), "pass_level": "L3"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+                run_independent_oracle=True,
+            )
+
+            with patch("LLM.src.sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+                run_batch(config, run_id="run_independent_oracle_config")
+
+            self.assertTrue(captured_kwargs["enable_independent_oracle"])
+
+    def test_run_batch_passes_l4_commercial_config_to_agent(self) -> None:
+        captured_kwargs: dict[str, object] = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, *args, **kwargs):
+                self.dataset_root = Path(dataset_root)
+                captured_kwargs.update(kwargs)
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                eval_dir = self.dataset_root / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "l4_open_status": "not_run",
+                            "l4_open_skip_reason": "disabled_by_config",
+                            "l4_commercial_status": "not_run",
+                            "l4_commercial_skip_reason": "not_selected_by_policy",
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (self.dataset_root / sample_id / "metadata.json").write_text(
+                    json.dumps(metadata or {}) + "\n",
+                    encoding="utf-8",
+                )
+                return {"sample_dir": str(self.dataset_root / sample_id), "pass_level": "L3"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="fir_filter", widths=[8], count=1)],
+                run_l4_commercial=True,
+                l4_commercial=L4CommercialConfig(
+                    tool="vivado",
+                    command="vivado.bat",
+                    target_part="XC7Z020CLG484-2",
+                    run_policy="after_l3_pass",
+                    timeout_seconds=90,
+                ),
+            )
+
+            with patch("LLM.src.sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+                run_batch(config, run_id="run_l4_commercial_config")
+
+            self.assertTrue(captured_kwargs["enable_vivado_l4"])
+            self.assertEqual(captured_kwargs["vivado_tool"], "vivado")
+            self.assertEqual(captured_kwargs["vivado_command"], "vivado.bat")
+            self.assertEqual(captured_kwargs["vivado_part"], "XC7Z020CLG484-2")
+            self.assertEqual(captured_kwargs["vivado_timeout_seconds"], 90)
+
+    def test_run_batch_never_policy_disables_l4_open(self) -> None:
+        captured_kwargs: dict[str, object] = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, *args, **kwargs):
+                self.dataset_root = Path(dataset_root)
+                captured_kwargs.update(kwargs)
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                eval_dir = self.dataset_root / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "l4_open_status": "not_run",
+                            "l4_open_skip_reason": "disabled_by_config",
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (self.dataset_root / sample_id / "metadata.json").write_text(
+                    json.dumps(metadata or {}) + "\n",
+                    encoding="utf-8",
+                )
+                return {"sample_dir": str(self.dataset_root / sample_id), "pass_level": "L3"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+                enable_openxc7_l4=True,
+                run_l4_open=True,
+                l4_open=L4OpenConfig(run_policy="never"),
+            )
+
+            with patch("LLM.src.sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+                run_batch(config, run_id="run_l4_policy_never")
+
+            self.assertFalse(captured_kwargs["enable_openxc7_l4"])
+
+    def test_l4_open_policy_enablement_is_explicit(self) -> None:
+        expected = {
+            "never": False,
+            "after_l3_pass": True,
+            "representative_subset": False,
+            "always": True,
+        }
+
+        for run_policy, enabled in expected.items():
+            with self.subTest(run_policy=run_policy):
+                config = RunnerConfig(
+                    dataset_root=Path("datasets"),
+                    export_root=Path("exports"),
+                    run_root=Path("runs"),
+                    provider="deterministic",
+                    repair_provider="none",
+                    max_attempts=1,
+                    refresh_exports=False,
+                    line_b_targets={"max_samples": 1},
+                    tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+                    enable_openxc7_l4=True,
+                    run_l4_open=True,
+                    l4_open=L4OpenConfig(run_policy=run_policy),
+                )
+
+                self.assertEqual(_l4_open_enabled_for_config(config), enabled)
+
+    def test_representative_subset_l4_policy_uses_catalog_targeting(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("datasets"),
+            export_root=Path("exports"),
+            run_root=Path("runs"),
+            provider="deterministic",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={"max_samples": 2},
+            tasks=[],
+            enable_openxc7_l4=True,
+            run_l4_open=True,
+            l4_open=L4OpenConfig(run_policy="representative_subset"),
+        )
+        counter = PlannedSample("counter-1", "deterministic", "counter", 8, "counter", "counter")
+        fir = PlannedSample("fir-1", "deterministic", "fir_filter", 8, "fir", "fir")
+        flagship = PlannedSample(
+            "rl-1",
+            "deterministic",
+            "composed_rl_accelerator_shell",
+            8,
+            "rl",
+            "rl",
+            topology_id="t10_rl_accelerator_shell",
+        )
+
+        self.assertFalse(_l4_open_enabled_for_sample(config, counter))
+        self.assertTrue(_l4_open_enabled_for_sample(config, fir))
+        self.assertTrue(_l4_open_enabled_for_sample(config, flagship))
+
+    def test_phase_d_explicit_l4_allowlist_selects_only_fir(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("datasets"),
+            export_root=Path("exports"),
+            run_root=Path("runs"),
+            provider="deterministic",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={"max_samples": 2},
+            tasks=[],
+            enable_openxc7_l4=True,
+            run_l4_open=True,
+            l4_open=L4OpenConfig(
+                run_policy="representative_subset",
+                family_ids=("fir_filter",),
+            ),
+        )
+        fir = PlannedSample(
+            "fir-1",
+            "deterministic",
+            "fir_filter",
+            8,
+            "fir",
+            "fir",
+            family_id="fir_filter",
+        )
+        sobel = PlannedSample(
+            "sobel-1",
+            "deterministic",
+            "sobel_threshold",
+            8,
+            "sobel",
+            "sobel",
+            family_id="sobel_threshold",
+        )
+
+        self.assertTrue(_l4_open_enabled_for_sample(config, fir))
+        self.assertFalse(_l4_open_enabled_for_sample(config, sobel))
+
+    def test_load_runner_config_rejects_unknown_l4_open_policy(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets",
+                        "export_root": "exports",
+                        "run_root": "runs",
+                        "tasks": [{"task_type": "counter"}],
+                        "l4_open": {"run_policy": "sometimes"},
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "l4_open.run_policy"):
+                load_runner_config(config_path)
 
     def test_load_runner_config_parses_task_failure_injectors(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -100,9 +800,10 @@ class RunnerConfigTest(unittest.TestCase):
                                 "task_type": "counter",
                                 "widths": [4],
                                 "count": 1,
-                                "difficulty_tier": "T2",
+                                "difficulty_tier": "T0",
                                 "failure_origin": "synthetic_injected",
                                 "measurement_point": "b_tool_in_loop_repair",
+                                "evaluation_line": "line_a",
                                 "failure_injectors": ["rename_reset_port"],
                                 "requirement_style": "natural_component",
                             }
@@ -115,13 +816,40 @@ class RunnerConfigTest(unittest.TestCase):
             config = load_runner_config(config_path)
 
             self.assertEqual(config.tasks[0].failure_injectors, ["rename_reset_port"])
-            self.assertEqual(config.tasks[0].difficulty_tier, "T2")
+            self.assertEqual(config.tasks[0].difficulty_tier, "T0")
             self.assertEqual(config.tasks[0].failure_origin, "synthetic_injected")
             self.assertEqual(config.tasks[0].measurement_point, "b_tool_in_loop_repair")
+            self.assertEqual(config.tasks[0].evaluation_line, "line_a")
             self.assertEqual(config.tasks[0].requirement_style, "natural_component")
+            sample = planned_samples(config)[0]
+            self.assertEqual(sample.evaluation_line, "line_a")
+            self.assertEqual(sample.metadata(config)["evaluation_line"], "line_a")
+
+    def test_load_runner_config_rejects_unknown_evaluation_line(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets",
+                        "export_root": "exports",
+                        "run_root": "runs",
+                        "tasks": [
+                            {
+                                "task_type": "counter",
+                                "evaluation_line": "official",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(SystemExit, "evaluation_line"):
+                load_runner_config(config_path)
 
     def test_baseline_b_example_config_is_tool_loop_repair_measurement(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_baseline_b.example.yaml"))
+        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -139,8 +867,39 @@ class RunnerConfigTest(unittest.TestCase):
             ["t1_event_counter", "t2_stream_accumulator", "t3_stream_fork", "t4_dual_stream_join"],
         )
 
+    def test_line_a_oracle_evidence_config_uses_catalog_tiers_and_line_a_gate(self) -> None:
+        config = load_runner_config(Path("configs/current/sr2fpga_line_a_oracle_evidence.example.yaml"))
+        samples = planned_samples(config)
+
+        self.assertEqual(len(samples), 6)
+        self.assertEqual({sample.evaluation_line for sample in samples}, {"line_a"})
+        self.assertEqual(
+            {sample.task_type: sample.difficulty_tier for sample in samples},
+            {
+                "fifo": "T0",
+                "uart_tx": "T0",
+                "spi_master": "T1",
+                "streaming_valid_ready": "T2",
+                "fir_filter": "T3",
+                "matrix_vector_mac": "T3",
+            },
+        )
+
+    def test_line_a_l4_representative_config_targets_catalog_subset(self) -> None:
+        config = load_runner_config(Path("configs/current/sr2fpga_line_a_l4_representative.example.yaml"))
+        samples = planned_samples(config)
+
+        self.assertEqual(len(samples), 2)
+        self.assertEqual({sample.evaluation_line for sample in samples}, {"line_a"})
+        self.assertEqual({sample.task_type for sample in samples}, {"fir_filter", "matrix_vector_mac"})
+        self.assertEqual({sample.difficulty_tier for sample in samples}, {"T3"})
+        self.assertEqual(config.l4_open.run_policy, "representative_subset")
+        self.assertEqual(config.l4_open.target_part, "XC7Z020CLG484-2")
+        self.assertEqual(config.l4_open.board_profile, "ac820_zynq")
+        self.assertTrue(all(_l4_open_enabled_for_sample(config, sample) for sample in samples))
+
     def test_baseline_b_smoke_config_uses_tightened_prompt_namespace(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_baseline_b_smoke.example.yaml"))
+        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b_smoke.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -158,7 +917,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"b_tool_in_loop_repair"})
 
     def test_baseline_b_tightened_config_runs_full_tier_set_in_new_namespace(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_baseline_b_tightened.example.yaml"))
+        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b_tightened.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -176,7 +935,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"b_tool_in_loop_repair"})
 
     def test_baseline_b_t3_t4_smoke_config_targets_repair_knee(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml"))
+        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b_t3_t4_smoke.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -193,31 +952,20 @@ class RunnerConfigTest(unittest.TestCase):
         )
         self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"b_tool_in_loop_repair"})
 
-    def test_his_v12_smoke_config_targets_t4_two_stage_provider(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_his_v12_smoke.example.yaml"))
-        samples = planned_samples(config)
+    def test_his_v12_smoke_config_uses_catalog_tier(self) -> None:
+        config = load_runner_config(Path("configs/current/sr2fpga_his_v12_smoke.example.yaml"))
 
-        self.assertEqual(config.provider, "deepseek-his-v12")
-        self.assertEqual(config.repair_provider, "none")
-        self.assertEqual(config.max_attempts, 1)
-        self.assertEqual(config.sample_id_prefix, "his_v12_smoke_v6")
-        self.assertEqual(len(samples), 1)
-        self.assertEqual(samples[0].source, "deepseek-his-v12")
-        self.assertEqual(samples[0].topology_id, "t4_dual_stream_join")
-        self.assertEqual(samples[0].sample_id, "sample_his_v12_smoke_v6_t4_dual_stream_join_8_000001")
-        self.assertEqual(samples[0].requirement_style, "simple_prompt")
-        self.assertEqual(
-            samples[0].requirement,
-            "Generate an 8-bit FPGA RTL project that joins two input streams, accumulates joined samples, and exposes one output stream.",
-        )
-        self.assertEqual(samples[0].metadata(config)["measurement_point"], "a_first_attempt_no_tools")
-        self.assertEqual(samples[0].metadata(config)["system_his_schema_version"], "system-his-v1.2")
-        self.assertEqual(samples[0].metadata(config)["training_split"], "clean")
-        self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "behavior_files")
+        self.assertEqual(planned_samples(config)[0].difficulty_tier, "T2")
 
     def test_t0_t4_deterministic_smoke_config_covers_task_catalog_once(self) -> None:
         catalog = json.loads(Path("docs/sr2fpga-t0-t4-task-catalog.json").read_text(encoding="utf-8"))
-        config = load_runner_config(Path("configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml"))
+        runtime_catalog = json.loads(Path("docs/sr2fpga-task-catalog-v0.2.json").read_text(encoding="utf-8"))
+        catalog_specs = {
+            alias: (family["family_id"], family["sr2fpga_tier"])
+            for family in runtime_catalog["task_families"]
+            for alias in family.get("current_generator_aliases", [])
+        }
+        config = load_runner_config(Path("configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deterministic")
@@ -231,8 +979,8 @@ class RunnerConfigTest(unittest.TestCase):
             [(entry["task_type"], entry["default_width"]) for entry in catalog["tasks"]],
         )
         self.assertEqual(
-            [(sample.difficulty_tier, sample.topology_id) for sample in samples],
-            [(entry["tier"], entry["topology_id"] or "") for entry in catalog["tasks"]],
+            [(sample.family_id, sample.difficulty_tier) for sample in samples],
+            [catalog_specs[sample.topology_id or sample.task_type] for sample in samples],
         )
         self.assertEqual({sample.measurement_point for sample in samples}, {"a_first_attempt_no_tools"})
         self.assertEqual({sample.failure_origin for sample in samples}, {"deterministic"})
@@ -254,7 +1002,7 @@ class RunnerConfigTest(unittest.TestCase):
         tier_counts: dict[str, int] = {}
         for sample in samples:
             tier_counts[sample.difficulty_tier] = tier_counts.get(sample.difficulty_tier, 0) + 1
-        self.assertEqual(tier_counts, {"T0": 12, "T1": 2, "T2": 2, "T3": 4, "T4": 4})
+        self.assertEqual(tier_counts, {"T0": 6, "T1": 3, "T2": 5, "T3": 5, "T4": 5})
 
     def test_unvetted_openai_compat_source_is_quarantined(self) -> None:
         config = RunnerConfig(
@@ -328,40 +1076,31 @@ class RunnerConfigTest(unittest.TestCase):
             f"Expected unsupported source kind error, got: {errors}",
         )
 
-    def test_official_eval_gap_closure_config_covers_t1_t12_and_supplemental_tasks(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_official_eval_gap_closure.example.yaml"))
-        samples = planned_samples(config)
+    def test_official_eval_gap_closure_config_uses_catalog_tiers(self) -> None:
+        config = load_runner_config(Path("configs/current/sr2fpga_official_eval_gap_closure.example.yaml"))
 
-        self.assertEqual(config.provider, "deepseek-his-v12")
-        self.assertEqual(config.repair_provider, "none")
-        self.assertEqual(config.max_attempts, 1)
-        self.assertEqual(config.sample_id_prefix, "official_eval_gap_closure")
-        self.assertEqual(len(samples), 28)
         self.assertEqual(
-            [sample.task_type for sample in samples[:14]],
-            [
-                "composed_event_counter",
-                "composed_stream_accumulator",
-                "composed_stream_fork",
-                "composed_dual_stream_join",
-                "composed_vector_mac_pipeline",
-                "composed_td_update_core",
-                "composed_policy_value_shell",
-                "composed_replay_sample_shell",
-                "composed_host_protocol_shell",
-                "composed_rl_accelerator_shell",
-                "composed_batch_rl_accelerator_shell",
-                "composed_replay_arbiter_shell",
-                "alu_control_unit",
-                "crc_stream_checker",
-            ],
+            {sample.task_type: sample.difficulty_tier for sample in planned_samples(config)},
+            {
+                "composed_event_counter": "T1",
+                "composed_stream_accumulator": "T2",
+                "composed_stream_fork": "T2",
+                "composed_dual_stream_join": "T2",
+                "composed_vector_mac_pipeline": "T3",
+                "composed_td_update_core": "T3",
+                "composed_policy_value_shell": "T4",
+                "composed_replay_sample_shell": "T3",
+                "composed_host_protocol_shell": "T4",
+                "composed_rl_accelerator_shell": "T4",
+                "composed_batch_rl_accelerator_shell": "T4",
+                "composed_replay_arbiter_shell": "T4",
+                "alu_control_unit": "T1",
+                "crc_stream_checker": "T2",
+            },
         )
-        self.assertEqual([sample.source for sample in samples[:14]], ["deterministic"] * 14)
-        self.assertEqual([sample.source for sample in samples[14:]], ["deepseek-his-v12"] * 14)
-        self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"a_first_attempt_no_tools"})
 
     def test_l0_by_construction_ablation_config_pairs_full_and_skeleton_generation(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_l0_by_construction_ablation.example.yaml"))
+        config = load_runner_config(Path("configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -414,7 +1153,7 @@ class RunnerConfigTest(unittest.TestCase):
         )
 
     def test_l0_by_construction_preflight_preview_shows_ablation_arm_metadata(self) -> None:
-        config = load_runner_config(Path("configs/sr2fpga_l0_by_construction_ablation.example.yaml"))
+        config = load_runner_config(Path("configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml"))
 
         report = runner_preflight(config, run_id="l0-by-construction-ablation")
 
@@ -649,8 +1388,35 @@ class RunnerConfigTest(unittest.TestCase):
 
             self.assertEqual(config.tasks[0].topology_ids, ["t1_event_counter", "t2_stream_accumulator"])
 
+    def test_catalog_tier_overrides_legacy_yaml_difficulty_tier(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets",
+                        "export_root": "exports",
+                        "run_root": "runs",
+                        "tasks": [
+                            {
+                                "task_type": "counter",
+                                "difficulty_tier": "T2",
+                                "widths": [8],
+                                "count": 1,
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+
+            self.assertEqual(config.tasks[0].difficulty_tier, "T2")
+            self.assertEqual(planned_samples(config)[0].difficulty_tier, "T0")
+
     def test_load_baseline_a_example_config_targets_first_attempt_no_tools(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "configs" / "sr2fpga_baseline_a.example.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "configs" / "legacy" / "sr2fpga_baseline_a.example.yaml"
 
         config = load_runner_config(config_path)
         samples = planned_samples(config)
@@ -681,7 +1447,7 @@ class RunnerConfigTest(unittest.TestCase):
             [(sample.source, sample.task_type, sample.topology_id, sample.difficulty_tier) for sample in samples],
             [
                 ("deepseek", "composed_event_counter", "t1_event_counter", "T1"),
-                ("deepseek", "composed_stream_accumulator", "t2_stream_accumulator", "T1"),
+                ("deepseek", "composed_stream_accumulator", "t2_stream_accumulator", "T2"),
                 ("deepseek", "composed_stream_fork", "t3_stream_fork", "T2"),
                 ("deepseek", "composed_dual_stream_join", "t4_dual_stream_join", "T2"),
             ],
@@ -722,6 +1488,7 @@ class RunnerConfigTest(unittest.TestCase):
                         "sample_id": "sample_runner_counter_4_000001",
                         "source": "deepseek",
                         "task_type": "counter",
+                        "family_id": "binary_bcd_counter",
                         "width": 4,
                         "requirement_style": "contract",
                         "requirement": (
@@ -731,10 +1498,11 @@ class RunnerConfigTest(unittest.TestCase):
                             "self-checking testbench that prints TEST_PASS on success or TEST_FAIL on "
                             "failure, and predicted QoR."
                         ),
-                        "difficulty_tier": "T1",
+                        "difficulty_tier": "T0",
                         "topology_id": "",
                         "failure_origin": "natural_llm",
                         "measurement_point": "a_first_attempt_no_tools",
+                        "evaluation_line": "line_b",
                         "system_his_schema_version": "system-his-v1.1",
                         "training_split": "quarantine",
                         "contract_skeleton_mode": "legacy_full_project",
@@ -886,10 +1654,12 @@ class RunnerConfigTest(unittest.TestCase):
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
                 patch("LLM.src.sr2fpga_agent.runner.OpenAICompatibleClient") as client_cls,
             ):
-                client_cls.return_value.chat.return_value = '{"ok": true}'
+                client_cls.return_value.stream_chat.return_value = '{"ok": true}'
                 report = runner_preflight(config, run_id="auth_ok", validate_provider=True)
 
             self.assertTrue(report["ok"])
+            client_cls.return_value.stream_chat.assert_called_once()
+            client_cls.return_value.chat.assert_not_called()
             client_config = client_cls.call_args.args[0]
             self.assertEqual(client_config.timeout_seconds, 120)
 
@@ -924,10 +1694,12 @@ class RunnerConfigTest(unittest.TestCase):
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
                 patch("LLM.src.sr2fpga_agent.runner.AnthropicCompatibleClient") as client_cls,
             ):
-                client_cls.return_value.chat.return_value = '{"ok": true}'
+                client_cls.return_value.stream_chat.return_value = '{"ok": true}'
                 report = runner_preflight(config, run_id="auth_ok", validate_provider=True)
 
             self.assertTrue(report["ok"])
+            client_cls.return_value.stream_chat.assert_called_once()
+            client_cls.return_value.chat.assert_not_called()
             client_config = client_cls.call_args.args[0]
             self.assertEqual(client_config.base_url, "https://w.ciykj.cn/v1")
             self.assertEqual(client_config.api_key, "shell-fake-key")
@@ -985,7 +1757,7 @@ class RunnerConfigTest(unittest.TestCase):
                 patch("LLM.src.sr2fpga_agent.runner.shutil.which", return_value="/usr/bin/tool"),
                 patch("LLM.src.sr2fpga_agent.runner.OpenAICompatibleClient") as client_cls,
             ):
-                client_cls.return_value.chat.side_effect = RuntimeError("auth failed for shell-fake-key")
+                client_cls.return_value.stream_chat.side_effect = RuntimeError("auth failed for shell-fake-key")
                 report = runner_preflight(config, run_id="auth_fail", validate_provider=True)
 
             self.assertFalse(report["ok"])
@@ -1016,9 +1788,10 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(report["planned_samples"], 1)
             self.assertEqual(report["tools"]["verilator"], "found")
             self.assertEqual(report["samples"][0]["sample_id"], "sample_runner_counter_4_000001")
+            self.assertEqual(report["samples"][0]["family_id"], "binary_bcd_counter")
 
     def test_baseline_a_preflight_sample_preview_lists_t1_to_t4_topologies(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "configs" / "sr2fpga_baseline_a.example.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "configs" / "legacy" / "sr2fpga_baseline_a.example.yaml"
         config = load_runner_config(config_path)
 
         with (
@@ -1032,7 +1805,7 @@ class RunnerConfigTest(unittest.TestCase):
             [(item["task_type"], item["topology_id"], item["difficulty_tier"]) for item in report["samples"]],
             [
                 ("composed_event_counter", "t1_event_counter", "T1"),
-                ("composed_stream_accumulator", "t2_stream_accumulator", "T1"),
+                ("composed_stream_accumulator", "t2_stream_accumulator", "T2"),
                 ("composed_stream_fork", "t3_stream_fork", "T2"),
                 ("composed_dual_stream_join", "t4_dual_stream_join", "T2"),
             ],
@@ -1132,6 +1905,88 @@ class RunnerConfigTest(unittest.TestCase):
             ],
         )
 
+    def test_planned_samples_resolve_direct_catalog_family_identity_and_tier(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("datasets/sr2fpga_rtl_v1"),
+            export_root=Path("datasets/sr2fpga_rtl_v1_exports"),
+            run_root=Path("tmp/sr2fpga_runs"),
+            provider="deterministic",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=True,
+            line_b_targets={"max_samples": 3},
+            tasks=[
+                TaskConfig(source="deterministic", task_type="fir_filter", widths=[8], count=1),
+                TaskConfig(source="deterministic", task_type="spi_master", widths=[8], count=1),
+                TaskConfig(source="deterministic", task_type="matrix_vector_mac", widths=[8], count=1),
+            ],
+        )
+
+        samples = planned_samples(config)
+
+        self.assertEqual(
+            [(sample.task_type, sample.family_id, sample.difficulty_tier) for sample in samples],
+            [
+                ("fir_filter", "fir_filter", "T3"),
+                ("spi_master", "spi_master", "T1"),
+                ("matrix_vector_mac", "matrix_vector_mac", "T3"),
+            ],
+        )
+        self.assertEqual(samples[0].metadata(config)["family_id"], "fir_filter")
+
+    def test_paired_requirement_identity_is_source_independent(self) -> None:
+        sources = {
+            name: SourceConnection(
+                name=name,
+                kind="anthropic_compat" if name == "claude" else "openai_compat",
+                model={
+                    "claude": "claude-opus-4-8",
+                    "gpt": "gpt-5.5",
+                    "qwen": "qwen3-coder-plus",
+                    "deepseek": "deepseek-v4-pro",
+                }[name],
+                base_url="https://example.invalid/v1",
+                api_key_env=f"{name.upper()}_API_KEY",
+                generation_mode="two_stage",
+            )
+            for name in ("claude", "gpt", "qwen", "deepseek")
+        }
+        config = RunnerConfig(
+            dataset_root=Path("datasets/sr2fpga_phase_d_v1"),
+            export_root=Path("datasets/sr2fpga_phase_d_v1_exports"),
+            run_root=Path("tmp/sr2fpga_runs"),
+            provider="deterministic",
+            repair_provider="same_as_source",
+            max_attempts=3,
+            refresh_exports=True,
+            line_b_targets={"max_samples": 4},
+            tasks=[
+                TaskConfig(
+                    source=source,
+                    task_type="fir_filter",
+                    widths=[8],
+                    count=1,
+                    requirement_style="simple_prompt",
+                )
+                for source in sources
+            ],
+            sources=sources,
+        )
+
+        samples = planned_samples(config)
+
+        self.assertEqual(len(samples), 4)
+        self.assertEqual(len({sample.source for sample in samples}), 4)
+        self.assertEqual(len({sample.sample_id for sample in samples}), 4)
+        self.assertEqual(len({sample.requirement for sample in samples}), 1)
+        self.assertEqual(len({sample.requirement_sha256 for sample in samples}), 1)
+        self.assertEqual(len({sample.paired_requirement_id for sample in samples}), 1)
+        self.assertEqual(len(samples[0].requirement_sha256), 64)
+        self.assertEqual(
+            samples[0].metadata(config)["paired_requirement_id"],
+            samples[0].paired_requirement_id,
+        )
+
     def test_planned_samples_cycle_widths_and_respect_max_samples(self) -> None:
         config = RunnerConfig(
             dataset_root=Path("datasets/sr2fpga_rtl_v1"),
@@ -1162,7 +2017,7 @@ class RunnerConfigTest(unittest.TestCase):
             refresh_exports=True,
             line_b_targets={"max_samples": 2},
             tasks=[
-                TaskConfig(source="deepseek", task_type="counter", widths=[4], count=1, difficulty_tier="T2"),
+                TaskConfig(source="deepseek", task_type="counter", widths=[4], count=1),
                 TaskConfig(
                     source="deterministic",
                     task_type="counter",
@@ -1177,7 +2032,7 @@ class RunnerConfigTest(unittest.TestCase):
 
         self.assertEqual(samples[0].metadata(config)["generator_provider"], "deepseek")
         self.assertEqual(samples[0].metadata(config)["failure_origin"], "natural_llm")
-        self.assertEqual(samples[0].metadata(config)["difficulty_tier"], "T2")
+        self.assertEqual(samples[0].metadata(config)["difficulty_tier"], "T0")
         self.assertEqual(samples[0].metadata(config)["measurement_point"], "b_tool_in_loop_repair")
         self.assertEqual(samples[0].metadata(config)["contract_skeleton_mode"], "legacy_full_project")
         self.assertEqual(samples[1].metadata(config)["failure_origin"], "synthetic_injected")
@@ -1199,7 +2054,6 @@ class RunnerConfigTest(unittest.TestCase):
                     task_type="uart_tx",
                     widths=[8],
                     count=1,
-                    difficulty_tier="T2",
                     failure_origin="natural_llm",
                     measurement_point="a_first_attempt_no_tools",
                 )
@@ -1248,43 +2102,49 @@ class RunnerConfigTest(unittest.TestCase):
         samples = planned_samples(config)
 
         self.assertEqual(
-            [(item.sample_id, item.task_type, item.topology_id, item.difficulty_tier) for item in samples],
+            [(item.sample_id, item.task_type, item.topology_id, item.family_id, item.difficulty_tier) for item in samples],
             [
-                ("sample_runner_t1_event_counter_8_000001", "composed_event_counter", "t1_event_counter", "T1"),
+                ("sample_runner_t1_event_counter_8_000001", "composed_event_counter", "t1_event_counter", "t1_event_counter", "T1"),
                 (
                     "sample_runner_t2_stream_accumulator_8_000002",
                     "composed_stream_accumulator",
                     "t2_stream_accumulator",
-                    "T1",
+                    "valid_ready_stream_accumulator",
+                    "T2",
                 ),
-                ("sample_runner_t3_stream_fork_8_000003", "composed_stream_fork", "t3_stream_fork", "T2"),
+                ("sample_runner_t3_stream_fork_8_000003", "composed_stream_fork", "t3_stream_fork", "stream_fork_join", "T2"),
                 (
                     "sample_runner_t4_dual_stream_join_8_000004",
                     "composed_dual_stream_join",
                     "t4_dual_stream_join",
+                    "stream_fork_join",
                     "T2",
                 ),
                 (
                     "sample_runner_t5_vector_mac_pipeline_8_000005",
                     "composed_vector_mac_pipeline",
                     "t5_vector_mac_pipeline",
+                    "mac_array",
                     "T3",
                 ),
                 (
                     "sample_runner_t6_td_update_core_8_000006",
                     "composed_td_update_core",
                     "t6_td_update_core",
+                    "qtable_update_core",
                     "T3",
                 ),
                 (
                     "sample_runner_t7_policy_value_shell_8_000007",
                     "composed_policy_value_shell",
                     "t7_policy_value_shell",
-                    "T3",
+                    "rl_reward_policy_update",
+                    "T4",
                 ),
                 (
                     "sample_runner_t8_replay_sample_shell_8_000008",
                     "composed_replay_sample_shell",
+                    "t8_replay_sample_shell",
                     "t8_replay_sample_shell",
                     "T3",
                 ),
@@ -1292,23 +2152,27 @@ class RunnerConfigTest(unittest.TestCase):
                     "sample_runner_t9_host_protocol_shell_8_000009",
                     "composed_host_protocol_shell",
                     "t9_host_protocol_shell",
+                    "t9_host_protocol_shell",
                     "T4",
                 ),
                 (
                     "sample_runner_t10_rl_accelerator_shell_8_000010",
                     "composed_rl_accelerator_shell",
                     "t10_rl_accelerator_shell",
+                    "p_rl_qlearning_accel",
                     "T4",
                 ),
                 (
                     "sample_runner_t11_batch_rl_accelerator_shell_8_000011",
                     "composed_batch_rl_accelerator_shell",
                     "t11_batch_rl_accelerator_shell",
+                    "p_rl_qlearning_accel",
                     "T4",
                 ),
                 (
                     "sample_runner_t12_replay_arbiter_shell_8_000012",
                     "composed_replay_arbiter_shell",
+                    "t12_replay_arbiter_shell",
                     "t12_replay_arbiter_shell",
                     "T4",
                 ),
@@ -1358,6 +2222,7 @@ class RunnerConfigTest(unittest.TestCase):
 
     def test_classify_sample_bucket(self) -> None:
         self.assertEqual(classify_sample_bucket({"pass_level": "L3", "failure_count": 0}), "success_l3")
+        self.assertEqual(classify_sample_bucket({"pass_level": "L4", "failure_count": 0}), "success_l3")
         self.assertEqual(classify_sample_bucket({"pass_level": "L1", "failure_count": 2}), "repair_trajectory")
         self.assertEqual(classify_sample_bucket({"pass_level": "GEN_FAIL", "failure_count": 1}), "rejected")
         self.assertEqual(classify_sample_bucket({"pass_level": "L0", "failure_count": 0}), "rejected")
@@ -1379,6 +2244,7 @@ class RunnerConfigTest(unittest.TestCase):
             "testbench_failure",
         )
         self.assertEqual(_failure_family("testbench_missing_functional_oracle"), "testbench_failure")
+        self.assertEqual(_failure_family("testbench_internal_signal_access"), "testbench_failure")
 
     def test_initial_run_state_defaults(self) -> None:
         state = initial_run_state("run_test", config_fingerprint="abc123")
@@ -1446,7 +2312,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["buckets"]["success_l3"], ["sample_runner_counter_4_000001"])
             self.assertEqual(summary["metadata_breakdown"]["source"]["deterministic"], 1)
             self.assertEqual(summary["metadata_breakdown"]["failure_origin"]["deterministic_template"], 1)
-            self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"]["T1"], 1)
+            self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"]["T0"], 1)
             self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"]["deterministic_template"], 1)
             self.assertEqual(summary["pass_level_breakdown"]["L3"], 1)
             self.assertEqual(
@@ -1467,7 +2333,7 @@ class RunnerConfigTest(unittest.TestCase):
                         "sample_id": "sample_runner_counter_4_000001",
                         "source": "deterministic",
                         "failure_origin": "deterministic_template",
-                        "difficulty_tier": "T1",
+                        "difficulty_tier": "T0",
                         "task_type": "counter",
                         "width": 4,
                         "pass_level": "L3",
@@ -1480,7 +2346,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertTrue((run_dir / "baseline_report.md").exists())
             baseline_report = (run_dir / "baseline_report.md").read_text(encoding="utf-8")
             self.assertIn("# SR2FPGA Baseline Report: run_unit", baseline_report)
-            self.assertIn("| difficulty_tier | T1 | 1 | L3:1 | 100.0% | 0 | 0.0% |", baseline_report)
+            self.assertIn("| difficulty_tier | T0 | 1 | L3:1 | 100.0% | 0 | 0.0% |", baseline_report)
             self.assertTrue((run_dir / "events.jsonl").exists())
             self.assertTrue((root / "datasets/sample_runner_counter_4_000001/eval/labels.json").exists())
             metadata = json.loads(
@@ -1522,7 +2388,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["metadata_breakdown"]["measurement_point"], {"a_first_attempt_no_tools": 2})
             self.assertEqual(summary["metadata_breakdown"]["requirement_style"], {"contract": 2})
             self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"], {"deterministic_template": 2})
-            self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"], {"T1": 2})
+            self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"], {"T1": 1, "T2": 1})
             self.assertEqual(
                 summary["metadata_breakdown"]["topology_id"],
                 {"t1_event_counter": 1, "t2_stream_accumulator": 1},
@@ -1531,8 +2397,18 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(
                 summary["calibration_matrix"]["difficulty_tier"]["T1"],
                 {
-                    "total": 2,
-                    "pass_levels": {"L3": 2},
+                    "total": 1,
+                    "pass_levels": {"L3": 1},
+                    "l3_pass_rate": 1.0,
+                    "l0_contract_failures": 0,
+                    "cross_file_consistency_error_rate": 0.0,
+                },
+            )
+            self.assertEqual(
+                summary["calibration_matrix"]["difficulty_tier"]["T2"],
+                {
+                    "total": 1,
+                    "pass_levels": {"L3": 1},
                     "l3_pass_rate": 1.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,
@@ -1969,6 +2845,693 @@ class RunnerConfigTest(unittest.TestCase):
                     "lint->sim_run": 1,
                 },
             )
+
+    def test_run_batch_summary_counts_l4_open_without_treating_not_run_as_fail(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for sample_id, status, skip_reason in [
+                ("sample_l4_pass", "pass", None),
+                ("sample_l4_fail", "fail", None),
+                ("sample_l4_disabled", "not_run", "disabled_by_config"),
+                ("sample_l4_l3_failed", "not_run", "l3_failed"),
+            ]:
+                eval_dir = root / "datasets" / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "l4_open_status": status,
+                            "l4_open_skip_reason": skip_reason,
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+            legacy_eval_dir = root / "datasets" / "sample_l4_legacy_false" / "eval"
+            legacy_eval_dir.mkdir(parents=True)
+            (legacy_eval_dir / "labels.json").write_text(
+                json.dumps(
+                    {
+                        "pass_level": "L3",
+                        "checks": {
+                            "l0_complete": True,
+                            "l3_synth_pass": True,
+                            "l4_lite_timing_pass": False,
+                        },
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 5},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            for sample_id in ("sample_l4_pass", "sample_l4_fail", "sample_l4_disabled", "sample_l4_l3_failed"):
+                state = _record_completed_for_test(state, sample_id, 1, "success_l3", root / "datasets" / sample_id)
+            state = _record_completed_for_test(
+                state,
+                "sample_l4_legacy_false",
+                1,
+                "success_l3",
+                root / "datasets" / "sample_l4_legacy_false",
+            )
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["l4_open"], {"pass": 1, "fail": 1, "not_run": 3})
+            self.assertEqual(
+                summary["l4_open_skip_reasons"],
+                {"disabled_by_config": 1, "l3_failed": 1, "not_selected_by_policy": 1},
+            )
+
+    def test_run_batch_summary_counts_l4_commercial_separately(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = [
+                ("sample_vivado_pass", "pass", None),
+                ("sample_vivado_fail", "fail", None),
+                ("sample_vivado_disabled", "not_run", "disabled_by_config"),
+                ("sample_vivado_l3_failed", "not_run", "l3_failed"),
+            ]
+            for sample_id, status, skip_reason in cases:
+                eval_dir = root / "datasets" / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "l4_open_status": "not_run",
+                            "l4_open_skip_reason": "disabled_by_config",
+                            "l4_commercial_status": status,
+                            "l4_commercial_skip_reason": skip_reason,
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 4},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            for sample_id, _, _ in cases:
+                state = _record_completed_for_test(state, sample_id, 1, "success_l3", root / "datasets" / sample_id)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["l4_commercial"], {"pass": 1, "fail": 1, "not_run": 2})
+            self.assertEqual(
+                summary["l4_commercial_skip_reasons"],
+                {"disabled_by_config": 1, "l3_failed": 1},
+            )
+
+    def test_run_batch_summary_counts_h_stage_statuses(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = [
+                ("sample_h_pass", "pass", "pass", "pass", "pass"),
+                ("sample_h3_na", "pass", "pass", "pass", "not_applicable"),
+                ("sample_h3_fail", "pass", "pass", "pass", "fail"),
+                ("sample_h1_fail", "pass", "fail", "not_run", "not_run"),
+            ]
+            for sample_id, h0_status, h1_status, h2_status, h3_status in cases:
+                eval_dir = root / "datasets" / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                h3 = h3_status in {"pass", "not_applicable"}
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3" if h3 else "H3_FAIL",
+                            "h0_status": h0_status,
+                            "h1_status": h1_status,
+                            "h2_status": h2_status,
+                            "h0_pass": h0_status == "pass",
+                            "h1_pass": h1_status == "pass",
+                            "h2_pass": h2_status == "pass",
+                            "h3_pass": h3,
+                            "h3_status": h3_status,
+                            "checks": {"l0_complete": h3, "l3_synth_pass": h3},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 4},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            for sample_id, *_ in cases:
+                state = _record_completed_for_test(state, sample_id, 1, "success_l3", root / "datasets" / sample_id)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["h_stage"]["h0"], {"pass": 4, "fail": 0})
+            self.assertEqual(summary["h_stage"]["h1"], {"pass": 3, "fail": 1})
+            self.assertEqual(summary["h_stage"]["h2"], {"pass": 3, "fail": 0})
+            self.assertEqual(summary["h_stage"]["h3"], {"pass": 1, "fail": 1, "not_applicable": 1})
+
+    def test_run_batch_summary_excludes_oracle_fallback_from_generated_his_pass_credit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = [
+                ("sample_generated", True, "L3", None),
+                ("sample_oracle_fallback", False, "NO_CREDIT_ORACLE_FALLBACK", "oracle_fallback"),
+            ]
+            for sample_id, generated_credit, generated_level, no_credit_reason in cases:
+                eval_dir = root / "datasets" / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3",
+                            "highest_official_level": "L3",
+                            "generated_his_pass_credit": generated_credit,
+                            "generated_his_pass_level": generated_level,
+                            "generated_his_no_credit_reason": no_credit_reason,
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 2},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            for sample_id, *_ in cases:
+                state = _record_completed_for_test(state, sample_id, 1, "success_l3", root / "datasets" / sample_id)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["pass_level_breakdown"], {"L3": 2})
+            self.assertEqual(summary["generated_his_credit"], {"credited": 1, "no_credit_oracle_fallback": 1})
+            self.assertEqual(summary["generated_his_pass_level_breakdown"], {"L3": 1})
+
+    def test_run_batch_summary_feeds_derived_training_views_report_section(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample_id = "sample_req2file"
+            sample_dir = root / "datasets" / sample_id
+            eval_dir = sample_dir / "eval"
+            project_dir = sample_dir / "final" / "generated_project"
+            eval_dir.mkdir(parents=True)
+            project_dir.mkdir(parents=True)
+            (project_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+            (project_dir / "rtl_top.v").write_text("module top; endmodule\n", encoding="utf-8")
+            (eval_dir / "labels.json").write_text(
+                json.dumps({"pass_level": "L3", "checks": {"l0_complete": True, "l3_synth_pass": True}}) + "\n",
+                encoding="utf-8",
+            )
+            (eval_dir / "trajectory.json").write_text(
+                json.dumps(
+                    {
+                        "derived_training_views": {
+                            "req2file": {
+                                "available": True,
+                                "official_eval_unit": True,
+                                "standalone_pass_credit": True,
+                                "project_level_pass_credit": True,
+                            }
+                        }
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(state, sample_id, 1, "success_l3", sample_dir)
+
+            summary = run_batch_summary_for_test(config, state)
+            markdown = render_markdown("run_unit", baseline_rows(summary), summary=summary)
+
+            self.assertEqual(
+                summary["derived_training_views"]["req2file"],
+                {
+                    "available": True,
+                    "official_eval_unit": False,
+                    "standalone_pass_credit": False,
+                    "project_level_pass_credit": False,
+                    "rows": 2,
+                    "file_level_passed": 0,
+                },
+            )
+            self.assertIn("## Derived Training Views", markdown)
+            self.assertIn("| req2file | yes | no | no | 2 | 0 |", markdown)
+
+    def test_run_batch_summary_ignores_malformed_derived_training_trajectory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample_id = "sample_malformed_trajectory"
+            sample_dir = root / "datasets" / sample_id
+            eval_dir = sample_dir / "eval"
+            project_dir = sample_dir / "final" / "generated_project"
+            eval_dir.mkdir(parents=True)
+            project_dir.mkdir(parents=True)
+            (project_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+            (eval_dir / "labels.json").write_text(
+                json.dumps({"pass_level": "L3", "checks": {"l3_synth_pass": True}}) + "\n",
+                encoding="utf-8",
+            )
+            (eval_dir / "trajectory.json").write_text("[]\n", encoding="utf-8")
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(state, sample_id, 1, "success_l3", sample_dir)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["derived_training_views"], {})
+
+    def test_run_batch_summary_ignores_non_utf8_derived_training_trajectory(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample_id = "sample_non_utf8_trajectory"
+            sample_dir = root / "datasets" / sample_id
+            eval_dir = sample_dir / "eval"
+            project_dir = sample_dir / "final" / "generated_project"
+            eval_dir.mkdir(parents=True)
+            project_dir.mkdir(parents=True)
+            (project_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+            (eval_dir / "labels.json").write_text(
+                json.dumps({"pass_level": "L3", "checks": {"l3_synth_pass": True}}) + "\n",
+                encoding="utf-8",
+            )
+            (eval_dir / "trajectory.json").write_bytes(b"\xff\xfe\x00")
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(state, sample_id, 1, "success_l3", sample_dir)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["derived_training_views"], {})
+
+    def test_run_batch_summary_sanitizes_malformed_req2file_view_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample_id = "sample_malformed_req2file_fields"
+            sample_dir = root / "datasets" / sample_id
+            eval_dir = sample_dir / "eval"
+            project_dir = sample_dir / "final" / "generated_project"
+            eval_dir.mkdir(parents=True)
+            project_dir.mkdir(parents=True)
+            (project_dir / "manifest.json").write_text("{}\n", encoding="utf-8")
+            (project_dir / "rtl_top.v").write_text("module top; endmodule\n", encoding="utf-8")
+            (eval_dir / "labels.json").write_text(
+                json.dumps({"pass_level": "L3", "checks": {"l3_synth_pass": True}}) + "\n",
+                encoding="utf-8",
+            )
+            (eval_dir / "trajectory.json").write_text(
+                json.dumps(
+                    {
+                        "derived_training_views": {
+                            "req2file": {
+                                "available": True,
+                                "official_eval_unit": True,
+                                "standalone_pass_credit": True,
+                                "project_level_pass_credit": True,
+                                "rows": "not-an-int",
+                                "file_level_passed": "also-not-an-int",
+                            }
+                        }
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(state, sample_id, 1, "success_l3", sample_dir)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(
+                summary["derived_training_views"]["req2file"],
+                {
+                    "available": True,
+                    "official_eval_unit": False,
+                    "standalone_pass_credit": False,
+                    "project_level_pass_credit": False,
+                    "rows": 2,
+                    "file_level_passed": 0,
+                },
+            )
+
+    def test_run_batch_summary_counts_l4_as_l3_surviving_pass_rate(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            sample_id = "sample_l4_pass"
+            eval_dir = root / "datasets" / sample_id / "eval"
+            eval_dir.mkdir(parents=True)
+            (eval_dir / "labels.json").write_text(
+                json.dumps(
+                    {
+                        "pass_level": "L4",
+                        "checks": {"l0_complete": True, "l3_synth_pass": True, "l4_open_pass": True},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (root / "datasets" / sample_id / "metadata.json").write_text(
+                json.dumps({"difficulty_tier": "T3"}) + "\n",
+                encoding="utf-8",
+            )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(state, sample_id, 1, "success_l3", root / "datasets" / sample_id)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["pass_level_breakdown"], {"L4": 1})
+            self.assertEqual(summary["calibration_matrix"]["difficulty_tier"]["T3"]["l3_pass_rate"], 1.0)
+
+    def test_run_batch_summary_reports_l0_l4_survival_levels(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = [
+                (
+                    "sample_l3",
+                    {
+                        "l0_complete": True,
+                        "l1_lint_pass": True,
+                        "l2_sim_pass": True,
+                        "l3_synth_pass": True,
+                    },
+                    "not_run",
+                ),
+                (
+                    "sample_l1",
+                    {
+                        "l0_complete": True,
+                        "l1_lint_pass": True,
+                        "l2_sim_pass": False,
+                        "l3_synth_pass": False,
+                    },
+                    "not_run",
+                ),
+                (
+                    "sample_l4",
+                    {
+                        "l0_complete": True,
+                        "l1_lint_pass": True,
+                        "l2_sim_pass": True,
+                        "l3_synth_pass": True,
+                    },
+                    "pass",
+                ),
+            ]
+            for sample_id, checks, l4_status in cases:
+                eval_dir = root / "datasets" / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L4" if l4_status == "pass" else ("L3" if checks["l3_synth_pass"] else "L1"),
+                            "checks": checks,
+                            "l4_open_status": l4_status,
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 3},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            for sample_id, *_ in cases:
+                state = _record_completed_for_test(state, sample_id, 1, "success_l3", root / "datasets" / sample_id)
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["levels"]["l0"], {"pass": 3, "fail": 0})
+            self.assertEqual(summary["levels"]["l1"], {"pass": 3, "fail": 0})
+            self.assertEqual(summary["levels"]["l2"], {"pass": 2, "fail": 1})
+            self.assertEqual(summary["levels"]["l3"], {"pass": 2, "fail": 1})
+            self.assertEqual(summary["levels"]["l4_open"], {"pass": 1, "fail": 0, "not_run": 2})
+
+    def test_run_batch_summary_computes_patch_regression_rate_from_valid_patches(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            patches_by_sample = {
+                "sample_fixed": [
+                    {
+                        "status": "valid",
+                        "automatic_pass_credit": True,
+                        "regressions": [],
+                        "repair_regression": {"fixed_target": True, "regressed_levels": []},
+                    }
+                ],
+                "sample_regressed": [
+                    {
+                        "status": "valid",
+                        "automatic_pass_credit": False,
+                        "regressions": ["lint"],
+                        "repair_regression": {"fixed_target": False, "regressed_levels": ["lint"]},
+                    }
+                ],
+                "sample_invalid": [
+                    {
+                        "status": "invalid_edit_surface",
+                        "automatic_pass_credit": False,
+                        "regressions": [],
+                        "repair_regression": {"fixed_target": False, "regressed_levels": []},
+                    }
+                ],
+            }
+            for sample_id, patches in patches_by_sample.items():
+                eval_dir = root / "datasets" / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps({"pass_level": "L2", "checks": {"l0_complete": True}}) + "\n",
+                    encoding="utf-8",
+                )
+                (eval_dir / "trajectory.json").write_text(
+                    json.dumps({"patches": patches}) + "\n",
+                    encoding="utf-8",
+                )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 3},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            for sample_id in patches_by_sample:
+                state = _record_completed_for_test(
+                    state,
+                    sample_id,
+                    1,
+                    "repair_trajectory",
+                    root / "datasets" / sample_id,
+                )
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(
+                summary["repair_metrics"],
+                {
+                    "total_patches": 3,
+                    "valid_patches": 2,
+                    "invalid_edit_surface": 1,
+                    "fixed_target": 1,
+                    "automatic_pass_credit": 1,
+                    "regressing_patches": 1,
+                    "regression_rate": 0.5,
+                },
+            )
+
+    def test_run_batch_summary_counts_toolchain_environment_failures_separately(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            eval_dir = root / "datasets" / "sample_l4_env_failure" / "eval"
+            eval_dir.mkdir(parents=True)
+            (eval_dir / "labels.json").write_text(
+                json.dumps(
+                    {
+                        "pass_level": "L3",
+                        "l4_open_status": "not_run",
+                        "l4_open_skip_reason": "toolchain_environment_failure",
+                        "checks": {"l0_complete": True, "l3_synth_pass": True},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            state = _record_completed_for_test(state, "sample_l4_env_failure", 1, "success_l3", root / "datasets" / "sample_l4_env_failure")
+
+            summary = run_batch_summary_for_test(config, state)
+
+            self.assertEqual(summary["l4_open"], {"pass": 0, "fail": 0, "not_run": 1})
+            self.assertEqual(summary["toolchain_environment_failures"], {"l4_open": 1})
+
+    def test_run_batch_summary_counts_independent_oracle_without_infrastructure_in_model_denominator(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            cases = {
+                "sample_pass": ("pass", "fir_filter", "numeric", None),
+                "sample_fail": ("fail", "fir_filter", "numeric", "natural_model_failure"),
+                "sample_not_run": ("not_run", "counter", "control", None),
+                "sample_infra": (
+                    "infrastructure_error",
+                    "matrix_vector_mac",
+                    "numeric",
+                    "oracle_environment_failure",
+                ),
+            }
+            state = initial_run_state("run_unit", config_fingerprint="f" * 64)
+            for index, (sample_id, (status, family_id, domain, failure_origin)) in enumerate(cases.items(), 1):
+                sample_dir = root / "datasets" / sample_id
+                eval_dir = sample_dir / "eval"
+                eval_dir.mkdir(parents=True)
+                (sample_dir / "metadata.json").write_text(
+                    json.dumps({"family_id": family_id, "oracle_domain": domain}) + "\n",
+                    encoding="utf-8",
+                )
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L3" if status in {"pass", "not_run"} else "L1",
+                            "independent_oracle_status": status,
+                            "failure_origin": failure_origin,
+                            "checks": {"l0_complete": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                state = _record_completed_for_test(state, sample_id, index, "success_l3", sample_dir)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 4},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+
+            summary = run_batch_summary_for_test(config, state)["independent_oracle"]
+
+            self.assertEqual(
+                {key: summary[key] for key in ("pass", "fail", "not_run", "infrastructure_error")},
+                {"pass": 1, "fail": 1, "not_run": 1, "infrastructure_error": 1},
+            )
+            self.assertEqual(summary["model_denominator"], 2)
+            self.assertEqual(summary["model_failures"], 1)
+            self.assertEqual(summary["by_domain"]["numeric"]["infrastructure_error"], 1)
+            self.assertEqual(summary["by_family"]["fir_filter"]["pass"], 1)
 
     def test_run_batch_summary_counts_latent_testbench_issues(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

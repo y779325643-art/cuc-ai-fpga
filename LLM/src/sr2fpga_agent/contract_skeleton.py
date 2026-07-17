@@ -9,6 +9,10 @@ from typing import Any
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 
 
+BEHAVIOR_REGION_BEGIN = "// SR2FPGA_BEHAVIOR_BEGIN"
+BEHAVIOR_REGION_END = "// SR2FPGA_BEHAVIOR_END"
+
+
 def build_contract_skeleton_project(
     request: ProjectRequest,
     platform: PlatformProfile,
@@ -80,7 +84,12 @@ def _validate_behavior_body(path: str, behavior: str) -> None:
 def _fill_behavior_hole(content: str, behavior: str) -> str:
     behavior_lines = _drop_duplicate_unused_clock_reset_lines(content, behavior).strip("\n").splitlines() or ["// empty behavior body"]
     indented = "\n".join(f"  {line}" if line.strip() else "" for line in behavior_lines)
-    merged = content.replace("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.", indented, 1)
+    editable_region = (
+        f"  {BEHAVIOR_REGION_BEGIN}\n"
+        f"{indented}\n"
+        f"  {BEHAVIOR_REGION_END}"
+    )
+    merged = content.replace("  // BEHAVIOR_HOLE: model-generated RTL behavior goes here.", editable_region, 1)
     return _drop_duplicate_skeleton_localparams(merged, _declared_localparams(behavior))
 
 

@@ -1,0 +1,11 @@
+{
+  "stage": "generation",
+  "command": [
+    "project_generator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "DeepSeek System-HIS REQ2HIS fidelity failed: REQ2HIS fidelity: component accumulator_core.sample_ready direction must be input",
+  "duration_seconds": 0.0
+}

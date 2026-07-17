@@ -1,0 +1,106 @@
+{
+  "bundle_sha256": "2d345802bb8c7ccd202caa44622b2e39ea71885cb38bbdc13c88538b01623904",
+  "class_status": {
+    "hidden_deterministic": "pass",
+    "public_smoke": "pass",
+    "randomized_fixed_seed": "pass",
+    "stress": "pass"
+  },
+  "diagnostics": [],
+  "failure_origin": null,
+  "failure_type": null,
+  "family_id": "fir_filter",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_public_smoke",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=3"
+      ],
+      "duration_seconds": 0.055409900000086054,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "public_smoke",
+      "scenario_id": "fir_public_smoke",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\public\\fir_public_smoke\\expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 136000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_hidden_edges",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=4"
+      ],
+      "duration_seconds": 0.053126499988138676,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "fir_hidden_edges",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\hidden\\fir_hidden_edges\\expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 166000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=16"
+      ],
+      "duration_seconds": 0.053461600007722154,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "fir_randomized_seeded",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\randomized\\fir_randomized_seeded\\expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 576000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_stress_reset_stall",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=5"
+      ],
+      "duration_seconds": 0.053002300002845004,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "stress",
+      "scenario_id": "fir_stress_reset_stall",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_fir_filter_8_000004\\attempts\\attempt_000\\eval\\oracle\\stress\\fir_stress_reset_stall\\expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 256000 (1ps)\n"
+    }
+  ],
+  "status": "passed"
+}

@@ -6,6 +6,8 @@ from dataclasses import dataclass
 import re
 
 from LLM.src.sr2fpga_agent.models import ToolResult
+from LLM.src.sr2fpga_agent.task_catalog import task_family_spec_for_family_id
+from LLM.src.sr2fpga_agent.task_families import family_id_for_task_type
 
 
 @dataclass(frozen=True)
@@ -13,6 +15,62 @@ class TestbenchObservationIssue:
     line: int
     failure_type: str
     message: str
+
+
+def build_oracle_strength(
+    reference_pass: bool,
+    mutation_results: dict[str, str | bool | None],
+    task_type: str,
+) -> dict[str, object]:
+    """Summarize whether a trusted testbench detects DUT-only mutations."""
+    outcomes = {name: _mutation_outcome(status) for name, status in mutation_results.items()}
+    surviving_mutations = sorted(name for name, outcome in outcomes.items() if outcome == "passed")
+    non_scoreable_mutations = sorted(name for name, outcome in outcomes.items() if outcome is None)
+    killed = sum(outcome == "failed" for outcome in outcomes.values())
+    mutation_cases = killed + len(surviving_mutations)
+    mutation_score = 0.0 if mutation_cases == 0 else round(killed / mutation_cases, 2)
+    threshold = oracle_strength_threshold(task_type)
+    return {
+        "reference_pass": reference_pass,
+        "mutation_cases": mutation_cases,
+        "killed": killed,
+        "mutation_score": mutation_score,
+        "surviving_mutations": surviving_mutations,
+        "non_scoreable_mutations": non_scoreable_mutations,
+        "task_family": task_type,
+        "threshold": threshold,
+        "line_a_ready": (
+            reference_pass
+            and mutation_cases > 0
+            and not non_scoreable_mutations
+            and oracle_strength_ready(task_type, mutation_score)
+        ),
+    }
+
+
+def oracle_strength_threshold(task_type: str) -> float:
+    """Return the Line A mutation-score threshold for a supported task family."""
+    try:
+        family = task_family_spec_for_family_id(family_id_for_task_type(task_type))
+    except KeyError:
+        try:
+            family = task_family_spec_for_family_id(task_type)
+        except KeyError:
+            return 0.75
+    return family.mutation_score_threshold
+
+
+def oracle_strength_ready(task_type: str, mutation_score: float) -> bool:
+    """Determine whether an oracle meets its task family's Line A threshold."""
+    return mutation_score >= oracle_strength_threshold(task_type)
+
+
+def _mutation_outcome(status: str | bool | None) -> str | None:
+    if status is True:
+        return "passed"
+    if status is False:
+        return "failed"
+    return status if status in {"passed", "failed"} else None
 
 
 def check_testbench_observation_races(testbench: str) -> list[TestbenchObservationIssue]:
@@ -48,9 +106,37 @@ def check_testbench_static_issues(testbench: str) -> list[TestbenchObservationIs
     """Run all static checks for generated self-checking testbenches."""
     return [
         *check_testbench_missing_functional_oracle(testbench),
+        *check_testbench_internal_signal_access(testbench),
         *check_testbench_observation_races(testbench),
         *check_testbench_stimulus_reaccept_risks(testbench),
     ]
+
+
+def check_testbench_internal_signal_access(testbench: str) -> list[TestbenchObservationIssue]:
+    """Reject hierarchical references below the DUT top-level interface."""
+    scrubbed = re.sub(r'"(?:\\.|[^"\\])*"', '""', testbench)
+    scrubbed = re.sub(r"//[^\n]*", "", scrubbed)
+    scrubbed = re.sub(
+        r"/\*.*?\*/",
+        lambda match: "\n" * match.group(0).count("\n"),
+        scrubbed,
+        flags=re.DOTALL,
+    )
+    issues: list[TestbenchObservationIssue] = []
+    for line, content in enumerate(scrubbed.splitlines(), start=1):
+        for match in re.finditer(r"\bdut\.([A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)+)", content):
+            reference = match.group(0)
+            issues.append(
+                TestbenchObservationIssue(
+                    line=line,
+                    failure_type="testbench_internal_signal_access",
+                    message=(
+                        f"line {line}: {reference} reads below the DUT top-level interface; "
+                        "trusted testbenches must remain black-box"
+                    ),
+                )
+            )
+    return issues
 
 
 def check_testbench_missing_functional_oracle(testbench: str) -> list[TestbenchObservationIssue]:

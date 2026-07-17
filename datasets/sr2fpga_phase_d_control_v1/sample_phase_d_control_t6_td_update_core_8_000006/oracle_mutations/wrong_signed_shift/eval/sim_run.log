@@ -1,0 +1,11 @@
+[td_public_declared_examples] TEST_PASS
+sim/tb_top.v:212: $finish called at 110000 (1ps)
+[td_hidden_signed_saturation] SR2FPGA_MISMATCH {"scenario_id":"td_hidden_signed_saturation","class":"hidden_deterministic","item_index":0,"expected":{"td_error":-14,"updated_value":-3},"actual":{"td_error":127,"updated_value":67}}
+TEST_FAIL functional mismatch
+sim/tb_top.v:186: $finish called at 66000 (1ps)
+[td_randomized_seeded] SR2FPGA_MISMATCH {"scenario_id":"td_randomized_seeded","class":"randomized_fixed_seed","item_index":1,"expected":{"td_error":60,"updated_value":51},"actual":{"td_error":127,"updated_value":97}}
+TEST_FAIL functional mismatch
+sim/tb_top.v:186: $finish called at 96000 (1ps)
+[td_stress_reset_stall_bounds] SR2FPGA_MISMATCH {"scenario_id":"td_stress_reset_stall_bounds","class":"stress","item_index":0,"expected":{"td_error":-128,"updated_value":-1},"actual":{"td_error":127,"updated_value":127}}
+TEST_FAIL functional mismatch
+sim/tb_top.v:186: $finish called at 66000 (1ps)

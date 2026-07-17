@@ -1,0 +1,8 @@
+{
+  "failure_type": "generation_failed",
+  "stage": "generation",
+  "root_cause": "DeepSeek System-HIS output is not valid JSON: Expecting property name enclosed in double quotes",
+  "affected_files": [
+    "system_his.json"
+  ]
+}

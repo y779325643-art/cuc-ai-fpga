@@ -1,0 +1,17 @@
+{
+  "failure_type": "his_validation_failed",
+  "stage": "his_validation",
+  "root_cause": "H2 lowerability: components[0] has unsupported semantic_kind 'input_stage'\nH2 lowerability: components[1] has unsupported semantic_kind 'arithmetic'\nH2 lowerability: components[2] has unsupported semantic_kind 'arithmetic'\nH2 lowerability: components[3] has unsupported semantic_kind 'output_stage'\nH2 lowerability: data_flow[1] has unsupported protocol 'combinational'\nH2 lowerability: data_flow[2] has unsupported protocol 'combinational'\nH2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'basic_td_update', 'description': 'Apply a sequence of reward, value, next_value, gamma, alpha inputs and verify td_error and updated_value outputs match expected values calculated offline.'}'",
+  "affected_files": [
+    "system_his.json"
+  ],
+  "structured_diagnosis": {
+    "failure_type": "his_validation_failed",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

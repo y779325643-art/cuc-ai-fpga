@@ -1,0 +1,29 @@
+# Deterministic Line-A closure batch for the remaining implemented Paper1 core
+# families. Catalog DUT-only mutations run automatically for Line-A samples.
+dataset_root: tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset
+export_root: tmp/sr2fpga_phase_c_core_mutation_closure_v2/exports
+run_root: tmp/sr2fpga_phase_c_core_mutation_closure_v2/runs
+provider: deterministic
+repair_provider: none
+model: deterministic
+base_url: ""
+api_key_env: ""
+env_file: ""
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: phase_c_core_mutation_closure_v2
+run_independent_oracle: false
+run_l4_open: false
+run_l4_commercial: false
+
+line_b_targets:
+  l3_success_ratio: 1.0
+  repair_trajectory_ratio: 0.0
+  max_samples: 4
+
+tasks:
+  - {source: deterministic, task_type: ram_read_write, widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: component_topology, topology_ids: [t2_stream_accumulator], widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: component_topology, topology_ids: [t4_dual_stream_join], widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}
+  - {source: deterministic, task_type: component_topology, topology_ids: [t5_vector_mac_pipeline], widths: [8], count: 1, evaluation_line: line_a, failure_origin: deterministic, measurement_point: a_first_attempt_no_tools, requirement_style: simple_prompt}

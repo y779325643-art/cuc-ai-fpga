@@ -1,0 +1,17 @@
+{
+  "failure_type": "his_validation_failed",
+  "stage": "his_validation",
+  "root_cause": "H2 lowerability: components[0] has unsupported semantic_kind 'synchronous_fifo'\nH2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'reset_initializes_empty_fifo', 'description': 'Apply synchronous active-low reset and verify the FIFO reports ready for input, not valid for output, and has empty occupancy.'}'\nH2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'single_write_then_read', 'description': 'Accept one 8-bit word, then assert output ready and verify the same word appears on the output with a valid handshake.'}'\nH2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'fill_to_capacity_and_stall', 'description': 'Write four entries without reading and verify input ready deasserts once the FIFO is full.'}'\nH2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'drain_to_empty_and_stall', 'description': 'Read all stored entries and verify output valid deasserts once the FIFO becomes empty.'}'\nH2 lowerability: verification.scenarios[4] unsupported scenario '{'name': 'simultaneous_read_write', 'description': 'With the FIFO partially occupied, perform concurrent input and output handshakes and verify occupancy remains constant while data ordering is preserved.'}'\nH2 lowerability: verification.scenarios[5] unsupported scenario '{'name': 'backpressure_holds_output', 'description': 'Deassert out_ready while data is available and verify out_valid and out_data remain stable until the output handshake completes.'}'\nH2 lowerability: verification.scenarios[6] unsupported scenario '{'name': 'ordering_preserved', 'description': 'Push a sequence of distinct 8-bit values through varied ready/valid stalls and verify first-in first-out ordering at the output.'}'",
+  "affected_files": [
+    "system_his.json"
+  ],
+  "structured_diagnosis": {
+    "failure_type": "his_validation_failed",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

@@ -1,0 +1,170 @@
+{
+  "bundle_sha256": "2c61e0e0657b32ea3c09234de8971c1810540dfdc4a9ddc382233d1c2628a2ec",
+  "class_status": {
+    "hidden_deterministic": "fail",
+    "public_smoke": "fail",
+    "randomized_fixed_seed": "fail",
+    "stress": "fail"
+  },
+  "diagnostics": [],
+  "failure_origin": "natural_model_failure",
+  "failure_type": "functional_mismatch",
+  "family_id": "sobel_threshold",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\public\\sobel_public_flat_vertical\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\public\\sobel_public_flat_vertical\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_public_flat_vertical",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=50"
+      ],
+      "duration_seconds": 0.05456140000023879,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": {
+            "axis": "1",
+            "edge": "0",
+            "out_last": "0"
+          },
+          "class": "public_smoke",
+          "expected": {
+            "axis": 1,
+            "edge": 1,
+            "out_last": 0
+          },
+          "item_index": 32,
+          "scenario_id": "sobel_public_flat_vertical"
+        }
+      ],
+      "scenario_class": "public_smoke",
+      "scenario_id": "sobel_public_flat_vertical",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_public_flat_vertical\",\"class\":\"public_smoke\",\"item_index\":32,\"expected\":{\"edge\":1,\"axis\":1,\"out_last\":0},\"actual\":{\"edge\":\"0\",\"axis\":\"1\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 885000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\hidden\\sobel_hidden_horizontal_maximum\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\hidden\\sobel_hidden_horizontal_maximum\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_hidden_horizontal_maximum",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=25"
+      ],
+      "duration_seconds": 0.05486980002024211,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": {
+            "axis": "0",
+            "edge": "0",
+            "out_last": "0"
+          },
+          "class": "hidden_deterministic",
+          "expected": {
+            "axis": 0,
+            "edge": 1,
+            "out_last": 0
+          },
+          "item_index": 6,
+          "scenario_id": "sobel_hidden_horizontal_maximum"
+        }
+      ],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "sobel_hidden_horizontal_maximum",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_hidden_horizontal_maximum\",\"class\":\"hidden_deterministic\",\"item_index\":6,\"expected\":{\"edge\":1,\"axis\":0,\"out_last\":0},\"actual\":{\"edge\":\"0\",\"axis\":\"0\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 315000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\randomized\\sobel_randomized_seeded\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\randomized\\sobel_randomized_seeded\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=50"
+      ],
+      "duration_seconds": 0.06625289999647066,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": {
+            "axis": "0",
+            "edge": "0",
+            "out_last": "0"
+          },
+          "class": "randomized_fixed_seed",
+          "expected": {
+            "axis": 0,
+            "edge": 1,
+            "out_last": 0
+          },
+          "item_index": 6,
+          "scenario_id": "sobel_randomized_seeded"
+        }
+      ],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "sobel_randomized_seeded",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":6,\"expected\":{\"edge\":1,\"axis\":0,\"out_last\":0},\"actual\":{\"edge\":\"0\",\"axis\":\"0\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 315000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<oss-cad-suite>\\bin\\vvp.EXE",
+        "sim.out",
+        "+ORACLE_INPUT=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\stress\\sobel_stress_reset_stall\\input.memh",
+        "+ORACLE_EXPECTED=<repo>\\datasets\\sr2fpga_phase_d_control_v1\\sample_phase_d_control_sobel_threshold_8_000005\\attempts\\attempt_000\\eval\\oracle\\stress\\sobel_stress_reset_stall\\expected.memh",
+        "+ORACLE_SCENARIO_ID=sobel_stress_reset_stall",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=35"
+      ],
+      "duration_seconds": 0.051483399991411716,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": {
+            "axis": "1",
+            "edge": "0",
+            "out_last": "0"
+          },
+          "class": "stress",
+          "expected": {
+            "axis": 1,
+            "edge": 1,
+            "out_last": 0
+          },
+          "item_index": 12,
+          "scenario_id": "sobel_stress_reset_stall"
+        }
+      ],
+      "scenario_class": "stress",
+      "scenario_id": "sobel_stress_reset_stall",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_stress_reset_stall\",\"class\":\"stress\",\"item_index\":12,\"expected\":{\"edge\":1,\"axis\":1,\"out_last\":0},\"actual\":{\"edge\":\"0\",\"axis\":\"1\",\"out_last\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:82: $finish called at 595000 (1ps)\n"
+    }
+  ],
+  "status": "failed"
+}

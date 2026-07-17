@@ -1,0 +1,17 @@
+{
+  "failure_type": "his_validation_failed",
+  "stage": "his_validation",
+  "root_cause": "H2 lowerability: components[0] has unsupported semantic_kind 'control'\nH2 lowerability: components[2] has unsupported semantic_kind 'datapath'\nH2 lowerability: components[3] has unsupported semantic_kind 'datapath'\nH2 lowerability: components[4] has unsupported semantic_kind 'datapath'\nH2 lowerability: data_flow[1] has unsupported protocol 'registered_enable'\nH2 lowerability: data_flow[4] has unsupported protocol 'sampled_sideband'\nH2 lowerability: data_flow[6] has unsupported protocol 'pipeline_sideband'\nH2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'reset_defaults', 'description': 'Apply synchronous active-low reset and verify valid outputs deassert, counters return to zero, and stream_fsm returns to IDLE.', 'pass_condition': 'No output transfer occurs during reset and the first post-reset accepted pixel starts at raster coordinate 0,0.'}'\nH2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'constant_image_no_edges', 'description': 'Drive a frame where every input pixel has the same 8-bit value.', 'pass_condition': 'All non-boundary output pixels produce EDGE_LOW_VALUE and out_edge is 0.'}'\nH2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'vertical_step_edge', 'description': 'Drive an image with a vertical intensity step crossing the threshold.', 'pass_condition': 'Output edge flags are asserted at the expected step columns after pipeline latency.'}'\nH2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'threshold_sweep', 'description': 'Run identical input patterns with low, medium, and high threshold values.', 'pass_condition': 'Edge assertion count monotonically decreases as threshold increases.'}'\nH2 lowerability: verification.scenarios[4] unsupported scenario '{'name': 'backpressure', 'description': 'Randomly deassert out_ready while maintaining valid input traffic.', 'pass_condition': 'Output ordering, out_last alignment, and edge values are preserved with no dropped or duplicated accepted samples.'}'\nH2 lowerability: verification.scenarios[5] unsupported scenario '{'name': 'frame_last_alignment', 'description': 'Assert in_last on the final pixel of a frame.', 'pass_condition': 'out_last is asserted exactly once with the corresponding final output sample after the declared pipeline latency.'}'",
+  "affected_files": [
+    "system_his.json"
+  ],
+  "structured_diagnosis": {
+    "failure_type": "his_validation_failed",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

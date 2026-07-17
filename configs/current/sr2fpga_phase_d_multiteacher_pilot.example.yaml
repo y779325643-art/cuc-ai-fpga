@@ -1,0 +1,103 @@
+# Phase D frozen multi-teacher Line-B pilot.
+# Replace example.invalid endpoints only in an ignored configs/local copy.
+dataset_root: datasets/sr2fpga_phase_d_v1
+export_root: datasets/sr2fpga_phase_d_v1_exports
+run_root: tmp/sr2fpga_runs
+provider: deterministic
+repair_provider: same_as_source
+model: deterministic
+base_url: ""
+api_key_env: ""
+env_file: ""
+platform: generic_verilog
+max_attempts: 3
+refresh_exports: true
+sample_id_prefix: phase_d
+run_independent_oracle: true
+run_l4_open: true
+
+line_b_targets:
+  l3_success_ratio: 0.0
+  repair_trajectory_ratio: 0.0
+  max_samples: 24
+
+sources:
+  claude:
+    kind: anthropic_compat
+    model: claude-opus-4-8
+    base_url: https://example.invalid/v1
+    api_key_env: ANTHROPIC_API_KEY
+    generation_mode: two_stage
+    timeout_seconds: 600
+    transport_attempts: 3
+    max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
+  gpt:
+    kind: openai_compat
+    model: gpt-5.5
+    base_url: https://example.invalid/v1
+    api_key_env: OPENAI_API_KEY
+    generation_mode: two_stage
+    timeout_seconds: 600
+    transport_attempts: 3
+    max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
+  qwen:
+    kind: openai_compat
+    model: qwen3-coder-plus
+    base_url: https://example.invalid/v1
+    api_key_env: DASHSCOPE_API_KEY
+    generation_mode: two_stage
+    timeout_seconds: 600
+    transport_attempts: 3
+    max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
+  deepseek:
+    kind: deepseek-his-v12
+    model: deepseek-v4-pro
+    base_url: https://example.invalid/v1
+    api_key_env: DEEPSEEK_API_KEY
+    generation_mode: two_stage
+    timeout_seconds: 600
+    transport_attempts: 3
+    max_tokens: 32768
+    system_his_schema_version: system-his-v1.2
+
+l4_open:
+  tool: openxc7_nextpnr
+  target_part: XC7Z020CLG484-2
+  board_profile: ac820_zynq
+  run_policy: representative_subset
+  timeout_seconds: 600
+  family_ids: [fir_filter]
+
+tasks:
+  - {source: claude, task_type: fifo, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: gpt, task_type: fifo, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: qwen, task_type: fifo, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: deepseek, task_type: fifo, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+
+  - {source: claude, task_type: component_topology, topology_ids: [t2_stream_accumulator], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: gpt, task_type: component_topology, topology_ids: [t2_stream_accumulator], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: qwen, task_type: component_topology, topology_ids: [t2_stream_accumulator], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: deepseek, task_type: component_topology, topology_ids: [t2_stream_accumulator], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+
+  - {source: claude, task_type: component_topology, topology_ids: [t4_dual_stream_join], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: gpt, task_type: component_topology, topology_ids: [t4_dual_stream_join], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: qwen, task_type: component_topology, topology_ids: [t4_dual_stream_join], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: deepseek, task_type: component_topology, topology_ids: [t4_dual_stream_join], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+
+  - {source: claude, task_type: fir_filter, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: gpt, task_type: fir_filter, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: qwen, task_type: fir_filter, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: deepseek, task_type: fir_filter, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+
+  - {source: claude, task_type: sobel_threshold, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: gpt, task_type: sobel_threshold, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: qwen, task_type: sobel_threshold, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: deepseek, task_type: sobel_threshold, widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+
+  - {source: claude, task_type: component_topology, topology_ids: [t6_td_update_core], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: gpt, task_type: component_topology, topology_ids: [t6_td_update_core], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: qwen, task_type: component_topology, topology_ids: [t6_td_update_core], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}
+  - {source: deepseek, task_type: component_topology, topology_ids: [t6_td_update_core], widths: [8], count: 1, requirement_style: simple_prompt, evaluation_line: line_b, failure_origin: natural_llm, failure_injectors: []}

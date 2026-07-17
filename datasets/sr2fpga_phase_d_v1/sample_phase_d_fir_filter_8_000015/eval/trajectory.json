@@ -1,0 +1,634 @@
+{
+  "sample_id": "sample_phase_d_fir_filter_8_000015",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "his_validation",
+      "status": "failed",
+      "tool": "system_his_h_stage_validator",
+      "exit_code": 1,
+      "command": [
+        "system_his_h_stage_validator"
+      ],
+      "failure_type": "his_validation_failed",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "measurement": {
+    "initial": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "final": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "repair_attempts_used": 0,
+    "repair_success": false,
+    "repair_eligible": false,
+    "repair_skip_reason": "h_stage_failed",
+    "regressions": [],
+    "scoreable": true,
+    "infrastructure_status": "scoreable",
+    "l4_open": {
+      "status": "not_run",
+      "skip_reason": "l3_failed"
+    }
+  },
+  "his_validation": {
+    "his_source_used_for_generation": "generated",
+    "h0": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h1": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h2": {
+      "status": "fail",
+      "diagnostics": [
+        "H2 lowerability: components[0] has unsupported semantic_kind 'arithmetic'",
+        "H2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'impulse_response_test', 'description': 'Test impulse response to verify filter coefficients', 'stimulus': 'single high input sample followed by zeros', 'expected_behavior': 'output matches expected convolution result'}'",
+        "H2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'step_response_test', 'description': 'Test step response to verify filter stability', 'stimulus': 'constant input value', 'expected_behavior': 'output reaches steady state after filter delay'}'",
+        "H2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'throughput_test', 'description': 'Verify maximum throughput capability', 'stimulus': 'continuous valid input samples', 'expected_behavior': 'output samples available every cycle after initial latency'}'"
+      ]
+    },
+    "h3": {
+      "status": "not_run",
+      "diagnostics": []
+    },
+    "passed": false
+  },
+  "oracle_profile": {
+    "kind": "python_reference",
+    "status": "not_run",
+    "family_id": "fir_filter",
+    "skip_reason": "unsupported_family",
+    "scenario_counts": {},
+    "class_status": {},
+    "hidden_vectors_exported": false
+  },
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter.",
+      "design_goal": "Implement a streaming 8-bit FIR filter with configurable coefficients and pipeline stages",
+      "assumptions": [
+        "Input data arrives on each clock when valid is high",
+        "Output data is available after fixed pipeline latency",
+        "Coefficients are pre-configured at synthesis time",
+        "Filter operates at 100 MHz clock frequency"
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8,
+          "description": "Width of input and output data signals"
+        },
+        {
+          "name": "COEFFICIENTS",
+          "type": "array",
+          "default": [
+            1,
+            1,
+            1,
+            1
+          ],
+          "description": "Array of signed coefficient values for the FIR filter"
+        },
+        {
+          "name": "TAPS",
+          "type": "integer",
+          "default": 4,
+          "description": "Number of taps in the FIR filter"
+        }
+      ],
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100,
+          "description": "Main system clock"
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync",
+          "description": "Synchronous active-low reset"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1,
+          "description": "Clock input"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1,
+          "description": "Reset input (active low)"
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": 8,
+          "description": "Input data stream"
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": 1,
+          "description": "Input data valid signal"
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": 1,
+          "description": "Output ready signal"
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": 8,
+          "description": "Filtered output data"
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": 1,
+          "description": "Output data valid signal"
+        }
+      ],
+      "interfaces": []
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "delay_line_reg",
+          "width": 32,
+          "depth": 4,
+          "description": "Delay line storage for FIR filter taps"
+        },
+        {
+          "name": "output_pipeline_reg",
+          "width": 8,
+          "depth": 1,
+          "description": "Pipeline register for output data"
+        },
+        {
+          "name": "valid_out_reg",
+          "width": 1,
+          "depth": 1,
+          "description": "Register for output valid signal"
+        },
+        {
+          "name": "ready_out_reg",
+          "width": 1,
+          "depth": 1,
+          "description": "Register for ready signal"
+        }
+      ],
+      "counters": [],
+      "fsms": [],
+      "buffers": [],
+      "memories": []
+    },
+    "components": [
+      {
+        "name": "fir_core",
+        "semantic_kind": "arithmetic",
+        "source": "rtl/fir_core.v",
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "data_in",
+            "direction": "input",
+            "width": 8
+          },
+          {
+            "name": "valid_in",
+            "direction": "input",
+            "width": 1
+          },
+          {
+            "name": "ready_out",
+            "direction": "output",
+            "width": 1
+          },
+          {
+            "name": "data_out",
+            "direction": "output",
+            "width": 8
+          },
+          {
+            "name": "valid_out",
+            "direction": "output",
+            "width": 1
+          }
+        ],
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          },
+          {
+            "name": "TAPS",
+            "type": "integer",
+            "default": 4
+          }
+        ],
+        "intent": "Core FIR filter implementation with delay line and multiply-accumulate operations"
+      }
+    ],
+    "instances": [
+      {
+        "name": "fir_inst",
+        "component": "fir_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "TAPS": 4
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "delay_line_reg",
+          "output_pipeline_reg"
+        ]
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "input_data_flow",
+        "path": [
+          "top.data_in",
+          "fir_inst.data_in"
+        ],
+        "payload": {
+          "name": "input_sample",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1,
+          "throughput": "one sample per cycle when ready"
+        }
+      },
+      {
+        "name": "output_data_flow",
+        "path": [
+          "fir_inst.data_out",
+          "top.data_out"
+        ],
+        "payload": {
+          "name": "filtered_sample",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 4,
+          "initiation_interval": 1,
+          "throughput": "one sample per cycle when ready"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "input_valid_rule",
+        "kind": "enable_rule",
+        "when": {
+          "signal": "top.valid_in",
+          "op": "==",
+          "value": 1
+        },
+        "effect": {
+          "action": "assert",
+          "target": "input_data_flow"
+        },
+        "related_state": [
+          "delay_line_reg"
+        ],
+        "related_flows": [
+          "input_data_flow"
+        ]
+      },
+      {
+        "name": "output_valid_rule",
+        "kind": "enable_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "fir_inst.valid_out",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "assert",
+          "target": "valid_out_reg"
+        },
+        "related_state": [
+          "output_pipeline_reg"
+        ],
+        "related_flows": [
+          "output_data_flow"
+        ]
+      },
+      {
+        "name": "ready_propagation_rule",
+        "kind": "handshake_rule",
+        "when": {
+          "any_of": [
+            {
+              "signal": "top.rst_n",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "assert",
+          "target": "ready_out_reg"
+        },
+        "related_state": [],
+        "related_flows": []
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100,
+      "constraints": [
+        "constraints/timing.sdc"
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "medium",
+        "ff": "medium",
+        "bram": 0,
+        "dsp": 4
+      }
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        {
+          "name": "impulse_response_test",
+          "description": "Test impulse response to verify filter coefficients",
+          "stimulus": "single high input sample followed by zeros",
+          "expected_behavior": "output matches expected convolution result"
+        },
+        {
+          "name": "step_response_test",
+          "description": "Test step response to verify filter stability",
+          "stimulus": "constant input value",
+          "expected_behavior": "output reaches steady state after filter delay"
+        },
+        {
+          "name": "throughput_test",
+          "description": "Verify maximum throughput capability",
+          "stimulus": "continuous valid input samples",
+          "expected_behavior": "output samples available every cycle after initial latency"
+        }
+      ],
+      "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/fir_core.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "standalone_pass_credit": false,
+      "source_episode_id": "sample_phase_d_fir_filter_8_000015"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 493,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "model_generated",
+        "bytes": 94,
+        "behavior_holes": 0
+      },
+      "rtl/fir_core.v": {
+        "origin": "model_generated",
+        "bytes": 4067,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 802,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 6781,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 8405,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/fir_core.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.567562,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "fail",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "fail"
+      },
+      "stress": {
+        "status": "fail"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "warnings": [],
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "board_profile": "ac820_zynq",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "status": "not_run",
+      "skip_reason": "l3_failed",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "critical_warnings": [],
+      "runtime_sec": null,
+      "report_paths": [],
+      "failure_family": null
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "official_board_ready": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "expected_board_drc_exceptions": [],
+      "invalidating_critical_warnings": [],
+      "methodology_warnings": [],
+      "runtime_sec": null,
+      "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "his_validation": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

@@ -79,6 +79,28 @@ class FakeSynthRunner:
         )
 
 
+def _write_assembly_manifest(sample_dir: Path, *, complete: bool = True, missing_files: list[str] | None = None) -> None:
+    project_dir = sample_dir / "generated_project"
+    assembled_files = sorted(path.relative_to(project_dir).as_posix() for path in project_dir.rglob("*") if path.is_file())
+    required_files = sorted(set(assembled_files) | set(missing_files or []))
+    (sample_dir / "req2file_assembly_manifest.json").write_text(
+        json.dumps(
+            {
+                "sample_id": sample_dir.name,
+                "derived_training_view": "req2file",
+                "official_eval_unit": False,
+                "standalone_pass_credit": False,
+                "project_level_pass_credit": False,
+                "required_project_files": required_files,
+                "assembled_files": assembled_files,
+                "complete": complete,
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
 class Req2FileEvalTest(unittest.TestCase):
     def test_build_eval_set_filters_rows_and_writes_user_only_prompts(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -128,6 +150,55 @@ class Req2FileEvalTest(unittest.TestCase):
             self.assertEqual(len(rows[0]["messages"]), 1)
             self.assertEqual(rows[0]["messages"][0]["role"], "user")
             self.assertIn("Generate this SR2FPGA project file", rows[0]["messages"][0]["content"])
+
+    def test_build_eval_set_marks_rows_as_derived_without_standalone_credit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "requirement_to_file.jsonl"
+            target = Path(tmp) / "req2file_eval.jsonl"
+            source.write_text(
+                json.dumps(
+                    {
+                        "sample_id": "sample_traceable",
+                        "source_episode_id": "sample_traceable",
+                        "requirement": "Design a counter.",
+                        "file_path": "rtl/top.v",
+                        "file_content": "module top; endmodule\n",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            build_eval_set(source, target)
+
+            row = json.loads(target.read_text(encoding="utf-8"))
+            self.assertEqual(row["source_episode_id"], "sample_traceable")
+            self.assertEqual(row["eval_unit"], "derived_training_view")
+            self.assertFalse(row["official_eval_unit"])
+            self.assertFalse(row["standalone_pass_credit"])
+
+    def test_build_eval_set_normalizes_windows_file_path_in_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            source = Path(tmp) / "requirement_to_file.jsonl"
+            target = Path(tmp) / "req2file_eval.jsonl"
+            source.write_text(
+                json.dumps(
+                    {
+                        "sample_id": "sample_1",
+                        "file_path": "rtl\\top.v",
+                        "requirement": "Design a counter.",
+                        "file_content": "module top; endmodule\n",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            build_eval_set(source, target)
+
+            row = json.loads(target.read_text(encoding="utf-8"))
+            self.assertEqual(row["file_path"], "rtl/top.v")
+            self.assertIn("File path:\nrtl/top.v", row["messages"][0]["content"])
 
     def test_score_predictions_reports_file_type_quality_signals(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -190,6 +261,30 @@ class Req2FileEvalTest(unittest.TestCase):
             self.assertEqual(report["verilog_module_present_ratio"], 0.5)
             self.assertEqual(report["testbench_oracle_present_ratio"], 1.0)
             self.assertEqual(report["sdc_clock_present_ratio"], 1.0)
+
+    def test_score_predictions_reports_req2file_as_non_official_without_project_credit(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            predictions = Path(tmp) / "predictions.jsonl"
+            predictions.write_text(
+                json.dumps(
+                    {
+                        "sample_id": "sample_1",
+                        "source_episode_id": "sample_1",
+                        "file_path": "rtl/top.v",
+                        "expected_file_content": "module top; endmodule\n",
+                        "predicted_file_content": "module top; endmodule\n",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            report = score_predictions(predictions)
+
+            self.assertFalse(report["official_eval_unit"])
+            self.assertEqual(report["eval_unit"], "derived_training_view")
+            self.assertFalse(report["standalone_pass_credit"])
+            self.assertNotIn("project_passed", report)
 
     def test_run_inference_writes_prediction_rows_with_model_output(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -295,6 +390,132 @@ class Req2FileEvalTest(unittest.TestCase):
             self.assertEqual((project_dir / "rtl/top.v").read_text(encoding="utf-8"), "module top; endmodule\n")
             self.assertTrue((project_dir / "system_his.json").exists())
 
+    def test_assemble_predictions_with_reference_root_builds_full_project_before_l0(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            predictions = root / "predictions.jsonl"
+            output_root = root / "assembled"
+            sample = Path("datasets/sr2fpga_rtl_v1/sample_t0_t4_deterministic_smoke_counter_8_000001")
+            top_path = sample / "final/generated_project/rtl/top.v"
+            predictions.write_text(
+                json.dumps(
+                    {
+                        "sample_id": sample.name,
+                        "source_episode_id": sample.name,
+                        "file_path": "rtl/top.v",
+                        "predicted_file_content": top_path.read_text(encoding="utf-8"),
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            assemble_report = assemble_predictions(
+                predictions,
+                output_root,
+                reference_dataset_root=Path("datasets/sr2fpga_rtl_v1"),
+            )
+            verify_report = verify_assembled_projects(output_root)
+
+            project_dir = output_root / sample.name / "generated_project"
+            self.assertGreater(assemble_report["backfilled_files"], 0)
+            self.assertTrue((project_dir / "manifest.json").exists())
+            self.assertTrue((project_dir / "system_his.json").exists())
+            self.assertTrue((output_root / sample.name / "req2file_assembly_manifest.json").exists())
+            self.assertEqual(verify_report["projects"], 1)
+            self.assertEqual(verify_report["file_level_l0_passed"], 1)
+
+    def test_assemble_predictions_rejects_incomplete_reference_project_assembly(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            predictions = root / "predictions.jsonl"
+            output_root = root / "assembled"
+            reference_project = root / "reference/sample_1/final/generated_project"
+            (reference_project / "rtl").mkdir(parents=True)
+            (reference_project / "sim").mkdir()
+            (reference_project / "constraints").mkdir()
+            for relative_path, content in {
+                "manifest.json": json.dumps(
+                    {
+                        "top_module": "top",
+                        "sources": ["rtl/top.v"],
+                        "simulation": {"testbench": "sim/tb_top.v"},
+                        "constraints": {"timing": "constraints/timing.sdc"},
+                    }
+                )
+                + "\n",
+                "system_his.json": '{"schema_version":"system-his-v1.2"}\n',
+                "rtl/top.v": "module top; endmodule\n",
+                "sim/tb_top.v": "module tb_top; endmodule\n",
+                "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+            }.items():
+                (reference_project / relative_path).write_text(content, encoding="utf-8")
+            predictions.write_text(
+                json.dumps(
+                    {
+                        "sample_id": "sample_1",
+                        "file_path": "rtl/top.v",
+                        "predicted_file_content": "module top; endmodule\n",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "incomplete REQ2FILE project assembly"):
+                assemble_predictions(
+                    predictions,
+                    output_root,
+                    reference_dataset_root=root / "reference",
+                    backfill_reference_paths={"system_his.json"},
+                )
+
+    def test_assemble_predictions_rejects_existing_output_root_without_clean_flag(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            predictions = root / "predictions.jsonl"
+            output_root = root / "assembled"
+            output_root.mkdir()
+            sentinel = output_root / "keep.txt"
+            sentinel.write_text("keep\n", encoding="utf-8")
+            predictions.write_text(
+                json.dumps(
+                    {
+                        "sample_id": "sample_1",
+                        "file_path": "rtl/top.v",
+                        "predicted_file_content": "module top; endmodule\n",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "output root already exists"):
+                assemble_predictions(predictions, output_root)
+
+            self.assertTrue(sentinel.exists())
+
+    def test_assemble_predictions_rejects_unsafe_sample_or_file_path(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            predictions = root / "predictions.jsonl"
+            predictions.write_text(
+                json.dumps(
+                    {
+                        "sample_id": "../escape",
+                        "file_path": "../escape.v",
+                        "predicted_file_content": "module escape; endmodule\n",
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(ValueError, "unsafe"):
+                assemble_predictions(predictions, root / "assembled")
+
+            self.assertFalse((root / "escape").exists())
+
     def test_verify_assembled_projects_reports_static_checks_for_oracle_project(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -330,11 +551,50 @@ class Req2FileEvalTest(unittest.TestCase):
             report = verify_assembled_projects(output_root)
 
             self.assertEqual(report["projects"], 1)
-            self.assertEqual(report["l0_passed"], 1)
-            self.assertEqual(report["rtl_identifier_passed"], 1)
-            self.assertEqual(report["testbench_static_passed"], 1)
+            self.assertEqual(report["derived_training_view"], "req2file")
+            self.assertFalse(report["official_eval_unit"])
+            self.assertFalse(report["standalone_pass_credit"])
+            self.assertFalse(report["project_level_pass_credit"])
+            self.assertNotIn("l0_passed", report)
+            self.assertEqual(report["file_level_l0_passed"], 1)
+            self.assertEqual(report["file_level_rtl_identifier_passed"], 1)
+            self.assertEqual(report["file_level_testbench_static_passed"], 1)
             self.assertEqual(report["project_results"][0]["sample_id"], sample.name)
-            self.assertEqual(report["project_results"][0]["status"], "passed")
+            self.assertEqual(report["project_results"][0]["file_level_status"], "passed")
+            self.assertFalse(report["project_results"][0]["project_level_pass_credit"])
+            self.assertNotIn("status", report["project_results"][0])
+
+    def test_verify_assembled_projects_reports_no_credit_when_assembly_manifest_is_missing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            predictions = root / "predictions.jsonl"
+            output_root = root / "assembled"
+            sample = Path("datasets/sr2fpga_rtl_v1/sample_t0_t4_deterministic_smoke_counter_8_000001")
+            rows = []
+            for path in sorted((sample / "final/generated_project").rglob("*")):
+                if not path.is_file():
+                    continue
+                rows.append(
+                    {
+                        "sample_id": sample.name,
+                        "file_path": str(path.relative_to(sample / "final/generated_project")),
+                        "predicted_file_content": path.read_text(encoding="utf-8"),
+                    }
+                )
+            predictions.write_text(
+                "".join(json.dumps(row, ensure_ascii=False) + "\n" for row in rows),
+                encoding="utf-8",
+            )
+            assemble_predictions(predictions, output_root, reference_dataset_root=Path("datasets/sr2fpga_rtl_v1"))
+            (output_root / sample.name / "req2file_assembly_manifest.json").unlink()
+
+            report = verify_assembled_projects(output_root)
+
+            self.assertEqual(report["projects"], 1)
+            self.assertEqual(report["file_level_l0_passed"], 0)
+            self.assertEqual(report["project_results"][0]["file_level_status"], "failed")
+            self.assertFalse(report["project_results"][0]["project_level_pass_credit"])
+            self.assertIn("req2file_assembly_manifest.json", report["project_results"][0]["assembly_manifest"]["error"])
 
     def test_verify_assembled_projects_with_tools_runs_lint_and_simulation_pipeline(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -355,20 +615,90 @@ class Req2FileEvalTest(unittest.TestCase):
             )
             (project_dir / "rtl/top.v").write_text("module top; endmodule\n", encoding="utf-8")
             (project_dir / "sim/tb_top.v").write_text("module tb_top; endmodule\n", encoding="utf-8")
+            _write_assembly_manifest(root / "assembled/sample_1")
             runner = FakeCommandRunner()
 
             report = verify_assembled_projects_with_tools(root / "assembled", command_runner=runner)
 
             self.assertEqual(report["projects"], 1)
-            self.assertEqual(report["lint_passed"], 1)
-            self.assertEqual(report["sim_compile_passed"], 1)
-            self.assertEqual(report["sim_run_passed"], 1)
+            self.assertEqual(report["derived_training_view"], "req2file")
+            self.assertFalse(report["official_eval_unit"])
+            self.assertFalse(report["project_level_pass_credit"])
+            self.assertNotIn("lint_passed", report)
+            self.assertEqual(report["file_level_lint_passed"], 1)
+            self.assertEqual(report["file_level_sim_compile_passed"], 1)
+            self.assertEqual(report["file_level_sim_run_passed"], 1)
             self.assertEqual([call[2] for call in runner.calls], ["lint", "sim_compile", "sim_run"])
             self.assertEqual(runner.calls[0][0], ["verilator", "--lint-only", "-Wall", "rtl/top.v"])
             self.assertIn("sim/tb_top.v", runner.calls[1][0])
-            self.assertEqual(report["project_results"][0]["status"], "passed")
+            self.assertEqual(report["project_results"][0]["file_level_status"], "passed")
+            self.assertFalse(report["project_results"][0]["project_level_pass_credit"])
+            self.assertNotIn("status", report["project_results"][0])
+
+    def test_verify_assembled_projects_with_tools_reports_no_credit_for_incomplete_assembly_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_dir = root / "assembled/sample_1/generated_project"
+            (project_dir / "rtl").mkdir(parents=True)
+            (project_dir / "manifest.json").write_text(
+                json.dumps(
+                    {
+                        "top_module": "top",
+                        "sources": ["rtl/top.v"],
+                        "simulation": {"testbench": "sim/tb_top.v"},
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+            (project_dir / "rtl/top.v").write_text("module top; endmodule\n", encoding="utf-8")
+            _write_assembly_manifest(root / "assembled/sample_1", complete=False, missing_files=["sim/tb_top.v"])
+            runner = FakeCommandRunner()
+
+            report = verify_assembled_projects_with_tools(root / "assembled", command_runner=runner)
+
+            self.assertEqual(report["projects"], 1)
+            self.assertEqual(report["file_level_lint_passed"], 0)
+            self.assertEqual(report["file_level_sim_compile_passed"], 0)
+            self.assertEqual(report["file_level_sim_run_passed"], 0)
+            self.assertEqual(report["project_results"][0]["file_level_status"], "failed")
+            self.assertIn("incomplete", report["project_results"][0]["assembly_manifest"]["error"])
+            self.assertEqual(runner.calls, [])
 
     def test_verify_assembled_projects_with_synth_runs_yosys_and_reports_qor(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_dir = root / "assembled/sample_1/generated_project"
+            (project_dir / "rtl").mkdir(parents=True)
+            (project_dir / "manifest.json").write_text(
+                json.dumps({"top_module": "top", "sources": ["rtl/top.v"]}) + "\n",
+                encoding="utf-8",
+            )
+            (project_dir / "rtl/top.v").write_text("module top; endmodule\n", encoding="utf-8")
+            _write_assembly_manifest(root / "assembled/sample_1")
+            runner = FakeSynthRunner()
+
+            report = verify_assembled_projects_with_synth(root / "assembled", command_runner=runner)
+
+            self.assertEqual(report["projects"], 1)
+            self.assertEqual(report["derived_training_view"], "req2file")
+            self.assertFalse(report["official_eval_unit"])
+            self.assertFalse(report["project_level_pass_credit"])
+            self.assertNotIn("synth_passed", report)
+            self.assertEqual(report["file_level_synth_passed"], 1)
+            self.assertEqual(report["project_results"][0]["file_level_status"], "passed")
+            self.assertFalse(report["project_results"][0]["project_level_pass_credit"])
+            self.assertNotIn("status", report["project_results"][0])
+            self.assertEqual(report["project_results"][0]["measured_qor"]["cell_count"], 12)
+            self.assertEqual(report["project_results"][0]["measured_qor"]["cell_breakdown"]["SB_LUT4"], 5)
+            self.assertEqual(runner.calls[0][2], "synth")
+            self.assertEqual(runner.calls[0][3], 60)
+            self.assertEqual(
+                runner.calls[0][0],
+                ["yosys", "-p", "read_verilog rtl/top.v; synth -top top; stat"],
+            )
+
+    def test_verify_assembled_projects_with_synth_reports_no_credit_when_assembly_manifest_is_missing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             project_dir = root / "assembled/sample_1/generated_project"
@@ -383,16 +713,31 @@ class Req2FileEvalTest(unittest.TestCase):
             report = verify_assembled_projects_with_synth(root / "assembled", command_runner=runner)
 
             self.assertEqual(report["projects"], 1)
-            self.assertEqual(report["synth_passed"], 1)
-            self.assertEqual(report["project_results"][0]["status"], "passed")
-            self.assertEqual(report["project_results"][0]["measured_qor"]["cell_count"], 12)
-            self.assertEqual(report["project_results"][0]["measured_qor"]["cell_breakdown"]["SB_LUT4"], 5)
-            self.assertEqual(runner.calls[0][2], "synth")
-            self.assertEqual(runner.calls[0][3], 60)
-            self.assertEqual(
-                runner.calls[0][0],
-                ["yosys", "-p", "read_verilog rtl/top.v; synth -top top; stat"],
+            self.assertEqual(report["file_level_synth_passed"], 0)
+            self.assertEqual(report["project_results"][0]["file_level_status"], "failed")
+            self.assertIn("req2file_assembly_manifest.json", report["project_results"][0]["assembly_manifest"]["error"])
+            self.assertEqual(runner.calls, [])
+
+    def test_verify_assembled_projects_with_synth_rejects_unsafe_yosys_manifest_fields(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            project_dir = root / "assembled/sample_1/generated_project"
+            (project_dir / "rtl").mkdir(parents=True)
+            (project_dir / "manifest.json").write_text(
+                json.dumps({"top_module": "top; write_json pwned.json", "sources": ["rtl/top.v"]}) + "\n",
+                encoding="utf-8",
             )
+            (project_dir / "rtl/top.v").write_text("module top; endmodule\n", encoding="utf-8")
+            _write_assembly_manifest(root / "assembled/sample_1")
+            runner = FakeSynthRunner()
+
+            report = verify_assembled_projects_with_synth(root / "assembled", command_runner=runner)
+
+            self.assertEqual(report["file_level_synth_passed"], 0)
+            self.assertEqual(report["project_results"][0]["file_level_status"], "failed")
+            self.assertEqual(report["project_results"][0]["stage"]["stage"], "synth")
+            self.assertIn("unsafe Yosys", report["project_results"][0]["stage"]["stderr"])
+            self.assertEqual(runner.calls, [])
 
 
 if __name__ == "__main__":

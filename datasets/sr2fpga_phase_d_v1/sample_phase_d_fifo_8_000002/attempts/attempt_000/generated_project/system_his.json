@@ -1,0 +1,866 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control.",
+    "design_goal": "Define a canonical architecture contract for an 8-bit synchronous FIFO using valid/ready input and output handshakes on a generic open-source Verilog FPGA target.",
+    "assumptions": [
+      "FIFO depth is 4 entries unless overridden by parameter.",
+      "The FIFO uses a single clock domain.",
+      "Reset is synchronous active-low as required by the project rules.",
+      "The FIFO is intended for low-area implementation using distributed registers or LUT RAM rather than block RAM.",
+      "Input transfers occur when in_valid and in_ready are both asserted.",
+      "Output transfers occur when out_valid and out_ready are both asserted.",
+      "The FIFO may accept and produce data in the same cycle when neither empty/full rules prohibit the operation."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "description": "Payload width in bits."
+      },
+      {
+        "name": "DEPTH",
+        "type": "integer",
+        "default": 4,
+        "description": "Number of FIFO storage entries."
+      },
+      {
+        "name": "ADDR_WIDTH",
+        "type": "integer",
+        "default": 2,
+        "description": "Pointer width sufficient to address DEPTH entries."
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "target_fmax_mhz": 100
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "role": "clock"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "role": "reset"
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "role": "input_valid"
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "role": "input_ready"
+      },
+      {
+        "name": "in_data",
+        "direction": "input",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "role": "input_payload"
+      },
+      {
+        "name": "out_valid",
+        "direction": "output",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "role": "output_valid"
+      },
+      {
+        "name": "out_ready",
+        "direction": "input",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "role": "output_ready"
+      },
+      {
+        "name": "out_data",
+        "direction": "output",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "role": "output_payload"
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "sink",
+        "protocol": "valid_ready",
+        "clock": "clk",
+        "reset": "rst_n",
+        "signals": {
+          "valid": "in_valid",
+          "ready": "in_ready",
+          "data": "in_data"
+        }
+      },
+      {
+        "name": "source",
+        "protocol": "valid_ready",
+        "clock": "clk",
+        "reset": "rst_n",
+        "signals": {
+          "valid": "out_valid",
+          "ready": "out_ready",
+          "data": "out_data"
+        }
+      }
+    ]
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "fifo_out_data_reg",
+        "owner": "u_fifo",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "intent": "Holds the output payload presented on out_data."
+      },
+      {
+        "name": "fifo_out_valid_reg",
+        "owner": "u_fifo",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "reset_value": 0,
+        "intent": "Tracks whether the output payload is valid."
+      }
+    ],
+    "counters": [
+      {
+        "name": "fifo_wr_ptr",
+        "owner": "u_fifo",
+        "width": {
+          "expr": "ADDR_WIDTH",
+          "resolved": 2
+        },
+        "range": {
+          "min": 0,
+          "max": 3
+        },
+        "reset_value": 0,
+        "intent": "Write pointer for the next accepted input entry."
+      },
+      {
+        "name": "fifo_rd_ptr",
+        "owner": "u_fifo",
+        "width": {
+          "expr": "ADDR_WIDTH",
+          "resolved": 2
+        },
+        "range": {
+          "min": 0,
+          "max": 3
+        },
+        "reset_value": 0,
+        "intent": "Read pointer for the next entry to present at the output."
+      },
+      {
+        "name": "fifo_count",
+        "owner": "u_fifo",
+        "width": {
+          "expr": "ADDR_WIDTH + 1",
+          "resolved": 3
+        },
+        "range": {
+          "min": 0,
+          "max": 4
+        },
+        "reset_value": 0,
+        "intent": "Number of occupied FIFO entries."
+      }
+    ],
+    "fsms": [],
+    "buffers": [
+      {
+        "name": "fifo_queue",
+        "owner": "u_fifo",
+        "depth": {
+          "expr": "DEPTH",
+          "resolved": 4
+        },
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "intent": "Logical FIFO queue storing accepted input payloads until output handshakes consume them."
+      }
+    ],
+    "memories": [
+      {
+        "name": "fifo_storage",
+        "owner": "u_fifo",
+        "depth": {
+          "expr": "DEPTH",
+          "resolved": 4
+        },
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "read_latency_cycles": 0,
+        "write_ports": 1,
+        "read_ports": 1,
+        "intent": "Small synchronous FIFO storage array."
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "fifo_core",
+      "semantic_kind": "synchronous_fifo",
+      "source": "rtl/fifo_core.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        },
+        {
+          "name": "DEPTH",
+          "type": "integer",
+          "default": 4
+        },
+        {
+          "name": "ADDR_WIDTH",
+          "type": "integer",
+          "default": 2
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "intent": "Implements the synchronous FIFO storage, occupancy tracking, and valid/ready flow-control behavior."
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_fifo",
+      "component": "fifo_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8,
+        "DEPTH": 4,
+        "ADDR_WIDTH": 2
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "fifo_out_data_reg",
+        "fifo_out_valid_reg",
+        "fifo_wr_ptr",
+        "fifo_rd_ptr",
+        "fifo_count",
+        "fifo_queue",
+        "fifo_storage"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "fifo_payload_flow",
+      "path": [
+        "top.in_data",
+        "u_fifo.in_data",
+        "u_fifo.out_data",
+        "top.out_data"
+      ],
+      "payload": {
+        "name": "fifo_payload",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one transfer per cycle when the FIFO is neither backpressured nor empty/full limited"
+      }
+    },
+    {
+      "name": "input_accept_flow",
+      "path": [
+        "top.in_valid",
+        "u_fifo.in_valid",
+        "u_fifo.in_ready",
+        "top.in_ready"
+      ],
+      "payload": {
+        "name": "input_handshake",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one accepted input transfer per cycle when in_valid and in_ready are asserted"
+      }
+    },
+    {
+      "name": "output_transfer_flow",
+      "path": [
+        "top.out_ready",
+        "u_fifo.out_ready",
+        "u_fifo.out_valid",
+        "top.out_valid"
+      ],
+      "payload": {
+        "name": "output_handshake",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one output transfer per cycle when out_valid and out_ready are asserted"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "sync_reset_count",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "fifo_count"
+      },
+      "related_state": [
+        "fifo_count"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "sync_reset_write_pointer",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "fifo_wr_ptr"
+      },
+      "related_state": [
+        "fifo_wr_ptr"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "sync_reset_read_pointer",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "fifo_rd_ptr"
+      },
+      "related_state": [
+        "fifo_rd_ptr"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "sync_reset_output_valid",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "fifo_out_valid_reg"
+      },
+      "related_state": [
+        "fifo_out_valid_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "input_ready_when_not_full",
+      "kind": "handshake_rule",
+      "when": {
+        "signal": "fifo_count",
+        "op": "<",
+        "value": 4
+      },
+      "effect": {
+        "action": "enable",
+        "target": "input_accept_flow"
+      },
+      "related_state": [
+        "fifo_count"
+      ],
+      "related_flows": [
+        "input_accept_flow"
+      ]
+    },
+    {
+      "name": "output_valid_when_not_empty",
+      "kind": "handshake_rule",
+      "when": {
+        "signal": "fifo_count",
+        "op": ">",
+        "value": 0
+      },
+      "effect": {
+        "action": "enable",
+        "target": "output_transfer_flow"
+      },
+      "related_state": [
+        "fifo_count",
+        "fifo_out_valid_reg"
+      ],
+      "related_flows": [
+        "output_transfer_flow"
+      ]
+    },
+    {
+      "name": "write_on_input_handshake",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "u_fifo.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "write",
+        "target": "fifo_storage"
+      },
+      "related_state": [
+        "fifo_storage",
+        "fifo_wr_ptr"
+      ],
+      "related_flows": [
+        "fifo_payload_flow",
+        "input_accept_flow"
+      ]
+    },
+    {
+      "name": "read_on_output_handshake",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "u_fifo.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "read",
+        "target": "fifo_storage"
+      },
+      "related_state": [
+        "fifo_storage",
+        "fifo_rd_ptr",
+        "fifo_out_data_reg"
+      ],
+      "related_flows": [
+        "fifo_payload_flow",
+        "output_transfer_flow"
+      ]
+    },
+    {
+      "name": "increment_write_pointer",
+      "kind": "counter_update",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "u_fifo.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "increment_modulo_depth",
+        "target": "fifo_wr_ptr"
+      },
+      "related_state": [
+        "fifo_wr_ptr"
+      ],
+      "related_flows": [
+        "input_accept_flow"
+      ]
+    },
+    {
+      "name": "increment_read_pointer",
+      "kind": "counter_update",
+      "when": {
+        "all_of": [
+          {
+            "signal": "u_fifo.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "increment_modulo_depth",
+        "target": "fifo_rd_ptr"
+      },
+      "related_state": [
+        "fifo_rd_ptr"
+      ],
+      "related_flows": [
+        "output_transfer_flow"
+      ]
+    },
+    {
+      "name": "occupancy_increase_on_write_only",
+      "kind": "buffer_occupancy",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "u_fifo.in_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "u_fifo.out_valid",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "increment",
+        "target": "fifo_count"
+      },
+      "related_state": [
+        "fifo_count"
+      ],
+      "related_flows": [
+        "input_accept_flow"
+      ]
+    },
+    {
+      "name": "occupancy_decrease_on_read_only",
+      "kind": "buffer_occupancy",
+      "when": {
+        "all_of": [
+          {
+            "signal": "u_fifo.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "decrement",
+        "target": "fifo_count"
+      },
+      "related_state": [
+        "fifo_count"
+      ],
+      "related_flows": [
+        "output_transfer_flow"
+      ]
+    },
+    {
+      "name": "occupancy_hold_on_simultaneous_read_write",
+      "kind": "buffer_occupancy",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "u_fifo.in_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "u_fifo.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "hold",
+        "target": "fifo_count"
+      },
+      "related_state": [
+        "fifo_count"
+      ],
+      "related_flows": [
+        "input_accept_flow",
+        "output_transfer_flow"
+      ]
+    },
+    {
+      "name": "stall_input_when_full",
+      "kind": "stall_rule",
+      "when": {
+        "signal": "fifo_count",
+        "op": "==",
+        "value": 4
+      },
+      "effect": {
+        "action": "stall",
+        "target": "input_accept_flow"
+      },
+      "related_state": [
+        "fifo_count"
+      ],
+      "related_flows": [
+        "input_accept_flow"
+      ]
+    },
+    {
+      "name": "stall_output_when_empty",
+      "kind": "stall_rule",
+      "when": {
+        "signal": "fifo_count",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "stall",
+        "target": "output_transfer_flow"
+      },
+      "related_state": [
+        "fifo_count"
+      ],
+      "related_flows": [
+        "output_transfer_flow"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "reset_initializes_empty_fifo",
+        "description": "Apply synchronous active-low reset and verify the FIFO reports ready for input, not valid for output, and has empty occupancy."
+      },
+      {
+        "name": "single_write_then_read",
+        "description": "Accept one 8-bit word, then assert output ready and verify the same word appears on the output with a valid handshake."
+      },
+      {
+        "name": "fill_to_capacity_and_stall",
+        "description": "Write four entries without reading and verify input ready deasserts once the FIFO is full."
+      },
+      {
+        "name": "drain_to_empty_and_stall",
+        "description": "Read all stored entries and verify output valid deasserts once the FIFO becomes empty."
+      },
+      {
+        "name": "simultaneous_read_write",
+        "description": "With the FIFO partially occupied, perform concurrent input and output handshakes and verify occupancy remains constant while data ordering is preserved."
+      },
+      {
+        "name": "backpressure_holds_output",
+        "description": "Deassert out_ready while data is available and verify out_valid and out_data remain stable until the output handshake completes."
+      },
+      {
+        "name": "ordering_preserved",
+        "description": "Push a sequence of distinct 8-bit values through varied ready/valid stalls and verify first-in first-out ordering at the output."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/fifo_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

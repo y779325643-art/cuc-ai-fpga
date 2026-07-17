@@ -1,0 +1,1 @@
+HIS2PROJECT RTL failed System-HIS v1.2 cross-check: state.fsms 'processing_fsm' state 'idle' is not found in RTL module 'top'; state.fsms 'processing_fsm' state 'processing' is not found in RTL module 'top'; state.fsms 'processing_fsm' state 'delayed_output' is not found in RTL module 'top'

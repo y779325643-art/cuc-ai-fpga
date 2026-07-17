@@ -44,3 +44,4 @@ outputs/**/qa/
 outputs/**/layout/
 outputs/**/template-inspect/
 configs/*.local.yaml
+configs/local/

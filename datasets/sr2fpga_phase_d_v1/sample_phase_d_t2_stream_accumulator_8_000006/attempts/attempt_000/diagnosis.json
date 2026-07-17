@@ -1,0 +1,17 @@
+{
+  "failure_type": "his_validation_failed",
+  "stage": "his_validation",
+  "root_cause": "H2 lowerability: components[0] has unsupported semantic_kind 'stream_buffer'\nH2 lowerability: components[1] has unsupported semantic_kind 'stream_accumulator'\nH2 lowerability: data_flow[6] has unsupported protocol 'registered_data'\nH2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'reset_initialization', 'description': 'Apply synchronous active-low reset and confirm in_ready is well-defined, sample_valid is deasserted, and sum is zero after reset release.'}'\nH2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'single_sample_accumulation', 'description': 'Drive one valid-ready sample transfer and confirm sum equals the sample value modulo 256.'}'\nH2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'continuous_stream_no_stall', 'description': 'Drive back-to-back valid samples while the accumulator is enabled by sample_ready and confirm one accumulated update per cycle.'}'\nH2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'input_stall_with_skid_buffer', 'description': 'Hold in_valid high while the buffer cannot present to the accumulator and confirm the skid buffer preserves sample ordering.'}'\nH2 lowerability: verification.scenarios[4] unsupported scenario '{'name': 'modulo_wrap', 'description': 'Accumulate samples whose mathematical sum exceeds 255 and confirm the visible sum wraps modulo 256.'}'",
+  "affected_files": [
+    "system_his.json"
+  ],
+  "structured_diagnosis": {
+    "failure_type": "his_validation_failed",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

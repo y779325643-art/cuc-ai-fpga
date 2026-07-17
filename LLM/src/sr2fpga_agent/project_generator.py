@@ -7,34 +7,90 @@ import re
 from textwrap import dedent
 
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
-
-
-SUPPORTED_TASK_TYPES = {
-    "counter",
-    "fifo",
-    "simple_fsm",
-    "ram_read_write",
-    "uart_tx",
-    "spi_master",
-    "pwm_controller",
-    "fir_filter",
-    "streaming_valid_ready",
-    "matrix_vector_mac",
-    "alu_control_unit",
-    "crc_stream_checker",
-    "composed_event_counter",
-    "composed_stream_accumulator",
-    "composed_stream_fork",
-    "composed_dual_stream_join",
-    "composed_vector_mac_pipeline",
-    "composed_td_update_core",
-    "composed_policy_value_shell",
-    "composed_replay_sample_shell",
-    "composed_host_protocol_shell",
-    "composed_rl_accelerator_shell",
-    "composed_batch_rl_accelerator_shell",
-    "composed_replay_arbiter_shell",
-}
+from LLM.src.sr2fpga_agent.task_catalog import task_family_spec_for_family_id
+from LLM.src.sr2fpga_agent.task_families import (
+    SUPPORTED_TASK_TYPES,
+    TASK_TYPE_ALIASES,
+    family_id_for_task_type,
+)
+from LLM.src.sr2fpga_agent.task_families.basic import (
+    counter_rtl as _counter_rtl,
+    counter_testbench as _counter_testbench,
+    ram_read_write_rtl as _ram_read_write_rtl,
+    ram_read_write_testbench as _ram_read_write_testbench,
+    simple_fsm_rtl as _simple_fsm_rtl,
+    simple_fsm_testbench as _simple_fsm_testbench,
+)
+from LLM.src.sr2fpga_agent.task_families.datapath import (
+    alu_control_unit_rtl_files as _alu_control_unit_rtl_files,
+    alu_control_unit_testbench as _alu_control_unit_testbench,
+    composed_vector_mac_pipeline_rtl_files as _composed_vector_mac_pipeline_rtl_files,
+    composed_vector_mac_pipeline_testbench as _composed_vector_mac_pipeline_testbench,
+    crc_stream_checker_rtl_files as _crc_stream_checker_rtl_files,
+    crc_stream_checker_testbench as _crc_stream_checker_testbench,
+    fir_filter_rtl_files as _fir_filter_rtl_files,
+    fir_filter_testbench as _fir_filter_testbench,
+    matched_filter_rtl_files as _matched_filter_rtl_files,
+    matched_filter_testbench as _matched_filter_testbench,
+    peak_detector_rtl_files as _peak_detector_rtl_files,
+    peak_detector_testbench as _peak_detector_testbench,
+    pulse_radar_signal_rtl_files as _pulse_radar_signal_rtl_files,
+    pulse_radar_signal_testbench as _pulse_radar_signal_testbench,
+    matrix_vector_mac_rtl_files as _matrix_vector_mac_rtl_files,
+    matrix_vector_mac_testbench as _matrix_vector_mac_testbench,
+    pwm_controller_rtl_files as _pwm_controller_rtl_files,
+    pwm_controller_testbench as _pwm_controller_testbench,
+)
+from LLM.src.sr2fpga_agent.task_families.image import (
+    sobel_threshold_rtl_files as _sobel_threshold_rtl_files,
+    sobel_threshold_testbench as _sobel_threshold_testbench,
+    vision_defect_core_rtl_files as _vision_defect_core_rtl_files,
+    vision_defect_core_testbench as _vision_defect_core_testbench,
+)
+from LLM.src.sr2fpga_agent.task_families.protocol import (
+    fifo_rtl as _fifo_rtl,
+    fifo_testbench as _fifo_testbench,
+    spi_master_rtl_files as _spi_master_rtl_files,
+    spi_master_testbench as _spi_master_testbench,
+    uart_fifo_loopback_rtl_files as _uart_fifo_loopback_rtl_files,
+    uart_fifo_loopback_testbench as _uart_fifo_loopback_testbench,
+    uart_rx_rtl_files as _uart_rx_rtl_files,
+    uart_rx_testbench as _uart_rx_testbench,
+    uart_tx_rtl_files as _uart_tx_rtl_files,
+    uart_tx_testbench as _uart_tx_testbench,
+)
+from LLM.src.sr2fpga_agent.task_families.rl import (
+    batch_config_bank_rtl as _batch_config_bank_rtl,
+    composed_batch_rl_accelerator_shell_rtl_files as _composed_batch_rl_accelerator_shell_rtl_files,
+    composed_batch_rl_accelerator_shell_testbench as _composed_batch_rl_accelerator_shell_testbench,
+    composed_host_protocol_shell_rtl_files as _composed_host_protocol_shell_rtl_files,
+    composed_host_protocol_shell_testbench as _composed_host_protocol_shell_testbench,
+    composed_policy_value_shell_rtl_files as _composed_policy_value_shell_rtl_files,
+    composed_policy_value_shell_testbench as _composed_policy_value_shell_testbench,
+    composed_replay_arbiter_shell_rtl_files as _composed_replay_arbiter_shell_rtl_files,
+    composed_replay_arbiter_shell_testbench as _composed_replay_arbiter_shell_testbench,
+    composed_replay_sample_shell_rtl_files as _composed_replay_sample_shell_rtl_files,
+    composed_replay_sample_shell_testbench as _composed_replay_sample_shell_testbench,
+    composed_rl_accelerator_shell_rtl_files as _composed_rl_accelerator_shell_rtl_files,
+    composed_rl_accelerator_shell_testbench as _composed_rl_accelerator_shell_testbench,
+    composed_td_update_core_rtl_files as _composed_td_update_core_rtl_files,
+    composed_td_update_core_testbench as _composed_td_update_core_testbench,
+)
+from LLM.src.sr2fpga_agent.task_families.stream import (
+    composed_dual_stream_join_rtl_files as _composed_dual_stream_join_rtl_files,
+    composed_dual_stream_join_testbench as _composed_dual_stream_join_testbench,
+    composed_event_counter_rtl_files as _composed_event_counter_rtl_files,
+    composed_event_counter_testbench as _composed_event_counter_testbench,
+    composed_stream_fork_rtl_files as _composed_stream_fork_rtl_files,
+    composed_stream_fork_testbench as _composed_stream_fork_testbench,
+    composed_stream_accumulator_rtl_files as _composed_stream_accumulator_rtl_files,
+    composed_stream_accumulator_testbench as _composed_stream_accumulator_testbench,
+    pattern_matcher_rtl_files as _pattern_matcher_rtl_files,
+    pattern_matcher_testbench as _pattern_matcher_testbench,
+    streaming_valid_ready_rtl_files as _streaming_valid_ready_rtl_files,
+    streaming_valid_ready_testbench as _streaming_valid_ready_testbench,
+    stream_trigger_filter_rtl_files as _stream_trigger_filter_rtl_files,
+)
 
 COMPONENT_LIBRARY_ID = "sr2fpga_deterministic_components_v1"
 TOPOLOGY_EDGE_DATA_FLOW_TASK_TYPES = {"composed_td_update_core"}
@@ -67,7 +123,8 @@ COMPONENT_TOPOLOGIES = {
             {"from": "top.in_data", "to": "skid_buffer.in_data"},
             {"from": "skid_buffer.out_valid", "to": "accumulator_core.sample_valid"},
             {"from": "skid_buffer.out_data", "to": "accumulator_core.sample"},
-            {"from": "accumulator_core.sample_ready", "to": "skid_buffer.out_ready"},
+            {"from": "top.accum_ready", "to": "skid_buffer.out_ready"},
+            {"from": "top.accum_ready", "to": "accumulator_core.sample_ready"},
             {"from": "accumulator_core.sum", "to": "top.sum"},
         ],
     },
@@ -551,6 +608,7 @@ class ProjectGenerator:
             raise ValueError(f"Unsupported task_type for V1: {request.task_type}")
         if request.width <= 0:
             raise ValueError("width must be positive")
+        request = _canonical_request(request)
 
         rtl_files = _rtl_files(request)
         files = {
@@ -562,6 +620,18 @@ class ProjectGenerator:
             "reports/predicted_qor.json": _to_json(_predicted_qor(request, platform)),
         }
         return GeneratedProject(project_name=request.project_name, files=files)
+
+
+def _canonical_request(request: ProjectRequest) -> ProjectRequest:
+    canonical_task_type = TASK_TYPE_ALIASES.get(request.task_type, request.task_type)
+    if canonical_task_type == request.task_type:
+        return request
+    return ProjectRequest(
+        task_type=canonical_task_type,
+        width=request.width,
+        project_name=request.project_name,
+        description=request.description,
+    )
 
 
 def _to_json(payload: object) -> str:
@@ -580,11 +650,19 @@ def _system_his(
     predicted_resources = _resource_shape(request)
     top_module = str(architecture["top_module"])
     top_ports = _v12_ports(_top_ports(interface))
+    top_parameters = _top_parameters(request)
     components = _v12_components(modules)
     instances = _v12_instances(
         rtl_files,
         components,
         top_module,
+        clock_name=str(interface["clock"]),
+        reset_name=str(interface["reset"]),
+    )
+    instances = _v12_task_specific_instances(
+        request,
+        instances,
+        components,
         clock_name=str(interface["clock"]),
         reset_name=str(interface["reset"]),
     )
@@ -613,7 +691,7 @@ def _system_his(
         },
         "top": {
             "name": top_module,
-            "parameters": [],
+            "parameters": top_parameters,
             "clocks": [{"name": interface["clock"], "target_fmax_mhz": platform.clock_hz / 1_000_000}],
             "resets": [
                 {
@@ -646,7 +724,7 @@ def _system_his(
         },
         "verification": {
             "testbench": "sim/tb_top.v",
-            "scenarios": ["reset", "nominal_operation"],
+            "scenarios": _verification_scenarios(request),
             "pass_condition": _test_pass_means(request),
             "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
             "test_pass_means": _test_pass_means(request),
@@ -760,6 +838,45 @@ def _v12_instances(
             },
         )
     return list(instances.values())
+
+
+def _v12_task_specific_instances(
+    request: ProjectRequest,
+    instances: list[dict[str, object]],
+    components: list[dict[str, object]],
+    *,
+    clock_name: str,
+    reset_name: str,
+) -> list[dict[str, object]]:
+    canonical_instances = {
+        "vision_defect_core": (
+            ("u_sobel_window", "sobel_window"),
+            ("u_sobel_threshold_core", "sobel_threshold_core"),
+            ("u_vision_defect_accumulator", "vision_defect_accumulator"),
+            ("u_vision_io_control", "vision_io_control"),
+        ),
+        "pattern_matcher": (("u_pattern_matcher", "pattern_matcher"),),
+        "stream_trigger_filter": (
+            ("u_pattern_matcher", "pattern_matcher"),
+            ("u_trigger_fsm", "trigger_fsm"),
+            ("u_stream_packer", "stream_packer"),
+        ),
+    }.get(request.task_type, ())
+    if not canonical_instances:
+        return instances
+
+    components_by_name = {str(component["name"]): component for component in components}
+    by_name = {str(instance["name"]): instance for instance in instances}
+    for instance_name, component_name in canonical_instances:
+        by_name[instance_name] = {
+            "name": instance_name,
+            "component": component_name,
+            "parameter_values": _v12_component_parameter_values(components_by_name[component_name]),
+            "clock": clock_name,
+            "reset": reset_name,
+            "owns_state": [],
+        }
+    return list(by_name.values())
 
 
 def _v12_component_parameter_values(component: dict[str, object]) -> dict[str, object]:
@@ -1058,6 +1175,12 @@ def _v12_data_flow(
     instances: list[dict[str, object]],
     components: list[dict[str, object]],
 ) -> list[dict[str, object]]:
+    if request.task_type == "pulse_radar_signal":
+        return _pulse_radar_data_flow(request)
+    if request.task_type == "vision_defect_core":
+        return _vision_defect_data_flow()
+    if request.task_type in {"pattern_matcher", "stream_trigger_filter"}:
+        return _pattern_trigger_data_flow(request)
     topology_flows = _v12_topology_edge_data_flow(request, instances)
     if topology_flows:
         return topology_flows
@@ -1105,6 +1228,91 @@ def _v12_data_flow(
     return [flow]
 
 
+def _pulse_radar_data_flow(request: ProjectRequest) -> list[dict[str, object]]:
+    acc_width = request.width * 2 + 2
+    edges = [
+        ("top.in_valid", "u_matched_filter_core.in_valid", 1),
+        ("top.in_sample", "u_matched_filter_core.in_sample", request.width),
+        ("top.in_last", "u_matched_filter_core.in_last", 1),
+        ("u_matched_filter_core.in_ready", "top.in_ready", 1),
+        ("u_matched_filter_core.out_valid", "u_threshold_comparator.in_valid", 1),
+        ("u_matched_filter_core.out_correlation", "u_threshold_comparator.in_sample", acc_width),
+        ("u_matched_filter_core.out_last", "u_threshold_comparator.in_last", 1),
+        ("u_threshold_comparator.in_ready", "u_matched_filter_core.out_ready", 1),
+        ("u_threshold_comparator.out_valid", "u_peak_detector_core.in_valid", 1),
+        ("u_threshold_comparator.out_sample", "u_peak_detector_core.in_sample", acc_width),
+        ("u_threshold_comparator.out_last", "u_peak_detector_core.in_last", 1),
+        ("u_peak_detector_core.in_ready", "u_threshold_comparator.out_ready", 1),
+        ("u_peak_detector_core.out_valid", "top.out_valid", 1),
+        ("top.out_ready", "u_peak_detector_core.out_ready", 1),
+        ("u_peak_detector_core.out_peak_found", "top.peak_found", 1),
+        ("u_peak_detector_core.out_peak_value", "top.peak_value", acc_width),
+        ("u_peak_detector_core.out_peak_index", "top.peak_index", acc_width),
+    ]
+    return [
+        {
+            "name": f"pulse_radar_signal_edge_{index:02d}",
+            "path": [source, sink],
+            "payload": {"name": source.rsplit(".", 1)[-1], "width": width},
+            "protocol": "valid_ready" if "valid" in source or "ready" in source or "valid" in sink or "ready" in sink else "wire",
+        }
+        for index, (source, sink, width) in enumerate(edges)
+    ]
+
+
+def _vision_defect_data_flow() -> list[dict[str, object]]:
+    edges = [
+        ("top.in_pixel", "u_sobel_window.in_pixel", 8),
+        ("u_sobel_window.gx", "u_sobel_threshold_core.gx", 11),
+        ("u_sobel_window.gy", "u_sobel_threshold_core.gy", 11),
+        ("top.out_edge", "u_vision_defect_accumulator.pixel_edge", 1),
+        ("u_vision_defect_accumulator.defect_present", "u_vision_io_control.defect_present", 1),
+        ("u_vision_defect_accumulator.first_defect_x", "u_vision_io_control.first_defect_x", 16),
+        ("u_vision_defect_accumulator.first_defect_y", "u_vision_io_control.first_defect_y", 16),
+        ("u_vision_defect_accumulator.defect_present", "top.defect_present", 1),
+        ("u_vision_defect_accumulator.first_defect_x", "top.first_defect_x", 16),
+        ("u_vision_defect_accumulator.first_defect_y", "top.first_defect_y", 16),
+        ("u_vision_io_control.reported_defect_present", "top.defect_present", 1),
+        ("u_vision_io_control.reported_first_defect_x", "top.first_defect_x", 16),
+        ("u_vision_io_control.reported_first_defect_y", "top.first_defect_y", 16),
+    ]
+    return [
+        {
+            "name": f"vision_defect_core_edge_{index:02d}",
+            "path": [source, sink],
+            "payload": {"name": source.rsplit(".", 1)[-1], "width": width},
+            "protocol": "wire",
+        }
+        for index, (source, sink, width) in enumerate(edges)
+    ]
+
+
+def _pattern_trigger_data_flow(request: ProjectRequest) -> list[dict[str, object]]:
+    if request.task_type == "pattern_matcher":
+        edges = [
+            ("top.in_data", "u_pattern_matcher.in_data", request.width),
+            ("u_pattern_matcher.match_index", "top.out_match_index", 32),
+            ("u_pattern_matcher.match_word", "top.out_match_word", request.width * 4),
+        ]
+    else:
+        edges = [
+            ("top.in_data", "u_pattern_matcher.in_data", request.width),
+            ("u_pattern_matcher.match_index", "u_trigger_fsm.match_index", 32),
+            ("u_pattern_matcher.match_word", "u_trigger_fsm.match_word", request.width * 4),
+            ("u_trigger_fsm.trigger_index", "u_stream_packer.event_index", 32),
+            ("u_trigger_fsm.trigger_word", "u_stream_packer.event_word", request.width * 4),
+            ("u_stream_packer.out_match_index", "top.out_match_index", 32),
+            ("u_stream_packer.out_match_word", "top.out_match_word", request.width * 4),
+        ]
+    return [
+        {
+            "name": f"{request.task_type}_edge_{index:02d}",
+            "path": [source, sink],
+            "payload": {"name": source.rsplit(".", 1)[-1], "width": width},
+            "protocol": "valid_ready" if "match" in source or "trigger" in source or "event" in source else "wire",
+        }
+        for index, (source, sink, width) in enumerate(edges)
+    ]
 def _v12_topology_edge_data_flow(
     request: ProjectRequest,
     instances: list[dict[str, object]],
@@ -1236,6 +1444,76 @@ def _v12_control_flow(request: ProjectRequest, data_flow: list[dict[str, object]
             "related_flows": [],
         }
     ]
+    if request.task_type == "vision_defect_core":
+        return rules + [
+            {
+                "name": "accepted_input_to_window",
+                "kind": "handshake_rule",
+                "condition": "top.in_valid && top.in_ready",
+                "effects": [
+                    "u_sobel_window.accept receives the pixel and row-major state only after the accepted input handshake"
+                ],
+                "related_state": [],
+                "related_flows": ["vision_defect_core_edge_00"],
+            },
+            {
+                "name": "registered_output_accept",
+                "kind": "handshake_rule",
+                "condition": "top.out_valid && top.out_ready",
+                "effects": [
+                    "u_vision_defect_accumulator consumes zero-border-policy registered top.out_edge and top.out_last; u_vision_io_control captures the completed frame report"
+                ],
+                "related_state": [],
+                "related_flows": [
+                    "vision_defect_core_edge_03",
+                    "vision_defect_core_edge_07",
+                    "vision_defect_core_edge_08",
+                    "vision_defect_core_edge_09",
+                ],
+            },
+            {
+                "name": "out_last_report_select",
+                "kind": "enable_rule",
+                "condition": "top.out_valid && top.out_last",
+                "effects": [
+                    "top defect report fields select accumulator current values rather than vision_io_control stored values"
+                ],
+                "related_state": [],
+                "related_flows": [
+                    "vision_defect_core_edge_07",
+                    "vision_defect_core_edge_08",
+                    "vision_defect_core_edge_09",
+                ],
+            },
+            {
+                "name": "registered_output_stall",
+                "kind": "stall_rule",
+                "condition": "top.out_valid && !top.out_ready",
+                "effects": ["hold registered top.out_edge, top.out_last, and the selected frame report fields"],
+                "related_state": [],
+                "related_flows": ["vision_defect_core_edge_03"],
+            },
+        ]
+    if request.task_type in {"pattern_matcher", "stream_trigger_filter"}:
+        flow_names = [str(flow["name"]) for flow in data_flow]
+        return rules + [
+            {
+                "name": "accepted_token_window_advance",
+                "kind": "handshake_rule",
+                "condition": "top.in_valid && top.in_ready",
+                "effects": ["advance the four-token shift window and accepted-token index only after an input handshake"],
+                "related_state": [],
+                "related_flows": flow_names,
+            },
+            {
+                "name": "match_output_stall",
+                "kind": "stall_rule",
+                "condition": "top.out_valid && !top.out_ready",
+                "effects": ["hold match index and matched four-token word stable until the output handshake"],
+                "related_state": [],
+                "related_flows": flow_names,
+            },
+        ]
     if request.task_type in {
         "streaming_valid_ready",
         "crc_stream_checker",
@@ -1338,6 +1616,66 @@ def _top_ports(interface: dict[str, object]) -> list[dict[str, object]]:
                 }
             )
     return ports
+
+
+def _top_parameters(request: ProjectRequest) -> list[dict[str, object]]:
+    if request.task_type in {"sobel_threshold", "vision_defect_core"}:
+        return [
+            {"name": "IMAGE_WIDTH", "default": 5},
+            {"name": "IMAGE_HEIGHT", "default": 5},
+            {"name": "THRESHOLD", "default": 100},
+        ]
+    if request.task_type in {"pattern_matcher", "stream_trigger_filter"}:
+        return [
+            {"name": "TOKEN0", "default": "8'h11"},
+            {"name": "TOKEN1", "default": "8'h22"},
+            {"name": "TOKEN2", "default": "8'h33"},
+            {"name": "TOKEN3", "default": "8'h11"},
+        ]
+    return []
+
+
+def _verification_scenarios(request: ProjectRequest) -> list[str]:
+    if request.task_type == "sobel_threshold":
+        return [
+            "reset",
+            "flat_image",
+            "axis_sensitive_edges",
+            "threshold_boundary",
+            "border_policy",
+            "stall_stability",
+            "frame_boundary",
+            "missing_final_in_last",
+            "reset_during_frame",
+        ]
+    if request.task_type == "vision_defect_core":
+        return [
+            "reset",
+            "flat_image",
+            "threshold_boundary",
+            "border_policy",
+            "first_defect_coordinate",
+            "defect_present_absent",
+            "stall_stability",
+            "frame_boundary",
+            "continuous_frames",
+            "reset_during_frame",
+        ]
+    if request.task_type in {"pattern_matcher", "stream_trigger_filter"}:
+        return [
+            "reset",
+            "no_match",
+            "partial_match",
+            "exact_match",
+            "overlapping_match",
+            "back_to_back_matches",
+            "boundary_match_index",
+            "input_stall",
+            "stall_stability",
+            "reset_during_partial_match",
+            "no_false_positive",
+        ]
+    return ["reset", "nominal_operation"]
 
 
 def _connections(
@@ -1566,15 +1904,25 @@ def _connection_endpoint(endpoint: dict[str, str]) -> dict[str, str]:
 
 
 def _architecture(request: ProjectRequest) -> dict[str, object]:
+    family_spec = task_family_spec_for_family_id(family_id_for_task_type(request.task_type))
     submodules = {
         "counter": [],
         "fifo": [],
         "simple_fsm": [],
         "ram_read_write": [],
         "uart_tx": ["baud_tick_gen", "uart_tx_core"],
+        "uart_rx": ["uart_rx_core"],
+        "uart_fifo_loopback": ["uart_rx_core", "sync_fifo_core", "uart_tx_core"],
         "spi_master": ["clock_divider", "spi_master_core"],
         "pwm_controller": ["pwm_timer", "pwm_channel"],
         "fir_filter": ["mac_unit", "fir_filter_core"],
+        "matched_filter": ["matched_filter_mac", "matched_filter_core"],
+        "peak_detector": ["peak_detector_core"],
+        "pulse_radar_signal": ["matched_filter_mac", "matched_filter_core", "threshold_comparator", "peak_detector_core"],
+        "sobel_threshold": ["sobel_line_buffer", "sobel_window", "sobel_threshold_core"],
+        "vision_defect_core": ["sobel_line_buffer", "sobel_window", "sobel_threshold_core", "vision_defect_accumulator", "vision_io_control"],
+        "pattern_matcher": ["pattern_matcher"],
+        "stream_trigger_filter": ["pattern_matcher", "trigger_fsm", "stream_packer"],
         "streaming_valid_ready": ["skid_buffer", "stream_stage"],
         "matrix_vector_mac": ["vector_rom", "mac_unit", "dot_product_engine"],
         "alu_control_unit": ["control_decode", "alu_core", "status_flags"],
@@ -1586,7 +1934,11 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
         "style": "multi_module" if submodules[request.task_type] else "single_module",
         "top_module": "top",
         "submodules": submodules[request.task_type],
-        "difficulty_tier": "T0",
+        "task_family_id": family_spec.family_id,
+        "difficulty_tier": family_spec.sr2fpga_tier,
+        "system_his_profile": family_spec.system_his_profile,
+        "skeleton_level": family_spec.skeleton_level,
+        "oracle_kind": list(family_spec.oracle_kind),
     }
     if request.task_type in COMPONENT_TOPOLOGIES:
         topology = COMPONENT_TOPOLOGIES[request.task_type]
@@ -1594,7 +1946,7 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
             {
                 "generator": "component_topology",
                 "topology_id": topology["topology_id"],
-                "difficulty_tier": topology["difficulty_tier"],
+                "difficulty_tier": family_spec.sr2fpga_tier,
                 "component_library": COMPONENT_LIBRARY_ID,
                 "topology": {
                     "nodes": topology["nodes"],
@@ -1602,6 +1954,32 @@ def _architecture(request: ProjectRequest) -> dict[str, object]:
                 },
             }
         )
+    if request.task_type == "sobel_threshold":
+        architecture["obligations"] = [
+            "two_line_buffer_window",
+            "row_major_zero_border",
+            "signed_sobel_magnitude",
+            "edge_axis_semantics",
+            "in_last_gated_frame_flush",
+            "one_entry_output_stall_stability",
+        ]
+    if request.task_type == "vision_defect_core":
+        architecture["obligations"] = [
+            "two_line_buffer_window",
+            "row_major_zero_border",
+            "signed_sobel_magnitude",
+            "bounded_first_defect_coordinate",
+            "in_last_gated_frame_flush",
+            "one_entry_output_stall_stability",
+        ]
+    if request.task_type in {"pattern_matcher", "stream_trigger_filter"}:
+        architecture["obligations"] = [
+            "four_token_shift_window",
+            "accepted_token_match_index",
+            "overlapping_match",
+            "one_entry_output_backpressure",
+            "match_index_packet",
+        ]
     return architecture
 
 
@@ -1631,30 +2009,6 @@ def _manifest(
     }
 
 
-def _counter_rtl(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire en,
-            output reg [{msb}:0] count
-        );
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              count <= {width}'d0;
-            end else if (en) begin
-              count <= count + {{ {width - 1}'d0, 1'b1 }};
-            end
-          end
-
-        endmodule
-        """
-    )
-
-
 def _rtl_files(request: ProjectRequest) -> dict[str, str]:
     if request.task_type == "counter":
         return {"rtl/top.v": _counter_rtl(request.width)}
@@ -1666,12 +2020,30 @@ def _rtl_files(request: ProjectRequest) -> dict[str, str]:
         return {"rtl/top.v": _ram_read_write_rtl(request.width)}
     if request.task_type == "uart_tx":
         return _uart_tx_rtl_files(request.width)
+    if request.task_type == "uart_rx":
+        return _uart_rx_rtl_files(request.width)
+    if request.task_type == "uart_fifo_loopback":
+        return _uart_fifo_loopback_rtl_files(request.width)
     if request.task_type == "spi_master":
         return _spi_master_rtl_files(request.width)
     if request.task_type == "pwm_controller":
         return _pwm_controller_rtl_files(request.width)
     if request.task_type == "fir_filter":
         return _fir_filter_rtl_files(request.width)
+    if request.task_type == "matched_filter":
+        return _matched_filter_rtl_files(request.width)
+    if request.task_type == "peak_detector":
+        return _peak_detector_rtl_files(request.width)
+    if request.task_type == "pulse_radar_signal":
+        return _pulse_radar_signal_rtl_files(request.width)
+    if request.task_type == "sobel_threshold":
+        return _sobel_threshold_rtl_files(request.width)
+    if request.task_type == "vision_defect_core":
+        return _vision_defect_core_rtl_files(request.width)
+    if request.task_type == "pattern_matcher":
+        return _pattern_matcher_rtl_files(request.width)
+    if request.task_type == "stream_trigger_filter":
+        return _stream_trigger_filter_rtl_files(request.width)
     if request.task_type == "streaming_valid_ready":
         return _streaming_valid_ready_rtl_files(request.width)
     if request.task_type == "matrix_vector_mac":
@@ -1727,12 +2099,30 @@ def _testbench(request: ProjectRequest) -> str:
         testbench = _ram_read_write_testbench(request.width)
     elif request.task_type == "uart_tx":
         testbench = _uart_tx_testbench()
+    elif request.task_type == "uart_rx":
+        testbench = _uart_rx_testbench()
+    elif request.task_type == "uart_fifo_loopback":
+        testbench = _uart_fifo_loopback_testbench()
     elif request.task_type == "spi_master":
         testbench = _spi_master_testbench()
     elif request.task_type == "pwm_controller":
         testbench = _pwm_controller_testbench(request.width)
     elif request.task_type == "fir_filter":
         testbench = _fir_filter_testbench(request.width)
+    elif request.task_type == "matched_filter":
+        testbench = _matched_filter_testbench(request.width)
+    elif request.task_type == "peak_detector":
+        testbench = _peak_detector_testbench(request.width)
+    elif request.task_type == "pulse_radar_signal":
+        testbench = _pulse_radar_signal_testbench(request.width)
+    elif request.task_type == "sobel_threshold":
+        testbench = _sobel_threshold_testbench()
+    elif request.task_type == "vision_defect_core":
+        testbench = _vision_defect_core_testbench()
+    elif request.task_type == "pattern_matcher":
+        testbench = _pattern_matcher_testbench(request.width)
+    elif request.task_type == "stream_trigger_filter":
+        testbench = _pattern_matcher_testbench(request.width, project_mode=True)
     elif request.task_type == "streaming_valid_ready":
         testbench = _streaming_valid_ready_testbench(request.width)
     elif request.task_type == "matrix_vector_mac":
@@ -1785,376 +2175,6 @@ def _with_testbench_timeout(testbench: str, timeout_ns: int = 100_000) -> str:
     if endmodule not in testbench:
         return testbench
     return testbench.replace(endmodule, f"{watchdog}{endmodule}", 1)
-
-
-def _counter_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg en;
-          wire [{msb}:0] count;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .en(en),
-            .count(count)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          initial begin
-            rst_n = 1'b0;
-            en = 1'b0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-            en = 1'b1;
-            repeat (4) @(posedge clk);
-            if (count !== {width}'d4) begin
-              $display("TEST_FAIL expected count=4 got %0d", count);
-              $finish;
-            end
-            en = 1'b0;
-            repeat (2) @(posedge clk);
-            if (count !== {width}'d4) begin
-              $display("TEST_FAIL hold failed got %0d", count);
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _fifo_rtl(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire wr_en,
-            input wire rd_en,
-            input wire [{msb}:0] din,
-            output reg [{msb}:0] dout,
-            output wire full,
-            output wire empty
-        );
-
-          reg [{msb}:0] mem [0:3];
-          reg [1:0] wr_ptr;
-          reg [1:0] rd_ptr;
-          reg [2:0] count;
-
-          assign full = (count == 3'd4);
-          assign empty = (count == 3'd0);
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              wr_ptr <= 2'd0;
-              rd_ptr <= 2'd0;
-              count <= 3'd0;
-              dout <= {width}'d0;
-            end else begin
-              if (wr_en && !full) begin
-                mem[wr_ptr] <= din;
-                wr_ptr <= wr_ptr + 2'd1;
-              end
-              if (rd_en && !empty) begin
-                dout <= mem[rd_ptr];
-                rd_ptr <= rd_ptr + 2'd1;
-              end
-              case ({{wr_en && !full, rd_en && !empty}})
-                2'b10: count <= count + 3'd1;
-                2'b01: count <= count - 3'd1;
-                default: count <= count;
-              endcase
-            end
-          end
-
-        endmodule
-        """
-    )
-
-
-def _fifo_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg wr_en;
-          reg rd_en;
-          reg [{msb}:0] din;
-          wire [{msb}:0] dout;
-          wire full;
-          wire empty;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .wr_en(wr_en),
-            .rd_en(rd_en),
-            .din(din),
-            .dout(dout),
-            .full(full),
-            .empty(empty)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          initial begin
-            rst_n = 1'b0;
-            wr_en = 1'b0;
-            rd_en = 1'b0;
-            din = {width}'d0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            @(negedge clk);
-            din = {width}'d42;
-            wr_en = 1'b1;
-            @(negedge clk);
-            wr_en = 1'b0;
-            if (empty !== 1'b0) begin
-              $display("TEST_FAIL fifo should not be empty after write");
-              $finish;
-            end
-
-            rd_en = 1'b1;
-            @(negedge clk);
-            rd_en = 1'b0;
-            @(negedge clk);
-            if (dout !== {width}'d42) begin
-              $display("TEST_FAIL expected dout=42 got %0d", dout);
-              $finish;
-            end
-            if (empty !== 1'b1) begin
-              $display("TEST_FAIL fifo should be empty after read");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _simple_fsm_rtl(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire start,
-            output reg done,
-            output reg [{msb}:0] state_value
-        );
-
-          localparam [1:0] IDLE = 2'd0;
-          localparam [1:0] RUN = 2'd1;
-          localparam [1:0] DONE = 2'd2;
-
-          reg [1:0] state;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              state <= IDLE;
-              done <= 1'b0;
-              state_value <= {width}'d0;
-            end else begin
-              case (state)
-                IDLE: begin
-                  done <= 1'b0;
-                  state_value <= {width}'d0;
-                  if (start) begin
-                    state <= RUN;
-                  end
-                end
-                RUN: begin
-                  state_value <= state_value + {{ {width - 1}'d0, 1'b1 }};
-                  if (state_value == {width}'d2) begin
-                    state <= DONE;
-                  end
-                end
-                DONE: begin
-                  done <= 1'b1;
-                  if (!start) begin
-                    state <= IDLE;
-                  end
-                end
-                default: begin
-                  state <= IDLE;
-                end
-              endcase
-            end
-          end
-
-        endmodule
-        """
-    )
-
-
-def _simple_fsm_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg start;
-          wire done;
-          wire [{msb}:0] state_value;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .start(start),
-            .done(done),
-            .state_value(state_value)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          initial begin
-            rst_n = 1'b0;
-            start = 1'b0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-            @(negedge clk);
-            start = 1'b1;
-            repeat (6) @(posedge clk);
-            @(negedge clk);
-            if (done !== 1'b1) begin
-              $display("TEST_FAIL fsm did not reach done");
-              $finish;
-            end
-            start = 1'b0;
-            repeat (2) @(posedge clk);
-            @(negedge clk);
-            if (done !== 1'b0) begin
-              $display("TEST_FAIL fsm did not return to idle");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _ram_read_write_rtl(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire we,
-            input wire [1:0] addr,
-            input wire [{msb}:0] wdata,
-            output reg [{msb}:0] rdata
-        );
-
-          reg [{msb}:0] mem [0:3];
-          integer i;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              rdata <= {width}'d0;
-              for (i = 0; i < 4; i = i + 1) begin
-                mem[i] <= {width}'d0;
-              end
-            end else begin
-              if (we) begin
-                mem[addr] <= wdata;
-              end
-              rdata <= mem[addr];
-            end
-          end
-
-        endmodule
-        """
-    )
-
-
-def _ram_read_write_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg we;
-          reg [1:0] addr;
-          reg [{msb}:0] wdata;
-          wire [{msb}:0] rdata;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .we(we),
-            .addr(addr),
-            .wdata(wdata),
-            .rdata(rdata)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          initial begin
-            rst_n = 1'b0;
-            we = 1'b0;
-            addr = 2'd0;
-            wdata = {width}'d0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            @(negedge clk);
-            addr = 2'd2;
-            wdata = {width}'d99;
-            we = 1'b1;
-            @(negedge clk);
-            we = 1'b0;
-            @(negedge clk);
-            if (rdata !== {width}'d99) begin
-              $display("TEST_FAIL expected rdata=99 got %0d", rdata);
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
 
 
 def _passthrough_testbench(width: int) -> str:
@@ -2211,2254 +2231,36 @@ def _passthrough_testbench(width: int) -> str:
     )
 
 
-def _uart_tx_testbench() -> str:
-    return dedent(
-        """\
-        `timescale 1ns/1ps
 
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg start;
-          reg [7:0] data;
-          wire tx;
-          wire busy;
-          wire done;
-          reg [7:0] expected_bits;
-          integer i;
 
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .start(start),
-            .data(data),
-            .tx(tx),
-            .busy(busy),
-            .done(done)
-          );
 
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
 
-          initial begin
-            rst_n = 1'b0;
-            start = 1'b0;
-            data = 8'd0;
-            expected_bits = 8'hA5;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
 
-            @(negedge clk);
-            data = 8'hA5;
-            start = 1'b1;
-            @(negedge clk);
-            start = 1'b0;
-            #1;
-            if (tx !== 1'b0) begin
-              $display("TEST_FAIL start bit expected 0 got %0b", tx);
-              $finish;
-            end
-            if (busy !== 1'b1) begin
-              $display("TEST_FAIL busy was not asserted");
-              $finish;
-            end
 
-            for (i = 0; i < 8; i = i + 1) begin
-              repeat (4) @(posedge clk);
-              #1;
-              if (tx !== expected_bits[i]) begin
-                $display(
-                  "TEST_FAIL data bit %0d expected %0b got %0b",
-                  i,
-                  expected_bits[i],
-                  tx
-                );
-                $finish;
-              end
-            end
 
-            repeat (4) @(posedge clk);
-            #1;
-            if (tx !== 1'b1) begin
-              $display("TEST_FAIL stop bit expected 1 got %0b", tx);
-              $finish;
-            end
 
-            repeat (4) @(posedge clk);
-            #1;
-            if (done !== 1'b1) begin
-              $display("TEST_FAIL done was not asserted");
-              $finish;
-            end
-            if (busy !== 1'b0) begin
-              $display("TEST_FAIL busy did not clear");
-              $finish;
-            end
-            @(posedge clk);
-            #1;
-            if (done !== 1'b0) begin
-              $display("TEST_FAIL done was not one cycle");
-              $finish;
-            end
 
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
 
 
-def _spi_master_testbench() -> str:
-    return dedent(
-        """\
-        `timescale 1ns/1ps
 
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg start;
-          reg [7:0] tx_data;
-          reg miso;
-          wire [7:0] rx_data;
-          wire busy;
-          wire done;
-          wire sclk;
-          wire mosi;
-          wire cs_n;
 
-          reg [7:0] miso_pattern;
-          integer miso_bit;
-          integer sclk_edge_count;
 
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .start(start),
-            .tx_data(tx_data),
-            .miso(miso),
-            .rx_data(rx_data),
-            .busy(busy),
-            .done(done),
-            .sclk(sclk),
-            .mosi(mosi),
-            .cs_n(cs_n)
-          );
 
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
 
-          always @(negedge sclk or posedge cs_n) begin
-            if (cs_n) begin
-              miso_bit = 7;
-              miso = miso_pattern[7];
-            end else if (miso_bit > 0) begin
-              miso_bit = miso_bit - 1;
-              miso = miso_pattern[miso_bit];
-            end
-          end
 
-          always @(posedge sclk) begin
-            if (!cs_n) begin
-              sclk_edge_count = sclk_edge_count + 1;
-            end
-          end
 
-          initial begin
-            rst_n = 1'b0;
-            start = 1'b0;
-            tx_data = 8'd0;
-            miso_pattern = 8'h3C;
-            miso_bit = 7;
-            sclk_edge_count = 0;
-            miso = miso_pattern[7];
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
 
-            @(negedge clk);
-            tx_data = 8'hA5;
-            start = 1'b1;
-            @(negedge clk);
-            start = 1'b0;
-            #1;
-            if (busy !== 1'b1 || cs_n !== 1'b0) begin
-              $display("TEST_FAIL transfer did not start");
-              $finish;
-            end
-            if (mosi !== 1'b1) begin
-              $display("TEST_FAIL expected first MOSI bit 1 got %0b", mosi);
-              $finish;
-            end
 
-            while (done !== 1'b1) begin
-              @(posedge clk);
-            end
-            #1;
-            if (cs_n !== 1'b1) begin
-              $display("TEST_FAIL cs_n was not released");
-              $finish;
-            end
-            if (sclk_edge_count != 8) begin
-              $display("TEST_FAIL expected 8 SCLK rising edges got %0d", sclk_edge_count);
-              $finish;
-            end
-            if (rx_data !== 8'h3C) begin
-              $display("TEST_FAIL expected rx_data=3c got %02h", rx_data);
-              $finish;
-            end
-            @(posedge clk);
-            #1;
-            if (done !== 1'b0) begin
-              $display("TEST_FAIL done was not one cycle");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
 
 
-def _pwm_controller_testbench(width: int) -> str:
-    msb = width - 1
-    duty_value = 3 if width >= 3 else max(1, (1 << width) - 1)
-    sample_cycles = 8 if width >= 3 else 1 << width
-    expected_high = 3 if width >= 3 else duty_value
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
 
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg [{msb}:0] duty;
-          wire pwm_out;
-          integer high_count;
-          integer i;
 
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .duty(duty),
-            .pwm_out(pwm_out)
-          );
 
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
 
-          initial begin
-            rst_n = 1'b0;
-            duty = {width}'d{duty_value};
-            repeat (2) @(posedge clk);
-            @(negedge clk);
-            rst_n = 1'b1;
 
-            high_count = 0;
-            #1;
-            if (pwm_out === 1'b1) begin
-              high_count = high_count + 1;
-            end
-            for (i = 1; i < {sample_cycles}; i = i + 1) begin
-              @(posedge clk);
-              #1;
-              if (pwm_out === 1'b1) begin
-                high_count = high_count + 1;
-              end
-            end
 
-            if (high_count != {expected_high}) begin
-              $display("TEST_FAIL expected %0d high cycles got %0d", {expected_high}, high_count);
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
 
 
-def _streaming_valid_ready_testbench(width: int) -> str:
-    msb = width - 1
-    mask = (1 << width) - 1
-    first_value = 0x12 & mask
-    second_value = 0xA5 & mask
-    if first_value == second_value:
-        second_value = (~first_value) & mask
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg in_valid;
-          wire in_ready;
-          reg [{msb}:0] in_data;
-          wire out_valid;
-          reg out_ready;
-          wire [{msb}:0] out_data;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .in_data(in_data),
-            .out_valid(out_valid),
-            .out_ready(out_ready),
-            .out_data(out_data)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task send_word;
-            input [{msb}:0] value;
-            begin
-              @(negedge clk);
-              in_data = value;
-              in_valid = 1'b1;
-              while (in_ready !== 1'b1) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              in_valid = 1'b0;
-            end
-          endtask
-
-          task expect_word;
-            input [{msb}:0] value;
-            begin
-              while (out_valid !== 1'b1) begin
-                @(posedge clk);
-              end
-              #1;
-              if (out_data !== value) begin
-                $display("TEST_FAIL expected output %0d got %0d", value, out_data);
-                $finish;
-              end
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            in_valid = 1'b0;
-            in_data = {width}'d0;
-            out_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            send_word({width}'d{first_value});
-            expect_word({width}'d{first_value});
-            @(posedge clk);
-            #1;
-
-            out_ready = 1'b0;
-            send_word({width}'d{second_value});
-            repeat (2) @(posedge clk);
-            #1;
-            if (out_valid !== 1'b1) begin
-              $display("TEST_FAIL stalled output was not held valid");
-              $finish;
-            end
-            out_ready = 1'b1;
-            expect_word({width}'d{second_value});
-            @(posedge clk);
-            #1;
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _fir_filter_testbench(width: int) -> str:
-    msb = width - 1
-    result_msb = width + 2
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg sample_valid;
-          reg [{msb}:0] sample;
-          wire result_valid;
-          wire [{result_msb}:0] result;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .sample_valid(sample_valid),
-            .sample(sample),
-            .result_valid(result_valid),
-            .result(result)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task send_and_expect;
-            input [{msb}:0] value;
-            input [{result_msb}:0] expected;
-            begin
-              @(negedge clk);
-              sample = value;
-              sample_valid = 1'b1;
-              @(posedge clk);
-              #1;
-              if (result_valid !== 1'b1) begin
-                $display("TEST_FAIL result_valid was not asserted");
-                $finish;
-              end
-              if (result !== expected) begin
-                $display("TEST_FAIL expected result=%0d got %0d", expected, result);
-                $finish;
-              end
-              @(negedge clk);
-              sample_valid = 1'b0;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            sample_valid = 1'b0;
-            sample = {width}'d0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            send_and_expect({width}'d1, {width + 3}'d1);
-            send_and_expect({width}'d2, {width + 3}'d4);
-            send_and_expect({width}'d3, {width + 3}'d8);
-
-            @(posedge clk);
-            #1;
-            if (result_valid !== 1'b0) begin
-              $display("TEST_FAIL result_valid did not clear");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _matrix_vector_mac_testbench(width: int) -> str:
-    result_msb = width + 3
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg start;
-          wire busy;
-          wire done;
-          wire [{result_msb}:0] result;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .start(start),
-            .busy(busy),
-            .done(done),
-            .result(result)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          initial begin
-            rst_n = 1'b0;
-            start = 1'b0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            @(negedge clk);
-            start = 1'b1;
-            @(negedge clk);
-            start = 1'b0;
-            while (done !== 1'b1) begin
-              @(posedge clk);
-            end
-            #1;
-            if (busy !== 1'b0) begin
-              $display("TEST_FAIL busy did not clear");
-              $finish;
-            end
-            if (result !== {width + 4}'d17) begin
-              $display("TEST_FAIL expected result=17 got %0d", result);
-              $finish;
-            end
-            @(posedge clk);
-            #1;
-            if (done !== 1'b0) begin
-              $display("TEST_FAIL done was not one cycle");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _alu_control_unit_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg valid;
-          wire ready;
-          reg [2:0] op;
-          reg [{msb}:0] lhs;
-          reg [{msb}:0] rhs;
-          wire result_valid;
-          wire [{msb}:0] result;
-          wire zero;
-          wire carry;
-          wire negative;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .valid(valid),
-            .ready(ready),
-            .op(op),
-            .lhs(lhs),
-            .rhs(rhs),
-            .result_valid(result_valid),
-            .result(result),
-            .zero(zero),
-            .carry(carry),
-            .negative(negative)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task expect_result;
-            input [2:0] op_i;
-            input [{msb}:0] lhs_i;
-            input [{msb}:0] rhs_i;
-            input [{msb}:0] expected_result;
-            input expected_zero;
-            input expected_carry;
-            input expected_negative;
-            begin
-              @(negedge clk);
-              valid = 1'b1;
-              op = op_i;
-              lhs = lhs_i;
-              rhs = rhs_i;
-              @(negedge clk);
-              valid = 1'b0;
-              if (ready !== 1'b1) begin
-                $display("TEST_FAIL ready was not asserted");
-                $finish;
-              end
-              if (result_valid !== 1'b1) begin
-                $display("TEST_FAIL result_valid was not asserted for op=%0d", op_i);
-                $finish;
-              end
-              if (result !== expected_result) begin
-                $display(
-                  "TEST_FAIL op=%0d expected result=%0h got %0h",
-                  op_i,
-                  expected_result,
-                  result
-                );
-                $finish;
-              end
-              if (zero !== expected_zero || carry !== expected_carry || negative !== expected_negative) begin
-                $display("TEST_FAIL flags op=%0d zero=%0b carry=%0b negative=%0b", op_i, zero, carry, negative);
-                $finish;
-              end
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            valid = 1'b0;
-            op = 3'd0;
-            lhs = {width}'d0;
-            rhs = {width}'d0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            expect_result(3'b000, 8'hff, 8'h01, 8'h00, 1'b1, 1'b1, 1'b0);
-            expect_result(3'b001, 8'h03, 8'h01, 8'h02, 1'b0, 1'b0, 1'b0);
-            expect_result(3'b010, 8'haa, 8'h0f, 8'h0a, 1'b0, 1'b0, 1'b0);
-            expect_result(3'b011, 8'ha0, 8'h0f, 8'haf, 1'b0, 1'b0, 1'b1);
-            expect_result(3'b100, 8'hff, 8'h0f, 8'hf0, 1'b0, 1'b0, 1'b1);
-            expect_result(3'b101, 8'h11, 8'h01, 8'h22, 1'b0, 1'b0, 1'b0);
-            expect_result(3'b110, 8'h80, 8'h02, 8'h20, 1'b0, 1'b0, 1'b0);
-            expect_result(3'b111, 8'h5a, 8'h00, 8'h5a, 1'b0, 1'b0, 1'b0);
-
-            @(posedge clk);
-            #1;
-            if (result_valid !== 1'b0) begin
-              $display("TEST_FAIL result_valid did not clear");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _crc_stream_checker_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg in_valid;
-          wire in_ready;
-          reg [{msb}:0] in_data;
-          reg frame_start;
-          reg frame_end;
-          reg [7:0] expected_crc;
-          wire out_valid;
-          reg out_ready;
-          wire [7:0] crc_value;
-          wire crc_match;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .in_data(in_data),
-            .frame_start(frame_start),
-            .frame_end(frame_end),
-            .expected_crc(expected_crc),
-            .out_valid(out_valid),
-            .out_ready(out_ready),
-            .crc_value(crc_value),
-            .crc_match(crc_match)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task send_byte;
-            input [7:0] value;
-            input start_i;
-            input end_i;
-            begin
-              @(negedge clk);
-              in_valid = 1'b1;
-              in_data = value;
-              frame_start = start_i;
-              frame_end = end_i;
-              @(negedge clk);
-              if (in_ready !== 1'b1) begin
-                $display("TEST_FAIL input was not ready");
-                $finish;
-              end
-              in_valid = 1'b0;
-              in_data = {width}'d0;
-              frame_start = 1'b0;
-              frame_end = 1'b0;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            in_valid = 1'b0;
-            in_data = {width}'d0;
-            frame_start = 1'b0;
-            frame_end = 1'b0;
-            expected_crc = 8'h7c;
-            out_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            send_byte(8'h12, 1'b1, 1'b0);
-            send_byte(8'h34, 1'b0, 1'b0);
-            send_byte(8'h56, 1'b0, 1'b1);
-
-            @(posedge clk);
-            #1;
-            if (out_valid !== 1'b1) begin
-              $display("TEST_FAIL out_valid was not asserted");
-              $finish;
-            end
-            if (crc_value !== 8'h7c) begin
-              $display("TEST_FAIL expected crc=7c got %0h", crc_value);
-              $finish;
-            end
-            if (crc_match !== 1'b1) begin
-              $display("TEST_FAIL crc_match was not asserted");
-              $finish;
-            end
-            @(posedge clk);
-            #1;
-            if (out_valid !== 1'b0) begin
-              $display("TEST_FAIL out_valid did not clear after ready");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_stream_accumulator_testbench(width: int) -> str:
-    msb = width - 1
-    sum_msb = width + 3
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg in_valid;
-          wire in_ready;
-          reg [{msb}:0] in_data;
-          wire sample_valid;
-          wire [{sum_msb}:0] sum;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .in_data(in_data),
-            .sample_valid(sample_valid),
-            .sum(sum)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task send_sample;
-            input [{msb}:0] value;
-            begin
-              @(negedge clk);
-              in_valid = 1'b1;
-              in_data = value;
-              @(negedge clk);
-              in_valid = 1'b0;
-              in_data = {width}'d0;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            in_valid = 1'b0;
-            in_data = {width}'d0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            send_sample({width}'d3);
-            send_sample({width}'d4);
-            repeat (2) @(posedge clk);
-            #1;
-
-            if (sum !== {width + 4}'d7) begin
-              $display("TEST_FAIL expected sum=7 got %0d", sum);
-              $finish;
-            end
-            if (in_ready !== 1'b1) begin
-              $display("TEST_FAIL in_ready not asserted");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_event_counter_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg event_valid;
-          wire [{msb}:0] count;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .event_valid(event_valid),
-            .count(count)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task pulse_event;
-            begin
-              @(negedge clk);
-              event_valid = 1'b1;
-              @(negedge clk);
-              event_valid = 1'b0;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            event_valid = 1'b0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            pulse_event();
-            pulse_event();
-            repeat (2) @(posedge clk);
-            #1;
-            if (count !== {width}'d2) begin
-              $display("TEST_FAIL expected count=2 got %0d", count);
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_stream_fork_testbench(width: int) -> str:
-    msb = width - 1
-    first_value = min(0xA5, (1 << width) - 1)
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg in_valid;
-          wire in_ready;
-          reg [{msb}:0] in_data;
-          wire out0_valid;
-          reg out0_ready;
-          wire [{msb}:0] out0_data;
-          wire out1_valid;
-          reg out1_ready;
-          wire [{msb}:0] out1_data;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .in_data(in_data),
-            .out0_valid(out0_valid),
-            .out0_ready(out0_ready),
-            .out0_data(out0_data),
-            .out1_valid(out1_valid),
-            .out1_ready(out1_ready),
-            .out1_data(out1_data)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          initial begin
-            rst_n = 1'b0;
-            in_valid = 1'b0;
-            in_data = {width}'d0;
-            out0_ready = 1'b0;
-            out1_ready = 1'b0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            @(negedge clk);
-            in_valid = 1'b1;
-            in_data = {width}'d{first_value};
-            @(negedge clk);
-            in_valid = 1'b0;
-            in_data = {width}'d0;
-            repeat (3) @(posedge clk);
-            #1;
-
-            if (out0_valid !== 1'b1 || out1_valid !== 1'b1) begin
-              $display("TEST_FAIL fork outputs not valid");
-              $finish;
-            end
-            if (out0_data !== {width}'d{first_value} || out1_data !== {width}'d{first_value}) begin
-              $display("TEST_FAIL fork data mismatch out0=%0d out1=%0d", out0_data, out1_data);
-              $finish;
-            end
-            @(negedge clk);
-            out0_ready = 1'b1;
-            out1_ready = 1'b1;
-            @(posedge clk);
-            #1;
-            if (in_ready !== 1'b1) begin
-              $display("TEST_FAIL fork input not ready");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_dual_stream_join_testbench(width: int) -> str:
-    msb = width - 1
-    sum_width = width + 4
-    sum_msb = sum_width - 1
-    expected_pair_sum = 8
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg in0_valid;
-          wire in0_ready;
-          reg [{msb}:0] in0_data;
-          reg in1_valid;
-          wire in1_ready;
-          reg [{msb}:0] in1_data;
-          wire out_valid;
-          reg out_ready;
-          wire [{sum_msb}:0] out_data;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in0_valid(in0_valid),
-            .in0_ready(in0_ready),
-            .in0_data(in0_data),
-            .in1_valid(in1_valid),
-            .in1_ready(in1_ready),
-            .in1_data(in1_data),
-            .out_valid(out_valid),
-            .out_ready(out_ready),
-            .out_data(out_data)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          initial begin
-            rst_n = 1'b0;
-            in0_valid = 1'b0;
-            in0_data = {width}'d0;
-            in1_valid = 1'b0;
-            in1_data = {width}'d0;
-            out_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            @(negedge clk);
-            in0_valid = 1'b1;
-            in0_data = {width}'d3;
-            in1_valid = 1'b1;
-            in1_data = {width}'d5;
-            @(negedge clk);
-            in0_valid = 1'b0;
-            in1_valid = 1'b0;
-            in0_data = {width}'d0;
-            in1_data = {width}'d0;
-            wait_cycles = 0;
-            while (out_valid !== 1'b1 && wait_cycles < 8) begin
-              @(posedge clk);
-              #1;
-              wait_cycles = wait_cycles + 1;
-            end
-            #1;
-
-            if (out_valid !== 1'b1) begin
-              $display("TEST_FAIL joined output not valid");
-              $finish;
-            end
-            if (out_data !== {sum_width}'d{expected_pair_sum}) begin
-              $display("TEST_FAIL expected joined sum=%0d got %0d", {expected_pair_sum}, out_data);
-              $finish;
-            end
-            if (in0_ready !== 1'b1 || in1_ready !== 1'b1) begin
-              $display("TEST_FAIL joined inputs not ready");
-              $finish;
-            end
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_vector_mac_pipeline_testbench(width: int) -> str:
-    msb = width - 1
-    score_width = width * 2
-    score_msb = score_width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg feature_valid;
-          wire feature_ready;
-          reg [{msb}:0] feature_data;
-          reg weight_valid;
-          wire weight_ready;
-          reg [{msb}:0] weight_data;
-          reg [{score_msb}:0] bias;
-          wire score_valid;
-          reg score_ready;
-          wire [{score_msb}:0] score_data;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .feature_valid(feature_valid),
-            .feature_ready(feature_ready),
-            .feature_data(feature_data),
-            .weight_valid(weight_valid),
-            .weight_ready(weight_ready),
-            .weight_data(weight_data),
-            .bias(bias),
-            .score_valid(score_valid),
-            .score_ready(score_ready),
-            .score_data(score_data)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task send_pair;
-            input [{msb}:0] feature;
-            input [{msb}:0] weight;
-            begin
-              @(negedge clk);
-              feature_valid = 1'b1;
-              weight_valid = 1'b1;
-              feature_data = feature;
-              weight_data = weight;
-              while (!(feature_ready && weight_ready)) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              feature_valid = 1'b0;
-              weight_valid = 1'b0;
-              feature_data = {width}'d0;
-              weight_data = {width}'d0;
-            end
-          endtask
-
-          task expect_score;
-            input [{score_msb}:0] expected;
-            begin
-              wait_cycles = 0;
-              while (score_valid !== 1'b1 && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (score_valid !== 1'b1) begin
-                $display("TEST_FAIL score did not become valid");
-                $finish;
-              end
-              if (score_data !== expected) begin
-                $display("TEST_FAIL expected score=%0d got %0d", expected, score_data);
-                $finish;
-              end
-              @(negedge clk);
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            feature_valid = 1'b0;
-            feature_data = {width}'d0;
-            weight_valid = 1'b0;
-            weight_data = {width}'d0;
-            bias = {score_width}'d0;
-            score_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            bias = {score_width}'d3;
-            send_pair({width}'d1, {width}'d2);
-            send_pair({width}'d2, {width}'d3);
-            send_pair({width}'d3, {width}'d4);
-            send_pair({width}'d4, {width}'d5);
-            expect_score({score_width}'d43);
-
-            bias = {score_width}'d1;
-            send_pair({width}'d2, {width}'d1);
-            send_pair({width}'d1, {width}'d2);
-            send_pair({width}'d0, {width}'d3);
-            send_pair({width}'d3, {width}'d4);
-            expect_score({score_width}'d17);
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_td_update_core_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg in_valid;
-          wire in_ready;
-          reg signed [{msb}:0] reward;
-          reg signed [{msb}:0] value;
-          reg signed [{msb}:0] next_value;
-          reg [{msb}:0] gamma;
-          reg [{msb}:0] alpha;
-          wire out_valid;
-          reg out_ready;
-          wire signed [{msb}:0] td_error;
-          wire signed [{msb}:0] updated_value;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .reward(reward),
-            .value(value),
-            .next_value(next_value),
-            .gamma(gamma),
-            .alpha(alpha),
-            .out_valid(out_valid),
-            .out_ready(out_ready),
-            .td_error(td_error),
-            .updated_value(updated_value)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task send_update;
-            input signed [{msb}:0] reward_i;
-            input signed [{msb}:0] value_i;
-            input signed [{msb}:0] next_value_i;
-            input [{msb}:0] gamma_i;
-            input [{msb}:0] alpha_i;
-            begin
-              @(negedge clk);
-              in_valid = 1'b1;
-              reward = reward_i;
-              value = value_i;
-              next_value = next_value_i;
-              gamma = gamma_i;
-              alpha = alpha_i;
-              while (!in_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              in_valid = 1'b0;
-            end
-          endtask
-
-          task expect_update;
-            input signed [{msb}:0] expected_error;
-            input signed [{msb}:0] expected_value;
-            begin
-              wait_cycles = 0;
-              while (out_valid !== 1'b1 && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (out_valid !== 1'b1) begin
-                $display("TEST_FAIL output did not become valid");
-                $finish;
-              end
-              if (td_error !== expected_error || updated_value !== expected_value) begin
-                $display(
-                  "TEST_FAIL expected td=%0d value=%0d got td=%0d value=%0d",
-                  expected_error,
-                  expected_value,
-                  td_error,
-                  updated_value
-                );
-                $finish;
-              end
-              @(negedge clk);
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            in_valid = 1'b0;
-            reward = {width}'sd0;
-            value = {width}'sd0;
-            next_value = {width}'sd0;
-            gamma = {width}'d0;
-            alpha = {width}'d0;
-            out_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            send_update({width}'sd4, {width}'sd10, {width}'sd20, {width}'d8, {width}'d4);
-            expect_update({width}'sd4, {width}'sd11);
-
-            send_update({width}'sd2, {width}'sd6, {width}'sd16, {width}'d8, {width}'d8);
-            expect_update({width}'sd4, {width}'sd8);
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_policy_value_shell_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg cfg_valid;
-          wire cfg_ready;
-          reg [2:0] cfg_addr;
-          reg [{msb}:0] cfg_data;
-          reg obs_valid;
-          wire obs_ready;
-          reg [{msb}:0] obs0;
-          reg [{msb}:0] obs1;
-          wire action_valid;
-          reg action_ready;
-          wire selected_action;
-          wire [{msb}:0] value_estimate;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .cfg_valid(cfg_valid),
-            .cfg_ready(cfg_ready),
-            .cfg_addr(cfg_addr),
-            .cfg_data(cfg_data),
-            .obs_valid(obs_valid),
-            .obs_ready(obs_ready),
-            .obs0(obs0),
-            .obs1(obs1),
-            .action_valid(action_valid),
-            .action_ready(action_ready),
-            .selected_action(selected_action),
-            .value_estimate(value_estimate)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task write_cfg;
-            input [2:0] addr_i;
-            input [{msb}:0] data_i;
-            begin
-              @(negedge clk);
-              cfg_valid = 1'b1;
-              cfg_addr = addr_i;
-              cfg_data = data_i;
-              while (!cfg_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              cfg_valid = 1'b0;
-            end
-          endtask
-
-          task send_observation;
-            input [{msb}:0] obs0_i;
-            input [{msb}:0] obs1_i;
-            begin
-              @(negedge clk);
-              obs_valid = 1'b1;
-              obs0 = obs0_i;
-              obs1 = obs1_i;
-              while (!obs_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              obs_valid = 1'b0;
-            end
-          endtask
-
-          task expect_action;
-            input expected_action;
-            input [{msb}:0] expected_value;
-            begin
-              wait_cycles = 0;
-              while (action_valid !== 1'b1 && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (action_valid !== 1'b1) begin
-                $display("TEST_FAIL action output did not become valid");
-                $finish;
-              end
-              if (selected_action !== expected_action || value_estimate !== expected_value) begin
-                $display(
-                  "TEST_FAIL expected action=%0d value=%0d got action=%0d value=%0d",
-                  expected_action,
-                  expected_value,
-                  selected_action,
-                  value_estimate
-                );
-                $finish;
-              end
-              @(negedge clk);
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            cfg_valid = 1'b0;
-            cfg_addr = 3'd0;
-            cfg_data = {width}'d0;
-            obs_valid = 1'b0;
-            obs0 = {width}'d0;
-            obs1 = {width}'d0;
-            action_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            write_cfg(3'd0, {width}'d2);
-            write_cfg(3'd1, {width}'d1);
-            write_cfg(3'd2, {width}'d3);
-            write_cfg(3'd3, {width}'d0);
-            write_cfg(3'd4, {width}'d1);
-
-            send_observation({width}'d4, {width}'d2);
-            expect_action(1'b0, {width}'d7);
-
-            send_observation({width}'d1, {width}'d5);
-            expect_action(1'b1, {width}'d9);
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_replay_sample_shell_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg host_valid;
-          wire host_ready;
-          reg [{msb}:0] host_state;
-          reg host_action;
-          reg [{msb}:0] host_reward;
-          reg [{msb}:0] host_next_state;
-          reg host_done;
-          wire sample_valid;
-          reg sample_ready;
-          wire [{msb}:0] sample_state;
-          wire sample_action;
-          wire [{msb}:0] sample_reward;
-          wire [{msb}:0] sample_next_state;
-          wire sample_done;
-          wire [2:0] occupancy;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .host_valid(host_valid),
-            .host_ready(host_ready),
-            .host_state(host_state),
-            .host_action(host_action),
-            .host_reward(host_reward),
-            .host_next_state(host_next_state),
-            .host_done(host_done),
-            .sample_valid(sample_valid),
-            .sample_ready(sample_ready),
-            .sample_state(sample_state),
-            .sample_action(sample_action),
-            .sample_reward(sample_reward),
-            .sample_next_state(sample_next_state),
-            .sample_done(sample_done),
-            .occupancy(occupancy)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task write_sample;
-            input [{msb}:0] state_i;
-            input action_i;
-            input [{msb}:0] reward_i;
-            input [{msb}:0] next_state_i;
-            input done_i;
-            begin
-              @(negedge clk);
-              host_valid = 1'b1;
-              host_state = state_i;
-              host_action = action_i;
-              host_reward = reward_i;
-              host_next_state = next_state_i;
-              host_done = done_i;
-              while (!host_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              host_valid = 1'b0;
-            end
-          endtask
-
-          task expect_sample;
-            input [{msb}:0] expected_state;
-            input expected_action;
-            input [{msb}:0] expected_reward;
-            input [{msb}:0] expected_next_state;
-            input expected_done;
-            begin
-              wait_cycles = 0;
-              while (sample_valid !== 1'b1 && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (sample_valid !== 1'b1) begin
-                $display("TEST_FAIL sample output did not become valid");
-                $finish;
-              end
-              if (
-                sample_state !== expected_state ||
-                sample_action !== expected_action ||
-                sample_reward !== expected_reward ||
-                sample_next_state !== expected_next_state ||
-                sample_done !== expected_done
-              ) begin
-                $display(
-                  "TEST_FAIL expected s=%0d a=%0d r=%0d ns=%0d d=%0d got s=%0d a=%0d r=%0d ns=%0d d=%0d",
-                  expected_state,
-                  expected_action,
-                  expected_reward,
-                  expected_next_state,
-                  expected_done,
-                  sample_state,
-                  sample_action,
-                  sample_reward,
-                  sample_next_state,
-                  sample_done
-                );
-                $finish;
-              end
-              @(posedge clk);
-              #1;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            host_valid = 1'b0;
-            host_state = {width}'d0;
-            host_action = 1'b0;
-            host_reward = {width}'d0;
-            host_next_state = {width}'d0;
-            host_done = 1'b0;
-            sample_ready = 1'b0;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            write_sample({width}'d3, 1'b1, {width}'d4, {width}'d5, 1'b0);
-            write_sample({width}'d8, 1'b0, {width}'d2, {width}'d9, 1'b1);
-            write_sample({width}'d1, 1'b1, {width}'d7, {width}'d6, 1'b0);
-            @(posedge clk);
-            #1;
-            if (occupancy !== 3'd3) begin
-              $display("TEST_FAIL expected occupancy 3 got %0d", occupancy);
-              $finish;
-            end
-
-            sample_ready = 1'b1;
-            expect_sample({width}'d3, 1'b1, {width}'d4, {width}'d5, 1'b0);
-            expect_sample({width}'d8, 1'b0, {width}'d2, {width}'d9, 1'b1);
-            expect_sample({width}'d1, 1'b1, {width}'d7, {width}'d6, 1'b0);
-            @(posedge clk);
-            #1;
-            if (occupancy !== 3'd0) begin
-              $display("TEST_FAIL expected occupancy 0 got %0d", occupancy);
-              $finish;
-            end
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_host_protocol_shell_testbench(width: int) -> str:
-    msb = width - 1
-    stream_msb = width * 2 - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg s_axi_awvalid;
-          wire s_axi_awready;
-          reg [3:0] s_axi_awaddr;
-          reg s_axi_wvalid;
-          wire s_axi_wready;
-          reg [{msb}:0] s_axi_wdata;
-          reg s_axi_wstrb;
-          wire s_axi_bvalid;
-          reg s_axi_bready;
-          reg s_axi_arvalid;
-          wire s_axi_arready;
-          reg [3:0] s_axi_araddr;
-          wire s_axi_rvalid;
-          reg s_axi_rready;
-          wire [{msb}:0] s_axi_rdata;
-          wire m_axis_tvalid;
-          reg m_axis_tready;
-          wire [{stream_msb}:0] m_axis_tdata;
-          wire m_axis_tlast;
-          wire irq;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .s_axi_awvalid(s_axi_awvalid),
-            .s_axi_awready(s_axi_awready),
-            .s_axi_awaddr(s_axi_awaddr),
-            .s_axi_wvalid(s_axi_wvalid),
-            .s_axi_wready(s_axi_wready),
-            .s_axi_wdata(s_axi_wdata),
-            .s_axi_wstrb(s_axi_wstrb),
-            .s_axi_bvalid(s_axi_bvalid),
-            .s_axi_bready(s_axi_bready),
-            .s_axi_arvalid(s_axi_arvalid),
-            .s_axi_arready(s_axi_arready),
-            .s_axi_araddr(s_axi_araddr),
-            .s_axi_rvalid(s_axi_rvalid),
-            .s_axi_rready(s_axi_rready),
-            .s_axi_rdata(s_axi_rdata),
-            .m_axis_tvalid(m_axis_tvalid),
-            .m_axis_tready(m_axis_tready),
-            .m_axis_tdata(m_axis_tdata),
-            .m_axis_tlast(m_axis_tlast),
-            .irq(irq)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task axi_write;
-            input [3:0] addr_i;
-            input [{msb}:0] data_i;
-            begin
-              @(negedge clk);
-              s_axi_awvalid = 1'b1;
-              s_axi_awaddr = addr_i;
-              s_axi_wvalid = 1'b1;
-              s_axi_wdata = data_i;
-              s_axi_wstrb = 1'b1;
-              s_axi_bready = 1'b1;
-              while (!s_axi_awready || !s_axi_wready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              s_axi_awvalid = 1'b0;
-              s_axi_wvalid = 1'b0;
-              while (!s_axi_bvalid) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              s_axi_bready = 1'b0;
-            end
-          endtask
-
-          task axi_read_expect;
-            input [3:0] addr_i;
-            input [{msb}:0] mask_i;
-            input [{msb}:0] expected_i;
-            begin
-              @(negedge clk);
-              s_axi_arvalid = 1'b1;
-              s_axi_araddr = addr_i;
-              s_axi_rready = 1'b1;
-              while (!s_axi_arready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              s_axi_arvalid = 1'b0;
-              wait_cycles = 0;
-              while (!s_axi_rvalid && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (!s_axi_rvalid) begin
-                $display("TEST_FAIL read response did not become valid");
-                $finish;
-              end
-              if ((s_axi_rdata & mask_i) !== expected_i) begin
-                $display("TEST_FAIL expected read masked %0h got %0h", expected_i, s_axi_rdata & mask_i);
-                $finish;
-              end
-              @(negedge clk);
-              s_axi_rready = 1'b0;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            s_axi_awvalid = 1'b0;
-            s_axi_awaddr = 4'h0;
-            s_axi_wvalid = 1'b0;
-            s_axi_wdata = {width}'h00;
-            s_axi_wstrb = 1'b0;
-            s_axi_bready = 1'b0;
-            s_axi_arvalid = 1'b0;
-            s_axi_araddr = 4'h0;
-            s_axi_rready = 1'b0;
-            m_axis_tready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            axi_write(4'h4, {width}'h12);
-            axi_write(4'h8, {width}'h34);
-            axi_write(4'h0, {width}'h01);
-
-            wait_cycles = 0;
-            while (!m_axis_tvalid && wait_cycles < 16) begin
-              @(posedge clk);
-              #1;
-              wait_cycles = wait_cycles + 1;
-            end
-            if (!m_axis_tvalid || m_axis_tdata !== {width * 2}'h3412 || m_axis_tlast !== 1'b1) begin
-              $display("TEST_FAIL expected stream payload 0x3412 got valid=%0d data=%0h last=%0d",
-                       m_axis_tvalid, m_axis_tdata, m_axis_tlast);
-              $finish;
-            end
-            repeat (2) @(posedge clk);
-            #1;
-            if (irq !== 1'b1) begin
-              $display("TEST_FAIL expected irq set");
-              $finish;
-            end
-
-            axi_read_expect(4'hc, {width}'h06, {width}'h06);
-            axi_write(4'h0, {width}'h02);
-            axi_read_expect(4'hc, {width}'h04, {width}'h00);
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_rl_accelerator_shell_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg cfg_valid;
-          wire cfg_ready;
-          reg [2:0] cfg_addr;
-          reg [{msb}:0] cfg_data;
-          reg sample_valid;
-          wire sample_ready;
-          reg [{msb}:0] obs0;
-          reg [{msb}:0] obs1;
-          reg [{msb}:0] reward;
-          reg [{msb}:0] next_value;
-          reg done_in;
-          wire result_valid;
-          reg result_ready;
-          wire selected_action;
-          wire [{msb}:0] value_estimate;
-          wire [{msb}:0] updated_value;
-          wire episode_done;
-          wire irq;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .cfg_valid(cfg_valid),
-            .cfg_ready(cfg_ready),
-            .cfg_addr(cfg_addr),
-            .cfg_data(cfg_data),
-            .sample_valid(sample_valid),
-            .sample_ready(sample_ready),
-            .obs0(obs0),
-            .obs1(obs1),
-            .reward(reward),
-            .next_value(next_value),
-            .done_in(done_in),
-            .result_valid(result_valid),
-            .result_ready(result_ready),
-            .selected_action(selected_action),
-            .value_estimate(value_estimate),
-            .updated_value(updated_value),
-            .episode_done(episode_done),
-            .irq(irq)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task write_cfg;
-            input [2:0] addr_i;
-            input [{msb}:0] data_i;
-            begin
-              @(negedge clk);
-              cfg_valid = 1'b1;
-              cfg_addr = addr_i;
-              cfg_data = data_i;
-              while (!cfg_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              cfg_valid = 1'b0;
-            end
-          endtask
-
-          task send_sample;
-            input [{msb}:0] obs0_i;
-            input [{msb}:0] obs1_i;
-            input [{msb}:0] reward_i;
-            input [{msb}:0] next_value_i;
-            input done_i;
-            begin
-              @(negedge clk);
-              sample_valid = 1'b1;
-              obs0 = obs0_i;
-              obs1 = obs1_i;
-              reward = reward_i;
-              next_value = next_value_i;
-              done_in = done_i;
-              while (!sample_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              sample_valid = 1'b0;
-            end
-          endtask
-
-          task expect_result;
-            input expected_action;
-            input [{msb}:0] expected_value;
-            input [{msb}:0] expected_updated;
-            input expected_done;
-            begin
-              wait_cycles = 0;
-              while (!result_valid && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (!result_valid) begin
-                $display("TEST_FAIL result did not become valid");
-                $finish;
-              end
-              if (selected_action !== expected_action ||
-                  value_estimate !== expected_value ||
-                  updated_value !== expected_updated ||
-                  episode_done !== expected_done) begin
-                $display("TEST_FAIL expected action=%0d value=%0d updated=%0d done=%0d got action=%0d value=%0d updated=%0d done=%0d",
-                         expected_action, expected_value, expected_updated, expected_done,
-                         selected_action, value_estimate, updated_value, episode_done);
-                $finish;
-              end
-              @(posedge clk);
-              #1;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            cfg_valid = 1'b0;
-            cfg_addr = 3'd0;
-            cfg_data = {width}'d0;
-            sample_valid = 1'b0;
-            obs0 = {width}'d0;
-            obs1 = {width}'d0;
-            reward = {width}'d0;
-            next_value = {width}'d0;
-            done_in = 1'b0;
-            result_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            write_cfg(3'd0, {width}'d2);
-            write_cfg(3'd1, {width}'d1);
-            write_cfg(3'd2, {width}'d3);
-            write_cfg(3'd3, {width}'d0);
-            write_cfg(3'd4, {width}'d4);
-            write_cfg(3'd5, {width}'d1);
-
-            send_sample({width}'d4, {width}'d2, {width}'d1, {width}'d8, 1'b0);
-            expect_result(1'b0, 8'd7, 8'd7, 1'b0);
-
-            send_sample({width}'d1, {width}'d5, {width}'d2, {width}'d15, 1'b1);
-            expect_result(1'b1, 8'd9, 8'd11, 1'b1);
-
-            if (irq !== 1'b1) begin
-              $display("TEST_FAIL expected irq after done result");
-              $finish;
-            end
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_batch_rl_accelerator_shell_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg cfg_valid;
-          wire cfg_ready;
-          reg [2:0] cfg_addr;
-          reg [{msb}:0] cfg_data;
-          reg batch_valid;
-          wire batch_ready;
-          reg [{msb}:0] obs0_a;
-          reg [{msb}:0] obs1_a;
-          reg [{msb}:0] reward_a;
-          reg [{msb}:0] next_value_a;
-          reg done_a;
-          reg [{msb}:0] obs0_b;
-          reg [{msb}:0] obs1_b;
-          reg [{msb}:0] reward_b;
-          reg [{msb}:0] next_value_b;
-          reg done_b;
-          wire result_valid;
-          reg result_ready;
-          wire selected_action_a;
-          wire [{msb}:0] value_estimate_a;
-          wire [{msb}:0] updated_value_a;
-          wire selected_action_b;
-          wire [{msb}:0] value_estimate_b;
-          wire [{msb}:0] updated_value_b;
-          wire batch_done;
-          wire irq;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .cfg_valid(cfg_valid),
-            .cfg_ready(cfg_ready),
-            .cfg_addr(cfg_addr),
-            .cfg_data(cfg_data),
-            .batch_valid(batch_valid),
-            .batch_ready(batch_ready),
-            .obs0_a(obs0_a),
-            .obs1_a(obs1_a),
-            .reward_a(reward_a),
-            .next_value_a(next_value_a),
-            .done_a(done_a),
-            .obs0_b(obs0_b),
-            .obs1_b(obs1_b),
-            .reward_b(reward_b),
-            .next_value_b(next_value_b),
-            .done_b(done_b),
-            .result_valid(result_valid),
-            .result_ready(result_ready),
-            .selected_action_a(selected_action_a),
-            .value_estimate_a(value_estimate_a),
-            .updated_value_a(updated_value_a),
-            .selected_action_b(selected_action_b),
-            .value_estimate_b(value_estimate_b),
-            .updated_value_b(updated_value_b),
-            .batch_done(batch_done),
-            .irq(irq)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task write_cfg;
-            input [2:0] addr_i;
-            input [{msb}:0] data_i;
-            begin
-              @(negedge clk);
-              cfg_valid = 1'b1;
-              cfg_addr = addr_i;
-              cfg_data = data_i;
-              while (!cfg_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              cfg_valid = 1'b0;
-            end
-          endtask
-
-          task send_batch;
-            begin
-              @(negedge clk);
-              batch_valid = 1'b1;
-              obs0_a = {width}'d4;
-              obs1_a = {width}'d2;
-              reward_a = {width}'d1;
-              next_value_a = {width}'d8;
-              done_a = 1'b0;
-              obs0_b = {width}'d1;
-              obs1_b = {width}'d5;
-              reward_b = {width}'d2;
-              next_value_b = {width}'d15;
-              done_b = 1'b1;
-              while (!batch_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              batch_valid = 1'b0;
-            end
-          endtask
-
-          task expect_batch_result;
-            input expected_action_a;
-            input [{msb}:0] expected_value_a;
-            input [{msb}:0] expected_updated_a;
-            input expected_action_b;
-            input [{msb}:0] expected_value_b;
-            input [{msb}:0] expected_updated_b;
-            input expected_batch_done;
-            begin
-              wait_cycles = 0;
-              while (!result_valid && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (!result_valid) begin
-                $display("TEST_FAIL batch result did not become valid");
-                $finish;
-              end
-              if (selected_action_a !== expected_action_a ||
-                  value_estimate_a !== expected_value_a ||
-                  updated_value_a !== expected_updated_a ||
-                  selected_action_b !== expected_action_b ||
-                  value_estimate_b !== expected_value_b ||
-                  updated_value_b !== expected_updated_b ||
-                  batch_done !== expected_batch_done) begin
-                $display("TEST_FAIL unexpected batch result");
-                $finish;
-              end
-              @(posedge clk);
-              #1;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            cfg_valid = 1'b0;
-            cfg_addr = 3'd0;
-            cfg_data = {width}'d0;
-            batch_valid = 1'b0;
-            obs0_a = {width}'d0;
-            obs1_a = {width}'d0;
-            reward_a = {width}'d0;
-            next_value_a = {width}'d0;
-            done_a = 1'b0;
-            obs0_b = {width}'d0;
-            obs1_b = {width}'d0;
-            reward_b = {width}'d0;
-            next_value_b = {width}'d0;
-            done_b = 1'b0;
-            result_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            write_cfg(3'd0, {width}'d2);
-            write_cfg(3'd1, {width}'d1);
-            write_cfg(3'd2, {width}'d3);
-            write_cfg(3'd3, {width}'d0);
-            write_cfg(3'd4, {width}'d4);
-            write_cfg(3'd5, {width}'d1);
-
-            send_batch();
-            expect_batch_result(1'b0, 8'd7, 8'd7, 1'b1, 8'd9, 8'd11, 1'b1);
-
-            if (irq !== 1'b1) begin
-              $display("TEST_FAIL expected irq after batch done result");
-              $finish;
-            end
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
-
-
-def _composed_replay_arbiter_shell_testbench(width: int) -> str:
-    msb = width - 1
-    return dedent(
-        f"""\
-        `timescale 1ns/1ps
-
-        module tb_top;
-          reg clk;
-          reg rst_n;
-          reg host_valid;
-          wire host_ready;
-          reg [{msb}:0] host_state;
-          reg host_action;
-          reg [{msb}:0] host_reward;
-          reg [{msb}:0] host_next_state;
-          reg host_done;
-          reg sample_req_valid;
-          wire sample_req_ready;
-          reg [1:0] sample_index;
-          wire sample_valid;
-          reg sample_ready;
-          wire [{msb}:0] sample_state;
-          wire sample_action;
-          wire [{msb}:0] sample_reward;
-          wire [{msb}:0] sample_next_state;
-          wire sample_done;
-          wire [2:0] occupancy;
-          wire [1:0] write_index;
-          wire irq;
-          integer wait_cycles;
-
-          top dut (
-            .clk(clk),
-            .rst_n(rst_n),
-            .host_valid(host_valid),
-            .host_ready(host_ready),
-            .host_state(host_state),
-            .host_action(host_action),
-            .host_reward(host_reward),
-            .host_next_state(host_next_state),
-            .host_done(host_done),
-            .sample_req_valid(sample_req_valid),
-            .sample_req_ready(sample_req_ready),
-            .sample_index(sample_index),
-            .sample_valid(sample_valid),
-            .sample_ready(sample_ready),
-            .sample_state(sample_state),
-            .sample_action(sample_action),
-            .sample_reward(sample_reward),
-            .sample_next_state(sample_next_state),
-            .sample_done(sample_done),
-            .occupancy(occupancy),
-            .write_index(write_index),
-            .irq(irq)
-          );
-
-          initial begin
-            clk = 1'b0;
-            forever #5 clk = ~clk;
-          end
-
-          task write_host_packet;
-            input [{msb}:0] state_i;
-            input action_i;
-            input [{msb}:0] reward_i;
-            input [{msb}:0] next_state_i;
-            input done_i;
-            begin
-              @(negedge clk);
-              host_valid = 1'b1;
-              host_state = state_i;
-              host_action = action_i;
-              host_reward = reward_i;
-              host_next_state = next_state_i;
-              host_done = done_i;
-              while (!host_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              host_valid = 1'b0;
-            end
-          endtask
-
-          task request_sample;
-            input [1:0] index_i;
-            begin
-              @(negedge clk);
-              sample_req_valid = 1'b1;
-              sample_index = index_i;
-              while (!sample_req_ready) begin
-                @(negedge clk);
-              end
-              @(negedge clk);
-              sample_req_valid = 1'b0;
-            end
-          endtask
-
-          task expect_sample;
-            input [{msb}:0] expected_state;
-            input expected_action;
-            input [{msb}:0] expected_reward;
-            input [{msb}:0] expected_next_state;
-            input expected_done;
-            begin
-              wait_cycles = 0;
-              while (!sample_valid && wait_cycles < 16) begin
-                @(posedge clk);
-                #1;
-                wait_cycles = wait_cycles + 1;
-              end
-              if (!sample_valid) begin
-                $display("TEST_FAIL sample did not become valid");
-                $finish;
-              end
-              if (sample_state !== expected_state ||
-                  sample_action !== expected_action ||
-                  sample_reward !== expected_reward ||
-                  sample_next_state !== expected_next_state ||
-                  sample_done !== expected_done) begin
-                $display("TEST_FAIL unexpected sample packet");
-                $finish;
-              end
-              @(posedge clk);
-              #1;
-            end
-          endtask
-
-          initial begin
-            rst_n = 1'b0;
-            host_valid = 1'b0;
-            host_state = {width}'h00;
-            host_action = 1'b0;
-            host_reward = {width}'h00;
-            host_next_state = {width}'h00;
-            host_done = 1'b0;
-            sample_req_valid = 1'b0;
-            sample_index = 2'd0;
-            sample_ready = 1'b1;
-            repeat (2) @(posedge clk);
-            rst_n = 1'b1;
-
-            write_host_packet(8'h12, 1'b0, 8'h03, 8'h21, 1'b0);
-            write_host_packet(8'h34, 1'b1, 8'h05, 8'h43, 1'b1);
-
-            if (occupancy !== 3'd2 || write_index !== 2'd2) begin
-              $display("TEST_FAIL expected occupancy=2 write_index=2");
-              $finish;
-            end
-
-            request_sample(2'd0);
-            expect_sample(8'h12, 1'b0, 8'h03, 8'h21, 1'b0);
-
-            request_sample(2'd1);
-            expect_sample(8'h34, 1'b1, 8'h05, 8'h43, 1'b1);
-
-            if (irq !== 1'b1) begin
-              $display("TEST_FAIL expected irq after sample accepted");
-              $finish;
-            end
-
-            $display("TEST_PASS");
-            $finish;
-          end
-        endmodule
-        """
-    )
 
 
 def _simple_passthrough_multimodule(task_name: str, width: int, submodule_name: str) -> dict[str, str]:
@@ -4502,4484 +2304,40 @@ def _simple_passthrough_multimodule(task_name: str, width: int, submodule_name: 
     }
 
 
-def _uart_tx_rtl_files(width: int) -> dict[str, str]:
-    top = dedent(
-        """\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire start,
-            input wire [7:0] data,
-            output wire tx,
-            output wire busy,
-            output wire done
-        );
 
-          wire baud_tick;
 
-          baud_tick_gen u_baud_tick_gen (
-            .clk(clk),
-            .rst_n(rst_n),
-            .enable(busy),
-            .tick(baud_tick)
-          );
 
-          uart_tx_core u_uart_tx_core (
-            .clk(clk),
-            .rst_n(rst_n),
-            .baud_tick(baud_tick),
-            .start(start),
-            .data(data),
-            .tx(tx),
-            .busy(busy),
-            .done(done)
-          );
 
-        endmodule
-        """
-    )
-    baud_tick_gen = dedent(
-        """\
-        module baud_tick_gen (
-            input wire clk,
-            input wire rst_n,
-            input wire enable,
-            output wire tick
-        );
 
-          reg [1:0] div_count;
 
-          assign tick = enable && (div_count == 2'd3);
 
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              div_count <= 2'd0;
-            end else if (enable) begin
-              div_count <= div_count + 2'd1;
-            end else begin
-              div_count <= 2'd0;
-            end
-          end
 
-        endmodule
-        """
-    )
-    uart_tx_core = dedent(
-        """\
-        module uart_tx_core (
-            input wire clk,
-            input wire rst_n,
-            input wire baud_tick,
-            input wire start,
-            input wire [7:0] data,
-            output reg tx,
-            output reg busy,
-            output reg done
-        );
 
-          localparam [1:0] IDLE = 2'd0;
-          localparam [1:0] DATA = 2'd1;
-          localparam [1:0] STOP = 2'd2;
-          localparam [1:0] CLEANUP = 2'd3;
 
-          reg [1:0] state;
-          reg [2:0] bit_index;
-          reg [7:0] shifter;
 
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              state <= IDLE;
-              bit_index <= 3'd0;
-              shifter <= 8'd0;
-              tx <= 1'b1;
-              busy <= 1'b0;
-              done <= 1'b0;
-            end else begin
-              done <= 1'b0;
-              case (state)
-                IDLE: begin
-                  tx <= 1'b1;
-                  busy <= 1'b0;
-                  bit_index <= 3'd0;
-                  if (start) begin
-                    shifter <= data;
-                    tx <= 1'b0;
-                    busy <= 1'b1;
-                    state <= DATA;
-                  end
-                end
-                DATA: begin
-                  if (baud_tick) begin
-                    tx <= shifter[0];
-                    shifter <= {1'b0, shifter[7:1]};
-                    if (bit_index == 3'd7) begin
-                      bit_index <= 3'd0;
-                      state <= STOP;
-                    end else begin
-                      bit_index <= bit_index + 3'd1;
-                    end
-                  end
-                end
-                STOP: begin
-                  if (baud_tick) begin
-                    tx <= 1'b1;
-                    state <= CLEANUP;
-                  end
-                end
-                CLEANUP: begin
-                  if (baud_tick) begin
-                    tx <= 1'b1;
-                    busy <= 1'b0;
-                    done <= 1'b1;
-                    state <= IDLE;
-                  end
-                end
-                default: begin
-                  state <= IDLE;
-                  tx <= 1'b1;
-                  busy <= 1'b0;
-                end
-              endcase
-            end
-          end
 
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/baud_tick_gen.v": baud_tick_gen,
-        "rtl/uart_tx_core.v": uart_tx_core,
-    }
 
 
-def _spi_master_rtl_files(width: int) -> dict[str, str]:
-    top = dedent(
-        """\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire start,
-            input wire [7:0] tx_data,
-            input wire miso,
-            output wire [7:0] rx_data,
-            output wire busy,
-            output wire done,
-            output wire sclk,
-            output wire mosi,
-            output wire cs_n
-        );
 
-          wire spi_tick;
 
-          clock_divider u_clock_divider (
-            .clk(clk),
-            .rst_n(rst_n),
-            .enable(busy),
-            .tick(spi_tick)
-          );
 
-          spi_master_core u_spi_master_core (
-            .clk(clk),
-            .rst_n(rst_n),
-            .tick(spi_tick),
-            .start(start),
-            .tx_data(tx_data),
-            .miso(miso),
-            .rx_data(rx_data),
-            .busy(busy),
-            .done(done),
-            .sclk(sclk),
-            .mosi(mosi),
-            .cs_n(cs_n)
-          );
 
-        endmodule
-        """
-    )
-    clock_divider = dedent(
-        """\
-        module clock_divider (
-            input wire clk,
-            input wire rst_n,
-            input wire enable,
-            output wire tick
-        );
 
-          reg div_count;
 
-          assign tick = enable && div_count;
 
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              div_count <= 1'b0;
-            end else if (enable) begin
-              div_count <= ~div_count;
-            end else begin
-              div_count <= 1'b0;
-            end
-          end
 
-        endmodule
-        """
-    )
-    spi_master_core = dedent(
-        """\
-        module spi_master_core (
-            input wire clk,
-            input wire rst_n,
-            input wire tick,
-            input wire start,
-            input wire [7:0] tx_data,
-            input wire miso,
-            output reg [7:0] rx_data,
-            output reg busy,
-            output reg done,
-            output reg sclk,
-            output reg mosi,
-            output reg cs_n
-        );
 
-          reg [2:0] bit_index;
-          reg [7:0] tx_shift;
-          reg [6:0] rx_shift;
 
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              bit_index <= 3'd0;
-              tx_shift <= 8'd0;
-              rx_shift <= 7'd0;
-              rx_data <= 8'd0;
-              busy <= 1'b0;
-              done <= 1'b0;
-              sclk <= 1'b0;
-              mosi <= 1'b0;
-              cs_n <= 1'b1;
-            end else begin
-              done <= 1'b0;
-              if (!busy) begin
-                sclk <= 1'b0;
-                cs_n <= 1'b1;
-                bit_index <= 3'd0;
-                if (start) begin
-                  busy <= 1'b1;
-                  cs_n <= 1'b0;
-                  tx_shift <= {tx_data[6:0], 1'b0};
-                  rx_shift <= 7'd0;
-                  mosi <= tx_data[7];
-                end
-              end else if (tick) begin
-                if (sclk == 1'b0) begin
-                  sclk <= 1'b1;
-                  rx_shift <= {rx_shift[5:0], miso};
-                  if (bit_index == 3'd7) begin
-                    rx_data <= {rx_shift, miso};
-                  end
-                end else begin
-                  sclk <= 1'b0;
-                  if (bit_index == 3'd7) begin
-                    busy <= 1'b0;
-                    done <= 1'b1;
-                    cs_n <= 1'b1;
-                  end else begin
-                    bit_index <= bit_index + 3'd1;
-                    mosi <= tx_shift[7];
-                    tx_shift <= {tx_shift[6:0], 1'b0};
-                  end
-                end
-              end
-            end
-          end
 
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/clock_divider.v": clock_divider,
-        "rtl/spi_master_core.v": spi_master_core,
-    }
 
 
-def _pwm_controller_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire [{msb}:0] duty,
-            output wire pwm_out
-        );
 
-          wire [{msb}:0] counter;
 
-          pwm_timer #(
-            .WIDTH({width})
-          ) u_pwm_timer (
-            .clk(clk),
-            .rst_n(rst_n),
-            .counter(counter)
-          );
 
-          pwm_channel #(
-            .WIDTH({width})
-          ) u_pwm_channel (
-            .counter(counter),
-            .duty(duty),
-            .pwm_out(pwm_out)
-          );
 
-        endmodule
-        """
-    )
-    pwm_timer = dedent(
-        """\
-        module pwm_timer #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            output reg [WIDTH-1:0] counter
-        );
 
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              counter <= {WIDTH{1'b0}};
-            end else begin
-              counter <= counter + {{(WIDTH-1){1'b0}}, 1'b1};
-            end
-          end
 
-        endmodule
-        """
-    )
-    pwm_channel = dedent(
-        """\
-        module pwm_channel #(
-            parameter WIDTH = 8
-        ) (
-            input wire [WIDTH-1:0] counter,
-            input wire [WIDTH-1:0] duty,
-            output wire pwm_out
-        );
 
-          assign pwm_out = (counter < duty);
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/pwm_timer.v": pwm_timer,
-        "rtl/pwm_channel.v": pwm_channel,
-    }
-
-
-def _fir_filter_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    result_msb = width + 2
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire sample_valid,
-            input wire [{msb}:0] sample,
-            output wire result_valid,
-            output wire [{result_msb}:0] result
-        );
-
-          // fir_filter_core contains the mac_unit tap helpers.
-          fir_filter_core #(
-            .WIDTH({width}),
-            .RESULT_WIDTH({width + 3})
-          ) u_fir_filter_core (
-            .clk(clk),
-            .rst_n(rst_n),
-            .sample_valid(sample_valid),
-            .sample(sample),
-            .result_valid(result_valid),
-            .result(result)
-          );
-
-        endmodule
-        """
-    )
-    fir_filter_core = dedent(
-        """\
-        module fir_filter_core #(
-            parameter WIDTH = 8,
-            parameter RESULT_WIDTH = 11
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire sample_valid,
-            input wire [WIDTH-1:0] sample,
-            output reg result_valid,
-            output reg [RESULT_WIDTH-1:0] result
-        );
-
-          reg [WIDTH-1:0] sample_d0;
-          reg [WIDTH-1:0] sample_d1;
-          wire [RESULT_WIDTH-1:0] stage0;
-          wire [RESULT_WIDTH-1:0] stage1;
-          wire [RESULT_WIDTH-1:0] filtered_result;
-
-          mac_unit #(
-            .WIDTH(WIDTH),
-            .ACC_WIDTH(RESULT_WIDTH)
-          ) u_mac_new_sample (
-            .sample(sample),
-            .coefficient(2'd1),
-            .accum({RESULT_WIDTH{1'b0}}),
-            .result(stage0)
-          );
-
-          mac_unit #(
-            .WIDTH(WIDTH),
-            .ACC_WIDTH(RESULT_WIDTH)
-          ) u_mac_previous_sample (
-            .sample(sample_d0),
-            .coefficient(2'd2),
-            .accum(stage0),
-            .result(stage1)
-          );
-
-          mac_unit #(
-            .WIDTH(WIDTH),
-            .ACC_WIDTH(RESULT_WIDTH)
-          ) u_mac_oldest_sample (
-            .sample(sample_d1),
-            .coefficient(2'd1),
-            .accum(stage1),
-            .result(filtered_result)
-          );
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              sample_d0 <= {WIDTH{1'b0}};
-              sample_d1 <= {WIDTH{1'b0}};
-              result_valid <= 1'b0;
-              result <= {RESULT_WIDTH{1'b0}};
-            end else begin
-              result_valid <= sample_valid;
-              if (sample_valid) begin
-                result <= filtered_result;
-                sample_d1 <= sample_d0;
-                sample_d0 <= sample;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    mac_unit = dedent(
-        """\
-        module mac_unit #(
-            parameter WIDTH = 8,
-            parameter ACC_WIDTH = 11
-        ) (
-            input wire [WIDTH-1:0] sample,
-            input wire [1:0] coefficient,
-            input wire [ACC_WIDTH-1:0] accum,
-            output wire [ACC_WIDTH-1:0] result
-        );
-
-          wire [ACC_WIDTH-1:0] extended_sample;
-          wire [ACC_WIDTH-1:0] product_x1;
-          wire [ACC_WIDTH-1:0] product_x2;
-
-          assign extended_sample = {{(ACC_WIDTH-WIDTH){1'b0}}, sample};
-          assign product_x1 = coefficient[0] ? extended_sample : {ACC_WIDTH{1'b0}};
-          assign product_x2 = coefficient[1] ? (extended_sample << 1) : {ACC_WIDTH{1'b0}};
-          assign result = accum + product_x1 + product_x2;
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/fir_filter_core.v": fir_filter_core,
-        "rtl/mac_unit.v": mac_unit,
-    }
-
-
-def _streaming_valid_ready_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [{msb}:0] in_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [{msb}:0] out_data
-        );
-
-          wire skid_valid;
-          wire skid_ready;
-          wire [{msb}:0] skid_data;
-
-          skid_buffer #(
-            .WIDTH({width})
-          ) u_skid_buffer (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .in_data(in_data),
-            .out_valid(skid_valid),
-            .out_ready(skid_ready),
-            .out_data(skid_data)
-          );
-
-          stream_stage #(
-            .WIDTH({width})
-          ) u_stream_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(skid_valid),
-            .in_ready(skid_ready),
-            .in_data(skid_data),
-            .out_valid(out_valid),
-            .out_ready(out_ready),
-            .out_data(out_data)
-          );
-
-        endmodule
-        """
-    )
-    skid_buffer = dedent(
-        """\
-        module skid_buffer #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [WIDTH-1:0] out_data
-        );
-
-          reg valid_r;
-          reg [WIDTH-1:0] data_r;
-
-          assign in_ready = !valid_r || out_ready;
-          assign out_valid = valid_r;
-          assign out_data = data_r;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              valid_r <= 1'b0;
-              data_r <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              valid_r <= in_valid;
-              if (in_valid) begin
-                data_r <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    stream_stage = dedent(
-        """\
-        module stream_stage #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output reg out_valid,
-            input wire out_ready,
-            output reg [WIDTH-1:0] out_data
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              out_data <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                out_data <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/skid_buffer.v": skid_buffer,
-        "rtl/stream_stage.v": stream_stage,
-    }
-
-
-def _matrix_vector_mac_rtl_files(width: int) -> dict[str, str]:
-    result_msb = width + 3
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire start,
-            output wire busy,
-            output wire done,
-            output wire [{result_msb}:0] result
-        );
-
-          // dot_product_engine contains mac_unit and vector_rom instances.
-          dot_product_engine #(
-            .WIDTH({width}),
-            .RESULT_WIDTH({width + 4})
-          ) u_dot_product_engine (
-            .clk(clk),
-            .rst_n(rst_n),
-            .start(start),
-            .busy(busy),
-            .done(done),
-            .result(result)
-          );
-
-        endmodule
-        """
-    )
-    dot_product_engine = dedent(
-        """\
-        module dot_product_engine #(
-            parameter WIDTH = 8,
-            parameter RESULT_WIDTH = 12
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire start,
-            output reg busy,
-            output reg done,
-            output reg [RESULT_WIDTH-1:0] result
-        );
-
-          reg [1:0] index;
-          reg [RESULT_WIDTH-1:0] accum;
-          reg [WIDTH-1:0] vector_value;
-          wire [1:0] coefficient;
-          wire [RESULT_WIDTH-1:0] next_accum;
-
-          vector_rom u_vector_rom (
-            .addr(index),
-            .coefficient(coefficient)
-          );
-
-          mac_unit #(
-            .WIDTH(WIDTH),
-            .ACC_WIDTH(RESULT_WIDTH)
-          ) u_mac_unit (
-            .sample(vector_value),
-            .coefficient(coefficient),
-            .accum(accum),
-            .result(next_accum)
-          );
-
-          always @* begin
-            case (index)
-              2'd0: vector_value = {{(WIDTH-1){1'b0}}, 1'b1};
-              2'd1: vector_value = {{(WIDTH-2){1'b0}}, 2'd2};
-              2'd2: vector_value = {{(WIDTH-2){1'b0}}, 2'd3};
-              default: vector_value = {{(WIDTH-3){1'b0}}, 3'd4};
-            endcase
-          end
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              index <= 2'd0;
-              accum <= {RESULT_WIDTH{1'b0}};
-              busy <= 1'b0;
-              done <= 1'b0;
-              result <= {RESULT_WIDTH{1'b0}};
-            end else begin
-              done <= 1'b0;
-              if (!busy) begin
-                index <= 2'd0;
-                accum <= {RESULT_WIDTH{1'b0}};
-                if (start) begin
-                  busy <= 1'b1;
-                end
-              end else begin
-                accum <= next_accum;
-                if (index == 2'd3) begin
-                  result <= next_accum;
-                  busy <= 1'b0;
-                  done <= 1'b1;
-                  index <= 2'd0;
-                end else begin
-                  index <= index + 2'd1;
-                end
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    mac_unit = dedent(
-        """\
-        module mac_unit #(
-            parameter WIDTH = 8,
-            parameter ACC_WIDTH = 12
-        ) (
-            input wire [WIDTH-1:0] sample,
-            input wire [1:0] coefficient,
-            input wire [ACC_WIDTH-1:0] accum,
-            output wire [ACC_WIDTH-1:0] result
-        );
-
-          wire [ACC_WIDTH-1:0] extended_sample;
-          wire [ACC_WIDTH-1:0] product_x1;
-          wire [ACC_WIDTH-1:0] product_x2;
-
-          assign extended_sample = {{(ACC_WIDTH-WIDTH){1'b0}}, sample};
-          assign product_x1 = coefficient[0] ? extended_sample : {ACC_WIDTH{1'b0}};
-          assign product_x2 = coefficient[1] ? (extended_sample << 1) : {ACC_WIDTH{1'b0}};
-          assign result = accum + product_x1 + product_x2;
-
-        endmodule
-        """
-    )
-    vector_rom = dedent(
-        """\
-        module vector_rom (
-            input wire [1:0] addr,
-            output reg [1:0] coefficient
-        );
-
-          always @* begin
-            case (addr)
-              2'd0: coefficient = 2'd2;
-              2'd1: coefficient = 2'd1;
-              2'd2: coefficient = 2'd3;
-              default: coefficient = 2'd1;
-            endcase
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/dot_product_engine.v": dot_product_engine,
-        "rtl/mac_unit.v": mac_unit,
-        "rtl/vector_rom.v": vector_rom,
-    }
-
-
-def _alu_control_unit_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    shift_msb = min(2, width - 1)
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire valid,
-            output wire ready,
-            input wire [2:0] op,
-            input wire [{msb}:0] lhs,
-            input wire [{msb}:0] rhs,
-            output wire result_valid,
-            output wire [{msb}:0] result,
-            output wire zero,
-            output wire carry,
-            output wire negative
-        );
-
-          wire [2:0] decoded_op;
-          wire [{msb}:0] alu_result;
-          wire alu_carry;
-
-          assign ready = 1'b1;
-
-          control_decode u_control_decode (
-            .op(op),
-            .decoded_op(decoded_op)
-          );
-
-          alu_core #(
-            .WIDTH({width})
-          ) u_alu_core (
-            .op(decoded_op),
-            .lhs(lhs),
-            .rhs(rhs),
-            .result(alu_result),
-            .carry(alu_carry)
-          );
-
-          status_flags #(
-            .WIDTH({width})
-          ) u_status_flags (
-            .clk(clk),
-            .rst_n(rst_n),
-            .valid(valid),
-            .alu_result(alu_result),
-            .alu_carry(alu_carry),
-            .result_valid(result_valid),
-            .result(result),
-            .zero(zero),
-            .carry(carry),
-            .negative(negative)
-          );
-
-        endmodule
-        """
-    )
-    control_decode = dedent(
-        """\
-        module control_decode (
-            input wire [2:0] op,
-            output wire [2:0] decoded_op
-        );
-
-          assign decoded_op = op;
-
-        endmodule
-        """
-    )
-    alu_core = dedent(
-        f"""\
-        module alu_core #(
-            parameter WIDTH = 8
-        ) (
-            input wire [2:0] op,
-            input wire [WIDTH-1:0] lhs,
-            input wire [WIDTH-1:0] rhs,
-            output reg [WIDTH-1:0] result,
-            output reg carry
-        );
-
-          wire [WIDTH:0] add_ext;
-          wire [WIDTH:0] sub_ext;
-
-          assign add_ext = {{1'b0, lhs}} + {{1'b0, rhs}};
-          assign sub_ext = {{1'b0, lhs}} - {{1'b0, rhs}};
-
-          always @* begin
-            result = {{WIDTH{{1'b0}}}};
-            carry = 1'b0;
-            case (op)
-              3'b000: begin
-                result = add_ext[WIDTH-1:0];
-                carry = add_ext[WIDTH];
-              end
-              3'b001: begin
-                result = sub_ext[WIDTH-1:0];
-                carry = sub_ext[WIDTH];
-              end
-              3'b010: result = lhs & rhs;
-              3'b011: result = lhs | rhs;
-              3'b100: result = lhs ^ rhs;
-              3'b101: result = lhs << rhs[{shift_msb}:0];
-              3'b110: result = lhs >> rhs[{shift_msb}:0];
-              default: result = lhs;
-            endcase
-          end
-
-        endmodule
-        """
-    )
-    status_flags = dedent(
-        """\
-        module status_flags #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire valid,
-            input wire [WIDTH-1:0] alu_result,
-            input wire alu_carry,
-            output reg result_valid,
-            output reg [WIDTH-1:0] result,
-            output reg zero,
-            output reg carry,
-            output reg negative
-        );
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              result_valid <= 1'b0;
-              result <= {WIDTH{1'b0}};
-              zero <= 1'b0;
-              carry <= 1'b0;
-              negative <= 1'b0;
-            end else if (valid) begin
-              result_valid <= 1'b1;
-              result <= alu_result;
-              zero <= (alu_result == {WIDTH{1'b0}});
-              carry <= alu_carry;
-              negative <= alu_result[WIDTH-1];
-            end else begin
-              result_valid <= 1'b0;
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/control_decode.v": control_decode,
-        "rtl/alu_core.v": alu_core,
-        "rtl/status_flags.v": status_flags,
-    }
-
-
-def _crc_stream_checker_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [{msb}:0] in_data,
-            input wire frame_start,
-            input wire frame_end,
-            input wire [7:0] expected_crc,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [7:0] crc_value,
-            output wire crc_match
-        );
-
-          wire [7:0] crc_state;
-          wire [7:0] crc_base;
-          wire [7:0] crc_next;
-          wire [7:0] frame_crc;
-          wire frame_done;
-
-          assign crc_base = frame_start ? 8'h00 : crc_state;
-
-          crc8_update u_crc8_update (
-            .crc_in(crc_base),
-            .data_in(in_data[7:0]),
-            .crc_out(crc_next)
-          );
-
-          stream_frame_accumulator u_stream_frame_accumulator (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .frame_end(frame_end),
-            .out_ready(out_ready),
-            .crc_next(crc_next),
-            .crc_state(crc_state),
-            .frame_done(frame_done),
-            .frame_crc(frame_crc)
-          );
-
-          crc_status u_crc_status (
-            .clk(clk),
-            .rst_n(rst_n),
-            .frame_done(frame_done),
-            .out_ready(out_ready),
-            .frame_crc(frame_crc),
-            .expected_crc(expected_crc),
-            .out_valid(out_valid),
-            .crc_value(crc_value),
-            .crc_match(crc_match)
-          );
-
-        endmodule
-        """
-    )
-    crc8_update = dedent(
-        """\
-        module crc8_update (
-            input wire [7:0] crc_in,
-            input wire [7:0] data_in,
-            output reg [7:0] crc_out
-        );
-
-          integer bit_index;
-          reg [7:0] crc_work;
-
-          always @* begin
-            crc_work = crc_in ^ data_in;
-            for (bit_index = 0; bit_index < 8; bit_index = bit_index + 1) begin
-              if (crc_work[7]) begin
-                crc_work = (crc_work << 1) ^ 8'h07;
-              end else begin
-                crc_work = crc_work << 1;
-              end
-            end
-            crc_out = crc_work;
-          end
-
-        endmodule
-        """
-    )
-    stream_frame_accumulator = dedent(
-        """\
-        module stream_frame_accumulator (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire frame_end,
-            input wire out_ready,
-            input wire [7:0] crc_next,
-            output reg [7:0] crc_state,
-            output reg frame_done,
-            output reg [7:0] frame_crc
-        );
-
-          wire accept;
-
-          assign in_ready = !frame_done || out_ready;
-          assign accept = in_valid && in_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              crc_state <= 8'h00;
-              frame_done <= 1'b0;
-              frame_crc <= 8'h00;
-            end else begin
-              if (frame_done && out_ready) begin
-                frame_done <= 1'b0;
-              end
-              if (accept) begin
-                crc_state <= crc_next;
-                if (frame_end) begin
-                  frame_done <= 1'b1;
-                  frame_crc <= crc_next;
-                end
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    crc_status = dedent(
-        """\
-        module crc_status (
-            input wire clk,
-            input wire rst_n,
-            input wire frame_done,
-            input wire out_ready,
-            input wire [7:0] frame_crc,
-            input wire [7:0] expected_crc,
-            output reg out_valid,
-            output reg [7:0] crc_value,
-            output reg crc_match
-        );
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              crc_value <= 8'h00;
-              crc_match <= 1'b0;
-            end else if (frame_done) begin
-              out_valid <= 1'b1;
-              crc_value <= frame_crc;
-              crc_match <= (frame_crc == expected_crc);
-            end else if (out_valid && out_ready) begin
-              out_valid <= 1'b0;
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/crc8_update.v": crc8_update,
-        "rtl/stream_frame_accumulator.v": stream_frame_accumulator,
-        "rtl/crc_status.v": crc_status,
-    }
-
-
-def _composed_stream_accumulator_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    sum_msb = width + 3
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [{msb}:0] in_data,
-            output wire sample_valid,
-            output wire [{sum_msb}:0] sum
-        );
-
-          wire sample_ready;
-          wire [{msb}:0] sample_data;
-
-          skid_buffer #(
-            .WIDTH({width})
-          ) u_skid_buffer (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .in_data(in_data),
-            .out_valid(sample_valid),
-            .out_ready(sample_ready),
-            .out_data(sample_data)
-          );
-
-          accumulator_core #(
-            .WIDTH({width}),
-            .SUM_WIDTH({width + 4})
-          ) u_accumulator_core (
-            .clk(clk),
-            .rst_n(rst_n),
-            .sample_valid(sample_valid),
-            .sample_ready(sample_ready),
-            .sample(sample_data),
-            .sum(sum)
-          );
-
-        endmodule
-        """
-    )
-    skid_buffer = dedent(
-        """\
-        module skid_buffer #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [WIDTH-1:0] out_data
-        );
-
-          reg valid_r;
-          reg [WIDTH-1:0] data_r;
-
-          assign in_ready = !valid_r || out_ready;
-          assign out_valid = valid_r;
-          assign out_data = data_r;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              valid_r <= 1'b0;
-              data_r <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              valid_r <= in_valid;
-              if (in_valid) begin
-                data_r <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    accumulator_core = dedent(
-        """\
-        module accumulator_core #(
-            parameter WIDTH = 8,
-            parameter SUM_WIDTH = 12
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire sample_valid,
-            output wire sample_ready,
-            input wire [WIDTH-1:0] sample,
-            output reg [SUM_WIDTH-1:0] sum
-        );
-
-          assign sample_ready = 1'b1;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              sum <= {SUM_WIDTH{1'b0}};
-            end else if (sample_valid) begin
-              sum <= sum + {{(SUM_WIDTH-WIDTH){1'b0}}, sample};
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/skid_buffer.v": skid_buffer,
-        "rtl/accumulator_core.v": accumulator_core,
-    }
-
-
-def _composed_event_counter_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire event_valid,
-            output wire [{msb}:0] count
-        );
-
-          wire count_en;
-
-          event_gate u_event_gate (
-            .event_valid(event_valid),
-            .count_en(count_en)
-          );
-
-          counter_core #(
-            .WIDTH({width})
-          ) u_counter_core (
-            .clk(clk),
-            .rst_n(rst_n),
-            .en(count_en),
-            .count(count)
-          );
-
-        endmodule
-        """
-    )
-    event_gate = dedent(
-        """\
-        module event_gate (
-            input wire event_valid,
-            output wire count_en
-        );
-
-          assign count_en = event_valid;
-
-        endmodule
-        """
-    )
-    counter_core = dedent(
-        """\
-        module counter_core #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire en,
-            output reg [WIDTH-1:0] count
-        );
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              count <= {WIDTH{1'b0}};
-            end else if (en) begin
-              count <= count + {{(WIDTH-1){1'b0}}, 1'b1};
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/event_gate.v": event_gate,
-        "rtl/counter_core.v": counter_core,
-    }
-
-
-def _composed_stream_fork_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [{msb}:0] in_data,
-            output wire out0_valid,
-            input wire out0_ready,
-            output wire [{msb}:0] out0_data,
-            output wire out1_valid,
-            input wire out1_ready,
-            output wire [{msb}:0] out1_data
-        );
-
-          wire fork_valid;
-          wire fork_ready;
-          wire [{msb}:0] fork_data;
-          wire stage0_in_valid;
-          wire stage0_in_ready;
-          wire [{msb}:0] stage0_in_data;
-          wire stage1_in_valid;
-          wire stage1_in_ready;
-          wire [{msb}:0] stage1_in_data;
-
-          skid_buffer #(
-            .WIDTH({width})
-          ) u_skid_buffer (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .in_data(in_data),
-            .out_valid(fork_valid),
-            .out_ready(fork_ready),
-            .out_data(fork_data)
-          );
-
-          stream_fork #(
-            .WIDTH({width})
-          ) u_stream_fork (
-            .in_valid(fork_valid),
-            .in_ready(fork_ready),
-            .in_data(fork_data),
-            .out0_valid(stage0_in_valid),
-            .out0_ready(stage0_in_ready),
-            .out0_data(stage0_in_data),
-            .out1_valid(stage1_in_valid),
-            .out1_ready(stage1_in_ready),
-            .out1_data(stage1_in_data)
-          );
-
-          stream_stage #(
-            .WIDTH({width})
-          ) u_stage0 (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(stage0_in_valid),
-            .in_ready(stage0_in_ready),
-            .in_data(stage0_in_data),
-            .out_valid(out0_valid),
-            .out_ready(out0_ready),
-            .out_data(out0_data)
-          );
-
-          stream_stage #(
-            .WIDTH({width})
-          ) u_stage1 (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(stage1_in_valid),
-            .in_ready(stage1_in_ready),
-            .in_data(stage1_in_data),
-            .out_valid(out1_valid),
-            .out_ready(out1_ready),
-            .out_data(out1_data)
-          );
-
-        endmodule
-        """
-    )
-    skid_buffer = dedent(
-        """\
-        module skid_buffer #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [WIDTH-1:0] out_data
-        );
-
-          reg valid_r;
-          reg [WIDTH-1:0] data_r;
-
-          assign in_ready = !valid_r || out_ready;
-          assign out_valid = valid_r;
-          assign out_data = data_r;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              valid_r <= 1'b0;
-              data_r <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              valid_r <= in_valid;
-              if (in_valid) begin
-                data_r <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    stream_fork = dedent(
-        """\
-        module stream_fork #(
-            parameter WIDTH = 8
-        ) (
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output wire out0_valid,
-            input wire out0_ready,
-            output wire [WIDTH-1:0] out0_data,
-            output wire out1_valid,
-            input wire out1_ready,
-            output wire [WIDTH-1:0] out1_data
-        );
-
-          assign in_ready = out0_ready && out1_ready;
-          assign out0_valid = in_valid && out1_ready;
-          assign out1_valid = in_valid && out0_ready;
-          assign out0_data = in_data;
-          assign out1_data = in_data;
-
-        endmodule
-        """
-    )
-    stream_stage = dedent(
-        """\
-        module stream_stage #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output reg out_valid,
-            input wire out_ready,
-            output reg [WIDTH-1:0] out_data
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              out_data <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                out_data <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/skid_buffer.v": skid_buffer,
-        "rtl/stream_fork.v": stream_fork,
-        "rtl/stream_stage.v": stream_stage,
-    }
-
-
-def _composed_dual_stream_join_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    sum_width = width + 4
-    sum_msb = sum_width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire in0_valid,
-            output wire in0_ready,
-            input wire [{msb}:0] in0_data,
-            input wire in1_valid,
-            output wire in1_ready,
-            input wire [{msb}:0] in1_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [{sum_msb}:0] out_data
-        );
-
-          wire s0_valid;
-          wire s0_ready;
-          wire [{msb}:0] s0_data;
-          wire s1_valid;
-          wire s1_ready;
-          wire [{msb}:0] s1_data;
-          wire joined_valid;
-          wire [{msb}:0] joined_data;
-          wire accum_valid;
-          wire accum_ready;
-          wire [{sum_msb}:0] accum_sum;
-
-          skid_buffer #(
-            .WIDTH({width})
-          ) u_skid0 (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in0_valid),
-            .in_ready(in0_ready),
-            .in_data(in0_data),
-            .out_valid(s0_valid),
-            .out_ready(s0_ready),
-            .out_data(s0_data)
-          );
-
-          skid_buffer #(
-            .WIDTH({width})
-          ) u_skid1 (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in1_valid),
-            .in_ready(in1_ready),
-            .in_data(in1_data),
-            .out_valid(s1_valid),
-            .out_ready(s1_ready),
-            .out_data(s1_data)
-          );
-
-          stream_join #(
-            .WIDTH({width})
-          ) u_stream_join (
-            .in0_valid(s0_valid),
-            .in0_ready(s0_ready),
-            .in0_data(s0_data),
-            .in1_valid(s1_valid),
-            .in1_ready(s1_ready),
-            .in1_data(s1_data),
-            .out_valid(joined_valid),
-            .out_ready(accum_ready),
-            .out_data(joined_data)
-          );
-
-          accumulator_core #(
-            .WIDTH({width})
-          ) u_accumulator_core (
-            .clk(clk),
-            .rst_n(rst_n),
-            .sample_valid(joined_valid),
-            .sample_ready(accum_ready),
-            .sample(joined_data),
-            .sum(accum_sum)
-          );
-
-          assign accum_valid = joined_valid && accum_ready;
-
-          stream_stage #(
-            .WIDTH({sum_width})
-          ) u_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(accum_valid),
-            .in_ready(accum_ready),
-            .in_data(accum_sum),
-            .out_valid(out_valid),
-            .out_ready(out_ready),
-            .out_data(out_data)
-          );
-
-        endmodule
-        """
-    )
-    skid_buffer = dedent(
-        """\
-        module skid_buffer #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [WIDTH-1:0] out_data
-        );
-
-          reg valid_r;
-          reg [WIDTH-1:0] data_r;
-
-          assign in_ready = !valid_r || out_ready;
-          assign out_valid = valid_r;
-          assign out_data = data_r;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              valid_r <= 1'b0;
-              data_r <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              valid_r <= in_valid;
-              if (in_valid) begin
-                data_r <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    stream_join = dedent(
-        """\
-        module stream_join #(
-            parameter WIDTH = 8
-        ) (
-            input wire in0_valid,
-            output wire in0_ready,
-            input wire [WIDTH-1:0] in0_data,
-            input wire in1_valid,
-            output wire in1_ready,
-            input wire [WIDTH-1:0] in1_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [WIDTH-1:0] out_data
-        );
-
-          assign out_valid = in0_valid && in1_valid;
-          assign in0_ready = out_ready && in1_valid;
-          assign in1_ready = out_ready && in0_valid;
-          assign out_data = in0_data + in1_data;
-
-        endmodule
-        """
-    )
-    accumulator_core = dedent(
-        """\
-        module accumulator_core #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire sample_valid,
-            input wire sample_ready,
-            input wire [WIDTH-1:0] sample,
-            output wire [WIDTH+3:0] sum
-        );
-
-          reg [WIDTH+3:0] sum_r;
-
-          assign sum = sum_r + ((sample_valid && sample_ready) ? {{4{1'b0}}, sample} : {(WIDTH+4){1'b0}});
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              sum_r <= {(WIDTH+4){1'b0}};
-            end else if (sample_valid && sample_ready) begin
-              sum_r <= sum;
-            end
-          end
-
-        endmodule
-        """
-    )
-    stream_stage = dedent(
-        """\
-        module stream_stage #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output reg out_valid,
-            input wire out_ready,
-            output reg [WIDTH-1:0] out_data
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              out_data <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                out_data <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/skid_buffer.v": skid_buffer,
-        "rtl/stream_join.v": stream_join,
-        "rtl/accumulator_core.v": accumulator_core,
-        "rtl/stream_stage.v": stream_stage,
-    }
-
-
-def _composed_vector_mac_pipeline_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    score_width = width * 2
-    score_msb = score_width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire feature_valid,
-            output wire feature_ready,
-            input wire [{msb}:0] feature_data,
-            input wire weight_valid,
-            output wire weight_ready,
-            input wire [{msb}:0] weight_data,
-            input wire [{score_msb}:0] bias,
-            output wire score_valid,
-            input wire score_ready,
-            output wire [{score_msb}:0] score_data
-        );
-
-          wire feature_buf_valid;
-          wire feature_buf_ready;
-          wire [{msb}:0] feature_buf_data;
-          wire weight_buf_valid;
-          wire weight_buf_ready;
-          wire [{msb}:0] weight_buf_data;
-          wire mac_score_valid;
-          wire mac_score_ready;
-          wire [{score_msb}:0] mac_score_data;
-
-          skid_buffer #(
-            .WIDTH({width})
-          ) u_feature_buffer (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(feature_valid),
-            .in_ready(feature_ready),
-            .in_data(feature_data),
-            .out_valid(feature_buf_valid),
-            .out_ready(feature_buf_ready),
-            .out_data(feature_buf_data)
-          );
-
-          skid_buffer #(
-            .WIDTH({width})
-          ) u_weight_buffer (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(weight_valid),
-            .in_ready(weight_ready),
-            .in_data(weight_data),
-            .out_valid(weight_buf_valid),
-            .out_ready(weight_buf_ready),
-            .out_data(weight_buf_data)
-          );
-
-          vector_mac_core #(
-            .DATA_WIDTH({width}),
-            .SCORE_WIDTH({score_width})
-          ) u_vector_mac_core (
-            .clk(clk),
-            .rst_n(rst_n),
-            .feature_valid(feature_buf_valid),
-            .feature_ready(feature_buf_ready),
-            .feature_data(feature_buf_data),
-            .weight_valid(weight_buf_valid),
-            .weight_ready(weight_buf_ready),
-            .weight_data(weight_buf_data),
-            .bias(bias),
-            .score_valid(mac_score_valid),
-            .score_ready(mac_score_ready),
-            .score_data(mac_score_data)
-          );
-
-          stream_stage #(
-            .WIDTH({score_width})
-          ) u_score_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(mac_score_valid),
-            .in_ready(mac_score_ready),
-            .in_data(mac_score_data),
-            .out_valid(score_valid),
-            .out_ready(score_ready),
-            .out_data(score_data)
-          );
-
-        endmodule
-        """
-    )
-    skid_buffer = dedent(
-        """\
-        module skid_buffer #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [WIDTH-1:0] out_data
-        );
-
-          reg valid_r;
-          reg [WIDTH-1:0] data_r;
-
-          assign in_ready = !valid_r || out_ready;
-          assign out_valid = valid_r;
-          assign out_data = data_r;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              valid_r <= 1'b0;
-              data_r <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              valid_r <= in_valid;
-              if (in_valid) begin
-                data_r <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    vector_mac_core = dedent(
-        """\
-        module vector_mac_core #(
-            parameter DATA_WIDTH = 8,
-            parameter SCORE_WIDTH = 16
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire feature_valid,
-            output wire feature_ready,
-            input wire [DATA_WIDTH-1:0] feature_data,
-            input wire weight_valid,
-            output wire weight_ready,
-            input wire [DATA_WIDTH-1:0] weight_data,
-            input wire [SCORE_WIDTH-1:0] bias,
-            output reg score_valid,
-            input wire score_ready,
-            output reg [SCORE_WIDTH-1:0] score_data
-        );
-
-          reg [SCORE_WIDTH-1:0] accumulator;
-          reg [1:0] vector_index;
-          localparam [1:0] LAST_INDEX = 2'd3;
-          wire accept_pair;
-          wire [SCORE_WIDTH-1:0] product;
-          wire [SCORE_WIDTH-1:0] next_accumulator;
-
-          assign feature_ready = weight_valid && !score_valid;
-          assign weight_ready = feature_valid && !score_valid;
-          assign accept_pair = feature_valid && feature_ready && weight_valid && weight_ready;
-          assign product = feature_data * weight_data;
-          assign next_accumulator = accumulator + product;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              accumulator <= {SCORE_WIDTH{1'b0}};
-              vector_index <= 2'd0;
-              score_valid <= 1'b0;
-              score_data <= {SCORE_WIDTH{1'b0}};
-            end else begin
-              if (score_valid && score_ready) begin
-                score_valid <= 1'b0;
-              end
-              if (accept_pair) begin
-                if (vector_index == LAST_INDEX) begin
-                  score_data <= next_accumulator + bias;
-                  score_valid <= 1'b1;
-                  accumulator <= {SCORE_WIDTH{1'b0}};
-                  vector_index <= 2'd0;
-                end else begin
-                  accumulator <= next_accumulator;
-                  vector_index <= vector_index + 2'd1;
-                end
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    stream_stage = dedent(
-        """\
-        module stream_stage #(
-            parameter WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [WIDTH-1:0] in_data,
-            output reg out_valid,
-            input wire out_ready,
-            output reg [WIDTH-1:0] out_data
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              out_data <= {WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                out_data <= in_data;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/skid_buffer.v": skid_buffer,
-        "rtl/vector_mac_core.v": vector_mac_core,
-        "rtl/stream_stage.v": stream_stage,
-    }
-
-
-def _composed_td_update_core_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire signed [{msb}:0] reward,
-            input wire signed [{msb}:0] value,
-            input wire signed [{msb}:0] next_value,
-            input wire [{msb}:0] gamma,
-            input wire [{msb}:0] alpha,
-            output wire out_valid,
-            input wire out_ready,
-            output wire signed [{msb}:0] td_error,
-            output wire signed [{msb}:0] updated_value
-        );
-
-          wire input_valid;
-          wire input_ready;
-          wire signed [{msb}:0] reward_s;
-          wire signed [{msb}:0] value_s;
-          wire signed [{msb}:0] next_value_s;
-          wire [{msb}:0] gamma_s;
-          wire [{msb}:0] alpha_s;
-          wire discount_valid;
-          wire discount_ready;
-          wire signed [{msb}:0] discounted_return;
-          wire update_valid;
-          wire update_ready;
-          wire signed [{msb}:0] update_td_error;
-          wire signed [{msb}:0] update_value;
-
-          td_input_stage #(
-            .DATA_WIDTH({width})
-          ) u_td_input_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(in_valid),
-            .in_ready(in_ready),
-            .reward(reward),
-            .value(value),
-            .next_value(next_value),
-            .gamma(gamma),
-            .alpha(alpha),
-            .out_valid(input_valid),
-            .out_ready(input_ready),
-            .reward_out(reward_s),
-            .value_out(value_s),
-            .next_value_out(next_value_s),
-            .gamma_out(gamma_s),
-            .alpha_out(alpha_s)
-          );
-
-          discount_core #(
-            .DATA_WIDTH({width}),
-            .SCALE_SHIFT(4)
-          ) u_discount_core (
-            .in_valid(input_valid),
-            .in_ready(input_ready),
-            .reward(reward_s),
-            .next_value(next_value_s),
-            .gamma(gamma_s),
-            .out_valid(discount_valid),
-            .out_ready(discount_ready),
-            .discounted_return(discounted_return)
-          );
-
-          td_update_core #(
-            .DATA_WIDTH({width}),
-            .SCALE_SHIFT(4)
-          ) u_td_update_core (
-            .in_valid(discount_valid),
-            .in_ready(discount_ready),
-            .discounted_return(discounted_return),
-            .value(value_s),
-            .alpha(alpha_s),
-            .out_valid(update_valid),
-            .out_ready(update_ready),
-            .td_error(update_td_error),
-            .updated_value(update_value)
-          );
-
-          stream_stage #(
-            .DATA_WIDTH({width})
-          ) u_stream_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(update_valid),
-            .in_ready(update_ready),
-            .td_error(update_td_error),
-            .updated_value(update_value),
-            .out_valid(out_valid),
-            .out_ready(out_ready),
-            .td_error_out(td_error),
-            .updated_value_out(updated_value)
-          );
-
-        endmodule
-        """
-    )
-    td_input_stage = dedent(
-        """\
-        module td_input_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire signed [DATA_WIDTH-1:0] reward,
-            input wire signed [DATA_WIDTH-1:0] value,
-            input wire signed [DATA_WIDTH-1:0] next_value,
-            input wire [DATA_WIDTH-1:0] gamma,
-            input wire [DATA_WIDTH-1:0] alpha,
-            output reg out_valid,
-            input wire out_ready,
-            output reg signed [DATA_WIDTH-1:0] reward_out,
-            output reg signed [DATA_WIDTH-1:0] value_out,
-            output reg signed [DATA_WIDTH-1:0] next_value_out,
-            output reg [DATA_WIDTH-1:0] gamma_out,
-            output reg [DATA_WIDTH-1:0] alpha_out
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              reward_out <= {DATA_WIDTH{1'b0}};
-              value_out <= {DATA_WIDTH{1'b0}};
-              next_value_out <= {DATA_WIDTH{1'b0}};
-              gamma_out <= {DATA_WIDTH{1'b0}};
-              alpha_out <= {DATA_WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                reward_out <= reward;
-                value_out <= value;
-                next_value_out <= next_value;
-                gamma_out <= gamma;
-                alpha_out <= alpha;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    discount_core = dedent(
-        """\
-        module discount_core #(
-            parameter DATA_WIDTH = 8,
-            parameter SCALE_SHIFT = 4
-        ) (
-            input wire in_valid,
-            output wire in_ready,
-            input wire signed [DATA_WIDTH-1:0] reward,
-            input wire signed [DATA_WIDTH-1:0] next_value,
-            input wire [DATA_WIDTH-1:0] gamma,
-            output wire out_valid,
-            input wire out_ready,
-            output wire signed [DATA_WIDTH-1:0] discounted_return
-        );
-
-          wire signed [(2*DATA_WIDTH)-1:0] gamma_next_product;
-          wire signed [(2*DATA_WIDTH)-1:0] discounted_next_full;
-          wire signed [DATA_WIDTH-1:0] discounted_next;
-          wire discounted_next_round;
-          wire discounted_next_positive_overflow;
-          wire discounted_next_negative_overflow;
-
-          assign in_ready = out_ready;
-          assign out_valid = in_valid | (discounted_next_round & in_valid);
-          assign gamma_next_product = $signed({1'b0, gamma}) * next_value;
-          assign discounted_next_full = gamma_next_product >>> SCALE_SHIFT;
-          assign discounted_next_round = |gamma_next_product[SCALE_SHIFT-1:0];
-          assign discounted_next_positive_overflow =
-            !discounted_next_full[(2*DATA_WIDTH)-1] &&
-            |discounted_next_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
-          assign discounted_next_negative_overflow =
-            discounted_next_full[(2*DATA_WIDTH)-1] &&
-            ~&discounted_next_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
-          assign discounted_next = discounted_next_positive_overflow ? {1'b0, {(DATA_WIDTH-1){1'b1}}} :
-                                   (discounted_next_negative_overflow ? {1'b1, {(DATA_WIDTH-1){1'b0}}} :
-                                    discounted_next_full[DATA_WIDTH-1:0]);
-          assign discounted_return = reward + discounted_next;
-
-        endmodule
-        """
-    )
-    td_update_core = dedent(
-        """\
-        module td_update_core #(
-            parameter DATA_WIDTH = 8,
-            parameter SCALE_SHIFT = 4
-        ) (
-            input wire in_valid,
-            output wire in_ready,
-            input wire signed [DATA_WIDTH-1:0] discounted_return,
-            input wire signed [DATA_WIDTH-1:0] value,
-            input wire [DATA_WIDTH-1:0] alpha,
-            output wire out_valid,
-            input wire out_ready,
-            output wire signed [DATA_WIDTH-1:0] td_error,
-            output wire signed [DATA_WIDTH-1:0] updated_value
-        );
-
-          wire signed [(2*DATA_WIDTH)-1:0] alpha_error_product;
-          wire signed [(2*DATA_WIDTH)-1:0] scaled_error_full;
-          wire signed [DATA_WIDTH-1:0] scaled_error;
-          wire scaled_error_round;
-          wire scaled_error_positive_overflow;
-          wire scaled_error_negative_overflow;
-
-          assign in_ready = out_ready;
-          assign out_valid = in_valid | (scaled_error_round & in_valid);
-          assign td_error = discounted_return - value;
-          assign alpha_error_product = $signed({1'b0, alpha}) * td_error;
-          assign scaled_error_full = alpha_error_product >>> SCALE_SHIFT;
-          assign scaled_error_round = |alpha_error_product[SCALE_SHIFT-1:0];
-          assign scaled_error_positive_overflow =
-            !scaled_error_full[(2*DATA_WIDTH)-1] &&
-            |scaled_error_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
-          assign scaled_error_negative_overflow =
-            scaled_error_full[(2*DATA_WIDTH)-1] &&
-            ~&scaled_error_full[(2*DATA_WIDTH)-1:DATA_WIDTH-1];
-          assign scaled_error = scaled_error_positive_overflow ? {1'b0, {(DATA_WIDTH-1){1'b1}}} :
-                                (scaled_error_negative_overflow ? {1'b1, {(DATA_WIDTH-1){1'b0}}} :
-                                 scaled_error_full[DATA_WIDTH-1:0]);
-          assign updated_value = value + scaled_error;
-
-        endmodule
-        """
-    )
-    stream_stage = dedent(
-        """\
-        module stream_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire signed [DATA_WIDTH-1:0] td_error,
-            input wire signed [DATA_WIDTH-1:0] updated_value,
-            output reg out_valid,
-            input wire out_ready,
-            output reg signed [DATA_WIDTH-1:0] td_error_out,
-            output reg signed [DATA_WIDTH-1:0] updated_value_out
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              td_error_out <= {DATA_WIDTH{1'b0}};
-              updated_value_out <= {DATA_WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                td_error_out <= td_error;
-                updated_value_out <= updated_value;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/td_input_stage.v": td_input_stage,
-        "rtl/discount_core.v": discount_core,
-        "rtl/td_update_core.v": td_update_core,
-        "rtl/stream_stage.v": stream_stage,
-    }
-
-
-def _composed_policy_value_shell_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire cfg_valid,
-            output wire cfg_ready,
-            input wire [2:0] cfg_addr,
-            input wire [{msb}:0] cfg_data,
-            input wire obs_valid,
-            output wire obs_ready,
-            input wire [{msb}:0] obs0,
-            input wire [{msb}:0] obs1,
-            output wire action_valid,
-            input wire action_ready,
-            output wire selected_action,
-            output wire [{msb}:0] value_estimate
-        );
-
-          wire [{msb}:0] weight0;
-          wire [{msb}:0] weight1;
-          wire [{msb}:0] bias0;
-          wire [{msb}:0] bias1;
-          wire enable;
-          wire obs_stage_valid;
-          wire obs_stage_ready;
-          wire [{msb}:0] obs0_s;
-          wire [{msb}:0] obs1_s;
-          wire score_valid;
-          wire score_ready;
-          wire [{msb}:0] policy_score0;
-          wire [{msb}:0] policy_score1;
-          wire select_valid;
-          wire select_ready;
-          wire select_action;
-          wire [{msb}:0] select_value;
-
-          config_reg_bank #(
-            .DATA_WIDTH({width})
-          ) u_config_reg_bank (
-            .clk(clk),
-            .rst_n(rst_n),
-            .cfg_valid(cfg_valid),
-            .cfg_ready(cfg_ready),
-            .cfg_addr(cfg_addr),
-            .cfg_data(cfg_data),
-            .weight0(weight0),
-            .weight1(weight1),
-            .bias0(bias0),
-            .bias1(bias1),
-            .enable(enable)
-          );
-
-          observation_stage #(
-            .DATA_WIDTH({width})
-          ) u_observation_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(obs_valid),
-            .in_ready(obs_ready),
-            .obs0(obs0),
-            .obs1(obs1),
-            .out_valid(obs_stage_valid),
-            .out_ready(obs_stage_ready),
-            .obs0_out(obs0_s),
-            .obs1_out(obs1_s)
-          );
-
-          policy_score_core #(
-            .DATA_WIDTH({width})
-          ) u_policy_score_core (
-            .in_valid(obs_stage_valid),
-            .in_ready(obs_stage_ready),
-            .obs0(obs0_s),
-            .obs1(obs1_s),
-            .weight0(weight0),
-            .weight1(weight1),
-            .bias0(bias0),
-            .bias1(bias1),
-            .enable(enable),
-            .out_valid(score_valid),
-            .out_ready(score_ready),
-            .score0(policy_score0),
-            .score1(policy_score1)
-          );
-
-          action_select_core #(
-            .DATA_WIDTH({width})
-          ) u_action_select_core (
-            .in_valid(score_valid),
-            .in_ready(score_ready),
-            .score0(policy_score0),
-            .score1(policy_score1),
-            .out_valid(select_valid),
-            .out_ready(select_ready),
-            .selected_action(select_action),
-            .value_estimate(select_value)
-          );
-
-          stream_stage #(
-            .DATA_WIDTH({width})
-          ) u_stream_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(select_valid),
-            .in_ready(select_ready),
-            .selected_action(select_action),
-            .value_estimate(select_value),
-            .out_valid(action_valid),
-            .out_ready(action_ready),
-            .selected_action_out(selected_action),
-            .value_estimate_out(value_estimate)
-          );
-
-        endmodule
-        """
-    )
-    config_reg_bank = dedent(
-        """\
-        module config_reg_bank #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire cfg_valid,
-            output wire cfg_ready,
-            input wire [2:0] cfg_addr,
-            input wire [DATA_WIDTH-1:0] cfg_data,
-            output reg [DATA_WIDTH-1:0] weight0,
-            output reg [DATA_WIDTH-1:0] weight1,
-            output reg [DATA_WIDTH-1:0] bias0,
-            output reg [DATA_WIDTH-1:0] bias1,
-            output reg enable
-        );
-
-          assign cfg_ready = 1'b1;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              weight0 <= {{(DATA_WIDTH-1){1'b0}}, 1'b1};
-              weight1 <= {{(DATA_WIDTH-1){1'b0}}, 1'b1};
-              bias0 <= {DATA_WIDTH{1'b0}};
-              bias1 <= {DATA_WIDTH{1'b0}};
-              enable <= 1'b0;
-            end else if (cfg_valid) begin
-              case (cfg_addr)
-                3'd0: weight0 <= cfg_data;
-                3'd1: bias0 <= cfg_data;
-                3'd2: weight1 <= cfg_data;
-                3'd3: bias1 <= cfg_data;
-                3'd4: enable <= cfg_data[0];
-                default: enable <= enable;
-              endcase
-            end
-          end
-
-        endmodule
-        """
-    )
-    observation_stage = dedent(
-        """\
-        module observation_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [DATA_WIDTH-1:0] obs0,
-            input wire [DATA_WIDTH-1:0] obs1,
-            output reg out_valid,
-            input wire out_ready,
-            output reg [DATA_WIDTH-1:0] obs0_out,
-            output reg [DATA_WIDTH-1:0] obs1_out
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              obs0_out <= {DATA_WIDTH{1'b0}};
-              obs1_out <= {DATA_WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                obs0_out <= obs0;
-                obs1_out <= obs1;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    policy_score_core = dedent(
-        """\
-        module policy_score_core #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire in_valid,
-            output wire in_ready,
-            input wire [DATA_WIDTH-1:0] obs0,
-            input wire [DATA_WIDTH-1:0] obs1,
-            input wire [DATA_WIDTH-1:0] weight0,
-            input wire [DATA_WIDTH-1:0] weight1,
-            input wire [DATA_WIDTH-1:0] bias0,
-            input wire [DATA_WIDTH-1:0] bias1,
-            input wire enable,
-            output wire out_valid,
-            input wire out_ready,
-            output wire [DATA_WIDTH-1:0] score0,
-            output wire [DATA_WIDTH-1:0] score1
-        );
-
-          wire [(2*DATA_WIDTH)-1:0] score0_full;
-          wire [(2*DATA_WIDTH)-1:0] score1_full;
-
-          assign in_ready = out_ready;
-          assign out_valid = in_valid;
-          assign score0_full = (obs0 * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
-          assign score1_full = (obs1 * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
-          assign score0 = !enable ? {DATA_WIDTH{1'b0}} :
-                          (|score0_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                           score0_full[DATA_WIDTH-1:0]);
-          assign score1 = !enable ? {DATA_WIDTH{1'b0}} :
-                          (|score1_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                           score1_full[DATA_WIDTH-1:0]);
-
-        endmodule
-        """
-    )
-    action_select_core = dedent(
-        """\
-        module action_select_core #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire in_valid,
-            output wire in_ready,
-            input wire [DATA_WIDTH-1:0] score0,
-            input wire [DATA_WIDTH-1:0] score1,
-            output wire out_valid,
-            input wire out_ready,
-            output wire selected_action,
-            output wire [DATA_WIDTH-1:0] value_estimate
-        );
-
-          wire [DATA_WIDTH:0] score_sum;
-          wire average_discard;
-
-          assign in_ready = out_ready;
-          assign out_valid = in_valid;
-          assign score_sum = {1'b0, score0} + {1'b0, score1};
-          assign average_discard = score_sum[0];
-          assign selected_action = (score1 > score0) | (average_discard & (score1 > score0));
-          assign value_estimate = score_sum[DATA_WIDTH:1];
-
-        endmodule
-        """
-    )
-    stream_stage = dedent(
-        """\
-        module stream_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire selected_action,
-            input wire [DATA_WIDTH-1:0] value_estimate,
-            output reg out_valid,
-            input wire out_ready,
-            output reg selected_action_out,
-            output reg [DATA_WIDTH-1:0] value_estimate_out
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              selected_action_out <= 1'b0;
-              value_estimate_out <= {DATA_WIDTH{1'b0}};
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                selected_action_out <= selected_action;
-                value_estimate_out <= value_estimate;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/config_reg_bank.v": config_reg_bank,
-        "rtl/observation_stage.v": observation_stage,
-        "rtl/policy_score_core.v": policy_score_core,
-        "rtl/action_select_core.v": action_select_core,
-        "rtl/stream_stage.v": stream_stage,
-    }
-
-
-def _composed_replay_sample_shell_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire host_valid,
-            output wire host_ready,
-            input wire [{msb}:0] host_state,
-            input wire host_action,
-            input wire [{msb}:0] host_reward,
-            input wire [{msb}:0] host_next_state,
-            input wire host_done,
-            output wire sample_valid,
-            input wire sample_ready,
-            output wire [{msb}:0] sample_state,
-            output wire sample_action,
-            output wire [{msb}:0] sample_reward,
-            output wire [{msb}:0] sample_next_state,
-            output wire sample_done,
-            output wire [2:0] occupancy
-        );
-
-          wire host_stage_valid;
-          wire host_stage_ready;
-          wire [{msb}:0] host_stage_state;
-          wire host_stage_action;
-          wire [{msb}:0] host_stage_reward;
-          wire [{msb}:0] host_stage_next_state;
-          wire host_stage_done;
-          wire store_read_valid;
-          wire store_read_ready;
-          wire [{msb}:0] store_read_state;
-          wire store_read_action;
-          wire [{msb}:0] store_read_reward;
-          wire [{msb}:0] store_read_next_state;
-          wire store_read_done;
-          wire [{msb}:0] sample_pack_state;
-          wire sample_pack_action;
-          wire [{msb}:0] sample_pack_reward;
-          wire [{msb}:0] sample_pack_next_state;
-          wire sample_pack_done;
-          wire [2:0] store_occupancy;
-
-          host_sample_stage #(
-            .DATA_WIDTH({width})
-          ) u_host_sample_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(host_valid),
-            .in_ready(host_ready),
-            .state(host_state),
-            .action(host_action),
-            .reward(host_reward),
-            .next_state(host_next_state),
-            .done(host_done),
-            .out_valid(host_stage_valid),
-            .out_ready(host_stage_ready),
-            .state_out(host_stage_state),
-            .action_out(host_stage_action),
-            .reward_out(host_stage_reward),
-            .next_state_out(host_stage_next_state),
-            .done_out(host_stage_done)
-          );
-
-          replay_store #(
-            .DATA_WIDTH({width}),
-            .DEPTH(4)
-          ) u_replay_store (
-            .clk(clk),
-            .rst_n(rst_n),
-            .write_valid(host_stage_valid),
-            .write_ready(host_stage_ready),
-            .write_state(host_stage_state),
-            .write_action(host_stage_action),
-            .write_reward(host_stage_reward),
-            .write_next_state(host_stage_next_state),
-            .write_done(host_stage_done),
-            .read_valid(store_read_valid),
-            .read_ready(store_read_ready),
-            .read_state(store_read_state),
-            .read_action(store_read_action),
-            .read_reward(store_read_reward),
-            .read_next_state(store_read_next_state),
-            .read_done(store_read_done),
-            .occupancy(store_occupancy)
-          );
-
-          sample_pack_core #(
-            .DATA_WIDTH({width})
-          ) u_sample_pack_core (
-            .state(store_read_state),
-            .action(store_read_action),
-            .reward(store_read_reward),
-            .next_state(store_read_next_state),
-            .done(store_read_done),
-            .sample_state(sample_pack_state),
-            .sample_action(sample_pack_action),
-            .sample_reward(sample_pack_reward),
-            .sample_next_state(sample_pack_next_state),
-            .sample_done(sample_pack_done)
-          );
-
-          sample_read_stage #(
-            .DATA_WIDTH({width})
-          ) u_sample_read_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(store_read_valid),
-            .read_ready(store_read_ready),
-            .sample_state(sample_pack_state),
-            .sample_action(sample_pack_action),
-            .sample_reward(sample_pack_reward),
-            .sample_next_state(sample_pack_next_state),
-            .sample_done(sample_pack_done),
-            .out_valid(sample_valid),
-            .out_ready(sample_ready),
-            .sample_state_out(sample_state),
-            .sample_action_out(sample_action),
-            .sample_reward_out(sample_reward),
-            .sample_next_state_out(sample_next_state),
-            .sample_done_out(sample_done)
-          );
-
-          occupancy_counter u_occupancy_counter (
-            .occupancy_in(store_occupancy),
-            .occupancy_out(occupancy)
-          );
-
-        endmodule
-        """
-    )
-    host_sample_stage = dedent(
-        """\
-        module host_sample_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [DATA_WIDTH-1:0] state,
-            input wire action,
-            input wire [DATA_WIDTH-1:0] reward,
-            input wire [DATA_WIDTH-1:0] next_state,
-            input wire done,
-            output reg out_valid,
-            input wire out_ready,
-            output reg [DATA_WIDTH-1:0] state_out,
-            output reg action_out,
-            output reg [DATA_WIDTH-1:0] reward_out,
-            output reg [DATA_WIDTH-1:0] next_state_out,
-            output reg done_out
-        );
-
-          assign in_ready = !out_valid || out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              state_out <= {DATA_WIDTH{1'b0}};
-              action_out <= 1'b0;
-              reward_out <= {DATA_WIDTH{1'b0}};
-              next_state_out <= {DATA_WIDTH{1'b0}};
-              done_out <= 1'b0;
-            end else if (in_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                state_out <= state;
-                action_out <= action;
-                reward_out <= reward;
-                next_state_out <= next_state;
-                done_out <= done;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    replay_store = dedent(
-        """\
-        module replay_store #(
-            parameter DATA_WIDTH = 8,
-            parameter DEPTH = 4
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire write_valid,
-            output wire write_ready,
-            input wire [DATA_WIDTH-1:0] write_state,
-            input wire write_action,
-            input wire [DATA_WIDTH-1:0] write_reward,
-            input wire [DATA_WIDTH-1:0] write_next_state,
-            input wire write_done,
-            output wire read_valid,
-            input wire read_ready,
-            output wire [DATA_WIDTH-1:0] read_state,
-            output wire read_action,
-            output wire [DATA_WIDTH-1:0] read_reward,
-            output wire [DATA_WIDTH-1:0] read_next_state,
-            output wire read_done,
-            output reg [2:0] occupancy
-        );
-
-          reg [DATA_WIDTH-1:0] state_mem [0:DEPTH-1];
-          reg action_mem [0:DEPTH-1];
-          reg [DATA_WIDTH-1:0] reward_mem [0:DEPTH-1];
-          reg [DATA_WIDTH-1:0] next_state_mem [0:DEPTH-1];
-          reg done_mem [0:DEPTH-1];
-          reg [1:0] write_ptr;
-          reg [1:0] read_ptr;
-          wire write_fire;
-          wire read_fire;
-
-          assign write_ready = occupancy < 3'd4;
-          assign read_valid = occupancy != 3'd0;
-          assign write_fire = write_valid && write_ready;
-          assign read_fire = read_valid && read_ready;
-          assign read_state = state_mem[read_ptr];
-          assign read_action = action_mem[read_ptr];
-          assign read_reward = reward_mem[read_ptr];
-          assign read_next_state = next_state_mem[read_ptr];
-          assign read_done = done_mem[read_ptr];
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              write_ptr <= 2'd0;
-              read_ptr <= 2'd0;
-              occupancy <= 3'd0;
-              state_mem[0] <= {DATA_WIDTH{1'b0}};
-              state_mem[1] <= {DATA_WIDTH{1'b0}};
-              state_mem[2] <= {DATA_WIDTH{1'b0}};
-              state_mem[3] <= {DATA_WIDTH{1'b0}};
-              action_mem[0] <= 1'b0;
-              action_mem[1] <= 1'b0;
-              action_mem[2] <= 1'b0;
-              action_mem[3] <= 1'b0;
-              reward_mem[0] <= {DATA_WIDTH{1'b0}};
-              reward_mem[1] <= {DATA_WIDTH{1'b0}};
-              reward_mem[2] <= {DATA_WIDTH{1'b0}};
-              reward_mem[3] <= {DATA_WIDTH{1'b0}};
-              next_state_mem[0] <= {DATA_WIDTH{1'b0}};
-              next_state_mem[1] <= {DATA_WIDTH{1'b0}};
-              next_state_mem[2] <= {DATA_WIDTH{1'b0}};
-              next_state_mem[3] <= {DATA_WIDTH{1'b0}};
-              done_mem[0] <= 1'b0;
-              done_mem[1] <= 1'b0;
-              done_mem[2] <= 1'b0;
-              done_mem[3] <= 1'b0;
-            end else begin
-              if (write_fire) begin
-                state_mem[write_ptr] <= write_state;
-                action_mem[write_ptr] <= write_action;
-                reward_mem[write_ptr] <= write_reward;
-                next_state_mem[write_ptr] <= write_next_state;
-                done_mem[write_ptr] <= write_done;
-                write_ptr <= write_ptr + 2'd1;
-              end
-              if (read_fire) begin
-                read_ptr <= read_ptr + 2'd1;
-              end
-              if (write_fire && !read_fire) begin
-                occupancy <= occupancy + 3'd1;
-              end else if (!write_fire && read_fire) begin
-                occupancy <= occupancy - 3'd1;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    sample_pack_core = dedent(
-        """\
-        module sample_pack_core #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire [DATA_WIDTH-1:0] state,
-            input wire action,
-            input wire [DATA_WIDTH-1:0] reward,
-            input wire [DATA_WIDTH-1:0] next_state,
-            input wire done,
-            output wire [DATA_WIDTH-1:0] sample_state,
-            output wire sample_action,
-            output wire [DATA_WIDTH-1:0] sample_reward,
-            output wire [DATA_WIDTH-1:0] sample_next_state,
-            output wire sample_done
-        );
-
-          assign sample_state = state;
-          assign sample_action = action;
-          assign sample_reward = reward;
-          assign sample_next_state = next_state;
-          assign sample_done = done;
-
-        endmodule
-        """
-    )
-    sample_read_stage = dedent(
-        """\
-        module sample_read_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire read_ready,
-            input wire [DATA_WIDTH-1:0] sample_state,
-            input wire sample_action,
-            input wire [DATA_WIDTH-1:0] sample_reward,
-            input wire [DATA_WIDTH-1:0] sample_next_state,
-            input wire sample_done,
-            output reg out_valid,
-            input wire out_ready,
-            output reg [DATA_WIDTH-1:0] sample_state_out,
-            output reg sample_action_out,
-            output reg [DATA_WIDTH-1:0] sample_reward_out,
-            output reg [DATA_WIDTH-1:0] sample_next_state_out,
-            output reg sample_done_out
-        );
-
-          assign read_ready = out_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              out_valid <= 1'b0;
-              sample_state_out <= {DATA_WIDTH{1'b0}};
-              sample_action_out <= 1'b0;
-              sample_reward_out <= {DATA_WIDTH{1'b0}};
-              sample_next_state_out <= {DATA_WIDTH{1'b0}};
-              sample_done_out <= 1'b0;
-            end else if (read_ready) begin
-              out_valid <= in_valid;
-              if (in_valid) begin
-                sample_state_out <= sample_state;
-                sample_action_out <= sample_action;
-                sample_reward_out <= sample_reward;
-                sample_next_state_out <= sample_next_state;
-                sample_done_out <= sample_done;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    occupancy_counter = dedent(
-        """\
-        module occupancy_counter (
-            input wire [2:0] occupancy_in,
-            output wire [2:0] occupancy_out
-        );
-
-          assign occupancy_out = occupancy_in;
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/host_sample_stage.v": host_sample_stage,
-        "rtl/replay_store.v": replay_store,
-        "rtl/sample_pack_core.v": sample_pack_core,
-        "rtl/sample_read_stage.v": sample_read_stage,
-        "rtl/occupancy_counter.v": occupancy_counter,
-    }
-
-
-def _composed_host_protocol_shell_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    stream_msb = width * 2 - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire s_axi_awvalid,
-            output wire s_axi_awready,
-            input wire [3:0] s_axi_awaddr,
-            input wire s_axi_wvalid,
-            output wire s_axi_wready,
-            input wire [{msb}:0] s_axi_wdata,
-            input wire s_axi_wstrb,
-            output wire s_axi_bvalid,
-            input wire s_axi_bready,
-            input wire s_axi_arvalid,
-            output wire s_axi_arready,
-            input wire [3:0] s_axi_araddr,
-            output wire s_axi_rvalid,
-            input wire s_axi_rready,
-            output wire [{msb}:0] s_axi_rdata,
-            output wire m_axis_tvalid,
-            input wire m_axis_tready,
-            output wire [{stream_msb}:0] m_axis_tdata,
-            output wire m_axis_tlast,
-            output wire irq
-        );
-
-          wire write_valid;
-          wire [3:0] write_addr;
-          wire [{msb}:0] write_data;
-          wire read_valid;
-          wire [3:0] read_addr;
-          wire start_pulse;
-          wire [{msb}:0] sample0;
-          wire [{msb}:0] sample1;
-          wire stream_done;
-          wire irq_state;
-
-          axi_lite_write_ctrl #(
-            .DATA_WIDTH({width})
-          ) u_axi_lite_write_ctrl (
-            .clk(clk),
-            .rst_n(rst_n),
-            .awvalid(s_axi_awvalid),
-            .awready(s_axi_awready),
-            .awaddr(s_axi_awaddr),
-            .wvalid(s_axi_wvalid),
-            .wready(s_axi_wready),
-            .wdata(s_axi_wdata),
-            .wstrb(s_axi_wstrb),
-            .bvalid(s_axi_bvalid),
-            .bready(s_axi_bready),
-            .write_valid(write_valid),
-            .write_addr(write_addr),
-            .write_data(write_data)
-          );
-
-          axi_lite_read_ctrl u_axi_lite_read_ctrl (
-            .clk(clk),
-            .rst_n(rst_n),
-            .arvalid(s_axi_arvalid),
-            .arready(s_axi_arready),
-            .araddr(s_axi_araddr),
-            .rvalid(s_axi_rvalid),
-            .rready(s_axi_rready),
-            .read_valid(read_valid),
-            .read_addr(read_addr)
-          );
-
-          control_reg_bank #(
-            .DATA_WIDTH({width})
-          ) u_control_reg_bank (
-            .clk(clk),
-            .rst_n(rst_n),
-            .write_valid(write_valid),
-            .write_addr(write_addr),
-            .write_data(write_data),
-            .read_valid(read_valid),
-            .read_addr(read_addr),
-            .read_data(s_axi_rdata),
-            .stream_done(stream_done),
-            .start_pulse(start_pulse),
-            .sample0(sample0),
-            .sample1(sample1),
-            .irq_state(irq_state)
-          );
-
-          sample_stream_adapter #(
-            .DATA_WIDTH({width})
-          ) u_sample_stream_adapter (
-            .clk(clk),
-            .rst_n(rst_n),
-            .start(start_pulse),
-            .sample0(sample0),
-            .sample1(sample1),
-            .tvalid(m_axis_tvalid),
-            .tready(m_axis_tready),
-            .tdata(m_axis_tdata),
-            .tlast(m_axis_tlast),
-            .stream_done(stream_done)
-          );
-
-          irq_status u_irq_status (
-            .irq_in(irq_state),
-            .irq_out(irq)
-          );
-
-        endmodule
-        """
-    )
-    axi_lite_write_ctrl = dedent(
-        """\
-        module axi_lite_write_ctrl #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire awvalid,
-            output wire awready,
-            input wire [3:0] awaddr,
-            input wire wvalid,
-            output wire wready,
-            input wire [DATA_WIDTH-1:0] wdata,
-            input wire wstrb,
-            output reg bvalid,
-            input wire bready,
-            output wire write_valid,
-            output wire [3:0] write_addr,
-            output wire [DATA_WIDTH-1:0] write_data
-        );
-
-          wire accept_write;
-
-          assign awready = !bvalid;
-          assign wready = !bvalid;
-          assign accept_write = awvalid && wvalid && awready && wready && wstrb;
-          assign write_valid = accept_write;
-          assign write_addr = awaddr;
-          assign write_data = wdata;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              bvalid <= 1'b0;
-            end else begin
-              if (accept_write) begin
-                bvalid <= 1'b1;
-              end else if (bvalid && bready) begin
-                bvalid <= 1'b0;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    axi_lite_read_ctrl = dedent(
-        """\
-        module axi_lite_read_ctrl (
-            input wire clk,
-            input wire rst_n,
-            input wire arvalid,
-            output wire arready,
-            input wire [3:0] araddr,
-            output reg rvalid,
-            input wire rready,
-            output wire read_valid,
-            output wire [3:0] read_addr
-        );
-
-          wire accept_read;
-
-          assign arready = !rvalid;
-          assign accept_read = arvalid && arready;
-          assign read_valid = accept_read;
-          assign read_addr = araddr;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              rvalid <= 1'b0;
-            end else begin
-              if (accept_read) begin
-                rvalid <= 1'b1;
-              end else if (rvalid && rready) begin
-                rvalid <= 1'b0;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    control_reg_bank = dedent(
-        """\
-        module control_reg_bank #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire write_valid,
-            input wire [3:0] write_addr,
-            input wire [DATA_WIDTH-1:0] write_data,
-            input wire read_valid,
-            input wire [3:0] read_addr,
-            output reg [DATA_WIDTH-1:0] read_data,
-            input wire stream_done,
-            output reg start_pulse,
-            output reg [DATA_WIDTH-1:0] sample0,
-            output reg [DATA_WIDTH-1:0] sample1,
-            output reg irq_state
-        );
-
-          reg [DATA_WIDTH-1:0] ctrl;
-          reg busy;
-          reg done;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              ctrl <= {DATA_WIDTH{1'b0}};
-              sample0 <= {DATA_WIDTH{1'b0}};
-              sample1 <= {DATA_WIDTH{1'b0}};
-              busy <= 1'b0;
-              done <= 1'b0;
-              irq_state <= 1'b0;
-              start_pulse <= 1'b0;
-              read_data <= {DATA_WIDTH{1'b0}};
-            end else begin
-              start_pulse <= 1'b0;
-              if (write_valid) begin
-                case (write_addr)
-                  4'h0: begin
-                    ctrl <= write_data;
-                    if (write_data[0]) begin
-                      start_pulse <= 1'b1;
-                      busy <= 1'b1;
-                      done <= 1'b0;
-                    end
-                    if (write_data[1]) begin
-                      irq_state <= 1'b0;
-                    end
-                  end
-                  4'h4: sample0 <= write_data;
-                  4'h8: sample1 <= write_data;
-                  default: ctrl <= ctrl;
-                endcase
-              end
-              if (stream_done) begin
-                busy <= 1'b0;
-                done <= 1'b1;
-                irq_state <= 1'b1;
-              end
-              if (read_valid) begin
-                case (read_addr)
-                  4'h0: read_data <= ctrl;
-                  4'h4: read_data <= sample0;
-                  4'h8: read_data <= sample1;
-                  4'hc: read_data <= {{(DATA_WIDTH-3){1'b0}}, irq_state, done, busy};
-                  default: read_data <= {DATA_WIDTH{1'b0}};
-                endcase
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    sample_stream_adapter = dedent(
-        """\
-        module sample_stream_adapter #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire start,
-            input wire [DATA_WIDTH-1:0] sample0,
-            input wire [DATA_WIDTH-1:0] sample1,
-            output reg tvalid,
-            input wire tready,
-            output reg [(2*DATA_WIDTH)-1:0] tdata,
-            output reg tlast,
-            output reg stream_done
-        );
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              tvalid <= 1'b0;
-              tdata <= {(2*DATA_WIDTH){1'b0}};
-              tlast <= 1'b0;
-              stream_done <= 1'b0;
-            end else begin
-              stream_done <= 1'b0;
-              if (start && !tvalid) begin
-                tvalid <= 1'b1;
-                tdata <= {sample1, sample0};
-                tlast <= 1'b1;
-              end else if (tvalid && tready) begin
-                tvalid <= 1'b0;
-                tlast <= 1'b0;
-                stream_done <= 1'b1;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    irq_status = dedent(
-        """\
-        module irq_status (
-            input wire irq_in,
-            output wire irq_out
-        );
-
-          assign irq_out = irq_in;
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/axi_lite_write_ctrl.v": axi_lite_write_ctrl,
-        "rtl/axi_lite_read_ctrl.v": axi_lite_read_ctrl,
-        "rtl/control_reg_bank.v": control_reg_bank,
-        "rtl/sample_stream_adapter.v": sample_stream_adapter,
-        "rtl/irq_status.v": irq_status,
-    }
-
-
-def _composed_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire cfg_valid,
-            output wire cfg_ready,
-            input wire [2:0] cfg_addr,
-            input wire [{msb}:0] cfg_data,
-            input wire sample_valid,
-            output wire sample_ready,
-            input wire [{msb}:0] obs0,
-            input wire [{msb}:0] obs1,
-            input wire [{msb}:0] reward,
-            input wire [{msb}:0] next_value,
-            input wire done_in,
-            output wire result_valid,
-            input wire result_ready,
-            output wire selected_action,
-            output wire [{msb}:0] value_estimate,
-            output wire [{msb}:0] updated_value,
-            output wire episode_done,
-            output wire irq
-        );
-
-          wire [{msb}:0] weight0;
-          wire [{msb}:0] bias0;
-          wire [{msb}:0] weight1;
-          wire [{msb}:0] bias1;
-          wire [{msb}:0] alpha;
-          wire enable;
-          wire sample_stage_valid;
-          wire sample_consume_ready;
-          wire [{msb}:0] captured_obs0;
-          wire [{msb}:0] captured_obs1;
-          wire [{msb}:0] captured_reward;
-          wire [{msb}:0] captured_next_value;
-          wire captured_done;
-          wire policy_valid;
-          wire policy_selected_action;
-          wire [{msb}:0] policy_value_estimate;
-          wire update_valid;
-          wire [{msb}:0] update_updated_value;
-
-          host_config_bank #(
-            .DATA_WIDTH({width})
-          ) u_host_config_bank (
-            .clk(clk),
-            .rst_n(rst_n),
-            .cfg_valid(cfg_valid),
-            .cfg_ready(cfg_ready),
-            .cfg_addr(cfg_addr),
-            .cfg_data(cfg_data),
-            .weight0(weight0),
-            .bias0(bias0),
-            .weight1(weight1),
-            .bias1(bias1),
-            .alpha(alpha),
-            .enable(enable)
-          );
-
-          sample_capture_stage #(
-            .DATA_WIDTH({width})
-          ) u_sample_capture_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(sample_valid),
-            .in_ready(sample_ready),
-            .obs0(obs0),
-            .obs1(obs1),
-            .reward(reward),
-            .next_value(next_value),
-            .done_in(done_in),
-            .consume_ready(sample_consume_ready),
-            .out_valid(sample_stage_valid),
-            .obs0_out(captured_obs0),
-            .obs1_out(captured_obs1),
-            .reward_out(captured_reward),
-            .next_value_out(captured_next_value),
-            .done_out(captured_done)
-          );
-
-          policy_value_core #(
-            .DATA_WIDTH({width})
-          ) u_policy_value_core (
-            .in_valid(sample_stage_valid),
-            .obs0(captured_obs0),
-            .obs1(captured_obs1),
-            .weight0(weight0),
-            .bias0(bias0),
-            .weight1(weight1),
-            .bias1(bias1),
-            .enable(enable),
-            .out_valid(policy_valid),
-            .selected_action(policy_selected_action),
-            .value_estimate(policy_value_estimate)
-          );
-
-          td_update_core #(
-            .DATA_WIDTH({width})
-          ) u_td_update_core (
-            .in_valid(policy_valid),
-            .reward(captured_reward),
-            .next_value(captured_next_value),
-            .value_estimate(policy_value_estimate),
-            .alpha(alpha),
-            .out_valid(update_valid),
-            .updated_value(update_updated_value)
-          );
-
-          result_stream_stage #(
-            .DATA_WIDTH({width})
-          ) u_result_stream_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(update_valid),
-            .out_ready(sample_consume_ready),
-            .selected_action(policy_selected_action),
-            .value_estimate(policy_value_estimate),
-            .updated_value(update_updated_value),
-            .done_in(captured_done),
-            .result_valid(result_valid),
-            .result_ready(result_ready),
-            .selected_action_out(selected_action),
-            .value_estimate_out(value_estimate),
-            .updated_value_out(updated_value),
-            .episode_done_out(episode_done),
-            .irq(irq)
-          );
-
-        endmodule
-        """
-    )
-    host_config_bank = dedent(
-        """\
-        module host_config_bank #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire cfg_valid,
-            output wire cfg_ready,
-            input wire [2:0] cfg_addr,
-            input wire [DATA_WIDTH-1:0] cfg_data,
-            output reg [DATA_WIDTH-1:0] weight0,
-            output reg [DATA_WIDTH-1:0] bias0,
-            output reg [DATA_WIDTH-1:0] weight1,
-            output reg [DATA_WIDTH-1:0] bias1,
-            output reg [DATA_WIDTH-1:0] alpha,
-            output reg enable
-        );
-
-          assign cfg_ready = 1'b1;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              weight0 <= {DATA_WIDTH{1'b0}};
-              bias0 <= {DATA_WIDTH{1'b0}};
-              weight1 <= {DATA_WIDTH{1'b0}};
-              bias1 <= {DATA_WIDTH{1'b0}};
-              alpha <= {DATA_WIDTH{1'b0}};
-              enable <= 1'b0;
-            end else if (cfg_valid && cfg_ready) begin
-              case (cfg_addr)
-                3'd0: weight0 <= cfg_data;
-                3'd1: bias0 <= cfg_data;
-                3'd2: weight1 <= cfg_data;
-                3'd3: bias1 <= cfg_data;
-                3'd4: alpha <= cfg_data;
-                3'd5: enable <= cfg_data[0];
-                default: enable <= enable;
-              endcase
-            end
-          end
-
-        endmodule
-        """
-    )
-    sample_capture_stage = dedent(
-        """\
-        module sample_capture_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [DATA_WIDTH-1:0] obs0,
-            input wire [DATA_WIDTH-1:0] obs1,
-            input wire [DATA_WIDTH-1:0] reward,
-            input wire [DATA_WIDTH-1:0] next_value,
-            input wire done_in,
-            input wire consume_ready,
-            output wire out_valid,
-            output reg [DATA_WIDTH-1:0] obs0_out,
-            output reg [DATA_WIDTH-1:0] obs1_out,
-            output reg [DATA_WIDTH-1:0] reward_out,
-            output reg [DATA_WIDTH-1:0] next_value_out,
-            output reg done_out
-        );
-
-          reg valid_reg;
-
-          assign in_ready = !valid_reg || consume_ready;
-          assign out_valid = valid_reg;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              valid_reg <= 1'b0;
-              obs0_out <= {DATA_WIDTH{1'b0}};
-              obs1_out <= {DATA_WIDTH{1'b0}};
-              reward_out <= {DATA_WIDTH{1'b0}};
-              next_value_out <= {DATA_WIDTH{1'b0}};
-              done_out <= 1'b0;
-            end else begin
-              if (in_valid && in_ready) begin
-                valid_reg <= 1'b1;
-                obs0_out <= obs0;
-                obs1_out <= obs1;
-                reward_out <= reward;
-                next_value_out <= next_value;
-                done_out <= done_in;
-              end else if (consume_ready) begin
-                valid_reg <= 1'b0;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    policy_value_core = dedent(
-        """\
-        module policy_value_core #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire in_valid,
-            input wire [DATA_WIDTH-1:0] obs0,
-            input wire [DATA_WIDTH-1:0] obs1,
-            input wire [DATA_WIDTH-1:0] weight0,
-            input wire [DATA_WIDTH-1:0] bias0,
-            input wire [DATA_WIDTH-1:0] weight1,
-            input wire [DATA_WIDTH-1:0] bias1,
-            input wire enable,
-            output wire out_valid,
-            output wire selected_action,
-            output wire [DATA_WIDTH-1:0] value_estimate
-        );
-
-          wire [(2*DATA_WIDTH)-1:0] score0_full;
-          wire [(2*DATA_WIDTH)-1:0] score1_full;
-          wire [DATA_WIDTH-1:0] score0;
-          wire [DATA_WIDTH-1:0] score1;
-          wire [DATA_WIDTH:0] value_sum;
-          wire average_discard;
-
-          assign score0_full = (obs0 * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
-          assign score1_full = (obs1 * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
-          assign score0 = |score0_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                          score0_full[DATA_WIDTH-1:0];
-          assign score1 = |score1_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                          score1_full[DATA_WIDTH-1:0];
-          assign value_sum = {1'b0, score0} + {1'b0, score1};
-          assign average_discard = value_sum[0];
-          assign selected_action = (score1 > score0) | (average_discard & (score1 > score0));
-          assign value_estimate = value_sum[DATA_WIDTH:1];
-          assign out_valid = in_valid && enable;
-
-        endmodule
-        """
-    )
-    td_update_core = dedent(
-        """\
-        module td_update_core #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire in_valid,
-            input wire [DATA_WIDTH-1:0] reward,
-            input wire [DATA_WIDTH-1:0] next_value,
-            input wire [DATA_WIDTH-1:0] value_estimate,
-            input wire [DATA_WIDTH-1:0] alpha,
-            output wire out_valid,
-            output wire [DATA_WIDTH-1:0] updated_value
-        );
-
-          wire [DATA_WIDTH:0] td_error_full;
-          wire [(2*DATA_WIDTH)-1:0] update_product;
-          wire [DATA_WIDTH-1:0] td_error_limited;
-          wire [DATA_WIDTH-1:0] update_delta;
-          wire update_delta_round;
-          wire update_delta_overflow;
-
-          assign td_error_full = {1'b0, reward} + {1'b0, next_value} - {1'b0, value_estimate};
-          assign td_error_limited = td_error_full[DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                                    td_error_full[DATA_WIDTH-1:0];
-          assign update_product = alpha * td_error_limited;
-          assign update_delta_round = |update_product[3:0];
-          assign update_delta_overflow = |update_product[(2*DATA_WIDTH)-1:DATA_WIDTH+4];
-          assign update_delta = update_delta_overflow ? {DATA_WIDTH{1'b1}} :
-                                update_product[DATA_WIDTH+3:4];
-          assign updated_value = value_estimate + update_delta;
-          assign out_valid = in_valid | (update_delta_round & in_valid);
-
-        endmodule
-        """
-    )
-    result_stream_stage = dedent(
-        """\
-        module result_stream_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire out_ready,
-            input wire selected_action,
-            input wire [DATA_WIDTH-1:0] value_estimate,
-            input wire [DATA_WIDTH-1:0] updated_value,
-            input wire done_in,
-            output reg result_valid,
-            input wire result_ready,
-            output reg selected_action_out,
-            output reg [DATA_WIDTH-1:0] value_estimate_out,
-            output reg [DATA_WIDTH-1:0] updated_value_out,
-            output reg episode_done_out,
-            output reg irq
-        );
-
-          assign out_ready = !result_valid || result_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              result_valid <= 1'b0;
-              selected_action_out <= 1'b0;
-              value_estimate_out <= {DATA_WIDTH{1'b0}};
-              updated_value_out <= {DATA_WIDTH{1'b0}};
-              episode_done_out <= 1'b0;
-              irq <= 1'b0;
-            end else begin
-              if (result_valid && result_ready) begin
-                if (episode_done_out) begin
-                  irq <= 1'b1;
-                end
-                result_valid <= 1'b0;
-              end
-              if (in_valid && out_ready) begin
-                result_valid <= 1'b1;
-                selected_action_out <= selected_action;
-                value_estimate_out <= value_estimate;
-                updated_value_out <= updated_value;
-                episode_done_out <= done_in;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/host_config_bank.v": host_config_bank,
-        "rtl/sample_capture_stage.v": sample_capture_stage,
-        "rtl/policy_value_core.v": policy_value_core,
-        "rtl/td_update_core.v": td_update_core,
-        "rtl/result_stream_stage.v": result_stream_stage,
-    }
-
-
-def _composed_batch_rl_accelerator_shell_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire cfg_valid,
-            output wire cfg_ready,
-            input wire [2:0] cfg_addr,
-            input wire [{msb}:0] cfg_data,
-            input wire batch_valid,
-            output wire batch_ready,
-            input wire [{msb}:0] obs0_a,
-            input wire [{msb}:0] obs1_a,
-            input wire [{msb}:0] reward_a,
-            input wire [{msb}:0] next_value_a,
-            input wire done_a,
-            input wire [{msb}:0] obs0_b,
-            input wire [{msb}:0] obs1_b,
-            input wire [{msb}:0] reward_b,
-            input wire [{msb}:0] next_value_b,
-            input wire done_b,
-            output wire result_valid,
-            input wire result_ready,
-            output wire selected_action_a,
-            output wire [{msb}:0] value_estimate_a,
-            output wire [{msb}:0] updated_value_a,
-            output wire selected_action_b,
-            output wire [{msb}:0] value_estimate_b,
-            output wire [{msb}:0] updated_value_b,
-            output wire batch_done,
-            output wire irq
-        );
-
-          wire [{msb}:0] weight0;
-          wire [{msb}:0] bias0;
-          wire [{msb}:0] weight1;
-          wire [{msb}:0] bias1;
-          wire [{msb}:0] alpha;
-          wire enable;
-          wire batch_stage_valid;
-          wire batch_consume_ready;
-          wire [{msb}:0] captured_obs0_a;
-          wire [{msb}:0] captured_obs1_a;
-          wire [{msb}:0] captured_reward_a;
-          wire [{msb}:0] captured_next_value_a;
-          wire captured_done_a;
-          wire [{msb}:0] captured_obs0_b;
-          wire [{msb}:0] captured_obs1_b;
-          wire [{msb}:0] captured_reward_b;
-          wire [{msb}:0] captured_next_value_b;
-          wire captured_done_b;
-          wire policy_valid;
-          wire policy_selected_action_a;
-          wire [{msb}:0] policy_value_estimate_a;
-          wire policy_selected_action_b;
-          wire [{msb}:0] policy_value_estimate_b;
-          wire update_valid;
-          wire [{msb}:0] update_updated_value_a;
-          wire [{msb}:0] update_updated_value_b;
-
-          batch_config_bank #(
-            .DATA_WIDTH({width})
-          ) u_batch_config_bank (
-            .clk(clk),
-            .rst_n(rst_n),
-            .cfg_valid(cfg_valid),
-            .cfg_ready(cfg_ready),
-            .cfg_addr(cfg_addr),
-            .cfg_data(cfg_data),
-            .weight0(weight0),
-            .bias0(bias0),
-            .weight1(weight1),
-            .bias1(bias1),
-            .alpha(alpha),
-            .enable(enable)
-          );
-
-          batch_sample_buffer #(
-            .DATA_WIDTH({width})
-          ) u_batch_sample_buffer (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(batch_valid),
-            .in_ready(batch_ready),
-            .obs0_a(obs0_a),
-            .obs1_a(obs1_a),
-            .reward_a(reward_a),
-            .next_value_a(next_value_a),
-            .done_a(done_a),
-            .obs0_b(obs0_b),
-            .obs1_b(obs1_b),
-            .reward_b(reward_b),
-            .next_value_b(next_value_b),
-            .done_b(done_b),
-            .consume_ready(batch_consume_ready),
-            .out_valid(batch_stage_valid),
-            .obs0_a_out(captured_obs0_a),
-            .obs1_a_out(captured_obs1_a),
-            .reward_a_out(captured_reward_a),
-            .next_value_a_out(captured_next_value_a),
-            .done_a_out(captured_done_a),
-            .obs0_b_out(captured_obs0_b),
-            .obs1_b_out(captured_obs1_b),
-            .reward_b_out(captured_reward_b),
-            .next_value_b_out(captured_next_value_b),
-            .done_b_out(captured_done_b)
-          );
-
-          dual_policy_value_core #(
-            .DATA_WIDTH({width})
-          ) u_dual_policy_value_core (
-            .in_valid(batch_stage_valid),
-            .obs0_a(captured_obs0_a),
-            .obs1_a(captured_obs1_a),
-            .obs0_b(captured_obs0_b),
-            .obs1_b(captured_obs1_b),
-            .weight0(weight0),
-            .bias0(bias0),
-            .weight1(weight1),
-            .bias1(bias1),
-            .enable(enable),
-            .out_valid(policy_valid),
-            .selected_action_a(policy_selected_action_a),
-            .value_estimate_a(policy_value_estimate_a),
-            .selected_action_b(policy_selected_action_b),
-            .value_estimate_b(policy_value_estimate_b)
-          );
-
-          dual_td_update_core #(
-            .DATA_WIDTH({width})
-          ) u_dual_td_update_core (
-            .in_valid(policy_valid),
-            .reward_a(captured_reward_a),
-            .next_value_a(captured_next_value_a),
-            .value_estimate_a(policy_value_estimate_a),
-            .reward_b(captured_reward_b),
-            .next_value_b(captured_next_value_b),
-            .value_estimate_b(policy_value_estimate_b),
-            .alpha(alpha),
-            .out_valid(update_valid),
-            .updated_value_a(update_updated_value_a),
-            .updated_value_b(update_updated_value_b)
-          );
-
-          batch_result_stage #(
-            .DATA_WIDTH({width})
-          ) u_batch_result_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(update_valid),
-            .out_ready(batch_consume_ready),
-            .selected_action_a(policy_selected_action_a),
-            .value_estimate_a(policy_value_estimate_a),
-            .updated_value_a(update_updated_value_a),
-            .selected_action_b(policy_selected_action_b),
-            .value_estimate_b(policy_value_estimate_b),
-            .updated_value_b(update_updated_value_b),
-            .done_a(captured_done_a),
-            .done_b(captured_done_b),
-            .result_valid(result_valid),
-            .result_ready(result_ready),
-            .selected_action_a_out(selected_action_a),
-            .value_estimate_a_out(value_estimate_a),
-            .updated_value_a_out(updated_value_a),
-            .selected_action_b_out(selected_action_b),
-            .value_estimate_b_out(value_estimate_b),
-            .updated_value_b_out(updated_value_b),
-            .batch_done_out(batch_done),
-            .irq(irq)
-          );
-
-        endmodule
-        """
-    )
-    batch_config_bank = _batch_config_bank_rtl()
-    batch_sample_buffer = dedent(
-        """\
-        module batch_sample_buffer #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [DATA_WIDTH-1:0] obs0_a,
-            input wire [DATA_WIDTH-1:0] obs1_a,
-            input wire [DATA_WIDTH-1:0] reward_a,
-            input wire [DATA_WIDTH-1:0] next_value_a,
-            input wire done_a,
-            input wire [DATA_WIDTH-1:0] obs0_b,
-            input wire [DATA_WIDTH-1:0] obs1_b,
-            input wire [DATA_WIDTH-1:0] reward_b,
-            input wire [DATA_WIDTH-1:0] next_value_b,
-            input wire done_b,
-            input wire consume_ready,
-            output wire out_valid,
-            output reg [DATA_WIDTH-1:0] obs0_a_out,
-            output reg [DATA_WIDTH-1:0] obs1_a_out,
-            output reg [DATA_WIDTH-1:0] reward_a_out,
-            output reg [DATA_WIDTH-1:0] next_value_a_out,
-            output reg done_a_out,
-            output reg [DATA_WIDTH-1:0] obs0_b_out,
-            output reg [DATA_WIDTH-1:0] obs1_b_out,
-            output reg [DATA_WIDTH-1:0] reward_b_out,
-            output reg [DATA_WIDTH-1:0] next_value_b_out,
-            output reg done_b_out
-        );
-
-          reg valid_reg;
-
-          assign in_ready = !valid_reg || consume_ready;
-          assign out_valid = valid_reg;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              valid_reg <= 1'b0;
-              obs0_a_out <= {DATA_WIDTH{1'b0}};
-              obs1_a_out <= {DATA_WIDTH{1'b0}};
-              reward_a_out <= {DATA_WIDTH{1'b0}};
-              next_value_a_out <= {DATA_WIDTH{1'b0}};
-              done_a_out <= 1'b0;
-              obs0_b_out <= {DATA_WIDTH{1'b0}};
-              obs1_b_out <= {DATA_WIDTH{1'b0}};
-              reward_b_out <= {DATA_WIDTH{1'b0}};
-              next_value_b_out <= {DATA_WIDTH{1'b0}};
-              done_b_out <= 1'b0;
-            end else begin
-              if (in_valid && in_ready) begin
-                valid_reg <= 1'b1;
-                obs0_a_out <= obs0_a;
-                obs1_a_out <= obs1_a;
-                reward_a_out <= reward_a;
-                next_value_a_out <= next_value_a;
-                done_a_out <= done_a;
-                obs0_b_out <= obs0_b;
-                obs1_b_out <= obs1_b;
-                reward_b_out <= reward_b;
-                next_value_b_out <= next_value_b;
-                done_b_out <= done_b;
-              end else if (consume_ready) begin
-                valid_reg <= 1'b0;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    dual_policy_value_core = dedent(
-        """\
-        module dual_policy_value_core #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire in_valid,
-            input wire [DATA_WIDTH-1:0] obs0_a,
-            input wire [DATA_WIDTH-1:0] obs1_a,
-            input wire [DATA_WIDTH-1:0] obs0_b,
-            input wire [DATA_WIDTH-1:0] obs1_b,
-            input wire [DATA_WIDTH-1:0] weight0,
-            input wire [DATA_WIDTH-1:0] bias0,
-            input wire [DATA_WIDTH-1:0] weight1,
-            input wire [DATA_WIDTH-1:0] bias1,
-            input wire enable,
-            output wire out_valid,
-            output wire selected_action_a,
-            output wire [DATA_WIDTH-1:0] value_estimate_a,
-            output wire selected_action_b,
-            output wire [DATA_WIDTH-1:0] value_estimate_b
-        );
-
-          wire [(2*DATA_WIDTH)-1:0] score0_a_full;
-          wire [(2*DATA_WIDTH)-1:0] score1_a_full;
-          wire [(2*DATA_WIDTH)-1:0] score0_b_full;
-          wire [(2*DATA_WIDTH)-1:0] score1_b_full;
-          wire [DATA_WIDTH-1:0] score0_a;
-          wire [DATA_WIDTH-1:0] score1_a;
-          wire [DATA_WIDTH-1:0] score0_b;
-          wire [DATA_WIDTH-1:0] score1_b;
-          wire [DATA_WIDTH:0] value_sum_a;
-          wire [DATA_WIDTH:0] value_sum_b;
-          wire average_discard_a;
-          wire average_discard_b;
-
-          assign score0_a_full = (obs0_a * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
-          assign score1_a_full = (obs1_a * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
-          assign score0_b_full = (obs0_b * weight0) + {{DATA_WIDTH{1'b0}}, bias0};
-          assign score1_b_full = (obs1_b * weight1) + {{DATA_WIDTH{1'b0}}, bias1};
-          assign score0_a = |score0_a_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                            score0_a_full[DATA_WIDTH-1:0];
-          assign score1_a = |score1_a_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                            score1_a_full[DATA_WIDTH-1:0];
-          assign score0_b = |score0_b_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                            score0_b_full[DATA_WIDTH-1:0];
-          assign score1_b = |score1_b_full[(2*DATA_WIDTH)-1:DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                            score1_b_full[DATA_WIDTH-1:0];
-          assign value_sum_a = {1'b0, score0_a} + {1'b0, score1_a};
-          assign value_sum_b = {1'b0, score0_b} + {1'b0, score1_b};
-          assign average_discard_a = value_sum_a[0];
-          assign average_discard_b = value_sum_b[0];
-          assign selected_action_a = (score1_a > score0_a) |
-                                     (average_discard_a & (score1_a > score0_a));
-          assign selected_action_b = (score1_b > score0_b) |
-                                     (average_discard_b & (score1_b > score0_b));
-          assign value_estimate_a = value_sum_a[DATA_WIDTH:1];
-          assign value_estimate_b = value_sum_b[DATA_WIDTH:1];
-          assign out_valid = in_valid && enable;
-
-        endmodule
-        """
-    )
-    dual_td_update_core = dedent(
-        """\
-        module dual_td_update_core #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire in_valid,
-            input wire [DATA_WIDTH-1:0] reward_a,
-            input wire [DATA_WIDTH-1:0] next_value_a,
-            input wire [DATA_WIDTH-1:0] value_estimate_a,
-            input wire [DATA_WIDTH-1:0] reward_b,
-            input wire [DATA_WIDTH-1:0] next_value_b,
-            input wire [DATA_WIDTH-1:0] value_estimate_b,
-            input wire [DATA_WIDTH-1:0] alpha,
-            output wire out_valid,
-            output wire [DATA_WIDTH-1:0] updated_value_a,
-            output wire [DATA_WIDTH-1:0] updated_value_b
-        );
-
-          wire [DATA_WIDTH:0] td_error_a_full;
-          wire [DATA_WIDTH:0] td_error_b_full;
-          wire [(2*DATA_WIDTH)-1:0] update_product_a;
-          wire [(2*DATA_WIDTH)-1:0] update_product_b;
-          wire [DATA_WIDTH-1:0] td_error_a_limited;
-          wire [DATA_WIDTH-1:0] td_error_b_limited;
-          wire [DATA_WIDTH-1:0] update_delta_a;
-          wire [DATA_WIDTH-1:0] update_delta_b;
-          wire update_delta_a_round;
-          wire update_delta_b_round;
-          wire update_delta_a_overflow;
-          wire update_delta_b_overflow;
-
-          assign td_error_a_full = {1'b0, reward_a} + {1'b0, next_value_a} - {1'b0, value_estimate_a};
-          assign td_error_b_full = {1'b0, reward_b} + {1'b0, next_value_b} - {1'b0, value_estimate_b};
-          assign td_error_a_limited = td_error_a_full[DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                                      td_error_a_full[DATA_WIDTH-1:0];
-          assign td_error_b_limited = td_error_b_full[DATA_WIDTH] ? {DATA_WIDTH{1'b1}} :
-                                      td_error_b_full[DATA_WIDTH-1:0];
-          assign update_product_a = alpha * td_error_a_limited;
-          assign update_product_b = alpha * td_error_b_limited;
-          assign update_delta_a_round = |update_product_a[3:0];
-          assign update_delta_b_round = |update_product_b[3:0];
-          assign update_delta_a_overflow = |update_product_a[(2*DATA_WIDTH)-1:DATA_WIDTH+4];
-          assign update_delta_b_overflow = |update_product_b[(2*DATA_WIDTH)-1:DATA_WIDTH+4];
-          assign update_delta_a = update_delta_a_overflow ? {DATA_WIDTH{1'b1}} :
-                                  update_product_a[DATA_WIDTH+3:4];
-          assign update_delta_b = update_delta_b_overflow ? {DATA_WIDTH{1'b1}} :
-                                  update_product_b[DATA_WIDTH+3:4];
-          assign updated_value_a = value_estimate_a + update_delta_a;
-          assign updated_value_b = value_estimate_b + update_delta_b;
-          assign out_valid = in_valid |
-                             ((update_delta_a_round | update_delta_b_round) & in_valid);
-
-        endmodule
-        """
-    )
-    batch_result_stage = dedent(
-        """\
-        module batch_result_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire out_ready,
-            input wire selected_action_a,
-            input wire [DATA_WIDTH-1:0] value_estimate_a,
-            input wire [DATA_WIDTH-1:0] updated_value_a,
-            input wire selected_action_b,
-            input wire [DATA_WIDTH-1:0] value_estimate_b,
-            input wire [DATA_WIDTH-1:0] updated_value_b,
-            input wire done_a,
-            input wire done_b,
-            output reg result_valid,
-            input wire result_ready,
-            output reg selected_action_a_out,
-            output reg [DATA_WIDTH-1:0] value_estimate_a_out,
-            output reg [DATA_WIDTH-1:0] updated_value_a_out,
-            output reg selected_action_b_out,
-            output reg [DATA_WIDTH-1:0] value_estimate_b_out,
-            output reg [DATA_WIDTH-1:0] updated_value_b_out,
-            output reg batch_done_out,
-            output reg irq
-        );
-
-          assign out_ready = !result_valid || result_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              result_valid <= 1'b0;
-              selected_action_a_out <= 1'b0;
-              value_estimate_a_out <= {DATA_WIDTH{1'b0}};
-              updated_value_a_out <= {DATA_WIDTH{1'b0}};
-              selected_action_b_out <= 1'b0;
-              value_estimate_b_out <= {DATA_WIDTH{1'b0}};
-              updated_value_b_out <= {DATA_WIDTH{1'b0}};
-              batch_done_out <= 1'b0;
-              irq <= 1'b0;
-            end else begin
-              if (result_valid && result_ready) begin
-                if (batch_done_out) begin
-                  irq <= 1'b1;
-                end
-                result_valid <= 1'b0;
-              end
-              if (in_valid && out_ready) begin
-                result_valid <= 1'b1;
-                selected_action_a_out <= selected_action_a;
-                value_estimate_a_out <= value_estimate_a;
-                updated_value_a_out <= updated_value_a;
-                selected_action_b_out <= selected_action_b;
-                value_estimate_b_out <= value_estimate_b;
-                updated_value_b_out <= updated_value_b;
-                batch_done_out <= done_a | done_b;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/batch_config_bank.v": batch_config_bank,
-        "rtl/batch_sample_buffer.v": batch_sample_buffer,
-        "rtl/dual_policy_value_core.v": dual_policy_value_core,
-        "rtl/dual_td_update_core.v": dual_td_update_core,
-        "rtl/batch_result_stage.v": batch_result_stage,
-    }
-
-
-def _batch_config_bank_rtl() -> str:
-    return dedent(
-        """\
-        module batch_config_bank #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire cfg_valid,
-            output wire cfg_ready,
-            input wire [2:0] cfg_addr,
-            input wire [DATA_WIDTH-1:0] cfg_data,
-            output reg [DATA_WIDTH-1:0] weight0,
-            output reg [DATA_WIDTH-1:0] bias0,
-            output reg [DATA_WIDTH-1:0] weight1,
-            output reg [DATA_WIDTH-1:0] bias1,
-            output reg [DATA_WIDTH-1:0] alpha,
-            output reg enable
-        );
-
-          assign cfg_ready = 1'b1;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              weight0 <= {DATA_WIDTH{1'b0}};
-              bias0 <= {DATA_WIDTH{1'b0}};
-              weight1 <= {DATA_WIDTH{1'b0}};
-              bias1 <= {DATA_WIDTH{1'b0}};
-              alpha <= {DATA_WIDTH{1'b0}};
-              enable <= 1'b0;
-            end else if (cfg_valid && cfg_ready) begin
-              case (cfg_addr)
-                3'd0: weight0 <= cfg_data;
-                3'd1: bias0 <= cfg_data;
-                3'd2: weight1 <= cfg_data;
-                3'd3: bias1 <= cfg_data;
-                3'd4: alpha <= cfg_data;
-                3'd5: enable <= cfg_data[0];
-                default: enable <= enable;
-              endcase
-            end
-          end
-
-        endmodule
-        """
-    )
-
-
-def _composed_replay_arbiter_shell_rtl_files(width: int) -> dict[str, str]:
-    msb = width - 1
-    top = dedent(
-        f"""\
-        module top (
-            input wire clk,
-            input wire rst_n,
-            input wire host_valid,
-            output wire host_ready,
-            input wire [{msb}:0] host_state,
-            input wire host_action,
-            input wire [{msb}:0] host_reward,
-            input wire [{msb}:0] host_next_state,
-            input wire host_done,
-            input wire sample_req_valid,
-            output wire sample_req_ready,
-            input wire [1:0] sample_index,
-            output wire sample_valid,
-            input wire sample_ready,
-            output wire [{msb}:0] sample_state,
-            output wire sample_action,
-            output wire [{msb}:0] sample_reward,
-            output wire [{msb}:0] sample_next_state,
-            output wire sample_done,
-            output wire [2:0] occupancy,
-            output wire [1:0] write_index,
-            output wire irq
-        );
-
-          wire packet_valid;
-          wire packet_ready;
-          wire [{msb}:0] packet_state;
-          wire packet_action;
-          wire [{msb}:0] packet_reward;
-          wire [{msb}:0] packet_next_state;
-          wire packet_done;
-          wire mem_write_valid;
-          wire [1:0] mem_write_addr;
-          wire [{msb}:0] mem_write_state;
-          wire mem_write_action;
-          wire [{msb}:0] mem_write_reward;
-          wire [{msb}:0] mem_write_next_state;
-          wire mem_write_done;
-          wire mem_read_valid;
-          wire [1:0] mem_read_addr;
-          wire write_accepted;
-          wire read_valid_out;
-          wire [{msb}:0] read_state;
-          wire read_action;
-          wire [{msb}:0] read_reward;
-          wire [{msb}:0] read_next_state;
-          wire read_done;
-          wire sample_stage_ready;
-
-          host_transition_packetizer #(
-            .DATA_WIDTH({width})
-          ) u_host_transition_packetizer (
-            .host_valid(host_valid),
-            .host_ready(host_ready),
-            .host_state(host_state),
-            .host_action(host_action),
-            .host_reward(host_reward),
-            .host_next_state(host_next_state),
-            .host_done(host_done),
-            .packet_ready(packet_ready),
-            .packet_valid(packet_valid),
-            .packet_state(packet_state),
-            .packet_action(packet_action),
-            .packet_reward(packet_reward),
-            .packet_next_state(packet_next_state),
-            .packet_done(packet_done)
-          );
-
-          replay_index_allocator u_replay_index_allocator (
-            .clk(clk),
-            .rst_n(rst_n),
-            .write_accepted(write_accepted),
-            .write_index(write_index),
-            .occupancy(occupancy)
-          );
-
-          replay_request_arbiter #(
-            .DATA_WIDTH({width})
-          ) u_replay_request_arbiter (
-            .write_valid(packet_valid),
-            .write_ready(packet_ready),
-            .write_index(write_index),
-            .occupancy(occupancy),
-            .write_state(packet_state),
-            .write_action(packet_action),
-            .write_reward(packet_reward),
-            .write_next_state(packet_next_state),
-            .write_done(packet_done),
-            .read_req_valid(sample_req_valid),
-            .sample_index(sample_index),
-            .sample_stage_ready(sample_stage_ready),
-            .sample_req_ready(sample_req_ready),
-            .mem_write_valid(mem_write_valid),
-            .mem_write_addr(mem_write_addr),
-            .mem_write_state(mem_write_state),
-            .mem_write_action(mem_write_action),
-            .mem_write_reward(mem_write_reward),
-            .mem_write_next_state(mem_write_next_state),
-            .mem_write_done(mem_write_done),
-            .mem_read_valid(mem_read_valid),
-            .mem_read_addr(mem_read_addr),
-            .write_accepted(write_accepted)
-          );
-
-          replay_memory_bank #(
-            .DATA_WIDTH({width})
-          ) u_replay_memory_bank (
-            .clk(clk),
-            .rst_n(rst_n),
-            .write_valid(mem_write_valid),
-            .write_addr(mem_write_addr),
-            .write_state(mem_write_state),
-            .write_action(mem_write_action),
-            .write_reward(mem_write_reward),
-            .write_next_state(mem_write_next_state),
-            .write_done(mem_write_done),
-            .read_valid(mem_read_valid),
-            .read_addr(mem_read_addr),
-            .read_valid_out(read_valid_out),
-            .read_state(read_state),
-            .read_action(read_action),
-            .read_reward(read_reward),
-            .read_next_state(read_next_state),
-            .read_done(read_done)
-          );
-
-          sample_packet_stage #(
-            .DATA_WIDTH({width})
-          ) u_sample_packet_stage (
-            .clk(clk),
-            .rst_n(rst_n),
-            .in_valid(read_valid_out),
-            .in_ready(sample_stage_ready),
-            .sample_state(read_state),
-            .sample_action(read_action),
-            .sample_reward(read_reward),
-            .sample_next_state(read_next_state),
-            .sample_done(read_done),
-            .sample_valid(sample_valid),
-            .sample_ready(sample_ready),
-            .sample_state_out(sample_state),
-            .sample_action_out(sample_action),
-            .sample_reward_out(sample_reward),
-            .sample_next_state_out(sample_next_state),
-            .sample_done_out(sample_done),
-            .irq(irq)
-          );
-
-        endmodule
-        """
-    )
-    host_transition_packetizer = dedent(
-        """\
-        module host_transition_packetizer #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire host_valid,
-            output wire host_ready,
-            input wire [DATA_WIDTH-1:0] host_state,
-            input wire host_action,
-            input wire [DATA_WIDTH-1:0] host_reward,
-            input wire [DATA_WIDTH-1:0] host_next_state,
-            input wire host_done,
-            input wire packet_ready,
-            output wire packet_valid,
-            output wire [DATA_WIDTH-1:0] packet_state,
-            output wire packet_action,
-            output wire [DATA_WIDTH-1:0] packet_reward,
-            output wire [DATA_WIDTH-1:0] packet_next_state,
-            output wire packet_done
-        );
-
-          assign host_ready = packet_ready;
-          assign packet_valid = host_valid && packet_ready;
-          assign packet_state = host_state;
-          assign packet_action = host_action;
-          assign packet_reward = host_reward;
-          assign packet_next_state = host_next_state;
-          assign packet_done = host_done;
-
-        endmodule
-        """
-    )
-    replay_index_allocator = dedent(
-        """\
-        module replay_index_allocator (
-            input wire clk,
-            input wire rst_n,
-            input wire write_accepted,
-            output reg [1:0] write_index,
-            output reg [2:0] occupancy
-        );
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              write_index <= 2'd0;
-              occupancy <= 3'd0;
-            end else if (write_accepted) begin
-              write_index <= write_index + 2'd1;
-              if (occupancy < 3'd4) begin
-                occupancy <= occupancy + 3'd1;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    replay_request_arbiter = dedent(
-        """\
-        module replay_request_arbiter #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire write_valid,
-            output wire write_ready,
-            input wire [1:0] write_index,
-            input wire [2:0] occupancy,
-            input wire [DATA_WIDTH-1:0] write_state,
-            input wire write_action,
-            input wire [DATA_WIDTH-1:0] write_reward,
-            input wire [DATA_WIDTH-1:0] write_next_state,
-            input wire write_done,
-            input wire read_req_valid,
-            input wire [1:0] sample_index,
-            input wire sample_stage_ready,
-            output wire sample_req_ready,
-            output wire mem_write_valid,
-            output wire [1:0] mem_write_addr,
-            output wire [DATA_WIDTH-1:0] mem_write_state,
-            output wire mem_write_action,
-            output wire [DATA_WIDTH-1:0] mem_write_reward,
-            output wire [DATA_WIDTH-1:0] mem_write_next_state,
-            output wire mem_write_done,
-            output wire mem_read_valid,
-            output wire [1:0] mem_read_addr,
-            output wire write_accepted
-        );
-
-          wire read_index_valid;
-
-          assign write_ready = 1'b1;
-          assign write_accepted = write_valid && write_ready;
-          assign read_index_valid = {1'b0, sample_index} < occupancy;
-          assign sample_req_ready = !write_valid && read_index_valid && sample_stage_ready;
-          assign mem_write_valid = write_accepted;
-          assign mem_write_addr = write_index;
-          assign mem_write_state = write_state;
-          assign mem_write_action = write_action;
-          assign mem_write_reward = write_reward;
-          assign mem_write_next_state = write_next_state;
-          assign mem_write_done = write_done;
-          assign mem_read_valid = read_req_valid && sample_req_ready;
-          assign mem_read_addr = sample_index;
-
-        endmodule
-        """
-    )
-    replay_memory_bank = dedent(
-        """\
-        module replay_memory_bank #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire write_valid,
-            input wire [1:0] write_addr,
-            input wire [DATA_WIDTH-1:0] write_state,
-            input wire write_action,
-            input wire [DATA_WIDTH-1:0] write_reward,
-            input wire [DATA_WIDTH-1:0] write_next_state,
-            input wire write_done,
-            input wire read_valid,
-            input wire [1:0] read_addr,
-            output reg read_valid_out,
-            output reg [DATA_WIDTH-1:0] read_state,
-            output reg read_action,
-            output reg [DATA_WIDTH-1:0] read_reward,
-            output reg [DATA_WIDTH-1:0] read_next_state,
-            output reg read_done
-        );
-
-          reg [DATA_WIDTH-1:0] state_mem [0:3];
-          reg action_mem [0:3];
-          reg [DATA_WIDTH-1:0] reward_mem [0:3];
-          reg [DATA_WIDTH-1:0] next_state_mem [0:3];
-          reg done_mem [0:3];
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              read_valid_out <= 1'b0;
-              read_state <= {DATA_WIDTH{1'b0}};
-              read_action <= 1'b0;
-              read_reward <= {DATA_WIDTH{1'b0}};
-              read_next_state <= {DATA_WIDTH{1'b0}};
-              read_done <= 1'b0;
-            end else begin
-              read_valid_out <= read_valid;
-              if (write_valid) begin
-                state_mem[write_addr] <= write_state;
-                action_mem[write_addr] <= write_action;
-                reward_mem[write_addr] <= write_reward;
-                next_state_mem[write_addr] <= write_next_state;
-                done_mem[write_addr] <= write_done;
-              end
-              if (read_valid) begin
-                read_state <= state_mem[read_addr];
-                read_action <= action_mem[read_addr];
-                read_reward <= reward_mem[read_addr];
-                read_next_state <= next_state_mem[read_addr];
-                read_done <= done_mem[read_addr];
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    sample_packet_stage = dedent(
-        """\
-        module sample_packet_stage #(
-            parameter DATA_WIDTH = 8
-        ) (
-            input wire clk,
-            input wire rst_n,
-            input wire in_valid,
-            output wire in_ready,
-            input wire [DATA_WIDTH-1:0] sample_state,
-            input wire sample_action,
-            input wire [DATA_WIDTH-1:0] sample_reward,
-            input wire [DATA_WIDTH-1:0] sample_next_state,
-            input wire sample_done,
-            output reg sample_valid,
-            input wire sample_ready,
-            output reg [DATA_WIDTH-1:0] sample_state_out,
-            output reg sample_action_out,
-            output reg [DATA_WIDTH-1:0] sample_reward_out,
-            output reg [DATA_WIDTH-1:0] sample_next_state_out,
-            output reg sample_done_out,
-            output reg irq
-        );
-
-          assign in_ready = !sample_valid || sample_ready;
-
-          always @(posedge clk or negedge rst_n) begin
-            if (!rst_n) begin
-              sample_valid <= 1'b0;
-              sample_state_out <= {DATA_WIDTH{1'b0}};
-              sample_action_out <= 1'b0;
-              sample_reward_out <= {DATA_WIDTH{1'b0}};
-              sample_next_state_out <= {DATA_WIDTH{1'b0}};
-              sample_done_out <= 1'b0;
-              irq <= 1'b0;
-            end else begin
-              if (sample_valid && sample_ready) begin
-                irq <= 1'b1;
-                sample_valid <= 1'b0;
-              end
-              if (in_valid && in_ready) begin
-                sample_valid <= 1'b1;
-                sample_state_out <= sample_state;
-                sample_action_out <= sample_action;
-                sample_reward_out <= sample_reward;
-                sample_next_state_out <= sample_next_state;
-                sample_done_out <= sample_done;
-              end
-            end
-          end
-
-        endmodule
-        """
-    )
-    return {
-        "rtl/top.v": top,
-        "rtl/host_transition_packetizer.v": host_transition_packetizer,
-        "rtl/replay_index_allocator.v": replay_index_allocator,
-        "rtl/replay_request_arbiter.v": replay_request_arbiter,
-        "rtl/replay_memory_bank.v": replay_memory_bank,
-        "rtl/sample_packet_stage.v": sample_packet_stage,
-    }
 
 
 def _predicted_qor(request: ProjectRequest, platform: PlatformProfile) -> dict[str, object]:
@@ -9019,13 +2377,49 @@ def _default_description(request: ProjectRequest) -> str:
         "simple_fsm": "Generate a simple three-state FSM with start and done handshake.",
         "ram_read_write": f"Generate a {request.width}-bit by 4-entry synchronous RAM read/write block.",
         "uart_tx": "Generate an 8-bit UART transmitter with baud tick generation.",
+        "uart_rx": "Generate an 8-bit UART receiver with midpoint start, data, and stop-bit sampling.",
+        "uart_fifo_loopback": "Generate an 8-bit UART RX to depth-four FIFO to UART TX loopback.",
         "spi_master": "Generate an 8-bit SPI master with clock division and shift engine.",
         "pwm_controller": f"Generate a {request.width}-bit PWM controller with timer and channel modules.",
-        "fir_filter": f"Generate a {request.width}-bit three-tap FIR filter with MAC helpers.",
+        "fir_filter": (
+            f"Generate a signed {request.width}-bit valid-ready three-tap FIR filter with [3, -2, 1] "
+            "coefficients and MAC helpers."
+        ),
+        "matched_filter": (
+            f"Generate a signed {request.width}-bit valid-ready four-tap matched filter with explicit "
+            "correlation accumulation and a one-entry output buffer."
+        ),
+        "peak_detector": (
+            f"Generate a signed {request.width}-bit valid-ready frame peak detector with threshold, "
+            "first-index tie breaking, and a one-entry output buffer."
+        ),
+        "pulse_radar_signal": (
+            f"Generate a signed {request.width}-bit pulse-radar stream that correlates samples, applies "
+            "a bounded signed threshold clamp, and detects the first maximum per aligned frame."
+        ),
+        "sobel_threshold": (
+            "Generate a row-major 8-bit Sobel threshold stream with a real two-line-buffer 3x3 window, "
+            "zero-valued one-pixel borders, and buffered edge-axis metadata."
+        ),
+        "vision_defect_core": (
+            "Generate a bounded row-major 8-bit Sobel defect stream that emits every thresholded edge pixel "
+            "and reports one frame-level defect-present flag plus the first thresholded pixel coordinate."
+        ),
+        "pattern_matcher": (
+            "each exact four-token sequence emits the accepted-token index of its ending token and the matched word; "
+            "overlaps remain detectable and the one-entry output holds under backpressure"
+        ),
+        "stream_trigger_filter": (
+            "each exact four-token sequence is packetized through trigger_fsm and stream_packer with its accepted-token index "
+            "and matched word stable under valid-ready backpressure"
+        ),
         "streaming_valid_ready": (
             f"Generate a {request.width}-bit valid-ready streaming pipeline with buffering."
         ),
-        "matrix_vector_mac": f"Generate a {request.width}-bit fixed matrix-vector dot product engine.",
+        "matrix_vector_mac": (
+            f"Generate a signed {request.width}-bit valid-ready four-element matrix-vector dot product engine "
+            "with fixed [2, -1, 3, 1] coefficients."
+        ),
         "alu_control_unit": (
             f"Generate a {request.width}-bit ALU control unit with opcode decode, arithmetic/logic core, "
             "registered result, and zero/carry/negative status flags."
@@ -9163,6 +2557,33 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 ],
             }
         )
+    elif request.task_type == "uart_rx":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "rx", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "data", "width": 8},
+                    {"name": "data_valid", "width": 1},
+                    {"name": "framing_error", "width": 1},
+                ],
+            }
+        )
+    elif request.task_type == "uart_fifo_loopback":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "rx", "width": 1},
+                    {"name": "tx_enable", "width": 1},
+                ],
+                "outputs": [{"name": "tx", "width": 1}],
+            }
+        )
     elif request.task_type == "spi_master":
         common.update(
             {
@@ -9202,10 +2623,129 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                     {"name": "rst_n", "width": 1},
                     {"name": "sample_valid", "width": 1},
                     {"name": "sample", "width": request.width},
+                    {"name": "result_ready", "width": 1},
                 ],
                 "outputs": [
+                    {"name": "sample_ready", "width": 1},
                     {"name": "result_valid", "width": 1},
                     {"name": "result", "width": request.width + 3},
+                ],
+            }
+        )
+    elif request.task_type == "matched_filter":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_sample", "width": request.width},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "correlation", "width": request.width * 2 + 2},
+                ],
+            }
+        )
+    elif request.task_type == "peak_detector":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_sample", "width": request.width},
+                    {"name": "in_last", "width": 1},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "peak_found", "width": 1},
+                    {"name": "peak_value", "width": request.width},
+                    {"name": "peak_index", "width": request.width},
+                ],
+            }
+        )
+    elif request.task_type == "pulse_radar_signal":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_sample", "width": request.width},
+                    {"name": "in_last", "width": 1},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "peak_found", "width": 1},
+                    {"name": "peak_value", "width": request.width * 2 + 2},
+                    {"name": "peak_index", "width": request.width * 2 + 2},
+                ],
+            }
+        )
+    elif request.task_type == "sobel_threshold":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_pixel", "width": 8},
+                    {"name": "in_last", "width": 1},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "out_edge", "width": 1},
+                    {"name": "edge_axis", "width": 1},
+                    {"name": "out_last", "width": 1},
+                ],
+            }
+        )
+    elif request.task_type == "vision_defect_core":
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_pixel", "width": 8},
+                    {"name": "in_last", "width": 1},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "out_edge", "width": 1},
+                    {"name": "out_last", "width": 1},
+                    {"name": "defect_present", "width": 1},
+                    {"name": "first_defect_x", "width": 16},
+                    {"name": "first_defect_y", "width": 16},
+                ],
+            }
+        )
+    elif request.task_type in {"pattern_matcher", "stream_trigger_filter"}:
+        common.update(
+            {
+                "inputs": [
+                    {"name": "clk", "width": 1},
+                    {"name": "rst_n", "width": 1},
+                    {"name": "in_valid", "width": 1},
+                    {"name": "in_data", "width": request.width},
+                    {"name": "out_ready", "width": 1},
+                ],
+                "outputs": [
+                    {"name": "in_ready", "width": 1},
+                    {"name": "out_valid", "width": 1},
+                    {"name": "out_match_index", "width": 32},
+                    {"name": "out_match_word", "width": request.width * 4},
                 ],
             }
         )
@@ -9232,11 +2772,13 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                 "inputs": [
                     {"name": "clk", "width": 1},
                     {"name": "rst_n", "width": 1},
-                    {"name": "start", "width": 1},
+                    {"name": "sample_valid", "width": 1},
+                    {"name": "sample", "width": request.width},
+                    {"name": "result_ready", "width": 1},
                 ],
                 "outputs": [
-                    {"name": "busy", "width": 1},
-                    {"name": "done", "width": 1},
+                    {"name": "sample_ready", "width": 1},
+                    {"name": "result_valid", "width": 1},
                     {"name": "result", "width": request.width + 4},
                 ],
             }
@@ -9302,6 +2844,7 @@ def _interface(request: ProjectRequest, platform: PlatformProfile) -> dict[str, 
                     {"name": "rst_n", "width": 1},
                     {"name": "in_valid", "width": 1},
                     {"name": "in_data", "width": request.width},
+                    {"name": "accum_ready", "width": 1},
                 ],
                 "outputs": [
                     {"name": "in_ready", "width": 1},
@@ -9580,11 +3123,49 @@ def _expected_behavior(request: ProjectRequest) -> str:
         "simple_fsm": "FSM transitions from idle to run to done and back to idle",
         "ram_read_write": "data written to an address can be read back from the same address",
         "uart_tx": "start launches an 8-bit LSB-first UART frame with start and stop bits",
+        "uart_rx": "midpoint sampling decodes an 8-bit LSB-first UART frame and reports framing errors",
+        "uart_fifo_loopback": "received UART bytes are buffered in order and transmitted without drops or duplicates",
         "spi_master": "start launches an 8-bit MSB-first SPI transfer and captures MISO data",
         "pwm_controller": "pwm_out is high when the free-running counter is below duty",
-        "fir_filter": "valid input samples produce a three-tap [1, 2, 1] FIR result",
+        "fir_filter": (
+            "signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output "
+            "remains stable under backpressure"
+        ),
+        "matched_filter": (
+            "signed valid-ready input samples are correlated against the four-tap [-1, 2, -3, 4] template, "
+            "and the one-entry correlation output remains stable under backpressure"
+        ),
+        "peak_detector": (
+            "signed valid-ready samples are reduced per in_last frame to the first maximum at or above threshold, "
+            "with a defined empty result and a one-entry backpressure-safe output"
+        ),
+        "pulse_radar_signal": (
+            "accepted in_last markers remain aligned with matched-filter correlations through backpressure, "
+            "and each completed correlation frame reports its first threshold-qualified maximum"
+        ),
+        "sobel_threshold": (
+            "each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; "
+            "the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when "
+            "abs(Gx) is at least abs(Gy), and all output fields remain stable under stall"
+        ),
+        "vision_defect_core": (
+            "each accepted 5x5 row-major 8-bit frame emits exactly 25 thresholded edge bits with zero borders; "
+            "the out_last beat reports whether any thresholded edge occurred and the first such row-major coordinate, "
+            "or zero coordinates when no defect is present, while all output fields remain stable under stall"
+        ),
+        "pattern_matcher": (
+            "each exact four-token sequence emits the accepted-token index of its ending token and the matched word; "
+            "overlaps remain detectable and the one-entry output holds under backpressure"
+        ),
+        "stream_trigger_filter": (
+            "each exact four-token sequence is packetized through trigger_fsm and stream_packer with its accepted-token index "
+            "and matched word stable under valid-ready backpressure"
+        ),
         "streaming_valid_ready": "valid-ready transfers preserve data order across stalls",
-        "matrix_vector_mac": "start computes the fixed four-element dot product and pulses done",
+        "matrix_vector_mac": (
+            "four signed valid-ready input samples are multiplied by fixed [2, -1, 3, 1] coefficients, "
+            "accumulated without truncation, and emitted as one backpressure-safe result"
+        ),
         "alu_control_unit": (
             "valid op/lhs/rhs inputs are decoded, executed by the ALU core, and captured with zero, carry, "
             "and negative flags"
@@ -9595,7 +3176,8 @@ def _expected_behavior(request: ProjectRequest) -> str:
         ),
         "composed_event_counter": "event_valid pulses pass through an event gate and increment the counter core",
         "composed_stream_accumulator": (
-            "valid input samples pass through a skid buffer and accumulate into the running sum"
+            "valid input samples remain stable under accumulator backpressure, pass through a skid buffer, "
+            "and accumulate into the running sum when accepted"
         ),
         "composed_stream_fork": (
             "valid input samples pass through a skid buffer and are duplicated to two output stages"
@@ -9656,12 +3238,30 @@ def _resource_shape(request: ProjectRequest) -> dict[str, int]:
         return {"lut": max(4, request.width), "ff": request.width * 4 + request.width, "bram": 0, "dsp": 0}
     if request.task_type == "uart_tx":
         return {"lut": max(12, request.width * 2), "ff": request.width + 16, "bram": 0, "dsp": 0}
+    if request.task_type == "uart_rx":
+        return {"lut": max(14, request.width * 2), "ff": request.width + 22, "bram": 0, "dsp": 0}
+    if request.task_type == "uart_fifo_loopback":
+        return {"lut": max(28, request.width * 4), "ff": request.width * 5 + 36, "bram": 0, "dsp": 0}
     if request.task_type == "spi_master":
         return {"lut": max(16, request.width * 2), "ff": request.width * 2 + 16, "bram": 0, "dsp": 0}
     if request.task_type == "pwm_controller":
         return {"lut": max(8, request.width), "ff": request.width * 2, "bram": 0, "dsp": 0}
     if request.task_type == "fir_filter":
         return {"lut": max(20, request.width * 3), "ff": request.width * 3, "bram": 0, "dsp": 2}
+    if request.task_type == "matched_filter":
+        return {"lut": max(28, request.width * 4), "ff": request.width * 8 + 4, "bram": 0, "dsp": 4}
+    if request.task_type == "peak_detector":
+        return {"lut": max(16, request.width * 2), "ff": request.width * 4 + 3, "bram": 0, "dsp": 0}
+    if request.task_type == "pulse_radar_signal":
+        return {"lut": max(48, request.width * 6), "ff": request.width * 12 + 8, "bram": 0, "dsp": 4}
+    if request.task_type == "sobel_threshold":
+        return {"lut": 96, "ff": 80, "bram": 0, "dsp": 0}
+    if request.task_type == "vision_defect_core":
+        return {"lut": 124, "ff": 146, "bram": 0, "dsp": 0}
+    if request.task_type == "pattern_matcher":
+        return {"lut": max(24, request.width * 3), "ff": request.width * 7 + 36, "bram": 0, "dsp": 0}
+    if request.task_type == "stream_trigger_filter":
+        return {"lut": max(36, request.width * 5), "ff": request.width * 15 + 108, "bram": 0, "dsp": 0}
     if request.task_type == "streaming_valid_ready":
         return {"lut": max(10, request.width), "ff": request.width * 2 + 4, "bram": 0, "dsp": 0}
     if request.task_type == "matrix_vector_mac":

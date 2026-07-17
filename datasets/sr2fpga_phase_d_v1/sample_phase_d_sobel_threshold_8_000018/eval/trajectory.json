@@ -1,0 +1,1775 @@
+{
+  "sample_id": "sample_phase_d_sobel_threshold_8_000018",
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "stage": "his_validation",
+      "status": "failed",
+      "tool": "system_his_h_stage_validator",
+      "exit_code": 1,
+      "command": [
+        "system_his_h_stage_validator"
+      ],
+      "failure_type": "his_validation_failed",
+      "diagnosis_path": "attempts/attempt_000/diagnosis.json"
+    }
+  ],
+  "measurement": {
+    "initial": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "final": {
+      "measurement_point": "a_first_attempt_no_tools",
+      "attempt_id": 0,
+      "pass_level": "H2_FAIL",
+      "highest_level": "H2_FAIL",
+      "failure_type": "his_validation_failed",
+      "failure_class": "his_validation_failed",
+      "automatic_pass_credit": true
+    },
+    "repair_attempts_used": 0,
+    "repair_success": false,
+    "repair_eligible": false,
+    "repair_skip_reason": "h_stage_failed",
+    "regressions": [],
+    "scoreable": true,
+    "infrastructure_status": "scoreable",
+    "l4_open": {
+      "status": "not_run",
+      "skip_reason": "disabled_by_config"
+    }
+  },
+  "his_validation": {
+    "his_source_used_for_generation": "generated",
+    "h0": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h1": {
+      "status": "pass",
+      "diagnostics": []
+    },
+    "h2": {
+      "status": "fail",
+      "diagnostics": [
+        "H2 lowerability: components[0] has unsupported semantic_kind 'control'",
+        "H2 lowerability: components[2] has unsupported semantic_kind 'datapath'",
+        "H2 lowerability: components[3] has unsupported semantic_kind 'datapath'",
+        "H2 lowerability: components[4] has unsupported semantic_kind 'datapath'",
+        "H2 lowerability: data_flow[1] has unsupported protocol 'registered_enable'",
+        "H2 lowerability: data_flow[4] has unsupported protocol 'sampled_sideband'",
+        "H2 lowerability: data_flow[6] has unsupported protocol 'pipeline_sideband'",
+        "H2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'reset_defaults', 'description': 'Apply synchronous active-low reset and verify valid outputs deassert, counters return to zero, and stream_fsm returns to IDLE.', 'pass_condition': 'No output transfer occurs during reset and the first post-reset accepted pixel starts at raster coordinate 0,0.'}'",
+        "H2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'constant_image_no_edges', 'description': 'Drive a frame where every input pixel has the same 8-bit value.', 'pass_condition': 'All non-boundary output pixels produce EDGE_LOW_VALUE and out_edge is 0.'}'",
+        "H2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'vertical_step_edge', 'description': 'Drive an image with a vertical intensity step crossing the threshold.', 'pass_condition': 'Output edge flags are asserted at the expected step columns after pipeline latency.'}'",
+        "H2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'threshold_sweep', 'description': 'Run identical input patterns with low, medium, and high threshold values.', 'pass_condition': 'Edge assertion count monotonically decreases as threshold increases.'}'",
+        "H2 lowerability: verification.scenarios[4] unsupported scenario '{'name': 'backpressure', 'description': 'Randomly deassert out_ready while maintaining valid input traffic.', 'pass_condition': 'Output ordering, out_last alignment, and edge values are preserved with no dropped or duplicated accepted samples.'}'",
+        "H2 lowerability: verification.scenarios[5] unsupported scenario '{'name': 'frame_last_alignment', 'description': 'Assert in_last on the final pixel of a frame.', 'pass_condition': 'out_last is asserted exactly once with the corresponding final output sample after the declared pipeline latency.'}'"
+      ]
+    },
+    "h3": {
+      "status": "not_run",
+      "diagnostics": []
+    },
+    "passed": false
+  },
+  "oracle_profile": {
+    "kind": "python_reference",
+    "status": "not_run",
+    "family_id": "sobel_threshold",
+    "skip_reason": "unsupported_family",
+    "scenario_counts": {},
+    "class_status": {},
+    "hidden_vectors_exported": false
+  },
+  "req_his_fidelity": {
+    "interface_extraction": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "clock_reset_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "parameter_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "behavior_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "verification_intent_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    },
+    "constraint_fidelity": {
+      "status": "not_applicable",
+      "errors": []
+    }
+  },
+  "oracle_his": null,
+  "generated_his": {
+    "schema_version": "system-his-v1.2",
+    "intent": {
+      "user_prompt": "Generate an 8-bit sobel_threshold FPGA RTL project.",
+      "design_goal": "Implement a parameterized 8-bit streaming Sobel edge detector followed by threshold comparison for a generic Verilog FPGA target at 100 MHz.",
+      "assumptions": [
+        "Input pixels are unsigned 8-bit grayscale samples delivered in raster scan order.",
+        "The design uses a valid/ready streaming protocol on both input and output.",
+        "IMG_WIDTH and IMG_HEIGHT are compile-time parameters used for line buffering and frame boundary handling.",
+        "Boundary pixels without a complete 3x3 neighborhood produce a zero edge result.",
+        "The threshold input is sampled with each accepted output decision and compared against the Sobel magnitude approximation.",
+        "Sobel magnitude is computed as abs(Gx) + abs(Gy) and saturated before threshold comparison.",
+        "Reset is synchronous active-low as required by the target contract."
+      ]
+    },
+    "top": {
+      "name": "top",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8,
+          "intent": "Pixel and threshold width in bits."
+        },
+        {
+          "name": "IMG_WIDTH",
+          "type": "integer",
+          "default": 640,
+          "intent": "Number of pixels per image row."
+        },
+        {
+          "name": "IMG_HEIGHT",
+          "type": "integer",
+          "default": 480,
+          "intent": "Number of rows per image frame."
+        },
+        {
+          "name": "EDGE_HIGH_VALUE",
+          "type": "integer",
+          "default": 255,
+          "intent": "Output value used when Sobel magnitude is greater than or equal to threshold."
+        },
+        {
+          "name": "EDGE_LOW_VALUE",
+          "type": "integer",
+          "default": 0,
+          "intent": "Output value used when Sobel magnitude is below threshold or at image boundary."
+        }
+      ],
+      "clocks": [
+        {
+          "name": "clk",
+          "frequency_hz": 100000000,
+          "target_fmax_mhz": 100
+        }
+      ],
+      "resets": [
+        {
+          "name": "rst_n",
+          "polarity": "active_low",
+          "kind": "sync"
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "clock"
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "reset"
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "stream_valid"
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "stream_ready"
+        },
+        {
+          "name": "in_pixel",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "stream_payload"
+        },
+        {
+          "name": "in_last",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "stream_frame_last"
+        },
+        {
+          "name": "threshold",
+          "direction": "input",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "configuration_data"
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "stream_valid"
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "stream_ready"
+        },
+        {
+          "name": "out_pixel",
+          "direction": "output",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "role": "stream_payload"
+        },
+        {
+          "name": "out_edge",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "stream_sideband"
+        },
+        {
+          "name": "out_last",
+          "direction": "output",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "role": "stream_frame_last"
+        }
+      ],
+      "interfaces": [
+        {
+          "name": "pixel_input_stream",
+          "type": "valid_ready_stream",
+          "clock": "clk",
+          "reset": "rst_n",
+          "signals": {
+            "valid": "in_valid",
+            "ready": "in_ready",
+            "data": "in_pixel",
+            "last": "in_last"
+          }
+        },
+        {
+          "name": "edge_output_stream",
+          "type": "valid_ready_stream",
+          "clock": "clk",
+          "reset": "rst_n",
+          "signals": {
+            "valid": "out_valid",
+            "ready": "out_ready",
+            "data": "out_pixel",
+            "edge": "out_edge",
+            "last": "out_last"
+          }
+        }
+      ]
+    },
+    "state": {
+      "registers": [
+        {
+          "name": "win_pixel_00",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Top-left pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_01",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Top-center pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_02",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Top-right pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_10",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Middle-left pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_11",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Center pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_12",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Middle-right pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_20",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Bottom-left pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_21",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Bottom-center pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "win_pixel_22",
+          "owner": "u_window",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "reset_value": 0,
+          "intent": "Bottom-right pixel of the active 3x3 Sobel window."
+        },
+        {
+          "name": "pipe_valid_window",
+          "owner": "u_window",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "reset_value": 0,
+          "intent": "Marks a valid generated 3x3 window."
+        },
+        {
+          "name": "pipe_valid_gradient",
+          "owner": "u_sobel",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "reset_value": 0,
+          "intent": "Marks a valid Sobel magnitude result."
+        },
+        {
+          "name": "pipe_valid_threshold",
+          "owner": "u_threshold",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "reset_value": 0,
+          "intent": "Marks a valid thresholded output result."
+        },
+        {
+          "name": "boundary_flag_reg",
+          "owner": "u_ctrl",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "reset_value": 1,
+          "intent": "Indicates that the current pixel is on a frame boundary and must be forced to the low edge value."
+        },
+        {
+          "name": "last_pipeline_reg",
+          "owner": "u_ctrl",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          },
+          "reset_value": 0,
+          "intent": "Carries frame-last sideband alignment through the processing pipeline."
+        }
+      ],
+      "counters": [
+        {
+          "name": "pix_x_count",
+          "owner": "u_ctrl",
+          "width": {
+            "expr": "$clog2(IMG_WIDTH)",
+            "resolved": 10
+          },
+          "range": {
+            "min": 0,
+            "max_expr": "IMG_WIDTH-1",
+            "max_resolved": 639
+          },
+          "reset_value": 0,
+          "intent": "Current raster column index."
+        },
+        {
+          "name": "pix_y_count",
+          "owner": "u_ctrl",
+          "width": {
+            "expr": "$clog2(IMG_HEIGHT)",
+            "resolved": 9
+          },
+          "range": {
+            "min": 0,
+            "max_expr": "IMG_HEIGHT-1",
+            "max_resolved": 479
+          },
+          "reset_value": 0,
+          "intent": "Current raster row index."
+        }
+      ],
+      "fsms": [
+        {
+          "name": "stream_fsm",
+          "owner": "u_ctrl",
+          "states": [
+            "IDLE",
+            "ACTIVE",
+            "FLUSH"
+          ],
+          "initial": "IDLE",
+          "reset_state": "IDLE",
+          "intent": "Tracks frame acceptance and final pipeline drain after the last input sample."
+        }
+      ],
+      "buffers": [
+        {
+          "name": "line_window_buffer",
+          "owner": "u_line_buffer",
+          "entries_expr": "2*IMG_WIDTH",
+          "entries_resolved": 1280,
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "intent": "Two-row history buffer required to construct 3x3 neighborhoods from raster input."
+        }
+      ],
+      "memories": [
+        {
+          "name": "lb_row0_mem",
+          "owner": "u_line_buffer",
+          "depth_expr": "IMG_WIDTH",
+          "depth_resolved": 640,
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "intent": "First stored previous image row."
+        },
+        {
+          "name": "lb_row1_mem",
+          "owner": "u_line_buffer",
+          "depth_expr": "IMG_WIDTH",
+          "depth_resolved": 640,
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          },
+          "intent": "Second stored previous image row."
+        }
+      ]
+    },
+    "components": [
+      {
+        "name": "stream_control",
+        "semantic_kind": "control",
+        "source": "rtl/stream_control.v",
+        "parameters": [
+          {
+            "name": "IMG_WIDTH",
+            "type": "integer",
+            "default": 640
+          },
+          {
+            "name": "IMG_HEIGHT",
+            "type": "integer",
+            "default": 480
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "in_valid",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "in_ready",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "in_last",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "advance",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "boundary",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "last_aligned",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          }
+        ],
+        "intent": "Generate raster position, boundary indication, frame control, and pipeline advance control."
+      },
+      {
+        "name": "line_buffer",
+        "semantic_kind": "buffer",
+        "source": "rtl/line_buffer.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          },
+          {
+            "name": "IMG_WIDTH",
+            "type": "integer",
+            "default": 640
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "advance",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "pixel_in",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "row0_pixel",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "row1_pixel",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "row2_pixel",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          }
+        ],
+        "intent": "Maintain two prior rows and expose vertically aligned pixels for 3x3 window construction."
+      },
+      {
+        "name": "window_3x3",
+        "semantic_kind": "datapath",
+        "source": "rtl/window_3x3.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "advance",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "row0_pixel",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "row1_pixel",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "row2_pixel",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "window_valid",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "window_pixels",
+            "direction": "output",
+            "width": {
+              "expr": "9*DATA_WIDTH",
+              "resolved": 72
+            }
+          }
+        ],
+        "intent": "Shift vertically aligned line-buffer outputs into a complete 3x3 pixel neighborhood."
+      },
+      {
+        "name": "sobel_core",
+        "semantic_kind": "datapath",
+        "source": "rtl/sobel_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "advance",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "window_valid",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "window_pixels",
+            "direction": "input",
+            "width": {
+              "expr": "9*DATA_WIDTH",
+              "resolved": 72
+            }
+          },
+          {
+            "name": "magnitude_valid",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "magnitude",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH+3",
+              "resolved": 11
+            }
+          }
+        ],
+        "intent": "Compute Sobel horizontal and vertical gradients and produce an unsigned magnitude approximation."
+      },
+      {
+        "name": "threshold_core",
+        "semantic_kind": "datapath",
+        "source": "rtl/threshold_core.v",
+        "parameters": [
+          {
+            "name": "DATA_WIDTH",
+            "type": "integer",
+            "default": 8
+          },
+          {
+            "name": "EDGE_HIGH_VALUE",
+            "type": "integer",
+            "default": 255
+          },
+          {
+            "name": "EDGE_LOW_VALUE",
+            "type": "integer",
+            "default": 0
+          }
+        ],
+        "ports": [
+          {
+            "name": "clk",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "rst_n",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "advance",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "magnitude_valid",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "magnitude",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH+3",
+              "resolved": 11
+            }
+          },
+          {
+            "name": "threshold",
+            "direction": "input",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "boundary",
+            "direction": "input",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "edge_valid",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          },
+          {
+            "name": "edge_pixel",
+            "direction": "output",
+            "width": {
+              "expr": "DATA_WIDTH",
+              "resolved": 8
+            }
+          },
+          {
+            "name": "edge_flag",
+            "direction": "output",
+            "width": {
+              "expr": "1",
+              "resolved": 1
+            }
+          }
+        ],
+        "intent": "Compare Sobel magnitude to threshold and emit binary edge indication plus 8-bit output pixel."
+      }
+    ],
+    "instances": [
+      {
+        "name": "u_ctrl",
+        "component": "stream_control",
+        "parameter_values": {
+          "IMG_WIDTH": 640,
+          "IMG_HEIGHT": 480
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "pix_x_count",
+          "pix_y_count",
+          "stream_fsm",
+          "boundary_flag_reg",
+          "last_pipeline_reg"
+        ]
+      },
+      {
+        "name": "u_line_buffer",
+        "component": "line_buffer",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "IMG_WIDTH": 640
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "line_window_buffer",
+          "lb_row0_mem",
+          "lb_row1_mem"
+        ]
+      },
+      {
+        "name": "u_window",
+        "component": "window_3x3",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "win_pixel_00",
+          "win_pixel_01",
+          "win_pixel_02",
+          "win_pixel_10",
+          "win_pixel_11",
+          "win_pixel_12",
+          "win_pixel_20",
+          "win_pixel_21",
+          "win_pixel_22",
+          "pipe_valid_window"
+        ]
+      },
+      {
+        "name": "u_sobel",
+        "component": "sobel_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "pipe_valid_gradient"
+        ]
+      },
+      {
+        "name": "u_threshold",
+        "component": "threshold_core",
+        "parameter_values": {
+          "DATA_WIDTH": 8,
+          "EDGE_HIGH_VALUE": 255,
+          "EDGE_LOW_VALUE": 0
+        },
+        "clock": "clk",
+        "reset": "rst_n",
+        "owns_state": [
+          "pipe_valid_threshold"
+        ]
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "input_pixel_stream",
+        "path": [
+          "top.in_pixel",
+          "u_line_buffer.pixel_in"
+        ],
+        "payload": {
+          "name": "input_pixel",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1,
+          "throughput": "one input pixel accepted per cycle when top.in_valid and top.in_ready are asserted"
+        }
+      },
+      {
+        "name": "line_aligned_stream",
+        "path": [
+          "u_line_buffer.row0_pixel",
+          "u_line_buffer.row1_pixel",
+          "u_line_buffer.row2_pixel",
+          "u_window.row0_pixel",
+          "u_window.row1_pixel",
+          "u_window.row2_pixel"
+        ],
+        "payload": {
+          "name": "aligned_column_pixels",
+          "width": {
+            "expr": "3*DATA_WIDTH",
+            "resolved": 24
+          }
+        },
+        "protocol": "registered_enable",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one vertically aligned pixel column per cycle when advance is asserted"
+        }
+      },
+      {
+        "name": "window_stream",
+        "path": [
+          "u_window.window_pixels",
+          "u_sobel.window_pixels"
+        ],
+        "payload": {
+          "name": "sobel_window",
+          "width": {
+            "expr": "9*DATA_WIDTH",
+            "resolved": 72
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one 3x3 window per cycle after line-buffer warmup when downstream is ready"
+        }
+      },
+      {
+        "name": "gradient_stream",
+        "path": [
+          "u_sobel.magnitude",
+          "u_threshold.magnitude"
+        ],
+        "payload": {
+          "name": "sobel_magnitude",
+          "width": {
+            "expr": "DATA_WIDTH+3",
+            "resolved": 11
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one Sobel magnitude per cycle when pipeline advances"
+        }
+      },
+      {
+        "name": "threshold_config_flow",
+        "path": [
+          "top.threshold",
+          "u_threshold.threshold"
+        ],
+        "payload": {
+          "name": "threshold_value",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        "protocol": "sampled_sideband",
+        "timing": {
+          "latency_cycles": 0,
+          "initiation_interval": 1,
+          "throughput": "threshold value sampled for each threshold decision"
+        }
+      },
+      {
+        "name": "output_edge_stream",
+        "path": [
+          "u_threshold.edge_pixel",
+          "u_threshold.edge_flag",
+          "top.out_pixel",
+          "top.out_edge"
+        ],
+        "payload": {
+          "name": "thresholded_edge",
+          "width": {
+            "expr": "DATA_WIDTH+1",
+            "resolved": 9
+          }
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "latency_cycles": 1,
+          "initiation_interval": 1,
+          "throughput": "one output pixel per cycle when top.out_ready is asserted"
+        }
+      },
+      {
+        "name": "last_sideband_flow",
+        "path": [
+          "top.in_last",
+          "u_ctrl.in_last",
+          "u_ctrl.last_aligned",
+          "top.out_last"
+        ],
+        "payload": {
+          "name": "frame_last",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        "protocol": "pipeline_sideband",
+        "timing": {
+          "latency_cycles": 4,
+          "initiation_interval": 1,
+          "throughput": "one last sideband marker aligned with the corresponding output sample"
+        }
+      }
+    ],
+    "control_flow": [
+      {
+        "name": "sync_reset_clears_control_state",
+        "kind": "reset_rule",
+        "when": {
+          "signal": "top.rst_n",
+          "op": "==",
+          "value": 0
+        },
+        "effect": {
+          "action": "clear",
+          "target": "pix_x_count"
+        },
+        "related_state": [
+          "pix_x_count",
+          "pix_y_count",
+          "stream_fsm",
+          "boundary_flag_reg",
+          "last_pipeline_reg"
+        ],
+        "related_flows": []
+      },
+      {
+        "name": "input_acceptance_advances_pipeline",
+        "kind": "handshake_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.in_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.in_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "advance",
+          "target": "input_pixel_stream"
+        },
+        "related_state": [
+          "pix_x_count",
+          "pix_y_count"
+        ],
+        "related_flows": [
+          "input_pixel_stream",
+          "line_aligned_stream",
+          "window_stream"
+        ]
+      },
+      {
+        "name": "output_backpressure_stalls_pipeline",
+        "kind": "stall_rule",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.out_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.out_ready",
+              "op": "==",
+              "value": 0
+            }
+          ]
+        },
+        "effect": {
+          "action": "hold",
+          "target": "output_edge_stream"
+        },
+        "related_state": [
+          "pipe_valid_window",
+          "pipe_valid_gradient",
+          "pipe_valid_threshold",
+          "last_pipeline_reg"
+        ],
+        "related_flows": [
+          "window_stream",
+          "gradient_stream",
+          "output_edge_stream",
+          "last_sideband_flow"
+        ]
+      },
+      {
+        "name": "x_counter_increments_on_accepted_pixel",
+        "kind": "counter_update",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.in_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.in_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "increment_or_wrap",
+          "target": "pix_x_count"
+        },
+        "related_state": [
+          "pix_x_count",
+          "pix_y_count"
+        ],
+        "related_flows": [
+          "input_pixel_stream"
+        ]
+      },
+      {
+        "name": "y_counter_increments_at_row_end",
+        "kind": "counter_update",
+        "when": {
+          "all_of": [
+            {
+              "signal": "pix_x_count",
+              "op": "==",
+              "value": 639
+            },
+            {
+              "signal": "top.in_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.in_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "increment_or_wrap",
+          "target": "pix_y_count"
+        },
+        "related_state": [
+          "pix_x_count",
+          "pix_y_count"
+        ],
+        "related_flows": [
+          "input_pixel_stream"
+        ]
+      },
+      {
+        "name": "boundary_flag_tracks_frame_edges",
+        "kind": "enable_rule",
+        "when": {
+          "any_of": [
+            {
+              "signal": "pix_x_count",
+              "op": "==",
+              "value": 0
+            },
+            {
+              "signal": "pix_y_count",
+              "op": "==",
+              "value": 0
+            },
+            {
+              "signal": "pix_x_count",
+              "op": "==",
+              "value": 639
+            },
+            {
+              "signal": "pix_y_count",
+              "op": "==",
+              "value": 479
+            }
+          ]
+        },
+        "effect": {
+          "action": "assert",
+          "target": "boundary_flag_reg"
+        },
+        "related_state": [
+          "boundary_flag_reg",
+          "pix_x_count",
+          "pix_y_count"
+        ],
+        "related_flows": [
+          "output_edge_stream"
+        ]
+      },
+      {
+        "name": "threshold_forces_low_on_boundary",
+        "kind": "enable_rule",
+        "when": {
+          "signal": "boundary_flag_reg",
+          "op": "==",
+          "value": 1
+        },
+        "effect": {
+          "action": "force_low_value",
+          "target": "output_edge_stream"
+        },
+        "related_state": [
+          "boundary_flag_reg"
+        ],
+        "related_flows": [
+          "output_edge_stream"
+        ]
+      },
+      {
+        "name": "fsm_idle_to_active",
+        "kind": "fsm_transition",
+        "fsm": "stream_fsm",
+        "from": "IDLE",
+        "to": "ACTIVE",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.in_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.in_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "transition",
+          "target": "stream_fsm"
+        },
+        "related_state": [
+          "stream_fsm"
+        ],
+        "related_flows": [
+          "input_pixel_stream"
+        ]
+      },
+      {
+        "name": "fsm_active_to_flush",
+        "kind": "fsm_transition",
+        "fsm": "stream_fsm",
+        "from": "ACTIVE",
+        "to": "FLUSH",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.in_last",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.in_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.in_ready",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "transition",
+          "target": "stream_fsm"
+        },
+        "related_state": [
+          "stream_fsm",
+          "last_pipeline_reg"
+        ],
+        "related_flows": [
+          "input_pixel_stream",
+          "last_sideband_flow"
+        ]
+      },
+      {
+        "name": "fsm_flush_to_idle",
+        "kind": "fsm_transition",
+        "fsm": "stream_fsm",
+        "from": "FLUSH",
+        "to": "IDLE",
+        "when": {
+          "all_of": [
+            {
+              "signal": "top.out_valid",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.out_ready",
+              "op": "==",
+              "value": 1
+            },
+            {
+              "signal": "top.out_last",
+              "op": "==",
+              "value": 1
+            }
+          ]
+        },
+        "effect": {
+          "action": "transition",
+          "target": "stream_fsm"
+        },
+        "related_state": [
+          "stream_fsm"
+        ],
+        "related_flows": [
+          "output_edge_stream",
+          "last_sideband_flow"
+        ]
+      }
+    ],
+    "timing": {
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100,
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "pipeline_latency_cycles": 4,
+      "clocking_assumptions": [
+        "All sequential logic is clocked by top.clk.",
+        "The synchronous active-low reset rst_n is sampled on the rising edge of clk.",
+        "No cross-clock-domain paths exist."
+      ]
+    },
+    "resources": {
+      "optimization_goal": "area_first",
+      "expected": {
+        "lut": "low",
+        "ff": "low",
+        "bram": 0,
+        "dsp": 0
+      },
+      "notes": [
+        "Line buffers may infer distributed RAM or flip-flop storage for small IMG_WIDTH values and block RAM for larger target-specific mappings.",
+        "Sobel arithmetic is add, subtract, absolute value, compare, and saturate logic with no required DSP blocks."
+      ]
+    },
+    "verification": {
+      "testbench": "sim/tb_top.v",
+      "scenarios": [
+        {
+          "name": "reset_defaults",
+          "description": "Apply synchronous active-low reset and verify valid outputs deassert, counters return to zero, and stream_fsm returns to IDLE.",
+          "pass_condition": "No output transfer occurs during reset and the first post-reset accepted pixel starts at raster coordinate 0,0."
+        },
+        {
+          "name": "constant_image_no_edges",
+          "description": "Drive a frame where every input pixel has the same 8-bit value.",
+          "pass_condition": "All non-boundary output pixels produce EDGE_LOW_VALUE and out_edge is 0."
+        },
+        {
+          "name": "vertical_step_edge",
+          "description": "Drive an image with a vertical intensity step crossing the threshold.",
+          "pass_condition": "Output edge flags are asserted at the expected step columns after pipeline latency."
+        },
+        {
+          "name": "threshold_sweep",
+          "description": "Run identical input patterns with low, medium, and high threshold values.",
+          "pass_condition": "Edge assertion count monotonically decreases as threshold increases."
+        },
+        {
+          "name": "backpressure",
+          "description": "Randomly deassert out_ready while maintaining valid input traffic.",
+          "pass_condition": "Output ordering, out_last alignment, and edge values are preserved with no dropped or duplicated accepted samples."
+        },
+        {
+          "name": "frame_last_alignment",
+          "description": "Assert in_last on the final pixel of a frame.",
+          "pass_condition": "out_last is asserted exactly once with the corresponding final output sample after the declared pipeline latency."
+        }
+      ],
+      "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+    },
+    "artifacts": {
+      "top_module": "top",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/stream_control.v",
+        "rtl/line_buffer.v",
+        "rtl/window_3x3.v",
+        "rtl/sobel_core.v",
+        "rtl/threshold_core.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json"
+    }
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "standalone_pass_credit": false,
+      "source_episode_id": "sample_phase_d_sobel_threshold_8_000018"
+    }
+  },
+  "project": {
+    "files": {
+      "constraints/timing.sdc": {
+        "origin": "deterministic",
+        "bytes": 50,
+        "behavior_holes": 0
+      },
+      "manifest.json": {
+        "origin": "deterministic",
+        "bytes": 605,
+        "behavior_holes": 0
+      },
+      "reports/predicted_qor.json": {
+        "origin": "model_generated",
+        "bytes": 88,
+        "behavior_holes": 0
+      },
+      "rtl/line_buffer.v": {
+        "origin": "model_generated",
+        "bytes": 1719,
+        "behavior_holes": 0
+      },
+      "rtl/sobel_core.v": {
+        "origin": "model_generated",
+        "bytes": 3035,
+        "behavior_holes": 0
+      },
+      "rtl/stream_control.v": {
+        "origin": "model_generated",
+        "bytes": 2890,
+        "behavior_holes": 0
+      },
+      "rtl/threshold_core.v": {
+        "origin": "model_generated",
+        "bytes": 1705,
+        "behavior_holes": 0
+      },
+      "rtl/top.v": {
+        "origin": "model_generated",
+        "bytes": 3857,
+        "behavior_holes": 0
+      },
+      "rtl/window_3x3.v": {
+        "origin": "model_generated",
+        "bytes": 2191,
+        "behavior_holes": 0
+      },
+      "sim/tb_top.v": {
+        "origin": "model_generated",
+        "bytes": 16657,
+        "behavior_holes": 0
+      },
+      "system_his.json": {
+        "origin": "deterministic",
+        "bytes": 35221,
+        "behavior_holes": 0
+      }
+    },
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/line_buffer.v",
+      "rtl/sobel_core.v",
+      "rtl/stream_control.v",
+      "rtl/threshold_core.v",
+      "rtl/top.v",
+      "rtl/window_3x3.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.472551,
+    "behavior_hole_count": 0
+  },
+  "verification": {
+    "l0": {
+      "status": "fail",
+      "errors": []
+    },
+    "l1": {
+      "status": "fail",
+      "warnings": [],
+      "errors": []
+    },
+    "l2_core": {
+      "status": "fail",
+      "public": {
+        "status": "fail",
+        "mismatch_detail": []
+      },
+      "hidden": {
+        "status": "fail"
+      },
+      "stress": {
+        "status": "fail"
+      },
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      }
+    },
+    "l2s": {
+      "status": "not_run",
+      "divergences": []
+    },
+    "l3": {
+      "status": "fail",
+      "lut": 0,
+      "ff": 0,
+      "bram": 0,
+      "dsp": 0,
+      "cells": null,
+      "warnings": [],
+      "bram_miss": false
+    },
+    "l4_open": {
+      "tool": "openxc7_nextpnr",
+      "board_profile": "ac820_zynq",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "critical_warnings": [],
+      "runtime_sec": null,
+      "report_paths": [],
+      "failure_family": null
+    },
+    "l4_commercial": {
+      "tool": "vivado",
+      "constraint_scope": "logical_only",
+      "board_constraints_applied": false,
+      "official_board_ready": false,
+      "status": "not_run",
+      "skip_reason": "disabled_by_config",
+      "wns_ns": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "ff": null,
+      "bram": null,
+      "dsp": null,
+      "drc_warnings": [],
+      "expected_board_drc_exceptions": [],
+      "invalidating_critical_warnings": [],
+      "methodology_warnings": [],
+      "runtime_sec": null,
+      "report_paths": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l5": {
+      "status": "not_run",
+      "log_path": null
+    }
+  },
+  "data_release": {
+    "requirement": "open_public",
+    "oracle_his": "open_public",
+    "generated_his": "open_public",
+    "his_validation": "open_public",
+    "req_his_fidelity": "open_public",
+    "generated_project": "open_public",
+    "open_tool_labels": "open_public",
+    "l4_open": "open_public",
+    "l4_commercial": "restricted_reference",
+    "vivado_structured_metadata": "restricted_reference",
+    "vivado_raw_artifacts": "internal_only"
+  }
+}

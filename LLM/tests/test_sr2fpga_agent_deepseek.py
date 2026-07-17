@@ -1,10 +1,12 @@
 import json
 import http.client
+import importlib
 import os
 import unittest
 import urllib.error
 from unittest import mock
 
+from LLM.src.sr2fpga_agent import providers
 from LLM.src.sr2fpga_agent.deepseek import (
     AnthropicCompatibleClient,
     AnthropicCompatibleConfig,
@@ -32,6 +34,24 @@ from LLM.src.sr2fpga_agent.project_generator import ProjectGenerator
 
 
 class DeepSeekProviderTest(unittest.TestCase):
+    def test_split_modules_own_legacy_deepseek_exports(self) -> None:
+        deepseek = importlib.import_module("LLM.src.sr2fpga_agent.deepseek")
+        providers = importlib.import_module("LLM.src.sr2fpga_agent.providers")
+        parsers = importlib.import_module("LLM.src.sr2fpga_agent.parsers")
+        repair = importlib.import_module("LLM.src.sr2fpga_agent.repair")
+        generation = importlib.import_module("LLM.src.sr2fpga_agent.generation")
+
+        self.assertIs(deepseek.OpenAICompatibleClient, providers.OpenAICompatibleClient)
+        self.assertIs(deepseek.AnthropicCompatibleClient, providers.AnthropicCompatibleClient)
+        self.assertIs(deepseek.parse_project_files, parsers.parse_project_files)
+        self.assertIs(deepseek.diff_projects, parsers.diff_projects)
+        self.assertIs(deepseek.DeepSeekRepairer, repair.DeepSeekRepairer)
+        self.assertIs(deepseek.DeepSeekProjectGenerator, generation.DeepSeekProjectGenerator)
+        self.assertIs(deepseek.DeepSeekSystemHisGenerator, generation.DeepSeekSystemHisGenerator)
+        self.assertIs(deepseek.DeepSeekHisProjectGenerator, generation.DeepSeekHisProjectGenerator)
+        self.assertIs(deepseek.DeepSeekTwoStageProjectGenerator, generation.DeepSeekTwoStageProjectGenerator)
+        self.assertIs(deepseek.DeepSeekOracleHisProjectGenerator, generation.DeepSeekOracleHisProjectGenerator)
+
     def test_anthropic_compatible_client_uses_official_messages_headers(self) -> None:
         response = FakeHTTPResponse(
             json.dumps({"content": [{"type": "text", "text": "{\"ok\": true}"}]}).encode("utf-8")
@@ -64,6 +84,82 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(payload["system"], "Return strict JSON.")
         self.assertEqual(payload["messages"], [{"role": "user", "content": "Return ok."}])
         self.assertEqual(content, '{"ok": true}')
+
+    def test_anthropic_stream_reader_collects_text_deltas(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b"event: message_start\n",
+                b'data: {"type":"message_start","message":{"content":[]}}\n',
+                b"\n",
+                b"event: content_block_delta\n",
+                b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"ok\\":"}}\n',
+                b"\n",
+                b"event: content_block_delta\n",
+                b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"true}"}}\n',
+                b"\n",
+                b"event: message_stop\n",
+                b'data: {"type":"message_stop"}\n',
+                b"\n",
+            ]
+        )
+
+        self.assertEqual(providers._read_anthropic_streaming_text(response, 5), '{"ok":true}')
+
+    def test_anthropic_stream_reader_surfaces_error_event(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b"event: error\n",
+                b'data: {"type":"error","error":{"type":"overloaded_error","message":"busy"}}\n',
+                b"\n",
+            ]
+        )
+
+        with self.assertRaisesRegex(RuntimeError, "overloaded_error: busy"):
+            providers._read_anthropic_streaming_text(response, 5)
+
+    def test_anthropic_stream_chat_retries_and_sends_stream_true(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b"event: content_block_delta\n",
+                b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"ok\\":true}"}}\n',
+                b"\n",
+                b"event: message_stop\n",
+                b'data: {"type":"message_stop"}\n',
+                b"\n",
+            ]
+        )
+        transient_error = urllib.error.HTTPError(
+            url="https://w.ciykj.cn/v1/messages",
+            code=502,
+            msg="Bad Gateway",
+            hdrs=None,
+            fp=FakeHTTPResponse(b'{"error":"upstream"}'),
+        )
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key="fake-key",
+                model="claude-opus-4-8",
+                base_url="https://w.ciykj.cn/v1",
+                timeout_seconds=7,
+                transport_attempts=2,
+                retry_backoff_seconds=0,
+            )
+        )
+
+        with (
+            mock.patch("LLM.src.sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "LLM.src.sr2fpga_agent.deepseek.urllib.request.urlopen",
+                side_effect=[transient_error, response],
+            ) as urlopen,
+        ):
+            content = client.stream_chat([{"role": "user", "content": "Return JSON."}])
+
+        self.assertEqual(content, '{"ok":true}')
+        self.assertEqual(urlopen.call_count, 2)
+        for call in urlopen.call_args_list:
+            payload = json.loads(call.args[0].data.decode("utf-8"))
+            self.assertIs(payload["stream"], True)
 
     def test_openai_compatible_client_passes_ssl_context_to_urlopen(self) -> None:
         ssl_context = object()
@@ -416,6 +512,42 @@ class DeepSeekProviderTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "missing required files"):
             parse_project_files(json.dumps({"files": {"rtl/top.v": "module top; endmodule\n"}}))
 
+    def test_parse_project_files_rejects_unsafe_relative_path(self) -> None:
+        content = json.dumps(
+            {
+                "files": {
+                    "system_his.json": "{}\n",
+                    "manifest.json": _valid_manifest(),
+                    "rtl/top.v": "module top; endmodule\n",
+                    "../escape.v": "module escape; endmodule\n",
+                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                    "sim/tb_top.v": "module tb_top; endmodule\n",
+                    "reports/predicted_qor.json": "{}\n",
+                }
+            }
+        )
+
+        with self.assertRaisesRegex(ValueError, "unsafe project file path"):
+            parse_project_files(content)
+
+    def test_parse_project_files_rejects_windows_separator_path(self) -> None:
+        content = json.dumps(
+            {
+                "files": {
+                    "system_his.json": "{}\n",
+                    "manifest.json": _valid_manifest(),
+                    "rtl/top.v": "module top; endmodule\n",
+                    "rtl\\extra.v": "module extra; endmodule\n",
+                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
+                    "sim/tb_top.v": "module tb_top; endmodule\n",
+                    "reports/predicted_qor.json": "{}\n",
+                }
+            }
+        )
+
+        with self.assertRaisesRegex(ValueError, "unsafe project file path"):
+            parse_project_files(content)
+
     def test_parse_project_files_normalizes_trailing_newlines(self) -> None:
         content = json.dumps(
             {
@@ -555,8 +687,8 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 1)
-        self.assertEqual(client.stream_call_count, 0)
-        self.assertEqual(client.chat_call_count, 1)
+        self.assertEqual(client.stream_call_count, 1)
+        self.assertEqual(client.chat_call_count, 0)
         self.assertIn("生成一个 8-bit 双路数据流合并并累加", client.messages[1]["content"])
         self.assertIn("Return only System-HIS JSON", client.messages[1]["content"])
         self.assertIn("Do not generate RTL", client.messages[1]["content"])
@@ -1101,8 +1233,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertNotIn("BEHAVIOR_HOLE", project.files["rtl/stream_join.v"])
         self.assertIn("assign out_valid", project.files["rtl/stream_join.v"])
         self.assertEqual(client.call_count, 1)
-        self.assertEqual(client.stream_call_count, 0)
-        self.assertEqual(client.chat_call_count, 1)
+        self.assertEqual(client.stream_call_count, 1)
+        self.assertEqual(client.chat_call_count, 0)
         self.assertIn('"schema_version": "system-his-v1.2"', client.messages[1]["content"])
         self.assertIn("Do not change component, instance, top port, data_flow, or control_flow names", client.messages[1]["content"])
 
@@ -1632,6 +1764,52 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("system-his-v1.2", prompt)
         self.assertIn("Preserve the existing canonical System-HIS v1.2 contract", prompt)
         self.assertNotIn("system-his-v1.1 structure-contract schema", prompt)
+
+    def test_repair_prompt_enforces_behavior_region_and_trusted_artifact_boundaries(self) -> None:
+        project = GeneratedProject(
+            project_name="region_demo",
+            files={
+                "system_his.json": "{}\n",
+                "manifest.json": '{"top_module":"top","sources":["rtl/top.v","rtl/core.v"]}\n',
+                "rtl/top.v": "module top; endmodule\n",
+                "rtl/core.v": (
+                    "module core;\n"
+                    "  // SR2FPGA_BEHAVIOR_BEGIN\n"
+                    "  wire value = 1'b0;\n"
+                    "  // SR2FPGA_BEHAVIOR_END\n"
+                    "endmodule\n"
+                ),
+                "constraints/timing.sdc": "\n",
+                "sim/tb_top.v": "module tb_top; endmodule\n",
+                "reports/predicted_qor.json": "{}\n",
+            },
+        )
+
+        prompt = _repair_messages(project, {"stage": "lint"})[1]["content"]
+
+        self.assertIn("Copy trusted artifacts byte-for-byte", prompt)
+        self.assertIn("Only edit text between // SR2FPGA_BEHAVIOR_BEGIN", prompt)
+        self.assertIn("Do not modify unmarked RTL files such as the deterministic top shell", prompt)
+        self.assertIn("Do not add, delete, or rename RTL source files", prompt)
+
+    def test_repair_prompt_allows_legacy_interface_change_only_for_l0_repair(self) -> None:
+        project = GeneratedProject(
+            project_name="legacy_demo",
+            files={
+                "system_his.json": "{}\n",
+                "manifest.json": '{"top_module":"top","sources":["rtl/top.v"]}\n',
+                "rtl/top.v": "module top(input wire [6:0] value); endmodule\n",
+                "constraints/timing.sdc": "\n",
+                "sim/tb_top.v": "module tb_top; endmodule\n",
+                "reports/predicted_qor.json": "{}\n",
+            },
+        )
+
+        lint_prompt = _repair_messages(project, {"stage": "lint"})[1]["content"]
+        l0_prompt = _repair_messages(project, {"stage": "l0_consistency"})[1]["content"]
+
+        self.assertIn("Preserve module names, parameters, and ports", lint_prompt)
+        self.assertIn("An RTL interface change is allowed only to restore the declared System-HIS contract", l0_prompt)
 
     def test_deepseek_repairer_rejects_v12_schema_downgrade(self) -> None:
         system_his = _system_his_v12_fixture()

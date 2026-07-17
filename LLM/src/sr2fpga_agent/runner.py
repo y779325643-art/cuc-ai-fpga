@@ -7,6 +7,7 @@ import hashlib
 import json
 import os
 import shutil
+import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,9 +28,15 @@ from LLM.src.sr2fpga_agent.deepseek import (
 )
 from LLM.src.sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
 from LLM.src.sr2fpga_agent.local_tools import resolve_executable
+from LLM.src.sr2fpga_agent.measurement_freeze import (
+    build_measurement_freeze,
+    write_or_validate_freeze,
+)
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.paired_measurement import collect_paired_results
 from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
+from LLM.src.sr2fpga_agent.task_catalog import task_family_spec_for_alias
 from LLM.src.sr2fpga_agent.testbench_checker import check_testbench_static_issues
 
 
@@ -40,6 +47,7 @@ VALID_MEASUREMENT_POINTS = {
 }
 
 VALID_REQUIREMENT_STYLES = {"contract", "natural_component", "simple_prompt"}
+VALID_EVALUATION_LINES = {"line_a", "line_b"}
 
 
 @dataclass(frozen=True)
@@ -49,11 +57,12 @@ class TaskConfig:
     widths: list[int]
     count: int
     failure_injectors: list[str] = field(default_factory=list)
-    difficulty_tier: str = "T1"
+    difficulty_tier: str = ""
     failure_origin: str = ""
     topology_ids: list[str] = field(default_factory=list)
     measurement_point: str = ""
     requirement_style: str = "contract"
+    evaluation_line: str = "line_b"
 
 
 @dataclass(frozen=True)
@@ -67,6 +76,26 @@ class SourceConnection:
     timeout_seconds: int = 120
     transport_attempts: int = 3
     max_tokens: int = 0
+    system_his_schema_version: str = ""
+
+
+@dataclass(frozen=True)
+class L4OpenConfig:
+    tool: str = "openxc7_nextpnr"
+    target_part: str = "XC7Z020CLG484-2"
+    board_profile: str = "ac820_zynq"
+    run_policy: str = "never"
+    timeout_seconds: int = 600
+    family_ids: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class L4CommercialConfig:
+    tool: str = "vivado"
+    command: str = "vivado"
+    target_part: str = "XC7Z020CLG484-2"
+    run_policy: str = "never"
+    timeout_seconds: int = 1800
 
 
 @dataclass(frozen=True)
@@ -87,6 +116,12 @@ class RunnerConfig:
     env_file: Path = Path("")
     sample_id_prefix: str = "runner"
     sources: dict[str, "SourceConnection"] = field(default_factory=dict)
+    enable_openxc7_l4: bool = False
+    run_l4_open: bool = False
+    l4_open: L4OpenConfig = field(default_factory=L4OpenConfig)
+    run_l4_commercial: bool = False
+    l4_commercial: L4CommercialConfig = field(default_factory=L4CommercialConfig)
+    run_independent_oracle: bool = False
 
 
 @dataclass(frozen=True)
@@ -98,23 +133,34 @@ class PlannedSample:
     project_name: str
     requirement: str
     failure_injectors: list[str] = field(default_factory=list)
+    family_id: str = ""
     difficulty_tier: str = "T1"
     failure_origin: str = ""
     topology_id: str = ""
     measurement_point: str = ""
     requirement_style: str = "contract"
+    evaluation_line: str = "line_b"
+    paired_requirement_id: str = ""
+    requirement_sha256: str = ""
 
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
         connection = resolve_source_connection(config, self.source)
         schema_version = _sample_system_his_schema_version(self, config)
+        repair_provider_resolved = (
+            self.source if config.repair_provider == "same_as_source" else config.repair_provider
+        )
         return {
             "source": self.source,
             "generator_provider": self.source,
             "model": connection.model,
             "failure_origin": _sample_failure_origin(self, config),
+            "family_id": self.family_id,
             "difficulty_tier": self.difficulty_tier,
             "measurement_point": self.measurement_point or _measurement_point(config),
+            "evaluation_line": self.evaluation_line,
             "repair_provider": config.repair_provider,
+            "repair_provider_policy": config.repair_provider,
+            "repair_provider_resolved": repair_provider_resolved,
             "failure_injectors": list(self.failure_injectors),
             "task_type": self.task_type,
             "width": self.width,
@@ -123,6 +169,8 @@ class PlannedSample:
             "contract_skeleton_mode": _contract_skeleton_mode(self, config),
             "topology_id": self.topology_id,
             "requirement_style": self.requirement_style,
+            "paired_requirement_id": self.paired_requirement_id,
+            "requirement_sha256": self.requirement_sha256,
         }
 
 
@@ -139,6 +187,15 @@ class RunState:
 
 def load_runner_config(path: Path) -> RunnerConfig:
     raw = _load_mapping(path)
+    run_l4_open = _parse_bool(
+        raw.get("run_l4_open", raw.get("enable_openxc7_l4", False)),
+        "run_l4_open",
+    )
+    run_l4_commercial = _parse_bool(raw.get("run_l4_commercial", False), "run_l4_commercial")
+    run_independent_oracle = _parse_bool(
+        raw.get("run_independent_oracle", False),
+        "run_independent_oracle",
+    )
     return RunnerConfig(
         dataset_root=Path(str(raw["dataset_root"])),
         export_root=Path(str(raw["export_root"])),
@@ -156,6 +213,18 @@ def load_runner_config(path: Path) -> RunnerConfig:
         env_file=Path(str(raw.get("env_file", ""))),
         sample_id_prefix=str(raw.get("sample_id_prefix", "runner")),
         sources=_load_sources(raw.get("sources", {})),
+        enable_openxc7_l4=run_l4_open,
+        run_l4_open=run_l4_open,
+        l4_open=_load_l4_open_config(
+            raw.get("l4_open", {}),
+            default_run_policy="after_l3_pass" if run_l4_open else "never",
+        ),
+        run_l4_commercial=run_l4_commercial,
+        l4_commercial=_load_l4_commercial_config(
+            raw.get("l4_commercial", {}),
+            default_run_policy="after_l3_pass" if run_l4_commercial else "never",
+        ),
+        run_independent_oracle=run_independent_oracle,
     )
 
 
@@ -237,6 +306,7 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
         "sample_id": sample.sample_id,
         "source": sample.source,
         "task_type": sample.task_type,
+        "family_id": sample.family_id,
         "width": sample.width,
         "requirement_style": str(metadata["requirement_style"]),
         "requirement": sample.requirement,
@@ -244,6 +314,7 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
         "topology_id": str(metadata["topology_id"]),
         "failure_origin": str(metadata["failure_origin"]),
         "measurement_point": str(metadata["measurement_point"]),
+        "evaluation_line": str(metadata["evaluation_line"]),
         "system_his_schema_version": str(metadata["system_his_schema_version"]),
         "training_split": str(metadata["training_split"]),
         "contract_skeleton_mode": str(metadata["contract_skeleton_mode"]),
@@ -267,8 +338,9 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     summary_path = run_dir / "summary.json"
     config_fingerprint = _config_fingerprint(config)
     run_dir.mkdir(parents=True, exist_ok=True)
+    existing_run = state_path.exists()
 
-    if resume and state_path.exists():
+    if resume and existing_run:
         state = read_run_state(state_path)
         if state.config_fingerprint and state.config_fingerprint != config_fingerprint:
             raise SystemExit(
@@ -282,8 +354,14 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
     samples = planned_samples(config)
+    freeze_manifest = _measurement_freeze_manifest(config, run_id, config_fingerprint, samples)
+    freeze_fingerprint = write_or_validate_freeze(
+        run_dir / "measurement_freeze.json",
+        freeze_manifest,
+        resume=resume and existing_run,
+    )
     project_generators: dict[str, object | None] = {}
-    repairer = _repairer_for_config(config)
+    repairers: dict[str, object | None] = {}
 
     for index, sample in enumerate(samples):
         if index < state.next_index or should_skip_sample(state, sample.sample_id):
@@ -295,11 +373,26 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             continue
 
         sample_project_generator = _project_generator_for_sample(project_generators, config, sample, events_path)
+        sample_repairer = _repairer_for_sample(repairers, config, sample)
+        sample_metadata = sample.metadata(config)
+        sample_metadata["freeze_fingerprint"] = freeze_fingerprint
         agent = DataGenerationAgent(
             config.dataset_root,
             project_generator=sample_project_generator,
-            repairer=repairer,
+            repairer=sample_repairer,
+            repair_provider_name=str(sample_metadata["repair_provider_resolved"]),
             max_attempts=config.max_attempts,
+            enable_openxc7_l4=_l4_open_enabled_for_sample(config, sample),
+            openxc7_tool=config.l4_open.tool,
+            openxc7_part=config.l4_open.target_part,
+            openxc7_board_profile=config.l4_open.board_profile,
+            openxc7_timeout_seconds=config.l4_open.timeout_seconds,
+            enable_vivado_l4=_l4_commercial_enabled_for_sample(config, sample),
+            vivado_tool=config.l4_commercial.tool,
+            vivado_command=config.l4_commercial.command,
+            vivado_part=config.l4_commercial.target_part,
+            vivado_timeout_seconds=config.l4_commercial.timeout_seconds,
+            enable_independent_oracle=config.run_independent_oracle,
         )
         result = agent.run_one(
             sample_id=sample.sample_id,
@@ -311,7 +404,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 description=sample.requirement,
             ),
             platform=PlatformProfile(name=config.platform, vendor="generic", toolchain="open_source"),
-            metadata=sample.metadata(config),
+            metadata=sample_metadata,
         )
         labels = _read_labels(config.dataset_root / sample.sample_id)
         bucket = classify_sample_bucket(labels)
@@ -345,7 +438,23 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         )
         write_run_state(state_path, state)
 
+    paired_results: dict[str, Any] = {}
+    if config.repair_provider == "same_as_source":
+        measured_sample_ids = [
+            sample_id
+            for sample_id in state.completed_samples
+            if _sample_has_measurement(config.dataset_root / sample_id)
+        ]
+        paired_results = collect_paired_results(config.dataset_root, measured_sample_ids)
+        paired_results["missing_measurement_samples"] = [
+            sample_id for sample_id in state.completed_samples if sample_id not in set(measured_sample_ids)
+        ]
+        _write_json(run_dir / "paired_results.json", paired_results)
+
     summary = _summary(config, state)
+    if paired_results:
+        summary["paired_results"] = paired_results
+    summary["freeze_fingerprint"] = freeze_fingerprint
     _write_json(summary_path, summary)
     (run_dir / "baseline_report.md").write_text(
         render_markdown(str(summary["run_id"]), baseline_rows(summary), summary=summary),
@@ -389,7 +498,7 @@ def should_skip_sample(state: RunState, sample_id: str) -> bool:
 
 
 def classify_sample_bucket(labels: dict[str, Any]) -> str:
-    if labels.get("pass_level") == "L3":
+    if _passes_at_least(str(labels.get("pass_level", "")), "L3"):
         return "success_l3"
     if labels.get("pass_level") == "GEN_FAIL":
         return "rejected"
@@ -410,6 +519,88 @@ def _config_to_jsonable(config: RunnerConfig) -> dict[str, Any]:
 def _config_fingerprint(config: RunnerConfig) -> str:
     payload = json.dumps(_config_to_jsonable(config), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _measurement_freeze_manifest(
+    config: RunnerConfig,
+    run_id: str,
+    config_fingerprint: str,
+    samples: list[PlannedSample],
+) -> dict[str, Any]:
+    source_names = sorted({sample.source for sample in samples})
+    source_records = []
+    for source_name in source_names:
+        connection = resolve_source_connection(config, source_name)
+        source_records.append(
+            {
+                "name": source_name,
+                "kind": connection.kind,
+                "model": connection.model or connection.kind,
+                "generation_mode": connection.generation_mode,
+                "timeout_seconds": connection.timeout_seconds,
+                "transport_attempts": connection.transport_attempts,
+                "max_tokens": connection.max_tokens,
+            }
+        )
+    sample_records = [
+        {
+            "sample_id": sample.sample_id,
+            "source": sample.source,
+            "family_id": sample.family_id,
+            "task_type": sample.task_type,
+            "topology_id": sample.topology_id,
+            "width": sample.width,
+            "requirement_style": sample.requirement_style,
+            "paired_requirement_id": sample.paired_requirement_id,
+            "requirement_sha256": sample.requirement_sha256,
+        }
+        for sample in samples
+    ]
+    timeouts = {
+        f"source:{record['name']}": int(record["timeout_seconds"])
+        for record in source_records
+    }
+    timeouts["l4_open"] = config.l4_open.timeout_seconds
+    return build_measurement_freeze(
+        run_id=run_id,
+        config_fingerprint=config_fingerprint,
+        sample_records=sample_records,
+        source_records=source_records,
+        max_attempts=config.max_attempts,
+        timeouts=timeouts,
+        tool_versions=_measurement_tool_versions(config),
+        l4_family_ids=list(getattr(config.l4_open, "family_ids", ())),
+    )
+
+
+def _measurement_tool_versions(config: RunnerConfig) -> dict[str, str]:
+    commands = {
+        "verilator": ["verilator", "--version"],
+        "iverilog": ["iverilog", "-V"],
+        "vvp": ["vvp", "-V"],
+        "yosys": ["yosys", "-V"],
+    }
+    versions: dict[str, str] = {}
+    for name, command in commands.items():
+        executable = resolve_executable(command[0])
+        if executable is None:
+            versions[name] = "missing"
+            continue
+        try:
+            completed = subprocess.run(
+                [str(executable), *command[1:]],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            versions[name] = f"unavailable:{type(exc).__name__}"
+            continue
+        output = (completed.stdout or completed.stderr).strip().splitlines()
+        versions[name] = output[0] if output else f"exit:{completed.returncode}"
+    versions["l4_open"] = config.l4_open.tool if config.run_l4_open else "disabled"
+    return versions
 
 
 def _load_env_file(path: Path) -> set[str]:
@@ -467,7 +658,7 @@ def _source_auth_diagnostics(
     seen: set[str] = set()
     for sample in samples:
         _check_source_auth(config, sample.source, seen, diagnostics, errors, validate_provider)
-    if config.repair_provider and config.repair_provider != "none":
+    if config.repair_provider and config.repair_provider not in {"none", "same_as_source"}:
         _check_source_auth(config, config.repair_provider, seen, diagnostics, errors, validate_provider)
     return diagnostics, errors
 
@@ -505,7 +696,7 @@ def _check_source_auth(
         return
     client = _preflight_client(connection, api_key)
     try:
-        client.chat(
+        client.stream_chat(
             [
                 {"role": "system", "content": "Return a tiny JSON object for authentication preflight."},
                 {"role": "user", "content": "Return {\"ok\": true}."},
@@ -611,6 +802,17 @@ def _read_labels(sample_dir: Path) -> dict[str, Any]:
     return json.loads((sample_dir / "eval" / "labels.json").read_text(encoding="utf-8"))
 
 
+def _sample_has_measurement(sample_dir: Path) -> bool:
+    path = sample_dir / "eval" / "trajectory.json"
+    if not path.exists():
+        return False
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    return isinstance(payload, dict) and isinstance(payload.get("measurement"), dict)
+
+
 def _sample_failure_types(sample_dir: Path) -> dict[str, int]:
     counts: dict[str, int] = {}
     attempts_dir = sample_dir / "attempts"
@@ -632,6 +834,7 @@ def _failure_family(failure_type: str, stage: str = "") -> str:
         return "artifact_contract_failure"
     if stage == "testbench_static_check" or failure_type in {
         "testbench_missing_functional_oracle",
+        "testbench_internal_signal_access",
         "testbench_observation_race",
         "testbench_stimulus_reaccept_risk",
     }:
@@ -707,6 +910,19 @@ def _summary(config: RunnerConfig, state: RunState) -> dict[str, Any]:
         "latent_testbench_issue_breakdown": calibration["latent_testbench_issue_breakdown"],
         "metadata_breakdown": calibration["metadata_breakdown"],
         "pass_level_breakdown": calibration["pass_level_breakdown"],
+        "levels": calibration["levels"],
+        "generated_his_credit": calibration["generated_his_credit"],
+        "generated_his_pass_level_breakdown": calibration["generated_his_pass_level_breakdown"],
+        "derived_training_views": calibration["derived_training_views"],
+        "h_stage": calibration["h_stage"],
+        "l4_open": calibration["l4_open"],
+        "l4_open_skip_reasons": calibration["l4_open_skip_reasons"],
+        "l4_commercial": calibration["l4_commercial"],
+        "l4_commercial_skip_reasons": calibration["l4_commercial_skip_reasons"],
+        "toolchain_environment_failures": calibration["toolchain_environment_failures"],
+        "oracle_strength": calibration["oracle_strength"],
+        "independent_oracle": calibration["independent_oracle"],
+        "repair_metrics": calibration["repair_metrics"],
         "calibration_matrix": calibration["calibration_matrix"],
         "contract_metrics": calibration["contract_metrics"],
         "exports_refreshed": state.exports_refreshed,
@@ -723,12 +939,64 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
         "difficulty_tier",
         "topology_id",
         "measurement_point",
+        "evaluation_line",
     )
     metadata_breakdown: dict[str, dict[str, int]] = {field: {} for field in metadata_fields}
     failure_family_breakdown: dict[str, int] = {}
     attempt_stage_transition_breakdown: dict[str, int] = {}
     latent_testbench_issue_breakdown: dict[str, int] = {}
     pass_level_breakdown: dict[str, int] = {}
+    levels = {
+        "l0": {"pass": 0, "fail": 0},
+        "l1": {"pass": 0, "fail": 0},
+        "l2": {"pass": 0, "fail": 0},
+        "l3": {"pass": 0, "fail": 0},
+        "l4_open": {"pass": 0, "fail": 0, "not_run": 0},
+    }
+    generated_his_credit: dict[str, int] = {}
+    generated_his_pass_level_breakdown: dict[str, int] = {}
+    derived_training_views: dict[str, dict[str, Any]] = {}
+    h_stage = {
+        "h0": {"pass": 0, "fail": 0},
+        "h1": {"pass": 0, "fail": 0},
+        "h2": {"pass": 0, "fail": 0},
+        "h3": {"pass": 0, "fail": 0, "not_applicable": 0},
+    }
+    l4_open = {"pass": 0, "fail": 0, "not_run": 0}
+    l4_open_skip_reasons: dict[str, int] = {}
+    l4_commercial = {"pass": 0, "fail": 0, "not_run": 0}
+    l4_commercial_skip_reasons: dict[str, int] = {}
+    toolchain_environment_failures: dict[str, int] = {}
+    oracle_strength = {
+        "samples": 0,
+        "reference_passed": 0,
+        "mutation_cases": 0,
+        "killed": 0,
+        "mutation_score": 0.0,
+        "surviving_mutations": {},
+        "non_scoreable_mutations": {},
+        "line_a_ready": 0,
+        "line_a_not_ready": 0,
+    }
+    independent_oracle = {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 0,
+        "infrastructure_error": 0,
+        "model_denominator": 0,
+        "model_failures": 0,
+        "by_domain": {},
+        "by_family": {},
+    }
+    repair_metrics = {
+        "total_patches": 0,
+        "valid_patches": 0,
+        "invalid_edit_surface": 0,
+        "fixed_target": 0,
+        "automatic_pass_credit": 0,
+        "regressing_patches": 0,
+        "regression_rate": 0.0,
+    }
     calibration_counts: dict[str, dict[str, dict[str, Any]]] = {
         field: {} for field in (*metadata_fields, "failure_family")
     }
@@ -740,13 +1008,38 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
         if not labels_path.exists():
             continue
         labels = json.loads(labels_path.read_text(encoding="utf-8"))
+        metadata = _read_sample_metadata(sample_dir)
         total_labeled += 1
         l0_contract_failed = labels.get("checks", {}).get("l0_complete") is False
         if l0_contract_failed:
             l0_contract_failures += 1
         pass_level = str(labels.get("pass_level", "unknown"))
         pass_level_breakdown[pass_level] = pass_level_breakdown.get(pass_level, 0) + 1
-        metadata = _read_sample_metadata(sample_dir)
+        _count_level_labels(levels, labels)
+        _count_generated_his_credit(generated_his_credit, generated_his_pass_level_breakdown, labels, pass_level)
+        _count_derived_training_views(derived_training_views, sample_dir)
+        _count_h_stage_labels(h_stage, labels)
+        l4_status = _l4_open_status(labels)
+        l4_open[l4_status] += 1
+        l4_skip_reason = _l4_open_skip_reason(labels, l4_status)
+        if l4_skip_reason is not None:
+            l4_open_skip_reasons[l4_skip_reason] = l4_open_skip_reasons.get(l4_skip_reason, 0) + 1
+            if l4_skip_reason == "toolchain_environment_failure":
+                toolchain_environment_failures["l4_open"] = toolchain_environment_failures.get("l4_open", 0) + 1
+        commercial_status = _l4_commercial_status(labels)
+        l4_commercial[commercial_status] += 1
+        commercial_skip_reason = _l4_commercial_skip_reason(labels, commercial_status)
+        if commercial_skip_reason is not None:
+            l4_commercial_skip_reasons[commercial_skip_reason] = (
+                l4_commercial_skip_reasons.get(commercial_skip_reason, 0) + 1
+            )
+            if commercial_skip_reason == "toolchain_environment_failure":
+                toolchain_environment_failures["l4_commercial"] = (
+                    toolchain_environment_failures.get("l4_commercial", 0) + 1
+                )
+        _count_oracle_strength(oracle_strength, sample_dir)
+        _count_independent_oracle(independent_oracle, labels, metadata)
+        _count_repair_metrics(repair_metrics, sample_dir)
         for field in metadata_fields:
             value = str(metadata.get(field, "")).strip()
             if not value:
@@ -773,6 +1066,19 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
         "attempt_stage_transition_breakdown": attempt_stage_transition_breakdown,
         "latent_testbench_issue_breakdown": latent_testbench_issue_breakdown,
         "pass_level_breakdown": pass_level_breakdown,
+        "levels": levels,
+        "generated_his_credit": generated_his_credit,
+        "generated_his_pass_level_breakdown": generated_his_pass_level_breakdown,
+        "derived_training_views": derived_training_views,
+        "h_stage": h_stage,
+        "l4_open": l4_open,
+        "l4_open_skip_reasons": l4_open_skip_reasons,
+        "l4_commercial": l4_commercial,
+        "l4_commercial_skip_reasons": l4_commercial_skip_reasons,
+        "toolchain_environment_failures": toolchain_environment_failures,
+        "oracle_strength": _finalize_oracle_strength(oracle_strength),
+        "independent_oracle": independent_oracle,
+        "repair_metrics": _finalize_repair_metrics(repair_metrics),
         "calibration_matrix": _calibration_rates(calibration_counts),
         "contract_metrics": {
             "total_labeled": total_labeled,
@@ -782,6 +1088,302 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
             ),
         },
     }
+
+
+def _count_oracle_strength(summary: dict[str, Any], sample_dir: Path) -> None:
+    path = sample_dir / "eval" / "trajectory.json"
+    if not path.exists():
+        return
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return
+    strength = payload.get("oracle_strength") if isinstance(payload, dict) else None
+    if not isinstance(strength, dict):
+        return
+    summary["samples"] += 1
+    summary["reference_passed"] += int(strength.get("reference_pass") is True)
+    summary["mutation_cases"] += _safe_nonnegative_int(strength.get("mutation_cases"), 0)
+    summary["killed"] += _safe_nonnegative_int(strength.get("killed"), 0)
+    survivors = strength.get("surviving_mutations", [])
+    if isinstance(survivors, list):
+        for mutation in survivors:
+            if isinstance(mutation, str):
+                counts = summary["surviving_mutations"]
+                counts[mutation] = counts.get(mutation, 0) + 1
+    non_scoreable = strength.get("non_scoreable_mutations", [])
+    if isinstance(non_scoreable, list):
+        for mutation in non_scoreable:
+            if isinstance(mutation, str):
+                counts = summary["non_scoreable_mutations"]
+                counts[mutation] = counts.get(mutation, 0) + 1
+    readiness = strength.get("line_a_ready")
+    if readiness is True:
+        summary["line_a_ready"] += 1
+    elif readiness is False:
+        summary["line_a_not_ready"] += 1
+
+
+def _finalize_oracle_strength(summary: dict[str, Any]) -> dict[str, Any]:
+    mutation_cases = int(summary["mutation_cases"])
+    return {
+        **summary,
+        "mutation_score": 0.0 if mutation_cases == 0 else round(int(summary["killed"]) / mutation_cases, 2),
+    }
+
+
+_ORACLE_DOMAIN_BY_FAMILY = {
+    "fir_filter": "numeric",
+    "matrix_vector_mac": "numeric",
+    "matched_filter": "signal",
+    "peak_detector": "signal",
+    "p_pulse_radar_signal": "signal",
+    "sobel_threshold": "image",
+    "p_vision_defect_core": "image",
+    "qtable_update_core": "rl",
+    "p_rl_qlearning_accel": "rl",
+}
+
+
+def _count_independent_oracle(
+    summary: dict[str, Any],
+    labels: dict[str, Any],
+    metadata: dict[str, Any],
+) -> None:
+    status = str(labels.get("independent_oracle_status", "not_run"))
+    if status not in {"pass", "fail", "not_run", "infrastructure_error"}:
+        status = "infrastructure_error"
+    summary[status] += 1
+    if status in {"pass", "fail"}:
+        summary["model_denominator"] += 1
+        summary["model_failures"] += int(status == "fail")
+
+    family_id = str(metadata.get("family_id", "")).strip() or "unknown"
+    domain = str(metadata.get("oracle_domain", "")).strip() or _ORACLE_DOMAIN_BY_FAMILY.get(
+        family_id,
+        "other",
+    )
+    for field, value in (("by_domain", domain), ("by_family", family_id)):
+        counts = summary[field].setdefault(
+            value,
+            {"pass": 0, "fail": 0, "not_run": 0, "infrastructure_error": 0},
+        )
+        counts[status] += 1
+
+
+def _count_repair_metrics(summary: dict[str, Any], sample_dir: Path) -> None:
+    path = sample_dir / "eval" / "trajectory.json"
+    if not path.exists():
+        return
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return
+    patches = payload.get("patches") if isinstance(payload, dict) else None
+    if not isinstance(patches, list):
+        return
+    for patch in patches:
+        if not isinstance(patch, dict):
+            continue
+        summary["total_patches"] += 1
+        status = str(patch.get("status", ""))
+        if status == "valid":
+            summary["valid_patches"] += 1
+        elif status == "invalid_edit_surface":
+            summary["invalid_edit_surface"] += 1
+        summary["automatic_pass_credit"] += int(patch.get("automatic_pass_credit") is True)
+        regression = patch.get("repair_regression")
+        regression = regression if isinstance(regression, dict) else {}
+        summary["fixed_target"] += int(regression.get("fixed_target") is True)
+        regressions = patch.get("regressions")
+        regressed_levels = regression.get("regressed_levels")
+        regressed_scenarios = regression.get("regressed_scenarios")
+        has_regression = any(
+            isinstance(value, list) and bool(value)
+            for value in (regressions, regressed_levels, regressed_scenarios)
+        )
+        if status == "valid" and has_regression:
+            summary["regressing_patches"] += 1
+
+
+def _finalize_repair_metrics(summary: dict[str, Any]) -> dict[str, Any]:
+    valid_patches = int(summary["valid_patches"])
+    return {
+        **summary,
+        "regression_rate": (
+            0.0 if valid_patches == 0 else round(int(summary["regressing_patches"]) / valid_patches, 4)
+        ),
+    }
+
+
+def _l4_open_status(labels: dict[str, Any]) -> str:
+    status = labels.get("l4_open_status")
+    if status in {"pass", "fail", "not_run"}:
+        return status
+    checks = labels.get("checks", {})
+    checks = checks if isinstance(checks, dict) else {}
+    value = checks.get("l4_open_pass", checks.get("l4_lite_timing_pass"))
+    if value is True:
+        return "pass"
+    if value is False and labels.get("l4_failure_family"):
+        return "fail"
+    return "not_run"
+
+
+def _l4_open_skip_reason(labels: dict[str, Any], status: str) -> str | None:
+    if status != "not_run":
+        return None
+    reason = labels.get("l4_open_skip_reason")
+    if isinstance(reason, str) and reason:
+        return reason
+    checks = labels.get("checks", {})
+    checks = checks if isinstance(checks, dict) else {}
+    return "l3_failed" if checks.get("l3_synth_pass") is False else "not_selected_by_policy"
+
+
+def _l4_commercial_status(labels: dict[str, Any]) -> str:
+    status = labels.get("l4_commercial_status")
+    if status in {"pass", "fail", "not_run"}:
+        return status
+    checks = labels.get("checks", {})
+    checks = checks if isinstance(checks, dict) else {}
+    return "pass" if checks.get("l4_commercial_pass") is True else "not_run"
+
+
+def _l4_commercial_skip_reason(labels: dict[str, Any], status: str) -> str | None:
+    if status != "not_run":
+        return None
+    reason = labels.get("l4_commercial_skip_reason")
+    if isinstance(reason, str) and reason:
+        return reason
+    checks = labels.get("checks", {})
+    checks = checks if isinstance(checks, dict) else {}
+    return "l3_failed" if checks.get("l3_synth_pass") is False else "not_selected_by_policy"
+
+
+def _count_h_stage_labels(h_stage: dict[str, dict[str, int]], labels: dict[str, Any]) -> None:
+    for stage in ("h0", "h1", "h2"):
+        status = labels.get(f"{stage}_status")
+        if status in {"pass", "fail"}:
+            h_stage[stage][status] += 1
+        elif status is None and f"{stage}_pass" in labels:
+            bucket = "pass" if labels.get(f"{stage}_pass") is True else "fail"
+            h_stage[stage][bucket] += 1
+    h3_status = labels.get("h3_status")
+    if h3_status in {"pass", "fail", "not_applicable"}:
+        h_stage["h3"][h3_status] += 1
+    elif h3_status is None and "h3_pass" in labels:
+        bucket = "pass" if labels.get("h3_pass") is True else "fail"
+        h_stage["h3"][bucket] += 1
+
+
+def _count_level_labels(levels: dict[str, dict[str, int]], labels: dict[str, Any]) -> None:
+    checks = labels.get("checks", {})
+    checks = checks if isinstance(checks, dict) else {}
+    level_checks = {
+        "l0": "l0_complete",
+        "l1": "l1_lint_pass",
+        "l2": "l2_sim_pass",
+        "l3": "l3_synth_pass",
+    }
+    for level, check_name in level_checks.items():
+        value = checks.get(check_name)
+        if value is True:
+            levels[level]["pass"] += 1
+        elif value is False:
+            levels[level]["fail"] += 1
+
+    l4_status = _l4_open_status(labels)
+    levels["l4_open"][l4_status] += 1
+
+
+def _count_generated_his_credit(
+    generated_his_credit: dict[str, int],
+    generated_his_pass_level_breakdown: dict[str, int],
+    labels: dict[str, Any],
+    pass_level: str,
+) -> None:
+    credit = labels.get("generated_his_pass_credit")
+    if credit is False:
+        reason = str(labels.get("generated_his_no_credit_reason") or "unknown")
+        key = f"no_credit_{reason}"
+        generated_his_credit[key] = generated_his_credit.get(key, 0) + 1
+        return
+    generated_his_credit["credited"] = generated_his_credit.get("credited", 0) + 1
+    generated_level = str(labels.get("generated_his_pass_level") or pass_level)
+    generated_his_pass_level_breakdown[generated_level] = generated_his_pass_level_breakdown.get(generated_level, 0) + 1
+
+
+def _count_derived_training_views(views: dict[str, dict[str, Any]], sample_dir: Path) -> None:
+    trajectory_path = sample_dir / "eval" / "trajectory.json"
+    if not trajectory_path.exists():
+        return
+    try:
+        trajectory = json.loads(trajectory_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return
+    if not isinstance(trajectory, dict):
+        return
+    sample_views = trajectory.get("derived_training_views", {})
+    if not isinstance(sample_views, dict):
+        return
+    for view_name, value in sample_views.items():
+        if not isinstance(value, dict):
+            continue
+        normalized_view_name = str(view_name)
+        row = views.setdefault(
+            normalized_view_name,
+            {
+                "available": False,
+                "official_eval_unit": False,
+                "standalone_pass_credit": False,
+                "project_level_pass_credit": False,
+                "rows": 0,
+                "file_level_passed": 0,
+            },
+        )
+        row["available"] = bool(row["available"] or value.get("available") is True)
+        if normalized_view_name == "req2file":
+            row["official_eval_unit"] = False
+            row["standalone_pass_credit"] = False
+            row["project_level_pass_credit"] = False
+        else:
+            row["official_eval_unit"] = bool(row["official_eval_unit"] or value.get("official_eval_unit") is True)
+            row["standalone_pass_credit"] = bool(
+                row["standalone_pass_credit"] or value.get("standalone_pass_credit") is True
+            )
+            row["project_level_pass_credit"] = bool(
+                row["project_level_pass_credit"] or value.get("project_level_pass_credit") is True
+            )
+        row["rows"] += _derived_training_view_rows(normalized_view_name, value, sample_dir)
+        row["file_level_passed"] += _safe_nonnegative_int(value.get("file_level_passed"), 0)
+
+
+def _derived_training_view_rows(view_name: str, value: dict[str, Any], sample_dir: Path) -> int:
+    if "rows" in value:
+        parsed = _safe_nonnegative_int(value.get("rows"), -1)
+        if parsed >= 0:
+            return parsed
+    if view_name != "req2file":
+        return 0
+    project_dir = sample_dir / "final" / "generated_project"
+    if not project_dir.exists():
+        return 0
+    return sum(
+        1
+        for path in project_dir.rglob("*")
+        if path.is_file() and not any(part.startswith(".") for part in path.relative_to(project_dir).parts)
+    )
+
+
+def _safe_nonnegative_int(value: Any, default: int) -> int:
+    if isinstance(value, bool):
+        return default
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError):
+        return default
+    return parsed if parsed >= 0 else default
 
 
 def _record_calibration_cell(
@@ -803,7 +1405,11 @@ def _calibration_rates(counts: dict[str, dict[str, dict[str, Any]]]) -> dict[str
         matrix[field] = {}
         for value, cell in cells.items():
             total = int(cell["total"])
-            l3_count = int(cell["pass_levels"].get("L3", 0))
+            l3_count = sum(
+                int(count)
+                for pass_level, count in cell["pass_levels"].items()
+                if _passes_at_least(str(pass_level), "L3")
+            )
             l0_contract_failures = int(cell.get("l0_contract_failures", 0))
             matrix[field][value] = {
                 "total": total,
@@ -815,6 +1421,13 @@ def _calibration_rates(counts: dict[str, dict[str, dict[str, Any]]]) -> dict[str
                 ),
             }
     return matrix
+
+
+_PASS_LEVEL_ORDER = {"L0": 0, "L1": 1, "L2": 2, "L3": 3, "L4": 4, "L5": 5}
+
+
+def _passes_at_least(pass_level: str, minimum: str) -> bool:
+    return _PASS_LEVEL_ORDER.get(pass_level, -1) >= _PASS_LEVEL_ORDER[minimum]
 
 
 def _read_sample_metadata(sample_dir: Path) -> dict[str, Any]:
@@ -847,6 +1460,87 @@ def _parse_bool(value: Any, name: str) -> bool:
     raise SystemExit(f"{name} must be a boolean")
 
 
+def _load_l4_open_config(raw: Any, default_run_policy: str = "never") -> L4OpenConfig:
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise SystemExit("l4_open must be a mapping")
+    run_policy = str(raw.get("run_policy", default_run_policy))
+    allowed_policies = {"never", "after_l3_pass", "representative_subset", "always"}
+    if run_policy not in allowed_policies:
+        raise SystemExit("l4_open.run_policy must be one of: never, after_l3_pass, representative_subset, always")
+    raw_family_ids = raw.get("family_ids", [])
+    if not isinstance(raw_family_ids, list) or not all(
+        isinstance(family_id, str) and family_id.strip() for family_id in raw_family_ids
+    ):
+        raise SystemExit("l4_open.family_ids must be a list of non-empty strings")
+    return L4OpenConfig(
+        tool=str(raw.get("tool", "openxc7_nextpnr")),
+        target_part=str(raw.get("target_part", "XC7Z020CLG484-2")),
+        board_profile=str(raw.get("board_profile", "ac820_zynq")),
+        run_policy=run_policy,
+        timeout_seconds=int(raw.get("timeout_seconds", 600)),
+        family_ids=tuple(str(family_id).strip() for family_id in raw_family_ids),
+    )
+
+
+def _load_l4_commercial_config(raw: Any, default_run_policy: str = "never") -> L4CommercialConfig:
+    if raw is None:
+        raw = {}
+    if not isinstance(raw, dict):
+        raise SystemExit("l4_commercial must be a mapping")
+    run_policy = str(raw.get("run_policy", default_run_policy))
+    allowed_policies = {"never", "after_l3_pass", "representative_subset", "always"}
+    if run_policy not in allowed_policies:
+        raise SystemExit(
+            "l4_commercial.run_policy must be one of: never, after_l3_pass, representative_subset, always"
+        )
+    return L4CommercialConfig(
+        tool=str(raw.get("tool", "vivado")),
+        command=str(raw.get("command", "vivado")),
+        target_part=str(raw.get("target_part", "XC7Z020CLG484-2")),
+        run_policy=run_policy,
+        timeout_seconds=int(raw.get("timeout_seconds", 1800)),
+    )
+
+
+def _l4_open_enabled_for_config(config: RunnerConfig) -> bool:
+    if not config.enable_openxc7_l4:
+        return False
+    return config.l4_open.run_policy in {"after_l3_pass", "always"}
+
+
+def _l4_open_enabled_for_sample(config: RunnerConfig, sample: PlannedSample) -> bool:
+    if not config.enable_openxc7_l4 or config.l4_open.run_policy == "never":
+        return False
+    if config.l4_open.family_ids:
+        return sample.family_id in config.l4_open.family_ids
+    if _l4_open_enabled_for_config(config):
+        return True
+    if not config.enable_openxc7_l4 or config.l4_open.run_policy != "representative_subset":
+        return False
+    alias = sample.topology_id or sample.task_type
+    return task_family_spec_for_alias(alias).l4_open_policy in {
+        "representative_subset",
+        "required_for_flagship",
+    }
+
+
+def _l4_commercial_enabled_for_config(config: RunnerConfig) -> bool:
+    if not config.run_l4_commercial:
+        return False
+    return config.l4_commercial.run_policy in {"after_l3_pass", "always"}
+
+
+def _l4_commercial_enabled_for_sample(config: RunnerConfig, sample: PlannedSample) -> bool:
+    if _l4_commercial_enabled_for_config(config):
+        return True
+    if not config.run_l4_commercial or config.l4_commercial.run_policy != "representative_subset":
+        return False
+    alias = sample.topology_id or sample.task_type
+    return task_family_spec_for_alias(alias).l4_commercial_policy == "tcad_subset"
+
+
 def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     widths = [int(width) for width in item.get("widths", [8])]
     count = int(item.get("count", 1))
@@ -860,17 +1554,25 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     if requirement_style not in VALID_REQUIREMENT_STYLES:
         allowed = ", ".join(sorted(VALID_REQUIREMENT_STYLES))
         raise SystemExit(f"Unsupported requirement_style: {requirement_style}. Expected one of: {allowed}")
+    task_type = str(item["task_type"])
+    topology_ids = [str(topology_id) for topology_id in item.get("topology_ids", [])]
+    difficulty_tier = str(item["difficulty_tier"]) if "difficulty_tier" in item else ""
+    evaluation_line = str(item.get("evaluation_line", "line_b"))
+    if evaluation_line not in VALID_EVALUATION_LINES:
+        allowed = ", ".join(sorted(VALID_EVALUATION_LINES))
+        raise SystemExit(f"Unsupported evaluation_line: {evaluation_line}. Expected one of: {allowed}")
     return TaskConfig(
         source=str(item.get("source", raw.get("provider", "deterministic"))),
-        task_type=str(item["task_type"]),
+        task_type=task_type,
         widths=widths,
         count=count,
         failure_injectors=[str(injector) for injector in item.get("failure_injectors", [])],
-        difficulty_tier=str(item.get("difficulty_tier", "T1")),
+        difficulty_tier=difficulty_tier,
         failure_origin=str(item.get("failure_origin", "")),
-        topology_ids=[str(topology_id) for topology_id in item.get("topology_ids", [])],
+        topology_ids=topology_ids,
         measurement_point=measurement_point,
         requirement_style=requirement_style,
+        evaluation_line=evaluation_line,
     )
 
 
@@ -929,6 +1631,11 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             )
         if not generation_mode:
             generation_mode = _GENERATION_MODE_BY_KIND.get(kind, "")
+        system_his_schema_version = str(item.get("system_his_schema_version", ""))
+        if system_his_schema_version not in {"", "system-his-v1.1", "system-his-v1.2"}:
+            raise SystemExit(
+                f"Source {name!r}: system_his_schema_version must be system-his-v1.1 or system-his-v1.2"
+            )
         sources[str(name)] = SourceConnection(
             name=str(name),
             kind=kind,
@@ -939,6 +1646,7 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             timeout_seconds=int(item.get("timeout_seconds", 120)),
             transport_attempts=int(item.get("transport_attempts", 3)),
             max_tokens=int(item.get("max_tokens", 0)),
+            system_his_schema_version=system_his_schema_version,
         )
     return sources
 
@@ -966,12 +1674,19 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
             raise SystemExit("Task widths must not be empty when count is positive")
         produced = 0
         while produced < task.count:
-            for topology_id, task_type, difficulty_tier, width in _task_expansion_items(task):
+            for topology_id, task_type, family_id, difficulty_tier, width in _task_expansion_items(task):
                 if produced >= task.count:
                     break
                 sample_key = topology_id or task_type
                 sample_id = f"sample_{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
                 project_name = f"{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
+                requirement = _default_requirement(
+                    task_type,
+                    width,
+                    topology_id=topology_id,
+                    requirement_style=task.requirement_style,
+                )
+                requirement_sha256 = hashlib.sha256(requirement.encode("utf-8")).hexdigest()
                 samples.append(
                     PlannedSample(
                         sample_id=sample_id,
@@ -979,18 +1694,17 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                         task_type=task_type,
                         width=width,
                         project_name=project_name,
-                        requirement=_default_requirement(
-                            task_type,
-                            width,
-                            topology_id=topology_id,
-                            requirement_style=task.requirement_style,
-                        ),
+                        requirement=requirement,
                         failure_injectors=list(task.failure_injectors),
+                        family_id=family_id,
                         difficulty_tier=difficulty_tier,
                         failure_origin=task.failure_origin,
                         topology_id=topology_id,
                         measurement_point=task.measurement_point,
                         requirement_style=task.requirement_style,
+                        evaluation_line=task.evaluation_line,
+                        paired_requirement_id=f"{family_id}:{requirement_sha256[:16]}",
+                        requirement_sha256=requirement_sha256,
                     )
                 )
                 sequence += 1
@@ -999,19 +1713,23 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
     return samples[:max_samples]
 
 
-def _task_expansion_items(task: TaskConfig) -> list[tuple[str, str, str, int]]:
+def _task_expansion_items(task: TaskConfig) -> list[tuple[str, str, str, str, int]]:
     if task.task_type != "component_topology":
-        return [("", task.task_type, task.difficulty_tier, width) for width in task.widths]
+        catalog_spec = task_family_spec_for_alias(task.task_type)
+        return [
+            ("", task.task_type, catalog_spec.family_id, catalog_spec.sr2fpga_tier, width)
+            for width in task.widths
+        ]
     topology_ids = task.topology_ids or sorted(_topology_id_to_task_type())
-    items: list[tuple[str, str, str, int]] = []
+    items: list[tuple[str, str, str, str, int]] = []
     topology_lookup = _topology_id_to_task_type()
     for topology_id in topology_ids:
         if topology_id not in topology_lookup:
             raise SystemExit(f"Unsupported topology_id: {topology_id}")
         task_type = topology_lookup[topology_id]
-        difficulty_tier = str(COMPONENT_TOPOLOGIES[task_type]["difficulty_tier"])
+        catalog_spec = task_family_spec_for_alias(topology_id)
         for width in task.widths:
-            items.append((topology_id, task_type, difficulty_tier, width))
+            items.append((topology_id, task_type, catalog_spec.family_id, catalog_spec.sr2fpga_tier, width))
     return items
 
 
@@ -1282,6 +2000,8 @@ def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
 
 def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
     connection = resolve_source_connection(config, sample.source)
+    if connection.system_his_schema_version:
+        return connection.system_his_schema_version
     if connection.kind == "deterministic":
         return "system-his-v1.2"
     if connection.kind in VETTED_TWO_STAGE_KINDS and connection.generation_mode in {"two_stage", "oracle_his2project"}:
@@ -1346,6 +2066,22 @@ def _repairer_for_config(config: RunnerConfig):
         base_url=config.base_url,
         api_key_env=config.api_key_env,
     )
+
+
+def _repairer_for_sample(
+    repairers: dict[str, object | None],
+    config: RunnerConfig,
+    sample: PlannedSample,
+) -> object | None:
+    provider_name = config.repair_provider
+    if provider_name == "same_as_source":
+        provider_name = sample.source
+    if provider_name in {"", "none", "deterministic"}:
+        return None
+    if provider_name not in repairers:
+        connection = resolve_source_connection(config, provider_name)
+        repairers[provider_name] = build_repairer_for_connection(connection)
+    return repairers[provider_name]
 
 
 def _generation_event_sink(events_path: Path, sample: PlannedSample, config: RunnerConfig):

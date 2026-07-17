@@ -1,0 +1,17 @@
+{
+  "failure_type": "functional_mismatch",
+  "stage": "sim_run",
+  "root_cause": "[sobel_public_flat_vertical] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_hidden_horizontal_maximum] TEST_PASS\nsim/tb_top.v:399: $finish called at 665000 (1ps)\n[sobel_randomized_seeded] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_stress_reset_stall] SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_stress_reset_stall\",\"class\":\"stress\",\"item_index\":23,\"field\":\"input_backpressure\",\"expected\":0,\"actual\":\"1\"}\nTEST_FAIL input accepted while output stalled\nsim/tb_top.v:375: $finish called at 545000 (1ps)",
+  "affected_files": [],
+  "tool": "vvp",
+  "tool_status": "failed",
+  "structured_diagnosis": {
+    "failure_type": "functional_mismatch",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}

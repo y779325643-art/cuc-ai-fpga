@@ -1,0 +1,140 @@
+# Deterministic T0-T4 coverage smoke for the canonical task catalog.
+# This is a local, no-API check that every catalog task can enter the
+# SR2FPGA project-generation and tool-labeling pipeline once.
+dataset_root: datasets/sr2fpga_rtl_v1
+export_root: datasets/sr2fpga_rtl_v1_exports
+run_root: tmp/sr2fpga_runs
+provider: deterministic
+repair_provider: none
+model: deterministic
+base_url: ""
+api_key_env: ""
+env_file: ""
+platform: generic_verilog
+max_attempts: 1
+refresh_exports: true
+sample_id_prefix: t0_t4_deterministic_smoke
+
+line_b_targets:
+  l3_success_ratio: 1.0
+  repair_trajectory_ratio: 0.0
+  max_samples: 24
+
+tasks:
+  - source: deterministic
+    task_type: counter
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: fifo
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: simple_fsm
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [4]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: ram_read_write
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [16]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: uart_tx
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: spi_master
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: pwm_controller
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: fir_filter
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: streaming_valid_ready
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: matrix_vector_mac
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: alu_control_unit
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: crc_stream_checker
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 1
+    requirement_style: simple_prompt
+    failure_injectors: []
+  - source: deterministic
+    task_type: component_topology
+    topology_ids:
+      - t1_event_counter
+      - t2_stream_accumulator
+      - t3_stream_fork
+      - t4_dual_stream_join
+      - t5_vector_mac_pipeline
+      - t6_td_update_core
+      - t7_policy_value_shell
+      - t8_replay_sample_shell
+      - t9_host_protocol_shell
+      - t10_rl_accelerator_shell
+      - t11_batch_rl_accelerator_shell
+      - t12_replay_arbiter_shell
+    requirement_style: simple_prompt
+    failure_origin: deterministic
+    measurement_point: a_first_attempt_no_tools
+    widths: [8]
+    count: 12
+    failure_injectors: []

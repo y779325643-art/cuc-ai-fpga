@@ -1,0 +1,11 @@
+{
+  "stage": "generation",
+  "command": [
+    "project_generator"
+  ],
+  "status": "failed",
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "behavior file 'rtl/top.v' does not contain a BEHAVIOR_HOLE",
+  "duration_seconds": 0.0
+}

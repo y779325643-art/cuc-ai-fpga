@@ -1,0 +1,8 @@
+H2 lowerability: components[0] has unsupported semantic_kind 'stream_buffer'
+H2 lowerability: components[1] has unsupported semantic_kind 'stream_accumulator'
+H2 lowerability: data_flow[6] has unsupported protocol 'registered_data'
+H2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'reset_initialization', 'description': 'Apply synchronous active-low reset and confirm in_ready is well-defined, sample_valid is deasserted, and sum is zero after reset release.'}'
+H2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'single_sample_accumulation', 'description': 'Drive one valid-ready sample transfer and confirm sum equals the sample value modulo 256.'}'
+H2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'continuous_stream_no_stall', 'description': 'Drive back-to-back valid samples while the accumulator is enabled by sample_ready and confirm one accumulated update per cycle.'}'
+H2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'input_stall_with_skid_buffer', 'description': 'Hold in_valid high while the buffer cannot present to the accumulator and confirm the skid buffer preserves sample ordering.'}'
+H2 lowerability: verification.scenarios[4] unsupported scenario '{'name': 'modulo_wrap', 'description': 'Accumulate samples whose mathematical sum exceeds 255 and confirm the visible sum wraps modulo 256.'}'

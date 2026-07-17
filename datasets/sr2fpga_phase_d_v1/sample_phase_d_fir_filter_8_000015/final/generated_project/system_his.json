@@ -1,0 +1,364 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter.",
+    "design_goal": "Implement a streaming 8-bit FIR filter with configurable coefficients and pipeline stages",
+    "assumptions": [
+      "Input data arrives on each clock when valid is high",
+      "Output data is available after fixed pipeline latency",
+      "Coefficients are pre-configured at synthesis time",
+      "Filter operates at 100 MHz clock frequency"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "description": "Width of input and output data signals"
+      },
+      {
+        "name": "COEFFICIENTS",
+        "type": "array",
+        "default": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "description": "Array of signed coefficient values for the FIR filter"
+      },
+      {
+        "name": "TAPS",
+        "type": "integer",
+        "default": 4,
+        "description": "Number of taps in the FIR filter"
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100,
+        "description": "Main system clock"
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync",
+        "description": "Synchronous active-low reset"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "width": 1,
+        "description": "Clock input"
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "width": 1,
+        "description": "Reset input (active low)"
+      },
+      {
+        "name": "data_in",
+        "direction": "input",
+        "width": 8,
+        "description": "Input data stream"
+      },
+      {
+        "name": "valid_in",
+        "direction": "input",
+        "width": 1,
+        "description": "Input data valid signal"
+      },
+      {
+        "name": "ready_out",
+        "direction": "output",
+        "width": 1,
+        "description": "Output ready signal"
+      },
+      {
+        "name": "data_out",
+        "direction": "output",
+        "width": 8,
+        "description": "Filtered output data"
+      },
+      {
+        "name": "valid_out",
+        "direction": "output",
+        "width": 1,
+        "description": "Output data valid signal"
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "delay_line_reg",
+        "width": 32,
+        "depth": 4,
+        "description": "Delay line storage for FIR filter taps"
+      },
+      {
+        "name": "output_pipeline_reg",
+        "width": 8,
+        "depth": 1,
+        "description": "Pipeline register for output data"
+      },
+      {
+        "name": "valid_out_reg",
+        "width": 1,
+        "depth": 1,
+        "description": "Register for output valid signal"
+      },
+      {
+        "name": "ready_out_reg",
+        "width": 1,
+        "depth": 1,
+        "description": "Register for ready signal"
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "fir_core",
+      "semantic_kind": "arithmetic",
+      "source": "rtl/fir_core.v",
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "data_in",
+          "direction": "input",
+          "width": 8
+        },
+        {
+          "name": "valid_in",
+          "direction": "input",
+          "width": 1
+        },
+        {
+          "name": "ready_out",
+          "direction": "output",
+          "width": 1
+        },
+        {
+          "name": "data_out",
+          "direction": "output",
+          "width": 8
+        },
+        {
+          "name": "valid_out",
+          "direction": "output",
+          "width": 1
+        }
+      ],
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        },
+        {
+          "name": "TAPS",
+          "type": "integer",
+          "default": 4
+        }
+      ],
+      "intent": "Core FIR filter implementation with delay line and multiply-accumulate operations"
+    }
+  ],
+  "instances": [
+    {
+      "name": "fir_inst",
+      "component": "fir_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8,
+        "TAPS": 4
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "delay_line_reg",
+        "output_pipeline_reg"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input_data_flow",
+      "path": [
+        "top.data_in",
+        "fir_inst.data_in"
+      ],
+      "payload": {
+        "name": "input_sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one sample per cycle when ready"
+      }
+    },
+    {
+      "name": "output_data_flow",
+      "path": [
+        "fir_inst.data_out",
+        "top.data_out"
+      ],
+      "payload": {
+        "name": "filtered_sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 4,
+        "initiation_interval": 1,
+        "throughput": "one sample per cycle when ready"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "input_valid_rule",
+      "kind": "enable_rule",
+      "when": {
+        "signal": "top.valid_in",
+        "op": "==",
+        "value": 1
+      },
+      "effect": {
+        "action": "assert",
+        "target": "input_data_flow"
+      },
+      "related_state": [
+        "delay_line_reg"
+      ],
+      "related_flows": [
+        "input_data_flow"
+      ]
+    },
+    {
+      "name": "output_valid_rule",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "fir_inst.valid_out",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "assert",
+        "target": "valid_out_reg"
+      },
+      "related_state": [
+        "output_pipeline_reg"
+      ],
+      "related_flows": [
+        "output_data_flow"
+      ]
+    },
+    {
+      "name": "ready_propagation_rule",
+      "kind": "handshake_rule",
+      "when": {
+        "any_of": [
+          {
+            "signal": "top.rst_n",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "assert",
+        "target": "ready_out_reg"
+      },
+      "related_state": [],
+      "related_flows": []
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "medium",
+      "ff": "medium",
+      "bram": 0,
+      "dsp": 4
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "impulse_response_test",
+        "description": "Test impulse response to verify filter coefficients",
+        "stimulus": "single high input sample followed by zeros",
+        "expected_behavior": "output matches expected convolution result"
+      },
+      {
+        "name": "step_response_test",
+        "description": "Test step response to verify filter stability",
+        "stimulus": "constant input value",
+        "expected_behavior": "output reaches steady state after filter delay"
+      },
+      {
+        "name": "throughput_test",
+        "description": "Verify maximum throughput capability",
+        "stimulus": "continuous valid input samples",
+        "expected_behavior": "output samples available every cycle after initial latency"
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/fir_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

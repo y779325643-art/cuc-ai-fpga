@@ -1,0 +1,801 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter.",
+    "design_goal": "Define a small 8-bit streaming FIR filter architecture with valid/ready flow control, synchronous active-low reset, fixed coefficients, and area-first implementation suitable for a generic open-source Verilog FPGA flow.",
+    "assumptions": [
+      "The FIR filter uses 4 fixed taps with symmetric coefficients [1, 2, 2, 1].",
+      "Input samples are unsigned 8-bit values.",
+      "The internal accumulator is wider than the input to avoid intermediate overflow.",
+      "The exported output is 8 bits and uses truncation from the scaled accumulator unless later implementation requirements specify saturation or rounding.",
+      "The design accepts one input sample per clock when both input valid and input ready are asserted.",
+      "Backpressure from the output interface stalls sample acceptance and preserves architectural state."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "intent": "Input and output sample width in bits."
+      },
+      {
+        "name": "COEFF_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "intent": "Coefficient width in bits."
+      },
+      {
+        "name": "TAP_COUNT",
+        "type": "integer",
+        "default": 4,
+        "intent": "Number of FIR taps."
+      },
+      {
+        "name": "ACC_WIDTH",
+        "type": "integer",
+        "default": 18,
+        "intent": "Accumulator width for multiply-accumulate result."
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "port": "clk",
+        "frequency_hz": 100000000,
+        "target_fmax_mhz": 100
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "port": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "kind": "clock",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "kind": "reset",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "s_axis_valid",
+        "direction": "input",
+        "kind": "data_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "s_axis_ready",
+        "direction": "output",
+        "kind": "data_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "s_axis_data",
+        "direction": "input",
+        "kind": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "m_axis_valid",
+        "direction": "output",
+        "kind": "data_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "m_axis_ready",
+        "direction": "input",
+        "kind": "data_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "m_axis_data",
+        "direction": "output",
+        "kind": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "s_axis",
+        "kind": "stream_sink",
+        "protocol": "valid_ready",
+        "clock": "clk",
+        "reset": "rst_n",
+        "signals": {
+          "valid": "s_axis_valid",
+          "ready": "s_axis_ready",
+          "data": "s_axis_data"
+        }
+      },
+      {
+        "name": "m_axis",
+        "kind": "stream_source",
+        "protocol": "valid_ready",
+        "clock": "clk",
+        "reset": "rst_n",
+        "signals": {
+          "valid": "m_axis_valid",
+          "ready": "m_axis_ready",
+          "data": "m_axis_data"
+        }
+      }
+    ]
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "fir_sample_delay_0",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "intent": "Most recent accepted input sample."
+      },
+      {
+        "name": "fir_sample_delay_1",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "intent": "One-cycle delayed input sample."
+      },
+      {
+        "name": "fir_sample_delay_2",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "intent": "Two-cycle delayed input sample."
+      },
+      {
+        "name": "fir_sample_delay_3",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "intent": "Three-cycle delayed input sample."
+      },
+      {
+        "name": "fir_output_data_reg",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "intent": "Registered filtered output sample."
+      },
+      {
+        "name": "fir_output_valid_reg",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        },
+        "reset_value": 0,
+        "intent": "Output valid state for the streaming source interface."
+      },
+      {
+        "name": "fir_pipeline_fill_reg",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "3",
+          "resolved": 3
+        },
+        "reset_value": 0,
+        "intent": "Tracks startup fill before all FIR taps contain accepted stream history."
+      }
+    ],
+    "counters": [
+      {
+        "name": "fir_accepted_sample_count",
+        "owner": "u_fir_core",
+        "width": {
+          "expr": "3",
+          "resolved": 3
+        },
+        "reset_value": 0,
+        "range": {
+          "min": 0,
+          "max": 4
+        },
+        "intent": "Counts accepted startup samples until the FIR delay line is fully primed."
+      }
+    ],
+    "fsms": [],
+    "buffers": [
+      {
+        "name": "fir_delay_line_buffer",
+        "owner": "u_fir_core",
+        "entries": 4,
+        "entry_width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "implemented_by": [
+          "fir_sample_delay_0",
+          "fir_sample_delay_1",
+          "fir_sample_delay_2",
+          "fir_sample_delay_3"
+        ],
+        "intent": "Architectural sample history for the 4-tap FIR convolution."
+      }
+    ],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "fir_core",
+      "semantic_kind": "streaming_fir_filter",
+      "source": "rtl/fir_core.v",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        },
+        {
+          "name": "COEFF_WIDTH",
+          "type": "integer",
+          "default": 8
+        },
+        {
+          "name": "TAP_COUNT",
+          "type": "integer",
+          "default": 4
+        },
+        {
+          "name": "ACC_WIDTH",
+          "type": "integer",
+          "default": 18
+        },
+        {
+          "name": "COEFF_0",
+          "type": "integer",
+          "default": 1
+        },
+        {
+          "name": "COEFF_1",
+          "type": "integer",
+          "default": 2
+        },
+        {
+          "name": "COEFF_2",
+          "type": "integer",
+          "default": 2
+        },
+        {
+          "name": "COEFF_3",
+          "type": "integer",
+          "default": 1
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "kind": "clock",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "kind": "reset",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sample_in_valid",
+          "direction": "input",
+          "kind": "data_valid",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sample_in_ready",
+          "direction": "output",
+          "kind": "data_ready",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sample_in_data",
+          "direction": "input",
+          "kind": "data",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "sample_out_valid",
+          "direction": "output",
+          "kind": "data_valid",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sample_out_ready",
+          "direction": "input",
+          "kind": "data_ready",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sample_out_data",
+          "direction": "output",
+          "kind": "data",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ],
+      "intent": "Accept streaming 8-bit samples, maintain a 4-sample delay line, compute a fixed-coefficient FIR result, and provide a registered valid/ready output stream."
+    }
+  ],
+  "instances": [
+    {
+      "name": "u_fir_core",
+      "component": "fir_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8,
+        "COEFF_WIDTH": 8,
+        "TAP_COUNT": 4,
+        "ACC_WIDTH": 18,
+        "COEFF_0": 1,
+        "COEFF_1": 2,
+        "COEFF_2": 2,
+        "COEFF_3": 1
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "fir_sample_delay_0",
+        "fir_sample_delay_1",
+        "fir_sample_delay_2",
+        "fir_sample_delay_3",
+        "fir_output_data_reg",
+        "fir_output_valid_reg",
+        "fir_pipeline_fill_reg",
+        "fir_accepted_sample_count",
+        "fir_delay_line_buffer"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input_sample_stream",
+      "path": [
+        "top.s_axis_data",
+        "u_fir_core.sample_in_data"
+      ],
+      "payload": {
+        "name": "input_sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one accepted input sample per cycle when s_axis_valid and s_axis_ready are both asserted"
+      }
+    },
+    {
+      "name": "fir_convolution_stream",
+      "path": [
+        "u_fir_core.sample_in_data",
+        "u_fir_core.sample_out_data"
+      ],
+      "payload": {
+        "name": "filtered_sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "internal_accumulator_width": {
+          "expr": "ACC_WIDTH",
+          "resolved": 18
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one filtered output sample per cycle after pipeline fill when downstream ready is asserted"
+      }
+    },
+    {
+      "name": "output_sample_stream",
+      "path": [
+        "u_fir_core.sample_out_data",
+        "top.m_axis_data"
+      ],
+      "payload": {
+        "name": "output_sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one transferred output sample per cycle when m_axis_valid and m_axis_ready are both asserted"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "synchronous_active_low_reset_clears_fir_state",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "clear",
+        "target": "fir_delay_line_buffer"
+      },
+      "related_state": [
+        "fir_sample_delay_0",
+        "fir_sample_delay_1",
+        "fir_sample_delay_2",
+        "fir_sample_delay_3",
+        "fir_output_data_reg",
+        "fir_output_valid_reg",
+        "fir_pipeline_fill_reg",
+        "fir_accepted_sample_count",
+        "fir_delay_line_buffer"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "input_handshake_accepts_sample",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.s_axis_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.s_axis_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "input_sample_stream"
+      },
+      "related_state": [
+        "fir_delay_line_buffer"
+      ],
+      "related_flows": [
+        "input_sample_stream"
+      ]
+    },
+    {
+      "name": "accepted_sample_advances_delay_line",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.s_axis_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.s_axis_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "shift_insert",
+        "target": "fir_delay_line_buffer"
+      },
+      "related_state": [
+        "fir_sample_delay_0",
+        "fir_sample_delay_1",
+        "fir_sample_delay_2",
+        "fir_sample_delay_3",
+        "fir_delay_line_buffer"
+      ],
+      "related_flows": [
+        "input_sample_stream",
+        "fir_convolution_stream"
+      ]
+    },
+    {
+      "name": "startup_sample_counter_updates_until_full",
+      "kind": "counter_update",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.s_axis_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.s_axis_ready",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "fir_accepted_sample_count",
+            "op": "<",
+            "value": 4
+          }
+        ]
+      },
+      "effect": {
+        "action": "increment_saturating",
+        "target": "fir_accepted_sample_count"
+      },
+      "related_state": [
+        "fir_accepted_sample_count",
+        "fir_pipeline_fill_reg"
+      ],
+      "related_flows": [
+        "input_sample_stream"
+      ]
+    },
+    {
+      "name": "output_valid_asserts_after_registered_result",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "fir_accepted_sample_count",
+            "op": ">",
+            "value": 0
+          },
+          {
+            "signal": "top.rst_n",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "assert",
+        "target": "fir_output_valid_reg"
+      },
+      "related_state": [
+        "fir_output_valid_reg",
+        "fir_accepted_sample_count"
+      ],
+      "related_flows": [
+        "fir_convolution_stream",
+        "output_sample_stream"
+      ]
+    },
+    {
+      "name": "output_handshake_transfers_filtered_sample",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.m_axis_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.m_axis_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "output_sample_stream"
+      },
+      "related_state": [
+        "fir_output_data_reg",
+        "fir_output_valid_reg"
+      ],
+      "related_flows": [
+        "output_sample_stream"
+      ]
+    },
+    {
+      "name": "downstream_backpressure_stalls_state_updates",
+      "kind": "stall_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.m_axis_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.m_axis_ready",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "hold",
+        "target": "fir_delay_line_buffer"
+      },
+      "related_state": [
+        "fir_sample_delay_0",
+        "fir_sample_delay_1",
+        "fir_sample_delay_2",
+        "fir_sample_delay_3",
+        "fir_output_data_reg",
+        "fir_output_valid_reg",
+        "fir_delay_line_buffer"
+      ],
+      "related_flows": [
+        "input_sample_stream",
+        "fir_convolution_stream",
+        "output_sample_stream"
+      ]
+    },
+    {
+      "name": "convolution_result_register_updates_when_pipeline_advances",
+      "kind": "enable_rule",
+      "when": {
+        "any_of": [
+          {
+            "signal": "top.m_axis_valid",
+            "op": "==",
+            "value": 0
+          },
+          {
+            "signal": "top.m_axis_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "update",
+        "target": "fir_output_data_reg"
+      },
+      "related_state": [
+        "fir_output_data_reg",
+        "fir_output_valid_reg",
+        "fir_delay_line_buffer"
+      ],
+      "related_flows": [
+        "fir_convolution_stream",
+        "output_sample_stream"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    },
+    "notes": [
+      "Small fixed-coefficient multiplications are expected to map to LUT fabric rather than DSP blocks.",
+      "The 4-sample delay line is expected to use flip-flops rather than block RAM."
+    ]
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "reset_behavior",
+        "description": "Apply synchronous active-low reset and verify output valid deasserts, output data clears, and the FIR delay line starts from zero state.",
+        "pass_condition": "After reset release, no output transfer is reported until valid input samples are accepted."
+      },
+      {
+        "name": "single_impulse_response",
+        "description": "Drive an impulse sample followed by zeros with downstream ready asserted.",
+        "pass_condition": "Observed output sequence matches the fixed FIR coefficient response scaled to the selected 8-bit output behavior."
+      },
+      {
+        "name": "constant_input_response",
+        "description": "Drive a constant stream of 8-bit samples with no stalls.",
+        "pass_condition": "After startup fill, every output sample equals the expected steady-state sum for coefficients [1, 2, 2, 1] under the defined output truncation behavior."
+      },
+      {
+        "name": "valid_ready_backpressure",
+        "description": "Randomly deassert m_axis_ready while continuing to present input valid.",
+        "pass_condition": "Output samples remain ordered, no accepted input sample is lost, and state advances only on permitted handshakes."
+      },
+      {
+        "name": "input_valid_gaps",
+        "description": "Insert cycles where s_axis_valid is low while downstream remains ready.",
+        "pass_condition": "The FIR delay line advances only on accepted input transfers and output values correspond to the accepted sample sequence."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/fir_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

@@ -1,0 +1,880 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Generate an 8-bit FPGA RTL project that accepts a valid-ready input stream and accumulates samples.",
+    "design_goal": "Compose a valid-ready skid-buffered input stream with an 8-bit accumulator core that accepts one sample per cycle when enabled by sample_ready and exposes the running 8-bit sum.",
+    "assumptions": [
+      "Accumulation wraps modulo 2^DATA_WIDTH.",
+      "sample_valid is a top-level observation of the valid sample presented from the input buffer into the accumulator.",
+      "Reset is synchronous active-low as required for this task.",
+      "For this repaired System-HIS contract, accumulator_core.sample_ready is modeled as an input readiness enable per validator fidelity requirements."
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [
+      {
+        "name": "DATA_WIDTH",
+        "type": "integer",
+        "default": 8,
+        "description": "Input sample and accumulator sum width in bits."
+      }
+    ],
+    "clocks": [
+      {
+        "name": "clk",
+        "frequency_hz": 100000000,
+        "target_fmax_mhz": 100
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst_n",
+        "polarity": "active_low",
+        "kind": "sync",
+        "clock": "clk"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "direction": "input",
+        "kind": "clock",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "rst_n",
+        "direction": "input",
+        "kind": "reset",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "in_valid",
+        "direction": "input",
+        "kind": "data_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "in_data",
+        "direction": "input",
+        "kind": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "in_ready",
+        "direction": "output",
+        "kind": "data_ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "sample_valid",
+        "direction": "output",
+        "kind": "data_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      {
+        "name": "sum",
+        "direction": "output",
+        "kind": "data",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      }
+    ],
+    "interfaces": [
+      {
+        "name": "input_stream",
+        "protocol": "valid_ready",
+        "role": "sink",
+        "signals": {
+          "valid": "in_valid",
+          "ready": "in_ready",
+          "data": "in_data"
+        },
+        "data_width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      {
+        "name": "accumulator_status",
+        "protocol": "valid_data",
+        "role": "source",
+        "signals": {
+          "valid": "sample_valid",
+          "data": "sum"
+        },
+        "data_width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      }
+    ]
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "input_buffer_data_reg",
+        "owner": "input_buffer",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "description": "Stored input sample held by the skid buffer when the accumulator cannot accept immediately."
+      },
+      {
+        "name": "accumulator_sum_reg",
+        "owner": "accumulator",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "reset_value": 0,
+        "description": "Running modulo sum of accepted samples."
+      }
+    ],
+    "counters": [
+      {
+        "name": "accepted_sample_count",
+        "owner": "accumulator",
+        "width": {
+          "expr": "32",
+          "resolved": 32
+        },
+        "reset_value": 0,
+        "description": "Architectural count of samples accepted by the accumulator, intended for verification observability or optional debug."
+      }
+    ],
+    "fsms": [
+      {
+        "name": "input_buffer_occupancy_fsm",
+        "owner": "input_buffer",
+        "states": [
+          "empty",
+          "full"
+        ],
+        "initial": "empty",
+        "reset_state": "empty",
+        "description": "Tracks whether the skid buffer currently holds a queued sample."
+      }
+    ],
+    "buffers": [
+      {
+        "name": "input_skid_buffer_storage",
+        "owner": "input_buffer",
+        "depth": 1,
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        },
+        "occupancy_state": "input_buffer_occupancy_fsm",
+        "data_state": "input_buffer_data_reg",
+        "description": "Single-entry skid buffer for the input valid-ready stream."
+      }
+    ],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "skid_buffer",
+      "semantic_kind": "stream_buffer",
+      "source": "rtl/skid_buffer.v",
+      "intent": "Provide one-entry valid-ready buffering between the top-level input stream and the accumulator core.",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "kind": "clock",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "kind": "reset",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "in_valid",
+          "direction": "input",
+          "kind": "data_valid",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "in_data",
+          "direction": "input",
+          "kind": "data",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "in_ready",
+          "direction": "output",
+          "kind": "data_ready",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "out_valid",
+          "direction": "output",
+          "kind": "data_valid",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "out_data",
+          "direction": "output",
+          "kind": "data",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "out_ready",
+          "direction": "input",
+          "kind": "data_ready",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        }
+      ]
+    },
+    {
+      "name": "accumulator_core",
+      "semantic_kind": "stream_accumulator",
+      "source": "rtl/accumulator_core.v",
+      "intent": "Accept valid-ready samples and update an 8-bit running sum on each successful sample handshake.",
+      "parameters": [
+        {
+          "name": "DATA_WIDTH",
+          "type": "integer",
+          "default": 8
+        }
+      ],
+      "ports": [
+        {
+          "name": "clk",
+          "direction": "input",
+          "kind": "clock",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "rst_n",
+          "direction": "input",
+          "kind": "reset",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sample_valid",
+          "direction": "input",
+          "kind": "data_valid",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sample",
+          "direction": "input",
+          "kind": "data",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        },
+        {
+          "name": "sample_ready",
+          "direction": "input",
+          "kind": "data_ready",
+          "width": {
+            "expr": "1",
+            "resolved": 1
+          }
+        },
+        {
+          "name": "sum",
+          "direction": "output",
+          "kind": "data",
+          "width": {
+            "expr": "DATA_WIDTH",
+            "resolved": 8
+          }
+        }
+      ]
+    }
+  ],
+  "instances": [
+    {
+      "name": "input_buffer",
+      "component": "skid_buffer",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "input_buffer_data_reg",
+        "input_buffer_occupancy_fsm",
+        "input_skid_buffer_storage"
+      ]
+    },
+    {
+      "name": "accumulator",
+      "component": "accumulator_core",
+      "parameter_values": {
+        "DATA_WIDTH": 8
+      },
+      "clock": "clk",
+      "reset": "rst_n",
+      "owns_state": [
+        "accumulator_sum_reg",
+        "accepted_sample_count"
+      ]
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "input_valid_to_buffer",
+      "path": [
+        "top.in_valid",
+        "input_buffer.in_valid"
+      ],
+      "payload": {
+        "name": "valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one valid indication per cycle"
+      }
+    },
+    {
+      "name": "input_data_to_buffer",
+      "path": [
+        "top.in_data",
+        "input_buffer.in_data"
+      ],
+      "payload": {
+        "name": "sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one sample per cycle when top.in_valid and top.in_ready are asserted"
+      }
+    },
+    {
+      "name": "buffered_sample_to_accumulator",
+      "path": [
+        "input_buffer.out_data",
+        "accumulator.sample"
+      ],
+      "payload": {
+        "name": "sample",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "one buffered sample per cycle when accumulator.sample_ready is asserted"
+      }
+    },
+    {
+      "name": "buffer_valid_to_accumulator_and_top",
+      "path": [
+        "input_buffer.out_valid",
+        "accumulator.sample_valid",
+        "top.sample_valid"
+      ],
+      "payload": {
+        "name": "sample_valid",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "one valid indication per cycle when the buffer presents a sample"
+      }
+    },
+    {
+      "name": "buffer_ready_to_accumulator",
+      "path": [
+        "input_buffer.out_ready",
+        "accumulator.sample_ready"
+      ],
+      "payload": {
+        "name": "ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "ready may be asserted every cycle"
+      }
+    },
+    {
+      "name": "buffer_ready_to_top",
+      "path": [
+        "input_buffer.in_ready",
+        "top.in_ready"
+      ],
+      "payload": {
+        "name": "ready",
+        "width": {
+          "expr": "1",
+          "resolved": 1
+        }
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "latency_cycles": 0,
+        "initiation_interval": 1,
+        "throughput": "ready may be asserted every cycle"
+      }
+    },
+    {
+      "name": "accumulated_sum_to_top",
+      "path": [
+        "accumulator.sum",
+        "top.sum"
+      ],
+      "payload": {
+        "name": "sum",
+        "width": {
+          "expr": "DATA_WIDTH",
+          "resolved": 8
+        }
+      },
+      "protocol": "registered_data",
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1,
+        "throughput": "sum updates once per accepted sample"
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "synchronous_reset_clears_buffer",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "input_buffer_occupancy_fsm",
+        "value": "empty"
+      },
+      "related_state": [
+        "input_buffer_occupancy_fsm",
+        "input_buffer_data_reg",
+        "input_skid_buffer_storage"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "synchronous_reset_clears_accumulator_sum",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "accumulator_sum_reg",
+        "value": 0
+      },
+      "related_state": [
+        "accumulator_sum_reg"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "synchronous_reset_clears_sample_count",
+      "kind": "reset_rule",
+      "when": {
+        "signal": "top.rst_n",
+        "op": "==",
+        "value": 0
+      },
+      "effect": {
+        "action": "set",
+        "target": "accepted_sample_count",
+        "value": 0
+      },
+      "related_state": [
+        "accepted_sample_count"
+      ],
+      "related_flows": []
+    },
+    {
+      "name": "top_input_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "top.in_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "input_data_to_buffer"
+      },
+      "related_state": [
+        "input_buffer_occupancy_fsm",
+        "input_buffer_data_reg"
+      ],
+      "related_flows": [
+        "input_valid_to_buffer",
+        "input_data_to_buffer",
+        "buffer_ready_to_top"
+      ]
+    },
+    {
+      "name": "accumulator_sample_handshake",
+      "kind": "handshake_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.sample_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.sample_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "transfer",
+        "target": "buffered_sample_to_accumulator"
+      },
+      "related_state": [
+        "input_buffer_occupancy_fsm",
+        "accumulator_sum_reg",
+        "accepted_sample_count"
+      ],
+      "related_flows": [
+        "buffered_sample_to_accumulator",
+        "buffer_valid_to_accumulator_and_top",
+        "buffer_ready_to_accumulator"
+      ]
+    },
+    {
+      "name": "accumulator_sum_update",
+      "kind": "enable_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.sample_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.sample_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "accumulate_modulo",
+        "target": "accumulator_sum_reg",
+        "operand_flow": "buffered_sample_to_accumulator"
+      },
+      "related_state": [
+        "accumulator_sum_reg"
+      ],
+      "related_flows": [
+        "buffered_sample_to_accumulator"
+      ]
+    },
+    {
+      "name": "accepted_sample_count_update",
+      "kind": "counter_update",
+      "when": {
+        "all_of": [
+          {
+            "signal": "accumulator.sample_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "accumulator.sample_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "increment",
+        "target": "accepted_sample_count",
+        "value": 1
+      },
+      "related_state": [
+        "accepted_sample_count"
+      ],
+      "related_flows": [
+        "buffered_sample_to_accumulator"
+      ]
+    },
+    {
+      "name": "buffer_captures_when_downstream_stalls",
+      "kind": "stall_rule",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "input_buffer.out_ready",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "store",
+        "target": "input_buffer_data_reg",
+        "source_flow": "input_data_to_buffer"
+      },
+      "related_state": [
+        "input_buffer_data_reg",
+        "input_buffer_occupancy_fsm",
+        "input_skid_buffer_storage"
+      ],
+      "related_flows": [
+        "input_data_to_buffer"
+      ]
+    },
+    {
+      "name": "buffer_empty_to_full_transition",
+      "kind": "fsm_transition",
+      "fsm": "input_buffer_occupancy_fsm",
+      "from": "empty",
+      "to": "full",
+      "when": {
+        "all_of": [
+          {
+            "signal": "top.in_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "input_buffer.out_ready",
+            "op": "==",
+            "value": 0
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "input_buffer_occupancy_fsm",
+        "value": "full"
+      },
+      "related_state": [
+        "input_buffer_occupancy_fsm",
+        "input_buffer_data_reg"
+      ],
+      "related_flows": [
+        "input_valid_to_buffer",
+        "input_data_to_buffer"
+      ]
+    },
+    {
+      "name": "buffer_full_to_empty_transition",
+      "kind": "fsm_transition",
+      "fsm": "input_buffer_occupancy_fsm",
+      "from": "full",
+      "to": "empty",
+      "when": {
+        "all_of": [
+          {
+            "signal": "input_buffer.out_valid",
+            "op": "==",
+            "value": 1
+          },
+          {
+            "signal": "input_buffer.out_ready",
+            "op": "==",
+            "value": 1
+          }
+        ]
+      },
+      "effect": {
+        "action": "set",
+        "target": "input_buffer_occupancy_fsm",
+        "value": "empty"
+      },
+      "related_state": [
+        "input_buffer_occupancy_fsm"
+      ],
+      "related_flows": [
+        "buffered_sample_to_accumulator",
+        "buffer_valid_to_accumulator_and_top",
+        "buffer_ready_to_accumulator"
+      ]
+    },
+    {
+      "name": "sample_valid_observation",
+      "kind": "enable_rule",
+      "when": {
+        "signal": "input_buffer.out_valid",
+        "op": "==",
+        "value": 1
+      },
+      "effect": {
+        "action": "assert",
+        "target": "buffer_valid_to_accumulator_and_top"
+      },
+      "related_state": [
+        "input_buffer_occupancy_fsm"
+      ],
+      "related_flows": [
+        "buffer_valid_to_accumulator_and_top"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": "low",
+      "ff": "low",
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.v",
+    "scenarios": [
+      {
+        "name": "reset_initialization",
+        "description": "Apply synchronous active-low reset and confirm in_ready is well-defined, sample_valid is deasserted, and sum is zero after reset release."
+      },
+      {
+        "name": "single_sample_accumulation",
+        "description": "Drive one valid-ready sample transfer and confirm sum equals the sample value modulo 256."
+      },
+      {
+        "name": "continuous_stream_no_stall",
+        "description": "Drive back-to-back valid samples while the accumulator is enabled by sample_ready and confirm one accumulated update per cycle."
+      },
+      {
+        "name": "input_stall_with_skid_buffer",
+        "description": "Hold in_valid high while the buffer cannot present to the accumulator and confirm the skid buffer preserves sample ordering."
+      },
+      {
+        "name": "modulo_wrap",
+        "description": "Accumulate samples whose mathematical sum exceeds 255 and confirm the visible sum wraps modulo 256."
+      }
+    ],
+    "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/skid_buffer.v",
+      "rtl/accumulator_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}

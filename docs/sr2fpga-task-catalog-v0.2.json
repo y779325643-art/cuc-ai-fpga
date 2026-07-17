@@ -1,0 +1,5051 @@
+{
+  "$schema": "https://sr2fpga.local/schemas/sr2fpga-task-catalog-v0.2.schema.json",
+  "catalog_schema_version": "sr2fpga-task-catalog-v0.2",
+  "catalog_version": "0.2.0",
+  "intended_path": "docs/sr2fpga-task-catalog-v0.2.json",
+  "generated_at_utc": "2026-07-10T05:24:27Z",
+  "purpose": "Executable task-family catalog for SR2FPGA Codex implementation, benchmark planning, Line A/Line B selection, oracle readiness, skeleton strategy, and L0-L5 target policy.",
+  "source_notes": [
+    "Aligned with current SR2FPGA code report: deterministic generator, System-HIS v1.2 checker, contract skeleton, L0-L3 tool loop, optional OpenXC7 L4, recorder/training views.",
+    "Aligned with SR2FPGA research spec: T0-T4 compressed curriculum, System-HIS v1.2, L0-L5 evaluation, L4 representative-subset policy, black-box testbench oracle discipline.",
+    "ArchXBench informs design-complexity pressure but its Level 0-6 is orthogonal to SR2FPGA T0-T4 and L0-L5."
+  ],
+  "naming": {
+    "module_difficulty": {
+      "M1": "basic control / introductory RTL module",
+      "M2": "protocol, memory, and basic interface module",
+      "M3": "numeric, stream, datapath, and mid-level protocol module",
+      "M4": "complex datapath, image, graphics, and optimization module",
+      "M5": "advanced system, accelerator, communication, and SoC module"
+    },
+    "project_difficulty": {
+      "P1": "introductory project",
+      "P2": "early project with protocol/interface integration",
+      "P3": "mid-level datapath/project-level verification project",
+      "P4": "complex integrated project or Paper② bridge",
+      "P5": "advanced flagship/future project"
+    },
+    "sr2fpga_tier": {
+      "T0": "task-family smoke and oracle coverage",
+      "T1": "multi-module composition",
+      "T2": "stream/control systems",
+      "T3": "datapath and memory systems",
+      "T4": "integrated host-facing system shells"
+    },
+    "verification_levels": {
+      "L0": "System-HIS/manifest/RTL/testbench/constraint consistency",
+      "L1": "Verilator lint / synthesizable subset",
+      "L2": "black-box functional simulation",
+      "L3": "Yosys synth_xilinx and resource/QoR extraction",
+      "L4": "OpenXC7/Vivado place-and-route timing closure",
+      "L5": "fixed-shell board validation"
+    }
+  },
+  "allowed_enums": {
+    "task_kind": [
+      "module_family",
+      "project_family"
+    ],
+    "category": [
+      "control_basic_rtl",
+      "protocol_interface",
+      "numeric_datapath",
+      "memory_datapath",
+      "image_pipeline",
+      "system_graphics_demo",
+      "optimization_accelerator",
+      "host_facing_accelerator",
+      "communication_datapath",
+      "cdc_structural",
+      "system_host_facing"
+    ],
+    "system_his_profile": [
+      "simple_control",
+      "protocol_interface",
+      "streaming_datapath",
+      "memory_datapath",
+      "image_pipeline",
+      "optimization_accelerator",
+      "host_facing_accelerator",
+      "cdc_structural",
+      "soc_shell"
+    ],
+    "skeleton_level": [
+      "S1_structure_skeleton",
+      "S2_protocol_skeleton",
+      "S3_architecture_skeleton",
+      "fixed_shell"
+    ],
+    "oracle_kind": [
+      "reference_model",
+      "transaction_scoreboard",
+      "protocol_checker",
+      "python_numpy_golden",
+      "python_signal_golden",
+      "python_rl_golden",
+      "python_ga_golden",
+      "comms_python_golden",
+      "image_golden",
+      "frame_object_checker",
+      "host_signature",
+      "mixed_oracle",
+      "structural_cdc_checker"
+    ],
+    "oracle_readiness": [
+      "ready",
+      "partial",
+      "needs_golden_model",
+      "needs_protocol_checker",
+      "future"
+    ],
+    "l4_open_policy": [
+      "none",
+      "optional",
+      "representative_subset",
+      "required_for_flagship",
+      "future"
+    ],
+    "l4_commercial_policy": [
+      "none",
+      "tcad_subset",
+      "future"
+    ],
+    "l5_policy": [
+      "none",
+      "optional_board_demo",
+      "l5_min_candidate",
+      "fixed_shell_only",
+      "future"
+    ],
+    "benchmark_role": [
+      "smoke",
+      "smoke_board_demo",
+      "paper1_core",
+      "eval_subset",
+      "advanced_eval",
+      "demo",
+      "board_demo",
+      "paper2_bridge",
+      "flagship_core",
+      "flagship_candidate",
+      "flagship",
+      "external_anchor",
+      "fixed_infrastructure",
+      "future"
+    ],
+    "implementation_status": [
+      "implemented_current",
+      "planned",
+      "partial",
+      "future"
+    ]
+  },
+  "global_policies": {
+    "line_a": {
+      "description": "Official benchmark/eval set; quality first; all selected tasks require strong oracle, B_ref L0-L3 pass, frozen hidden/stress scenarios, and mutation-score gate.",
+      "default_official_target": "L3",
+      "l4_open": "representative_subset",
+      "l4_commercial": "tcad_subset_only",
+      "l5": "1_to_3_l5_min_candidates"
+    },
+    "line_b": {
+      "description": "Scalable training/trajectory data; scale first; run all selected tasks through L0-L3 by default; L4 only for small representative/QoR subsets.",
+      "default_official_target": "L3",
+      "l4_open": "not_default",
+      "l4_commercial": "not_for_line_b",
+      "l5": "not_for_line_b"
+    },
+    "testbench_oracle_gate": {
+      "black_box_only": true,
+      "no_dut_internal_peeking": true,
+      "requires_test_pass_fail": true,
+      "requires_bounded_timeout": true,
+      "requires_mutation_score_for_line_a": true,
+      "default_mutation_score_thresholds": {
+        "smoke_basic": 0.75,
+        "protocol_datapath": 0.85,
+        "complex_flagship": 0.9
+      }
+    },
+    "l4_policy": {
+      "do_not_make_l4_default_for_line_b": true,
+      "not_run_is_not_failure": true,
+      "representative_tasks_preferred": [
+        "fir_filter",
+        "matrix_vector_mac",
+        "matched_filter",
+        "sobel_threshold",
+        "p_stream_trigger_filter",
+        "qtable_update_core",
+        "p_rl_qlearning_accel"
+      ],
+      "commercial_reference_policy": "Run Vivado only on TCAD subset if license permits; raw Vivado artifacts are internal_only."
+    }
+  },
+  "recommended_sets": {
+    "paper1_core": [
+      "sync_fifo",
+      "uart_fifo_loopback",
+      "valid_ready_stream_accumulator",
+      "stream_fork_join",
+      "single_dual_port_ram",
+      "mac_array",
+      "fir_filter",
+      "matrix_vector_mac",
+      "matched_filter",
+      "peak_detector",
+      "sobel_threshold",
+      "pattern_matcher",
+      "p_stream_trigger_filter",
+      "qtable_update_core"
+    ],
+    "paper1_complex_eval": [
+      "p_vision_defect_core",
+      "p_simple_cnn_pipeline",
+      "p_ga_accelerator",
+      "p_pong_game",
+      "p_rl_qlearning_accel"
+    ],
+    "l4_representative_subset": [
+      "fir_filter",
+      "matrix_vector_mac",
+      "matched_filter",
+      "sobel_threshold",
+      "p_stream_trigger_filter",
+      "conv2d_core",
+      "qtable_update_core",
+      "p_rl_qlearning_accel"
+    ],
+    "l5_min_candidates": [
+      "p_led_breath_button",
+      "p_pong_game",
+      "p_rl_qlearning_accel"
+    ],
+    "paper2_bridge": [
+      "ga_fitness_eval",
+      "ga_select_cross_mutate",
+      "population_eval_parallel",
+      "p_ga_accelerator",
+      "qtable_update_core",
+      "p_rl_qlearning_accel"
+    ],
+    "future_not_paper1_core": [
+      "hdmi_tmds_basic",
+      "qam_mapping_equalizer",
+      "p_ofdm_modem_subset",
+      "p_riscv_soc_shell",
+      "p_sensor_fusion_obstacle",
+      "memory_interrupt_controller",
+      "soc_top_wrapper"
+    ]
+  },
+  "task_families": [
+    {
+      "family_id": "clock_divider",
+      "display_name": "时钟分频器",
+      "task_kind": "module_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": "M1",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [
+        "sobel_line_buffer",
+        "sobel_window",
+        "sobel_threshold_core",
+        "io_control"
+      ],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "clock_enable_or_divided_tick_matches_declared_ratio"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "ratio_check"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_divide_ratio",
+        "missing_reset"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "binary_bcd_counter",
+      "display_name": "二进制 / BCD 计数器",
+      "task_kind": "module_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": "M1",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "count_sequence_matches_mode",
+        "reset_to_declared_value"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "wraparound"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "off_by_one_increment",
+        "wrong_wrap_value",
+        "missing_reset"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "counter"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "button_debounce",
+      "display_name": "按键消抖模块",
+      "task_kind": "module_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": "M1",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "stable_output_after_debounce_window"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "short_bounce",
+        "long_press"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "too_short_debounce_window",
+        "noisy_output_passthrough"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "simple_fsm",
+      "display_name": "简单状态机 FSM",
+      "task_kind": "module_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": "M1",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "declared_state_transitions",
+        "reset_state"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "all_state_transitions"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_next_state",
+        "missing_default_state",
+        "wrong_reset_state"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "simple_fsm"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "seven_seg_scan",
+      "display_name": "7 段译码器 + 动态扫描",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M1",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "digit_decode_correct",
+        "scan_period_matches_contract"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "all_digits",
+        "scan_rotation"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "open_flow_smoke"
+      ],
+      "mutation_suite": [
+        "wrong_segment_map",
+        "stuck_digit_select"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "pwm_generator",
+      "display_name": "PWM 发生器",
+      "task_kind": "module_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": "M1",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "duty_cycle_matches_input",
+        "period_matches_contract"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "0_percent",
+        "50_percent",
+        "100_percent"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_compare_operator",
+        "wrong_period_counter",
+        "missing_reset"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "pwm_controller"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "baud_generator",
+      "display_name": "波特率发生器",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "baud_tick_period_matches_contract"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "baud_tick_spacing"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_baud_divisor",
+        "jittered_tick"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "uart_tx",
+      "display_name": "UART 发送器",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "protocol_checker",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "start_bit_data_bits_stop_bit_order",
+        "baud_tick_alignment"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "all_byte_patterns",
+        "stop_bit_check"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_bit_order",
+        "missing_stop_bit",
+        "wrong_baud_tick"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "uart_tx"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "uart_rx",
+      "display_name": "UART 接收器",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "protocol_checker",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "start_bit_detection",
+        "mid_bit_sampling",
+        "valid_pulse_alignment"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "sampling_phase",
+        "framing_error"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_sampling_point",
+        "ignore_start_bit",
+        "wrong_shift_direction"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "uart_rx"
+      ],
+      "notes": [],
+      "risks": [
+        "RX sampling and drift make verification harder than UART TX."
+      ]
+    },
+    {
+      "family_id": "uart_fifo_loopback",
+      "display_name": "UART + FIFO loopback",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "baud_generator",
+        "uart_tx",
+        "uart_rx",
+        "sync_fifo"
+      ],
+      "oracle_kind": [
+        "protocol_checker",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "uart_frame_correct",
+        "fifo_order_preserved",
+        "no_drop_no_duplicate"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "fifo_full_empty"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "fifo_drop_byte",
+        "wrong_uart_bit_order",
+        "fifo_order_swap"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "uart_fifo_loopback"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "sync_fifo",
+      "display_name": "同步 FIFO",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "protocol_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "fifo_order",
+        "full_empty_flags",
+        "same_cycle_push_pop"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "full",
+        "empty",
+        "almost_full",
+        "almost_empty",
+        "simultaneous_push_pop"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "remove_full_guard",
+        "remove_empty_guard",
+        "wrong_pointer_update",
+        "same_cycle_push_pop_bug"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "fifo"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "async_fifo_cdc",
+      "display_name": "异步 FIFO / CDC 结构族",
+      "task_kind": "module_family",
+      "category": "cdc_structural",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "cdc_structural",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "structural_cdc_checker",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "gray_pointer_structure",
+        "declared_synchronizer_instances",
+        "separate_clock_domains"
+      ],
+      "coverage_targets": [
+        "structural_cdc_path",
+        "basic_two_clock_simulation"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "remove_synchronizer",
+        "binary_pointer_crossing",
+        "wrong_clock_binding"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [
+        "Metastability is not behaviorally proven; official claim is structural CDC only."
+      ],
+      "risks": [
+        "CDC behavioral correctness cannot be fully verified in aligned-clock simulation."
+      ]
+    },
+    {
+      "family_id": "single_dual_port_ram",
+      "display_name": "单/双端口 RAM / BRAM",
+      "task_kind": "module_family",
+      "category": "memory_datapath",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "memory_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "read_latency",
+        "read_type",
+        "read_during_write",
+        "memory_style_mapping"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "read_after_write",
+        "same_address_conflict",
+        "byte_enable"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "bram_mapping",
+        "qor_calibration"
+      ],
+      "mutation_suite": [
+        "async_read_in_sync_bram_family",
+        "wrong_read_during_write",
+        "wrong_address_width"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "ram_read_write"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "vga_timing",
+      "display_name": "VGA 时序生成器",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "protocol_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "hsync_vsync_timing",
+        "active_video_window",
+        "pixel_coordinate_sequence"
+      ],
+      "coverage_targets": [
+        "line_count",
+        "frame_count",
+        "active_region",
+        "blanking_region"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "open_flow_smoke",
+        "board_demo"
+      ],
+      "mutation_suite": [
+        "wrong_hsync_pulse",
+        "wrong_vsync_period",
+        "off_by_one_active_region"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "pixel_generator_basic",
+      "display_name": "基础像素生成电路",
+      "task_kind": "module_family",
+      "category": "system_graphics_demo",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "frame_object_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "pixel_color_matches_coordinate_rule",
+        "frame_signature"
+      ],
+      "coverage_targets": [
+        "known_coordinates",
+        "frame_signature",
+        "reset_frame_start"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_color_region",
+        "stuck_pixel",
+        "wrong_frame_boundary"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "hdmi_tmds_basic",
+      "display_name": "HDMI/TMDS 基础输出",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "protocol_checker"
+      ],
+      "oracle_readiness": "future",
+      "architecture_obligations": [
+        "tmds_encoding",
+        "clocking_io_constraints"
+      ],
+      "coverage_targets": [
+        "encoding_smoke"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "future"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_tmds_control_code",
+        "wrong_serialization"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "future",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": [
+        "PLL/SerDes/IO constraints are board-specific; not Paper① core."
+      ]
+    },
+    {
+      "family_id": "valid_ready_stream_stage",
+      "display_name": "valid-ready 流式缓冲级",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "pattern_matcher"
+      ],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "protocol_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "payload_stable_under_stall",
+        "no_drop_no_duplicate"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "long_stall",
+        "burst_idle_mix"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "payload_changes_under_stall",
+        "valid_drops_under_stall",
+        "drop_transaction"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "streaming_valid_ready"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "valid_ready_stream_accumulator",
+      "display_name": "valid-ready 流式累加器",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "protocol_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "payload_stable_under_stall",
+        "no_drop_no_duplicate",
+        "accumulation_correct"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "long_stall",
+        "burst_idle_mix"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "payload_changes_under_stall",
+        "valid_drops_under_stall",
+        "drop_transaction",
+        "wrong_accumulation"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "t2_stream_accumulator"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "stream_fork_join",
+      "display_name": "stream fork / dual-stream join",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "protocol_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "ordering_preserved",
+        "duplication_or_join_policy",
+        "backpressure_propagation"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "mismatched_stream_rates",
+        "output_stall"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "routing_pressure",
+        "protocol_datapath_timing"
+      ],
+      "mutation_suite": [
+        "drop_one_branch",
+        "duplicate_transaction",
+        "wrong_join_order",
+        "missing_backpressure"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "t3_stream_fork",
+        "t4_dual_stream_join"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "mac_array",
+      "display_name": "乘加阵列 MAC",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_numpy_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "signedness",
+        "accumulator_width",
+        "dsp_mapping_optional",
+        "latency_alignment"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "negative_values",
+        "max_values"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "dsp_mapping",
+        "timing_closure",
+        "qor_calibration"
+      ],
+      "mutation_suite": [
+        "remove_signed_cast",
+        "truncate_accumulator",
+        "wrong_latency",
+        "wrong_operand_order"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "t5_vector_mac_pipeline"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "matrix_vector_mac",
+      "display_name": "矩阵-向量 MAC",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_numpy_golden",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "matrix_dimension_parameters",
+        "parallel_lanes",
+        "accumulator_width",
+        "initiation_interval"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "identity_matrix",
+        "sparse_matrix",
+        "random_matrix"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "dsp_mapping",
+        "bram_mapping",
+        "qor_calibration"
+      ],
+      "mutation_suite": [
+        "wrong_index_order",
+        "truncate_accumulator",
+        "wrong_lane_reduction",
+        "missing_stall"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "matrix_vector_mac"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "fir_filter",
+      "display_name": "FIR 滤波器核心",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_numpy_golden",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "coefficient_order",
+        "accumulator_width",
+        "latency_within_bound",
+        "initiation_interval"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "impulse_response",
+        "step_response",
+        "random_signal"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "dsp_mapping",
+        "timing_closure",
+        "qor_calibration"
+      ],
+      "mutation_suite": [
+        "wrong_coeff_order",
+        "truncate_accumulator",
+        "remove_signed_cast",
+        "missing_stall",
+        "off_by_one_latency"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "fir_filter"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "spi_master",
+      "display_name": "SPI 主机模块",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "protocol_checker",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "cpol_cpha_mode",
+        "chip_select_framing",
+        "bit_order"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "all_cpol_cpha_subset",
+        "multi_byte_transfer"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "cpol_cpha_mismatch",
+        "wrong_bit_order",
+        "missing_cs_framing"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "spi_master"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "i2c_master",
+      "display_name": "I2C 主机模块",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "protocol_checker"
+      ],
+      "oracle_readiness": "needs_protocol_checker",
+      "architecture_obligations": [
+        "open_drain_behavior",
+        "ack_nack_handling",
+        "start_stop_conditions"
+      ],
+      "coverage_targets": [
+        "start_condition",
+        "stop_condition",
+        "ack_nack",
+        "basic_write"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "drive_high_open_drain",
+        "ignore_ack",
+        "wrong_stop_condition"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": [
+        "Open-drain bidirectional IO and clock stretching make this harder than SPI."
+      ]
+    },
+    {
+      "family_id": "line_frame_buffer",
+      "display_name": "图像行/帧缓存",
+      "task_kind": "module_family",
+      "category": "image_pipeline",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "memory_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "image_golden",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "pixel_order",
+        "line_buffer_latency",
+        "bram_mapping"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "frame_boundary",
+        "line_buffer_boundary",
+        "border_cases"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "bram_mapping",
+        "routing_pressure"
+      ],
+      "mutation_suite": [
+        "wrong_line_order",
+        "wrong_frame_boundary",
+        "wrong_read_latency"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "sobel_threshold",
+      "display_name": "Sobel / 阈值滤波器",
+      "task_kind": "module_family",
+      "category": "image_pipeline",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "sobel_line_buffer",
+        "sobel_window",
+        "sobel_threshold_core",
+        "io_control"
+      ],
+      "oracle_kind": [
+        "image_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "line_buffer_order",
+        "gradient_computation",
+        "threshold_policy",
+        "pixel_latency",
+        "edge_axis_semantics",
+        "in_last_gated_frame_flush"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "frame_boundary",
+        "line_buffer_boundary",
+        "border_cases",
+        "edge_cases",
+        "flat_image",
+        "axis_sensitive_edges",
+        "threshold_boundary",
+        "stall_stability",
+        "missing_final_in_last"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "bram_mapping",
+        "timing_closure",
+        "qor_calibration"
+      ],
+      "mutation_suite": [
+        "swap_x_y_gradient",
+        "wrong_border_policy",
+        "wrong_threshold",
+        "accumulator_truncation",
+        "input_backpressure_error",
+        "ignore_in_last",
+        "ignore_subsequent_reset"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "sobel_threshold"
+      ],
+      "notes": [
+        "edge_axis is one when abs(Gx) is at least abs(Gy); border outputs are zero; final in_last gates bottom flush and out_last."
+      ],
+      "risks": []
+    },
+    {
+      "family_id": "matched_filter",
+      "display_name": "匹配滤波器",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_signal_golden",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "template_order",
+        "correlation_width",
+        "latency_alignment"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "known_pulse",
+        "noise_floor"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "dsp_mapping",
+        "timing_closure"
+      ],
+      "mutation_suite": [
+        "reversed_template",
+        "truncate_correlation",
+        "wrong_latency",
+        "missing_stall"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "matched_filter"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "peak_detector",
+      "display_name": "峰值检测器",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": ["peak_detector_core"],
+      "oracle_kind": [
+        "python_signal_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "threshold_policy",
+        "peak_position",
+        "tie_break_policy"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "multiple_peaks",
+        "below_threshold"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_threshold",
+        "off_by_one_peak",
+        "wrong_tie_break"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["peak_detector"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "pattern_matcher",
+      "display_name": "模式匹配器",
+      "task_kind": "module_family",
+      "category": "protocol_interface",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "pattern_matcher"
+      ],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "protocol_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "sequence_match",
+        "trigger_alignment",
+        "accepted_token_match_index",
+        "no_false_positive"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "partial_match",
+        "overlapping_match"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_pattern_order",
+        "false_positive",
+        "miss_overlap",
+        "missing_stall"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["pattern_matcher"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "conv2d_core",
+      "display_name": "2D 卷积核心",
+      "task_kind": "module_family",
+      "category": "image_pipeline",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_numpy_golden",
+        "image_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "window_generation",
+        "mac_array_correct",
+        "latency_within_bound",
+        "initiation_interval"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "frame_boundary",
+        "line_buffer_boundary",
+        "border_cases",
+        "random_kernel",
+        "impulse_image"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "dsp_mapping",
+        "bram_mapping",
+        "timing_closure"
+      ],
+      "mutation_suite": [
+        "wrong_window_order",
+        "wrong_kernel_order",
+        "truncate_accumulator",
+        "missing_valid_pipeline"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "pooling_activation",
+      "display_name": "池化 + 激活函数",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_numpy_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "pooling_window",
+        "activation_policy",
+        "latency_alignment"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "frame_boundary",
+        "line_buffer_boundary",
+        "border_cases",
+        "negative_values",
+        "window_boundaries"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_pool_op",
+        "wrong_relu_policy",
+        "wrong_window_boundary"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "image_scale_norm",
+      "display_name": "图像缩放 / 归一化",
+      "task_kind": "module_family",
+      "category": "image_pipeline",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "image_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "scale_factor",
+        "rounding_policy",
+        "normalization_range"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "frame_boundary",
+        "line_buffer_boundary",
+        "border_cases",
+        "min_max_pixels"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_rounding",
+        "wrong_scale_factor",
+        "overflow_normalization"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "sprite_object_mapper",
+      "display_name": "对象映射图形生成器",
+      "task_kind": "module_family",
+      "category": "system_graphics_demo",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "frame_object_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "sprite_position",
+        "z_order_or_priority",
+        "frame_signature"
+      ],
+      "coverage_targets": [
+        "known_object_positions",
+        "overlap_cases",
+        "frame_signature"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_position_update",
+        "wrong_priority",
+        "stuck_sprite"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "collision_detector",
+      "display_name": "碰撞检测模块",
+      "task_kind": "module_family",
+      "category": "system_graphics_demo",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "bounding_box_intersection",
+        "collision_response"
+      ],
+      "coverage_targets": [
+        "no_overlap",
+        "edge_touch",
+        "full_overlap",
+        "moving_objects"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_boundary_compare",
+        "miss_edge_touch",
+        "false_collision"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "font_text_renderer",
+      "display_name": "文本生成器 / 字体 ROM",
+      "task_kind": "module_family",
+      "category": "system_graphics_demo",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "memory_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "frame_object_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "glyph_rom_mapping",
+        "character_position",
+        "pixel_generation"
+      ],
+      "coverage_targets": [
+        "ascii_subset",
+        "known_glyphs",
+        "frame_signature"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_glyph_address",
+        "wrong_pixel_bit_order",
+        "stuck_character"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "ga_fitness_eval",
+      "display_name": "GA 适应度评估单元",
+      "task_kind": "module_family",
+      "category": "optimization_accelerator",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "optimization_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_ga_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "fitness_formula",
+        "numeric_width",
+        "parallel_lanes_optional"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "known_population",
+        "random_population"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "parallel_datapath_timing",
+        "qor_calibration"
+      ],
+      "mutation_suite": [
+        "wrong_fitness_formula",
+        "truncate_fitness",
+        "wrong_index_order"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper2_bridge",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "ga_select_cross_mutate",
+      "display_name": "GA 选择 / 交叉 / 变异算子",
+      "task_kind": "module_family",
+      "category": "optimization_accelerator",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "optimization_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_ga_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "selection_policy",
+        "crossover_policy",
+        "mutation_bounds"
+      ],
+      "coverage_targets": [
+        "deterministic_seed",
+        "mutation_range",
+        "selection_distribution_smoke"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "mutation_out_of_range",
+        "wrong_crossover_point",
+        "selection_bias_bug"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper2_bridge",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "population_eval_parallel",
+      "display_name": "并行种群评估",
+      "task_kind": "module_family",
+      "category": "optimization_accelerator",
+      "module_difficulty": "M4",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "optimization_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_ga_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "parallel_lanes",
+        "population_order",
+        "fitness_aggregation"
+      ],
+      "coverage_targets": [
+        "multi_lane_population",
+        "backpressure",
+        "random_population"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "resource_scaling",
+        "timing_closure"
+      ],
+      "mutation_suite": [
+        "lane_result_swap",
+        "missing_candidate",
+        "wrong_population_done"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "paper2_bridge",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "fft_ifft_simplified",
+      "display_name": "FFT / IFFT 简化核",
+      "task_kind": "module_family",
+      "category": "communication_datapath",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_numpy_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "twiddle_schedule",
+        "stage_latency",
+        "numeric_scaling",
+        "throughput_policy"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "single_tone",
+        "impulse",
+        "random_signal"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "pipeline_timing",
+        "dsp_bram_mapping"
+      ],
+      "mutation_suite": [
+        "wrong_twiddle_order",
+        "missing_bit_reverse",
+        "truncate_stage",
+        "wrong_ifft_sign"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "advanced_eval",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "qam_mapping_equalizer",
+      "display_name": "QAM 映射/解映射 + 均衡",
+      "task_kind": "module_family",
+      "category": "communication_datapath",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "comms_python_golden"
+      ],
+      "oracle_readiness": "needs_golden_model",
+      "architecture_obligations": [
+        "constellation_mapping",
+        "fixed_point_scaling",
+        "equalizer_update_subset"
+      ],
+      "coverage_targets": [
+        "known_symbols",
+        "noise_free_channel",
+        "boundary_symbols"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_constellation",
+        "wrong_scaling",
+        "wrong_decision_boundary"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "future",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "qtable_update_core",
+      "display_name": "Q-table 更新核心",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "td_input_stage",
+        "discount_core",
+        "td_update_core",
+        "stream_stage"
+      ],
+      "oracle_kind": [
+        "python_rl_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "td_update_formula",
+        "fixed_point_numeric_format",
+        "signed_saturation",
+        "valid_ready_backpressure"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "max_reward"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "required_for_flagship",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "l5_min_candidate"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "fixed_point_datapath_timing"
+      ],
+      "mutation_suite": [
+        "wrong_td_formula",
+        "accumulator_truncation",
+        "wrong_signed_shift",
+        "missing_saturation"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "flagship_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "t6_td_update_core"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "small_nn_accelerator",
+      "display_name": "小型 NN inference 加速器",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_numpy_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "layer_dimension",
+        "quantized_numeric_format",
+        "mac_parallelism"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "known_weights",
+        "random_inputs"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_weight_order",
+        "truncate_accumulator",
+        "wrong_activation"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "advanced_eval",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "rl_reward_policy_update",
+      "display_name": "奖励计算与策略更新模块",
+      "task_kind": "module_family",
+      "category": "host_facing_accelerator",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "python_rl_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "reward_formula",
+        "policy_update",
+        "fixed_point_numeric_format",
+        "start_done_status"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "start_done_status",
+        "host_signature",
+        "terminal_state",
+        "back_to_back_commands"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "required_for_flagship",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "l5_min_candidate"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_reward_formula",
+        "wrong_policy_update",
+        "missing_status_clear"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "flagship_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "t7_policy_value_shell"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "cpu_axi_soc_shell",
+      "display_name": "CPU + AXI SoC shell",
+      "task_kind": "module_family",
+      "category": "system_host_facing",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "soc_shell",
+      "skeleton_level": "fixed_shell",
+      "core_modules": [],
+      "oracle_kind": [
+        "host_signature"
+      ],
+      "oracle_readiness": "partial",
+      "architecture_obligations": [
+        "axi_lite_register_map",
+        "host_shell_binding"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "start_done_status",
+        "host_signature"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "fixed_shell_only"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": true,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_register_offset",
+        "start_ignored",
+        "done_stuck"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "fixed_infrastructure",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [
+        "CPU/AXI shell should be fixed infrastructure, not freely model-generated."
+      ],
+      "risks": []
+    },
+    {
+      "family_id": "sensor_fusion_arbiter",
+      "display_name": "多传感器数据融合仲裁器",
+      "task_kind": "module_family",
+      "category": "system_host_facing",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "mixed_oracle"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "sensor_priority_policy",
+        "timestamp_alignment",
+        "decision_fsm"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "start_done_status",
+        "host_signature",
+        "sensor_conflict",
+        "stale_data"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "l5_min_candidate"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_priority",
+        "missing_timestamp_check",
+        "decision_fsm_stuck"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "flagship_candidate",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": [
+        "Real sensor bring-up is board-dependent; use simulated sensor streams for Line A."
+      ]
+    },
+    {
+      "family_id": "memory_interrupt_controller",
+      "display_name": "内存控制器 + 中断控制器",
+      "task_kind": "module_family",
+      "category": "system_host_facing",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "soc_shell",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [],
+      "oracle_kind": [
+        "protocol_checker",
+        "host_signature"
+      ],
+      "oracle_readiness": "future",
+      "architecture_obligations": [
+        "register_map",
+        "interrupt_pending_clear",
+        "memory_protocol_subset"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "start_done_status",
+        "host_signature",
+        "interrupt_clear",
+        "read_write_order"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_interrupt_clear",
+        "wrong_address_decode",
+        "missing_ack"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "future",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "soc_top_wrapper",
+      "display_name": "顶层 SoC 封装",
+      "task_kind": "module_family",
+      "category": "system_host_facing",
+      "module_difficulty": "M5",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "soc_shell",
+      "skeleton_level": "fixed_shell",
+      "core_modules": [],
+      "oracle_kind": [
+        "host_signature"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "board_shell_binding",
+        "core_not_optimized_away"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "start_done_status",
+        "host_signature"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "fixed_shell_only"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": true,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "core_bypassed",
+        "wrong_reset_binding",
+        "wrong_status_signature"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "fixed_infrastructure",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_led_breath_button",
+      "display_name": "LED 流水灯 / 呼吸灯 + 按键控制",
+      "task_kind": "project_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": null,
+      "project_difficulty": "P1",
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [
+        "clock_divider",
+        "binary_bcd_counter",
+        "button_debounce",
+        "simple_fsm",
+        "pwm_generator"
+      ],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "button_controls_mode",
+        "pwm_duty_or_led_pattern"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "button_press_sequence"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "button_ignored",
+        "wrong_pwm_duty",
+        "wrong_led_sequence"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke_board_demo",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_seven_seg_stopwatch",
+      "display_name": "七段数码管 + 计数器/秒表",
+      "task_kind": "project_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": null,
+      "project_difficulty": "P1",
+      "sr2fpga_tier": "T0",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [
+        "binary_bcd_counter",
+        "seven_seg_scan",
+        "clock_divider"
+      ],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "stopwatch_count",
+        "display_scan_correct"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "start_stop_reset"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_bcd_carry",
+        "wrong_digit_scan",
+        "reset_ignored"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke_board_demo",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": false,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_traffic_light",
+      "display_name": "交通灯控制器",
+      "task_kind": "project_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": null,
+      "project_difficulty": "P1",
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S1_structure_skeleton",
+      "core_modules": [
+        "simple_fsm",
+        "timer",
+        "input_arbiter"
+      ],
+      "oracle_kind": [
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "traffic_fsm_sequence",
+        "timing_windows",
+        "pedestrian_request_policy"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "all_light_states",
+        "pedestrian_request"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_state_order",
+        "wrong_timer",
+        "request_ignored"
+      ],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": false,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_uart_transceiver",
+      "display_name": "UART 串口收发器",
+      "task_kind": "project_family",
+      "category": "protocol_interface",
+      "module_difficulty": null,
+      "project_difficulty": "P2",
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "baud_generator",
+        "uart_tx",
+        "uart_rx",
+        "sync_fifo"
+      ],
+      "oracle_kind": [
+        "protocol_checker",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "uart_tx_rx_frame",
+        "fifo_order",
+        "loopback_correct"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "multi_byte_frame",
+        "fifo_pressure"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_baud_tick",
+        "rx_shift_wrong",
+        "fifo_drop_byte"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_vga_simple_graphics",
+      "display_name": "VGA 时序 + 简单图形",
+      "task_kind": "project_family",
+      "category": "system_graphics_demo",
+      "module_difficulty": null,
+      "project_difficulty": "P2",
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "vga_timing",
+        "pixel_generator_basic",
+        "sprite_object_mapper"
+      ],
+      "oracle_kind": [
+        "frame_object_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "vga_timing_correct",
+        "pixel_rule",
+        "frame_signature"
+      ],
+      "coverage_targets": [
+        "frame_signature",
+        "hsync_vsync_timing",
+        "known_coordinates"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "optional_board_demo"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_vsync_timing",
+        "wrong_pixel_region",
+        "wrong_frame_counter"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "demo",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_fifo_ram_app",
+      "display_name": "FIFO + RAM 应用",
+      "task_kind": "project_family",
+      "category": "protocol_interface",
+      "module_difficulty": null,
+      "project_difficulty": "P2",
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "memory_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "sync_fifo",
+        "single_dual_port_ram"
+      ],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "reference_model"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "fifo_order",
+        "ram_read_write_correct",
+        "bram_mapping_optional"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "read_after_write",
+        "fifo_full_empty"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "fifo_order_swap",
+        "wrong_ram_address",
+        "wrong_read_latency"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_fir_filter",
+      "display_name": "FIR 数字滤波器项目",
+      "task_kind": "project_family",
+      "category": "numeric_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "mac_array",
+        "fir_filter",
+        "single_dual_port_ram"
+      ],
+      "oracle_kind": [
+        "python_numpy_golden",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "coefficient_order",
+        "latency_within_bound",
+        "initiation_interval",
+        "dsp_mapping_optional"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "impulse_response",
+        "random_signal"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "dsp_mapping",
+        "timing_closure",
+        "qor_calibration"
+      ],
+      "mutation_suite": [
+        "wrong_coeff_order",
+        "truncate_accumulator",
+        "remove_signed_cast",
+        "missing_stall"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "planned",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_sd_spi_controller",
+      "display_name": "SD 卡控制器 SPI 模式子集",
+      "task_kind": "project_family",
+      "category": "protocol_interface",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "protocol_interface",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": [
+        "spi_master",
+        "crc7_crc16",
+        "command_fsm"
+      ],
+      "oracle_kind": [
+        "protocol_checker",
+        "python_numpy_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "spi_mode_subset",
+        "crc_correct",
+        "command_response_fsm"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "crc_cases",
+        "command_sequence"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_crc",
+        "missing_cs_framing",
+        "wrong_command_state"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": [
+        "Use SPI-mode subset only; full native SD protocol is too large for Paper① core."
+      ]
+    },
+    {
+      "family_id": "p_pulse_radar_signal",
+      "display_name": "简易脉冲雷达信号处理",
+      "task_kind": "project_family",
+      "category": "numeric_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "matched_filter_core",
+        "matched_filter_mac",
+        "threshold_comparator",
+        "peak_detector_core"
+      ],
+      "oracle_kind": [
+        "python_signal_golden",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "matched_filter_correct",
+        "peak_position",
+        "threshold_policy"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "known_pulse",
+        "noise_floor"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "reversed_template",
+        "wrong_threshold",
+        "off_by_one_peak",
+        "top_in_ready_stuck_high",
+        "history_updates_while_stalled"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["pulse_radar_signal"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_vision_defect_core",
+      "display_name": "实时机器视觉缺陷检测核心",
+      "task_kind": "project_family",
+      "category": "image_pipeline",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "sobel_line_buffer",
+        "sobel_window",
+        "sobel_threshold_core",
+        "vision_defect_accumulator",
+        "vision_io_control"
+      ],
+      "oracle_kind": [
+        "image_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "line_buffer_order",
+        "sobel_threshold_correct",
+        "first_defect_coordinate"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "frame_boundary",
+        "line_buffer_boundary",
+        "border_cases",
+        "defect_present_absent",
+        "border_cases"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_line_order",
+        "wrong_threshold",
+        "missing_defect",
+        "wrong_bbox",
+        "hardcoded_first_coordinate",
+        "input_backpressure_error",
+        "ignore_in_last",
+        "ignore_subsequent_reset"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["vision_defect_core"],
+      "notes": [
+        "Bounded frame contract emits thresholded edge pixels and reports frame defect status with the first thresholded coordinate."
+      ],
+      "risks": []
+    },
+    {
+      "family_id": "p_pong_game",
+      "display_name": "Pong 游戏完整实现",
+      "task_kind": "project_family",
+      "category": "system_graphics_demo",
+      "module_difficulty": null,
+      "project_difficulty": "P4",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "vga_timing",
+        "sprite_object_mapper",
+        "collision_detector",
+        "font_text_renderer",
+        "top_integration"
+      ],
+      "oracle_kind": [
+        "frame_object_checker",
+        "host_signature"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "vga_timing_correct",
+        "object_position_update",
+        "collision_response",
+        "score_update"
+      ],
+      "coverage_targets": [
+        "frame_signature",
+        "collision_cases",
+        "score_cases",
+        "reset_game"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "l5_min_candidate"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_collision_boundary",
+        "object_not_updated",
+        "wrong_vsync_timing",
+        "missing_score_update"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "board_demo",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_simple_cnn_pipeline",
+      "display_name": "图像预处理 + 简单 CNN 加速",
+      "task_kind": "project_family",
+      "category": "image_pipeline",
+      "module_difficulty": null,
+      "project_difficulty": "P4",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "image_pipeline",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "image_scale_norm",
+        "conv2d_core",
+        "pooling_activation"
+      ],
+      "oracle_kind": [
+        "python_numpy_golden",
+        "image_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "numeric_format",
+        "conv_window_order",
+        "pooling_policy",
+        "latency_within_bound"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "frame_boundary",
+        "line_buffer_boundary",
+        "border_cases",
+        "random_kernel",
+        "impulse_image",
+        "activation_boundary"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_kernel_order",
+        "wrong_pool_op",
+        "truncate_accumulator",
+        "wrong_activation"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "eval_subset",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_stream_trigger_filter",
+      "display_name": "高速数据流实时触发过滤器",
+      "task_kind": "project_family",
+      "category": "protocol_interface",
+      "module_difficulty": null,
+      "project_difficulty": "P4",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "pattern_matcher",
+        "trigger_fsm",
+        "stream_packer"
+      ],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "protocol_checker"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "pattern_detect",
+        "trigger_alignment",
+        "no_drop_no_duplicate",
+        "backpressure",
+        "match_index_packet"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "overlapping_patterns",
+        "trigger_boundary"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_pattern_order",
+        "false_trigger",
+        "missing_backpressure",
+        "drop_transaction"
+      ],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["stream_trigger_filter"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_ga_accelerator",
+      "display_name": "GA 硬件加速子集",
+      "task_kind": "project_family",
+      "category": "optimization_accelerator",
+      "module_difficulty": null,
+      "project_difficulty": "P4",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "optimization_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "ga_fitness_eval",
+        "ga_select_cross_mutate",
+        "population_eval_parallel"
+      ],
+      "oracle_kind": [
+        "python_ga_golden"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "fitness_formula",
+        "mutation_bounds",
+        "population_order",
+        "parallel_lanes"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "signed_unsigned_cases",
+        "overflow_truncation_cases",
+        "latency_alignment",
+        "known_population",
+        "deterministic_seed"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": false,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_fitness_formula",
+        "mutation_out_of_range",
+        "lane_result_swap"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "paper2_bridge",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_ofdm_modem_subset",
+      "display_name": "OFDM 调制解调器子集",
+      "task_kind": "project_family",
+      "category": "communication_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P5",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "fft_ifft_simplified",
+        "qam_mapping_equalizer",
+        "cyclic_prefix"
+      ],
+      "oracle_kind": [
+        "comms_python_golden"
+      ],
+      "oracle_readiness": "future",
+      "architecture_obligations": [
+        "fft_correct",
+        "qam_mapping",
+        "fixed_point_scaling"
+      ],
+      "coverage_targets": [
+        "known_symbols",
+        "single_tone",
+        "noise_free_channel"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": false,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_fft_stage",
+        "wrong_constellation",
+        "wrong_cp_length"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "future",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "p_sensor_fusion_obstacle",
+      "display_name": "摄像头 + 超声波融合障碍物检测",
+      "task_kind": "project_family",
+      "category": "system_host_facing",
+      "module_difficulty": null,
+      "project_difficulty": "P5",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "sensor_fusion_arbiter",
+        "decision_fsm",
+        "camera_shell",
+        "ultrasonic_interface"
+      ],
+      "oracle_kind": [
+        "mixed_oracle",
+        "host_signature"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "sensor_priority_policy",
+        "decision_fsm",
+        "timestamp_alignment"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "start_done_status",
+        "host_signature",
+        "sensor_conflict",
+        "stale_data"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "l5_min_candidate"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_priority",
+        "decision_stuck",
+        "timestamp_ignored"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "flagship_candidate",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [],
+      "risks": [
+        "Use simulated sensor streams in Line A; real sensor bring-up is not core."
+      ]
+    },
+    {
+      "family_id": "p_riscv_soc_shell",
+      "display_name": "简单 RISC-V / SoC shell",
+      "task_kind": "project_family",
+      "category": "system_host_facing",
+      "module_difficulty": null,
+      "project_difficulty": "P5",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "soc_shell",
+      "skeleton_level": "fixed_shell",
+      "core_modules": [
+        "cpu_axi_soc_shell",
+        "memory_interrupt_controller",
+        "soc_top_wrapper"
+      ],
+      "oracle_kind": [
+        "host_signature"
+      ],
+      "oracle_readiness": "partial",
+      "architecture_obligations": [
+        "host_shell_binding",
+        "register_map",
+        "core_not_optimized_away"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "start_done_status",
+        "host_signature"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "fixed_shell_only"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": false,
+        "board_profile_required": true,
+        "no_black_boxes_expected": false,
+        "target_clock_mhz": null,
+        "openxc7_report_parser_required": false,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [],
+      "mutation_suite": [
+        "wrong_register_offset",
+        "core_bypassed",
+        "done_stuck"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "external_anchor",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": false,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "notes": [
+        "RISC-V may be external validation only; MicroBlaze/vendor IP is not public training data."
+      ],
+      "risks": []
+    },
+    {
+      "family_id": "p_rl_qlearning_accel",
+      "display_name": "强化学习 Q-Learning 更新加速器",
+      "task_kind": "project_family",
+      "category": "host_facing_accelerator",
+      "module_difficulty": null,
+      "project_difficulty": "P5",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": [
+        "host_config_bank",
+        "sample_capture_stage",
+        "policy_value_core",
+        "td_update_core",
+        "result_stream_stage"
+      ],
+      "oracle_kind": [
+        "python_rl_golden",
+        "host_signature"
+      ],
+      "oracle_readiness": "ready",
+      "architecture_obligations": [
+        "fixed_point_numeric_format",
+        "done_status_protocol",
+        "host_register_map",
+        "td_update_formula",
+        "argmax_first_tie_break",
+        "result_backpressure"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "timeout",
+        "random_stalls",
+        "back_to_back_transactions",
+        "reset_during_transaction",
+        "register_map_access",
+        "sample_valid",
+        "episode_done",
+        "irq",
+        "host_signature",
+        "terminal_state",
+        "equal_q_values",
+        "back_to_back_commands"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "required_for_flagship",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "l5_min_candidate"
+      },
+      "l4_ready_gate": {
+        "bref_l0_l3_pass_required": true,
+        "logical_constraints_required": true,
+        "board_profile_required": true,
+        "no_black_boxes_expected": true,
+        "target_clock_mhz": 100,
+        "openxc7_report_parser_required": true,
+        "vivado_reference_required_if_selected": false
+      },
+      "l4_value": [
+        "fixed_point_datapath_timing",
+        "host_shell_physical_binding"
+      ],
+      "mutation_suite": [
+        "wrong_td_formula",
+        "wrong_argmax_tie_break",
+        "accumulator_truncation",
+        "missing_done",
+        "wrong_register_offset"
+      ],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "flagship",
+      "allowed_in_line_a": true,
+      "allowed_in_line_b": true,
+      "split_policy": {
+        "s1_parameter_heldout": true,
+        "s2_topology_heldout": true,
+        "s3_component_combination_heldout": true,
+        "s4_family_heldout": true,
+        "s5_real_ip_external_only": false
+      },
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": [
+        "t10_rl_accelerator_shell",
+        "t11_batch_rl_accelerator_shell"
+      ],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "alu_control_unit",
+      "display_name": "ALU control unit",
+      "task_kind": "module_family",
+      "category": "numeric_datapath",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": ["opcode_decode", "alu_core", "status_register"],
+      "oracle_kind": ["reference_model"],
+      "oracle_readiness": "ready",
+      "architecture_obligations": ["opcode_decode", "status_flag_update"],
+      "coverage_targets": ["reset_sequence", "boundary_values", "opcode_coverage"],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": ["wrong_opcode_decode", "missing_status_flag"],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "smoke",
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["alu_control_unit"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "crc_stream_checker",
+      "display_name": "CRC stream checker",
+      "task_kind": "module_family",
+      "category": "communication_datapath",
+      "module_difficulty": "M3",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T2",
+      "system_his_profile": "streaming_datapath",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": ["crc8_update", "frame_control"],
+      "oracle_kind": ["transaction_scoreboard", "protocol_checker"],
+      "oracle_readiness": "ready",
+      "architecture_obligations": ["crc_update", "frame_boundary_handling"],
+      "coverage_targets": ["reset_sequence", "frame_start_end", "random_stalls"],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "optional",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": ["wrong_crc_polynomial", "missing_frame_reset"],
+      "mutation_score_threshold": 0.85,
+      "benchmark_role": "eval_subset",
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["crc_stream_checker"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "t1_event_counter",
+      "display_name": "Event counter topology",
+      "task_kind": "module_family",
+      "category": "control_basic_rtl",
+      "module_difficulty": "M2",
+      "project_difficulty": null,
+      "sr2fpga_tier": "T1",
+      "system_his_profile": "simple_control",
+      "skeleton_level": "S2_protocol_skeleton",
+      "core_modules": ["event_gate", "counter_core"],
+      "oracle_kind": ["reference_model"],
+      "oracle_readiness": "ready",
+      "architecture_obligations": ["event_gating", "counter_enable"],
+      "coverage_targets": ["reset_sequence", "event_pulses", "boundary_values"],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "none",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": ["bypass_event_gate", "wrong_counter_enable"],
+      "mutation_score_threshold": 0.75,
+      "benchmark_role": "smoke",
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["t1_event_counter"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "t8_replay_sample_shell",
+      "display_name": "Replay sample shell topology",
+      "task_kind": "project_family",
+      "category": "host_facing_accelerator",
+      "module_difficulty": null,
+      "project_difficulty": "P4",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": ["host_sample_stage", "replay_store", "sample_read_stage"],
+      "oracle_kind": ["transaction_scoreboard", "host_signature"],
+      "oracle_readiness": "ready",
+      "architecture_obligations": ["replay_store_ordering", "occupancy_reporting"],
+      "coverage_targets": ["reset_sequence", "host_transactions", "output_stall"],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": ["wrong_replay_order", "missing_occupancy_update"],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "advanced_eval",
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["t8_replay_sample_shell"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "t9_host_protocol_shell",
+      "display_name": "Host protocol shell topology",
+      "task_kind": "project_family",
+      "category": "system_host_facing",
+      "module_difficulty": null,
+      "project_difficulty": "P5",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "soc_shell",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": ["axi_lite_write_ctrl", "axi_lite_read_ctrl", "irq_status"],
+      "oracle_kind": ["protocol_checker", "host_signature"],
+      "oracle_readiness": "ready",
+      "architecture_obligations": ["host_register_protocol", "interrupt_status"],
+      "coverage_targets": ["reset_sequence", "register_map_access", "back_to_back_commands"],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "required_for_flagship",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "l5_min_candidate"
+      },
+      "mutation_suite": ["wrong_register_offset", "missing_interrupt_clear"],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "flagship_candidate",
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["t9_host_protocol_shell"],
+      "notes": [],
+      "risks": []
+    },
+    {
+      "family_id": "t12_replay_arbiter_shell",
+      "display_name": "Replay arbiter shell topology",
+      "task_kind": "project_family",
+      "category": "host_facing_accelerator",
+      "module_difficulty": null,
+      "project_difficulty": "P5",
+      "sr2fpga_tier": "T4",
+      "system_his_profile": "host_facing_accelerator",
+      "skeleton_level": "S3_architecture_skeleton",
+      "core_modules": ["replay_request_arbiter", "replay_memory_bank", "sample_packet_stage"],
+      "oracle_kind": ["transaction_scoreboard", "host_signature"],
+      "oracle_readiness": "ready",
+      "architecture_obligations": ["read_write_arbitration", "sample_packet_ordering"],
+      "coverage_targets": ["reset_sequence", "arbitration_conflicts", "back_to_back_commands"],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "required_for_flagship",
+        "l4_commercial_policy": "tcad_subset",
+        "l5_policy": "l5_min_candidate"
+      },
+      "mutation_suite": ["wrong_arbiter_priority", "dropped_sample_packet"],
+      "mutation_score_threshold": 0.9,
+      "benchmark_role": "flagship_candidate",
+      "implementation_status": "implemented_current",
+      "current_generator_aliases": ["t12_replay_arbiter_shell"],
+      "notes": [],
+      "risks": []
+    }
+  ]
+}

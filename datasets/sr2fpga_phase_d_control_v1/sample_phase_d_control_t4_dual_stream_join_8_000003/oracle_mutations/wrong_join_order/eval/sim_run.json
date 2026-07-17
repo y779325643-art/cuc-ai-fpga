@@ -1,0 +1,12 @@
+{
+  "stage": "sim_run",
+  "command": [
+    "<oss-cad-suite>\\bin\\vvp.EXE",
+    "sim.out"
+  ],
+  "status": "failed",
+  "exit_code": 0,
+  "stdout": "TEST_FAIL expected joined sum=8 got 254\nsim/tb_top.v:71: $finish called at 37000 (1ps)\n",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "duration_seconds": 0.04819689999567345
+}

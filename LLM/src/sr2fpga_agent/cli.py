@@ -190,6 +190,8 @@ def build_repairer_for_connection(connection):
                 model=connection.model,
                 base_url=connection.base_url,
                 timeout_seconds=getattr(connection, "timeout_seconds", 120),
+                transport_attempts=getattr(connection, "transport_attempts", 3),
+                max_tokens=getattr(connection, "max_tokens", 16384) or 16384,
             )
         )
         return DeepSeekRepairer(client)
@@ -199,6 +201,8 @@ def build_repairer_for_connection(connection):
             model=connection.model,
             base_url=connection.base_url,
             timeout_seconds=getattr(connection, "timeout_seconds", 120),
+            transport_attempts=getattr(connection, "transport_attempts", 3),
+            max_tokens=getattr(connection, "max_tokens", 0),
         )
     )
     return DeepSeekRepairer(client)

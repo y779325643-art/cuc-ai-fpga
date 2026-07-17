@@ -1,8 +1,8 @@
-# SR2FPGA Current Status - 2026-06-30
+# SR2FPGA Current Status - 2026-07-17
 
 ## Current Branch
 
-`codex/sr2fpga-data-agent`
+`codex/phase-d-h2-hardening`
 
 ## Current Focus
 
@@ -20,6 +20,100 @@ requirement
 The current engineering slice is autonomous runner hardening for natural LLM
 failure collection. Synthetic failure injection exists as a pipeline test and
 controlled-ablation aid, not as the main repair-learning data source.
+
+## Phase D Frozen Multi-Teacher Pilot (2026-07-17)
+
+- The frozen live run `phase-d-multiteacher-pilot-20260717-v1` completed 24/24
+  scoreable episodes: four teacher aliases across six complete paired
+  requirements. The freeze fingerprint is
+  `17dd62e04fea801d075e9574cf6d89f6fcea3ceb33c974c2888a3f9f042e07c0`.
+- Provider preflight passed for Claude, GPT, Qwen, and DeepSeek before the run.
+  The run recorded zero unresolved provider/toolchain infrastructure outcome.
+- Live outcomes were 12 `H2_FAIL` and 12 `GEN_FAIL`. No live project crossed
+  H2, so L0-L3 survival was 0/24, no tool-feedback repair was eligible, and no
+  live FIR project qualified for OpenXC7 L4.
+- All 24 live records contain explicit L4 status: 0 pass, 0 fail, 24 not run.
+  Twenty non-FIR records were disabled by policy; four FIR records were skipped
+  because L3 was not reached.
+- The separate deterministic run `phase-d-control-20260717-v1` passed L0-L3
+  for 6/6 controls, killed 28/28 declared mutations, and physically implemented
+  its FIR control with OpenXC7 at the 100 MHz target.
+- The independent artifact audit returned `APPROVED`: 24 scoreable episodes,
+  six complete pairs, freeze/hash consistency, no unresolved infrastructure,
+  no trusted-artifact violation, and no detected secret material.
+- Final repository regression: `897 passed, 349 subtests passed`.
+- Evidence report:
+  `docs/results/2026-07-17-sr2fpga-phase-d-pilot-report.md`.
+- Current conclusion: the pilot infrastructure is accepted, but the live
+  bottleneck is REQ2HIS/HIS2PROJECT generation and H2 lowerability. Repair
+  efficacy and live L4 performance remain unmeasured.
+
+## Phase D Failure Analysis And H2 Hardening (2026-07-17)
+
+- The 24 frozen pilot outcomes were classified as 12 `GEN_FAIL` and 12
+  `H2_FAIL`. Generation failures comprise five invalid-JSON outputs, two H1
+  contract failures, two REQ2HIS fidelity failures, two RTL/HIS cross-check
+  failures, and one behavior-hole merge failure.
+- H2 now reads canonical `kind`/`name` from structured scenario objects instead
+  of stringifying the whole object. A small reviewed alias set canonicalizes
+  lossless semantic-kind and protocol synonyms; unknown labels remain failures.
+- Initial and retry REQ2HIS prompts now publish the exact H2 canonical
+  semantic-kind, protocol, and scenario vocabularies.
+- Read-only replay preserved all frozen verdicts: 0/12 H2 candidates changed to
+  pass because every candidate still contains unsupported scenario intent.
+  Semantic-kind diagnostics decreased from 31 to 21 and protocol diagnostics
+  from 18 to 9; scenario diagnostics remained 54.
+- The analyzer refuses output paths inside the frozen dataset root. No API was
+  called and no pilot artifact was rewritten.
+- Repository regression after hardening: `905 passed, 349 subtests passed`.
+- Evidence report:
+  `docs/results/2026-07-17-sr2fpga-phase-d-failure-analysis-and-h2-hardening.md`.
+
+## Task Contract And Evidence Ledger (Phase A)
+
+- `sr2fpga-task-catalog-v0.2.json` is the intended target contract and target
+  policy. It defines where the task program is meant to go, not what is already
+  executable.
+- `sr2fpga-task-evidence-v0.1.json` is the current executable and verification
+  facts ledger. It covers 71/71 catalog families.
+- `sr2fpga-task-evidence-status.md` is the human-readable derived view rendered
+  from the catalog and ledger.
+- The legacy `sr2fpga-t0-t4-task-catalog.json` is the 24-alias deterministic
+  smoke curriculum, not task difficulty authority.
+
+| Evidence measure | Current verified count |
+| --- | --- |
+| Evidence ledger coverage | 71/71 |
+| Implemented families | 31 |
+| Paper 1 core implemented | 14/14 (denominator: v0.2 catalog `recommended_sets.paper1_core`) |
+| Paper 1 core executable / L3 | 14/14 |
+| Paper 1 core mutation-qualified | 14/14 |
+| Mutation-qualified families | 21 |
+| Independent Python oracle qualified | 9 |
+| Dual-tool L4 families (OpenXC7 and Vivado) | 2 |
+| L5 families | 0 |
+
+## Phase C Independent Oracle Qualification (2026-07-16)
+
+- Fresh run `phase-c-independent-oracle-20260716-v2` completed all nine target
+  families at L3 with `rejected=0` and no oracle infrastructure errors.
+- Numeric, signal, image, and RL domains each passed public, hidden,
+  fixed-seed randomized, and stress scenarios. Independent Python-reference
+  coverage is 9/9 target families.
+- Trusted oracles killed 45/45 declared mutations with zero survivor and zero
+  non-scoreable mutation; all nine families are Line-A ready.
+- Export inspection found no hidden `.memh` paths, withheld seeds, or complete
+  hidden vector contents. The local artifact audit completed with zero issues.
+- FIR and matrix-vector MAC retain their previously verified OpenXC7/Vivado L4
+  status through artifact-backed references to
+  `line-a-l4-dual-tool-20260713-v2`; this Phase C batch itself ran L0-L3 only
+  and does not add L4/L5 claims.
+- Run `phase-c-core-mutation-closure-20260716-v2` added tool-artifact-backed mutation
+  evidence for RAM, valid-ready accumulator, stream fork/join, and MAC. It
+  killed 15/15 mutations and closes the catalog-defined Paper-1-core gate at
+  14/14; 21 families are mutation-qualified overall. The accumulator test now
+  creates real downstream backpressure before scoring its two stall mutations.
+- Evidence report: `docs/sr2fpga-phase-c-independent-oracle-evidence-2026-07-14.md`.
 
 ## Multi-Teacher Source (NEW, merged to `main` 2026-06-26)
 
@@ -40,7 +134,7 @@ Spec/plan: `docs/superpowers/specs/2026-06-25-sr2fpga-multi-teacher-source-desig
   and preflight auth are connection-driven and reported per source via
   `calibration_matrix["source"]`. Per-source `timeout_seconds` (default 120)
   supports slow reasoning teachers. 255 unit tests pass.
-- Committed example: `configs/sr2fpga_multi_teacher.example.yaml`. Private gateway
+- Committed example: `configs/legacy/sr2fpga_multi_teacher.example.yaml`. Private gateway
   keys/configs stay local: `.env` and `configs/*.local.yaml` are git-ignored.
 - Default DeepSeek model for CLI, runner, and example configs is now
   `deepseek-v4-pro`. API keys must be supplied through `DEEPSEEK_API_KEY` or a
@@ -84,7 +178,7 @@ Implemented and under active review:
   the Tier A skeleton path from direct full-project generation.
   This is structural hardening only; Tier B logit-masked constrained decoding is
   still design-only.
-- `configs/sr2fpga_l0_by_construction_ablation.example.yaml` is the paired
+- `configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml` is the paired
   first-attempt/no-repair entry point for the L0-by-construction ablation. It
   runs the same legacy t1-t4 component-topology task set twice: legacy DeepSeek
   full-project generation (`legacy_full_project`) and System-HIS v1.2 skeleton
@@ -220,7 +314,7 @@ Implemented and under active review:
   references.
 - The canonical machine-readable task catalog is
   `docs/sr2fpga-t0-t4-task-catalog.json`. The local no-API runner coverage
-  check is `configs/sr2fpga_t0_t4_deterministic_smoke.example.yaml`, which
+  check is `configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml`, which
   expands the catalog into 24 deterministic samples: T0=12, T1=2, T2=2, T3=4,
   and T4=4. Its entries now use `requirement_style: simple_prompt`, so the
   public requirement is a short user-intent request while the detailed contract
@@ -301,13 +395,13 @@ Implemented and under active review:
   testbench-oracle instruction: do not print `TEST_PASS` unconditionally; only
   print it after conditional `TEST_FAIL` checks compare top-level observable
   outputs and status signals against expected behavior.
-- `configs/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
+- `configs/legacy/sr2fpga_baseline_a.example.yaml` is the first-attempt/no-repair
   baseline (a) entry point for DeepSeek over the current legacy t1-t4 component
   topologies. It uses `requirement_style: natural_component`, a deterministic
   surface rewrite that preserves topology contracts while making prompts read
   more like engineering requirements. It also declares `env_file: .env`, letting
   the runner load an ignored local DeepSeek key file automatically when present.
-  `configs/sr2fpga_agent.example.yaml` remains the tool-loop repair smoke path.
+  `configs/legacy/sr2fpga_agent.example.yaml` remains the tool-loop repair smoke path.
 - A real baseline (a) run completed against DeepSeek with the local ignored
   `.env` key. `--preflight --validate-provider` confirmed provider auth before
   spending generation calls. The run ID is `deepseek-baseline-a`.
@@ -317,7 +411,7 @@ Implemented and under active review:
   structures. This is a valid natural project-generation failure family for
   SR2FPGA repair, not merely noise: the model produced an incomplete FPGA
   project package even when some RTL files were present.
-- `configs/sr2fpga_baseline_b.example.yaml` is the tool-in-loop repair
+- `configs/legacy/sr2fpga_baseline_b.example.yaml` is the tool-in-loop repair
   baseline (b) entry point for the same legacy t1-t4 natural-component tasks. It uses
   `repair_provider: deepseek`, `max_attempts: 4`, measurement point
   `b_tool_in_loop_repair`, and `sample_id_prefix: baseline_b` so baseline (a)
@@ -338,7 +432,7 @@ Implemented and under active review:
   connection protocol must be one of the checker-approved values, and
   `manifest.constraints.timing` must be present. The repair prompt has now been
   tightened to include those checker-level details.
-- `configs/sr2fpga_baseline_b_smoke.example.yaml` is the tightened-prompt
+- `configs/legacy/sr2fpga_baseline_b_smoke.example.yaml` is the tightened-prompt
   baseline (b) smoke run for legacy t1/t2 only. It uses `sample_id_prefix:
   baseline_b_smoke` to keep smoke data separate from full baseline runs.
 - A real tightened-prompt smoke run completed with run ID
@@ -350,7 +444,7 @@ Implemented and under active review:
   This proves the baseline (b) repair path can repair project-package failures
   across L0 and continue into RTL/tool repair when the prompt is aligned with
   the checker.
-- `configs/sr2fpga_baseline_b_tightened.example.yaml` is the full legacy t1-t4
+- `configs/legacy/sr2fpga_baseline_b_tightened.example.yaml` is the full legacy t1-t4
   tightened-prompt baseline (b) rerun. It uses `sample_id_prefix:
   baseline_b_tightened` to preserve the earlier failed full baseline (b) run.
 - A real full tightened baseline (b) run completed with run ID
@@ -369,7 +463,7 @@ Implemented and under active review:
   forbid Verilog reserved keywords as instance names, require System-HIS
   connection endpoints to use declared module names rather than instance
   aliases, and require width strings to match parsed RTL ranges exactly.
-- `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml` is the narrow repair-knee
+- `configs/legacy/sr2fpga_baseline_b_t3_t4_smoke.example.yaml` is the narrow repair-knee
   smoke run for legacy t3/t4 only. It uses `sample_id_prefix:
   baseline_b_t3_t4_smoke`.
 - A real legacy t3/t4 narrow smoke run completed with run ID
@@ -549,7 +643,7 @@ Implemented and under active review:
   `deepseek-his-v12`, implemented by `DeepSeekTwoStageProjectGenerator`.
   Runner preflight treats this provider as a DeepSeek-backed source for API-key
   and auth diagnostics. A narrow T4 smoke config is available at
-  `configs/sr2fpga_his_v12_smoke.example.yaml`.
+  `configs/current/sr2fpga_his_v12_smoke.example.yaml`.
 - The project-level L0 checker now dispatches
   `schema_version: system-his-v1.2` files to the v1.2 checker and then
   verifies the basic project artifact contract. This lets the two-stage path
@@ -630,73 +724,73 @@ Fresh verification from the latest implementation pass:
 python3 -m pytest LLM/tests -q
 # 297 passed
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters --preflight --validate-provider
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/archive/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters --preflight --validate-provider
 # ok: true; planned_samples: 2; contract_skeleton_mode: behavior_files; provider_auth.deepseek-his-v12.status: ok
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/archive/sr2fpga_l0_by_construction_t3_t4_after_width_parameters.example.yaml --run-id l0-by-construction-t3-t4-after-width-parameters
 # total_completed=2; pass_level_breakdown: L3:2; failure_types: {}; exports_refreshed=true
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt --preflight --validate-provider
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/archive/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt --preflight --validate-provider
 # ok: true; planned_samples: 2; contract_skeleton_mode: behavior_files; provider_auth.deepseek-his-v12.status: ok
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/archive/sr2fpga_l0_by_construction_t3_t4_after_req2his_schema_prompt.example.yaml --run-id l0-by-construction-t3-t4-after-req2his-schema-prompt
 # total_completed=2; pass_level_breakdown: L3:1, GEN_FAIL:1; failure_types: generation_failed:1; exports_refreshed=true
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation --preflight
 # ok: true; planned_samples: 8; preview shows legacy_full_project/quarantine and behavior_files/clean arms; provider_auth: not_checked
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml --run-id l0-by-construction-ablation
 # total_completed=8; success_l3=0; repair_trajectory=5; rejected=3
 # contract_skeleton_mode: legacy_full_project -> L0_FAIL:4; behavior_files -> GEN_FAIL:3, L0:1
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a --preflight --validate-provider
 # ok: true; DEEPSEEK_API_KEY source: .env; provider_auth.deepseek.status: ok
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_a.example.yaml --run-id deepseek-baseline-a
 # total_completed=4; success_l3=0; repair_trajectory=4; rejected=0
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b.example.yaml --run-id deepseek-baseline-b --preflight --validate-provider
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b.example.yaml --run-id deepseek-baseline-b --preflight --validate-provider
 # ok: true; planned_samples: 4; measurement_point: b_tool_in_loop_repair
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b.example.yaml --run-id deepseek-baseline-b
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b.example.yaml --run-id deepseek-baseline-b
 # total_completed=4; success_l3=0; repair_trajectory=4; rejected=0
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b_smoke.example.yaml --run-id deepseek-baseline-b-smoke --preflight --validate-provider
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b_smoke.example.yaml --run-id deepseek-baseline-b-smoke --preflight --validate-provider
 # ok: true; planned_samples: 2; measurement_point: b_tool_in_loop_repair
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b_smoke.example.yaml --run-id deepseek-baseline-b-smoke
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b_smoke.example.yaml --run-id deepseek-baseline-b-smoke
 # total_completed=2; success_l3=2; repair_trajectory=0; rejected=0
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b_tightened.example.yaml --run-id deepseek-baseline-b-tightened --preflight --validate-provider
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b_tightened.example.yaml --run-id deepseek-baseline-b-tightened --preflight --validate-provider
 # ok: true; planned_samples: 4; measurement_point: b_tool_in_loop_repair
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b_tightened.example.yaml --run-id deepseek-baseline-b-tightened
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b_tightened.example.yaml --run-id deepseek-baseline-b-tightened
 # total_completed=4; success_l3=2; repair_trajectory=2; rejected=0
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml --run-id deepseek-baseline-b-t3-t4-smoke --preflight --validate-provider
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b_t3_t4_smoke.example.yaml --run-id deepseek-baseline-b-t3-t4-smoke --preflight --validate-provider
 # ok: true; planned_samples: 2; measurement_point: b_tool_in_loop_repair
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml --run-id deepseek-baseline-b-t3-t4-smoke
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/legacy/sr2fpga_baseline_b_t3_t4_smoke.example.yaml --run-id deepseek-baseline-b-t3-t4-smoke
 # total_completed=2; success_l3=0; repair_trajectory=2; rejected=0
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-8 --preflight
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-8 --preflight
 # ok: true; planned_samples: 1; source: deepseek-his-v12; requirement_style: simple_prompt
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-8 --no-resume
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-8 --no-resume
 # total_completed=1; success_l3=0; repair_trajectory=1; rejected=0
 # pass_level_breakdown: L0:1; l0_contract_failures=0; failure_types.syntax_error=1
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-9 --preflight
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-9 --preflight
 # ok: true; planned_samples: 1; source: deepseek-his-v12; sample_id_prefix: his_v12_smoke_v5
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-9 --no-resume
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-9 --no-resume
 # total_completed=1; success_l3=0; repair_trajectory=1; rejected=0
 # pass_level_breakdown: L0:1; l0_contract_failures=0; failure_types.lint_warning_as_error=1
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-10 --preflight
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-10 --preflight
 # ok: true; planned_samples: 1; source: deepseek-his-v12; sample_id_prefix: his_v12_smoke_v6
 
-python3 -m LLM.src.sr2fpga_agent.runner --config configs/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-10 --no-resume
+python3 -m LLM.src.sr2fpga_agent.runner --config configs/current/sr2fpga_his_v12_smoke.example.yaml --run-id his-v12-smoke-10 --no-resume
 # total_completed=1; success_l3=0; repair_trajectory=1; rejected=0
 # events: req2his 62.2s; his2project 70.7s
 # pass_level_breakdown: L0:1; l0_contract_failures=0; failure_types.lint_warning_as_error=1
@@ -888,7 +982,7 @@ Key summary:
    contract-preserving skeleton body-merge + L0-by-construction ablation, and
    episode field data-release tiers.
    The new paired ablation entry point is:
-   `configs/sr2fpga_l0_by_construction_ablation.example.yaml`.
+   `configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml`.
 0b. **OpenXC7 L4 tool-stage spike (approved; run on the Windows+WSL2 box).**
    Plan `docs/superpowers/plans/2026-06-24-openxc7-l4-tool-stage-spike.md`
    (spec: `docs/superpowers/specs/2026-06-24-openxc7-l4-tool-stage-spike-design.md`).
@@ -960,19 +1054,19 @@ Key summary:
 - System-HIS v1.2 T4 example: `docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json`
 - Detailed handoff: `docs/sr2fpga-agent-handoff-2026-06-22.md`
 - Runner design: `docs/superpowers/specs/2026-06-23-sr2fpga-autonomous-trajectory-runner-design.md`
-- Baseline (a) runner config: `configs/sr2fpga_baseline_a.example.yaml`
-- Baseline (b) runner config: `configs/sr2fpga_baseline_b.example.yaml`
-- Baseline (b) smoke config: `configs/sr2fpga_baseline_b_smoke.example.yaml`
-- Baseline (b) full tightened config: `configs/sr2fpga_baseline_b_tightened.example.yaml`
-- Baseline (b) legacy t3/t4 smoke config: `configs/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
-- L0-by-construction ablation config: `configs/sr2fpga_l0_by_construction_ablation.example.yaml`
+- Baseline (a) runner config: `configs/legacy/sr2fpga_baseline_a.example.yaml`
+- Baseline (b) runner config: `configs/legacy/sr2fpga_baseline_b.example.yaml`
+- Baseline (b) smoke config: `configs/legacy/sr2fpga_baseline_b_smoke.example.yaml`
+- Baseline (b) full tightened config: `configs/legacy/sr2fpga_baseline_b_tightened.example.yaml`
+- Baseline (b) legacy t3/t4 smoke config: `configs/legacy/sr2fpga_baseline_b_t3_t4_smoke.example.yaml`
+- L0-by-construction ablation config: `configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml`
 - L0-by-construction ablation write-up: `docs/sr2fpga-l0-by-construction-ablation-2026-06-28.md`
-- L0-by-construction after-fixes config: `configs/sr2fpga_l0_by_construction_ablation_after_fixes.example.yaml`
+- L0-by-construction after-fixes config: `configs/archive/sr2fpga_l0_by_construction_ablation_after_fixes.example.yaml`
 - L0-by-construction after-fixes write-up: `docs/sr2fpga-l0-by-construction-ablation-after-fixes-2026-06-28.md`
-- System-HIS v1.2 two-stage smoke config: `configs/sr2fpga_his_v12_smoke.example.yaml`
-- Tool-loop runner config: `configs/sr2fpga_agent.example.yaml`
+- System-HIS v1.2 two-stage smoke config: `configs/current/sr2fpga_his_v12_smoke.example.yaml`
+- Tool-loop runner config: `configs/legacy/sr2fpga_agent.example.yaml`
 - Baseline report renderer: `LLM/src/sr2fpga_agent/baseline_report.py`
 - Agent guidance: `CLAUDE.md`
 - Multi-teacher source spec: `docs/superpowers/specs/2026-06-25-sr2fpga-multi-teacher-source-design.md`
 - Multi-teacher source plan: `docs/superpowers/plans/2026-06-25-sr2fpga-multi-teacher-source.md`
-- Multi-teacher runner config: `configs/sr2fpga_multi_teacher.example.yaml`
+- Multi-teacher runner config: `configs/legacy/sr2fpga_multi_teacher.example.yaml`

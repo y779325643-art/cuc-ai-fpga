@@ -2,8 +2,86 @@
 
 from __future__ import annotations
 
+import json
 import re
 from collections import defaultdict
+
+
+_VERILATOR_WARNING_TAXONOMY = {
+    "WIDTH": "width_mismatch",
+    "WIDTHTRUNC": "width_mismatch",
+    "UNDRIVEN": "undriven_signal",
+    "UNUSEDSIGNAL": "unused_signal",
+    "IMPLICIT": "undeclared_signal",
+    "LATCH": "latch_inferred",
+}
+
+
+def parse_test_fail_mismatches(log_text: str) -> list[dict[str, object]]:
+    """Extract available key/value fields from diagnostic TEST_FAIL lines."""
+    structured: list[dict[str, object]] = []
+    legacy: list[dict[str, object]] = []
+    for raw_line in log_text.splitlines():
+        if raw_line.startswith("SR2FPGA_MISMATCH "):
+            try:
+                payload = json.loads(raw_line.removeprefix("SR2FPGA_MISMATCH "))
+            except (json.JSONDecodeError, TypeError):
+                continue
+            if isinstance(payload, dict):
+                detail = {
+                    key: payload[key]
+                    for key in ("scenario_id", "class", "item_index", "expected", "actual")
+                    if key in payload
+                }
+                if detail:
+                    structured.append(detail)
+            continue
+        if "TEST_FAIL" not in raw_line:
+            continue
+        detail: dict[str, object] = {}
+        signal = re.search(r"\bsignal=([^\s]+)", raw_line)
+        cycle = re.search(r"\bcycle=(\d+)", raw_line)
+        expected = re.search(
+            r"\bexpected(?:=|\s+)(.+?)(?=\s+(?:actual|got)(?:=|\s+)|$)",
+            raw_line,
+        )
+        actual = re.search(r"\b(?:actual|got)(?:=|\s+)(.+?)$", raw_line)
+        if signal:
+            detail["signal"] = signal.group(1)
+        if cycle:
+            detail["cycle"] = int(cycle.group(1))
+        if expected:
+            detail["expected"] = expected.group(1).strip()
+        if actual:
+            detail["actual"] = actual.group(1).strip()
+        if detail:
+            legacy.append(detail)
+    return structured or legacy
+
+
+def parse_tool_warnings(log_text: str) -> list[dict[str, str]]:
+    """Extract recognized Verilator and Yosys warnings with failure taxonomy."""
+    warnings: list[dict[str, str]] = []
+    for warning_class in re.findall(r"%Warning-([A-Za-z0-9_]+):", log_text):
+        normalized = warning_class.upper()
+        failure_type = _VERILATOR_WARNING_TAXONOMY.get(normalized)
+        if failure_type is not None:
+            warnings.append({"warning_class": normalized, "failure_type": failure_type})
+    for raw_line in log_text.splitlines():
+        if not re.match(r"\s*Warning:", raw_line, flags=re.IGNORECASE):
+            continue
+        text = raw_line.lower()
+        failure_type = "unknown"
+        if "never used" in text or "not used" in text:
+            failure_type = "unused_signal"
+        elif "multiple" in text and "driver" in text:
+            failure_type = "multiple_driver"
+        elif "latch" in text:
+            failure_type = "latch_inferred"
+        elif "width" in text or "truncat" in text:
+            failure_type = "width_mismatch"
+        warnings.append({"warning_class": "YOSYS", "failure_type": failure_type})
+    return warnings
 
 
 def classify_failure(log_text: str) -> str:
@@ -15,6 +93,8 @@ def classify_failure(log_text: str) -> str:
         return "testbench_stimulus_reaccept_risk"
     if "testbench_observation_race" in text or "testbench observation race" in text:
         return "testbench_observation_race"
+    if "testbench_internal_signal_access" in text or "dut internal signal access" in text:
+        return "testbench_internal_signal_access"
     if "testbench_missing_functional_oracle" in text or "missing functional oracle" in text:
         return "testbench_missing_functional_oracle"
     if "%error-pinnotfound" in text and "parameter not found" in text:

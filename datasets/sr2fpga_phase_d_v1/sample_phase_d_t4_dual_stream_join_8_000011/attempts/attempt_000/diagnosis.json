@@ -1,0 +1,17 @@
+{
+  "failure_type": "his_validation_failed",
+  "stage": "his_validation",
+  "root_cause": "H2 lowerability: components[0] has unsupported semantic_kind 'stream_buffer'\nH2 lowerability: components[1] has unsupported semantic_kind 'stream_combiner'\nH2 lowerability: components[2] has unsupported semantic_kind 'arithmetic_accumulator'\nH2 lowerability: components[3] has unsupported semantic_kind 'pipeline_stage'\nH2 lowerability: verification.scenarios[0] unsupported scenario '{'name': 'single_sample_accumulation', 'description': 'Verify accumulator correctly adds single sample'}'\nH2 lowerability: verification.scenarios[1] unsupported scenario '{'name': 'multiple_sample_accumulation', 'description': 'Verify accumulator correctly adds multiple samples'}'\nH2 lowerability: verification.scenarios[2] unsupported scenario '{'name': 'overflow_behavior', 'description': 'Verify accumulator handles overflow correctly'}'\nH2 lowerability: verification.scenarios[3] unsupported scenario '{'name': 'backpressure_handling', 'description': 'Verify system handles backpressure correctly'}'",
+  "affected_files": [
+    "system_his.json"
+  ],
+  "structured_diagnosis": {
+    "failure_type": "his_validation_failed",
+    "warnings": [],
+    "mismatch_detail": [],
+    "semantic_trace": {},
+    "resource_detail": {},
+    "bram_miss": false,
+    "l4_failure_family": null
+  }
+}
