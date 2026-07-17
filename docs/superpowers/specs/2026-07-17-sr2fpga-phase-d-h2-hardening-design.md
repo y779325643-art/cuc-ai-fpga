@@ -58,4 +58,3 @@ Use strict compatibility hardening:
 5. A read-only replay produces per-sample before/after diagnostics and aggregate
    counts for all 24 frozen episodes.
 6. Targeted tests and the full `LLM/tests` suite pass.
-
