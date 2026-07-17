@@ -55,6 +55,22 @@ SUPPORTED_COMPONENT_SEMANTIC_KINDS = {
     "stage",
     "top_integration",
 }
+COMPONENT_SEMANTIC_KIND_ALIASES = {
+    "arithmetic_accumulator": "accumulator",
+    "dual_stream_join": "join",
+    "elastic_stream_buffer": "buffer",
+    "pipeline_stage": "stage",
+    "registered_stream_stage": "stage",
+    "stream_accumulator": "accumulator",
+    "stream_buffer": "buffer",
+    "synchronous_fifo": "fifo",
+}
+DATA_FLOW_PROTOCOL_ALIASES = {
+    "combinational": "wire",
+    "combinational_operand": "wire",
+    "registered_data": "register",
+    "registered_enable": "register",
+}
 H0_OBJECT_FIELDS = {"intent", "top", "state", "timing", "resources", "verification", "artifacts"}
 H0_LIST_FIELDS = {"components", "instances", "data_flow", "control_flow"}
 
@@ -228,7 +244,8 @@ def _lowerability_errors(payload: dict[str, Any]) -> list[str]:
         if not isinstance(component, dict):
             continue
         semantic_kind = str(component.get("semantic_kind", "")).strip()
-        if semantic_kind and semantic_kind not in SUPPORTED_COMPONENT_SEMANTIC_KINDS:
+        canonical_kind = COMPONENT_SEMANTIC_KIND_ALIASES.get(semantic_kind, semantic_kind)
+        if semantic_kind and canonical_kind not in SUPPORTED_COMPONENT_SEMANTIC_KINDS:
             errors.append(
                 f"H2 lowerability: components[{index}] has unsupported semantic_kind '{semantic_kind}'"
             )
@@ -236,7 +253,8 @@ def _lowerability_errors(payload: dict[str, Any]) -> list[str]:
         if not isinstance(flow, dict):
             continue
         protocol = str(flow.get("protocol", "")).strip()
-        if protocol and protocol not in SUPPORTED_DATA_FLOW_PROTOCOLS:
+        canonical_protocol = DATA_FLOW_PROTOCOL_ALIASES.get(protocol, protocol)
+        if protocol and canonical_protocol not in SUPPORTED_DATA_FLOW_PROTOCOLS:
             errors.append(f"H2 lowerability: data_flow[{index}] has unsupported protocol '{protocol}'")
     verification = payload.get("verification")
     if isinstance(verification, dict):
@@ -244,10 +262,26 @@ def _lowerability_errors(payload: dict[str, Any]) -> list[str]:
         if testbench and testbench != "sim/tb_top.v":
             errors.append(f"H2 lowerability: unsupported testbench '{testbench}'")
         for index, scenario in enumerate(_list(verification.get("scenarios"))):
-            scenario_name = str(scenario).strip()
-            if scenario_name and scenario_name not in SUPPORTED_VERIFICATION_SCENARIOS:
+            scenario_name = _scenario_identifier(scenario)
+            if not scenario_name:
+                errors.append(
+                    f"H2 lowerability: verification.scenarios[{index}] scenario object requires "
+                    "canonical 'kind' or 'name'"
+                )
+            elif scenario_name not in SUPPORTED_VERIFICATION_SCENARIOS:
                 errors.append(f"H2 lowerability: verification.scenarios[{index}] unsupported scenario '{scenario_name}'")
     return errors
+
+
+def _scenario_identifier(scenario: Any) -> str:
+    if isinstance(scenario, str):
+        return scenario.strip()
+    if isinstance(scenario, dict):
+        kind = str(scenario.get("kind", "")).strip()
+        if kind:
+            return kind
+        return str(scenario.get("name", "")).strip()
+    return ""
 
 
 def _h3_status(result: Any) -> str:

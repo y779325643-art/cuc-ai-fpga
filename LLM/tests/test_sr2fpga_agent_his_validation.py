@@ -110,6 +110,91 @@ class SystemHisHStageValidationTests(unittest.TestCase):
         self.assertEqual(report["h2"]["status"], "fail")
         self.assertIn("unsupported semantic_kind", "\n".join(report["h2"]["diagnostics"]))
 
+    def test_h2_accepts_structured_scenario_with_canonical_kind(self) -> None:
+        project = _counter_project_with(
+            lambda payload: payload["verification"].update(
+                {
+                    "scenarios": [
+                        {
+                            "name": "reset_counter_state",
+                            "kind": "reset",
+                            "description": "Reset the counter before nominal operation.",
+                        }
+                    ]
+                }
+            )
+        )
+
+        report = validate_system_his_h_stages(_counter_request(), project)
+
+        self.assertEqual(report["h2"]["status"], "pass")
+
+    def test_h2_reports_unknown_structured_scenario_by_identifier(self) -> None:
+        project = _counter_project_with(
+            lambda payload: payload["verification"].update(
+                {
+                    "scenarios": [
+                        {
+                            "name": "unsupported_magic_scenario",
+                            "description": "This scenario has no lowering profile.",
+                        }
+                    ]
+                }
+            )
+        )
+
+        report = validate_system_his_h_stages(_counter_request(), project)
+
+        diagnostics = "\n".join(report["h2"]["diagnostics"])
+        self.assertEqual(report["h2"]["status"], "fail")
+        self.assertIn("unsupported scenario 'unsupported_magic_scenario'", diagnostics)
+        self.assertNotIn("description", diagnostics)
+
+    def test_h2_rejects_structured_scenario_without_identifier(self) -> None:
+        project = _counter_project_with(
+            lambda payload: payload["verification"].update(
+                {"scenarios": [{"description": "Missing canonical kind and name."}]}
+            )
+        )
+
+        report = validate_system_his_h_stages(_counter_request(), project)
+
+        diagnostics = "\n".join(report["h2"]["diagnostics"])
+        self.assertEqual(report["h2"]["status"], "fail")
+        self.assertIn("scenario object requires canonical 'kind' or 'name'", diagnostics)
+
+    def test_h2_accepts_reviewed_semantic_kind_and_protocol_aliases(self) -> None:
+        fifo_project = _project_with(
+            ProjectRequest(task_type="fifo", width=8, project_name="fifo_8bit"),
+            lambda payload: payload["components"][0].update({"semantic_kind": "synchronous_fifo"}),
+        )
+        counter_project = _counter_project_with(
+            lambda payload: payload["data_flow"][0].update({"protocol": "combinational"})
+        )
+
+        fifo_report = validate_system_his_h_stages(
+            ProjectRequest(task_type="fifo", width=8, project_name="fifo_8bit"),
+            fifo_project,
+        )
+        counter_report = validate_system_his_h_stages(_counter_request(), counter_project)
+
+        self.assertEqual(fifo_report["h2"]["status"], "pass")
+        self.assertEqual(counter_report["h2"]["status"], "pass")
+
+    def test_h2_keeps_unknown_aliases_fail_closed(self) -> None:
+        def mutate(payload):
+            payload["components"][0]["semantic_kind"] = "mystery_compute"
+            payload["data_flow"][0]["protocol"] = "mystery_transport"
+
+        project = _counter_project_with(mutate)
+
+        report = validate_system_his_h_stages(_counter_request(), project)
+
+        diagnostics = "\n".join(report["h2"]["diagnostics"])
+        self.assertEqual(report["h2"]["status"], "fail")
+        self.assertIn("unsupported semantic_kind 'mystery_compute'", diagnostics)
+        self.assertIn("unsupported protocol 'mystery_transport'", diagnostics)
+
     def test_h3_rejects_requirement_width_mismatch_after_lowerable_his(self) -> None:
         project = ProjectGenerator().generate(
             ProjectRequest(task_type="composed_stream_accumulator", width=8, project_name="stream_accum_8bit"),

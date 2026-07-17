@@ -10,6 +10,11 @@ from LLM.src.sr2fpga_agent.contract_skeleton import (
     BEHAVIOR_REGION_END,
     build_contract_skeleton_project,
 )
+from LLM.src.sr2fpga_agent.his_validation import (
+    SUPPORTED_COMPONENT_SEMANTIC_KINDS,
+    SUPPORTED_DATA_FLOW_PROTOCOLS,
+    SUPPORTED_VERIFICATION_SCENARIOS,
+)
 from LLM.src.sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from LLM.src.sr2fpga_agent.parsers import (
     MULTIMODULE_RTL_EXAMPLES,
@@ -18,6 +23,19 @@ from LLM.src.sr2fpga_agent.parsers import (
     _project_task_type,
 )
 from LLM.src.sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
+
+
+def _h2_lowerability_prompt_guidance() -> str:
+    semantic_kinds = ", ".join(sorted(SUPPORTED_COMPONENT_SEMANTIC_KINDS))
+    protocols = ", ".join(sorted(SUPPORTED_DATA_FLOW_PROTOCOLS))
+    scenarios = ", ".join(sorted(SUPPORTED_VERIFICATION_SCENARIOS))
+    return (
+        f"H2 canonical semantic_kind values: {semantic_kinds}.\n"
+        f"H2 canonical data_flow.protocol values: {protocols}.\n"
+        "verification.scenarios entries must be canonical strings from: "
+        f"{scenarios}. If an object is used, set kind to one canonical value; "
+        "name may remain a human-readable label.\n"
+    )
 
 def _system_his_v12_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:
     system = (
@@ -94,6 +112,8 @@ Architectural rules:
   from/to states declared by that FSM.
 - Use width objects with expr and resolved when a parameterized width is useful.
 - Keep verification as scenarios and pass_condition, not full testbench code.
+
+{_h2_lowerability_prompt_guidance()}
 
 {_system_his_v12_task_guidance(request.task_type)}
 
@@ -209,6 +229,7 @@ def _with_system_his_retry_feedback(
                 "- Every state.fsms[] entry must declare owner or use <instance>.<fsm> naming.\n"
                 "- FSM owner must be top or an instances[].name.\n"
                 "- FSMs must declare non-empty states, initial, and reset_state, and transitions must use those states.\n\n"
+                f"{_h2_lowerability_prompt_guidance()}\n"
                 f"{task_guidance}\n"
                 "Previous invalid System-HIS JSON:\n"
                 f"{previous_content.strip()}"
