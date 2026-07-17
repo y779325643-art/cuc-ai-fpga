@@ -374,10 +374,13 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
 
         sample_project_generator = _project_generator_for_sample(project_generators, config, sample, events_path)
         sample_repairer = _repairer_for_sample(repairers, config, sample)
+        sample_metadata = sample.metadata(config)
+        sample_metadata["freeze_fingerprint"] = freeze_fingerprint
         agent = DataGenerationAgent(
             config.dataset_root,
             project_generator=sample_project_generator,
             repairer=sample_repairer,
+            repair_provider_name=str(sample_metadata["repair_provider_resolved"]),
             max_attempts=config.max_attempts,
             enable_openxc7_l4=_l4_open_enabled_for_sample(config, sample),
             openxc7_tool=config.l4_open.tool,
@@ -391,8 +394,6 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             vivado_timeout_seconds=config.l4_commercial.timeout_seconds,
             enable_independent_oracle=config.run_independent_oracle,
         )
-        sample_metadata = sample.metadata(config)
-        sample_metadata["freeze_fingerprint"] = freeze_fingerprint
         result = agent.run_one(
             sample_id=sample.sample_id,
             requirement=sample.requirement,

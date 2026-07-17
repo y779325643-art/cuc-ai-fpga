@@ -70,6 +70,7 @@ class DataGenerationAgent:
         command_runner: CommandRunner | None = None,
         project_generator: ProjectGenerator | None = None,
         repairer: object | None = None,
+        repair_provider_name: str | None = None,
         max_attempts: int = 1,
         enable_openxc7_l4: bool = False,
         openxc7_tool: str = "openxc7_nextpnr",
@@ -89,6 +90,7 @@ class DataGenerationAgent:
         self.command_runner = command_runner or CommandRunner()
         self.project_generator = project_generator or ProjectGenerator()
         self.repairer = repairer
+        self.repair_provider_name = repair_provider_name
         self.max_attempts = max_attempts
         self.enable_openxc7_l4 = enable_openxc7_l4
         self.openxc7_tool = openxc7_tool
@@ -244,6 +246,10 @@ class DataGenerationAgent:
                             repair_result.generated_project,
                             patch_diagnosis,
                             patch_id=f"p{attempt_id + 1:03d}",
+                        )
+                        patch_metadata = replace(
+                            patch_metadata,
+                            repair_provider_resolved=self.repair_provider_name,
                         )
                         patches.append(patch_metadata)
                         if patch_metadata.status == "valid":

@@ -37,6 +37,7 @@ def test_phase_d_mocked_24_episode_run_is_complete_and_auditable(tmp_path: Path)
             eval_dir.mkdir(parents=True)
             attempts_dir.mkdir(parents=True)
             metadata = dict(metadata or {})
+            (sample_dir / "requirement.txt").write_text(requirement.rstrip() + "\n", encoding="utf-8")
             l4 = {
                 "status": "pass" if self.enable_l4 else "not_run",
                 "skip_reason": None if self.enable_l4 else "not_selected_by_policy",
@@ -72,6 +73,7 @@ def test_phase_d_mocked_24_episode_run_is_complete_and_auditable(tmp_path: Path)
             patches = [
                 {
                     "patch_id": "mock-patch-1",
+                    "repair_provider_resolved": metadata["repair_provider_resolved"],
                     "files_touched": ["rtl/core.v"],
                     "touched_trusted_artifacts": False,
                     "regressions": [],
@@ -131,6 +133,8 @@ def test_phase_d_mocked_24_episode_run_is_complete_and_auditable(tmp_path: Path)
         metadata = _read(sample_dir / "metadata.json")
         assert metadata["repair_provider_policy"] == "same_as_source"
         assert metadata["repair_provider_resolved"] == metadata["source"]
+        trajectory = _read(sample_dir / "eval" / "trajectory.json")
+        assert trajectory["patches"][0]["repair_provider_resolved"] == metadata["source"]
 
     audit = audit_run(run_root)
     assert audit["verdict"] == "APPROVED", audit

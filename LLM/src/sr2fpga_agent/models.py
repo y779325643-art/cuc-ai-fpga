@@ -77,6 +77,7 @@ class PatchMetadata:
     status: str
     automatic_pass_credit: bool
     repair_regression: dict[str, Any] = field(default_factory=dict)
+    repair_provider_resolved: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -93,6 +94,7 @@ class PatchMetadata:
             "status": self.status,
             "automatic_pass_credit": self.automatic_pass_credit,
             "repair_regression": self.repair_regression,
+            "repair_provider_resolved": self.repair_provider_resolved,
         }
 
 

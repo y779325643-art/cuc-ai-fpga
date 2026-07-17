@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
+import sys
 from pathlib import Path
 from typing import Any, Iterable
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from LLM.src.sr2fpga_agent.measurement_freeze import freeze_fingerprint
 
@@ -15,24 +21,10 @@ EXPECTED_SOURCES = {"claude", "gpt", "qwen", "deepseek"}
 EXPECTED_EPISODES = 24
 EXPECTED_PAIRS = 6
 MAX_L4_RUNS = 4
-_TEXT_SUFFIXES = {
-    ".json",
-    ".jsonl",
-    ".md",
-    ".txt",
-    ".yaml",
-    ".yml",
-    ".log",
-    ".diff",
-    ".v",
-    ".sv",
-    ".py",
-    ".tcl",
-}
 _SECRET_PATTERNS = (
-    re.compile(r"(?i)authorization\s*[:=]\s*bearer\s+\S+"),
-    re.compile(r"\bsk-[A-Za-z0-9_-]{12,}\b"),
-    re.compile(r'(?i)["\']?(?:api_key|access_token|client_secret|password)["\']?\s*[:=]'),
+    re.compile(rb"authorization\s*[:=]\s*bearer\s+\S+", re.IGNORECASE),
+    re.compile(rb"\bsk-[A-Za-z0-9_-]{12,}\b"),
+    re.compile(rb"[\"']?(?:api_key|access_token|client_secret|password)[\"']?\s*[:=]", re.IGNORECASE),
 )
 _TRUSTED_PATH_PARTS = (
     "hidden",
@@ -100,10 +92,13 @@ def audit_run(run_root: Path) -> dict[str, Any]:
     )
 
     stored_fingerprint = str(freeze.get("freeze_fingerprint", ""))
-    freeze_sample_ids = {
-        str(item.get("sample_id"))
+    freeze_samples = {
+        str(item.get("sample_id")): item
         for item in freeze.get("samples", [])
         if isinstance(item, dict) and item.get("sample_id")
+    }
+    freeze_sample_ids = {
+        sample_id for sample_id in freeze_samples
     }
     metadata_fingerprints = {str(sample["freeze_fingerprint"]) for sample in samples}
     freeze_ok = (
@@ -122,12 +117,56 @@ def audit_run(run_root: Path) -> dict[str, Any]:
         metadata_fingerprints=sorted(metadata_fingerprints),
     )
 
-    same_source_violations = [
-        sample["sample_id"]
-        for sample in samples
-        if sample["metadata"].get("repair_provider_policy") != "same_as_source"
-        or sample["metadata"].get("repair_provider_resolved") != sample["source"]
-    ]
+    frozen_identity_violations: list[str] = []
+    frozen_fields = (
+        "source",
+        "family_id",
+        "paired_requirement_id",
+        "requirement_sha256",
+    )
+    for sample in samples:
+        sample_id = sample["sample_id"]
+        frozen_sample = freeze_samples.get(sample_id)
+        if frozen_sample is None:
+            frozen_identity_violations.append(f"{sample_id}:missing_freeze_entry")
+            continue
+        for field in frozen_fields:
+            if str(sample["metadata"].get(field, "")) != str(frozen_sample.get(field, "")):
+                frozen_identity_violations.append(f"{sample_id}:{field}")
+        requirement_path = sample["sample_dir"] / "requirement.txt"
+        try:
+            requirement = requirement_path.read_text(encoding="utf-8").rstrip()
+        except (OSError, UnicodeDecodeError):
+            frozen_identity_violations.append(f"{sample_id}:requirement_unreadable")
+            continue
+        actual_hash = hashlib.sha256(requirement.encode("utf-8")).hexdigest()
+        if actual_hash != str(frozen_sample.get("requirement_sha256", "")):
+            frozen_identity_violations.append(f"{sample_id}:requirement_file_hash")
+    _record(
+        checks,
+        blocking,
+        "frozen_sample_identity",
+        not frozen_identity_violations,
+        violating_samples=frozen_identity_violations,
+    )
+
+    same_source_violations: list[str] = []
+    for sample in samples:
+        if (
+            sample["metadata"].get("repair_provider_policy") != "same_as_source"
+            or sample["metadata"].get("repair_provider_resolved") != sample["source"]
+        ):
+            same_source_violations.append(f"{sample['sample_id']}:metadata")
+        repair_attempts = int(sample["measurement"].get("repair_attempts_used", 0) or 0)
+        if repair_attempts <= 0:
+            continue
+        patches = sample["trajectory"].get("patches", [])
+        if not isinstance(patches, list) or len(patches) < repair_attempts:
+            same_source_violations.append(f"{sample['sample_id']}:missing_patch_provenance")
+            continue
+        for index, patch in enumerate(patches):
+            if not isinstance(patch, dict) or patch.get("repair_provider_resolved") != sample["source"]:
+                same_source_violations.append(f"{sample['sample_id']}:patch:{index}")
     _record(
         checks,
         blocking,
@@ -159,6 +198,19 @@ def audit_run(run_root: Path) -> dict[str, Any]:
         l4_run_count=len(l4_runs),
         max_l4_runs=MAX_L4_RUNS,
         non_fir_samples=non_fir_l4,
+    )
+    l4_without_l3 = [
+        sample["sample_id"]
+        for sample in l4_runs
+        if not isinstance(sample["labels"].get("checks"), dict)
+        or sample["labels"]["checks"].get("l3_synth_pass") is not True
+    ]
+    _record(
+        checks,
+        blocking,
+        "l4_requires_l3_pass",
+        not l4_without_l3,
+        violating_samples=l4_without_l3,
     )
 
     missing_l4_reports: list[str] = []
@@ -335,18 +387,30 @@ def _secret_findings(roots: Iterable[Path]) -> list[str]:
         if not root.exists():
             continue
         for path in root.rglob("*"):
-            if not path.is_file() or path in seen or path.suffix.lower() not in _TEXT_SUFFIXES:
+            if not path.is_file():
                 continue
-            seen.add(path)
+            resolved = path.resolve()
+            if resolved in seen:
+                continue
+            seen.add(resolved)
             try:
-                if path.stat().st_size > 5_000_000:
-                    continue
-                text = path.read_text(encoding="utf-8")
-            except (OSError, UnicodeDecodeError):
+                if _file_contains_secret(path):
+                    findings.append(str(path))
+            except OSError:
+                findings.append(f"{path}:unreadable")
                 continue
-            if any(pattern.search(text) for pattern in _SECRET_PATTERNS):
-                findings.append(str(path))
     return sorted(findings)
+
+
+def _file_contains_secret(path: Path) -> bool:
+    overlap = b""
+    with path.open("rb") as handle:
+        while chunk := handle.read(1024 * 1024):
+            searchable = overlap + chunk
+            if any(pattern.search(searchable) for pattern in _SECRET_PATTERNS):
+                return True
+            overlap = searchable[-512:]
+    return False
 
 
 def _record(

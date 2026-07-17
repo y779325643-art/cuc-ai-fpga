@@ -1965,6 +1965,7 @@ class DatasetRecorderTest(unittest.TestCase):
                 dataset_root=root,
                 command_runner=SimFailThenLintFailRunner(),
                 repairer=RtlChangingRepairer(),
+                repair_provider_name="test-teacher",
                 max_attempts=2,
             )
             request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
@@ -1977,6 +1978,7 @@ class DatasetRecorderTest(unittest.TestCase):
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
 
             self.assertFalse(patch["automatic_pass_credit"])
+            self.assertEqual(patch["repair_provider_resolved"], "test-teacher")
             self.assertFalse(patch["repair_regression"]["fixed_target"])
             self.assertEqual(patch["repair_regression"]["regressed_levels"], ["lint"])
             self.assertFalse(labels["automatic_pass_credit"])
