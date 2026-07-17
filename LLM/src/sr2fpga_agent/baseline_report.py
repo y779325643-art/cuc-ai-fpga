@@ -98,6 +98,7 @@ def render_markdown(
     _append_l4_open_section(lines, summary or {})
     _append_l4_commercial_section(lines, summary or {})
     _append_derived_training_views_section(lines, summary or {})
+    _append_phase_d_paired_section(lines, summary or {})
     return "\n".join(lines) + "\n"
 
 
@@ -219,6 +220,102 @@ def _contract_skeleton_sort_key(value: object) -> tuple[int, str]:
 
 def _format_percentage_points(delta: float) -> str:
     return f"{delta * 100:+.1f} pp"
+
+
+def _append_phase_d_paired_section(lines: list[str], summary: dict[str, Any]) -> None:
+    paired = summary.get("paired_results")
+    if not isinstance(paired, dict) or not paired:
+        return
+    lines.extend(
+        [
+            "",
+            "## Phase D Paired Pilot",
+            "",
+            "Episodes: {total} total, {scoreable} scoreable; pairs: {complete}/{pairs} complete.".format(
+                total=int(paired.get("episode_count", 0)),
+                scoreable=int(paired.get("scoreable_episode_count", 0)),
+                complete=int(paired.get("complete_pairs", 0)),
+                pairs=int(paired.get("pair_count", 0)),
+            ),
+        ]
+    )
+    comparison = paired.get("initial_vs_final", {})
+    if isinstance(comparison, dict):
+        initial = comparison.get("initial", {})
+        final = comparison.get("final", {})
+        initial = initial if isinstance(initial, dict) else {}
+        final = final if isinstance(final, dict) else {}
+        lines.extend(
+            [
+                "",
+                "### Initial (a) vs Final (b)",
+                "",
+                "| level | initial pass | final pass | delta |",
+                "|---|---:|---:|---:|",
+            ]
+        )
+        for level in ("L0", "L1", "L2", "L3"):
+            key = f"{level.lower()}_pass"
+            before = int(initial.get(key, 0))
+            after = int(final.get(key, 0))
+            lines.append(f"| {level} | {before} | {after} | {after - before:+d} |")
+        lines.extend(
+            [
+                "",
+                "Repair successes: {success}; regressions: {regressions}.".format(
+                    success=int(comparison.get("repair_success", 0)),
+                    regressions=int(comparison.get("regressions", 0)),
+                ),
+            ]
+        )
+    _append_phase_d_group_table(lines, "Per-source L0-L3 survival", paired.get("by_source"))
+    _append_phase_d_group_table(lines, "Per-family L0-L3 survival", paired.get("by_family"))
+    infrastructure = paired.get("infrastructure_outcomes")
+    if isinstance(infrastructure, dict) and infrastructure:
+        lines.extend(
+            [
+                "",
+                "### Infrastructure outcomes excluded from model denominators",
+                "",
+                "| outcome | count |",
+                "|---|---:|",
+            ]
+        )
+        for outcome in sorted(infrastructure):
+            lines.append(f"| {outcome} | {int(infrastructure[outcome])} |")
+
+
+def _append_phase_d_group_table(lines: list[str], title: str, raw_groups: object) -> None:
+    if not isinstance(raw_groups, dict) or not raw_groups:
+        return
+    lines.extend(
+        [
+            "",
+            f"### {title}",
+            "",
+            "| group | episodes | initial L3 | final L3 | repair success | regressions | L4-open |",
+            "|---|---:|---:|---:|---:|---:|---|",
+        ]
+    )
+    for name in sorted(raw_groups):
+        cell = raw_groups[name]
+        if not isinstance(cell, dict):
+            continue
+        initial = cell.get("initial", {}) if isinstance(cell.get("initial"), dict) else {}
+        final = cell.get("final", {}) if isinstance(cell.get("final"), dict) else {}
+        l4_open = cell.get("l4_open", {}) if isinstance(cell.get("l4_open"), dict) else {}
+        l4_text = ", ".join(f"{key}:{int(l4_open[key])}" for key in sorted(l4_open))
+        lines.append(
+            "| {name} | {episodes} | {initial_l3} | {final_l3} | {repair} | {regressions} | {l4} |".format(
+                name=name,
+                episodes=int(cell.get("episodes", 0)),
+                initial_l3=int(initial.get("l3_pass", 0)),
+                final_l3=int(final.get("l3_pass", 0)),
+                repair=int(cell.get("repair_success", 0)),
+                regressions=int(cell.get("regressions", 0)),
+                l4=l4_text,
+            )
+        )
 
 
 def _append_latent_testbench_issue_section(lines: list[str], summary: dict[str, Any]) -> None:

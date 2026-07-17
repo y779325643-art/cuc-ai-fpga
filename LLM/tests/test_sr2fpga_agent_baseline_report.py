@@ -175,6 +175,53 @@ class BaselineReportTest(unittest.TestCase):
         )
         self.assertIn("| 5 | 4 | 1 | 3 | 2 | 1 | 25.0% |", markdown)
 
+    def test_render_markdown_includes_phase_d_paired_initial_final_results(self) -> None:
+        summary = _summary_fixture()
+        summary["paired_results"] = {
+            "episode_count": 4,
+            "scoreable_episode_count": 3,
+            "pair_count": 1,
+            "complete_pairs": 1,
+            "infrastructure_outcomes": {"provider_unavailable": 1},
+            "initial_vs_final": {
+                "scoreable_denominator": 3,
+                "initial": {"l0_pass": 3, "l1_pass": 2, "l2_pass": 1, "l3_pass": 1},
+                "final": {"l0_pass": 3, "l1_pass": 3, "l2_pass": 2, "l3_pass": 2},
+                "repair_success": 1,
+                "regressions": 0,
+            },
+            "by_source": {
+                "claude": {
+                    "episodes": 1,
+                    "initial": {"l0_pass": 1, "l1_pass": 0, "l2_pass": 0, "l3_pass": 0},
+                    "final": {"l0_pass": 1, "l1_pass": 1, "l2_pass": 1, "l3_pass": 1},
+                    "repair_success": 1,
+                    "regressions": 0,
+                    "l4_open": {"not_run": 1},
+                }
+            },
+            "by_family": {
+                "fir_filter": {
+                    "episodes": 1,
+                    "initial": {"l0_pass": 1, "l1_pass": 0, "l2_pass": 0, "l3_pass": 0},
+                    "final": {"l0_pass": 1, "l1_pass": 1, "l2_pass": 1, "l3_pass": 1},
+                    "repair_success": 1,
+                    "regressions": 0,
+                    "l4_open": {"pass": 1},
+                }
+            },
+        }
+
+        markdown = render_markdown("phase-d", baseline_rows(summary), summary=summary)
+
+        self.assertIn("## Phase D Paired Pilot", markdown)
+        self.assertIn("Episodes: 4 total, 3 scoreable; pairs: 1/1 complete.", markdown)
+        self.assertIn("### Initial (a) vs Final (b)", markdown)
+        self.assertIn("| L3 | 1 | 2 | +1 |", markdown)
+        self.assertIn("| claude | 1 | 0 | 1 | 1 | 0 | not_run:1 |", markdown)
+        self.assertIn("| fir_filter | 1 | 0 | 1 | 1 | 0 | pass:1 |", markdown)
+        self.assertIn("| provider_unavailable | 1 |", markdown)
+
     def test_render_markdown_includes_l4_open_counts_and_skip_histogram(self) -> None:
         summary = _summary_fixture()
         summary["l4_open"] = {"pass": 2, "fail": 1, "not_run": 3}

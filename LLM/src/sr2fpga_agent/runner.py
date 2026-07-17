@@ -33,6 +33,7 @@ from LLM.src.sr2fpga_agent.measurement_freeze import (
     write_or_validate_freeze,
 )
 from LLM.src.sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from LLM.src.sr2fpga_agent.paired_measurement import collect_paired_results
 from LLM.src.sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
 from LLM.src.sr2fpga_agent.recorder import DatasetRecorder
 from LLM.src.sr2fpga_agent.task_catalog import task_family_spec_for_alias
@@ -434,7 +435,22 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         )
         write_run_state(state_path, state)
 
+    paired_results: dict[str, Any] = {}
+    if config.repair_provider == "same_as_source":
+        measured_sample_ids = [
+            sample_id
+            for sample_id in state.completed_samples
+            if _sample_has_measurement(config.dataset_root / sample_id)
+        ]
+        paired_results = collect_paired_results(config.dataset_root, measured_sample_ids)
+        paired_results["missing_measurement_samples"] = [
+            sample_id for sample_id in state.completed_samples if sample_id not in set(measured_sample_ids)
+        ]
+        _write_json(run_dir / "paired_results.json", paired_results)
+
     summary = _summary(config, state)
+    if paired_results:
+        summary["paired_results"] = paired_results
     summary["freeze_fingerprint"] = freeze_fingerprint
     _write_json(summary_path, summary)
     (run_dir / "baseline_report.md").write_text(
@@ -781,6 +797,17 @@ def _record_rejected(state: RunState, sample_id: str, next_index: int, failure_t
 
 def _read_labels(sample_dir: Path) -> dict[str, Any]:
     return json.loads((sample_dir / "eval" / "labels.json").read_text(encoding="utf-8"))
+
+
+def _sample_has_measurement(sample_dir: Path) -> bool:
+    path = sample_dir / "eval" / "trajectory.json"
+    if not path.exists():
+        return False
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return False
+    return isinstance(payload, dict) and isinstance(payload.get("measurement"), dict)
 
 
 def _sample_failure_types(sample_dir: Path) -> dict[str, int]:

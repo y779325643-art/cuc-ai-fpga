@@ -39,6 +39,30 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 class RunnerConfigTest(unittest.TestCase):
+    def test_phase_d_same_source_run_writes_paired_results_artifact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="same_as_source",
+                max_attempts=3,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 0},
+                tasks=[],
+            )
+
+            summary = run_batch(config, run_id="phase_d_empty_contract", resume=False)
+
+            paired_path = root / "runs" / "phase_d_empty_contract" / "paired_results.json"
+            self.assertTrue(paired_path.exists())
+            paired = json.loads(paired_path.read_text(encoding="utf-8"))
+            self.assertEqual(paired["schema_version"], "sr2fpga-phase-d-paired-v1")
+            self.assertEqual(paired["episode_count"], 0)
+            self.assertEqual(summary["paired_results"], paired)
+
     def test_phase_d_configs_expand_frozen_pilot_and_controls(self) -> None:
         pilot = load_runner_config(
             REPO_ROOT

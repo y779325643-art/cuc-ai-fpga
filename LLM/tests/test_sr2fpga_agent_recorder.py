@@ -49,6 +49,101 @@ def _write_four_class_oracle_bundle(width: int, output_root: Path):
 
 
 class DatasetRecorderTest(unittest.TestCase):
+    def test_generation_provider_failure_is_not_scoreable_model_failure(self) -> None:
+        class InfrastructureFailureGenerator:
+            def generate(self, request, platform):
+                raise RuntimeError("OpenAI-compatible API request failed with HTTP 503: unavailable")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            agent = DataGenerationAgent(dataset_root=root, project_generator=InfrastructureFailureGenerator())
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_infrastructure", "counter", request, platform)
+
+            trajectory = json.loads(
+                (root / "sample_infrastructure/eval/trajectory.json").read_text(encoding="utf-8")
+            )
+            labels = json.loads((root / "sample_infrastructure/eval/labels.json").read_text(encoding="utf-8"))
+            self.assertFalse(trajectory["measurement"]["scoreable"])
+            self.assertEqual(trajectory["measurement"]["infrastructure_status"], "provider_infrastructure_failure")
+            self.assertFalse(labels["automatic_pass_credit"])
+            self.assertEqual(labels["failure_origin"], "toolchain_environment_failure")
+
+    def test_generation_parse_failure_remains_scoreable_model_failure(self) -> None:
+        class ModelOutputFailureGenerator:
+            def generate(self, request, platform):
+                raise RuntimeError("model output did not contain a parseable project package")
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            agent = DataGenerationAgent(dataset_root=root, project_generator=ModelOutputFailureGenerator())
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+            agent.run_one("sample_model_failure", "counter", request, platform)
+
+            trajectory = json.loads(
+                (root / "sample_model_failure/eval/trajectory.json").read_text(encoding="utf-8")
+            )
+            self.assertTrue(trajectory["measurement"]["scoreable"])
+            self.assertEqual(trajectory["measurement"]["infrastructure_status"], "scoreable")
+
+    def test_measurement_is_additive_and_paired_metadata_reaches_training_exports(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "datasets"
+            recorder = DatasetRecorder(root)
+            platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+            request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
+            project = ProjectGenerator().generate(request, platform)
+            metadata = {
+                "paired_requirement_id": "counter:pair",
+                "requirement_sha256": "a" * 64,
+                "freeze_fingerprint": "b" * 64,
+                "system_his_schema_version": "system-his-v1.2",
+            }
+            measurement = {
+                "initial": {"attempt_id": 0, "pass_level": "L1"},
+                "final": {"attempt_id": 1, "pass_level": "L3"},
+                "repair_attempts_used": 1,
+                "repair_success": True,
+            }
+
+            recorder.start_sample("sample_new", "new", platform, metadata=metadata)
+            recorder.write_final(
+                "sample_new",
+                project,
+                labels={"pass_level": "L3"},
+                measured_qor={},
+                tool_versions={},
+                trajectory={"measurement": measurement},
+            )
+            recorder.start_sample("sample_legacy", "legacy", platform)
+            recorder.write_final(
+                "sample_legacy",
+                project,
+                labels={"pass_level": "L3"},
+                measured_qor={},
+                tool_versions={},
+                trajectory={"attempts": []},
+            )
+
+            export_dir = Path(tmp) / "exports"
+            recorder.export_training_views(export_dir)
+            rows = [
+                json.loads(line)
+                for line in (export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8").splitlines()
+            ]
+            new_row = next(row for row in rows if row["sample_id"] == "sample_new")
+            legacy_row = next(row for row in rows if row["sample_id"] == "sample_legacy")
+
+            self.assertEqual(new_row["episode"]["measurement"], measurement)
+            self.assertEqual(new_row["metadata"]["paired_requirement_id"], "counter:pair")
+            self.assertEqual(new_row["metadata"]["requirement_sha256"], "a" * 64)
+            self.assertEqual(new_row["metadata"]["freeze_fingerprint"], "b" * 64)
+            self.assertNotIn("measurement", legacy_row["episode"])
+
     def test_oracle_profile_export_uses_strict_fail_closed_schema(self) -> None:
         valid_sha256 = "a" * 64
         profile = _sanitize_oracle_profile(
@@ -1775,6 +1870,13 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(patch_metadata["tool_result_after"]["synth"], "passed")
             self.assertTrue(patch_metadata["repair_regression"]["fixed_target"])
             self.assertEqual(trajectory["patches"][0]["patch_id"], "p001")
+            self.assertEqual(trajectory["measurement"]["initial"]["attempt_id"], 0)
+            self.assertEqual(trajectory["measurement"]["initial"]["pass_level"], "L0")
+            self.assertEqual(trajectory["measurement"]["final"]["attempt_id"], 1)
+            self.assertEqual(trajectory["measurement"]["final"]["pass_level"], "L3")
+            self.assertEqual(trajectory["measurement"]["repair_attempts_used"], 1)
+            self.assertTrue(trajectory["measurement"]["repair_success"])
+            self.assertEqual(trajectory["measurement"]["l4_open"]["status"], "not_run")
 
             export_dir = Path(tmp) / "exports"
             DatasetRecorder(root).export_training_views(export_dir)

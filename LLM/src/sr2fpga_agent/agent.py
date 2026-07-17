@@ -30,6 +30,7 @@ from LLM.src.sr2fpga_agent.models import (
     ToolResult,
 )
 from LLM.src.sr2fpga_agent.openxc7_report import parse_openxc7_report
+from LLM.src.sr2fpga_agent.paired_measurement import build_episode_measurement
 from LLM.src.sr2fpga_agent.oracle_runner import run_oracle_scenarios, write_oracle_run_evidence
 from LLM.src.sr2fpga_agent.oracles import (
     OracleBundle,
@@ -118,6 +119,7 @@ class DataGenerationAgent:
             return self._record_generation_failure(sample_id, sample_dir, request, exc)
 
         all_stage_entries: list[dict[str, Any]] = []
+        attempt_measurements: list[dict[str, Any]] = []
         failure_count = 0
         final_attempt_id = 0
         final_tool_results: dict[str, ToolResult] = {}
@@ -257,6 +259,26 @@ class DataGenerationAgent:
                                 upstream_diagnosis=diagnosis,
                             )
 
+            repair_eligible, repair_skip_reason = _repair_eligibility(
+                diagnosis=diagnosis,
+                h_stage_failed=h_stage_failed,
+                oracle_infrastructure_failure=oracle_infrastructure_failure,
+                has_repairer=self.repairer is not None,
+                attempt_id=attempt_id,
+                max_attempts=self.max_attempts,
+            )
+            attempt_measurement = {
+                "attempt_id": attempt_id,
+                "pass_level": _raw_tool_pass_level(tool_results, his_validation),
+                "failure_type": (diagnosis or {}).get("failure_type", "none"),
+                "automatic_pass_credit": not oracle_infrastructure_failure,
+                "repair_eligible": repair_eligible,
+                "repair_skip_reason": repair_skip_reason,
+            }
+            if oracle_infrastructure_failure:
+                attempt_measurement["infrastructure_reason"] = "independent_oracle_infrastructure_error"
+            attempt_measurements.append(attempt_measurement)
+
             all_stage_entries.extend(_stage_entries(attempt_id, tool_results, diagnosis, bool(patch_diff)))
             self.recorder.write_attempt(
                 sample_id,
@@ -302,6 +324,11 @@ class DataGenerationAgent:
         trajectory = _trajectory(sample_id, all_stage_entries)
         if patches:
             trajectory["patches"] = [patch.to_dict() for patch in patches]
+        trajectory["measurement"] = build_episode_measurement(
+            attempts=attempt_measurements,
+            patches=[patch.to_dict() for patch in patches],
+            l4_open=l4_open,
+        )
         oracle_strength = self._oracle_strength(
             final_project,
             sample_dir,
@@ -403,6 +430,7 @@ class DataGenerationAgent:
         request: ProjectRequest,
         exc: Exception,
     ) -> dict[str, Any]:
+        infrastructure_reason = _generation_infrastructure_reason(exc)
         failed_project = GeneratedProject(project_name=request.project_name, files={})
         tool_results = {
             "generation": ToolResult(
@@ -416,7 +444,7 @@ class DataGenerationAgent:
             )
         }
         diagnosis = {
-            "failure_type": "generation_failed",
+            "failure_type": infrastructure_reason or "generation_failed",
             "stage": "generation",
             "root_cause": str(exc),
             "affected_files": _generation_failure_affected_files(exc),
@@ -439,7 +467,26 @@ class DataGenerationAgent:
         )
         l4_commercial = _l4_commercial_record(tool_results, self.enable_vivado_l4, tool=self.vivado_tool)
         labels = _generation_failure_labels(l4_open, l4_commercial)
+        if infrastructure_reason is not None:
+            labels["automatic_pass_credit"] = False
+            labels["automatic_pass_credit_reason"] = infrastructure_reason
+            labels["failure_origin"] = "toolchain_environment_failure"
         trajectory = _trajectory(sample_id, _stage_entries(0, tool_results, diagnosis, False))
+        attempt_measurement = {
+            "attempt_id": 0,
+            "pass_level": "GEN_FAIL",
+            "failure_type": diagnosis["failure_type"],
+            "automatic_pass_credit": infrastructure_reason is None,
+            "repair_eligible": False,
+            "repair_skip_reason": "generation_failed",
+        }
+        if infrastructure_reason is not None:
+            attempt_measurement["infrastructure_reason"] = infrastructure_reason
+        trajectory["measurement"] = build_episode_measurement(
+            attempts=[attempt_measurement],
+            patches=[],
+            l4_open=l4_open,
+        )
         self.recorder.write_final(
             sample_id,
             failed_project,
@@ -1004,13 +1051,7 @@ def _labels(
     independent_oracle_status = str(oracle_profile.get("status", "not_run"))
     oracle_infrastructure_error = independent_oracle_status == "infrastructure_error"
 
-    raw_tool_pass_level = f"{failed_h_stage.upper()}_FAIL" if failed_h_stage else ("L0" if l0_pass else "L0_FAIL")
-    if lint_pass:
-        raw_tool_pass_level = "L1"
-    if lint_pass and sim_compile_pass and sim_run_pass:
-        raw_tool_pass_level = "L2"
-    if lint_pass and sim_compile_pass and sim_run_pass and synth_pass:
-        raw_tool_pass_level = "L3"
+    raw_tool_pass_level = _raw_tool_pass_level(tool_results, his_validation)
     if lint_pass and sim_compile_pass and sim_run_pass and synth_pass and pnr_pass:
         raw_tool_pass_level = "L4"
 
@@ -1087,6 +1128,74 @@ def _labels(
         labels["generated_his_pass_level"] = "NO_CREDIT_ORACLE_FALLBACK"
         labels["generated_his_no_credit_reason"] = "oracle_fallback"
     return labels
+
+
+def _raw_tool_pass_level(
+    tool_results: dict[str, ToolResult],
+    his_validation: dict[str, Any] | None,
+) -> str:
+    """Return the highest H/L0-L3 level reached before optional physical implementation."""
+    failed_h_stage = first_failed_h_stage(his_validation) if his_validation is not None else None
+    if failed_h_stage:
+        return f"{failed_h_stage.upper()}_FAIL"
+    l0 = tool_results.get("l0_consistency")
+    if l0 is not None and l0.status != "passed":
+        return "L0_FAIL"
+    lint = tool_results.get("lint")
+    if lint is None or lint.status != "passed":
+        return "L0"
+    sim_compile = tool_results.get("sim_compile")
+    sim_run = tool_results.get("sim_run")
+    if (
+        sim_compile is None
+        or sim_compile.status != "passed"
+        or sim_run is None
+        or sim_run.status != "passed"
+    ):
+        return "L1"
+    synth = tool_results.get("synth")
+    if synth is None or synth.status != "passed":
+        return "L2"
+    return "L3"
+
+
+def _repair_eligibility(
+    *,
+    diagnosis: dict[str, Any] | None,
+    h_stage_failed: bool,
+    oracle_infrastructure_failure: bool,
+    has_repairer: bool,
+    attempt_id: int,
+    max_attempts: int,
+) -> tuple[bool, str | None]:
+    if diagnosis is None:
+        return False, "initial_or_current_attempt_passed"
+    if h_stage_failed:
+        return False, "h_stage_failed"
+    if oracle_infrastructure_failure:
+        return False, "infrastructure_failure"
+    if not has_repairer:
+        return False, "no_repairer"
+    if attempt_id + 1 >= max_attempts:
+        return False, "repair_budget_exhausted"
+    return True, None
+
+
+def _generation_infrastructure_reason(exc: Exception) -> str | None:
+    text = str(exc).lower()
+    markers = (
+        "api request failed",
+        "api request timed out",
+        "api response read timed out",
+        "streaming response error",
+        "streaming response contained no text",
+        "overloaded_error",
+        "provider unavailable",
+        "connection refused",
+        "connection reset",
+        "temporary failure",
+    )
+    return "provider_infrastructure_failure" if any(marker in text for marker in markers) else None
 
 
 def _l4_agreement_class(l4_open: dict[str, Any], l4_commercial: dict[str, Any]) -> str:
