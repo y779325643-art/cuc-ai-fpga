@@ -2,7 +2,7 @@
 
 ## Current Branch
 
-`codex/phase-d-frozen-multiteacher-pilot`
+`codex/phase-d-h2-hardening`
 
 ## Current Focus
 
@@ -47,6 +47,27 @@ controlled-ablation aid, not as the main repair-learning data source.
 - Current conclusion: the pilot infrastructure is accepted, but the live
   bottleneck is REQ2HIS/HIS2PROJECT generation and H2 lowerability. Repair
   efficacy and live L4 performance remain unmeasured.
+
+## Phase D Failure Analysis And H2 Hardening (2026-07-17)
+
+- The 24 frozen pilot outcomes were classified as 12 `GEN_FAIL` and 12
+  `H2_FAIL`. Generation failures comprise five invalid-JSON outputs, two H1
+  contract failures, two REQ2HIS fidelity failures, two RTL/HIS cross-check
+  failures, and one behavior-hole merge failure.
+- H2 now reads canonical `kind`/`name` from structured scenario objects instead
+  of stringifying the whole object. A small reviewed alias set canonicalizes
+  lossless semantic-kind and protocol synonyms; unknown labels remain failures.
+- Initial and retry REQ2HIS prompts now publish the exact H2 canonical
+  semantic-kind, protocol, and scenario vocabularies.
+- Read-only replay preserved all frozen verdicts: 0/12 H2 candidates changed to
+  pass because every candidate still contains unsupported scenario intent.
+  Semantic-kind diagnostics decreased from 31 to 21 and protocol diagnostics
+  from 18 to 9; scenario diagnostics remained 54.
+- The analyzer refuses output paths inside the frozen dataset root. No API was
+  called and no pilot artifact was rewritten.
+- Repository regression after hardening: `905 passed, 349 subtests passed`.
+- Evidence report:
+  `docs/results/2026-07-17-sr2fpga-phase-d-failure-analysis-and-h2-hardening.md`.
 
 ## Task Contract And Evidence Ledger (Phase A)
 
