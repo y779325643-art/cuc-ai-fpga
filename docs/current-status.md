@@ -1,8 +1,8 @@
-# SR2FPGA Current Status - 2026-07-16
+# SR2FPGA Current Status - 2026-07-17
 
 ## Current Branch
 
-`codex/phase-c-c5-evidence`
+`codex/phase-d-frozen-multiteacher-pilot`
 
 ## Current Focus
 
@@ -20,6 +20,33 @@ requirement
 The current engineering slice is autonomous runner hardening for natural LLM
 failure collection. Synthetic failure injection exists as a pipeline test and
 controlled-ablation aid, not as the main repair-learning data source.
+
+## Phase D Frozen Multi-Teacher Pilot (2026-07-17)
+
+- The frozen live run `phase-d-multiteacher-pilot-20260717-v1` completed 24/24
+  scoreable episodes: four teacher aliases across six complete paired
+  requirements. The freeze fingerprint is
+  `17dd62e04fea801d075e9574cf6d89f6fcea3ceb33c974c2888a3f9f042e07c0`.
+- Provider preflight passed for Claude, GPT, Qwen, and DeepSeek before the run.
+  The run recorded zero unresolved provider/toolchain infrastructure outcome.
+- Live outcomes were 12 `H2_FAIL` and 12 `GEN_FAIL`. No live project crossed
+  H2, so L0-L3 survival was 0/24, no tool-feedback repair was eligible, and no
+  live FIR project qualified for OpenXC7 L4.
+- All 24 live records contain explicit L4 status: 0 pass, 0 fail, 24 not run.
+  Twenty non-FIR records were disabled by policy; four FIR records were skipped
+  because L3 was not reached.
+- The separate deterministic run `phase-d-control-20260717-v1` passed L0-L3
+  for 6/6 controls, killed 28/28 declared mutations, and physically implemented
+  its FIR control with OpenXC7 at the 100 MHz target.
+- The independent artifact audit returned `APPROVED`: 24 scoreable episodes,
+  six complete pairs, freeze/hash consistency, no unresolved infrastructure,
+  no trusted-artifact violation, and no detected secret material.
+- Final repository regression: `897 passed, 349 subtests passed`.
+- Evidence report:
+  `docs/results/2026-07-17-sr2fpga-phase-d-pilot-report.md`.
+- Current conclusion: the pilot infrastructure is accepted, but the live
+  bottleneck is REQ2HIS/HIS2PROJECT generation and H2 lowerability. Repair
+  efficacy and live L4 performance remain unmeasured.
 
 ## Task Contract And Evidence Ledger (Phase A)
 
