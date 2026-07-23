@@ -1,0 +1,761 @@
+{
+  "curated_root": "reports/evidence/legacy-runs",
+  "planned_reference_count": 69,
+  "reference_occurrence_count": 87,
+  "run_count": 5,
+  "run_groups": [
+    {
+      "destination_root": "reports/evidence/legacy-runs/line-a-l4-dual-tool-20260713-v2",
+      "reference_count": 5,
+      "references": [
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-l4-dual-tool-20260713-v2/dataset/sample_line_a_l4_dual_tool_fir_filter_8_000001/eval/labels.json",
+          "family_ids": [
+            "fir_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_l4_dual_tool/dataset/sample_line_a_l4_dual_tool_fir_filter_8_000001/eval/labels.json",
+          "source_relative_path": "dataset/sample_line_a_l4_dual_tool_fir_filter_8_000001/eval/labels.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-l4-dual-tool-20260713-v2/dataset/sample_line_a_l4_dual_tool_fir_filter_8_000001/eval/trajectory.json",
+          "family_ids": [
+            "fir_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_l4_dual_tool/dataset/sample_line_a_l4_dual_tool_fir_filter_8_000001/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_line_a_l4_dual_tool_fir_filter_8_000001/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-l4-dual-tool-20260713-v2/dataset/sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002/eval/labels.json",
+          "family_ids": [
+            "matrix_vector_mac"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_l4_dual_tool/dataset/sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002/eval/labels.json",
+          "source_relative_path": "dataset/sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002/eval/labels.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-l4-dual-tool-20260713-v2/dataset/sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002/eval/trajectory.json",
+          "family_ids": [
+            "matrix_vector_mac"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_l4_dual_tool/dataset/sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-l4-dual-tool-20260713-v2/runs/line-a-l4-dual-tool-20260713-v2/summary.json",
+          "family_ids": [
+            "fir_filter",
+            "matrix_vector_mac"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_l4_dual_tool/runs/line-a-l4-dual-tool-20260713-v2/summary.json",
+          "source_relative_path": "runs/line-a-l4-dual-tool-20260713-v2/summary.json"
+        }
+      ],
+      "run_id": "line-a-l4-dual-tool-20260713-v2",
+      "source_root": "tmp/sr2fpga_line_a_l4_dual_tool"
+    },
+    {
+      "destination_root": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2",
+      "reference_count": 9,
+      "references": [
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_fifo_8_000001/eval/trajectory.json",
+          "family_ids": [
+            "sync_fifo"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_fifo_8_000001/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_fifo_8_000001/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_fifo_8_000001/oracle_mutations",
+          "family_ids": [
+            "sync_fifo"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_fifo_8_000001/oracle_mutations",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_fifo_8_000001/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_spi_master_8_000003/eval/trajectory.json",
+          "family_ids": [
+            "spi_master"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_spi_master_8_000003/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_spi_master_8_000003/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_spi_master_8_000003/oracle_mutations",
+          "family_ids": [
+            "spi_master"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_spi_master_8_000003/oracle_mutations",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_spi_master_8_000003/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_streaming_valid_ready_8_000004/eval/trajectory.json",
+          "family_ids": [
+            "valid_ready_stream_stage"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_streaming_valid_ready_8_000004/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_streaming_valid_ready_8_000004/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_streaming_valid_ready_8_000004/oracle_mutations",
+          "family_ids": [
+            "valid_ready_stream_stage"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_streaming_valid_ready_8_000004/oracle_mutations",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_streaming_valid_ready_8_000004/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_uart_tx_8_000002/eval/trajectory.json",
+          "family_ids": [
+            "uart_tx"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_uart_tx_8_000002/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_uart_tx_8_000002/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/dataset/sample_line_a_oracle_evidence_uart_tx_8_000002/oracle_mutations",
+          "family_ids": [
+            "uart_tx"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/dataset/sample_line_a_oracle_evidence_uart_tx_8_000002/oracle_mutations",
+          "source_relative_path": "dataset/sample_line_a_oracle_evidence_uart_tx_8_000002/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/line-a-oracle-evidence-20260713-v2/runs/line-a-oracle-evidence-20260713-v2/summary.json",
+          "family_ids": [
+            "spi_master",
+            "sync_fifo",
+            "uart_tx",
+            "valid_ready_stream_stage"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_line_a_oracle_evidence/runs/line-a-oracle-evidence-20260713-v2/summary.json",
+          "source_relative_path": "runs/line-a-oracle-evidence-20260713-v2/summary.json"
+        }
+      ],
+      "run_id": "line-a-oracle-evidence-20260713-v2",
+      "source_root": "tmp/sr2fpga_line_a_oracle_evidence"
+    },
+    {
+      "destination_root": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4",
+      "reference_count": 9,
+      "references": [
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_pattern_matcher_8_000008/eval/trajectory.json",
+          "family_ids": [
+            "pattern_matcher"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_pattern_matcher_8_000008/eval/trajectory.json",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_pattern_matcher_8_000008/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_pattern_matcher_8_000008/oracle_mutations",
+          "family_ids": [
+            "pattern_matcher"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_pattern_matcher_8_000008/oracle_mutations",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_pattern_matcher_8_000008/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_stream_trigger_filter_8_000009/eval/trajectory.json",
+          "family_ids": [
+            "p_stream_trigger_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_stream_trigger_filter_8_000009/eval/trajectory.json",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_stream_trigger_filter_8_000009/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_stream_trigger_filter_8_000009/oracle_mutations",
+          "family_ids": [
+            "p_stream_trigger_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_stream_trigger_filter_8_000009/oracle_mutations",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_stream_trigger_filter_8_000009/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_uart_fifo_loopback_8_000002/eval/trajectory.json",
+          "family_ids": [
+            "uart_fifo_loopback"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_uart_fifo_loopback_8_000002/eval/trajectory.json",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_uart_fifo_loopback_8_000002/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_uart_fifo_loopback_8_000002/oracle_mutations",
+          "family_ids": [
+            "uart_fifo_loopback"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_uart_fifo_loopback_8_000002/oracle_mutations",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_uart_fifo_loopback_8_000002/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_uart_rx_8_000001/eval/trajectory.json",
+          "family_ids": [
+            "uart_rx"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_uart_rx_8_000001/eval/trajectory.json",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_uart_rx_8_000001/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/dataset/sample_phase_b_core_closure_v4_uart_rx_8_000001/oracle_mutations",
+          "family_ids": [
+            "uart_rx"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/dataset/sample_phase_b_core_closure_v4_uart_rx_8_000001/oracle_mutations",
+          "source_relative_path": "v4/dataset/sample_phase_b_core_closure_v4_uart_rx_8_000001/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-b-core-closure-20260713-v4/v4/runs/phase-b-core-closure-20260713-v4/summary.json",
+          "family_ids": [
+            "p_stream_trigger_filter",
+            "pattern_matcher",
+            "uart_fifo_loopback",
+            "uart_rx"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_b_core_closure/v4/runs/phase-b-core-closure-20260713-v4/summary.json",
+          "source_relative_path": "v4/runs/phase-b-core-closure-20260713-v4/summary.json"
+        }
+      ],
+      "run_id": "phase-b-core-closure-20260713-v4",
+      "source_root": "tmp/sr2fpga_phase_b_core_closure"
+    },
+    {
+      "destination_root": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2",
+      "reference_count": 9,
+      "references": [
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001/eval/trajectory.json",
+          "family_ids": [
+            "single_dual_port_ram"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001/oracle_mutations",
+          "family_ids": [
+            "single_dual_port_ram"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002/eval/trajectory.json",
+          "family_ids": [
+            "valid_ready_stream_accumulator"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002/oracle_mutations",
+          "family_ids": [
+            "valid_ready_stream_accumulator"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003/eval/trajectory.json",
+          "family_ids": [
+            "stream_fork_join"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003/oracle_mutations",
+          "family_ids": [
+            "stream_fork_join"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004/eval/trajectory.json",
+          "family_ids": [
+            "mac_array"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/dataset/sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004/oracle_mutations",
+          "family_ids": [
+            "mac_array"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset/sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-core-mutation-closure-20260716-v2/runs/phase-c-core-mutation-closure-20260716-v2/summary.json",
+          "family_ids": [
+            "mac_array",
+            "single_dual_port_ram",
+            "stream_fork_join",
+            "valid_ready_stream_accumulator"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_core_mutation_closure_v2/runs/phase-c-core-mutation-closure-20260716-v2/summary.json",
+          "source_relative_path": "runs/phase-c-core-mutation-closure-20260716-v2/summary.json"
+        }
+      ],
+      "run_id": "phase-c-core-mutation-closure-20260716-v2",
+      "source_root": "tmp/sr2fpga_phase_c_core_mutation_closure_v2"
+    },
+    {
+      "destination_root": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2",
+      "reference_count": 37,
+      "references": [
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "fir_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "fir_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/eval/trajectory.json",
+          "family_ids": [
+            "fir_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/oracle_mutations",
+          "family_ids": [
+            "fir_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_fir_filter_8_000001/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "matched_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "matched_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/eval/trajectory.json",
+          "family_ids": [
+            "matched_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/oracle_mutations",
+          "family_ids": [
+            "matched_filter"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matched_filter_8_000003/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "matrix_vector_mac"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "matrix_vector_mac"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/eval/trajectory.json",
+          "family_ids": [
+            "matrix_vector_mac"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/oracle_mutations",
+          "family_ids": [
+            "matrix_vector_mac"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "peak_detector"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "peak_detector"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/eval/trajectory.json",
+          "family_ids": [
+            "peak_detector"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/oracle_mutations",
+          "family_ids": [
+            "peak_detector"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_peak_detector_8_000004/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "p_pulse_radar_signal"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "p_pulse_radar_signal"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/eval/trajectory.json",
+          "family_ids": [
+            "p_pulse_radar_signal"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/oracle_mutations",
+          "family_ids": [
+            "p_pulse_radar_signal"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "sobel_threshold"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "sobel_threshold"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/eval/trajectory.json",
+          "family_ids": [
+            "sobel_threshold"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/oracle_mutations",
+          "family_ids": [
+            "sobel_threshold"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "p_rl_qlearning_accel"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "p_rl_qlearning_accel"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/eval/trajectory.json",
+          "family_ids": [
+            "p_rl_qlearning_accel"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/oracle_mutations",
+          "family_ids": [
+            "p_rl_qlearning_accel"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "qtable_update_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "qtable_update_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/eval/trajectory.json",
+          "family_ids": [
+            "qtable_update_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/oracle_mutations",
+          "family_ids": [
+            "qtable_update_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/attempts/attempt_000/eval/oracle/evidence.json",
+          "family_ids": [
+            "p_vision_defect_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/attempts/attempt_000/eval/oracle/evidence.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/attempts/attempt_000/eval/oracle/evidence.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/attempts/attempt_000/eval/oracle/manifest.json",
+          "family_ids": [
+            "p_vision_defect_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/attempts/attempt_000/eval/oracle/manifest.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/attempts/attempt_000/eval/oracle/manifest.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/eval/trajectory.json",
+          "family_ids": [
+            "p_vision_defect_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/eval/trajectory.json",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/eval/trajectory.json"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/oracle_mutations",
+          "family_ids": [
+            "p_vision_defect_core"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "subtree",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/oracle_mutations",
+          "source_relative_path": "dataset/sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007/oracle_mutations"
+        },
+        {
+          "destination_reference": "reports/evidence/legacy-runs/phase-c-independent-oracle-20260716-v2/runs/phase-c-independent-oracle-20260716-v2/summary.json",
+          "family_ids": [
+            "fir_filter",
+            "matched_filter",
+            "matrix_vector_mac",
+            "p_pulse_radar_signal",
+            "p_rl_qlearning_accel",
+            "p_vision_defect_core",
+            "peak_detector",
+            "qtable_update_core",
+            "sobel_threshold"
+          ],
+          "migration_status": "requires_phase_a_backup",
+          "reference_kind": "file",
+          "source_reference": "tmp/sr2fpga_phase_c_independent_oracle_v2/runs/phase-c-independent-oracle-20260716-v2/summary.json",
+          "source_relative_path": "runs/phase-c-independent-oracle-20260716-v2/summary.json"
+        }
+      ],
+      "run_id": "phase-c-independent-oracle-20260716-v2",
+      "source_root": "tmp/sr2fpga_phase_c_independent_oracle_v2"
+    }
+  ],
+  "schema_version": "sr2fpga-legacy-active-evidence-migration-v1",
+  "source_ledger": "docs/sr2fpga-task-evidence-v0.1.json",
+  "source_root_count": 5,
+  "status": "requires_phase_a_backup",
+  "unique_reference_count": 69
+}
