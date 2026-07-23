@@ -325,11 +325,11 @@ Near-term work should follow this order:
 
 Current implementation assets:
 
-- Data generation agent: `LLM/src/sr2fpga_agent/`
-- Agent CLI: `python3 -m LLM.src.sr2fpga_agent.cli`
-- Autonomous runner: `python3 -m LLM.src.sr2fpga_agent.runner`
-- Runner config: `configs/sr2fpga_agent.example.yaml`
-- Dataset root: `datasets/sr2fpga_rtl_v1/`
+- Data generation agent: `agent/src/sr2fpga_agent/`
+- Agent CLI: `python -m sr2fpga_agent.cli`
+- Autonomous runner: `python -m sr2fpga_agent.runner`
+- Maintained runner configs: `agent/configs/current/`
+- Versioned dataset releases: `datasets/`
 - Training exports: `datasets/sr2fpga_rtl_v1_exports/`
 - Current status: `docs/current-status.md`
 - Documentation index: `docs/README.md`

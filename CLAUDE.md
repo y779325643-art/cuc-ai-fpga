@@ -1,139 +1,105 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file is the current coding-agent guide for SR2FPGA. Read
+[`docs/current-status.md`](docs/current-status.md) and the active reorganization
+design and plans before substantial work:
 
-## What This Project Is
+- [`docs/superpowers/specs/2026-07-17-sr2fpga-repository-reorganization-design.md`](docs/superpowers/specs/2026-07-17-sr2fpga-repository-reorganization-design.md)
+- [`docs/superpowers/plans/2026-07-17-sr2fpga-repository-reorganization-roadmap.md`](docs/superpowers/plans/2026-07-17-sr2fpga-repository-reorganization-roadmap.md)
+- [`docs/superpowers/plans/2026-07-17-sr2fpga-reorganization-phase-b4-compatibility-cutover-cleanup.md`](docs/superpowers/plans/2026-07-17-sr2fpga-reorganization-phase-b4-compatibility-cutover-cleanup.md)
 
-This is **SR2FPGA**: a TCAD-oriented EDA research project on *tool-verified learning for
-system-requirement-to-FPGA RTL project generation*. The approved reframe spec in
-`docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md` is the
-primary research framing; `docs/research-objective-sr2fpga-tcad.md` is a concise
-objective summary aligned to that spec. Read both before major engineering or
-writing work, and keep the summary aligned with the reframe.
+## Project Boundaries
 
-The framing matters and shapes design decisions:
-- The problem is **NOT** `natural language -> Verilog`. It is
-  `requirement -> System-HIS -> multi-file RTL project -> tool labels -> diagnosis/patch -> trainable dataset`.
-- The generated artifact is a **multi-file project package**, never a single `.v` file.
-- EDA tool feedback (Verilator/Icarus/Yosys, later Vivado/Quartus) is the objective supervision signal.
-- Do not reframe this as a "LLM writes Verilog" demo, a prompt-engineering platform, or an
-  acceleration-speedup paper. See the "What To Avoid" section of the objective doc.
+- `agent/` owns generation, H0-H3 validation, L0-L4 verification, oracles,
+  repair, and trajectory recording.
+- `training/` owns dataset conversion, SFT/LoRA, merge, and serving. Training
+  does not import Agent.
+- `contracts/` owns versioned, language-neutral cross-project contracts and the
+  canonical task catalog.
+- `datasets/` contains immutable releases; normal code must not rewrite them.
+- `artifacts/` contains ignored runtime output for Agent and Training.
+- `LLM/` is compatibility-only. Never add business logic there.
 
-The repo has two distinct halves:
-1. `LLM/src/sr2fpga_agent/` — the **data generation agent** (a tool-calling dataset factory).
-2. `LLM/` (configs/scripts/src) — **model deployment & fine-tuning** infra (vLLM serving + LoRA).
-   The fine-tuned model is the eventual no-tool generation model; fine-tuning is a means, not the goal.
+The projects communicate through versioned files under `contracts/` and
+`datasets/`, not Python imports across project boundaries.
 
-`app/`, `outputs/`, `reports/`, `references/` are demo UI, generated deliverables, and manuscripts —
-peripheral to the core research code.
+## Research Invariants
 
-## Data Generation Agent Architecture (`LLM/src/sr2fpga_agent/`)
+The evaluated unit is a multi-file FPGA project:
 
-Pipeline, in dependency order:
-
-- **`models.py`** — frozen dataclasses shared everywhere: `ProjectRequest`, `PlatformProfile`,
-  `GeneratedProject` (files keyed by POSIX relative path), `ToolResult`.
-- **`project_generator.py`** — *deterministic* V1 generator. Produces the full project package for
-  task families `counter`, `fifo`, `simple_fsm`, `ram_read_write`. This is the trusted baseline.
-- **`deepseek.py`** — *LLM* alternative generator (`DeepSeekProjectGenerator`) via an
-  OpenAI-compatible DeepSeek API. Strictly validates the returned JSON: all `REQUIRED_PROJECT_FILES`
-  must be present and `manifest.json` must be internally consistent (top module, sources, testbench
-  all resolve). Retries on bad JSON. Will also host the repair provider (see below).
-- **`agent.py`** — `DataGenerationAgent.run_one()` is the orchestrator: generate project → write
-  attempt → run tool pipeline → diagnose first failure → (optional repair) → record. Owns the
-  L0–L3 labeling, measured-QoR extraction, and trajectory assembly.
-- **`tool_runner.py`** — `CommandRunner.run()` shells out to one tool, returns a `ToolResult`.
-  Missing executables become `status="missing_tool"` (not a crash) — so the dataset structure can be
-  exercised without the EDA toolchain installed.
-- **`log_parser.py`** — `classify_failure()` maps raw logs to the V1 failure taxonomy;
-  `parse_yosys_stats()` extracts resource counts (lut/ff/bram/dsp/cells) from Yosys `stat` output.
-- **`recorder.py`** — `DatasetRecorder` persists each sample (`attempts/`, `final/`, `eval/`) and
-  `export_training_views()` emits the per-task JSONL files.
-- **`cli.py`** — argparse entry point; `build_project_generator()` selects deterministic vs deepseek.
-
-### Tool pipeline & pass levels
-
-`agent._run_pipeline()` runs stages in order, short-circuiting on first non-pass:
-`lint` (Verilator) → `sim_compile` (iverilog) → `sim_run` (vvp) → `synth` (Yosys + stat).
-Labels: **L0** = contract/cross-file consistency, **L1** = lint, **L2** = sim, **L3** = synth.
-V1 targets L0–L3 with open-source tools only; L4 (Vivado/Quartus) and L5 (board) are future work.
-
-### Invariants to preserve
-
-- **`predicted_qor.json` is model-generated *before* tool execution; `measured_qor.json` is parsed
-  *from* tool output.** Never let measured/tool results leak into predicted QoR. This separation is
-  a core research claim — do not blur it.
-- Project files must be cross-consistent: `manifest.json` top module ↔ RTL, testbench instantiates
-  the real top + ports, constraints reference real ports, System-HIS reset polarity ↔ RTL.
-- Failed attempts are research assets, not noise. Preserve the full repair trajectory
-  (failed project → tool log → diagnosis → patch.diff → repaired project → next result).
-
-### Training views (exported JSONL)
-
-`export_training_views()` produces, under `datasets/sr2fpga_rtl_v1_exports/`:
-`requirement_to_his`, `his_to_project`, `requirement_to_project`, `failure_to_diagnosis`,
-`failure_to_patch`, `project_to_predicted_qor`, `project_to_measured_qor`. These map to the planned
-training tasks (REQ2HIS, HIS2FILES, REQ2PROJECT, LOG2DIAG, FAILURE2PATCH, PROJECT_CRITIC, QOR_PRED).
-
-## Commands
-
-All Python is run **from the repo root** — there is no installed package and no `__init__.py` under
-`LLM/`. Modules use absolute imports like `from LLM.src.sr2fpga_agent...`, which only resolve when
-the repo root is on `sys.path` (i.e. cwd = repo root).
-
-```bash
-# Run all data-agent tests (unittest; pytest also works from repo root)
-python3 -m unittest discover -s LLM/tests -q
-
-# Run a single test module / case
-python3 -m unittest LLM.tests.test_sr2fpga_agent_deepseek -q
-python3 -m unittest LLM.tests.test_sr2fpga_agent_recorder.RecorderTest.<method> -q
-
-# Generate one dataset sample with the deterministic generator
-python3 -m LLM.src.sr2fpga_agent.cli \
-  --dataset-root datasets/sr2fpga_rtl_v1 \
-  --sample-id sample_000001 \
-  --task-type counter --width 8 --project-name counter_8bit
-# task-type in {counter, fifo, simple_fsm, ram_read_write}
-
-# Generate with DeepSeek (key read only from env, never written to repo/samples)
-export DEEPSEEK_API_KEY="your-key"
-python3 -m LLM.src.sr2fpga_agent.cli --provider deepseek --model deepseek-v4-flash \
-  --dataset-root datasets/sr2fpga_rtl_v1 --sample-id sample_llm_000001 \
-  --task-type counter --width 8 --project-name counter_8bit
+```text
+requirement
+-> System-HIS
+-> deterministic contract skeleton
+-> model-generated behavior
+-> H0-H3
+-> L0-L4
+-> diagnosis and patch trajectory
 ```
 
-EDA tools (`verilator`, `iverilog`/`vvp`, `yosys`) must be installed separately for real labels;
-without them the agent records `missing_tool` results and still exercises the dataset schema.
+- Do not reduce official evaluation to a single Verilog file.
+- REQ2FILE is a derived training view and receives no standalone pass credit.
+- Trusted testbenches, hidden tests, golden models, checkers, board shells, and
+  board constraints are not model-editable.
+- `not_run` is not a failure. Report it separately with a skip reason.
+- Missing tools and provider/toolchain infrastructure failures are not model
+  failures.
+- L4-open and L4-commercial are separate labels.
 
-Model serving / fine-tuning (cloud, runs inside WSL2 on the deploy box — see `LLM/README.md` and
-`LLM/DEPLOY.md`): `bash LLM/scripts/serve_qwen_vllm.sh` (recommended stable vLLM path),
-`bash LLM/scripts/train_lora.sh <config>`, `python -m LLM.src.prepare_dataset --input ... --output ...`.
-The serving model is Qwen2.5-Coder-7B-Instruct (Gemma 4 12B is an experimental, currently-failing path).
+## Canonical Commands
 
-## Spec / Plan Workflow
+Install:
 
-This repo uses the superpowers brainstorming→spec→plan workflow. Design decisions are recorded as
-markdown before code:
-- `docs/superpowers/specs/` — approved designs (one per feature, dated).
-- `docs/superpowers/plans/` — implementation plans.
+```powershell
+python -m pip install -e "agent[dev]"
+python -m pip install -e "training[dev]"
+```
 
-When picking up in-progress work, read `docs/current-status.md` first, then the
-detailed handoff in `docs/sr2fpga-agent-handoff-2026-06-22.md`, then only the
-directly relevant spec/plan. The current branch is `codex/sr2fpga-data-agent`.
-The active engineering slice is autonomous runner hardening and synthetic
-failure injection for repair-trajectory collection. The DeepSeek repair loop,
-LLM generation entry, multi-module tasks, and first runner shell are delivered
-historical slices; their specs/plans remain useful background, not the current
-task by default.
+Run tests:
 
-## Conventions
+```powershell
+python -m pytest contracts/tests agent/tests training/tests compatibility_tests -q
+```
 
-- Cross-platform line endings are enforced via `.gitattributes` (`*.sh/.py/.yaml/.env` = LF) because
-  scripts execute inside WSL/Linux — never introduce CRLF into these.
-- Git hygiene: commit source, scripts, configs, small docs. Do **not** commit model weights, raw
-  datasets, LoRA adapters/merged models, venvs, or `serve_vllm.env`. Generated `datasets/` samples
-  are working artifacts, not committed deliverables.
-- Near-term priorities (from the objective doc): expand task families (valid-ready pipeline, vector
-  add, small AI kernels), deliberately collect failure/repair trajectories, then train first models
-  on REQ2HIS / LOG2DIAG / FAILURE2PATCH.
+Run deterministic Agent preflight:
+
+```powershell
+python -m sr2fpga_agent.runner `
+  --config agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml `
+  --run-id local-deterministic-smoke `
+  --preflight
+```
+
+Run lightweight Training validation:
+
+```powershell
+python -m sr2fpga_training.prepare_dataset `
+  --input training/tests/fixtures/smoke_verilog_raw.jsonl `
+  --output artifacts/training/prepared-data/smoke/chat.jsonl
+
+python -m sr2fpga_training.training_dry_run `
+  --input artifacts/training/prepared-data/smoke/chat.jsonl `
+  --max-seq-length 2048
+```
+
+Heavy extras are opt-in:
+
+```powershell
+python -m pip install -e "training[train]"
+python -m pip install -e "training[serve]"
+```
+
+## Change Discipline
+
+- Make scoped changes with tests that prove the requested behavior.
+- Preserve backward-compatible contract readers unless a versioned migration is
+  explicitly approved.
+- Do not weaken an oracle to make generated RTL pass.
+- Do not stage generated `artifacts/`, caches, credentials, model outputs, or
+  unrelated dataset changes.
+- Do not rewrite dated plans/specs to hide historical paths.
+- Any deletion or relocation of tracked `tmp/` evidence requires the Phase A
+  external backup check, reviewed inventory totals, and explicit approval.
+
+Legacy command and import mappings are documented in
+[`docs/migration/llm-to-agent-training.md`](docs/migration/llm-to-agent-training.md).

@@ -23,7 +23,9 @@ from sr2fpga_agent.runner import load_runner_config
 ```
 
 The old `LLM.src.sr2fpga_agent` namespace is transitional compatibility only.
-It emits a `DeprecationWarning`; new code must import `sr2fpga_agent`.
+Legacy commands print an exact `DEPRECATED` replacement; ordinary legacy
+imports may emit one `DeprecationWarning`. New code must import
+`sr2fpga_agent`.
 
 ## Commands
 

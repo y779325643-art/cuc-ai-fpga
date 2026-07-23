@@ -1,337 +1,129 @@
-# HNAI-FPGA / SR2FPGA
+# SR2FPGA
 
-HNAI-FPGA is being developed as **SR2FPGA: tool-verified learning for
-system-requirement-to-FPGA RTL project generation**.
-
-The repository contains research documents, dataset-generation tools, generated
-SR2FPGA samples, local/cloud LLM deployment utilities, and a small Spec-to-RTL
-demo interface. The central research direction is not plain
-`natural language -> Verilog`; it is project-level generation with tool-derived
-supervision:
+SR2FPGA is a tool-verified research system for generating multi-file FPGA RTL
+projects from system requirements. Its primary unit is a project trajectory,
+not an isolated Verilog file:
 
 ```text
-system requirement
+requirement
 -> System-HIS
--> multi-file Verilog RTL project
--> constraints / testbench / predicted QoR
--> lint / simulation / synthesis / later implementation labels
--> diagnosis / patch / repair trajectory
--> trainable dataset and model
+-> project skeleton and model-generated behavior
+-> H0-H3 and L0-L4 verification
+-> diagnosis and patch trajectory
+-> released dataset and training views
 ```
 
-The current engineering priority is the dataset factory and benchmark pipeline.
-The long-term paper target is TCAD, with TRETS as a fallback if the eventual
-method novelty or physical-evaluation depth is better suited there.
+## Repository Map
 
-## Research Position
+- `agent/`: project generation, System-HIS validation, testbench/oracle
+  execution, L0-L4 tool orchestration, repair, and trajectory recording.
+- `training/`: dataset preparation, SFT/LoRA training, adapter merge, and model
+  serving assets. Training does not import Agent.
+- `contracts/`: versioned System-HIS, trajectory, training-view, and task
+  catalog contracts shared through files rather than runtime imports.
+- `datasets/`: immutable, versioned dataset releases registered by
+  `datasets/manifest.json`.
+- `artifacts/`: ignored candidate runs, reports, prepared data, adapters, and
+  other reproducible runtime output.
+- `docs/`: current navigation, research specifications, evidence reports, and
+  historical plans.
+- `LLM/`: one-cycle compatibility wrappers only; it is not an implementation
+  project.
 
-The project studies how a model can learn to generate complete FPGA RTL project
-packages from system requirements by internalizing feedback from EDA tools.
+See the [documentation index](docs/README.md), [current status](docs/current-status.md),
+and [legacy migration guide](docs/migration/llm-to-agent-training.md).
 
-Core ideas:
+## Verification Semantics
 
-- **System-HIS**: an intermediate hardware-intent representation above RTL.
-- **Project-level generation**: output is a coherent project package, not a
-  single code snippet.
-- **Tool-verified trajectories**: failed attempts, logs, diagnoses, patches,
-  pass levels, and measured QoR are preserved as training data.
-- **L0-L5 evaluation**: progress from project consistency through lint,
-  simulation, synthesis, implementation/timing, and representative board runs.
-- **Tool distillation, not LLM distillation**: tools are the objective teacher;
-  DeepSeek/frontier models are candidate generators and baselines.
+- `H0-H3`: System-HIS schema validity, well-formedness, lowerability, and
+  requirement fidelity.
+- `L0`: project-contract consistency.
+- `L1`: Verilator lint.
+- `L2`: black-box self-checking simulation with Icarus Verilog.
+- `L3`: Yosys `synth_xilinx` synthesis and measured resource labels.
+- `L4-open`: optional OpenXC7/nextpnr physical implementation.
+- `L4-commercial`: optional Vivado reference implementation.
+- `L5`: representative board validation; not yet a general dataset stage.
 
-Important project documents:
+Every trajectory carries an explicit L4 status. `not_run` is not a failure; it
+is reported separately with a skip reason. Missing tools and other
+infrastructure outcomes are also separated from model failures.
 
-- `docs/README.md` - documentation map and recommended reading order.
-- `docs/current-status.md` - living current engineering status.
-- `docs/sr2fpga-t0-t4-task-catalog.json` - canonical machine-readable T0-T4
-  task catalog used by the deterministic coverage smoke.
-- `docs/research-objective-sr2fpga-tcad.md` - project-level research objective.
-- `docs/superpowers/specs/2026-06-22-sr2fpga-research-reframe-design.md` -
-  TCAD/TRETS research reframe and paper program.
-- `docs/superpowers/specs/2026-06-23-sr2fpga-autonomous-trajectory-runner-design.md`
-  - autonomous trajectory runner design.
-- `docs/superpowers/decisions/2026-06-22-sr2fpga-reframe-decision-log.md` -
-  decision log and reasoning trail.
+## Install
 
-## Current Capability
+Install the two projects independently from the repository root:
 
-The current SR2FPGA agent can generate Verilog RTL project samples, run a
-lightweight open-source EDA pipeline, record labels, and export trainable JSONL
-views.
-
-Generated project package:
-
-```text
-generated_project/
-  system_his.json
-  manifest.json
-  rtl/top.v
-  rtl/*.v
-  constraints/timing.sdc
-  sim/tb_top.v
-  reports/predicted_qor.json
+```powershell
+python -m pip install -e "agent[dev]"
+python -m pip install -e "training[dev]"
 ```
 
-Current verification levels:
+The Training development install is lightweight. Install GPU-dependent extras
+only on a suitable machine:
 
-- `L1`: Verilator lint pass.
-- `L2`: Icarus Verilog compile/run with `TEST_PASS`.
-- `L3`: Yosys synthesis pass with measured resource statistics.
-
-Planned later levels:
-
-- `L4`: implementation and timing closure through OpenXC7/Vivado.
-- `L5`: sparse representative board validation, initially targeting the
-  AC820-ZYNQ / XC7Z020 line of work described in the research specs.
-
-Current task families are organized as a compressed T0-T4 curriculum:
-
-- `T0`: 12 basic RTL and benchmark-coverage families, including counters,
-  FIFOs, FSMs, RAM, UART/SPI/PWM, FIR, valid-ready streaming, MAC, ALU control,
-  and CRC stream checking.
-- `T1`: multi-module composition (`t1_event_counter`,
-  `t2_stream_accumulator`).
-- `T2`: stream/control systems (`t3_stream_fork`, `t4_dual_stream_join`).
-- `T3`: datapath and memory shells (`t5_vector_mac_pipeline`,
-  `t6_td_update_core`, `t7_policy_value_shell`, `t8_replay_sample_shell`).
-- `T4`: integrated host-facing system shells (`t9_host_protocol_shell`,
-  `t10_rl_accelerator_shell`, `t11_batch_rl_accelerator_shell`,
-  `t12_replay_arbiter_shell`).
-
-The exact task list, default widths, RTL categories, topology IDs, and
-testbench-oracle expectations are tracked in
-`docs/sr2fpga-t0-t4-task-catalog.json`. The multi-module families are expected
-to emit `rtl/top.v` plus task-specific submodule `.v` files. The DeepSeek path
-rejects single-file responses for these families.
-
-## Quick Start
-
-Run the test suite:
-
-```bash
-python3 -m pytest agent/tests -q
+```powershell
+python -m pip install -e "training[train]"
+python -m pip install -e "training[serve]"
 ```
 
-Generate one deterministic sample:
+## Agent Quick Start
 
-```bash
-python3 -m sr2fpga_agent.cli \
-  --dataset-root artifacts/agent/candidates/local-counter \
-  --sample-id sample_local_counter_000001 \
-  --task-type counter \
-  --width 8 \
-  --project-name local_counter_8bit
-```
+Preview the deterministic T0-T4 smoke:
 
-Preview the full no-API deterministic T0-T4 coverage smoke:
-
-```bash
-python3 -m sr2fpga_agent.runner \
-  --config agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml \
-  --run-id t0-t4-deterministic-smoke \
+```powershell
+python -m sr2fpga_agent.runner `
+  --config agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml `
+  --run-id local-deterministic-smoke `
   --preflight
 ```
 
-This canonical coverage smoke uses short `simple_prompt` requirements for all
-T0-T4 samples. The generated System-HIS and project artifacts carry the detailed
-contract; the user-facing requirement preview should not include artifact
-checklists or internal wiring such as `module_a.signal -> module_b.signal`.
+Run it:
 
-Run baseline (a), first attempt with no tool-loop repair, across the current
-Legacy t1-t4 component-topology tasks:
-
-```bash
-python3 -m sr2fpga_agent.runner \
-  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
-  --run-id deepseek-baseline-a \
-  --preflight
-
-python3 -m sr2fpga_agent.runner \
-  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
-  --run-id deepseek-baseline-a
+```powershell
+python -m sr2fpga_agent.runner `
+  --config agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml `
+  --run-id local-deterministic-smoke
 ```
 
-The preflight command prints JSON with tool readiness, API-key readiness, run
-directory status, and a planned sample preview for the legacy t1-t4 topology set. Each
-preview includes the exact requirement text that will be sent to the generator,
-including topology nodes, edges, difficulty tier, and expected behavior.
-Baseline (a) uses the `natural_component` requirement style: a deterministic
-surface rewrite that makes component-topology prompts read like engineering
-requirements while preserving the same audited contracts.
+Outputs are written beneath `artifacts/agent/`. Released data under `datasets/`
+is never modified by a normal Agent run.
 
-Run the autonomous batch runner with the tool-loop example config:
+## Training Quick Start
 
-```bash
-python3 -m sr2fpga_agent.runner \
-  --config agent/configs/legacy/sr2fpga_agent.example.yaml \
-  --run-id deepseek-tool-loop-smoke
+Prepare and validate the bundled smoke fixture without loading a model:
+
+```powershell
+python -m sr2fpga_training.prepare_dataset `
+  --input training/tests/fixtures/smoke_verilog_raw.jsonl `
+  --output artifacts/training/prepared-data/smoke/chat.jsonl
+
+python -m sr2fpga_training.training_dry_run `
+  --input artifacts/training/prepared-data/smoke/chat.jsonl `
+  --max-seq-length 2048
 ```
 
-The example runner config uses DeepSeek by default. Set the API key through the
-environment or the ignored local `.env` file, never in tracked files. The
-baseline (a) config declares `env_file: .env`, so the runner will load it
-automatically when present:
+REQ2FILE is a derived training view. It retains its source episode and never
+receives standalone project pass credit.
 
-```bash
-cp .env.example .env
-# edit .env locally
+## Verification Commands
+
+```powershell
+python -m pytest contracts/tests agent/tests training/tests compatibility_tests -q
+python -m pytest agent/tests -q
+python -m pytest training/tests -q
 ```
 
-On macOS/Python.org installs, if HTTPS verification fails with
-`CERTIFICATE_VERIFY_FAILED`, set `SSL_CERT_FILE=/etc/ssl/cert.pem` in the local
-ignored `.env` file.
+For detailed commands and ownership rules, read
+[Agent](agent/README.md), [Training](training/README.md),
+[Contracts](contracts/README.md), and [Datasets](datasets/README.md).
 
-The runner preflight reports whether `DEEPSEEK_API_KEY` is present, where it
-was loaded from (`environment` or `.env`), and a short non-secret fingerprint so
-you can confirm that a local key update took effect before launching a run.
-Add `--validate-provider` to make a minimal DeepSeek authentication request
-before generation:
+## Data And Secret Policy
 
-```bash
-python3 -m sr2fpga_agent.runner \
-  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
-  --run-id deepseek-baseline-a \
-  --preflight \
-  --validate-provider
-```
-
-For a no-network deterministic smoke run, create a temporary JSON config with
-`provider: deterministic` and `repair_provider: none`, or use the unit tests in
-`agent/tests/test_sr2fpga_agent_runner.py`.
-
-## Autonomous Runner
-
-The runner is the preferred control entry for producing more than one sample:
-
-```bash
-python3 -m sr2fpga_agent.runner \
-  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
-  --run-id <run-id>
-```
-
-It provides:
-
-- config-driven task planning;
-- resumable `run_state.json` with a config fingerprint; resume rejects runs
-  when the same run ID is reused with a different config;
-- `events.jsonl` for compact run events;
-- `summary.json` with bucket counts and failure histograms;
-- `baseline_report.md` with source, failure-origin, requirement-style,
-  difficulty-tier, topology, and measurement-point calibration rows plus the
-  first pass-rate knee under the default 80% L3 threshold;
-- `success_l3`, `repair_trajectory`, and `rejected` sample buckets;
-- automatic refresh of training exports.
-
-The runner writes `baseline_report.md` automatically. Regenerate it manually if
-you edit or copy a `summary.json`:
-
-```bash
-python3 -m sr2fpga_agent.baseline_report \
-  --summary artifacts/agent/runs/<run-id>/summary.json \
-  --knee-threshold 0.8 \
-  --output artifacts/agent/runs/<run-id>/baseline_report.md
-```
-
-Full run logs live under `artifacts/agent/runs/<run-id>/` and should remain local
-by default. Commit compact summaries only when they are useful for research
-traceability.
-
-## Dataset And Exports
-
-The repository currently includes a milestone SR2FPGA RTL dataset snapshot under
-`datasets/sr2fpga_rtl_v1/` and exported JSONL views under
-`datasets/sr2fpga_rtl_v1_exports/`.
-
-Each sample may contain:
-
-```text
-requirement.txt
-platform_profile.json
-attempts/attempt_*/generated_project/
-attempts/attempt_*/eval/
-attempts/attempt_*/diagnosis.json
-attempts/attempt_*/patch.diff
-final/generated_project/
-eval/labels.json
-eval/measured_qor.json
-eval/tool_versions.json
-eval/trajectory.json
-```
-
-Training views include:
-
-- `requirement_to_his.jsonl`
-- `his_to_project.jsonl`
-- `requirement_to_project.jsonl`
-- `requirement_to_file.jsonl`
-- `failure_to_diagnosis.jsonl`
-- `failure_to_patch.jsonl`
-- `project_to_predicted_qor.jsonl`
-- `project_to_measured_qor.jsonl`
-
-## Repository Layout
-
-- `agent/` - standalone SR2FPGA generation, tool-verification, and trajectory
-  data project.
-- `agent/src/sr2fpga_agent/` - generation, tool running, recording, provider
-  integration, and autonomous runner modules.
-- `agent/tests/` - Agent unit, integration, oracle, and runner tests.
-- `agent/configs/` - maintained, archived, and compatibility runner configs.
-- `LLM/` - model training, dataset preparation, and serving utilities pending
-  the separate training-project cutover.
-- `datasets/` - committed SR2FPGA milestone dataset snapshot and exported JSONL
-  views.
-- `docs/` - research objectives, specs, decisions, handoff notes, and plans.
-- `app/` - browser-based Spec-to-RTL demo interface.
-- `assets/` - images and visual references.
-- `reports/` - manuscripts, rendered PDFs, and report outputs.
-- `outputs/` - generated presentation/report deliverables.
-- `references/` - background reading and reference notes.
-- `artifacts/agent/` - ignored Agent candidates, run logs, and temporary
-  artifacts.
-
-## LLM Deployment
-
-The `LLM/` workspace also contains cloud deployment and fine-tuning scripts.
-The verified preferred serving path is currently Qwen2.5-Coder-7B-Instruct via
-vLLM on an OpenAI-compatible local API. Gemma 4 compatibility work is recorded
-but not the preferred serving route.
-
-See:
-
-- `LLM/README.md`
-- `LLM/DEPLOY.md`
-- `LLM/scripts/serve_qwen_vllm.sh`
-- `LLM/scripts/setup_server.sh`
-
-## Application Interface
-
-Open `app/index.html` in a browser to use the Spec-to-RTL demo interface. It can
-call a local OpenAI-compatible vLLM endpoint at `http://127.0.0.1:8000/v1` when
-the model service is running, and falls back to demo Verilog output when the
-service is unavailable.
-
-## Tooling Requirements
-
-For real L0-L3 sample validation, install:
-
-- Verilator
-- Icarus Verilog (`iverilog` and `vvp`)
-- Yosys
-
-If the tools are missing, the agent can still record missing-tool failures,
-which is useful for validating dataset structure but not for producing passing
-L3 samples.
-
-## Secrets And Git Hygiene
-
-- Do not commit real API keys, including in README, specs, handoff notes,
-  configs, shell history snippets, or run summaries.
-- `.env` is ignored and should stay local; put the real
-  `DEEPSEEK_API_KEY` there or export it only in the current shell.
-- `.env.example` documents the expected environment variable names.
-- Large model weights, LoRA outputs, server-local caches, and temporary run logs
-  should remain outside Git or under ignored directories.
-- Commit source code, tests, configs, research docs, reproducible scripts, and
-  intentional milestone dataset snapshots.
+- Generate candidates under `artifacts/`; promote a release into `datasets/`
+  only through an explicit, versioned release operation.
+- Do not commit API keys, private provider endpoints, local absolute paths,
+  model weights, adapters, raw vendor artifacts, or `.env`.
+- Do not let generated DUT code modify trusted hidden tests, golden models,
+  protocol checkers, or board constraints.
+- Keep dated plans and reports as historical evidence; update current guidance
+  in this README, `CLAUDE.md`, and `docs/current-status.md`.
