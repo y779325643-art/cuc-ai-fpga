@@ -1,0 +1,194 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/trajectory/v1",
+  "title": "SR2FPGA Tool-Verified Trajectory v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "episode_id",
+    "requirement",
+    "his_validation",
+    "verification",
+    "attempts"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "trajectory-v1"
+    },
+    "episode_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "requirement": {
+      "oneOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "object"
+        }
+      ]
+    },
+    "his_validation": {
+      "type": "object"
+    },
+    "verification": {
+      "$ref": "#/$defs/verification"
+    },
+    "attempts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      }
+    },
+    "failure_origin": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "metadata": {
+      "type": "object"
+    },
+    "diagnoses": {
+      "type": "array"
+    },
+    "patches": {
+      "type": "array"
+    },
+    "measured_qor": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "stage_status": {
+      "type": "string",
+      "enum": [
+        "pass",
+        "fail",
+        "not_run",
+        "infrastructure_error"
+      ]
+    },
+    "stage_record": {
+      "type": "object",
+      "required": [
+        "status"
+      ],
+      "properties": {
+        "status": {
+          "$ref": "#/$defs/stage_status"
+        },
+        "skip_reason": {
+          "type": "string",
+          "minLength": 1
+        },
+        "tool": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "runtime_sec": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "diagnostics": {
+          "type": "array"
+        },
+        "report_paths": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "not_run",
+                  "infrastructure_error"
+                ]
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "skip_reason"
+            ]
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "status"
+            ],
+            "properties": {
+              "status": {
+                "enum": [
+                  "pass",
+                  "fail"
+                ]
+              }
+            }
+          },
+          "then": {
+            "not": {
+              "required": [
+                "skip_reason"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "l0",
+        "l1",
+        "l2",
+        "l3",
+        "l4_open",
+        "l4_commercial",
+        "l5"
+      ],
+      "properties": {
+        "l0": {
+          "$ref": "#/$defs/stage_record"
+        },
+        "l1": {
+          "$ref": "#/$defs/stage_record"
+        },
+        "l2": {
+          "$ref": "#/$defs/stage_record"
+        },
+        "l3": {
+          "$ref": "#/$defs/stage_record"
+        },
+        "l4_open": {
+          "$ref": "#/$defs/stage_record"
+        },
+        "l4_commercial": {
+          "$ref": "#/$defs/stage_record"
+        },
+        "l5": {
+          "$ref": "#/$defs/stage_record"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}

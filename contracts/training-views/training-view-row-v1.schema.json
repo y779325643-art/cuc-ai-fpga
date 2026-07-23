@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/training-view-row/v1",
+  "title": "SR2FPGA Training View Row v1",
+  "type": "object",
+  "required": [
+    "contract_version",
+    "view_type",
+    "source_episode_id",
+    "input",
+    "output"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "training-view-row-v1"
+    },
+    "view_type": {
+      "type": "string",
+      "enum": [
+        "requirement_to_his",
+        "his_to_project",
+        "requirement_to_project",
+        "requirement_to_file",
+        "failure_to_diagnosis",
+        "failure_to_patch",
+        "project_to_predicted_qor",
+        "project_to_measured_qor"
+      ]
+    },
+    "source_episode_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "file_role": {
+      "type": "string",
+      "minLength": 1
+    },
+    "path": {
+      "$ref": "#/$defs/relative_path"
+    },
+    "official_eval_unit": {
+      "type": "boolean"
+    },
+    "standalone_pass_credit": {
+      "type": "boolean"
+    },
+    "input": {
+      "type": "object"
+    },
+    "output": {
+      "type": "object"
+    },
+    "metadata": {
+      "type": "object"
+    }
+  },
+  "additionalProperties": true,
+  "allOf": [
+    {
+      "if": {
+        "required": [
+          "view_type"
+        ],
+        "properties": {
+          "view_type": {
+            "const": "requirement_to_file"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "source_episode_id",
+          "file_role",
+          "path",
+          "official_eval_unit",
+          "standalone_pass_credit"
+        ],
+        "properties": {
+          "source_episode_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "file_role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "path": {
+            "$ref": "#/$defs/relative_path"
+          },
+          "official_eval_unit": {
+            "const": false
+          },
+          "standalone_pass_credit": {
+            "const": false
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "^(?:[A-Za-z]:[\\\\/]|/|.*(?:^|/)\\.\\.(?:/|$))"
+      }
+    }
+  }
+}
