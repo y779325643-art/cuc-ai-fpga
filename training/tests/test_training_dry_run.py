@@ -5,7 +5,12 @@ from unittest.mock import patch
 import tempfile
 import unittest
 
-from LLM.src.training_dry_run import DryRunError, dry_run_chat_jsonl, dry_run_from_config, main
+from sr2fpga_training.training_dry_run import (
+    DryRunError,
+    dry_run_chat_jsonl,
+    dry_run_from_config,
+    main,
+)
 
 
 class TrainingDryRunTest(unittest.TestCase):

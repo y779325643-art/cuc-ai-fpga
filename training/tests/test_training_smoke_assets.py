@@ -5,8 +5,8 @@ import unittest
 
 import yaml
 
-from LLM.src.prepare_dataset import convert_jsonl
-from LLM.src.training_dry_run import dry_run_chat_jsonl
+from sr2fpga_training.prepare_dataset import convert_jsonl
+from sr2fpga_training.training_dry_run import dry_run_chat_jsonl
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

@@ -1,11 +1,10 @@
 from collections.abc import Iterable
 import os
 from pathlib import Path
+import shutil
 import subprocess
 import tempfile
 import unittest
-
-from LLM.src.sr2fpga_agent.local_tools import executable_env, resolve_executable
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -138,8 +137,7 @@ class ServingEntrypointsTest(unittest.TestCase):
 
 
 def _bash_executable() -> str:
-    bash = resolve_executable("bash")
-    return str(bash) if bash is not None else "bash"
+    return shutil.which("bash") or "bash"
 
 
 def _bash_command(script: Path, bash: str) -> list[str]:
@@ -152,7 +150,7 @@ def _env_for_bash(
     *,
     prepend_path: Path | None = None,
 ) -> dict[str, str]:
-    env = executable_env(base_env)
+    env = dict(base_env)
     if not _is_windows_wsl_bash(bash):
         if prepend_path is not None:
             env["PATH"] = os.pathsep.join([str(prepend_path), env.get("PATH", "")])

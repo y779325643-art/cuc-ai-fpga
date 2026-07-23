@@ -1,5 +1,6 @@
 import ast
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -105,6 +106,15 @@ print(json.dumps(sorted(heavy.intersection(sys.modules))))
     completed = subprocess.run(
         [sys.executable, "-c", script],
         cwd=REPO_ROOT,
+        env={
+            **os.environ,
+            "PYTHONPATH": os.pathsep.join(
+                [
+                    str(SOURCE_ROOT),
+                    os.environ.get("PYTHONPATH", ""),
+                ]
+            ),
+        },
         capture_output=True,
         text=True,
         check=False,

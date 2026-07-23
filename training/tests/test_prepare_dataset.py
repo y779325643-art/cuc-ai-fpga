@@ -1,11 +1,12 @@
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
 
-from LLM.src.prepare_dataset import DatasetFormatError, convert_jsonl
+from sr2fpga_training.prepare_dataset import DatasetFormatError, convert_jsonl
 
 
 class PrepareDatasetTest(unittest.TestCase):
@@ -238,7 +239,7 @@ class PrepareDatasetTest(unittest.TestCase):
                 [
                     sys.executable,
                     "-m",
-                    "LLM.src.prepare_dataset",
+                    "sr2fpga_training.prepare_dataset",
                     "--input",
                     str(source),
                     "--output",
@@ -248,6 +249,15 @@ class PrepareDatasetTest(unittest.TestCase):
                     "--exclude-file-path",
                     "system_his.json",
                 ],
+                env={
+                    **os.environ,
+                    "PYTHONPATH": os.pathsep.join(
+                        [
+                            str(Path(__file__).resolve().parents[1] / "src"),
+                            os.environ.get("PYTHONPATH", ""),
+                        ]
+                    ),
+                },
                 check=False,
                 capture_output=True,
                 text=True,

@@ -19,7 +19,11 @@ def load_config(path: Path) -> dict[str, Any]:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Train a LoRA/QLoRA adapter.")
-    parser.add_argument("--config", default="LLM/configs/train_lora.yaml", type=Path)
+    parser.add_argument(
+        "--config",
+        default="training/configs/train_lora.example.yaml",
+        type=Path,
+    )
     args = parser.parse_args()
     config = load_config(args.config)
 
