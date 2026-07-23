@@ -17,6 +17,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from .contracts import TrainingContractError, validate_training_view_provenance
+
 
 class DatasetFormatError(ValueError):
     """Raised when a dataset row cannot be converted to chat messages."""
@@ -54,6 +56,13 @@ def convert_jsonl(
 
 
 def _row_to_messages(row: dict[str, Any], line_number: int) -> list[dict[str, str]]:
+    if row.get("view_type") == "requirement_to_file":
+        try:
+            validate_training_view_provenance(row)
+        except TrainingContractError as exc:
+            raise DatasetFormatError(f"Row {line_number}: {exc}") from exc
+        return _canonical_requirement_to_file_messages(row, line_number)
+
     if "messages" in row:
         return _validate_messages(row["messages"], line_number)
 
@@ -192,6 +201,52 @@ def _row_to_messages(row: dict[str, Any], line_number: int) -> list[dict[str, st
         )
 
     raise DatasetFormatError(f"Row {line_number} must contain messages, instruction, or prompt")
+
+
+def _canonical_requirement_to_file_messages(
+    row: dict[str, Any],
+    line_number: int,
+) -> list[dict[str, str]]:
+    input_payload = row.get("input")
+    output_payload = row.get("output")
+    requirement = (
+        input_payload.get("requirement")
+        if isinstance(input_payload, dict)
+        else None
+    )
+    content = (
+        output_payload.get("content")
+        if isinstance(output_payload, dict)
+        else None
+    )
+    path = row.get("path")
+    if not isinstance(requirement, str) or not requirement.strip():
+        raise DatasetFormatError(
+            f"Row {line_number} requirement_to_file input requires requirement"
+        )
+    if not isinstance(path, str) or not path.strip():
+        raise DatasetFormatError(
+            f"Row {line_number} requirement_to_file requires path"
+        )
+    if not isinstance(content, str) or not content.strip():
+        raise DatasetFormatError(
+            f"Row {line_number} requirement_to_file output requires content"
+        )
+
+    return _validate_messages(
+        [
+            {
+                "role": "user",
+                "content": (
+                    "Generate this SR2FPGA project file from the requirement.\n\n"
+                    f"SR2FPGA requirement:\n{requirement.strip()}\n\n"
+                    f"File path:\n{path.strip()}"
+                ),
+            },
+            {"role": "assistant", "content": content.strip()},
+        ],
+        line_number,
+    )
 
 
 def _compact_json(value: Any) -> str:
