@@ -85,7 +85,17 @@ def test_legacy_namespace_warns_and_resolves_canonical_source() -> None:
     with pytest.warns(DeprecationWarning, match="canonical import is sr2fpga_agent"):
         legacy_package = importlib.import_module("LLM.src.sr2fpga_agent")
     legacy_runner = importlib.import_module("LLM.src.sr2fpga_agent.runner")
+    legacy_oracle_types = importlib.import_module(
+        "LLM.src.sr2fpga_agent.oracles.types"
+    )
     canonical_package = importlib.import_module("sr2fpga_agent")
+    canonical_oracle_types = importlib.import_module(
+        "sr2fpga_agent.oracles.types"
+    )
 
     assert legacy_package.ProjectRequest is canonical_package.ProjectRequest
     assert Path(legacy_runner.__file__).resolve().is_relative_to(PACKAGE_ROOT)
+    assert (
+        legacy_oracle_types.OracleScenarioSpec
+        is canonical_oracle_types.OracleScenarioSpec
+    )
