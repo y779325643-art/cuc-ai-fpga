@@ -68,6 +68,12 @@ OpenXC7/nextpnr is optional for L4-open physical implementation. Vivado is an
 optional commercial-reference flow. Tool discovery and missing-tool outcomes
 are recorded separately from model failures.
 
+Executable discovery checks `PATH` first. Additional machine-local tool bins
+may be supplied through the platform path-list variable
+`SR2FPGA_TOOL_FALLBACK_DIRS`; an OSS CAD Suite root may be supplied through
+`SR2FPGA_OSS_CAD_SUITE_ROOT`. No machine-specific tool path is committed in
+source.
+
 ## Tests
 
 ```powershell

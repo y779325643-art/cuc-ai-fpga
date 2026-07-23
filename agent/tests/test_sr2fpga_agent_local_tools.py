@@ -74,12 +74,27 @@ class LocalToolsTest(unittest.TestCase):
             self.assertEqual(statuses["yosys"], "found")
             self.assertEqual(statuses["missing_tool"], "missing")
 
-    def test_windows_defaults_include_oss_cad_suite_and_git_bash_locations(self) -> None:
-        with mock.patch("sr2fpga_agent.local_tools.Path.exists", return_value=True):
-            env = executable_env({"PATH": ""})
+    def test_defaults_use_environment_configured_tool_locations(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            extra_bin = root / "extra-tools" / "bin"
+            suite_root = root / "oss-cad-suite"
+            suite_bin = suite_root / "bin"
+            extra_bin.mkdir(parents=True)
+            suite_bin.mkdir(parents=True)
 
-        self.assertIn("D:\\Tools\\oss-cad-suite\\bin", env["PATH"])
-        self.assertIn("D:\\Program Files (x86)\\Git\\bin", env["PATH"])
+            with mock.patch.dict(
+                os.environ,
+                {
+                    "SR2FPGA_TOOL_FALLBACK_DIRS": str(extra_bin),
+                    "SR2FPGA_OSS_CAD_SUITE_ROOT": str(suite_root),
+                },
+            ):
+                env = executable_env({"PATH": ""})
+
+        path_entries = env["PATH"].split(os.pathsep)
+        self.assertIn(str(extra_bin), path_entries)
+        self.assertIn(str(suite_bin), path_entries)
 
 
 def _touch_executable(path: Path) -> None:

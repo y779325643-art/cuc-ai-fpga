@@ -7,14 +7,8 @@ from pathlib import Path
 import shutil
 
 
-DEFAULT_FALLBACK_BIN_DIRS = (
-    Path(r"D:\Tools\oss-cad-suite\bin"),
-    Path(r"C:\oss-cad-suite\bin"),
-    Path(r"D:\oss-cad-suite\bin"),
-    Path(r"D:\Program Files (x86)\Git\bin"),
-    Path(r"C:\Program Files\Git\bin"),
-    Path(r"C:\Program Files (x86)\Git\bin"),
-)
+TOOL_FALLBACK_DIRS_ENV = "SR2FPGA_TOOL_FALLBACK_DIRS"
+OSS_CAD_SUITE_ROOT_ENV = "SR2FPGA_OSS_CAD_SUITE_ROOT"
 
 
 def resolve_executable(
@@ -69,8 +63,31 @@ def discover_tool_statuses(
 
 
 def _existing_fallback_dirs(fallback_dirs: list[Path] | tuple[Path, ...] | None = None) -> list[Path]:
-    dirs = DEFAULT_FALLBACK_BIN_DIRS if fallback_dirs is None else tuple(fallback_dirs)
+    dirs = _default_fallback_bin_dirs() if fallback_dirs is None else tuple(fallback_dirs)
     return [path for path in dirs if path.exists()]
+
+
+def _default_fallback_bin_dirs() -> tuple[Path, ...]:
+    paths: list[Path] = []
+
+    configured = os.environ.get(TOOL_FALLBACK_DIRS_ENV, "")
+    paths.extend(
+        Path(entry).expanduser()
+        for entry in configured.split(os.pathsep)
+        if entry.strip()
+    )
+
+    suite_root = os.environ.get(OSS_CAD_SUITE_ROOT_ENV, "").strip()
+    if suite_root:
+        root = Path(suite_root).expanduser()
+        paths.append(root if root.name.lower() == "bin" else root / "bin")
+
+    for variable in ("ProgramFiles", "ProgramFiles(x86)"):
+        program_files = os.environ.get(variable, "").strip()
+        if program_files:
+            paths.append(Path(program_files) / "Git" / "bin")
+
+    return tuple(_dedupe_paths(paths))
 
 
 def _path_entries_for_fallbacks(fallback_dirs: list[Path]) -> list[Path]:
