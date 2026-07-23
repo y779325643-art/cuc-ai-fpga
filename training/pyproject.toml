@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sr2fpga-training"
+version = "0.1.0"
+description = "SR2FPGA dataset preparation and model training workflows"
+requires-python = ">=3.11"
+dependencies = [
+  "PyYAML>=6.0.2"
+]
+
+[project.optional-dependencies]
+train = [
+  "accelerate>=0.34.0",
+  "bitsandbytes>=0.43.3",
+  "datasets>=2.21.0",
+  "peft>=0.12.0",
+  "torch>=2.4.0",
+  "transformers>=4.53.0",
+  "trl>=0.10.1"
+]
+serve = ["vllm>=0.6.0"]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+sr2fpga-prepare-dataset = "sr2fpga_training.prepare_dataset:main"
+sr2fpga-training-dry-run = "sr2fpga_training.training_dry_run:main"
+sr2fpga-train-lora = "sr2fpga_training.train_lora:main"
+sr2fpga-merge-lora = "sr2fpga_training.merge_lora:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
