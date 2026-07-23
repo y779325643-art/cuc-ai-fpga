@@ -10,14 +10,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from .repository_paths import RepositoryPaths
 from .task_catalog import CATALOG_PATH
 from .task_families import family_id_for_task_type
 from .oracles.bundle import load_oracle_bundle, sanitize_oracle_profile
 
 
-EVIDENCE_PATH = (
-    Path(__file__).resolve().parents[3] / "docs" / "sr2fpga-task-evidence-v0.1.json"
-)
+_REPOSITORY_PATHS = RepositoryPaths.discover()
+EVIDENCE_PATH = _REPOSITORY_PATHS.task_evidence
 
 GENERATOR_STATUSES = frozenset({"not_implemented", "implemented"})
 TESTBENCH_STATUSES = frozenset({"not_implemented", "implemented"})
@@ -1111,7 +1111,7 @@ def _summary_success_l3_ids(summary: dict[str, object]) -> set[str]:
 
 def _resolve_evidence_ref(reference: str) -> Path:
     path = Path(reference)
-    return path if path.is_absolute() else EVIDENCE_PATH.parent.parent / path
+    return path if path.is_absolute() else _REPOSITORY_PATHS.root / path
 
 
 def _same_path(left: Path, right: Path) -> bool:

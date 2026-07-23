@@ -72,9 +72,17 @@ class RepositoryPaths:
         return self.root / "artifacts"
 
     @property
+    def agent_artifacts_dir(self) -> Path:
+        return self.artifacts_dir / "agent"
+
+    @property
     def reports_dir(self) -> Path:
         return self.root / "reports"
 
     @property
     def datasets_dir(self) -> Path:
         return self.root / "datasets"
+
+    @property
+    def task_evidence(self) -> Path:
+        return self.root / "docs" / "sr2fpga-task-evidence-v0.1.json"

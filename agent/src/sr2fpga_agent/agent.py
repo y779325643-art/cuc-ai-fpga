@@ -46,6 +46,7 @@ from sr2fpga_agent.path_safety import (
     project_file_target,
     validate_sample_id,
 )
+from sr2fpga_agent.repository_paths import RepositoryPaths
 from sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
 from sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers, rtl_identifier_tool_result
 from sr2fpga_agent.system_his_checker import L0CheckResult, check_project_l0
@@ -1439,7 +1440,7 @@ def _split_command_prefix(command_prefix: str) -> list[str]:
 
 
 def _default_openxc7_command_prefix() -> list[str]:
-    wrapper = Path(__file__).resolve().parents[3] / "scripts" / "openxc7_pnr.sh"
+    wrapper = RepositoryPaths.discover().agent_scripts_dir / "openxc7_pnr.sh"
     if not wrapper.is_file():
         return ["openxc7_pnr"]
     if os.name == "nt":

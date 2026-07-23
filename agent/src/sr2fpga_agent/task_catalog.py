@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from pathlib import Path
+
+from .repository_paths import RepositoryPaths
 
 
-CATALOG_PATH = Path(__file__).resolve().parents[3] / "docs" / "sr2fpga-task-catalog-v0.2.json"
+CATALOG_PATH = RepositoryPaths.discover().task_catalog
 
 
 @dataclass(frozen=True)
