@@ -1,0 +1,35 @@
+{
+  "dataset_manifest_version": "1.0",
+  "releases": [
+    {
+      "release_id": "sr2fpga_rtl_v1",
+      "payload_path": "datasets/sr2fpga_rtl_v1",
+      "exports_path": "datasets/sr2fpga_rtl_v1_exports",
+      "checksum_manifest": "datasets/manifests/sr2fpga_rtl_v1.sha256",
+      "release_tier": "internal_only",
+      "license_status": "review_required",
+      "config_fingerprint": null,
+      "config_fingerprint_status": "legacy_unavailable"
+    },
+    {
+      "release_id": "sr2fpga_phase_d_control_v1",
+      "payload_path": "datasets/sr2fpga_phase_d_control_v1",
+      "exports_path": "datasets/sr2fpga_phase_d_control_v1_exports",
+      "checksum_manifest": "datasets/manifests/sr2fpga_phase_d_control_v1.sha256",
+      "release_tier": "internal_only",
+      "license_status": "review_required",
+      "config_fingerprint": null,
+      "config_fingerprint_status": "legacy_unavailable"
+    },
+    {
+      "release_id": "sr2fpga_phase_d_v1",
+      "payload_path": "datasets/sr2fpga_phase_d_v1",
+      "exports_path": "datasets/sr2fpga_phase_d_v1_exports",
+      "checksum_manifest": "datasets/manifests/sr2fpga_phase_d_v1.sha256",
+      "release_tier": "internal_only",
+      "license_status": "review_required",
+      "config_fingerprint": null,
+      "config_fingerprint_status": "legacy_unavailable"
+    }
+  ]
+}
