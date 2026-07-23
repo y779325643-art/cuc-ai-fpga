@@ -38,6 +38,13 @@ def _load_json(path: Path) -> dict[str, Any]:
     return payload
 
 
+def _integer(document: dict[str, Any], key: str, *, label: str) -> int:
+    try:
+        return int(document[key])
+    except (KeyError, TypeError, ValueError) as error:
+        raise ValueError(f"invalid {label} {key}") from error
+
+
 def _safe_member(root: Path, relative_text: str) -> Path:
     relative = PurePosixPath(relative_text)
     if (
@@ -108,6 +115,13 @@ def _verify_required_layout(backup: Path) -> None:
             raise FileNotFoundError(
                 f"missing Phase A backup directory: {relative}"
             )
+
+
+def _contained_directory(backup: Path, name: str) -> Path:
+    directory = (backup / name).resolve()
+    if not directory.is_relative_to(backup):
+        raise ValueError(f"backup directory escapes its root: {name}")
+    return directory
 
 
 def _verify_checksum_ledger(
@@ -211,28 +225,41 @@ def verify_phase_a_backup(
         raise ValueError("unexpected backup verification schema")
     if verification.get("status") != "pass":
         raise ValueError("Phase A verification status is not pass")
-    if int(verification.get("hash_failures", -1)) != 0:
+    if _integer(verification, "hash_failures", label="verification") != 0:
         raise ValueError("Phase A verification reports hash failures")
-    if int(verification.get("structured_parse_failures", -1)) != 0:
+    if (
+        _integer(
+            verification,
+            "structured_parse_failures",
+            label="verification",
+        )
+        != 0
+    ):
         raise ValueError("Phase A verification reports parse failures")
 
     records = _normalized_records(manifest)
-    manifest_count = int(manifest.get("file_count", -1))
-    manifest_bytes = int(manifest.get("byte_count", -1))
+    manifest_count = _integer(manifest, "file_count", label="manifest")
+    manifest_bytes = _integer(manifest, "byte_count", label="manifest")
     if manifest_count != len(records):
         raise ValueError("backup manifest record count mismatch")
     if manifest_bytes != sum(record["length"] for record in records):
         raise ValueError("backup manifest byte count mismatch")
-    if int(verification.get("file_count", -1)) != manifest_count:
+    if (
+        _integer(verification, "file_count", label="verification")
+        != manifest_count
+    ):
         raise ValueError("manifest and verification file counts disagree")
-    if int(verification.get("byte_count", -1)) != manifest_bytes:
+    if (
+        _integer(verification, "byte_count", label="verification")
+        != manifest_bytes
+    ):
         raise ValueError("manifest and verification byte counts disagree")
 
     checksum_line_count = _verify_checksum_ledger(backup, records)
-    workspace = (backup / "workspace").resolve()
+    workspace = _contained_directory(backup, "workspace")
     _verify_workspace(workspace, records)
     restore_sample_count = _verify_restore_samples(
-        (backup / "restore-test").resolve(),
+        _contained_directory(backup, "restore-test"),
         verification,
         records,
     )

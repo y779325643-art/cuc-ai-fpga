@@ -178,3 +178,14 @@ def test_unsafe_manifest_path_is_rejected(
 
     with pytest.raises(ValueError, match="unsafe backup manifest path"):
         verify_phase_a_backup(repository, backup)
+
+
+def test_invalid_verification_count_is_rejected(tmp_path: Path) -> None:
+    repository, backup = _build_repository_and_backup(tmp_path)
+    verification_path = backup / "verification.json"
+    verification = json.loads(verification_path.read_text(encoding="utf-8"))
+    verification["file_count"] = None
+    _write_json(verification_path, verification)
+
+    with pytest.raises(ValueError, match="invalid verification file_count"):
+        verify_phase_a_backup(repository, backup)
