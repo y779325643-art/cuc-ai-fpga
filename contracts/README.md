@@ -22,3 +22,24 @@ python contracts/tools/verify_phase_a_backup.py `
 The backup verifier writes only the ignored
 `artifacts/reorganization/phase-b4/backup-recheck.json` record after every
 manifest, byte-count, checksum, workspace, and restore-sample check passes.
+
+After that gate passes, preview the exact legacy evidence selection:
+
+```powershell
+python contracts/tools/curate_legacy_evidence.py `
+  --root . `
+  --backup-root $env:SR2FPGA_PHASE_A_BACKUP_ROOT
+```
+
+The preview is also ignored and blocks on API-key-shaped content, private
+absolute paths, missing files, hash changes, or destination conflicts. Do not
+use `--apply` until the preview and cleanup inventory have received explicit
+approval. An approved application must name the tracked manifest explicitly:
+
+```powershell
+python contracts/tools/curate_legacy_evidence.py `
+  --root . `
+  --backup-root $env:SR2FPGA_PHASE_A_BACKUP_ROOT `
+  --apply `
+  --output reports/reorganization/legacy-evidence-curation.json
+```
