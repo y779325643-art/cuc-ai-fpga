@@ -1,0 +1,26 @@
+[build-system]
+requires = ["setuptools>=75", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sr2fpga-agent"
+version = "0.1.0"
+description = "SR2FPGA project generation and tool-verification agent"
+requires-python = ">=3.11"
+dependencies = [
+  "certifi>=2024.8.30",
+  "PyYAML>=6.0.2"
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+
+[project.scripts]
+sr2fpga-agent = "sr2fpga_agent.cli:main"
+sr2fpga-runner = "sr2fpga_agent.runner:main"
+sr2fpga-baseline-report = "sr2fpga_agent.baseline_report:main"
+sr2fpga-req2file-eval = "sr2fpga_agent.req2file_eval:main"
+sr2fpga-task-evidence = "sr2fpga_agent.task_evidence:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
