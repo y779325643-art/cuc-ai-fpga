@@ -1482,16 +1482,28 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertFalse((sample_dir / "final/generated_project/oracle").exists())
             vvp_calls = [call["command"] for call in runner.calls if call["stage"] == "sim_run"]
             self.assertGreaterEqual(len(vvp_calls), 4)
-            self.assertTrue(
-                all(
-                    any(
-                        Path(arg.split("=", 1)[1]).resolve().is_relative_to(oracle_root.resolve())
-                        for arg in call
-                        if arg.startswith("+ORACLE_INPUT=")
+            staged_paths: list[Path] = []
+            for call in vvp_calls:
+                input_args = [
+                    arg for arg in call if arg.startswith("+ORACLE_INPUT=")
+                ]
+                expected_args = [
+                    arg for arg in call if arg.startswith("+ORACLE_EXPECTED=")
+                ]
+                self.assertEqual(len(input_args), 1)
+                self.assertEqual(len(expected_args), 1)
+                for argument in (*input_args, *expected_args):
+                    staged_path = Path(argument.split("=", 1)[1])
+                    self.assertTrue(staged_path.is_absolute())
+                    self.assertTrue(
+                        staged_path.parent.name.startswith("sr2fpga_oracle_")
                     )
-                    for call in vvp_calls
-                )
-            )
+                    self.assertFalse(
+                        staged_path.resolve().is_relative_to(oracle_root.resolve())
+                    )
+                    staged_paths.append(staged_path)
+            self.assertTrue(staged_paths)
+            self.assertTrue(all(not path.exists() for path in staged_paths))
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
             self.assertEqual(set(trajectory["oracle_profile"]["class_status"].values()), {"pass"})
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
