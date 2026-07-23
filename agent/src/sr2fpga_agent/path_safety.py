@@ -258,6 +258,7 @@ def _is_trusted_artifact(path: str) -> bool:
         or normalized == "oracle"
         or normalized.startswith("oracle/")
         or "/eval/oracle/" in padded
+        or normalized.startswith("agent/src/sr2fpga_agent/oracles/")
         or normalized.startswith("llm/src/sr2fpga_agent/oracles/")
         or normalized.startswith("models/")
         or normalized.startswith("hidden/")

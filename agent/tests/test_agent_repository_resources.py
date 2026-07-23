@@ -1,6 +1,8 @@
-import importlib
+import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 
 import pytest
 
@@ -52,20 +54,33 @@ def test_openxc7_wrapper_resolves_under_agent_scripts(
         assert command == ["bash", str(expected)]
 
 
-def test_repository_resources_ignore_process_cwd(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    monkeypatch.chdir(tmp_path)
-    reloaded_catalog = importlib.reload(task_catalog)
-    reloaded_evidence = importlib.reload(task_evidence)
+def test_repository_resources_ignore_process_cwd(tmp_path: Path) -> None:
+    source_root = REPO_ROOT / "agent" / "src"
+    code = (
+        "import json, sys\n"
+        f"sys.path.insert(0, {str(source_root)!r})\n"
+        "from sr2fpga_agent import task_catalog, task_evidence\n"
+        "print(json.dumps({"
+        "'catalog': str(task_catalog.CATALOG_PATH), "
+        "'evidence': str(task_evidence.EVIDENCE_PATH)"
+        "}))\n"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    resources = json.loads(completed.stdout)
 
-    assert reloaded_catalog.CATALOG_PATH == (
+    assert Path(resources["catalog"]) == (
         REPO_ROOT
         / "contracts"
         / "task-catalog"
         / "sr2fpga-task-catalog-v0.2.json"
     )
-    assert reloaded_evidence.EVIDENCE_PATH == (
+    assert Path(resources["evidence"]) == (
         REPO_ROOT / "docs" / "sr2fpga-task-evidence-v0.1.json"
     )
 
