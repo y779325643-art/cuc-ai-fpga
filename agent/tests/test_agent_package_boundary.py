@@ -132,16 +132,21 @@ def test_canonical_agent_tests_do_not_import_legacy_namespace() -> None:
 
 
 def test_agent_implementation_has_one_source_of_truth() -> None:
-    source_roots = (
+    canonical_source_roots = (
         REPO_ROOT / "agent" / "src",
-        REPO_ROOT / "LLM" / "src",
         REPO_ROOT / "training" / "src",
     )
     for filename in ("agent.py", "runner.py", "recorder.py"):
-        matches = [
+        canonical_matches = [
             path.resolve()
-            for root in source_roots
+            for root in canonical_source_roots
             if root.is_dir()
             for path in root.rglob(filename)
         ]
-        assert matches == [(PACKAGE_ROOT / filename).resolve()]
+        assert canonical_matches == [(PACKAGE_ROOT / filename).resolve()]
+
+    legacy_runner = REPO_ROOT / "LLM" / "src" / "sr2fpga_agent" / "runner.py"
+    legacy_source = legacy_runner.read_text(encoding="utf-8")
+    assert "from LLM.src._compat import run_module" in legacy_source
+    assert "run_module(" in legacy_source
+    assert '"sr2fpga_agent.runner"' in legacy_source

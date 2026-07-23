@@ -46,6 +46,24 @@ regression is required before final approval.
 
 L5 board validation is not yet a general dataset stage.
 
+## Task Contract And Evidence
+
+The v0.2 task catalog is the intended target contract and target policy. The
+v0.1 evidence ledger records executable and verified facts; the generated
+status document is its human-readable view.
+
+| Evidence measure | Current verified count |
+| --- | --- |
+| Evidence ledger coverage | 71/71 |
+| Implemented families | 31 |
+| Paper 1 core implemented | 14/14 (denominator: v0.2 catalog `recommended_sets.paper1_core`) |
+| Paper 1 core executable / L3 | 14/14 |
+| Paper 1 core mutation-qualified | 14/14 |
+| Mutation-qualified families | 21 |
+| Independent Python oracle qualified | 9 |
+| Dual-tool L4 families (OpenXC7 and Vivado) | 2 |
+| L5 families | 0 |
+
 ## Verdict Rules
 
 - `not_run` is not a failure; it is reported separately with a skip reason.
@@ -93,14 +111,15 @@ python -m sr2fpga_training.training_dry_run `
 
 ## Remaining B4 Gates
 
-1. Finish active-document cutover and migration guidance.
-2. Inventory every tracked `tmp/` file and classify keep/move/delete behavior.
-3. Recheck the Phase A external backup root.
-4. Present inventory totals and obtain explicit approval before moving or
+1. Recheck the Phase A external backup root.
+2. Restore the 69 active legacy evidence references from that verified backup
+   into stable `reports/evidence/legacy-runs/` paths.
+3. Present the 590-path tracked-`tmp/` inventory totals and obtain explicit
+   approval before moving or
    deleting any tracked `tmp/` evidence.
-5. Run compatibility, full regression, deterministic Agent, and lightweight
+4. Run compatibility, full regression, deterministic Agent, and lightweight
    Training acceptance checks.
-6. Produce the final reorganization audit and publication-ready branch.
+5. Produce the final reorganization audit and publication-ready branch.
 
 No tracked `tmp/` evidence may be removed before the external-backup and
 explicit-approval gate.

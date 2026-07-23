@@ -35,9 +35,12 @@ with a skip reason.
 - [Task evidence status](sr2fpga-task-evidence-status.md)
 - [Compressed T0-T4 smoke catalog](sr2fpga-t0-t4-task-catalog.json)
 
-The target catalog describes intended coverage. The evidence ledger records
-what is currently implemented and verified. Do not infer implementation status
-from the target catalog alone.
+The target catalog describes the intended target contract and target policy.
+The evidence ledger records the current executable and verification facts. Do
+not infer implementation status from the target catalog alone. The task
+evidence status document is the human-readable derived view. The compressed
+T0-T4 file is the 24-alias deterministic smoke curriculum, not the task
+difficulty authority.
 
 ## Active Implementation
 
