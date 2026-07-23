@@ -1,10 +1,5 @@
-accelerate>=0.34.0
-bitsandbytes>=0.43.3
-certifi>=2024.8.30
-datasets>=2.21.0
-peft>=0.12.0
-pyyaml>=6.0.2
-torch>=2.4.0
-transformers>=4.53.0
-trl>=0.10.1
-vllm>=0.6.0
+# Deprecated compatibility installer.
+# Prefer: python -m pip install -e "agent[dev]"
+# Training extras are optional and GPU/platform dependent.
+-e ../agent
+-e ../training
