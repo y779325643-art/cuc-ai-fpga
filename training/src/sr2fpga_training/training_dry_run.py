@@ -100,7 +100,13 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Dry-run chat fine-tuning JSONL without loading a model.")
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--config", type=Path, help="Training YAML config with train_file/max_seq_length")
-    group.add_argument("--input", type=Path, help="Chat JSONL file to validate")
+    group.add_argument(
+        "--input",
+        "--train-file",
+        dest="input",
+        type=Path,
+        help="Chat JSONL file to validate",
+    )
     parser.add_argument("--max-seq-length", type=int, default=2048)
     parser.add_argument("--fail-on-truncation", action="store_true")
     args = parser.parse_args()

@@ -118,6 +118,33 @@ class TrainingDryRunTest(unittest.TestCase):
 
             self.assertEqual(raised.exception.code, 1)
 
+    def test_cli_accepts_train_file_compatibility_alias(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            train_file = Path(tmp) / "train.jsonl"
+            train_file.write_text(
+                json.dumps(
+                    {
+                        "messages": [
+                            {"role": "user", "content": "Generate RTL."},
+                            {"role": "assistant", "content": "module top; endmodule"},
+                        ]
+                    }
+                )
+                + "\n",
+                encoding="utf-8",
+            )
+
+            stdout = io.StringIO()
+            with patch("sys.stdout", new=stdout), patch(
+                "sys.argv",
+                ["training_dry_run", "--train-file", str(train_file)],
+            ):
+                main()
+
+            report = json.loads(stdout.getvalue())
+            self.assertEqual(report["train_file"], str(train_file))
+            self.assertEqual(report["valid_rows"], 1)
+
     def test_rejects_chat_rows_without_assistant_turn(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             train_file = Path(tmp) / "train.jsonl"
