@@ -1,0 +1,22 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "TEST_FAIL expected TX byte=12 got=48\nsim/tb_top.v:53: $finish called at 2005000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [
+      {
+        "actual": "48",
+        "expected": "TX byte=12"
+      }
+    ],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "<ABSOLUTE_PATH>",
+  "tool_status": "failed"
+}

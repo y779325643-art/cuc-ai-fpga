@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.3759824999142438,
+  "exit_code": 1,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "",
+  "stdout": "[radar_public_smoke] TEST_PASS\nsim/tb_top.v:219: $finish called at 226000 (1ps)\n[radar_hidden_tie_and_final] TEST_PASS\nsim/tb_top.v:219: $finish called at 286000 (1ps)\n[radar_randomized_seeded] SR2FPGA_MISMATCH {\"scenario_id\":\"radar_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":7,\"expected\":{\"found\":1,\"value\":\"0x1b3\",\"index\":6,\"in_ready\":0},\"actual\":{\"found\":\"1\",\"value\":\"0x1b3\",\"index\":\"0x6\",\"in_ready\":\"1\"}}\nTEST_FAIL result changed under backpressure\nsim/tb_top.v:203: $finish called at 216000 (1ps)\n[radar_stress_reset_stall] SR2FPGA_MISMATCH {\"scenario_id\":\"radar_stress_reset_stall\",\"class\":\"stress\",\"item_index\":2,\"expected\":{\"found\":1,\"value\":\"0xa\",\"index\":0,\"in_ready\":0},\"actual\":{\"found\":\"1\",\"value\":\"0xa\",\"index\":\"0x0\",\"in_ready\":\"1\"}}\nTEST_FAIL result changed under backpressure\nsim/tb_top.v:203: $finish called at 146000 (1ps)"
+}

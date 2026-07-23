@@ -1,0 +1,360 @@
+{
+  "architecture": {
+    "difficulty_tier": "T0",
+    "oracle_kind": [
+      "reference_model"
+    ],
+    "skeleton_level": "S2_protocol_skeleton",
+    "style": "single_module",
+    "submodules": [],
+    "system_his_profile": "memory_datapath",
+    "task_family_id": "single_dual_port_ram",
+    "top_module": "top"
+  },
+  "artifacts": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json",
+    "rtl_sources": [
+      "rtl/top.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "top_module": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "components": [
+    {
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "we",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "addr",
+          "width": 2
+        },
+        {
+          "dir": "input",
+          "name": "wdata",
+          "width": 8
+        },
+        {
+          "dir": "output",
+          "name": "rdata",
+          "width": 8
+        }
+      ],
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v"
+    }
+  ],
+  "connections": [],
+  "control_flow": [
+    {
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "kind": "reset_rule",
+      "name": "reset_state",
+      "related_flows": [],
+      "related_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "ram_read_write_primary_path",
+      "path": [
+        "top.we",
+        "top.rdata"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register",
+      "timing": {
+        "initiation_interval": 1,
+        "latency_cycles": 1,
+        "throughput": "one operation per cycle when enabled"
+      }
+    }
+  ],
+  "instances": [],
+  "intent": {
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ],
+    "design_goal": "data written to an address can be read back from the same address",
+    "user_prompt": "Generate a 8-bit FPGA RTL project that implements a small synchronous RAM with read and write access."
+  },
+  "interface": {
+    "clock": "clk",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "we",
+        "width": 1
+      },
+      {
+        "name": "addr",
+        "width": 2
+      },
+      {
+        "name": "wdata",
+        "width": 8
+      }
+    ],
+    "outputs": [
+      {
+        "name": "rdata",
+        "width": 8
+      }
+    ],
+    "reset": "rst_n",
+    "reset_polarity": "active_low"
+  },
+  "modules": [
+    {
+      "clock": "clk",
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "we",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "addr",
+          "width": 2
+        },
+        {
+          "direction": "input",
+          "name": "wdata",
+          "width": 8
+        },
+        {
+          "direction": "output",
+          "name": "rdata",
+          "width": 8
+        }
+      ],
+      "reset": "rst_n",
+      "role": "top",
+      "source": "rtl/top.v"
+    }
+  ],
+  "platform": {
+    "board": "generic",
+    "clock_hz": 100000000,
+    "family": "generic",
+    "name": "generic_verilog",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "project": {
+    "description": "Generate a 8-bit FPGA RTL project that implements a small synchronous RAM with read and write access.",
+    "name": "phase_c_core_mutation_closure_v2_ram_read_write_8_000001",
+    "top": "top"
+  },
+  "project_name": "phase_c_core_mutation_closure_v2_ram_read_write_8_000001",
+  "qor_intent": {
+    "resources": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 40,
+      "lut": 8
+    }
+  },
+  "resets": [
+    {
+      "kind": "async",
+      "name": "rst_n",
+      "polarity": "active_low"
+    }
+  ],
+  "resources": {
+    "expected": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 40,
+      "lut": 8
+    },
+    "optimization_goal": "area_first"
+  },
+  "schema_version": "system-his-v1.2",
+  "state": {
+    "buffers": [],
+    "counters": [],
+    "fsms": [],
+    "memories": [
+      {
+        "depth": 4,
+        "name": "mem",
+        "owner": "top",
+        "width": 8
+      }
+    ],
+    "registers": [
+      {
+        "name": "rdata",
+        "owner": "top",
+        "width": 8
+      }
+    ]
+  },
+  "system": {
+    "description": "Generate a 8-bit FPGA RTL project that implements a small synchronous RAM with read and write access."
+  },
+  "task_type": "ram_read_write",
+  "timing": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0
+  },
+  "top": {
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "interfaces": [],
+    "name": "top",
+    "parameters": [],
+    "ports": [
+      {
+        "dir": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "we",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "addr",
+        "width": 2
+      },
+      {
+        "dir": "input",
+        "name": "wdata",
+        "width": 8
+      },
+      {
+        "dir": "output",
+        "name": "rdata",
+        "width": 8
+      }
+    ],
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ]
+  },
+  "top_ports": [
+    {
+      "direction": "input",
+      "name": "clk",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rst_n",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "we",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "addr",
+      "width": 2
+    },
+    {
+      "direction": "input",
+      "name": "wdata",
+      "width": 8
+    },
+    {
+      "direction": "output",
+      "name": "rdata",
+      "width": 8
+    }
+  ],
+  "verification": {
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when data written to an address can be read back from the same address.",
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when data written to an address can be read back from the same address.",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when data written to an address can be read back from the same address.",
+    "testbench": "sim/tb_top.v"
+  }
+}

@@ -1,0 +1,360 @@
+{
+  "attempt_stage_transition_breakdown": {},
+  "buckets": {
+    "rejected": [
+      "sample_phase_b_core_closure_pulse_radar_signal_8_000005",
+      "sample_phase_b_core_closure_vision_defect_core_8_000007"
+    ],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_phase_b_core_closure_uart_rx_8_000001",
+      "sample_phase_b_core_closure_uart_fifo_loopback_8_000002",
+      "sample_phase_b_core_closure_matched_filter_8_000003",
+      "sample_phase_b_core_closure_peak_detector_8_000004",
+      "sample_phase_b_core_closure_sobel_threshold_8_000006",
+      "sample_phase_b_core_closure_pattern_matcher_8_000008",
+      "sample_phase_b_core_closure_stream_trigger_filter_8_000009"
+    ]
+  },
+  "calibration_matrix": {
+    "contract_skeleton_mode": {
+      "deterministic_template": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 0.7777777777777778,
+        "pass_levels": {
+          "L3": 7,
+          "ORACLE_NOT_READY": 2
+        },
+        "total": 9
+      }
+    },
+    "difficulty_tier": {
+      "T1": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 2
+        },
+        "total": 2
+      },
+      "T2": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 1
+        },
+        "total": 1
+      },
+      "T3": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 0.6666666666666666,
+        "pass_levels": {
+          "L3": 4,
+          "ORACLE_NOT_READY": 2
+        },
+        "total": 6
+      }
+    },
+    "evaluation_line": {
+      "line_a": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 0.7777777777777778,
+        "pass_levels": {
+          "L3": 7,
+          "ORACLE_NOT_READY": 2
+        },
+        "total": 9
+      }
+    },
+    "failure_family": {},
+    "failure_origin": {
+      "deterministic": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 0.7777777777777778,
+        "pass_levels": {
+          "L3": 7,
+          "ORACLE_NOT_READY": 2
+        },
+        "total": 9
+      }
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 0.7777777777777778,
+        "pass_levels": {
+          "L3": 7,
+          "ORACLE_NOT_READY": 2
+        },
+        "total": 9
+      }
+    },
+    "requirement_style": {
+      "simple_prompt": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 0.7777777777777778,
+        "pass_levels": {
+          "L3": 7,
+          "ORACLE_NOT_READY": 2
+        },
+        "total": 9
+      }
+    },
+    "source": {
+      "deterministic": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 0.7777777777777778,
+        "pass_levels": {
+          "L3": 7,
+          "ORACLE_NOT_READY": 2
+        },
+        "total": 9
+      }
+    },
+    "topology_id": {}
+  },
+  "config_fingerprint": "1fceabc3040382ccdc04eca23975cab9f26dd92ce0aa667d248927ad9058e669",
+  "contract_metrics": {
+    "cross_file_consistency_error_rate": 0.0,
+    "l0_contract_failures": 0,
+    "total_labeled": 9
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "file_level_passed": 0,
+      "official_eval_unit": false,
+      "project_level_pass_credit": false,
+      "rows": 77,
+      "standalone_pass_credit": false
+    }
+  },
+  "exports_refreshed": true,
+  "failure_family_breakdown": {},
+  "failure_types": {},
+  "freeze_fingerprint": "2d11dd06ecb9d4f12cc92ffc2474b555f73f03bc570f7fa9c39f8794e2199f3f",
+  "generated_his_credit": {
+    "credited": 9
+  },
+  "generated_his_pass_level_breakdown": {
+    "L3": 7,
+    "ORACLE_NOT_READY": 2
+  },
+  "h_stage": {
+    "h0": {
+      "fail": 0,
+      "pass": 9
+    },
+    "h1": {
+      "fail": 0,
+      "pass": 9
+    },
+    "h2": {
+      "fail": 0,
+      "pass": 9
+    },
+    "h3": {
+      "fail": 0,
+      "not_applicable": 9,
+      "pass": 0
+    }
+  },
+  "independent_oracle": {
+    "by_domain": {
+      "image": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 2,
+        "pass": 0
+      },
+      "other": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 4,
+        "pass": 0
+      },
+      "signal": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 3,
+        "pass": 0
+      }
+    },
+    "by_family": {
+      "matched_filter": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "p_pulse_radar_signal": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "p_stream_trigger_filter": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "p_vision_defect_core": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "pattern_matcher": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "peak_detector": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "sobel_threshold": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "uart_fifo_loopback": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "uart_rx": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      }
+    },
+    "fail": 0,
+    "infrastructure_error": 0,
+    "model_denominator": 0,
+    "model_failures": 0,
+    "not_run": 9,
+    "pass": 0
+  },
+  "l4_commercial": {
+    "fail": 0,
+    "not_run": 9,
+    "pass": 0
+  },
+  "l4_commercial_skip_reasons": {
+    "disabled_by_config": 9
+  },
+  "l4_open": {
+    "fail": 0,
+    "not_run": 9,
+    "pass": 0
+  },
+  "l4_open_skip_reasons": {
+    "disabled_by_config": 9
+  },
+  "latent_testbench_issue_breakdown": {},
+  "levels": {
+    "l0": {
+      "fail": 0,
+      "pass": 9
+    },
+    "l1": {
+      "fail": 0,
+      "pass": 9
+    },
+    "l2": {
+      "fail": 0,
+      "pass": 9
+    },
+    "l3": {
+      "fail": 0,
+      "pass": 9
+    },
+    "l4_open": {
+      "fail": 0,
+      "not_run": 9,
+      "pass": 0
+    }
+  },
+  "line_b_targets": {
+    "l3_success_ratio": 1.0,
+    "max_samples": 9,
+    "repair_trajectory_ratio": 0.0
+  },
+  "metadata_breakdown": {
+    "contract_skeleton_mode": {
+      "deterministic_template": 9
+    },
+    "difficulty_tier": {
+      "T1": 2,
+      "T2": 1,
+      "T3": 6
+    },
+    "evaluation_line": {
+      "line_a": 9
+    },
+    "failure_origin": {
+      "deterministic": 9
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": 9
+    },
+    "requirement_style": {
+      "simple_prompt": 9
+    },
+    "source": {
+      "deterministic": 9
+    },
+    "topology_id": {}
+  },
+  "next_index": 9,
+  "oracle_strength": {
+    "killed": 37,
+    "line_a_not_ready": 2,
+    "line_a_ready": 7,
+    "mutation_cases": 41,
+    "mutation_score": 0.9,
+    "non_scoreable_mutations": {},
+    "reference_passed": 9,
+    "samples": 9,
+    "surviving_mutations": {
+      "hardcoded_first_coordinate": 1,
+      "history_updates_while_stalled": 1,
+      "ignore_in_last": 1,
+      "top_in_ready_stuck_high": 1
+    }
+  },
+  "pass_level_breakdown": {
+    "L3": 7,
+    "ORACLE_NOT_READY": 2
+  },
+  "repair_metrics": {
+    "automatic_pass_credit": 0,
+    "fixed_target": 0,
+    "invalid_edit_surface": 0,
+    "regressing_patches": 0,
+    "regression_rate": 0.0,
+    "total_patches": 0,
+    "valid_patches": 0
+  },
+  "run_id": "phase-b-core-closure-20260713-v4",
+  "toolchain_environment_failures": {},
+  "total_completed": 9,
+  "total_planned": 9
+}

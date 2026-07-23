@@ -1,0 +1,17 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "[td_public_declared_examples] SR2FPGA_MISMATCH {\"scenario_id\":\"td_public_declared_examples\",\"class\":\"public_smoke\",\"item_index\":0,\"expected\":{\"td_error\":4,\"updated_value\":11},\"actual\":{\"td_error\":-12,\"updated_value\":7}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n[td_hidden_signed_saturation] SR2FPGA_MISMATCH {\"scenario_id\":\"td_hidden_signed_saturation\",\"class\":\"hidden_deterministic\",\"item_index\":0,\"expected\":{\"td_error\":-14,\"updated_value\":-3},\"actual\":{\"td_error\":3,\"updated_value\":5}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n[td_randomized_seeded] SR2FPGA_MISMATCH {\"scenario_id\":\"td_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":0,\"expected\":{\"td_error\":-28,\"updated_value\":82},\"actual\":{\"td_error\":-91,\"updated_value\":46}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n[td_stress_reset_stall_bounds] SR2FPGA_MISMATCH {\"scenario_id\":\"td_stress_reset_stall_bounds\",\"class\":\"stress\",\"item_index\":0,\"expected\":{\"td_error\":-128,\"updated_value\":-1},\"actual\":{\"td_error\":-126,\"updated_value\":1}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "vvp",
+  "tool_status": "failed"
+}

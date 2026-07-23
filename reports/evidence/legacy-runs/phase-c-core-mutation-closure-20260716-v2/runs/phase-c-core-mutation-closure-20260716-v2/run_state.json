@@ -1,0 +1,23 @@
+{
+  "buckets": {
+    "rejected": [],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001",
+      "sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002",
+      "sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003",
+      "sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004"
+    ]
+  },
+  "completed_samples": [
+    "sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001",
+    "sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002",
+    "sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003",
+    "sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004"
+  ],
+  "config_fingerprint": "a5bd8cb0757cd9ce442862de2a0ae39d98feb8ea9f7ba351014bc71c16aefd2a",
+  "exports_refreshed": true,
+  "failure_types": {},
+  "next_index": 4,
+  "run_id": "phase-c-core-mutation-closure-20260716-v2"
+}

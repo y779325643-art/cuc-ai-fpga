@@ -8,3 +8,6 @@
 *.env text eol=lf
 *.example text eol=lf
 *.sha256 text eol=lf
+
+# nextpnr histogram rows intentionally use trailing spaces for fixed-width output.
+reports/evidence/**/openxc7_nextpnr.log text eol=lf whitespace=-trailing-space

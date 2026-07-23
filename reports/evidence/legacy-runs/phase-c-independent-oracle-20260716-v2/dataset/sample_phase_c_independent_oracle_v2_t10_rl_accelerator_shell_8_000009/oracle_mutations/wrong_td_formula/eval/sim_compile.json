@@ -1,0 +1,21 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/host_config_bank.v",
+    "rtl/sample_capture_stage.v",
+    "rtl/policy_value_core.v",
+    "rtl/td_update_core.v",
+    "rtl/result_stream_stage.v",
+    "sim/tb_top.v"
+  ],
+  "duration_seconds": 0.17059770005289465,
+  "exit_code": 0,
+  "stage": "sim_compile",
+  "status": "passed",
+  "stderr": "",
+  "stdout": ""
+}

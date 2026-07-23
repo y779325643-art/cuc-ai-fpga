@@ -13,6 +13,7 @@ from sr2fpga_agent.oracles import (
     OracleScenarioSpec,
     build_oracle_bundle_for_request,
     load_oracle_bundle,
+    load_oracle_manifest_commitment,
     sanitize_oracle_profile,
     write_oracle_bundle,
 )
@@ -203,6 +204,19 @@ def test_load_rejects_missing_record_file(tmp_path):
 
     with pytest.raises(ValueError, match="missing oracle record file"):
         load_oracle_bundle(bundle.root)
+
+
+def test_manifest_commitment_accepts_bundle_without_record_files(tmp_path):
+    bundle = _write_bundle(tmp_path)
+    for scenario in bundle.scenarios:
+        (bundle.root / scenario.input_path).unlink()
+        (bundle.root / scenario.expected_path).unlink()
+
+    commitment = load_oracle_manifest_commitment(bundle.root)
+
+    assert commitment.family_id == bundle.family_id
+    assert commitment.bundle_sha256 == bundle.bundle_sha256
+    assert commitment.scenarios == bundle.scenarios
 
 
 def test_load_rejects_modified_record_file(tmp_path):

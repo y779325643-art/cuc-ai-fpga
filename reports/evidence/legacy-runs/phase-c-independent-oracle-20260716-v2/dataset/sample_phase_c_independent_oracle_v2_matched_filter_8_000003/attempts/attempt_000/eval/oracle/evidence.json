@@ -1,0 +1,106 @@
+{
+  "bundle_sha256": "ff396a9aa78f09e316b6a6f3563cfc097e83685155315ac4460245cd581d9262",
+  "class_status": {
+    "hidden_deterministic": "pass",
+    "public_smoke": "pass",
+    "randomized_fixed_seed": "pass",
+    "stress": "pass"
+  },
+  "diagnostics": [],
+  "failure_origin": null,
+  "failure_type": null,
+  "family_id": "matched_filter",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/00.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/00.expected.memh",
+        "+ORACLE_SCENARIO_ID=matched_public_smoke",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=4"
+      ],
+      "duration_seconds": 0.07541789999231696,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "public_smoke",
+      "scenario_id": "matched_public_smoke",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:160: $finish called at 166000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/01.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/01.expected.memh",
+        "+ORACLE_SCENARIO_ID=matched_hidden_edges",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=4"
+      ],
+      "duration_seconds": 0.07307530008256435,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "matched_hidden_edges",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:160: $finish called at 166000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/02.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/02.expected.memh",
+        "+ORACLE_SCENARIO_ID=matched_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=16"
+      ],
+      "duration_seconds": 0.16751139995176345,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "matched_randomized_seeded",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:160: $finish called at 576000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/03.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_9ac2503da5974a48bf0589872345b922/03.expected.memh",
+        "+ORACLE_SCENARIO_ID=matched_stress_reset_stall",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=6"
+      ],
+      "duration_seconds": 0.15346669999416918,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "stress",
+      "scenario_id": "matched_stress_reset_stall",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:160: $finish called at 286000 (1ps)\n"
+    }
+  ],
+  "status": "passed"
+}

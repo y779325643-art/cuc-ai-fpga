@@ -1,0 +1,23 @@
+{
+  "assumptions": {
+    "data_width": 8,
+    "estimate_type": "pre_synthesis_model_prediction",
+    "no_vendor_ip": true,
+    "single_clock": true,
+    "task_type": "pattern_matcher"
+  },
+  "predicted": {
+    "bram": 0,
+    "confidence": 0.65,
+    "dsp": 0,
+    "ff": 92,
+    "fmax_mhz": 300.0,
+    "lut": 24
+  },
+  "project_name": "phase_b_core_closure_pattern_matcher_8_000008",
+  "target": {
+    "platform": "generic_verilog",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  }
+}

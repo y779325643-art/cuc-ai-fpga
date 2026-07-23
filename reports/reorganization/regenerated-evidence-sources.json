@@ -1,0 +1,50 @@
+{
+  "schema_version": "sr2fpga-regenerated-evidence-sources-v1",
+  "groups": [
+    {
+      "run_id": "line-a-l4-dual-tool-20260713-v2",
+      "legacy_source_root": "tmp/sr2fpga_line_a_l4_dual_tool",
+      "candidate_root": "artifacts/agent/candidates/sr2fpga_line_a_l4_dual_tool",
+      "run_root": "artifacts/agent/runs/sr2fpga_line_a_l4_dual_tool/line-a-l4-dual-tool-20260713-v2",
+      "strip_prefix": "",
+      "replacements": []
+    },
+    {
+      "run_id": "line-a-oracle-evidence-20260713-v2",
+      "legacy_source_root": "tmp/sr2fpga_line_a_oracle_evidence",
+      "candidate_root": "artifacts/agent/candidates/sr2fpga_line_a_oracle_evidence",
+      "run_root": "artifacts/agent/runs/sr2fpga_line_a_oracle_evidence/line-a-oracle-evidence-20260713-v2",
+      "strip_prefix": "",
+      "replacements": []
+    },
+    {
+      "run_id": "phase-b-core-closure-20260713-v4",
+      "legacy_source_root": "tmp/sr2fpga_phase_b_core_closure",
+      "candidate_root": "artifacts/agent/candidates/sr2fpga_phase_b_core_closure",
+      "run_root": "artifacts/agent/runs/sr2fpga_phase_b_core_closure/phase-b-core-closure-20260713-v4",
+      "strip_prefix": "v4/",
+      "replacements": [
+        {
+          "from": "sample_phase_b_core_closure_v4_",
+          "to": "sample_phase_b_core_closure_"
+        }
+      ]
+    },
+    {
+      "run_id": "phase-c-core-mutation-closure-20260716-v2",
+      "legacy_source_root": "tmp/sr2fpga_phase_c_core_mutation_closure_v2",
+      "candidate_root": "artifacts/agent/candidates/sr2fpga_phase_c_core_mutation_closure_v2",
+      "run_root": "artifacts/agent/runs/sr2fpga_phase_c_core_mutation_closure_v2/phase-c-core-mutation-closure-20260716-v2",
+      "strip_prefix": "",
+      "replacements": []
+    },
+    {
+      "run_id": "phase-c-independent-oracle-20260716-v2",
+      "legacy_source_root": "tmp/sr2fpga_phase_c_independent_oracle_v2",
+      "candidate_root": "artifacts/agent/candidates/sr2fpga_phase_c_independent_oracle_v2",
+      "run_root": "artifacts/agent/runs/sr2fpga_phase_c_independent_oracle_v2/phase-c-independent-oracle-20260716-v2",
+      "strip_prefix": "",
+      "replacements": []
+    }
+  ]
+}

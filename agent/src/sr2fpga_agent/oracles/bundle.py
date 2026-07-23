@@ -389,7 +389,12 @@ def _read_record_file(
         raise ValueError(f"oracle record exceeds its declared record width: {relative_path}")
 
 
-def _scenario_from_dict(root: Path, value: object) -> OracleScenarioManifest:
+def _scenario_from_dict(
+    root: Path,
+    value: object,
+    *,
+    validate_record_files: bool,
+) -> OracleScenarioManifest:
     if not isinstance(value, dict) or set(value) != _SCENARIO_KEYS:
         raise ValueError("oracle scenario has missing or unsupported fields")
     scenario_id = _validate_scenario_id(value["scenario_id"])
@@ -429,8 +434,9 @@ def _scenario_from_dict(root: Path, value: object) -> OracleScenarioManifest:
         raise ValueError("oracle input_sha256 must be a lowercase SHA-256 digest")
     if not isinstance(expected_sha256, str) or not _SHA256_RE.fullmatch(expected_sha256):
         raise ValueError("oracle expected_sha256 must be a lowercase SHA-256 digest")
-    _read_record_file(root, input_path, input_sha256, transaction_count, input_width)
-    _read_record_file(root, expected_path, expected_sha256, transaction_count, expected_width)
+    if validate_record_files:
+        _read_record_file(root, input_path, input_sha256, transaction_count, input_width)
+        _read_record_file(root, expected_path, expected_sha256, transaction_count, expected_width)
 
     return OracleScenarioManifest(
         scenario_id=scenario_id,
@@ -448,9 +454,7 @@ def _scenario_from_dict(root: Path, value: object) -> OracleScenarioManifest:
     )
 
 
-def load_oracle_bundle(root: Path) -> OracleBundle:
-    """Load a bundle only after validating its manifest, files, and hashes."""
-
+def _load_oracle_bundle(root: Path, *, validate_record_files: bool) -> OracleBundle:
     root = Path(root)
     manifest = _read_manifest(root)
     if manifest["schema_version"] != SCHEMA_VERSION:
@@ -465,7 +469,14 @@ def load_oracle_bundle(root: Path) -> OracleBundle:
     raw_scenarios = manifest["scenarios"]
     if not isinstance(raw_scenarios, list) or not raw_scenarios:
         raise ValueError("oracle bundle must contain at least one scenario")
-    scenarios = tuple(_scenario_from_dict(root, item) for item in raw_scenarios)
+    scenarios = tuple(
+        _scenario_from_dict(
+            root,
+            item,
+            validate_record_files=validate_record_files,
+        )
+        for item in raw_scenarios
+    )
     scenario_ids = [scenario.scenario_id.casefold() for scenario in scenarios]
     if len(scenario_ids) != len(set(scenario_ids)):
         raise ValueError("case-insensitive duplicate oracle scenario id in manifest")
@@ -484,6 +495,18 @@ def load_oracle_bundle(root: Path) -> OracleBundle:
         bundle_sha256=bundle_sha256,
         manifest=manifest,
     )
+
+
+def load_oracle_bundle(root: Path) -> OracleBundle:
+    """Load a bundle only after validating its manifest, files, and hashes."""
+
+    return _load_oracle_bundle(Path(root), validate_record_files=True)
+
+
+def load_oracle_manifest_commitment(root: Path) -> OracleBundle:
+    """Validate a publishable manifest commitment without requiring vector files."""
+
+    return _load_oracle_bundle(Path(root), validate_record_files=False)
 
 
 def sanitize_oracle_profile(bundle: OracleBundle) -> dict[str, Any]:

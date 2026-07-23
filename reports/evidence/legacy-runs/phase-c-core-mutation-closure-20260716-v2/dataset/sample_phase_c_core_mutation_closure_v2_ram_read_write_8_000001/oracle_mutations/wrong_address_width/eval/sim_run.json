@@ -1,0 +1,12 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "sim.out"
+  ],
+  "duration_seconds": 0.056823500082828104,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "stdout": "TEST_FAIL ram address2 expected=99 actual=0\nsim/tb_top.v:74: $finish called at 80000 (1ps)\n"
+}

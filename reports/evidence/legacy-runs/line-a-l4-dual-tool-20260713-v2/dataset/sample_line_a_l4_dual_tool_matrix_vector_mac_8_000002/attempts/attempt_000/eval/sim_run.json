@@ -1,0 +1,12 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "sim.out"
+  ],
+  "duration_seconds": 0.1005003999453038,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "TEST_PASS\nsim/tb_top.v:230: $finish called at 310000 (1ps)\n"
+}

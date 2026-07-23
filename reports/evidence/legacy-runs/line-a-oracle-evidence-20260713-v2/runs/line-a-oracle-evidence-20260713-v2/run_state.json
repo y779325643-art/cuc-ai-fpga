@@ -1,0 +1,27 @@
+{
+  "buckets": {
+    "rejected": [],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_line_a_oracle_evidence_fifo_8_000001",
+      "sample_line_a_oracle_evidence_uart_tx_8_000002",
+      "sample_line_a_oracle_evidence_spi_master_8_000003",
+      "sample_line_a_oracle_evidence_streaming_valid_ready_8_000004",
+      "sample_line_a_oracle_evidence_fir_filter_8_000005",
+      "sample_line_a_oracle_evidence_matrix_vector_mac_8_000006"
+    ]
+  },
+  "completed_samples": [
+    "sample_line_a_oracle_evidence_fifo_8_000001",
+    "sample_line_a_oracle_evidence_uart_tx_8_000002",
+    "sample_line_a_oracle_evidence_spi_master_8_000003",
+    "sample_line_a_oracle_evidence_streaming_valid_ready_8_000004",
+    "sample_line_a_oracle_evidence_fir_filter_8_000005",
+    "sample_line_a_oracle_evidence_matrix_vector_mac_8_000006"
+  ],
+  "config_fingerprint": "82af2075213c44405819541e37bf877a4975c6b31fa1bd317c069ffcebf9efb5",
+  "exports_refreshed": true,
+  "failure_types": {},
+  "next_index": 6,
+  "run_id": "line-a-oracle-evidence-20260713-v2"
+}

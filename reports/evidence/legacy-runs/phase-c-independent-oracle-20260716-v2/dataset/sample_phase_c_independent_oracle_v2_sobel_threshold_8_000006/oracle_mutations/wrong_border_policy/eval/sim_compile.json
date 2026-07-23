@@ -1,0 +1,19 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/sobel_line_buffer.v",
+    "rtl/sobel_window.v",
+    "rtl/sobel_threshold_core.v",
+    "sim/tb_top.v"
+  ],
+  "duration_seconds": 0.1687598000280559,
+  "exit_code": 0,
+  "stage": "sim_compile",
+  "status": "passed",
+  "stderr": "",
+  "stdout": ""
+}

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.2843208000995219,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "[radar_public_smoke] TEST_PASS\nsim/tb_top.v:219: $finish called at 226000 (1ps)\n[radar_hidden_tie_and_final] TEST_PASS\nsim/tb_top.v:219: $finish called at 286000 (1ps)\n[radar_randomized_seeded] TEST_PASS\nsim/tb_top.v:219: $finish called at 606000 (1ps)\n[radar_stress_reset_stall] TEST_PASS\nsim/tb_top.v:219: $finish called at 326000 (1ps)"
+}

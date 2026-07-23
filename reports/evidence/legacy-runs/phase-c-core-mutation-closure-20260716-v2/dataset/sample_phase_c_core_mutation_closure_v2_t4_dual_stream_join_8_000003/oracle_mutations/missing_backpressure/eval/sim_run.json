@@ -1,0 +1,12 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "sim.out"
+  ],
+  "duration_seconds": 0.10986950004007667,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "stdout": "TEST_FAIL join missing_backpressure in0_ready=1 in1_ready=0\nsim/tb_top.v:88: $finish called at 50000 (1ps)\n"
+}

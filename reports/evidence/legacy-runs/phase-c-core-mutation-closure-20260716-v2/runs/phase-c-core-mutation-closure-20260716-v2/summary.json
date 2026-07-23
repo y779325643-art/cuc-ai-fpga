@@ -1,0 +1,330 @@
+{
+  "attempt_stage_transition_breakdown": {},
+  "buckets": {
+    "rejected": [],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001",
+      "sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002",
+      "sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003",
+      "sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004"
+    ]
+  },
+  "calibration_matrix": {
+    "contract_skeleton_mode": {
+      "deterministic_template": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 4
+        },
+        "total": 4
+      }
+    },
+    "difficulty_tier": {
+      "T0": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 1
+        },
+        "total": 1
+      },
+      "T2": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 2
+        },
+        "total": 2
+      },
+      "T3": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 1
+        },
+        "total": 1
+      }
+    },
+    "evaluation_line": {
+      "line_a": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 4
+        },
+        "total": 4
+      }
+    },
+    "failure_family": {},
+    "failure_origin": {
+      "deterministic": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 4
+        },
+        "total": 4
+      }
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 4
+        },
+        "total": 4
+      }
+    },
+    "requirement_style": {
+      "simple_prompt": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 4
+        },
+        "total": 4
+      }
+    },
+    "source": {
+      "deterministic": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 4
+        },
+        "total": 4
+      }
+    },
+    "topology_id": {
+      "t2_stream_accumulator": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 1
+        },
+        "total": 1
+      },
+      "t4_dual_stream_join": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 1
+        },
+        "total": 1
+      },
+      "t5_vector_mac_pipeline": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L3": 1
+        },
+        "total": 1
+      }
+    }
+  },
+  "config_fingerprint": "a5bd8cb0757cd9ce442862de2a0ae39d98feb8ea9f7ba351014bc71c16aefd2a",
+  "contract_metrics": {
+    "cross_file_consistency_error_rate": 0.0,
+    "l0_contract_failures": 0,
+    "total_labeled": 4
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "file_level_passed": 0,
+      "official_eval_unit": false,
+      "project_level_pass_credit": false,
+      "rows": 33,
+      "standalone_pass_credit": false
+    }
+  },
+  "exports_refreshed": true,
+  "failure_family_breakdown": {},
+  "failure_types": {},
+  "freeze_fingerprint": "d5e5750bc801c049d8e26d48fcea6e186e1e88f9fbf5d6696c6e3726a8d78cc6",
+  "generated_his_credit": {
+    "credited": 4
+  },
+  "generated_his_pass_level_breakdown": {
+    "L3": 4
+  },
+  "h_stage": {
+    "h0": {
+      "fail": 0,
+      "pass": 4
+    },
+    "h1": {
+      "fail": 0,
+      "pass": 4
+    },
+    "h2": {
+      "fail": 0,
+      "pass": 4
+    },
+    "h3": {
+      "fail": 0,
+      "not_applicable": 1,
+      "pass": 3
+    }
+  },
+  "independent_oracle": {
+    "by_domain": {
+      "other": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 4,
+        "pass": 0
+      }
+    },
+    "by_family": {
+      "mac_array": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "single_dual_port_ram": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "stream_fork_join": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "valid_ready_stream_accumulator": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      }
+    },
+    "fail": 0,
+    "infrastructure_error": 0,
+    "model_denominator": 0,
+    "model_failures": 0,
+    "not_run": 4,
+    "pass": 0
+  },
+  "l4_commercial": {
+    "fail": 0,
+    "not_run": 4,
+    "pass": 0
+  },
+  "l4_commercial_skip_reasons": {
+    "disabled_by_config": 4
+  },
+  "l4_open": {
+    "fail": 0,
+    "not_run": 4,
+    "pass": 0
+  },
+  "l4_open_skip_reasons": {
+    "disabled_by_config": 4
+  },
+  "latent_testbench_issue_breakdown": {},
+  "levels": {
+    "l0": {
+      "fail": 0,
+      "pass": 4
+    },
+    "l1": {
+      "fail": 0,
+      "pass": 4
+    },
+    "l2": {
+      "fail": 0,
+      "pass": 4
+    },
+    "l3": {
+      "fail": 0,
+      "pass": 4
+    },
+    "l4_open": {
+      "fail": 0,
+      "not_run": 4,
+      "pass": 0
+    }
+  },
+  "line_b_targets": {
+    "l3_success_ratio": 1.0,
+    "max_samples": 4,
+    "repair_trajectory_ratio": 0.0
+  },
+  "metadata_breakdown": {
+    "contract_skeleton_mode": {
+      "deterministic_template": 4
+    },
+    "difficulty_tier": {
+      "T0": 1,
+      "T2": 2,
+      "T3": 1
+    },
+    "evaluation_line": {
+      "line_a": 4
+    },
+    "failure_origin": {
+      "deterministic": 4
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": 4
+    },
+    "requirement_style": {
+      "simple_prompt": 4
+    },
+    "source": {
+      "deterministic": 4
+    },
+    "topology_id": {
+      "t2_stream_accumulator": 1,
+      "t4_dual_stream_join": 1,
+      "t5_vector_mac_pipeline": 1
+    }
+  },
+  "next_index": 4,
+  "oracle_strength": {
+    "killed": 15,
+    "line_a_not_ready": 0,
+    "line_a_ready": 4,
+    "mutation_cases": 15,
+    "mutation_score": 1.0,
+    "non_scoreable_mutations": {},
+    "reference_passed": 4,
+    "samples": 4,
+    "surviving_mutations": {}
+  },
+  "pass_level_breakdown": {
+    "L3": 4
+  },
+  "repair_metrics": {
+    "automatic_pass_credit": 0,
+    "fixed_target": 0,
+    "invalid_edit_surface": 0,
+    "regressing_patches": 0,
+    "regression_rate": 0.0,
+    "total_patches": 0,
+    "valid_patches": 0
+  },
+  "run_id": "phase-c-core-mutation-closure-20260716-v2",
+  "toolchain_environment_failures": {},
+  "total_completed": 4,
+  "total_planned": 4
+}

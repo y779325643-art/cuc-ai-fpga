@@ -1,0 +1,1 @@
+Generate an 8-bit pattern_matcher FPGA RTL project.

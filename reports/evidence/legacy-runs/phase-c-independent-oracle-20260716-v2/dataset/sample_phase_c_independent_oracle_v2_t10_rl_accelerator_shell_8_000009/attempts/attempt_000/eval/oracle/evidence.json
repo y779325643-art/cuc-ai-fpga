@@ -1,0 +1,106 @@
+{
+  "bundle_sha256": "0d81ef12461af2b560e7061295c906c33cd4f546f2c7abc4371d21c55e49df3b",
+  "class_status": {
+    "hidden_deterministic": "pass",
+    "public_smoke": "pass",
+    "randomized_fixed_seed": "pass",
+    "stress": "pass"
+  },
+  "diagnostics": [],
+  "failure_origin": null,
+  "failure_type": null,
+  "family_id": "p_rl_qlearning_accel",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/00.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/00.expected.memh",
+        "+ORACLE_SCENARIO_ID=rl_public_config_samples",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=9"
+      ],
+      "duration_seconds": 0.07364700001198798,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "public_smoke",
+      "scenario_id": "rl_public_config_samples",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:322: $finish called at 250000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/01.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/01.expected.memh",
+        "+ORACLE_SCENARIO_ID=rl_hidden_enable_tie_register_map",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=10"
+      ],
+      "duration_seconds": 0.09034579992294312,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "rl_hidden_enable_tie_register_map",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:322: $finish called at 320000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/02.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/02.expected.memh",
+        "+ORACLE_SCENARIO_ID=rl_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=11"
+      ],
+      "duration_seconds": 0.0816359999589622,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "rl_randomized_seeded",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:322: $finish called at 380000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/03.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_12ada269f5874c648c9d6ee9d867c01c/03.expected.memh",
+        "+ORACLE_SCENARIO_ID=rl_stress_reset_stall_saturation_irq",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=17"
+      ],
+      "duration_seconds": 0.1512980000115931,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "stress",
+      "scenario_id": "rl_stress_reset_stall_saturation_irq",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "TEST_PASS\nsim/tb_top.v:322: $finish called at 500000 (1ps)\n"
+    }
+  ],
+  "status": "passed"
+}

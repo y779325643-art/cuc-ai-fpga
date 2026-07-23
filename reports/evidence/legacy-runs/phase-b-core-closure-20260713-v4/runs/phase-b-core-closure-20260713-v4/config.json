@@ -1,0 +1,177 @@
+{
+  "api_key_env": "DEEPSEEK_API_KEY",
+  "base_url": "https://api.deepseek.com",
+  "dataset_root": "artifacts\\agent\\candidates\\sr2fpga_phase_b_core_closure\\dataset",
+  "enable_openxc7_l4": false,
+  "env_file": "",
+  "export_root": "artifacts\\agent\\candidates\\sr2fpga_phase_b_core_closure\\exports",
+  "l4_commercial": {
+    "command": "vivado",
+    "run_policy": "never",
+    "target_part": "XC7Z020CLG484-2",
+    "timeout_seconds": 1800,
+    "tool": "vivado"
+  },
+  "l4_open": {
+    "board_profile": "ac820_zynq",
+    "family_ids": [],
+    "run_policy": "never",
+    "target_part": "XC7Z020CLG484-2",
+    "timeout_seconds": 600,
+    "tool": "openxc7_nextpnr"
+  },
+  "line_b_targets": {
+    "l3_success_ratio": 1.0,
+    "max_samples": 9,
+    "repair_trajectory_ratio": 0.0
+  },
+  "max_attempts": 1,
+  "model": "deterministic",
+  "platform": "generic_verilog",
+  "provider": "deterministic",
+  "refresh_exports": true,
+  "repair_provider": "none",
+  "run_independent_oracle": false,
+  "run_l4_commercial": false,
+  "run_l4_open": false,
+  "run_root": "artifacts\\agent\\runs\\sr2fpga_phase_b_core_closure",
+  "sample_id_prefix": "phase_b_core_closure",
+  "sources": {},
+  "tasks": [
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "uart_rx",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "uart_fifo_loopback",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "matched_filter",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "peak_detector",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "pulse_radar_signal",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "sobel_threshold",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "vision_defect_core",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "pattern_matcher",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "stream_trigger_filter",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    }
+  ]
+}

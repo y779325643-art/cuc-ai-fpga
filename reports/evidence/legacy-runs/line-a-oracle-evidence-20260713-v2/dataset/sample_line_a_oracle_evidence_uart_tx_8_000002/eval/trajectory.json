@@ -1,0 +1,1166 @@
+{
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ],
+      "exit_code": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/baud_tick_gen.v",
+        "rtl/uart_tx_core.v"
+      ],
+      "exit_code": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "<ABSOLUTE_PATH>"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "testbench_static_checker"
+      ],
+      "exit_code": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/baud_tick_gen.v",
+        "rtl/uart_tx_core.v",
+        "sim/tb_top.v"
+      ],
+      "exit_code": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "<ABSOLUTE_PATH>"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out"
+      ],
+      "exit_code": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "<ABSOLUTE_PATH>"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "-p",
+        "read_verilog rtl/top.v rtl/baud_tick_gen.v rtl/uart_tx_core.v; synth -top top; stat"
+      ],
+      "exit_code": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "<ABSOLUTE_PATH>"
+    }
+  ],
+  "data_release": {
+    "generated_his": "open_public",
+    "generated_project": "open_public",
+    "his_validation": "open_public",
+    "l4_commercial": "restricted_reference",
+    "l4_open": "open_public",
+    "open_tool_labels": "open_public",
+    "oracle_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "requirement": "open_public",
+    "vivado_raw_artifacts": "internal_only",
+    "vivado_structured_metadata": "restricted_reference"
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "source_episode_id": "sample_line_a_oracle_evidence_uart_tx_8_000002",
+      "standalone_pass_credit": false
+    }
+  },
+  "generated_his": {
+    "architecture": {
+      "difficulty_tier": "T0",
+      "oracle_kind": [
+        "protocol_checker",
+        "transaction_scoreboard"
+      ],
+      "skeleton_level": "S2_protocol_skeleton",
+      "style": "multi_module",
+      "submodules": [
+        "baud_tick_gen",
+        "uart_tx_core"
+      ],
+      "system_his_profile": "protocol_interface",
+      "task_family_id": "uart_tx",
+      "top_module": "top"
+    },
+    "artifacts": {
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/baud_tick_gen.v",
+        "rtl/uart_tx_core.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "top_module": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "components": [
+      {
+        "intent": "top-level integration wrapper for the generated RTL project",
+        "name": "top",
+        "parameters": [],
+        "ports": [
+          {
+            "dir": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "start",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "data",
+            "width": 8
+          },
+          {
+            "dir": "output",
+            "name": "tx",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "busy",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "done",
+            "width": 1
+          }
+        ],
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v"
+      },
+      {
+        "intent": "baud tick gen component in the generated RTL project",
+        "name": "baud_tick_gen",
+        "parameters": [],
+        "ports": [
+          {
+            "dir": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "enable",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "tick",
+            "width": 1
+          }
+        ],
+        "semantic_kind": "rtl_component",
+        "source": "rtl/baud_tick_gen.v"
+      },
+      {
+        "intent": "uart tx core component in the generated RTL project",
+        "name": "uart_tx_core",
+        "parameters": [],
+        "ports": [
+          {
+            "dir": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "baud_tick",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "start",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "data",
+            "width": 8
+          },
+          {
+            "dir": "output",
+            "name": "tx",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "busy",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "done",
+            "width": 1
+          }
+        ],
+        "semantic_kind": "rtl_component",
+        "source": "rtl/uart_tx_core.v"
+      }
+    ],
+    "connections": [
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "clk",
+        "to": {
+          "instance": "u_baud_tick_gen",
+          "module": "baud_tick_gen",
+          "port": "clk"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "clk",
+        "to": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "clk"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "rst_n",
+        "to": {
+          "instance": "u_baud_tick_gen",
+          "module": "baud_tick_gen",
+          "port": "rst_n"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "rst_n",
+        "to": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "rst_n"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "busy"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "busy",
+        "to": {
+          "module": "top",
+          "port": "busy"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "busy"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "busy",
+        "to": {
+          "instance": "u_baud_tick_gen",
+          "module": "baud_tick_gen",
+          "port": "enable"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_baud_tick_gen",
+          "module": "baud_tick_gen",
+          "port": "tick"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "baud_tick",
+        "to": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "baud_tick"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "start"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "start",
+        "to": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "start"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "data"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "data",
+        "to": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "data"
+        },
+        "width": 8
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "tx"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "tx",
+        "to": {
+          "module": "top",
+          "port": "tx"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_uart_tx_core",
+          "module": "uart_tx_core",
+          "port": "done"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "done",
+        "to": {
+          "module": "top",
+          "port": "done"
+        },
+        "width": 1
+      }
+    ],
+    "control_flow": [
+      {
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "kind": "reset_rule",
+        "name": "reset_state",
+        "related_flows": [],
+        "related_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_baud_tick_gen_primary_path",
+        "path": [
+          "top.data",
+          "u_baud_tick_gen.enable",
+          "u_baud_tick_gen.tick",
+          "top.tx"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      },
+      {
+        "name": "u_uart_tx_core_primary_path",
+        "path": [
+          "top.data",
+          "u_uart_tx_core.baud_tick",
+          "u_uart_tx_core.tx",
+          "top.tx"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "register"
+      }
+    ],
+    "instances": [
+      {
+        "clock": "clk",
+        "component": "baud_tick_gen",
+        "name": "u_baud_tick_gen",
+        "owns_state": [],
+        "parameter_values": {},
+        "reset": "rst_n"
+      },
+      {
+        "clock": "clk",
+        "component": "uart_tx_core",
+        "name": "u_uart_tx_core",
+        "owns_state": [],
+        "parameter_values": {},
+        "reset": "rst_n"
+      }
+    ],
+    "intent": {
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ],
+      "design_goal": "start launches an 8-bit LSB-first UART frame with start and stop bits",
+      "user_prompt": "Generate an 8-bit FPGA RTL project that implements a UART transmitter."
+    },
+    "interface": {
+      "clock": "clk",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "start",
+          "width": 1
+        },
+        {
+          "name": "data",
+          "width": 8
+        }
+      ],
+      "outputs": [
+        {
+          "name": "tx",
+          "width": 1
+        },
+        {
+          "name": "busy",
+          "width": 1
+        },
+        {
+          "name": "done",
+          "width": 1
+        }
+      ],
+      "reset": "rst_n",
+      "reset_polarity": "active_low"
+    },
+    "modules": [
+      {
+        "clock": "clk",
+        "intent": "top-level integration wrapper for the generated RTL project",
+        "name": "top",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "direction": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "start",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "data",
+            "width": 8
+          },
+          {
+            "direction": "output",
+            "name": "tx",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "busy",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "done",
+            "width": 1
+          }
+        ],
+        "reset": "rst_n",
+        "role": "top",
+        "source": "rtl/top.v"
+      },
+      {
+        "clock": "clk",
+        "intent": "baud tick gen component in the generated RTL project",
+        "name": "baud_tick_gen",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "direction": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "enable",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "tick",
+            "width": 1
+          }
+        ],
+        "reset": "rst_n",
+        "role": "submodule",
+        "source": "rtl/baud_tick_gen.v"
+      },
+      {
+        "clock": "clk",
+        "intent": "uart tx core component in the generated RTL project",
+        "name": "uart_tx_core",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "direction": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "baud_tick",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "start",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "data",
+            "width": 8
+          },
+          {
+            "direction": "output",
+            "name": "tx",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "busy",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "done",
+            "width": 1
+          }
+        ],
+        "reset": "rst_n",
+        "role": "submodule",
+        "source": "rtl/uart_tx_core.v"
+      }
+    ],
+    "platform": {
+      "board": "generic",
+      "clock_hz": 100000000,
+      "family": "generic",
+      "name": "generic_verilog",
+      "part": "generic",
+      "toolchain": "open_source",
+      "vendor": "generic"
+    },
+    "project": {
+      "description": "Generate an 8-bit FPGA RTL project that implements a UART transmitter.",
+      "name": "line_a_oracle_evidence_uart_tx_8_000002",
+      "top": "top"
+    },
+    "project_name": "line_a_oracle_evidence_uart_tx_8_000002",
+    "qor_intent": {
+      "resources": {
+        "bram": 0,
+        "dsp": 0,
+        "ff": 24,
+        "lut": 16
+      }
+    },
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ],
+    "resources": {
+      "expected": {
+        "bram": 0,
+        "dsp": 0,
+        "ff": 24,
+        "lut": 16
+      },
+      "optimization_goal": "area_first"
+    },
+    "schema_version": "system-his-v1.2",
+    "state": {
+      "buffers": [],
+      "counters": [],
+      "fsms": [],
+      "memories": [],
+      "registers": []
+    },
+    "system": {
+      "description": "Generate an 8-bit FPGA RTL project that implements a UART transmitter."
+    },
+    "task_type": "uart_tx",
+    "timing": {
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0
+    },
+    "top": {
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "interfaces": [],
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "start",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "data",
+          "width": 8
+        },
+        {
+          "dir": "output",
+          "name": "tx",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "busy",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "done",
+          "width": 1
+        }
+      ],
+      "resets": [
+        {
+          "kind": "async",
+          "name": "rst_n",
+          "polarity": "active_low"
+        }
+      ]
+    },
+    "top_ports": [
+      {
+        "direction": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "direction": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "direction": "input",
+        "name": "start",
+        "width": 1
+      },
+      {
+        "direction": "input",
+        "name": "data",
+        "width": 8
+      },
+      {
+        "direction": "output",
+        "name": "tx",
+        "width": 1
+      },
+      {
+        "direction": "output",
+        "name": "busy",
+        "width": 1
+      },
+      {
+        "direction": "output",
+        "name": "done",
+        "width": 1
+      }
+    ],
+    "verification": {
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when start launches an 8-bit LSB-first UART frame with start and stop bits.",
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when start launches an 8-bit LSB-first UART frame with start and stop bits.",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when start launches an 8-bit LSB-first UART frame with start and stop bits.",
+      "testbench": "sim/tb_top.v"
+    }
+  },
+  "his_validation": {
+    "h0": {
+      "diagnostics": [],
+      "status": "pass"
+    },
+    "h1": {
+      "diagnostics": [],
+      "status": "pass"
+    },
+    "h2": {
+      "diagnostics": [],
+      "status": "pass"
+    },
+    "h3": {
+      "diagnostics": [],
+      "metrics": {
+        "behavior_intent_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "clock_reset_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "constraint_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "interface_extraction": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "parameter_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "verification_intent_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "scores": {
+        "behavior_intent_fidelity": null,
+        "clock_reset_fidelity": null,
+        "constraint_fidelity": null,
+        "interface_extraction": null,
+        "parameter_fidelity": null,
+        "verification_intent_fidelity": null
+      },
+      "status": "not_applicable"
+    },
+    "his_source_used_for_generation": "generated",
+    "passed": true
+  },
+  "measurement": {
+    "final": {
+      "attempt_id": 0,
+      "automatic_pass_credit": true,
+      "failure_class": null,
+      "failure_type": "none",
+      "highest_level": "L3",
+      "measurement_point": "a_first_attempt_no_tools",
+      "pass_level": "L3"
+    },
+    "infrastructure_status": "scoreable",
+    "initial": {
+      "attempt_id": 0,
+      "automatic_pass_credit": true,
+      "failure_class": null,
+      "failure_type": "none",
+      "highest_level": "L3",
+      "measurement_point": "a_first_attempt_no_tools",
+      "pass_level": "L3"
+    },
+    "l4_open": {
+      "skip_reason": "disabled_by_config",
+      "status": "not_run"
+    },
+    "regressions": [],
+    "repair_attempts_used": 0,
+    "repair_eligible": false,
+    "repair_skip_reason": "initial_or_current_attempt_passed",
+    "repair_success": false,
+    "scoreable": true
+  },
+  "oracle_his": null,
+  "oracle_profile": {
+    "class_status": {},
+    "family_id": "uart_tx",
+    "hidden_vectors_exported": false,
+    "kind": "python_reference",
+    "scenario_counts": {},
+    "skip_reason": "disabled_by_config",
+    "status": "not_run"
+  },
+  "oracle_strength": {
+    "killed": 3,
+    "line_a_ready": true,
+    "mutation_cases": 3,
+    "mutation_details": {
+      "missing_stop_bit": {
+        "artifact_dir": "oracle_mutations/missing_stop_bit",
+        "failure_type": "functional_mismatch",
+        "first_failure_stage": "sim_run",
+        "mismatch_detail": [
+          {
+            "actual": "0",
+            "expected": "1"
+          }
+        ],
+        "outcome": "killed",
+        "sim_run_status": "failed"
+      },
+      "wrong_baud_tick": {
+        "artifact_dir": "oracle_mutations/wrong_baud_tick",
+        "failure_type": "functional_mismatch",
+        "first_failure_stage": "sim_run",
+        "mismatch_detail": [
+          {
+            "actual": "1",
+            "expected": "0"
+          }
+        ],
+        "outcome": "killed",
+        "sim_run_status": "failed"
+      },
+      "wrong_bit_order": {
+        "artifact_dir": "oracle_mutations/wrong_bit_order",
+        "failure_type": "functional_mismatch",
+        "first_failure_stage": "sim_run",
+        "mismatch_detail": [
+          {
+            "actual": "1",
+            "expected": "0"
+          }
+        ],
+        "outcome": "killed",
+        "sim_run_status": "failed"
+      }
+    },
+    "mutation_score": 1.0,
+    "non_scoreable_mutations": [],
+    "reference_pass": true,
+    "surviving_mutations": [],
+    "task_family": "uart_tx",
+    "threshold": 0.85
+  },
+  "project": {
+    "behavior_hole_count": 0,
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "files": {
+      "constraints/timing.sdc": {
+        "behavior_holes": 0,
+        "bytes": 54,
+        "origin": "deterministic"
+      },
+      "manifest.json": {
+        "behavior_holes": 0,
+        "bytes": 700,
+        "origin": "deterministic"
+      },
+      "reports/predicted_qor.json": {
+        "behavior_holes": 0,
+        "bytes": 479,
+        "origin": "model_generated"
+      },
+      "rtl/baud_tick_gen.v": {
+        "behavior_holes": 0,
+        "bytes": 416,
+        "origin": "model_generated"
+      },
+      "rtl/top.v": {
+        "behavior_holes": 0,
+        "bytes": 495,
+        "origin": "model_generated"
+      },
+      "rtl/uart_tx_core.v": {
+        "behavior_holes": 0,
+        "bytes": 1709,
+        "origin": "model_generated"
+      },
+      "sim/tb_top.v": {
+        "behavior_holes": 0,
+        "bytes": 1841,
+        "origin": "model_generated"
+      },
+      "system_his.json": {
+        "behavior_holes": 0,
+        "bytes": 15391,
+        "origin": "deterministic"
+      }
+    },
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/baud_tick_gen.v",
+      "rtl/top.v",
+      "rtl/uart_tx_core.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.23429
+  },
+  "req_his_fidelity": {
+    "behavior_intent_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "clock_reset_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "constraint_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "interface_extraction": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "parameter_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "verification_intent_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "sample_id": "sample_line_a_oracle_evidence_uart_tx_8_000002",
+  "verification": {
+    "l0": {
+      "errors": [],
+      "status": "pass"
+    },
+    "l1": {
+      "errors": [],
+      "status": "pass",
+      "warnings": []
+    },
+    "l2_core": {
+      "coverage": {
+        "scenario_profile": null,
+        "seeds": []
+      },
+      "hidden": {
+        "status": "fail"
+      },
+      "public": {
+        "mismatch_detail": [],
+        "status": "pass"
+      },
+      "status": "pass",
+      "stress": {
+        "status": "fail"
+      }
+    },
+    "l2s": {
+      "divergences": [],
+      "status": "not_run"
+    },
+    "l3": {
+      "bram": 0,
+      "bram_miss": false,
+      "cells": null,
+      "dsp": 0,
+      "ff": 20,
+      "lut": 0,
+      "status": "pass",
+      "warnings": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l4_commercial": {
+      "board_constraints_applied": false,
+      "bram": null,
+      "constraint_scope": "logical_only",
+      "drc_warnings": [],
+      "dsp": null,
+      "expected_board_drc_exceptions": [],
+      "ff": null,
+      "fmax_mhz": null,
+      "invalidating_critical_warnings": [],
+      "lut": null,
+      "methodology_warnings": [],
+      "official_board_ready": false,
+      "report_paths": [],
+      "runtime_sec": null,
+      "skip_reason": "disabled_by_config",
+      "status": "not_run",
+      "tool": "vivado",
+      "wns_ns": null
+    },
+    "l4_open": {
+      "board_constraints_applied": false,
+      "board_profile": "ac820_zynq",
+      "bram": null,
+      "constraint_scope": "logical_only",
+      "critical_warnings": [],
+      "drc_warnings": [],
+      "dsp": null,
+      "failure_family": null,
+      "ff": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "report_paths": [],
+      "runtime_sec": null,
+      "skip_reason": "disabled_by_config",
+      "status": "not_run",
+      "tool": "openxc7_nextpnr",
+      "wns_ns": null
+    },
+    "l5": {
+      "log_path": null,
+      "status": "not_run"
+    }
+  }
+}

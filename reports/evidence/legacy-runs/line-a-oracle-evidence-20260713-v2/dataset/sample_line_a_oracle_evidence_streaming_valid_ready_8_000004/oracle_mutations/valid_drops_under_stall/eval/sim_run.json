@@ -1,0 +1,12 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "sim.out"
+  ],
+  "duration_seconds": 0.09114579996094108,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "stdout": "TEST_FAIL stalled output was not held valid\nsim/tb_top.v:76: $finish called at 86000 (1ps)\n"
+}

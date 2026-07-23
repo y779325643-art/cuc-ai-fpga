@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.32401280000340194,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "[sobel_public_flat_vertical] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_hidden_horizontal_maximum] TEST_PASS\nsim/tb_top.v:399: $finish called at 665000 (1ps)\n[sobel_randomized_seeded] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_stress_reset_stall] TEST_PASS\nsim/tb_top.v:399: $finish called at 975000 (1ps)"
+}

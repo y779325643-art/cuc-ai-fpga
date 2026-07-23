@@ -1,0 +1,132 @@
+{
+  "config_fingerprint": "db954ada35cadd64f83d29106588c0075e3ad4fc4f6baf25470d40e4613114cd",
+  "freeze_fingerprint": "999b01c95ef43913bce58a20cd47a39398edef468267dff34a8cb517a6ea52bb",
+  "l4_family_ids": [],
+  "max_attempts": 1,
+  "run_id": "phase-c-independent-oracle-20260716-v2",
+  "sample_count": 9,
+  "samples": [
+    {
+      "family_id": "fir_filter",
+      "paired_requirement_id": "fir_filter:d5f8894bb884e983",
+      "requirement_sha256": "d5f8894bb884e98348f7c1d2b5ee9df2a6058d55c78e05cc17d200ff7a1370e7",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_fir_filter_8_000001",
+      "source": "deterministic",
+      "task_type": "fir_filter",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "matrix_vector_mac",
+      "paired_requirement_id": "matrix_vector_mac:c733fef9591e0132",
+      "requirement_sha256": "c733fef9591e013224301c680b6932d1f0c719d2792f0d734547afc0b765b813",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002",
+      "source": "deterministic",
+      "task_type": "matrix_vector_mac",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "matched_filter",
+      "paired_requirement_id": "matched_filter:c4b94ede5c0c50c1",
+      "requirement_sha256": "c4b94ede5c0c50c17188aaeebcdfcb72fbbafbf5e326e50b1e264bb4eaaa90c8",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_matched_filter_8_000003",
+      "source": "deterministic",
+      "task_type": "matched_filter",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "peak_detector",
+      "paired_requirement_id": "peak_detector:12e515d7cf00ae52",
+      "requirement_sha256": "12e515d7cf00ae521370f31dc3315b645f435e7359fe6b3eec6e8272b4b91992",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_peak_detector_8_000004",
+      "source": "deterministic",
+      "task_type": "peak_detector",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "p_pulse_radar_signal",
+      "paired_requirement_id": "p_pulse_radar_signal:3a693cff81148eeb",
+      "requirement_sha256": "3a693cff81148eebebdb3eeb646d9a7f9bdf548c73e06036a92fe74f990822cf",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005",
+      "source": "deterministic",
+      "task_type": "pulse_radar_signal",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "sobel_threshold",
+      "paired_requirement_id": "sobel_threshold:dd81d5b97b2b2736",
+      "requirement_sha256": "dd81d5b97b2b273641bbe694ab5df6eb80c0a48aae9eecde828c46d60d267f1d",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006",
+      "source": "deterministic",
+      "task_type": "sobel_threshold",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "p_vision_defect_core",
+      "paired_requirement_id": "p_vision_defect_core:7d4b324a37d2a2a1",
+      "requirement_sha256": "7d4b324a37d2a2a133a5ca0da3c1f8d1ce8e0844190b5eb0e98f90db889c34c2",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007",
+      "source": "deterministic",
+      "task_type": "vision_defect_core",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "qtable_update_core",
+      "paired_requirement_id": "qtable_update_core:ea79218b4b151500",
+      "requirement_sha256": "ea79218b4b151500af99614d4aaf3a6f049853f5eaf4f89ee82b88770a9ef327",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008",
+      "source": "deterministic",
+      "task_type": "composed_td_update_core",
+      "topology_id": "t6_td_update_core",
+      "width": 8
+    },
+    {
+      "family_id": "p_rl_qlearning_accel",
+      "paired_requirement_id": "p_rl_qlearning_accel:0f691a6f67242c4f",
+      "requirement_sha256": "0f691a6f67242c4fe27f2991b877863b4c8e591431e87010c052d6caf747bd5d",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009",
+      "source": "deterministic",
+      "task_type": "composed_rl_accelerator_shell",
+      "topology_id": "t10_rl_accelerator_shell",
+      "width": 8
+    }
+  ],
+  "schema_version": "sr2fpga-phase-d-freeze-v1",
+  "sources": [
+    {
+      "generation_mode": "",
+      "kind": "deterministic",
+      "max_tokens": 0,
+      "model": "deterministic",
+      "name": "deterministic",
+      "timeout_seconds": 120,
+      "transport_attempts": 3
+    }
+  ],
+  "timeouts": {
+    "l4_open": 600,
+    "source:deterministic": 120
+  },
+  "tool_versions": {
+    "iverilog": "Icarus Verilog version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "l4_open": "disabled",
+    "verilator": "Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)",
+    "vvp": "Icarus Verilog runtime version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "yosys": "Yosys 0.66+154 (git sha1 23aadd92a, Release, GNU /usr/bin/x86_64-w64-mingw32-g++ 13.2.1)"
+  }
+}

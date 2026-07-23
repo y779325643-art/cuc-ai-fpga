@@ -1,0 +1,12 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "sim.out"
+  ],
+  "duration_seconds": 0.062005599960684776,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "stdout": "TEST_FAIL expected 8 SCLK rising edges got 0\nsim/tb_top.v:91: $finish called at 196000 (1ps)\n"
+}

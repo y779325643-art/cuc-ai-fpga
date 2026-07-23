@@ -139,6 +139,17 @@ def test_plan_output_is_deterministic(tmp_path: Path) -> None:
     assert json.loads(first.read_text(encoding="utf-8")) == plan
 
 
+def test_empty_plan_is_complete() -> None:
+    plan = plan_legacy_evidence_migration.build_plan(
+        _ledger(_family("clean", ["reports/evidence/run/summary.json"])),
+        source_ledger="docs/evidence.json",
+    )
+
+    assert plan["status"] == "complete"
+    assert plan["planned_reference_count"] == 0
+    assert plan["run_groups"] == []
+
+
 def test_repository_plan_matches_active_evidence_ledger() -> None:
     ledger = json.loads(LEDGER_PATH.read_text(encoding="utf-8"))
     expected = plan_legacy_evidence_migration.build_plan(
@@ -147,6 +158,7 @@ def test_repository_plan_matches_active_evidence_ledger() -> None:
     )
 
     assert json.loads(PLAN_PATH.read_text(encoding="utf-8")) == expected
-    assert expected["reference_occurrence_count"] == 87
-    assert expected["unique_reference_count"] == 69
-    assert expected["planned_reference_count"] == 69
+    assert expected["status"] == "complete"
+    assert expected["reference_occurrence_count"] == 0
+    assert expected["unique_reference_count"] == 0
+    assert expected["planned_reference_count"] == 0

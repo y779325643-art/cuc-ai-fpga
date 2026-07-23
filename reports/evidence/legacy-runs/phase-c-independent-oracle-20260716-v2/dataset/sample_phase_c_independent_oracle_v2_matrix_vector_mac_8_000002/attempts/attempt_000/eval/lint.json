@@ -1,0 +1,17 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/dot_product_engine.v",
+    "rtl/mac_unit.v",
+    "rtl/vector_rom.v"
+  ],
+  "duration_seconds": 0.16450660000555217,
+  "exit_code": 0,
+  "stage": "lint",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "- V e r i l a t i o n   R e p o r t: Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)\n- Verilator: Built from 0.086 MB sources in 5 modules, into 0.023 MB in 3 C++ files needing 0.000 MB\n- Verilator: Walltime 0.071 s (elab=0.002, cvt=0.014, bld=0.000); cpu 0.000 s on 1 threads; allocated 13.953 MB\n"
+}

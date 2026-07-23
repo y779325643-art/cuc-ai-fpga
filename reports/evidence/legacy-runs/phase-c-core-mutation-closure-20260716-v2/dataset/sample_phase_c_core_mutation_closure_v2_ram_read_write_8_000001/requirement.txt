@@ -1,0 +1,1 @@
+Generate a 8-bit FPGA RTL project that implements a small synchronous RAM with read and write access.

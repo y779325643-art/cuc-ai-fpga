@@ -1,0 +1,106 @@
+{
+  "bundle_sha256": "ff087b41cab0c4dbd44d7558e7ddd5012875c469fad16427d46eba6b1f10e61b",
+  "class_status": {
+    "hidden_deterministic": "pass",
+    "public_smoke": "pass",
+    "randomized_fixed_seed": "pass",
+    "stress": "pass"
+  },
+  "diagnostics": [],
+  "failure_origin": null,
+  "failure_type": null,
+  "family_id": "matrix_vector_mac",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/00.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/00.expected.memh",
+        "+ORACLE_SCENARIO_ID=matrix_public_smoke",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=4"
+      ],
+      "duration_seconds": 0.06916250009089708,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "public_smoke",
+      "scenario_id": "matrix_public_smoke",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/00.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/00.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 136000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/01.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/01.expected.memh",
+        "+ORACLE_SCENARIO_ID=matrix_hidden_edges",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=8"
+      ],
+      "duration_seconds": 0.06724889995530248,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "matrix_hidden_edges",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/01.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/01.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 226000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/02.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/02.expected.memh",
+        "+ORACLE_SCENARIO_ID=matrix_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=12"
+      ],
+      "duration_seconds": 0.06486220005899668,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "matrix_randomized_seeded",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/02.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/02.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 336000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/03.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/03.expected.memh",
+        "+ORACLE_SCENARIO_ID=matrix_stress_reset_stall",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=10"
+      ],
+      "duration_seconds": 0.0667200000025332,
+      "exit_code": 0,
+      "failure_origin": null,
+      "failure_type": null,
+      "mismatch_detail": [],
+      "scenario_class": "stress",
+      "scenario_id": "matrix_stress_reset_stall",
+      "status": "passed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/03.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/03.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 326000 (1ps)\n"
+    }
+  ],
+  "status": "passed"
+}

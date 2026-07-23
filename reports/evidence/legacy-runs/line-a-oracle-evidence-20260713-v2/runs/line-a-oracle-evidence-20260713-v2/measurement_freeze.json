@@ -1,0 +1,99 @@
+{
+  "config_fingerprint": "82af2075213c44405819541e37bf877a4975c6b31fa1bd317c069ffcebf9efb5",
+  "freeze_fingerprint": "4801f039442e0fb5bf7b32667190a9a1b598cd8f07db80a0aa5c6915b6c1d961",
+  "l4_family_ids": [],
+  "max_attempts": 1,
+  "run_id": "line-a-oracle-evidence-20260713-v2",
+  "sample_count": 6,
+  "samples": [
+    {
+      "family_id": "sync_fifo",
+      "paired_requirement_id": "sync_fifo:f75b2e2678fdd06b",
+      "requirement_sha256": "f75b2e2678fdd06b3f0eeb4d82749e603209f3efa86ad3aa8cb53d85c5a11d39",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_line_a_oracle_evidence_fifo_8_000001",
+      "source": "deterministic",
+      "task_type": "fifo",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "uart_tx",
+      "paired_requirement_id": "uart_tx:7501cb144e40654f",
+      "requirement_sha256": "7501cb144e40654fbe4eb96c4a54aab97bfee29f9485a1576f2a229361600848",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_line_a_oracle_evidence_uart_tx_8_000002",
+      "source": "deterministic",
+      "task_type": "uart_tx",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "spi_master",
+      "paired_requirement_id": "spi_master:def0ce77586d64e4",
+      "requirement_sha256": "def0ce77586d64e4af55efbafd247708fb9bcfe634e56f5315585b7ec14f01bc",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_line_a_oracle_evidence_spi_master_8_000003",
+      "source": "deterministic",
+      "task_type": "spi_master",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "valid_ready_stream_stage",
+      "paired_requirement_id": "valid_ready_stream_stage:edeeaf3b61077795",
+      "requirement_sha256": "edeeaf3b61077795e20fed3a1fdebe1d8909994ab1dc50b8ff60043648bd8052",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_line_a_oracle_evidence_streaming_valid_ready_8_000004",
+      "source": "deterministic",
+      "task_type": "streaming_valid_ready",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "fir_filter",
+      "paired_requirement_id": "fir_filter:d5f8894bb884e983",
+      "requirement_sha256": "d5f8894bb884e98348f7c1d2b5ee9df2a6058d55c78e05cc17d200ff7a1370e7",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_line_a_oracle_evidence_fir_filter_8_000005",
+      "source": "deterministic",
+      "task_type": "fir_filter",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "matrix_vector_mac",
+      "paired_requirement_id": "matrix_vector_mac:c733fef9591e0132",
+      "requirement_sha256": "c733fef9591e013224301c680b6932d1f0c719d2792f0d734547afc0b765b813",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_line_a_oracle_evidence_matrix_vector_mac_8_000006",
+      "source": "deterministic",
+      "task_type": "matrix_vector_mac",
+      "topology_id": "",
+      "width": 8
+    }
+  ],
+  "schema_version": "sr2fpga-phase-d-freeze-v1",
+  "sources": [
+    {
+      "generation_mode": "",
+      "kind": "deterministic",
+      "max_tokens": 0,
+      "model": "deterministic",
+      "name": "deterministic",
+      "timeout_seconds": 120,
+      "transport_attempts": 3
+    }
+  ],
+  "timeouts": {
+    "l4_open": 600,
+    "source:deterministic": 120
+  },
+  "tool_versions": {
+    "iverilog": "Icarus Verilog version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "l4_open": "disabled",
+    "verilator": "Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)",
+    "vvp": "Icarus Verilog runtime version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "yosys": "Yosys 0.66+154 (git sha1 23aadd92a, Release, GNU /usr/bin/x86_64-w64-mingw32-g++ 13.2.1)"
+  }
+}

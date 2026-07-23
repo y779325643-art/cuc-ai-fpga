@@ -1,0 +1,22 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "TEST_FAIL expected sum=7 got 3\nsim/tb_top.v:77: $finish called at 97000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [
+      {
+        "actual": "3",
+        "expected": "sum=7"
+      }
+    ],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "<ABSOLUTE_PATH>",
+  "tool_status": "failed"
+}

@@ -1,0 +1,38 @@
+{
+  "clock": {
+    "frequency_hz": 100000000,
+    "name": "clk"
+  },
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "language": "verilog",
+  "project_name": "phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009",
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/host_config_bank.v",
+    "rtl/sample_capture_stage.v",
+    "rtl/policy_value_core.v",
+    "rtl/td_update_core.v",
+    "rtl/result_stream_stage.v"
+  ],
+  "target": {
+    "board": "generic",
+    "family": "generic",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "top_module": "top"
+}

@@ -1,0 +1,23 @@
+{
+  "assumptions": {
+    "data_width": 8,
+    "estimate_type": "pre_synthesis_model_prediction",
+    "no_vendor_ip": true,
+    "single_clock": true,
+    "task_type": "uart_tx"
+  },
+  "predicted": {
+    "bram": 0,
+    "confidence": 0.65,
+    "dsp": 0,
+    "ff": 24,
+    "fmax_mhz": 300.0,
+    "lut": 16
+  },
+  "project_name": "line_a_oracle_evidence_uart_tx_8_000002",
+  "target": {
+    "platform": "generic_verilog",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  }
+}

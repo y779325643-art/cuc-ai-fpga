@@ -1,0 +1,282 @@
+{
+  "bundle_sha256": "8da72dff4f03eb73d4aa948c2b98e2f7c0be4d6c077719f54693387a97247170",
+  "family_id": "p_pulse_radar_signal",
+  "reference_model": "python_signal_reference",
+  "reference_version": "1.0.0",
+  "scenarios": [
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 18,
+          "msb": 35,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 36,
+          "msb": 36,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 37,
+          "msb": 37,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "public/radar_public_smoke/expected.memh",
+      "expected_record_width_bits": 38,
+      "expected_sha256": "7b863119eaef689b14f20886b429a6fac464ddde7f122f7f25b0e3958724308a",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "public/radar_public_smoke/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "f5df83444665f16026e3f8f741a06f9712a48db72e9a038def670cc29a1b7838",
+      "scenario_class": "public_smoke",
+      "scenario_id": "radar_public_smoke",
+      "seed": 0,
+      "transaction_count": 6
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 18,
+          "msb": 35,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 36,
+          "msb": 36,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 37,
+          "msb": 37,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "hidden/radar_hidden_tie_and_final/expected.memh",
+      "expected_record_width_bits": 38,
+      "expected_sha256": "3374771c6345b2b4301fdb526a8d87555d857667a6fbfda59476e02fe91e6d24",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "hidden/radar_hidden_tie_and_final/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "24c6b02d37abc2fad61d975cfa952d57f19b041745357f8bc9701a467faa71b7",
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "radar_hidden_tie_and_final",
+      "seed": 254340918014363870090903824009633393923,
+      "transaction_count": 11
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 18,
+          "msb": 35,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 36,
+          "msb": 36,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 37,
+          "msb": 37,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "randomized/radar_randomized_seeded/expected.memh",
+      "expected_record_width_bits": 38,
+      "expected_sha256": "6ab5310d7720322545eac0ffe344fe1d3b956176eccb0a63c789b7873dd5fc0e",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "randomized/radar_randomized_seeded/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "ae819a2b68aafa37676cc055b1aa99e62453daddd8338bc1689d4c4048a4e95c",
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "radar_randomized_seeded",
+      "seed": 131821497367165007009166583070812114391,
+      "transaction_count": 24
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 18,
+          "msb": 35,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 36,
+          "msb": 36,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 37,
+          "msb": 37,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "stress/radar_stress_reset_stall/expected.memh",
+      "expected_record_width_bits": 38,
+      "expected_sha256": "5aea2b49fee56a540b523eed46f926b8dd9648c1ed972d6d265064931a8432d8",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "stress/radar_stress_reset_stall/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "643caabbccc2930481edbe167c8679c76b5731fa8f8909e1b536c3d32907a67b",
+      "scenario_class": "stress",
+      "scenario_id": "radar_stress_reset_stall",
+      "seed": 187053379718053471992427873633840778371,
+      "transaction_count": 8
+    }
+  ],
+  "schema_version": "sr2fpga-oracle-bundle-v1",
+  "task_parameters": {
+    "acc_width": 18,
+    "empty_result": [
+      0,
+      0,
+      0
+    ],
+    "template": [
+      -1,
+      2,
+      -3,
+      4
+    ],
+    "threshold": 10,
+    "tie_break": "first_index",
+    "width": 8
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "buckets": {
+    "rejected": [],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_phase_c_independent_oracle_v2_fir_filter_8_000001",
+      "sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002",
+      "sample_phase_c_independent_oracle_v2_matched_filter_8_000003",
+      "sample_phase_c_independent_oracle_v2_peak_detector_8_000004",
+      "sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005",
+      "sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006",
+      "sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007",
+      "sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008",
+      "sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009"
+    ]
+  },
+  "completed_samples": [
+    "sample_phase_c_independent_oracle_v2_fir_filter_8_000001",
+    "sample_phase_c_independent_oracle_v2_matrix_vector_mac_8_000002",
+    "sample_phase_c_independent_oracle_v2_matched_filter_8_000003",
+    "sample_phase_c_independent_oracle_v2_peak_detector_8_000004",
+    "sample_phase_c_independent_oracle_v2_pulse_radar_signal_8_000005",
+    "sample_phase_c_independent_oracle_v2_sobel_threshold_8_000006",
+    "sample_phase_c_independent_oracle_v2_vision_defect_core_8_000007",
+    "sample_phase_c_independent_oracle_v2_t6_td_update_core_8_000008",
+    "sample_phase_c_independent_oracle_v2_t10_rl_accelerator_shell_8_000009"
+  ],
+  "config_fingerprint": "db954ada35cadd64f83d29106588c0075e3ad4fc4f6baf25470d40e4613114cd",
+  "exports_refreshed": true,
+  "failure_types": {},
+  "next_index": 9,
+  "run_id": "phase-c-independent-oracle-20260716-v2"
+}

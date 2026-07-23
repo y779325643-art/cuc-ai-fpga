@@ -1,0 +1,17 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "[radar_public_smoke] SR2FPGA_MISMATCH {\"scenario_id\":\"radar_public_smoke\",\"class\":\"public_smoke\",\"item_index\":5,\"expected\":{\"found\":1,\"value\":\"0xa\",\"index\":0},\"actual\":{\"found\":\"0\",\"value\":\"0x0\",\"index\":\"0x0\",\"out_valid\":\"1\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:176: $finish called at 206000 (1ps)\n[radar_hidden_tie_and_final] TEST_PASS\nsim/tb_top.v:219: $finish called at 286000 (1ps)\n[radar_randomized_seeded] TEST_PASS\nsim/tb_top.v:219: $finish called at 606000 (1ps)\n[radar_stress_reset_stall] SR2FPGA_MISMATCH {\"scenario_id\":\"radar_stress_reset_stall\",\"class\":\"stress\",\"item_index\":2,\"expected\":{\"found\":1,\"value\":\"0xa\",\"index\":0},\"actual\":{\"found\":\"0\",\"value\":\"0x0\",\"index\":\"0x0\",\"out_valid\":\"1\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:176: $finish called at 136000 (1ps)",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "vvp",
+  "tool_status": "failed"
+}

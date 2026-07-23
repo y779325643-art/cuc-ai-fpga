@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.3969267999054864,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "[rl_public_config_samples] TEST_PASS\nsim/tb_top.v:322: $finish called at 250000 (1ps)\n[rl_hidden_enable_tie_register_map] TEST_PASS\nsim/tb_top.v:322: $finish called at 320000 (1ps)\n[rl_randomized_seeded] TEST_PASS\nsim/tb_top.v:322: $finish called at 380000 (1ps)\n[rl_stress_reset_stall_saturation_irq] TEST_PASS\nsim/tb_top.v:322: $finish called at 500000 (1ps)"
+}

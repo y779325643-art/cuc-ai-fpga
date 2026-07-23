@@ -13,7 +13,7 @@ Generated from the task catalog and evidence ledger. Target intent, current impl
 | Mutation-qualified families | 21 |
 | Independent Python oracle qualified | 9 |
 | OpenXC7 L4 pass | 2 |
-| Commercial L4 pass | 2 |
+| Commercial L4 pass | 0 |
 | L5 pass | 0 |
 
 ## Target Task Map
@@ -175,11 +175,11 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | Family | Mutation | Score | Independent oracle | Level | L4-open | L4-commercial | L5 | Run |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | clock_divider | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| binary_bcd_counter | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
+| binary_bcd_counter | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
 | button_debounce | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| simple_fsm | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
+| simple_fsm | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
 | seven_seg_scan | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| pwm_generator | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
+| pwm_generator | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
 | baud_generator | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | uart_tx | qualified (line-a-oracle-evidence-20260713-v2) | 1 | not_run | L3 | not_run | not_run | not_run | line-a-oracle-evidence-20260713-v2 |
 | uart_rx | qualified (phase-b-core-closure-20260713-v4) | 1 | not_run | L3 | not_run | not_run | not_run | phase-b-core-closure-20260713-v4 |
@@ -194,8 +194,8 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | valid_ready_stream_accumulator | qualified (phase-c-core-mutation-closure-20260716-v2) | 1 | not_run | L3 | not_run | not_run | not_run | phase-c-core-mutation-closure-20260716-v2 |
 | stream_fork_join | qualified (phase-c-core-mutation-closure-20260716-v2) | 1 | not_run | L3 | not_run | not_run | not_run | phase-c-core-mutation-closure-20260716-v2 |
 | mac_array | qualified (phase-c-core-mutation-closure-20260716-v2) | 1 | not_run | L3 | not_run | not_run | not_run | phase-c-core-mutation-closure-20260716-v2 |
-| matrix_vector_mac | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L4 | pass | pass | not_run | phase-c-independent-oracle-20260716-v2 |
-| fir_filter | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L4 | pass | pass | not_run | phase-c-independent-oracle-20260716-v2 |
+| matrix_vector_mac | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L4 | pass | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
+| fir_filter | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L4 | pass | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
 | spi_master | qualified (line-a-oracle-evidence-20260713-v2) | 1 | not_run | L3 | not_run | not_run | not_run | line-a-oracle-evidence-20260713-v2 |
 | i2c_master | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | line_frame_buffer | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
@@ -216,7 +216,7 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | qam_mapping_equalizer | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | qtable_update_core | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
 | small_nn_accelerator | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
-| rl_reward_policy_update | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
+| rl_reward_policy_update | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
 | cpu_axi_soc_shell | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | sensor_fusion_arbiter | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | memory_interrupt_controller | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
@@ -239,12 +239,12 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | p_sensor_fusion_obstacle | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_riscv_soc_shell | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 | p_rl_qlearning_accel | qualified (phase-c-independent-oracle-20260716-v2) | 1 | qualified | L3 | not_run | not_run | not_run | phase-c-independent-oracle-20260716-v2 |
-| alu_control_unit | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| crc_stream_checker | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| t1_event_counter | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| t8_replay_sample_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| t9_host_protocol_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
-| t12_replay_arbiter_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | codex-spec-final-clean-smoke-20260713 |
+| alu_control_unit | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
+| crc_stream_checker | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
+| t1_event_counter | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
+| t8_replay_sample_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
+| t9_host_protocol_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
+| t12_replay_arbiter_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
 
 ## Paper 1 Closure Gaps
 

@@ -1,0 +1,1 @@
+Generate an 8-bit matched_filter FPGA RTL project.

@@ -1,0 +1,727 @@
+{
+  "architecture": {
+    "difficulty_tier": "T3",
+    "oracle_kind": [
+      "python_numpy_golden",
+      "transaction_scoreboard"
+    ],
+    "skeleton_level": "S2_protocol_skeleton",
+    "style": "multi_module",
+    "submodules": [
+      "mac_unit",
+      "fir_filter_core"
+    ],
+    "system_his_profile": "streaming_datapath",
+    "task_family_id": "fir_filter",
+    "top_module": "top"
+  },
+  "artifacts": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/fir_filter_core.v",
+      "rtl/mac_unit.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "top_module": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "components": [
+    {
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "sample",
+          "width": 8
+        },
+        {
+          "dir": "input",
+          "name": "result_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "sample_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "result_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "result",
+          "width": 11
+        }
+      ],
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v"
+    },
+    {
+      "intent": "mac unit component in the generated RTL project",
+      "name": "mac_unit",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "dir": "input",
+          "name": "coefficient",
+          "width": 3
+        },
+        {
+          "dir": "input",
+          "name": "accum",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "dir": "output",
+          "name": "result",
+          "width": "[ACC_WIDTH-1:0]"
+        }
+      ],
+      "semantic_kind": "mac",
+      "source": "rtl/mac_unit.v"
+    },
+    {
+      "intent": "fir filter core component in the generated RTL project",
+      "name": "fir_filter_core",
+      "parameters": [
+        {
+          "default": 8,
+          "name": "WIDTH"
+        },
+        {
+          "default": 11,
+          "name": "RESULT_WIDTH"
+        }
+      ],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "sample_ready",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "dir": "output",
+          "name": "result_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "result_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "result",
+          "width": "[RESULT_WIDTH-1:0]"
+        }
+      ],
+      "semantic_kind": "rtl_component",
+      "source": "rtl/fir_filter_core.v"
+    }
+  ],
+  "connections": [
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "clk",
+      "to": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "clk"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "rst_n",
+      "to": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "rst_n"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "sample_valid"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "sample_valid",
+      "to": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "sample_valid"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "sample_ready"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "sample_ready",
+      "to": {
+        "module": "top",
+        "port": "sample_ready"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "sample"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "sample",
+      "to": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "sample"
+      },
+      "width": 8
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "result_valid"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "result_valid",
+      "to": {
+        "module": "top",
+        "port": "result_valid"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "result_ready"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "result_ready",
+      "to": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "result_ready"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_fir_filter_core",
+        "module": "fir_filter_core",
+        "port": "result"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "result",
+      "to": {
+        "module": "top",
+        "port": "result"
+      },
+      "width": "[RESULT_WIDTH-1:0]"
+    }
+  ],
+  "control_flow": [
+    {
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "kind": "reset_rule",
+      "name": "reset_state",
+      "related_flows": [],
+      "related_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "u_fir_filter_core_primary_path",
+      "path": [
+        "top.sample_valid",
+        "u_fir_filter_core.sample_valid",
+        "u_fir_filter_core.sample_ready",
+        "top.result_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "valid_ready",
+      "timing": {
+        "initiation_interval": 1,
+        "latency_cycles": 1,
+        "throughput": "one transfer per cycle when ready is asserted"
+      }
+    }
+  ],
+  "instances": [
+    {
+      "clock": "clk",
+      "component": "fir_filter_core",
+      "name": "u_fir_filter_core",
+      "owns_state": [],
+      "parameter_values": {
+        "RESULT_WIDTH": 11,
+        "WIDTH": 8
+      },
+      "reset": "rst_n"
+    }
+  ],
+  "intent": {
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ],
+    "design_goal": "signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure",
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter."
+  },
+  "interface": {
+    "clock": "clk",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "sample_valid",
+        "width": 1
+      },
+      {
+        "name": "sample",
+        "width": 8
+      },
+      {
+        "name": "result_ready",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "sample_ready",
+        "width": 1
+      },
+      {
+        "name": "result_valid",
+        "width": 1
+      },
+      {
+        "name": "result",
+        "width": 11
+      }
+    ],
+    "reset": "rst_n",
+    "reset_polarity": "active_low"
+  },
+  "modules": [
+    {
+      "clock": "clk",
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "sample",
+          "width": 8
+        },
+        {
+          "direction": "input",
+          "name": "result_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "sample_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "result_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "result",
+          "width": 11
+        }
+      ],
+      "reset": "rst_n",
+      "role": "top",
+      "source": "rtl/top.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "mac unit component in the generated RTL project",
+      "name": "mac_unit",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "direction": "input",
+          "name": "coefficient",
+          "width": 3
+        },
+        {
+          "direction": "input",
+          "name": "accum",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "direction": "output",
+          "name": "result",
+          "width": "[ACC_WIDTH-1:0]"
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/mac_unit.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "fir filter core component in the generated RTL project",
+      "name": "fir_filter_core",
+      "parameters": {
+        "RESULT_WIDTH": 11,
+        "WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "WIDTH",
+          "value": 8
+        },
+        {
+          "name": "RESULT_WIDTH",
+          "value": 11
+        }
+      ],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "sample_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "sample_ready",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "direction": "output",
+          "name": "result_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "result_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "result",
+          "width": "[RESULT_WIDTH-1:0]"
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/fir_filter_core.v"
+    }
+  ],
+  "platform": {
+    "board": "generic",
+    "clock_hz": 100000000,
+    "family": "generic",
+    "name": "generic_verilog",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "project": {
+    "description": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter.",
+    "name": "phase_c_independent_oracle_v2_fir_filter_8_000001",
+    "top": "top"
+  },
+  "project_name": "phase_c_independent_oracle_v2_fir_filter_8_000001",
+  "qor_intent": {
+    "resources": {
+      "bram": 0,
+      "dsp": 2,
+      "ff": 24,
+      "lut": 24
+    }
+  },
+  "resets": [
+    {
+      "kind": "async",
+      "name": "rst_n",
+      "polarity": "active_low"
+    }
+  ],
+  "resources": {
+    "expected": {
+      "bram": 0,
+      "dsp": 2,
+      "ff": 24,
+      "lut": 24
+    },
+    "optimization_goal": "area_first"
+  },
+  "schema_version": "system-his-v1.2",
+  "state": {
+    "buffers": [],
+    "counters": [],
+    "fsms": [],
+    "memories": [],
+    "registers": []
+  },
+  "system": {
+    "description": "Generate an 8-bit FPGA RTL project that implements a small streaming FIR filter."
+  },
+  "task_type": "fir_filter",
+  "timing": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0
+  },
+  "top": {
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "interfaces": [],
+    "name": "top",
+    "parameters": [],
+    "ports": [
+      {
+        "dir": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "sample_valid",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "sample",
+        "width": 8
+      },
+      {
+        "dir": "input",
+        "name": "result_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "sample_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "result_valid",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "result",
+        "width": 11
+      }
+    ],
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ]
+  },
+  "top_ports": [
+    {
+      "direction": "input",
+      "name": "clk",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rst_n",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "sample_valid",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "sample",
+      "width": 8
+    },
+    {
+      "direction": "input",
+      "name": "result_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "sample_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "result_valid",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "result",
+      "width": 11
+    }
+  ],
+  "verification": {
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure.",
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure.",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when signed valid-ready input samples produce a three-tap [3, -2, 1] FIR result, and the output remains stable under backpressure.",
+    "testbench": "sim/tb_top.v"
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "command": [
+    "testbench_static_checker"
+  ],
+  "duration_seconds": 0.0,
+  "exit_code": 0,
+  "stage": "testbench_static_check",
+  "status": "passed",
+  "stderr": "",
+  "stdout": ""
+}

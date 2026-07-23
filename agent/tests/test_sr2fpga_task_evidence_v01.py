@@ -705,7 +705,7 @@ def test_qualified_mutation_evidence_matches_the_proven_twenty_one_family_set():
             assert entry.mutation_evidence.run_id == expected_run
 
 
-def test_l4_pass_evidence_matches_the_proven_dual_tool_family_set():
+def test_l4_pass_evidence_matches_the_proven_openxc7_family_set():
     entries = load_task_family_evidence()
     expected = {"fir_filter", "matrix_vector_mac"}
     l4_pass = {
@@ -718,7 +718,7 @@ def test_l4_pass_evidence_matches_the_proven_dual_tool_family_set():
     for entry in entries:
         if entry.family_id in expected:
             assert entry.l4_open_status == "pass"
-            assert entry.l4_commercial_status == "pass"
+            assert entry.l4_commercial_status == "not_run"
             assert entry.highest_verified_level == "L4"
             assert entry.last_verified_run == "phase-c-independent-oracle-20260716-v2"
             assert entry.independent_oracle_evidence.status == "qualified"
@@ -729,12 +729,14 @@ def test_l4_pass_evidence_matches_the_proven_dual_tool_family_set():
                 for reference in entry.evidence_refs
             )
             assert any(
-                "tmp/sr2fpga_line_a_l4_dual_tool/dataset/" in reference
+                "reports/evidence/legacy-runs/"
+                "line-a-l4-dual-tool-20260713-v2/dataset/" in reference
                 and reference.endswith("/eval/trajectory.json")
                 for reference in entry.evidence_refs
             )
             assert any(
-                "tmp/sr2fpga_line_a_l4_dual_tool/dataset/" in reference
+                "reports/evidence/legacy-runs/"
+                "line-a-l4-dual-tool-20260713-v2/dataset/" in reference
                 and reference.endswith("/eval/labels.json")
                 for reference in entry.evidence_refs
             )
@@ -860,6 +862,26 @@ def test_local_artifact_audit_accepts_qualified_independent_oracle_artifacts(tmp
     entry, run_root, _, _ = _qualified_independent_oracle_audit_fixture(tmp_path)
 
     assert audit_local_run_artifacts((entry,), run_root) == ()
+
+
+def test_local_artifact_audit_accepts_withheld_independent_oracle_vectors(tmp_path):
+    entry, run_root, _, oracle_root = _qualified_independent_oracle_audit_fixture(tmp_path)
+    manifest = json.loads((oracle_root / "manifest.json").read_text(encoding="utf-8"))
+    for scenario in manifest["scenarios"]:
+        (oracle_root / scenario["input_path"]).unlink()
+        (oracle_root / scenario["expected_path"]).unlink()
+
+    assert audit_local_run_artifacts((entry,), run_root) == ()
+
+
+def test_local_artifact_audit_rejects_partial_independent_oracle_vectors(tmp_path):
+    entry, run_root, _, oracle_root = _qualified_independent_oracle_audit_fixture(tmp_path)
+    manifest = json.loads((oracle_root / "manifest.json").read_text(encoding="utf-8"))
+    (oracle_root / manifest["scenarios"][0]["input_path"]).unlink()
+
+    issues = audit_local_run_artifacts((entry,), run_root)
+
+    assert any("partial record files" in issue for issue in issues)
 
 
 def test_local_artifact_audit_rejects_qualified_mutation_without_artifact_references(tmp_path):
@@ -1252,7 +1274,13 @@ def test_phase_b_core_closure_evidence_is_retained_or_superseded_by_phase_c():
         assert entry.evidence_refs[0].endswith("/summary.json")
         assert entry.evidence_refs[1].endswith("/eval/trajectory.json")
         assert entry.evidence_refs[2].endswith("/oracle_mutations")
-        assert all(reference.startswith("tmp/sr2fpga_phase_b_core_closure/v4/") for reference in entry.evidence_refs)
+        assert all(
+            reference.startswith(
+                "reports/evidence/legacy-runs/"
+                "phase-b-core-closure-20260713-v4/"
+            )
+            for reference in entry.evidence_refs
+        )
         assert entry.last_verified_run == "phase-b-core-closure-20260713-v4"
 
     for family_id in phase_c_promoted:

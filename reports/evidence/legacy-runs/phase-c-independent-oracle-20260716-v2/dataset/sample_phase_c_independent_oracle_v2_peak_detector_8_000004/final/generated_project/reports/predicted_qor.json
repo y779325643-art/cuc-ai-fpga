@@ -1,0 +1,23 @@
+{
+  "assumptions": {
+    "data_width": 8,
+    "estimate_type": "pre_synthesis_model_prediction",
+    "no_vendor_ip": true,
+    "single_clock": true,
+    "task_type": "peak_detector"
+  },
+  "predicted": {
+    "bram": 0,
+    "confidence": 0.65,
+    "dsp": 0,
+    "ff": 35,
+    "fmax_mhz": 300.0,
+    "lut": 16
+  },
+  "project_name": "phase_c_independent_oracle_v2_peak_detector_8_000004",
+  "target": {
+    "platform": "generic_verilog",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  }
+}

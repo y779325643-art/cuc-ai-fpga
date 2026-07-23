@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.29648360004648566,
+  "exit_code": 1,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "",
+  "stdout": "[matrix_public_smoke] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/00.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/00.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 136000 (1ps)\n[matrix_hidden_edges] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/01.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/01.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"matrix_hidden_edges\",\"class\":\"hidden_deterministic\",\"item_index\":3,\"expected\":\"0x37a\",\"actual\":\"0x7a\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:139: $finish called at 116000 (1ps)\n[matrix_randomized_seeded] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/02.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/02.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"matrix_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":7,\"expected\":\"0xf4a\",\"actual\":\"0x4a\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:139: $finish called at 216000 (1ps)\n[matrix_stress_reset_stall] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/03.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_2f3b0167c66e42179a15e6bad6da1165/03.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"matrix_stress_reset_stall\",\"class\":\"stress\",\"item_index\":5,\"expected\":\"0x37a\",\"actual\":\"0x7a\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:139: $finish called at 186000 (1ps)"
+}

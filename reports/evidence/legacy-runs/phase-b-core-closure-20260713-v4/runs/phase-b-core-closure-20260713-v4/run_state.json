@@ -1,0 +1,34 @@
+{
+  "buckets": {
+    "rejected": [
+      "sample_phase_b_core_closure_pulse_radar_signal_8_000005",
+      "sample_phase_b_core_closure_vision_defect_core_8_000007"
+    ],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_phase_b_core_closure_uart_rx_8_000001",
+      "sample_phase_b_core_closure_uart_fifo_loopback_8_000002",
+      "sample_phase_b_core_closure_matched_filter_8_000003",
+      "sample_phase_b_core_closure_peak_detector_8_000004",
+      "sample_phase_b_core_closure_sobel_threshold_8_000006",
+      "sample_phase_b_core_closure_pattern_matcher_8_000008",
+      "sample_phase_b_core_closure_stream_trigger_filter_8_000009"
+    ]
+  },
+  "completed_samples": [
+    "sample_phase_b_core_closure_uart_rx_8_000001",
+    "sample_phase_b_core_closure_uart_fifo_loopback_8_000002",
+    "sample_phase_b_core_closure_matched_filter_8_000003",
+    "sample_phase_b_core_closure_peak_detector_8_000004",
+    "sample_phase_b_core_closure_pulse_radar_signal_8_000005",
+    "sample_phase_b_core_closure_sobel_threshold_8_000006",
+    "sample_phase_b_core_closure_vision_defect_core_8_000007",
+    "sample_phase_b_core_closure_pattern_matcher_8_000008",
+    "sample_phase_b_core_closure_stream_trigger_filter_8_000009"
+  ],
+  "config_fingerprint": "1fceabc3040382ccdc04eca23975cab9f26dd92ce0aa667d248927ad9058e669",
+  "exports_refreshed": true,
+  "failure_types": {},
+  "next_index": 9,
+  "run_id": "phase-b-core-closure-20260713-v4"
+}

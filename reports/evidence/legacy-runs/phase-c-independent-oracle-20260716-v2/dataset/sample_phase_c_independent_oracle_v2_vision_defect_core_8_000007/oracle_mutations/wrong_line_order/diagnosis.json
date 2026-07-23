@@ -1,0 +1,17 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "[vision_public_absent_present] SR2FPGA_MISMATCH {\"scenario_id\":\"vision_public_absent_present\",\"class\":\"public_smoke\",\"item_index\":6,\"expected\":{\"edge\":0,\"out_last\":0,\"defect_present\":0,\"first_x\":0,\"first_y\":0},\"actual\":{\"edge\":\"x\",\"out_last\":\"0\",\"defect_present\":\"0\",\"first_x\":0,\"first_y\":0}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:86: $finish called at 315000 (1ps)\n[vision_hidden_order_threshold] SR2FPGA_MISMATCH {\"scenario_id\":\"vision_hidden_order_threshold\",\"class\":\"hidden_deterministic\",\"item_index\":6,\"expected\":{\"edge\":1,\"out_last\":0,\"defect_present\":0,\"first_x\":0,\"first_y\":0},\"actual\":{\"edge\":\"x\",\"out_last\":\"0\",\"defect_present\":\"0\",\"first_x\":0,\"first_y\":0}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:86: $finish called at 315000 (1ps)\n[vision_randomized_seeded] SR2FPGA_MISMATCH {\"scenario_id\":\"vision_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":6,\"expected\":{\"edge\":1,\"out_last\":0,\"defect_present\":0,\"first_x\":0,\"first_y\":0},\"actual\":{\"edge\":\"x\",\"out_last\":\"0\",\"defect_present\":\"0\",\"first_x\":0,\"first_y\":0}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:86: $finish called at 315000 (1ps)\n[vision_stress_reset_stall] SR2FPGA_MISMATCH {\"scenario_id\":\"vision_stress_reset_stall\",\"class\":\"stress\",\"item_index\":11,\"expected\":{\"edge\":0,\"out_last\":0,\"defect_present\":0,\"first_x\":0,\"first_y\":0},\"actual\":{\"edge\":\"x\",\"out_last\":\"0\",\"defect_present\":\"0\",\"first_x\":0,\"first_y\":0}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:86: $finish called at 575000 (1ps)",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "vvp",
+  "tool_status": "failed"
+}

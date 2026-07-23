@@ -1,0 +1,765 @@
+{
+  "architecture": {
+    "difficulty_tier": "T3",
+    "obligations": [
+      "two_line_buffer_window",
+      "row_major_zero_border",
+      "signed_sobel_magnitude",
+      "edge_axis_semantics",
+      "in_last_gated_frame_flush",
+      "one_entry_output_stall_stability"
+    ],
+    "oracle_kind": [
+      "image_golden"
+    ],
+    "skeleton_level": "S3_architecture_skeleton",
+    "style": "multi_module",
+    "submodules": [
+      "sobel_line_buffer",
+      "sobel_window",
+      "sobel_threshold_core"
+    ],
+    "system_his_profile": "image_pipeline",
+    "task_family_id": "sobel_threshold",
+    "top_module": "top"
+  },
+  "artifacts": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/sobel_line_buffer.v",
+      "rtl/sobel_window.v",
+      "rtl/sobel_threshold_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "top_module": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "components": [
+    {
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_pixel",
+          "width": 8
+        },
+        {
+          "dir": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_edge",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "edge_axis",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_last",
+          "width": 1
+        }
+      ],
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v"
+    },
+    {
+      "intent": "sobel line buffer component in the generated RTL project",
+      "name": "sobel_line_buffer",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "write_en",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "address",
+          "width": "[ADDR_WIDTH-1:0]"
+        },
+        {
+          "dir": "input",
+          "name": "write_pixel",
+          "width": 8
+        },
+        {
+          "dir": "output",
+          "name": "read_pixel",
+          "width": 8
+        }
+      ],
+      "semantic_kind": "buffer",
+      "source": "rtl/sobel_line_buffer.v"
+    },
+    {
+      "intent": "sobel window component in the generated RTL project",
+      "name": "sobel_window",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "accept",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "row_index",
+          "width": 16
+        },
+        {
+          "dir": "input",
+          "name": "column_index",
+          "width": 16
+        },
+        {
+          "dir": "input",
+          "name": "in_pixel",
+          "width": 8
+        },
+        {
+          "dir": "output",
+          "name": "window_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "gx",
+          "width": 11
+        },
+        {
+          "dir": "output",
+          "name": "gy",
+          "width": 11
+        }
+      ],
+      "semantic_kind": "rtl_component",
+      "source": "rtl/sobel_window.v"
+    },
+    {
+      "intent": "sobel threshold core component in the generated RTL project",
+      "name": "sobel_threshold_core",
+      "parameters": [
+        {
+          "default": "THRESHOLD",
+          "name": "THRESHOLD"
+        }
+      ],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "gx",
+          "width": 11
+        },
+        {
+          "dir": "input",
+          "name": "gy",
+          "width": 11
+        },
+        {
+          "dir": "output",
+          "name": "out_edge",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "edge_axis",
+          "width": 1
+        }
+      ],
+      "semantic_kind": "rtl_component",
+      "source": "rtl/sobel_threshold_core.v"
+    }
+  ],
+  "connections": [],
+  "control_flow": [
+    {
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "kind": "reset_rule",
+      "name": "reset_state",
+      "related_flows": [],
+      "related_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "u_sobel_threshold_core_primary_path",
+      "path": [
+        "top.in_valid",
+        "u_sobel_threshold_core.gx",
+        "u_sobel_threshold_core.out_edge",
+        "top.out_valid"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register"
+    }
+  ],
+  "instances": [
+    {
+      "clock": "clk",
+      "component": "sobel_threshold_core",
+      "name": "u_sobel_threshold_core",
+      "owns_state": [],
+      "parameter_values": {
+        "THRESHOLD": "THRESHOLD"
+      },
+      "reset": "rst_n"
+    }
+  ],
+  "intent": {
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ],
+    "design_goal": "each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall",
+    "user_prompt": "Generate an 8-bit sobel_threshold FPGA RTL project."
+  },
+  "interface": {
+    "clock": "clk",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "name": "in_pixel",
+        "width": 8
+      },
+      {
+        "name": "in_last",
+        "width": 1
+      },
+      {
+        "name": "out_ready",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "name": "out_edge",
+        "width": 1
+      },
+      {
+        "name": "edge_axis",
+        "width": 1
+      },
+      {
+        "name": "out_last",
+        "width": 1
+      }
+    ],
+    "reset": "rst_n",
+    "reset_polarity": "active_low"
+  },
+  "modules": [
+    {
+      "clock": "clk",
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_pixel",
+          "width": 8
+        },
+        {
+          "direction": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_edge",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "edge_axis",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_last",
+          "width": 1
+        }
+      ],
+      "reset": "rst_n",
+      "role": "top",
+      "source": "rtl/top.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "sobel line buffer component in the generated RTL project",
+      "name": "sobel_line_buffer",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "write_en",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "address",
+          "width": "[ADDR_WIDTH-1:0]"
+        },
+        {
+          "direction": "input",
+          "name": "write_pixel",
+          "width": 8
+        },
+        {
+          "direction": "output",
+          "name": "read_pixel",
+          "width": 8
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/sobel_line_buffer.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "sobel window component in the generated RTL project",
+      "name": "sobel_window",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "accept",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "row_index",
+          "width": 16
+        },
+        {
+          "direction": "input",
+          "name": "column_index",
+          "width": 16
+        },
+        {
+          "direction": "input",
+          "name": "in_pixel",
+          "width": 8
+        },
+        {
+          "direction": "output",
+          "name": "window_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "gx",
+          "width": 11
+        },
+        {
+          "direction": "output",
+          "name": "gy",
+          "width": 11
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/sobel_window.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "sobel threshold core component in the generated RTL project",
+      "name": "sobel_threshold_core",
+      "parameters": {
+        "THRESHOLD": "THRESHOLD"
+      },
+      "params": [
+        {
+          "name": "THRESHOLD",
+          "value": "THRESHOLD"
+        }
+      ],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "gx",
+          "width": 11
+        },
+        {
+          "direction": "input",
+          "name": "gy",
+          "width": 11
+        },
+        {
+          "direction": "output",
+          "name": "out_edge",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "edge_axis",
+          "width": 1
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/sobel_threshold_core.v"
+    }
+  ],
+  "platform": {
+    "board": "generic",
+    "clock_hz": 100000000,
+    "family": "generic",
+    "name": "generic_verilog",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "project": {
+    "description": "Generate an 8-bit sobel_threshold FPGA RTL project.",
+    "name": "phase_c_independent_oracle_v2_sobel_threshold_8_000006",
+    "top": "top"
+  },
+  "project_name": "phase_c_independent_oracle_v2_sobel_threshold_8_000006",
+  "qor_intent": {
+    "resources": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 80,
+      "lut": 96
+    }
+  },
+  "resets": [
+    {
+      "kind": "async",
+      "name": "rst_n",
+      "polarity": "active_low"
+    }
+  ],
+  "resources": {
+    "expected": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 80,
+      "lut": 96
+    },
+    "optimization_goal": "area_first"
+  },
+  "schema_version": "system-his-v1.2",
+  "state": {
+    "buffers": [],
+    "counters": [],
+    "fsms": [],
+    "memories": [],
+    "registers": []
+  },
+  "system": {
+    "description": "Generate an 8-bit sobel_threshold FPGA RTL project."
+  },
+  "task_type": "sobel_threshold",
+  "timing": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0
+  },
+  "top": {
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "interfaces": [],
+    "name": "top",
+    "parameters": [
+      {
+        "default": 5,
+        "name": "IMAGE_WIDTH"
+      },
+      {
+        "default": 5,
+        "name": "IMAGE_HEIGHT"
+      },
+      {
+        "default": 100,
+        "name": "THRESHOLD"
+      }
+    ],
+    "ports": [
+      {
+        "dir": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "in_pixel",
+        "width": 8
+      },
+      {
+        "dir": "input",
+        "name": "in_last",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "out_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "out_edge",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "edge_axis",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "out_last",
+        "width": 1
+      }
+    ],
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ]
+  },
+  "top_ports": [
+    {
+      "direction": "input",
+      "name": "clk",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rst_n",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "in_valid",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "in_pixel",
+      "width": 8
+    },
+    {
+      "direction": "input",
+      "name": "in_last",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "out_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "in_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "out_valid",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "out_edge",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "edge_axis",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "out_last",
+      "width": 1
+    }
+  ],
+  "verification": {
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall.",
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall.",
+    "scenarios": [
+      "reset",
+      "flat_image",
+      "axis_sensitive_edges",
+      "threshold_boundary",
+      "border_policy",
+      "stall_stability",
+      "frame_boundary",
+      "missing_final_in_last",
+      "reset_during_frame"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when each accepted 5x5 row-major 8-bit frame emits exactly 25 row-major threshold bits with zero borders; the final input must assert in_last before bottom-border flush and out_last; edge_axis is one only when abs(Gx) is at least abs(Gy), and all output fields remain stable under stall.",
+    "testbench": "sim/tb_top.v"
+  }
+}

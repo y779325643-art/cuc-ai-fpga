@@ -1,0 +1,1520 @@
+{
+  "architecture": {
+    "difficulty_tier": "T3",
+    "oracle_kind": [
+      "python_signal_golden",
+      "transaction_scoreboard"
+    ],
+    "skeleton_level": "S3_architecture_skeleton",
+    "style": "multi_module",
+    "submodules": [
+      "matched_filter_mac",
+      "matched_filter_core",
+      "threshold_comparator",
+      "peak_detector_core"
+    ],
+    "system_his_profile": "streaming_datapath",
+    "task_family_id": "p_pulse_radar_signal",
+    "top_module": "top"
+  },
+  "artifacts": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/matched_filter_core.v",
+      "rtl/matched_filter_mac.v",
+      "rtl/threshold_comparator.v",
+      "rtl/peak_detector_core.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "top_module": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "components": [
+    {
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_sample",
+          "width": 8
+        },
+        {
+          "dir": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "peak_found",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "peak_value",
+          "width": 18
+        },
+        {
+          "dir": "output",
+          "name": "peak_index",
+          "width": 18
+        }
+      ],
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v"
+    },
+    {
+      "intent": "matched filter mac component in the generated RTL project",
+      "name": "matched_filter_mac",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "sample",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "dir": "input",
+          "name": "coefficient",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "dir": "input",
+          "name": "accum",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "dir": "output",
+          "name": "result",
+          "width": "[ACC_WIDTH-1:0]"
+        }
+      ],
+      "semantic_kind": "mac",
+      "source": "rtl/matched_filter_mac.v"
+    },
+    {
+      "intent": "matched filter core component in the generated RTL project",
+      "name": "matched_filter_core",
+      "parameters": [
+        {
+          "default": 8,
+          "name": "WIDTH"
+        },
+        {
+          "default": 18,
+          "name": "ACC_WIDTH"
+        }
+      ],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "dir": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_correlation",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "dir": "output",
+          "name": "out_last",
+          "width": 1
+        }
+      ],
+      "semantic_kind": "rtl_component",
+      "source": "rtl/matched_filter_core.v"
+    },
+    {
+      "intent": "threshold comparator component in the generated RTL project",
+      "name": "threshold_comparator",
+      "parameters": [
+        {
+          "default": 18,
+          "name": "ACC_WIDTH"
+        },
+        {
+          "default": 10,
+          "name": "THRESHOLD"
+        }
+      ],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_sample",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "dir": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_sample",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "dir": "output",
+          "name": "out_last",
+          "width": 1
+        }
+      ],
+      "semantic_kind": "rtl_component",
+      "source": "rtl/threshold_comparator.v"
+    },
+    {
+      "intent": "peak detector core component in the generated RTL project",
+      "name": "peak_detector_core",
+      "parameters": [
+        {
+          "default": 18,
+          "name": "WIDTH"
+        },
+        {
+          "default": 10,
+          "name": "THRESHOLD"
+        }
+      ],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "dir": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_peak_found",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_peak_value",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "dir": "output",
+          "name": "out_peak_index",
+          "width": "[WIDTH-1:0]"
+        }
+      ],
+      "semantic_kind": "rtl_component",
+      "source": "rtl/peak_detector_core.v"
+    }
+  ],
+  "connections": [
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "clk",
+      "to": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "clk"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "clk"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "clk",
+      "to": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "clk"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "rst_n",
+      "to": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "rst_n"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "rst_n"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "rst_n",
+      "to": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "rst_n"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "in_valid"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "in_valid",
+      "to": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "in_valid"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "in_ready"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "in_ready",
+      "to": {
+        "module": "top",
+        "port": "in_ready"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "in_sample"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "in_sample",
+      "to": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "in_sample"
+      },
+      "width": 8
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "in_last"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "in_last",
+      "to": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "in_last"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "out_valid"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "correlation_valid",
+      "to": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "in_valid"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "in_ready"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "correlation_ready",
+      "to": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "out_ready"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "out_correlation"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "correlation",
+      "to": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "in_sample"
+      },
+      "width": "[ACC_WIDTH-1:0]"
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_matched_filter_core",
+        "module": "matched_filter_core",
+        "port": "out_last"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "correlation_last",
+      "to": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "in_last"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "out_valid"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "threshold_valid",
+      "to": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "in_valid"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "in_ready"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "threshold_ready",
+      "to": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "out_ready"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "out_sample"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "thresholded_correlation",
+      "to": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "in_sample"
+      },
+      "width": "[ACC_WIDTH-1:0]"
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_threshold_comparator",
+        "module": "threshold_comparator",
+        "port": "out_last"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "threshold_last",
+      "to": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "in_last"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "out_valid"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "out_valid",
+      "to": {
+        "module": "top",
+        "port": "out_valid"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "module": "top",
+        "port": "out_ready"
+      },
+      "kind": "port_connection",
+      "protocol": "valid_ready",
+      "signal": "out_ready",
+      "to": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "out_ready"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "out_peak_found"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "peak_found",
+      "to": {
+        "module": "top",
+        "port": "peak_found"
+      },
+      "width": 1
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "out_peak_value"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "peak_value",
+      "to": {
+        "module": "top",
+        "port": "peak_value"
+      },
+      "width": "[WIDTH-1:0]"
+    },
+    {
+      "cdc": false,
+      "from": {
+        "instance": "u_peak_detector_core",
+        "module": "peak_detector_core",
+        "port": "out_peak_index"
+      },
+      "kind": "port_connection",
+      "protocol": "register",
+      "signal": "peak_index",
+      "to": {
+        "module": "top",
+        "port": "peak_index"
+      },
+      "width": "[WIDTH-1:0]"
+    }
+  ],
+  "control_flow": [
+    {
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "kind": "reset_rule",
+      "name": "reset_state",
+      "related_flows": [],
+      "related_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "pulse_radar_signal_edge_00",
+      "path": [
+        "top.in_valid",
+        "u_matched_filter_core.in_valid"
+      ],
+      "payload": {
+        "name": "in_valid",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_01",
+      "path": [
+        "top.in_sample",
+        "u_matched_filter_core.in_sample"
+      ],
+      "payload": {
+        "name": "in_sample",
+        "width": 8
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_02",
+      "path": [
+        "top.in_last",
+        "u_matched_filter_core.in_last"
+      ],
+      "payload": {
+        "name": "in_last",
+        "width": 1
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_03",
+      "path": [
+        "u_matched_filter_core.in_ready",
+        "top.in_ready"
+      ],
+      "payload": {
+        "name": "in_ready",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_04",
+      "path": [
+        "u_matched_filter_core.out_valid",
+        "u_threshold_comparator.in_valid"
+      ],
+      "payload": {
+        "name": "out_valid",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_05",
+      "path": [
+        "u_matched_filter_core.out_correlation",
+        "u_threshold_comparator.in_sample"
+      ],
+      "payload": {
+        "name": "out_correlation",
+        "width": 18
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_06",
+      "path": [
+        "u_matched_filter_core.out_last",
+        "u_threshold_comparator.in_last"
+      ],
+      "payload": {
+        "name": "out_last",
+        "width": 1
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_07",
+      "path": [
+        "u_threshold_comparator.in_ready",
+        "u_matched_filter_core.out_ready"
+      ],
+      "payload": {
+        "name": "in_ready",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_08",
+      "path": [
+        "u_threshold_comparator.out_valid",
+        "u_peak_detector_core.in_valid"
+      ],
+      "payload": {
+        "name": "out_valid",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_09",
+      "path": [
+        "u_threshold_comparator.out_sample",
+        "u_peak_detector_core.in_sample"
+      ],
+      "payload": {
+        "name": "out_sample",
+        "width": 18
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_10",
+      "path": [
+        "u_threshold_comparator.out_last",
+        "u_peak_detector_core.in_last"
+      ],
+      "payload": {
+        "name": "out_last",
+        "width": 1
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_11",
+      "path": [
+        "u_peak_detector_core.in_ready",
+        "u_threshold_comparator.out_ready"
+      ],
+      "payload": {
+        "name": "in_ready",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_12",
+      "path": [
+        "u_peak_detector_core.out_valid",
+        "top.out_valid"
+      ],
+      "payload": {
+        "name": "out_valid",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_13",
+      "path": [
+        "top.out_ready",
+        "u_peak_detector_core.out_ready"
+      ],
+      "payload": {
+        "name": "out_ready",
+        "width": 1
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pulse_radar_signal_edge_14",
+      "path": [
+        "u_peak_detector_core.out_peak_found",
+        "top.peak_found"
+      ],
+      "payload": {
+        "name": "out_peak_found",
+        "width": 1
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_15",
+      "path": [
+        "u_peak_detector_core.out_peak_value",
+        "top.peak_value"
+      ],
+      "payload": {
+        "name": "out_peak_value",
+        "width": 18
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pulse_radar_signal_edge_16",
+      "path": [
+        "u_peak_detector_core.out_peak_index",
+        "top.peak_index"
+      ],
+      "payload": {
+        "name": "out_peak_index",
+        "width": 18
+      },
+      "protocol": "wire"
+    }
+  ],
+  "instances": [
+    {
+      "clock": "clk",
+      "component": "matched_filter_core",
+      "name": "u_matched_filter_core",
+      "owns_state": [],
+      "parameter_values": {
+        "ACC_WIDTH": 18,
+        "WIDTH": 8
+      },
+      "reset": "rst_n"
+    },
+    {
+      "clock": "clk",
+      "component": "threshold_comparator",
+      "name": "u_threshold_comparator",
+      "owns_state": [],
+      "parameter_values": {
+        "ACC_WIDTH": 18,
+        "THRESHOLD": 10
+      },
+      "reset": "rst_n"
+    },
+    {
+      "clock": "clk",
+      "component": "peak_detector_core",
+      "name": "u_peak_detector_core",
+      "owns_state": [],
+      "parameter_values": {
+        "THRESHOLD": 10,
+        "WIDTH": 18
+      },
+      "reset": "rst_n"
+    }
+  ],
+  "intent": {
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ],
+    "design_goal": "accepted in_last markers remain aligned with matched-filter correlations through backpressure, and each completed correlation frame reports its first threshold-qualified maximum",
+    "user_prompt": "Generate an 8-bit pulse_radar_signal FPGA RTL project."
+  },
+  "interface": {
+    "clock": "clk",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "name": "in_sample",
+        "width": 8
+      },
+      {
+        "name": "in_last",
+        "width": 1
+      },
+      {
+        "name": "out_ready",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "name": "peak_found",
+        "width": 1
+      },
+      {
+        "name": "peak_value",
+        "width": 18
+      },
+      {
+        "name": "peak_index",
+        "width": 18
+      }
+    ],
+    "reset": "rst_n",
+    "reset_polarity": "active_low"
+  },
+  "modules": [
+    {
+      "clock": "clk",
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_sample",
+          "width": 8
+        },
+        {
+          "direction": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "peak_found",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "peak_value",
+          "width": 18
+        },
+        {
+          "direction": "output",
+          "name": "peak_index",
+          "width": 18
+        }
+      ],
+      "reset": "rst_n",
+      "role": "top",
+      "source": "rtl/top.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "matched filter mac component in the generated RTL project",
+      "name": "matched_filter_mac",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "sample",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "direction": "input",
+          "name": "coefficient",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "direction": "input",
+          "name": "accum",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "direction": "output",
+          "name": "result",
+          "width": "[ACC_WIDTH-1:0]"
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/matched_filter_mac.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "matched filter core component in the generated RTL project",
+      "name": "matched_filter_core",
+      "parameters": {
+        "ACC_WIDTH": 18,
+        "WIDTH": 8
+      },
+      "params": [
+        {
+          "name": "WIDTH",
+          "value": 8
+        },
+        {
+          "name": "ACC_WIDTH",
+          "value": 18
+        }
+      ],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "direction": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_correlation",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "direction": "output",
+          "name": "out_last",
+          "width": 1
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/matched_filter_core.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "threshold comparator component in the generated RTL project",
+      "name": "threshold_comparator",
+      "parameters": {
+        "ACC_WIDTH": 18,
+        "THRESHOLD": 10
+      },
+      "params": [
+        {
+          "name": "ACC_WIDTH",
+          "value": 18
+        },
+        {
+          "name": "THRESHOLD",
+          "value": 10
+        }
+      ],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_sample",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "direction": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_sample",
+          "width": "[ACC_WIDTH-1:0]"
+        },
+        {
+          "direction": "output",
+          "name": "out_last",
+          "width": 1
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/threshold_comparator.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "peak detector core component in the generated RTL project",
+      "name": "peak_detector_core",
+      "parameters": {
+        "THRESHOLD": 10,
+        "WIDTH": 18
+      },
+      "params": [
+        {
+          "name": "WIDTH",
+          "value": 18
+        },
+        {
+          "name": "THRESHOLD",
+          "value": 10
+        }
+      ],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_sample",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "direction": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_peak_found",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_peak_value",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "direction": "output",
+          "name": "out_peak_index",
+          "width": "[WIDTH-1:0]"
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/peak_detector_core.v"
+    }
+  ],
+  "platform": {
+    "board": "generic",
+    "clock_hz": 100000000,
+    "family": "generic",
+    "name": "generic_verilog",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "project": {
+    "description": "Generate an 8-bit pulse_radar_signal FPGA RTL project.",
+    "name": "phase_c_independent_oracle_v2_pulse_radar_signal_8_000005",
+    "top": "top"
+  },
+  "project_name": "phase_c_independent_oracle_v2_pulse_radar_signal_8_000005",
+  "qor_intent": {
+    "resources": {
+      "bram": 0,
+      "dsp": 4,
+      "ff": 104,
+      "lut": 48
+    }
+  },
+  "resets": [
+    {
+      "kind": "async",
+      "name": "rst_n",
+      "polarity": "active_low"
+    }
+  ],
+  "resources": {
+    "expected": {
+      "bram": 0,
+      "dsp": 4,
+      "ff": 104,
+      "lut": 48
+    },
+    "optimization_goal": "area_first"
+  },
+  "schema_version": "system-his-v1.2",
+  "state": {
+    "buffers": [],
+    "counters": [],
+    "fsms": [],
+    "memories": [],
+    "registers": []
+  },
+  "system": {
+    "description": "Generate an 8-bit pulse_radar_signal FPGA RTL project."
+  },
+  "task_type": "pulse_radar_signal",
+  "timing": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0
+  },
+  "top": {
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "interfaces": [],
+    "name": "top",
+    "parameters": [],
+    "ports": [
+      {
+        "dir": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "in_sample",
+        "width": 8
+      },
+      {
+        "dir": "input",
+        "name": "in_last",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "out_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "peak_found",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "peak_value",
+        "width": 18
+      },
+      {
+        "dir": "output",
+        "name": "peak_index",
+        "width": 18
+      }
+    ],
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ]
+  },
+  "top_ports": [
+    {
+      "direction": "input",
+      "name": "clk",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rst_n",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "in_valid",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "in_sample",
+      "width": 8
+    },
+    {
+      "direction": "input",
+      "name": "in_last",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "out_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "in_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "out_valid",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "peak_found",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "peak_value",
+      "width": 18
+    },
+    {
+      "direction": "output",
+      "name": "peak_index",
+      "width": 18
+    }
+  ],
+  "verification": {
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when accepted in_last markers remain aligned with matched-filter correlations through backpressure, and each completed correlation frame reports its first threshold-qualified maximum.",
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when accepted in_last markers remain aligned with matched-filter correlations through backpressure, and each completed correlation frame reports its first threshold-qualified maximum.",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when accepted in_last markers remain aligned with matched-filter correlations through backpressure, and each completed correlation frame reports its first threshold-qualified maximum.",
+    "testbench": "sim/tb_top.v"
+  }
+}

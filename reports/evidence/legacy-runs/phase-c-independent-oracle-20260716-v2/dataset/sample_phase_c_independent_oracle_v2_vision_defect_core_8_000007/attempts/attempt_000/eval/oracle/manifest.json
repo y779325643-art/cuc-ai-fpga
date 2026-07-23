@@ -1,0 +1,352 @@
+{
+  "bundle_sha256": "db10f9263766ed89db53d36a05e12367080320f7827057a700fa91ff0ee63563",
+  "family_id": "p_vision_defect_core",
+  "reference_model": "python_image_reference",
+  "reference_version": "1.1.0",
+  "scenarios": [
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "defect_present",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 18,
+          "name": "first_x",
+          "signed": false
+        },
+        {
+          "lsb": 19,
+          "msb": 34,
+          "name": "first_y",
+          "signed": false
+        },
+        {
+          "lsb": 35,
+          "msb": 35,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "public/vision_public_absent_present/expected.memh",
+      "expected_record_width_bits": 36,
+      "expected_sha256": "e290d4b14d45a92f678a97616a49661b3f4d8050e2d53e6a5c72fd8d2bebcdfe",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "public/vision_public_absent_present/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "6824e2d6c16a37a9b1bdeb7ff49f8886aee23ea0c8e644dc3b2b8b30032bc5b3",
+      "scenario_class": "public_smoke",
+      "scenario_id": "vision_public_absent_present",
+      "seed": 0,
+      "transaction_count": 50
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "defect_present",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 18,
+          "name": "first_x",
+          "signed": false
+        },
+        {
+          "lsb": 19,
+          "msb": 34,
+          "name": "first_y",
+          "signed": false
+        },
+        {
+          "lsb": 35,
+          "msb": 35,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "hidden/vision_hidden_order_threshold/expected.memh",
+      "expected_record_width_bits": 36,
+      "expected_sha256": "450cb58d474dc753abb312d872e067758fc9becf92d98cb8eafb90f22947b73c",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "hidden/vision_hidden_order_threshold/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "e0dcbe9675e4c9b8ea3b787c21f0403a9d027759b212accf477fe659d6fd38bf",
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "vision_hidden_order_threshold",
+      "seed": 39286503210332192847789619673580600341,
+      "transaction_count": 25
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "defect_present",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 18,
+          "name": "first_x",
+          "signed": false
+        },
+        {
+          "lsb": 19,
+          "msb": 34,
+          "name": "first_y",
+          "signed": false
+        },
+        {
+          "lsb": 35,
+          "msb": 35,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "randomized/vision_randomized_seeded/expected.memh",
+      "expected_record_width_bits": 36,
+      "expected_sha256": "773b4a9721141052d71cef6c0780e03baae1957e592a3d370d4c4d2b103e0c19",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "randomized/vision_randomized_seeded/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "364090e3e1791867e97355dcf985156f7f09a885a7dd72ace6b9c875992795c7",
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "vision_randomized_seeded",
+      "seed": 312725159830187303693857121583348639161,
+      "transaction_count": 50
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "defect_present",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 18,
+          "name": "first_x",
+          "signed": false
+        },
+        {
+          "lsb": 19,
+          "msb": 34,
+          "name": "first_y",
+          "signed": false
+        },
+        {
+          "lsb": 35,
+          "msb": 35,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "stress/vision_stress_reset_stall/expected.memh",
+      "expected_record_width_bits": 36,
+      "expected_sha256": "1b3f965d711d0a04c37fd7c859da5c834ff4170a157c31588014b96906efb940",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "stress/vision_stress_reset_stall/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "710a068344ac4f8481f8e3d4abb346cd397aeb086bb4f6f5bed8030e6464dbf8",
+      "scenario_class": "stress",
+      "scenario_id": "vision_stress_reset_stall",
+      "seed": 218041260502029686439361368206344384405,
+      "transaction_count": 35
+    }
+  ],
+  "schema_version": "sr2fpga-oracle-bundle-v1",
+  "task_parameters": {
+    "axis_tie": "gx",
+    "border": "one_pixel_zero",
+    "bounding_boxes": false,
+    "connected_components": false,
+    "defect_report": "first_row_major_thresholded_pixel",
+    "frame_contract": "fixed_5x5_row_major",
+    "image_height": 5,
+    "image_width": 5,
+    "magnitude": "abs_gx_plus_abs_gy",
+    "operation_record": "pixel_with_reset_drain_and_output_count_padding",
+    "pixel_width": 8,
+    "threshold": 100,
+    "threshold_comparison": "greater_or_equal"
+  }
+}

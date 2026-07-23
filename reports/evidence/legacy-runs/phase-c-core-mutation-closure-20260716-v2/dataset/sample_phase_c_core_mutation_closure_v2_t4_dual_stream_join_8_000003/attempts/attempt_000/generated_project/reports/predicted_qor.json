@@ -1,0 +1,23 @@
+{
+  "assumptions": {
+    "data_width": 8,
+    "estimate_type": "pre_synthesis_model_prediction",
+    "no_vendor_ip": true,
+    "single_clock": true,
+    "task_type": "composed_dual_stream_join"
+  },
+  "predicted": {
+    "bram": 0,
+    "confidence": 0.65,
+    "dsp": 0,
+    "ff": 58,
+    "fmax_mhz": 300.0,
+    "lut": 44
+  },
+  "project_name": "phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003",
+  "target": {
+    "platform": "generic_verilog",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  }
+}

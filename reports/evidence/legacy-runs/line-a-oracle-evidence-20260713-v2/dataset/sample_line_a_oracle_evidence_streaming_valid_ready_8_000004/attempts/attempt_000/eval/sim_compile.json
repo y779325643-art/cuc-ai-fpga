@@ -1,0 +1,18 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/stream_stage.v",
+    "sim/tb_top.v"
+  ],
+  "duration_seconds": 0.15127750008832663,
+  "exit_code": 0,
+  "stage": "sim_compile",
+  "status": "passed",
+  "stderr": "",
+  "stdout": ""
+}

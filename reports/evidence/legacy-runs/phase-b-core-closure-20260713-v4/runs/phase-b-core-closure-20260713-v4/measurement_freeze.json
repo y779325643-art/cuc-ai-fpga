@@ -1,0 +1,132 @@
+{
+  "config_fingerprint": "1fceabc3040382ccdc04eca23975cab9f26dd92ce0aa667d248927ad9058e669",
+  "freeze_fingerprint": "2d11dd06ecb9d4f12cc92ffc2474b555f73f03bc570f7fa9c39f8794e2199f3f",
+  "l4_family_ids": [],
+  "max_attempts": 1,
+  "run_id": "phase-b-core-closure-20260713-v4",
+  "sample_count": 9,
+  "samples": [
+    {
+      "family_id": "uart_rx",
+      "paired_requirement_id": "uart_rx:9799146be176150c",
+      "requirement_sha256": "9799146be176150c6e4e10e84dedb8ae3a89ddc179145056d6816d2a089c5edf",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_uart_rx_8_000001",
+      "source": "deterministic",
+      "task_type": "uart_rx",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "uart_fifo_loopback",
+      "paired_requirement_id": "uart_fifo_loopback:b527df090df17ce2",
+      "requirement_sha256": "b527df090df17ce2c055987a995a5955dd99e4d0c3c12af83ccbff01eda23d6b",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_uart_fifo_loopback_8_000002",
+      "source": "deterministic",
+      "task_type": "uart_fifo_loopback",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "matched_filter",
+      "paired_requirement_id": "matched_filter:c4b94ede5c0c50c1",
+      "requirement_sha256": "c4b94ede5c0c50c17188aaeebcdfcb72fbbafbf5e326e50b1e264bb4eaaa90c8",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_matched_filter_8_000003",
+      "source": "deterministic",
+      "task_type": "matched_filter",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "peak_detector",
+      "paired_requirement_id": "peak_detector:12e515d7cf00ae52",
+      "requirement_sha256": "12e515d7cf00ae521370f31dc3315b645f435e7359fe6b3eec6e8272b4b91992",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_peak_detector_8_000004",
+      "source": "deterministic",
+      "task_type": "peak_detector",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "p_pulse_radar_signal",
+      "paired_requirement_id": "p_pulse_radar_signal:3a693cff81148eeb",
+      "requirement_sha256": "3a693cff81148eebebdb3eeb646d9a7f9bdf548c73e06036a92fe74f990822cf",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_pulse_radar_signal_8_000005",
+      "source": "deterministic",
+      "task_type": "pulse_radar_signal",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "sobel_threshold",
+      "paired_requirement_id": "sobel_threshold:dd81d5b97b2b2736",
+      "requirement_sha256": "dd81d5b97b2b273641bbe694ab5df6eb80c0a48aae9eecde828c46d60d267f1d",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_sobel_threshold_8_000006",
+      "source": "deterministic",
+      "task_type": "sobel_threshold",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "p_vision_defect_core",
+      "paired_requirement_id": "p_vision_defect_core:7d4b324a37d2a2a1",
+      "requirement_sha256": "7d4b324a37d2a2a133a5ca0da3c1f8d1ce8e0844190b5eb0e98f90db889c34c2",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_vision_defect_core_8_000007",
+      "source": "deterministic",
+      "task_type": "vision_defect_core",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "pattern_matcher",
+      "paired_requirement_id": "pattern_matcher:8845dfcf1a0b50ec",
+      "requirement_sha256": "8845dfcf1a0b50ecf4ffefb7c575e35620f4334fcf917f74f3d6aceca92f091e",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_pattern_matcher_8_000008",
+      "source": "deterministic",
+      "task_type": "pattern_matcher",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "p_stream_trigger_filter",
+      "paired_requirement_id": "p_stream_trigger_filter:1436620eb98460a3",
+      "requirement_sha256": "1436620eb98460a3e8e308cffee7fa6a64eae69ac7a78e9f680edc68dc57a1d1",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_b_core_closure_stream_trigger_filter_8_000009",
+      "source": "deterministic",
+      "task_type": "stream_trigger_filter",
+      "topology_id": "",
+      "width": 8
+    }
+  ],
+  "schema_version": "sr2fpga-phase-d-freeze-v1",
+  "sources": [
+    {
+      "generation_mode": "",
+      "kind": "deterministic",
+      "max_tokens": 0,
+      "model": "deterministic",
+      "name": "deterministic",
+      "timeout_seconds": 120,
+      "transport_attempts": 3
+    }
+  ],
+  "timeouts": {
+    "l4_open": 600,
+    "source:deterministic": 120
+  },
+  "tool_versions": {
+    "iverilog": "Icarus Verilog version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "l4_open": "disabled",
+    "verilator": "Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)",
+    "vvp": "Icarus Verilog runtime version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "yosys": "Yosys 0.66+154 (git sha1 23aadd92a, Release, GNU /usr/bin/x86_64-w64-mingw32-g++ 13.2.1)"
+  }
+}

@@ -1,0 +1,623 @@
+{
+  "architecture": {
+    "difficulty_tier": "T2",
+    "obligations": [
+      "four_token_shift_window",
+      "accepted_token_match_index",
+      "overlapping_match",
+      "one_entry_output_backpressure",
+      "match_index_packet"
+    ],
+    "oracle_kind": [
+      "transaction_scoreboard",
+      "protocol_checker"
+    ],
+    "skeleton_level": "S2_protocol_skeleton",
+    "style": "multi_module",
+    "submodules": [
+      "pattern_matcher"
+    ],
+    "system_his_profile": "streaming_datapath",
+    "task_family_id": "pattern_matcher",
+    "top_module": "top"
+  },
+  "artifacts": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json",
+    "rtl_sources": [
+      "rtl/top.v",
+      "rtl/pattern_matcher.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "top_module": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "components": [
+    {
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_data",
+          "width": 8
+        },
+        {
+          "dir": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_match_index",
+          "width": 32
+        },
+        {
+          "dir": "output",
+          "name": "out_match_word",
+          "width": 32
+        }
+      ],
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v"
+    },
+    {
+      "intent": "pattern matcher component in the generated RTL project",
+      "name": "pattern_matcher",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_data",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "dir": "output",
+          "name": "match_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "match_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "match_index",
+          "width": 32
+        },
+        {
+          "dir": "output",
+          "name": "match_word",
+          "width": "[WIDTH*4-1:0]"
+        }
+      ],
+      "semantic_kind": "rtl_component",
+      "source": "rtl/pattern_matcher.v"
+    }
+  ],
+  "connections": [],
+  "control_flow": [
+    {
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "kind": "reset_rule",
+      "name": "reset_state",
+      "related_flows": [],
+      "related_state": []
+    },
+    {
+      "condition": "top.in_valid && top.in_ready",
+      "effects": [
+        "advance the four-token shift window and accepted-token index only after an input handshake"
+      ],
+      "kind": "handshake_rule",
+      "name": "accepted_token_window_advance",
+      "related_flows": [
+        "pattern_matcher_edge_00",
+        "pattern_matcher_edge_01",
+        "pattern_matcher_edge_02"
+      ],
+      "related_state": []
+    },
+    {
+      "condition": "top.out_valid && !top.out_ready",
+      "effects": [
+        "hold match index and matched four-token word stable until the output handshake"
+      ],
+      "kind": "stall_rule",
+      "name": "match_output_stall",
+      "related_flows": [
+        "pattern_matcher_edge_00",
+        "pattern_matcher_edge_01",
+        "pattern_matcher_edge_02"
+      ],
+      "related_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "pattern_matcher_edge_00",
+      "path": [
+        "top.in_data",
+        "u_pattern_matcher.in_data"
+      ],
+      "payload": {
+        "name": "in_data",
+        "width": 8
+      },
+      "protocol": "wire"
+    },
+    {
+      "name": "pattern_matcher_edge_01",
+      "path": [
+        "u_pattern_matcher.match_index",
+        "top.out_match_index"
+      ],
+      "payload": {
+        "name": "match_index",
+        "width": 32
+      },
+      "protocol": "valid_ready"
+    },
+    {
+      "name": "pattern_matcher_edge_02",
+      "path": [
+        "u_pattern_matcher.match_word",
+        "top.out_match_word"
+      ],
+      "payload": {
+        "name": "match_word",
+        "width": 32
+      },
+      "protocol": "valid_ready"
+    }
+  ],
+  "instances": [
+    {
+      "clock": "clk",
+      "component": "pattern_matcher",
+      "name": "u_pattern_matcher",
+      "owns_state": [],
+      "parameter_values": {},
+      "reset": "rst_n"
+    }
+  ],
+  "intent": {
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ],
+    "design_goal": "each exact four-token sequence emits the accepted-token index of its ending token and the matched word; overlaps remain detectable and the one-entry output holds under backpressure",
+    "user_prompt": "Generate an 8-bit pattern_matcher FPGA RTL project."
+  },
+  "interface": {
+    "clock": "clk",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "name": "in_data",
+        "width": 8
+      },
+      {
+        "name": "out_ready",
+        "width": 1
+      }
+    ],
+    "outputs": [
+      {
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "name": "out_match_index",
+        "width": 32
+      },
+      {
+        "name": "out_match_word",
+        "width": 32
+      }
+    ],
+    "reset": "rst_n",
+    "reset_polarity": "active_low"
+  },
+  "modules": [
+    {
+      "clock": "clk",
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_data",
+          "width": 8
+        },
+        {
+          "direction": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "out_match_index",
+          "width": 32
+        },
+        {
+          "direction": "output",
+          "name": "out_match_word",
+          "width": 32
+        }
+      ],
+      "reset": "rst_n",
+      "role": "top",
+      "source": "rtl/top.v"
+    },
+    {
+      "clock": "clk",
+      "intent": "pattern matcher component in the generated RTL project",
+      "name": "pattern_matcher",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "in_data",
+          "width": "[WIDTH-1:0]"
+        },
+        {
+          "direction": "output",
+          "name": "match_valid",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "match_ready",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "match_index",
+          "width": 32
+        },
+        {
+          "direction": "output",
+          "name": "match_word",
+          "width": "[WIDTH*4-1:0]"
+        }
+      ],
+      "reset": "rst_n",
+      "role": "submodule",
+      "source": "rtl/pattern_matcher.v"
+    }
+  ],
+  "platform": {
+    "board": "generic",
+    "clock_hz": 100000000,
+    "family": "generic",
+    "name": "generic_verilog",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "project": {
+    "description": "Generate an 8-bit pattern_matcher FPGA RTL project.",
+    "name": "phase_b_core_closure_pattern_matcher_8_000008",
+    "top": "top"
+  },
+  "project_name": "phase_b_core_closure_pattern_matcher_8_000008",
+  "qor_intent": {
+    "resources": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 92,
+      "lut": 24
+    }
+  },
+  "resets": [
+    {
+      "kind": "async",
+      "name": "rst_n",
+      "polarity": "active_low"
+    }
+  ],
+  "resources": {
+    "expected": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 92,
+      "lut": 24
+    },
+    "optimization_goal": "area_first"
+  },
+  "schema_version": "system-his-v1.2",
+  "state": {
+    "buffers": [],
+    "counters": [],
+    "fsms": [],
+    "memories": [],
+    "registers": []
+  },
+  "system": {
+    "description": "Generate an 8-bit pattern_matcher FPGA RTL project."
+  },
+  "task_type": "pattern_matcher",
+  "timing": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0
+  },
+  "top": {
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "interfaces": [],
+    "name": "top",
+    "parameters": [
+      {
+        "default": "8'h11",
+        "name": "TOKEN0"
+      },
+      {
+        "default": "8'h22",
+        "name": "TOKEN1"
+      },
+      {
+        "default": "8'h33",
+        "name": "TOKEN2"
+      },
+      {
+        "default": "8'h11",
+        "name": "TOKEN3"
+      }
+    ],
+    "ports": [
+      {
+        "dir": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "in_data",
+        "width": 8
+      },
+      {
+        "dir": "input",
+        "name": "out_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "out_match_index",
+        "width": 32
+      },
+      {
+        "dir": "output",
+        "name": "out_match_word",
+        "width": 32
+      }
+    ],
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ]
+  },
+  "top_ports": [
+    {
+      "direction": "input",
+      "name": "clk",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rst_n",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "in_valid",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "in_data",
+      "width": 8
+    },
+    {
+      "direction": "input",
+      "name": "out_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "in_ready",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "out_valid",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "out_match_index",
+      "width": 32
+    },
+    {
+      "direction": "output",
+      "name": "out_match_word",
+      "width": 32
+    }
+  ],
+  "verification": {
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when each exact four-token sequence emits the accepted-token index of its ending token and the matched word; overlaps remain detectable and the one-entry output holds under backpressure.",
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when each exact four-token sequence emits the accepted-token index of its ending token and the matched word; overlaps remain detectable and the one-entry output holds under backpressure.",
+    "scenarios": [
+      "reset",
+      "no_match",
+      "partial_match",
+      "exact_match",
+      "overlapping_match",
+      "back_to_back_matches",
+      "boundary_match_index",
+      "input_stall",
+      "stall_stability",
+      "reset_during_partial_match",
+      "no_false_positive"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when each exact four-token sequence emits the accepted-token index of its ending token and the matched word; overlaps remain detectable and the one-entry output holds under backpressure.",
+    "testbench": "sim/tb_top.v"
+  }
+}

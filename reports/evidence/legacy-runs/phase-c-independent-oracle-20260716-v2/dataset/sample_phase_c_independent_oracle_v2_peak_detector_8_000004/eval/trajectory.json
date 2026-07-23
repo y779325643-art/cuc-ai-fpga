@@ -1,0 +1,1467 @@
+{
+  "attempts": [
+    {
+      "attempt_id": 0,
+      "command": [
+        "rtl_identifier_checker"
+      ],
+      "exit_code": 0,
+      "stage": "rtl_identifier_check",
+      "status": "passed",
+      "tool": "rtl_identifier_checker"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "--lint-only",
+        "-Wall",
+        "rtl/top.v",
+        "rtl/peak_detector_core.v"
+      ],
+      "exit_code": 0,
+      "stage": "lint",
+      "status": "passed",
+      "tool": "<ABSOLUTE_PATH>"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "testbench_static_checker"
+      ],
+      "exit_code": 0,
+      "stage": "testbench_static_check",
+      "status": "passed",
+      "tool": "testbench_static_checker"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "-g2012",
+        "-o",
+        "sim.out",
+        "rtl/top.v",
+        "rtl/peak_detector_core.v",
+        "sim/tb_top.v"
+      ],
+      "exit_code": 0,
+      "stage": "sim_compile",
+      "status": "passed",
+      "tool": "<ABSOLUTE_PATH>"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "vvp",
+        "sim.out",
+        "<independent-oracle-scenarios>"
+      ],
+      "exit_code": 0,
+      "stage": "sim_run",
+      "status": "passed",
+      "tool": "vvp"
+    },
+    {
+      "attempt_id": 0,
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "-p",
+        "read_verilog rtl/top.v rtl/peak_detector_core.v; synth -top top; stat"
+      ],
+      "exit_code": 0,
+      "stage": "synth",
+      "status": "passed",
+      "tool": "<ABSOLUTE_PATH>"
+    }
+  ],
+  "data_release": {
+    "generated_his": "open_public",
+    "generated_project": "open_public",
+    "his_validation": "open_public",
+    "l4_commercial": "restricted_reference",
+    "l4_open": "open_public",
+    "open_tool_labels": "open_public",
+    "oracle_his": "open_public",
+    "req_his_fidelity": "open_public",
+    "requirement": "open_public",
+    "vivado_raw_artifacts": "internal_only",
+    "vivado_structured_metadata": "restricted_reference"
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "source_episode_id": "sample_phase_c_independent_oracle_v2_peak_detector_8_000004",
+      "standalone_pass_credit": false
+    }
+  },
+  "generated_his": {
+    "architecture": {
+      "difficulty_tier": "T3",
+      "oracle_kind": [
+        "python_signal_golden"
+      ],
+      "skeleton_level": "S2_protocol_skeleton",
+      "style": "multi_module",
+      "submodules": [
+        "peak_detector_core"
+      ],
+      "system_his_profile": "streaming_datapath",
+      "task_family_id": "peak_detector",
+      "top_module": "top"
+    },
+    "artifacts": {
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "manifest": "manifest.json",
+      "predicted_qor": "reports/predicted_qor.json",
+      "rtl_sources": [
+        "rtl/top.v",
+        "rtl/peak_detector_core.v"
+      ],
+      "testbench": "sim/tb_top.v",
+      "top_module": "top"
+    },
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "components": [
+      {
+        "intent": "top-level integration wrapper for the generated RTL project",
+        "name": "top",
+        "parameters": [],
+        "ports": [
+          {
+            "dir": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "in_valid",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "in_sample",
+            "width": 8
+          },
+          {
+            "dir": "input",
+            "name": "in_last",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "out_ready",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "in_ready",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "out_valid",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "peak_found",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "peak_value",
+            "width": 8
+          },
+          {
+            "dir": "output",
+            "name": "peak_index",
+            "width": 8
+          }
+        ],
+        "semantic_kind": "top_integration",
+        "source": "rtl/top.v"
+      },
+      {
+        "intent": "peak detector core component in the generated RTL project",
+        "name": "peak_detector_core",
+        "parameters": [
+          {
+            "default": 8,
+            "name": "WIDTH"
+          },
+          {
+            "default": 10,
+            "name": "THRESHOLD"
+          }
+        ],
+        "ports": [
+          {
+            "dir": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "in_valid",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "in_ready",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "in_sample",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "dir": "input",
+            "name": "in_last",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "out_valid",
+            "width": 1
+          },
+          {
+            "dir": "input",
+            "name": "out_ready",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "out_peak_found",
+            "width": 1
+          },
+          {
+            "dir": "output",
+            "name": "out_peak_value",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "dir": "output",
+            "name": "out_peak_index",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "semantic_kind": "rtl_component",
+        "source": "rtl/peak_detector_core.v"
+      }
+    ],
+    "connections": [
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "clk"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "clk",
+        "to": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "clk"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "rst_n"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "rst_n",
+        "to": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "rst_n"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "in_valid"
+        },
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "signal": "in_valid",
+        "to": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "in_valid"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "in_ready"
+        },
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "signal": "in_ready",
+        "to": {
+          "module": "top",
+          "port": "in_ready"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "in_sample"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "in_sample",
+        "to": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "in_sample"
+        },
+        "width": 8
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "in_last"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "in_last",
+        "to": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "in_last"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "out_valid"
+        },
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "signal": "out_valid",
+        "to": {
+          "module": "top",
+          "port": "out_valid"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "module": "top",
+          "port": "out_ready"
+        },
+        "kind": "port_connection",
+        "protocol": "valid_ready",
+        "signal": "out_ready",
+        "to": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "out_ready"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "out_peak_found"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "peak_found",
+        "to": {
+          "module": "top",
+          "port": "peak_found"
+        },
+        "width": 1
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "out_peak_value"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "peak_value",
+        "to": {
+          "module": "top",
+          "port": "peak_value"
+        },
+        "width": "[WIDTH-1:0]"
+      },
+      {
+        "cdc": false,
+        "from": {
+          "instance": "u_peak_detector_core",
+          "module": "peak_detector_core",
+          "port": "out_peak_index"
+        },
+        "kind": "port_connection",
+        "protocol": "register",
+        "signal": "peak_index",
+        "to": {
+          "module": "top",
+          "port": "peak_index"
+        },
+        "width": "[WIDTH-1:0]"
+      }
+    ],
+    "control_flow": [
+      {
+        "condition": "rst_n == 0",
+        "effects": [
+          "reset architectural state"
+        ],
+        "kind": "reset_rule",
+        "name": "reset_state",
+        "related_flows": [],
+        "related_state": []
+      }
+    ],
+    "data_flow": [
+      {
+        "name": "u_peak_detector_core_primary_path",
+        "path": [
+          "top.in_sample",
+          "u_peak_detector_core.in_valid",
+          "u_peak_detector_core.in_ready",
+          "top.out_valid"
+        ],
+        "payload": {
+          "name": "primary_payload",
+          "width": 8
+        },
+        "protocol": "valid_ready",
+        "timing": {
+          "initiation_interval": 1,
+          "latency_cycles": 1,
+          "throughput": "one transfer per cycle when ready is asserted"
+        }
+      }
+    ],
+    "instances": [
+      {
+        "clock": "clk",
+        "component": "peak_detector_core",
+        "name": "u_peak_detector_core",
+        "owns_state": [],
+        "parameter_values": {
+          "THRESHOLD": 10,
+          "WIDTH": 8
+        },
+        "reset": "rst_n"
+      }
+    ],
+    "intent": {
+      "assumptions": [
+        "single synchronous clock",
+        "no vendor-specific IP"
+      ],
+      "design_goal": "signed valid-ready samples are reduced per in_last frame to the first maximum at or above threshold, with a defined empty result and a one-entry backpressure-safe output",
+      "user_prompt": "Generate an 8-bit peak_detector FPGA RTL project."
+    },
+    "interface": {
+      "clock": "clk",
+      "inputs": [
+        {
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "name": "in_sample",
+          "width": 8
+        },
+        {
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "name": "out_ready",
+          "width": 1
+        }
+      ],
+      "outputs": [
+        {
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "name": "peak_found",
+          "width": 1
+        },
+        {
+          "name": "peak_value",
+          "width": 8
+        },
+        {
+          "name": "peak_index",
+          "width": 8
+        }
+      ],
+      "reset": "rst_n",
+      "reset_polarity": "active_low"
+    },
+    "modules": [
+      {
+        "clock": "clk",
+        "intent": "top-level integration wrapper for the generated RTL project",
+        "name": "top",
+        "parameters": {},
+        "params": [],
+        "ports": [
+          {
+            "direction": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "in_valid",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "in_sample",
+            "width": 8
+          },
+          {
+            "direction": "input",
+            "name": "in_last",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "out_ready",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "in_ready",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "out_valid",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "peak_found",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "peak_value",
+            "width": 8
+          },
+          {
+            "direction": "output",
+            "name": "peak_index",
+            "width": 8
+          }
+        ],
+        "reset": "rst_n",
+        "role": "top",
+        "source": "rtl/top.v"
+      },
+      {
+        "clock": "clk",
+        "intent": "peak detector core component in the generated RTL project",
+        "name": "peak_detector_core",
+        "parameters": {
+          "THRESHOLD": 10,
+          "WIDTH": 8
+        },
+        "params": [
+          {
+            "name": "WIDTH",
+            "value": 8
+          },
+          {
+            "name": "THRESHOLD",
+            "value": 10
+          }
+        ],
+        "ports": [
+          {
+            "direction": "input",
+            "name": "clk",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "rst_n",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "in_valid",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "in_ready",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "in_sample",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "direction": "input",
+            "name": "in_last",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "out_valid",
+            "width": 1
+          },
+          {
+            "direction": "input",
+            "name": "out_ready",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "out_peak_found",
+            "width": 1
+          },
+          {
+            "direction": "output",
+            "name": "out_peak_value",
+            "width": "[WIDTH-1:0]"
+          },
+          {
+            "direction": "output",
+            "name": "out_peak_index",
+            "width": "[WIDTH-1:0]"
+          }
+        ],
+        "reset": "rst_n",
+        "role": "submodule",
+        "source": "rtl/peak_detector_core.v"
+      }
+    ],
+    "platform": {
+      "board": "generic",
+      "clock_hz": 100000000,
+      "family": "generic",
+      "name": "generic_verilog",
+      "part": "generic",
+      "toolchain": "open_source",
+      "vendor": "generic"
+    },
+    "project": {
+      "description": "Generate an 8-bit peak_detector FPGA RTL project.",
+      "name": "phase_c_independent_oracle_v2_peak_detector_8_000004",
+      "top": "top"
+    },
+    "project_name": "phase_c_independent_oracle_v2_peak_detector_8_000004",
+    "qor_intent": {
+      "resources": {
+        "bram": 0,
+        "dsp": 0,
+        "ff": 35,
+        "lut": 16
+      }
+    },
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ],
+    "resources": {
+      "expected": {
+        "bram": 0,
+        "dsp": 0,
+        "ff": 35,
+        "lut": 16
+      },
+      "optimization_goal": "area_first"
+    },
+    "schema_version": "system-his-v1.2",
+    "state": {
+      "buffers": [],
+      "counters": [],
+      "fsms": [],
+      "memories": [],
+      "registers": []
+    },
+    "system": {
+      "description": "Generate an 8-bit peak_detector FPGA RTL project."
+    },
+    "task_type": "peak_detector",
+    "timing": {
+      "constraints": [
+        "constraints/timing.sdc"
+      ],
+      "primary_clock": "clk",
+      "target_fmax_mhz": 100.0
+    },
+    "top": {
+      "clocks": [
+        {
+          "name": "clk",
+          "target_fmax_mhz": 100.0
+        }
+      ],
+      "interfaces": [],
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_valid",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "in_sample",
+          "width": 8
+        },
+        {
+          "dir": "input",
+          "name": "in_last",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "out_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "in_ready",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "out_valid",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "peak_found",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "peak_value",
+          "width": 8
+        },
+        {
+          "dir": "output",
+          "name": "peak_index",
+          "width": 8
+        }
+      ],
+      "resets": [
+        {
+          "kind": "async",
+          "name": "rst_n",
+          "polarity": "active_low"
+        }
+      ]
+    },
+    "top_ports": [
+      {
+        "direction": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "direction": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "direction": "input",
+        "name": "in_valid",
+        "width": 1
+      },
+      {
+        "direction": "input",
+        "name": "in_sample",
+        "width": 8
+      },
+      {
+        "direction": "input",
+        "name": "in_last",
+        "width": 1
+      },
+      {
+        "direction": "input",
+        "name": "out_ready",
+        "width": 1
+      },
+      {
+        "direction": "output",
+        "name": "in_ready",
+        "width": 1
+      },
+      {
+        "direction": "output",
+        "name": "out_valid",
+        "width": 1
+      },
+      {
+        "direction": "output",
+        "name": "peak_found",
+        "width": 1
+      },
+      {
+        "direction": "output",
+        "name": "peak_value",
+        "width": 8
+      },
+      {
+        "direction": "output",
+        "name": "peak_index",
+        "width": 8
+      }
+    ],
+    "verification": {
+      "checks": [
+        "l0_contract",
+        "l1_lint",
+        "l2_self_checking_sim",
+        "l3_synthesis"
+      ],
+      "expected_behavior": "Self-checking testbench prints TEST_PASS only when signed valid-ready samples are reduced per in_last frame to the first maximum at or above threshold, with a defined empty result and a one-entry backpressure-safe output.",
+      "pass_condition": "Self-checking testbench prints TEST_PASS only when signed valid-ready samples are reduced per in_last frame to the first maximum at or above threshold, with a defined empty result and a one-entry backpressure-safe output.",
+      "scenarios": [
+        "reset",
+        "nominal_operation"
+      ],
+      "test_pass_means": "Self-checking testbench prints TEST_PASS only when signed valid-ready samples are reduced per in_last frame to the first maximum at or above threshold, with a defined empty result and a one-entry backpressure-safe output.",
+      "testbench": "sim/tb_top.v"
+    }
+  },
+  "his_validation": {
+    "h0": {
+      "diagnostics": [],
+      "status": "pass"
+    },
+    "h1": {
+      "diagnostics": [],
+      "status": "pass"
+    },
+    "h2": {
+      "diagnostics": [],
+      "status": "pass"
+    },
+    "h3": {
+      "diagnostics": [],
+      "metrics": {
+        "behavior_intent_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "clock_reset_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "constraint_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "interface_extraction": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "parameter_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        },
+        "verification_intent_fidelity": {
+          "errors": [],
+          "status": "not_applicable"
+        }
+      },
+      "scores": {
+        "behavior_intent_fidelity": null,
+        "clock_reset_fidelity": null,
+        "constraint_fidelity": null,
+        "interface_extraction": null,
+        "parameter_fidelity": null,
+        "verification_intent_fidelity": null
+      },
+      "status": "not_applicable"
+    },
+    "his_source_used_for_generation": "generated",
+    "passed": true
+  },
+  "measurement": {
+    "final": {
+      "attempt_id": 0,
+      "automatic_pass_credit": true,
+      "failure_class": null,
+      "failure_type": "none",
+      "highest_level": "L3",
+      "measurement_point": "a_first_attempt_no_tools",
+      "pass_level": "L3"
+    },
+    "infrastructure_status": "scoreable",
+    "initial": {
+      "attempt_id": 0,
+      "automatic_pass_credit": true,
+      "failure_class": null,
+      "failure_type": "none",
+      "highest_level": "L3",
+      "measurement_point": "a_first_attempt_no_tools",
+      "pass_level": "L3"
+    },
+    "l4_open": {
+      "skip_reason": "disabled_by_config",
+      "status": "not_run"
+    },
+    "regressions": [],
+    "repair_attempts_used": 0,
+    "repair_eligible": false,
+    "repair_skip_reason": "initial_or_current_attempt_passed",
+    "repair_success": false,
+    "scoreable": true
+  },
+  "oracle_his": null,
+  "oracle_profile": {
+    "bundle_sha256": "668c707e9133b0eb4ec4801d6ba12552a1a3323c143769835d2a2b45fbb820e3",
+    "class_status": {
+      "hidden_deterministic": "pass",
+      "public_smoke": "pass",
+      "randomized_fixed_seed": "pass",
+      "stress": "pass"
+    },
+    "family_id": "peak_detector",
+    "hidden_vectors_exported": false,
+    "kind": "python_reference",
+    "reference_model": "python_signal_reference",
+    "reference_version": "1.0.0",
+    "scenario_counts": {
+      "hidden_deterministic": 1,
+      "public_smoke": 1,
+      "randomized_fixed_seed": 1,
+      "stress": 1
+    },
+    "scenarios": [
+      {
+        "expected_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "value",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 15,
+            "name": "index",
+            "signed": false
+          },
+          {
+            "lsb": 16,
+            "msb": 16,
+            "name": "found",
+            "signed": false
+          },
+          {
+            "lsb": 17,
+            "msb": 17,
+            "name": "expect_output",
+            "signed": false
+          }
+        ],
+        "expected_record_width_bits": 18,
+        "expected_sha256": "65314e2eb4c4bbc699ac706c849c9bf04637755e9d269baa0f73e62dccc157cd",
+        "input_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "sample",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 8,
+            "name": "in_last",
+            "signed": false
+          },
+          {
+            "lsb": 9,
+            "msb": 9,
+            "name": "reset_before",
+            "signed": false
+          },
+          {
+            "lsb": 10,
+            "msb": 11,
+            "name": "stall_cycles",
+            "signed": false
+          }
+        ],
+        "input_record_width_bits": 12,
+        "input_sha256": "6c03273d0859775a46d3e0b70a822fa92c91e6467de32e44387550af56f27057",
+        "scenario_class": "public_smoke",
+        "scenario_id": "peak_public_smoke",
+        "seed_sha256": "67f9f4c0d98b422c8d67efad804a15f30b56baa0b0d7867bc999252dba8e8951",
+        "transaction_count": 11
+      },
+      {
+        "expected_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "value",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 15,
+            "name": "index",
+            "signed": false
+          },
+          {
+            "lsb": 16,
+            "msb": 16,
+            "name": "found",
+            "signed": false
+          },
+          {
+            "lsb": 17,
+            "msb": 17,
+            "name": "expect_output",
+            "signed": false
+          }
+        ],
+        "expected_record_width_bits": 18,
+        "input_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "sample",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 8,
+            "name": "in_last",
+            "signed": false
+          },
+          {
+            "lsb": 9,
+            "msb": 9,
+            "name": "reset_before",
+            "signed": false
+          },
+          {
+            "lsb": 10,
+            "msb": 11,
+            "name": "stall_cycles",
+            "signed": false
+          }
+        ],
+        "input_record_width_bits": 12,
+        "scenario_class": "hidden_deterministic",
+        "scenario_id": "peak_hidden_boundaries",
+        "seed_sha256": "e576859c0496b53f2dfe98c889eaf631578544fbb21171fc067d56ef888250dc",
+        "transaction_count": 4
+      },
+      {
+        "expected_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "value",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 15,
+            "name": "index",
+            "signed": false
+          },
+          {
+            "lsb": 16,
+            "msb": 16,
+            "name": "found",
+            "signed": false
+          },
+          {
+            "lsb": 17,
+            "msb": 17,
+            "name": "expect_output",
+            "signed": false
+          }
+        ],
+        "expected_record_width_bits": 18,
+        "input_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "sample",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 8,
+            "name": "in_last",
+            "signed": false
+          },
+          {
+            "lsb": 9,
+            "msb": 9,
+            "name": "reset_before",
+            "signed": false
+          },
+          {
+            "lsb": 10,
+            "msb": 11,
+            "name": "stall_cycles",
+            "signed": false
+          }
+        ],
+        "input_record_width_bits": 12,
+        "scenario_class": "randomized_fixed_seed",
+        "scenario_id": "peak_randomized_seeded",
+        "seed_sha256": "79bc39be1505a6768da28d0a2673d3a4848d6b96e9579a5dd3dbe00c3a5db86a",
+        "transaction_count": 18
+      },
+      {
+        "expected_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "value",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 15,
+            "name": "index",
+            "signed": false
+          },
+          {
+            "lsb": 16,
+            "msb": 16,
+            "name": "found",
+            "signed": false
+          },
+          {
+            "lsb": 17,
+            "msb": 17,
+            "name": "expect_output",
+            "signed": false
+          }
+        ],
+        "expected_record_width_bits": 18,
+        "input_fields": [
+          {
+            "lsb": 0,
+            "msb": 7,
+            "name": "sample",
+            "signed": true
+          },
+          {
+            "lsb": 8,
+            "msb": 8,
+            "name": "in_last",
+            "signed": false
+          },
+          {
+            "lsb": 9,
+            "msb": 9,
+            "name": "reset_before",
+            "signed": false
+          },
+          {
+            "lsb": 10,
+            "msb": 11,
+            "name": "stall_cycles",
+            "signed": false
+          }
+        ],
+        "input_record_width_bits": 12,
+        "scenario_class": "stress",
+        "scenario_id": "peak_stress_reset_stall",
+        "seed_sha256": "336933b3ee38b57da45d5e0faea39859114412049f550d705a6b56e0ed78eb31",
+        "transaction_count": 6
+      }
+    ],
+    "status": "pass"
+  },
+  "oracle_strength": {
+    "killed": 3,
+    "line_a_ready": true,
+    "mutation_cases": 3,
+    "mutation_details": {
+      "off_by_one_peak": {
+        "artifact_dir": "oracle_mutations/off_by_one_peak",
+        "failure_type": "functional_mismatch",
+        "first_failure_stage": "sim_run",
+        "mismatch_detail": [],
+        "outcome": "killed",
+        "sim_run_status": "failed"
+      },
+      "wrong_threshold": {
+        "artifact_dir": "oracle_mutations/wrong_threshold",
+        "failure_type": "functional_mismatch",
+        "first_failure_stage": "sim_run",
+        "mismatch_detail": [],
+        "outcome": "killed",
+        "sim_run_status": "failed"
+      },
+      "wrong_tie_break": {
+        "artifact_dir": "oracle_mutations/wrong_tie_break",
+        "failure_type": "functional_mismatch",
+        "first_failure_stage": "sim_run",
+        "mismatch_detail": [],
+        "outcome": "killed",
+        "sim_run_status": "failed"
+      }
+    },
+    "mutation_score": 1.0,
+    "non_scoreable_mutations": [],
+    "reference_pass": true,
+    "surviving_mutations": [],
+    "task_family": "peak_detector",
+    "threshold": 0.85
+  },
+  "project": {
+    "behavior_hole_count": 0,
+    "deterministic_artifacts": [
+      "constraints/timing.sdc",
+      "manifest.json",
+      "system_his.json"
+    ],
+    "files": {
+      "constraints/timing.sdc": {
+        "behavior_holes": 0,
+        "bytes": 54,
+        "origin": "deterministic"
+      },
+      "manifest.json": {
+        "behavior_holes": 0,
+        "bytes": 692,
+        "origin": "deterministic"
+      },
+      "reports/predicted_qor.json": {
+        "behavior_holes": 0,
+        "bytes": 498,
+        "origin": "model_generated"
+      },
+      "rtl/peak_detector_core.v": {
+        "behavior_holes": 0,
+        "bytes": 2249,
+        "origin": "model_generated"
+      },
+      "rtl/top.v": {
+        "behavior_holes": 0,
+        "bytes": 714,
+        "origin": "model_generated"
+      },
+      "sim/tb_top.v": {
+        "behavior_holes": 0,
+        "bytes": 10069,
+        "origin": "model_generated"
+      },
+      "system_his.json": {
+        "behavior_holes": 0,
+        "bytes": 17416,
+        "origin": "deterministic"
+      }
+    },
+    "model_generated_artifacts": [
+      "reports/predicted_qor.json",
+      "rtl/peak_detector_core.v",
+      "rtl/top.v",
+      "sim/tb_top.v"
+    ],
+    "model_token_fraction": 0.426922
+  },
+  "req_his_fidelity": {
+    "behavior_intent_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "clock_reset_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "constraint_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "interface_extraction": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "parameter_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    },
+    "verification_intent_fidelity": {
+      "errors": [],
+      "status": "not_applicable"
+    }
+  },
+  "sample_id": "sample_phase_c_independent_oracle_v2_peak_detector_8_000004",
+  "verification": {
+    "l0": {
+      "errors": [],
+      "status": "pass"
+    },
+    "l1": {
+      "errors": [],
+      "status": "pass",
+      "warnings": []
+    },
+    "l2_core": {
+      "coverage": {
+        "scenario_profile": "independent_python_reference",
+        "seeds": []
+      },
+      "hidden": {
+        "status": "pass"
+      },
+      "public": {
+        "mismatch_detail": [],
+        "status": "pass"
+      },
+      "status": "pass",
+      "stress": {
+        "status": "pass"
+      }
+    },
+    "l2s": {
+      "divergences": [],
+      "status": "not_run"
+    },
+    "l3": {
+      "bram": 0,
+      "bram_miss": false,
+      "cells": null,
+      "dsp": 0,
+      "ff": 43,
+      "lut": 0,
+      "status": "pass",
+      "warnings": []
+    },
+    "l4_agreement": {
+      "class": "not_applicable"
+    },
+    "l4_commercial": {
+      "board_constraints_applied": false,
+      "bram": null,
+      "constraint_scope": "logical_only",
+      "drc_warnings": [],
+      "dsp": null,
+      "expected_board_drc_exceptions": [],
+      "ff": null,
+      "fmax_mhz": null,
+      "invalidating_critical_warnings": [],
+      "lut": null,
+      "methodology_warnings": [],
+      "official_board_ready": false,
+      "report_paths": [],
+      "runtime_sec": null,
+      "skip_reason": "disabled_by_config",
+      "status": "not_run",
+      "tool": "vivado",
+      "wns_ns": null
+    },
+    "l4_open": {
+      "board_constraints_applied": false,
+      "board_profile": "ac820_zynq",
+      "bram": null,
+      "constraint_scope": "logical_only",
+      "critical_warnings": [],
+      "drc_warnings": [],
+      "dsp": null,
+      "failure_family": null,
+      "ff": null,
+      "fmax_mhz": null,
+      "lut": null,
+      "report_paths": [],
+      "runtime_sec": null,
+      "skip_reason": "disabled_by_config",
+      "status": "not_run",
+      "tool": "openxc7_nextpnr",
+      "wns_ns": null
+    },
+    "l5": {
+      "log_path": null,
+      "status": "not_run"
+    }
+  }
+}

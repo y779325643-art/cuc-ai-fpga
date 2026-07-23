@@ -24,7 +24,7 @@ implementation owner. See the
 | B1 contracts and artifact boundaries | Complete | Contract registry, canonical task catalog, dataset manifests and policy tests |
 | B2 standalone Agent project | Complete | Agent source/config/scripts/tests moved; deterministic 24-sample smoke reached L3 |
 | B3 standalone Training project | Complete | Lightweight package, provenance enforcement, serving/training assets moved |
-| B4 compatibility and cleanup | In progress | Python and shell legacy entrypoints delegate to canonical projects |
+| B4 compatibility and cleanup | In progress | Stable evidence promotion is complete; tracked `tmp/` deletion still requires explicit approval |
 
 The last complete B3 regression was `989 passed, 349 subtests passed`. B4
 focused compatibility suites are run after each migration slice; a new full
@@ -38,8 +38,9 @@ regression is required before final approval.
 - Trusted black-box testbenches, protocol/numeric/image/RL oracles, mutation
   qualification, and patch-as-PR controls.
 - L0 project-contract checking, L1 lint, L2 simulation, L3 synthesis.
-- Optional OpenXC7 L4 and Vivado reference paths with artifact-backed evidence
-  for representative families.
+- Optional OpenXC7 L4 and Vivado reference paths. Current artifact-backed
+  evidence proves OpenXC7 L4 for two representative families; Vivado was not
+  available in the current environment and is recorded as `not_run`.
 - Versioned trajectory and training-view contracts.
 - Independent Training conversion and dry-run validation without loading
   PyTorch or Transformers.
@@ -61,7 +62,8 @@ status document is its human-readable view.
 | Paper 1 core mutation-qualified | 14/14 |
 | Mutation-qualified families | 21 |
 | Independent Python oracle qualified | 9 |
-| Dual-tool L4 families (OpenXC7 and Vivado) | 2 |
+| OpenXC7 L4 families | 2 |
+| Vivado commercial-reference L4 families | 0 (`not_run`: 2) |
 | L5 families | 0 |
 
 ## Verdict Rules
@@ -111,15 +113,21 @@ python -m sr2fpga_training.training_dry_run `
 
 ## Remaining B4 Gates
 
-1. Recheck the Phase A external backup root.
-2. Restore the 69 active legacy evidence references from that verified backup
-   into stable `reports/evidence/legacy-runs/` paths.
-3. Present the 590-path tracked-`tmp/` inventory totals and obtain explicit
+1. Present the 590-path tracked-`tmp/` inventory totals and obtain explicit
    approval before moving or
    deleting any tracked `tmp/` evidence.
-4. Run compatibility, full regression, deterministic Agent, and lightweight
+2. Run compatibility, full regression, deterministic Agent, and lightweight
    Training acceptance checks.
-5. Produce the final reorganization audit and publication-ready branch.
+3. Produce the final reorganization audit and publication-ready branch.
 
 No tracked `tmp/` evidence may be removed before the external-backup and
 explicit-approval gate.
+
+Completed B4 evidence gates:
+
+- The Phase A external backup was rechecked successfully.
+- 69 active legacy references (87 ledger occurrences) were replaced with
+  sanitized stable evidence under `reports/evidence/legacy-runs/`.
+- Hidden oracle `.memh` vectors and binary simulator/P&R products were not
+  promoted.
+- The local task-evidence artifact audit passes with no issues.

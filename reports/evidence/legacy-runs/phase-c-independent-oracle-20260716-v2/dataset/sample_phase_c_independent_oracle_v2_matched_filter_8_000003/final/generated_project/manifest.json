@@ -1,0 +1,35 @@
+{
+  "clock": {
+    "frequency_hz": 100000000,
+    "name": "clk"
+  },
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "language": "verilog",
+  "project_name": "phase_c_independent_oracle_v2_matched_filter_8_000003",
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/matched_filter_core.v",
+    "rtl/matched_filter_mac.v"
+  ],
+  "target": {
+    "board": "generic",
+    "family": "generic",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "top_module": "top"
+}

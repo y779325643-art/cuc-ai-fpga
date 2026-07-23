@@ -1,0 +1,2 @@
+{"bucket":"success_l3","difficulty_tier":"T3","event":"sample_completed","failure_origin":"deterministic","pass_level":"L4","sample_id":"sample_line_a_l4_dual_tool_fir_filter_8_000001","source":"deterministic","task_type":"fir_filter","width":8}
+{"bucket":"success_l3","difficulty_tier":"T3","event":"sample_completed","failure_origin":"deterministic","pass_level":"L4","sample_id":"sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002","source":"deterministic","task_type":"matrix_vector_mac","width":8}

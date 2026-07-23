@@ -1,0 +1,19 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/uart_rx_core.v",
+    "rtl/sync_fifo_core.v",
+    "rtl/uart_tx_core.v",
+    "sim/tb_top.v"
+  ],
+  "duration_seconds": 0.29670499998610467,
+  "exit_code": 0,
+  "stage": "sim_compile",
+  "status": "passed",
+  "stderr": "",
+  "stdout": ""
+}

@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.25782250007614493,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "[fir_public_smoke] WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/00.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/00.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 136000 (1ps)\n[fir_hidden_edges] WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/01.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/01.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 166000 (1ps)\n[fir_randomized_seeded] WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/02.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/02.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 576000 (1ps)\n[fir_stress_reset_stall] WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/03.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_775676422ed249b18ffd537e998bd864/03.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:154: $finish called at 256000 (1ps)"
+}

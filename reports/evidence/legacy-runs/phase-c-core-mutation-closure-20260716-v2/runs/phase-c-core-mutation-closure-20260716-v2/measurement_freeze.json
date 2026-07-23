@@ -1,0 +1,77 @@
+{
+  "config_fingerprint": "a5bd8cb0757cd9ce442862de2a0ae39d98feb8ea9f7ba351014bc71c16aefd2a",
+  "freeze_fingerprint": "d5e5750bc801c049d8e26d48fcea6e186e1e88f9fbf5d6696c6e3726a8d78cc6",
+  "l4_family_ids": [],
+  "max_attempts": 1,
+  "run_id": "phase-c-core-mutation-closure-20260716-v2",
+  "sample_count": 4,
+  "samples": [
+    {
+      "family_id": "single_dual_port_ram",
+      "paired_requirement_id": "single_dual_port_ram:f0c541c703ea6157",
+      "requirement_sha256": "f0c541c703ea6157c123e26ca4408780d172a5306770bcd2f11adbf19e500f9f",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_core_mutation_closure_v2_ram_read_write_8_000001",
+      "source": "deterministic",
+      "task_type": "ram_read_write",
+      "topology_id": "",
+      "width": 8
+    },
+    {
+      "family_id": "valid_ready_stream_accumulator",
+      "paired_requirement_id": "valid_ready_stream_accumulator:c86972b22621f0c3",
+      "requirement_sha256": "c86972b22621f0c3155b189766059ccae4a616b6c26f3ac2aeee861d8c6c7be0",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_core_mutation_closure_v2_t2_stream_accumulator_8_000002",
+      "source": "deterministic",
+      "task_type": "composed_stream_accumulator",
+      "topology_id": "t2_stream_accumulator",
+      "width": 8
+    },
+    {
+      "family_id": "stream_fork_join",
+      "paired_requirement_id": "stream_fork_join:d009cf5b94ef2626",
+      "requirement_sha256": "d009cf5b94ef26265226f4ac40e0de59ca3cfca0f5dc46377e15468dabc53046",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003",
+      "source": "deterministic",
+      "task_type": "composed_dual_stream_join",
+      "topology_id": "t4_dual_stream_join",
+      "width": 8
+    },
+    {
+      "family_id": "mac_array",
+      "paired_requirement_id": "mac_array:fa757eceed465578",
+      "requirement_sha256": "fa757eceed465578d08fd5edff16fc0909d1f1226b37c57338b853083c697532",
+      "requirement_style": "simple_prompt",
+      "sample_id": "sample_phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004",
+      "source": "deterministic",
+      "task_type": "composed_vector_mac_pipeline",
+      "topology_id": "t5_vector_mac_pipeline",
+      "width": 8
+    }
+  ],
+  "schema_version": "sr2fpga-phase-d-freeze-v1",
+  "sources": [
+    {
+      "generation_mode": "",
+      "kind": "deterministic",
+      "max_tokens": 0,
+      "model": "deterministic",
+      "name": "deterministic",
+      "timeout_seconds": 120,
+      "transport_attempts": 3
+    }
+  ],
+  "timeouts": {
+    "l4_open": 600,
+    "source:deterministic": 120
+  },
+  "tool_versions": {
+    "iverilog": "Icarus Verilog version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "l4_open": "disabled",
+    "verilator": "Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)",
+    "vvp": "Icarus Verilog runtime version 14.0 (devel) (s20260301-220-g78750c51d-dirty)",
+    "yosys": "Yosys 0.66+154 (git sha1 23aadd92a, Release, GNU /usr/bin/x86_64-w64-mingw32-g++ 13.2.1)"
+  }
+}

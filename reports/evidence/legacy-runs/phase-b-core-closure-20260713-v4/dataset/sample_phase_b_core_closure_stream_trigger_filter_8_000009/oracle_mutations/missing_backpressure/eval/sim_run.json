@@ -1,0 +1,12 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "sim.out"
+  ],
+  "duration_seconds": 0.05581329995766282,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "Simulation reported TEST_FAIL\n",
+  "stdout": "TEST_FAIL match expected index=3 word=11223311 got valid=0 index=3 word=11223311\nsim/tb_top.v:63: $finish called at 316000 (1ps)\n"
+}

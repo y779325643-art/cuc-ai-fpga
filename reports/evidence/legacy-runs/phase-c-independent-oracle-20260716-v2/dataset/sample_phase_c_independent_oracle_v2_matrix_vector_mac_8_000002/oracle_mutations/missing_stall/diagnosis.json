@@ -1,0 +1,49 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "[matrix_public_smoke] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/00.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/00.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 136000 (1ps)\n[matrix_hidden_edges] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/01.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/01.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 226000 (1ps)\n[matrix_randomized_seeded] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/02.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/02.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"matrix_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":3,\"expected\":\"ready=0\",\"actual\":\"ready=1\"}\nTEST_FAIL accepted sample while result stalled\nsim/tb_top.v:159: $finish called at 121000 (1ps)\n[matrix_stress_reset_stall] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/03.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_86edef1eced54e79bc70c5be73c331dd/03.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"matrix_stress_reset_stall\",\"class\":\"stress\",\"item_index\":5,\"expected\":\"ready=0\",\"actual\":\"ready=1\"}\nTEST_FAIL accepted sample while result stalled\nsim/tb_top.v:159: $finish called at 191000 (1ps)",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [
+      {
+        "actual": "ready=1",
+        "class": "randomized_fixed_seed",
+        "expected": "ready=0",
+        "item_index": 3,
+        "scenario_id": "matrix_randomized_seeded"
+      },
+      {
+        "actual": "ready=1",
+        "class": "stress",
+        "expected": "ready=0",
+        "item_index": 5,
+        "scenario_id": "matrix_stress_reset_stall"
+      }
+    ],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": [
+      {
+        "failure_type": "unknown",
+        "warning_class": "YOSYS"
+      },
+      {
+        "failure_type": "unknown",
+        "warning_class": "YOSYS"
+      },
+      {
+        "failure_type": "unknown",
+        "warning_class": "YOSYS"
+      },
+      {
+        "failure_type": "unknown",
+        "warning_class": "YOSYS"
+      }
+    ]
+  },
+  "tool": "vvp",
+  "tool_status": "failed"
+}

@@ -1,0 +1,17 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "[rl_public_config_samples] SR2FPGA_MISMATCH {\"scenario_id\":\"rl_public_config_samples\",\"class\":\"public_smoke\",\"item_index\":8,\"expected\":{\"selected_action\":1,\"value_estimate\":9,\"updated_value\":11,\"episode_done\":1},\"actual\":{\"selected_action\":\"1\",\"value_estimate\":9,\"updated_value\":9,\"episode_done\":\"1\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:279: $finish called at 236000 (1ps)\n[rl_hidden_enable_tie_register_map] TEST_PASS\nsim/tb_top.v:322: $finish called at 320000 (1ps)\n[rl_randomized_seeded] SR2FPGA_MISMATCH {\"scenario_id\":\"rl_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":9,\"expected\":{\"selected_action\":0,\"value_estimate\":255,\"updated_value\":77,\"episode_done\":0},\"actual\":{\"selected_action\":\"0\",\"value_estimate\":255,\"updated_value\":255,\"episode_done\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:279: $finish called at 306000 (1ps)\n[rl_stress_reset_stall_saturation_irq] SR2FPGA_MISMATCH {\"scenario_id\":\"rl_stress_reset_stall_saturation_irq\",\"class\":\"stress\",\"item_index\":7,\"expected\":{\"selected_action\":0,\"value_estimate\":255,\"updated_value\":254,\"episode_done\":0},\"actual\":{\"selected_action\":\"0\",\"value_estimate\":255,\"updated_value\":255,\"episode_done\":\"0\"}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:279: $finish called at 196000 (1ps)",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "vvp",
+  "tool_status": "failed"
+}

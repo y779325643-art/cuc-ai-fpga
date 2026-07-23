@@ -167,7 +167,11 @@ def build_plan(
         "schema_version": PLAN_SCHEMA,
         "source_ledger": source_ledger_path.as_posix(),
         "curated_root": CURATED_ROOT.as_posix(),
-        "status": "requires_phase_a_backup",
+        "status": (
+            "complete"
+            if unique_count == 0
+            else "requires_phase_a_backup"
+        ),
         "reference_occurrence_count": occurrence_count,
         "unique_reference_count": unique_count,
         "planned_reference_count": planned_count,

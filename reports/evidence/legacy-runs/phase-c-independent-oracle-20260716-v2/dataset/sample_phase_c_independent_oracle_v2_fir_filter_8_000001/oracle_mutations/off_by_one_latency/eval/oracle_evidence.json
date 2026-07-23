@@ -1,0 +1,138 @@
+{
+  "bundle_sha256": "2d345802bb8c7ccd202caa44622b2e39ea71885cb38bbdc13c88538b01623904",
+  "class_status": {
+    "hidden_deterministic": "fail",
+    "public_smoke": "fail",
+    "randomized_fixed_seed": "fail",
+    "stress": "fail"
+  },
+  "diagnostics": [],
+  "failure_origin": "natural_model_failure",
+  "failure_type": "functional_mismatch",
+  "family_id": "fir_filter",
+  "scenario_counts": {
+    "hidden_deterministic": 1,
+    "public_smoke": 1,
+    "randomized_fixed_seed": 1,
+    "stress": 1
+  },
+  "scenario_results": [
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/00.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/00.expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_public_smoke",
+        "+ORACLE_SCENARIO_CLASS=public_smoke",
+        "+ORACLE_TRANSACTION_COUNT=3"
+      ],
+      "duration_seconds": 0.0626325000775978,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0xf",
+          "class": "public_smoke",
+          "expected": "0xf",
+          "item_index": 0,
+          "scenario_id": "fir_public_smoke"
+        }
+      ],
+      "scenario_class": "public_smoke",
+      "scenario_id": "fir_public_smoke",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/00.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/00.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_public_smoke\",\"class\":\"public_smoke\",\"item_index\":0,\"expected\":\"0xf\",\"actual\":\"0xf\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/01.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/01.expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_hidden_edges",
+        "+ORACLE_SCENARIO_CLASS=hidden_deterministic",
+        "+ORACLE_TRANSACTION_COUNT=4"
+      ],
+      "duration_seconds": 0.06271369999740273,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0x680",
+          "class": "hidden_deterministic",
+          "expected": "0x680",
+          "item_index": 0,
+          "scenario_id": "fir_hidden_edges"
+        }
+      ],
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "fir_hidden_edges",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/01.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/01.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_hidden_edges\",\"class\":\"hidden_deterministic\",\"item_index\":0,\"expected\":\"0x680\",\"actual\":\"0x680\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/02.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/02.expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_randomized_seeded",
+        "+ORACLE_SCENARIO_CLASS=randomized_fixed_seed",
+        "+ORACLE_TRANSACTION_COUNT=16"
+      ],
+      "duration_seconds": 0.062109499936923385,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0x78b",
+          "class": "randomized_fixed_seed",
+          "expected": "0x78b",
+          "item_index": 0,
+          "scenario_id": "fir_randomized_seeded"
+        }
+      ],
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "fir_randomized_seeded",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/02.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/02.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":0,\"expected\":\"0x78b\",\"actual\":\"0x78b\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    },
+    {
+      "command": [
+        "<ABSOLUTE_PATH>",
+        "sim.out",
+        "+ORACLE_INPUT=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/03.input.memh",
+        "+ORACLE_EXPECTED=<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/03.expected.memh",
+        "+ORACLE_SCENARIO_ID=fir_stress_reset_stall",
+        "+ORACLE_SCENARIO_CLASS=stress",
+        "+ORACLE_TRANSACTION_COUNT=5"
+      ],
+      "duration_seconds": 0.0667927999747917,
+      "exit_code": 0,
+      "failure_origin": "natural_model_failure",
+      "failure_type": "functional_mismatch",
+      "mismatch_detail": [
+        {
+          "actual": "0x17d",
+          "class": "stress",
+          "expected": "0x17d",
+          "item_index": 0,
+          "scenario_id": "fir_stress_reset_stall"
+        }
+      ],
+      "scenario_class": "stress",
+      "scenario_id": "fir_stress_reset_stall",
+      "status": "failed",
+      "stderr": "",
+      "stdout": "WARNING: sim/tb_top.v:104: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/03.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:105: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_3fae2be4e83c45699d3c039a0c2701e0/03.expected.memh): Not enough words in the file for the requested range [0:4095].\nSR2FPGA_MISMATCH {\"scenario_id\":\"fir_stress_reset_stall\",\"class\":\"stress\",\"item_index\":0,\"expected\":\"0x17d\",\"actual\":\"0x17d\"}\nTEST_FAIL functional mismatch\nsim/tb_top.v:129: $finish called at 56000 (1ps)\n"
+    }
+  ],
+  "status": "failed"
+}

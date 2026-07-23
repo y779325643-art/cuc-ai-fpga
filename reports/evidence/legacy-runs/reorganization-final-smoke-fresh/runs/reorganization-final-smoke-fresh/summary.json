@@ -1,0 +1,616 @@
+{
+  "run_id": "reorganization-final-smoke-fresh",
+  "config_fingerprint": "11b15e2bc61146af459a53462aae075cd2ad724e96051da279108dc24d1a2321",
+  "total_planned": 24,
+  "total_completed": 24,
+  "next_index": 24,
+  "buckets": {
+    "success_l3": [
+      "sample_t0_t4_deterministic_smoke_counter_8_000001",
+      "sample_t0_t4_deterministic_smoke_fifo_8_000002",
+      "sample_t0_t4_deterministic_smoke_simple_fsm_4_000003",
+      "sample_t0_t4_deterministic_smoke_ram_read_write_16_000004",
+      "sample_t0_t4_deterministic_smoke_uart_tx_8_000005",
+      "sample_t0_t4_deterministic_smoke_spi_master_8_000006",
+      "sample_t0_t4_deterministic_smoke_pwm_controller_8_000007",
+      "sample_t0_t4_deterministic_smoke_fir_filter_8_000008",
+      "sample_t0_t4_deterministic_smoke_streaming_valid_ready_8_000009",
+      "sample_t0_t4_deterministic_smoke_matrix_vector_mac_8_000010",
+      "sample_t0_t4_deterministic_smoke_alu_control_unit_8_000011",
+      "sample_t0_t4_deterministic_smoke_crc_stream_checker_8_000012",
+      "sample_t0_t4_deterministic_smoke_t1_event_counter_8_000013",
+      "sample_t0_t4_deterministic_smoke_t2_stream_accumulator_8_000014",
+      "sample_t0_t4_deterministic_smoke_t3_stream_fork_8_000015",
+      "sample_t0_t4_deterministic_smoke_t4_dual_stream_join_8_000016",
+      "sample_t0_t4_deterministic_smoke_t5_vector_mac_pipeline_8_000017",
+      "sample_t0_t4_deterministic_smoke_t6_td_update_core_8_000018",
+      "sample_t0_t4_deterministic_smoke_t7_policy_value_shell_8_000019",
+      "sample_t0_t4_deterministic_smoke_t8_replay_sample_shell_8_000020",
+      "sample_t0_t4_deterministic_smoke_t9_host_protocol_shell_8_000021",
+      "sample_t0_t4_deterministic_smoke_t10_rl_accelerator_shell_8_000022",
+      "sample_t0_t4_deterministic_smoke_t11_batch_rl_accelerator_shell_8_000023",
+      "sample_t0_t4_deterministic_smoke_t12_replay_arbiter_shell_8_000024"
+    ],
+    "repair_trajectory": [],
+    "rejected": []
+  },
+  "failure_types": {},
+  "failure_family_breakdown": {},
+  "attempt_stage_transition_breakdown": {},
+  "latent_testbench_issue_breakdown": {},
+  "metadata_breakdown": {
+    "source": {
+      "deterministic": 24
+    },
+    "failure_origin": {
+      "deterministic": 24
+    },
+    "requirement_style": {
+      "simple_prompt": 24
+    },
+    "contract_skeleton_mode": {
+      "deterministic_template": 24
+    },
+    "difficulty_tier": {
+      "T0": 6,
+      "T1": 3,
+      "T3": 5,
+      "T2": 5,
+      "T4": 5
+    },
+    "topology_id": {
+      "t1_event_counter": 1,
+      "t2_stream_accumulator": 1,
+      "t3_stream_fork": 1,
+      "t4_dual_stream_join": 1,
+      "t5_vector_mac_pipeline": 1,
+      "t6_td_update_core": 1,
+      "t7_policy_value_shell": 1,
+      "t8_replay_sample_shell": 1,
+      "t9_host_protocol_shell": 1,
+      "t10_rl_accelerator_shell": 1,
+      "t11_batch_rl_accelerator_shell": 1,
+      "t12_replay_arbiter_shell": 1
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": 24
+    },
+    "evaluation_line": {
+      "line_b": 24
+    }
+  },
+  "pass_level_breakdown": {
+    "L3": 24
+  },
+  "levels": {
+    "l0": {
+      "pass": 24,
+      "fail": 0
+    },
+    "l1": {
+      "pass": 24,
+      "fail": 0
+    },
+    "l2": {
+      "pass": 24,
+      "fail": 0
+    },
+    "l3": {
+      "pass": 24,
+      "fail": 0
+    },
+    "l4_open": {
+      "pass": 0,
+      "fail": 0,
+      "not_run": 24
+    }
+  },
+  "generated_his_credit": {
+    "credited": 24
+  },
+  "generated_his_pass_level_breakdown": {
+    "L3": 24
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "official_eval_unit": false,
+      "standalone_pass_credit": false,
+      "project_level_pass_credit": false,
+      "rows": 211,
+      "file_level_passed": 0
+    }
+  },
+  "h_stage": {
+    "h0": {
+      "pass": 24,
+      "fail": 0
+    },
+    "h1": {
+      "pass": 24,
+      "fail": 0
+    },
+    "h2": {
+      "pass": 24,
+      "fail": 0
+    },
+    "h3": {
+      "pass": 14,
+      "fail": 0,
+      "not_applicable": 10
+    }
+  },
+  "l4_open": {
+    "pass": 0,
+    "fail": 0,
+    "not_run": 24
+  },
+  "l4_open_skip_reasons": {
+    "disabled_by_config": 24
+  },
+  "l4_commercial": {
+    "pass": 0,
+    "fail": 0,
+    "not_run": 24
+  },
+  "l4_commercial_skip_reasons": {
+    "disabled_by_config": 24
+  },
+  "toolchain_environment_failures": {},
+  "oracle_strength": {
+    "samples": 24,
+    "reference_passed": 24,
+    "mutation_cases": 46,
+    "killed": 43,
+    "mutation_score": 0.93,
+    "surviving_mutations": {
+      "missing_saturation": 1,
+      "wrong_signed_shift": 1,
+      "wrong_argmax_tie_break": 1
+    },
+    "non_scoreable_mutations": {
+      "missing_reset": 2,
+      "off_by_one_increment": 1,
+      "wrong_wrap_value": 1,
+      "missing_default_state": 1,
+      "wrong_next_state": 1,
+      "wrong_reset_state": 1,
+      "wrong_compare_operator": 1,
+      "wrong_period_counter": 1,
+      "missing_status_flag": 1,
+      "wrong_opcode_decode": 1,
+      "missing_frame_reset": 1,
+      "wrong_crc_polynomial": 1,
+      "bypass_event_gate": 1,
+      "wrong_counter_enable": 1,
+      "drop_one_branch": 1,
+      "duplicate_transaction": 1,
+      "missing_backpressure": 1,
+      "wrong_join_order": 1,
+      "missing_status_clear": 1,
+      "wrong_policy_update": 1,
+      "wrong_reward_formula": 1,
+      "missing_occupancy_update": 1,
+      "wrong_replay_order": 1,
+      "missing_interrupt_clear": 1,
+      "wrong_register_offset": 2,
+      "accumulator_truncation": 1,
+      "missing_done": 1,
+      "wrong_argmax_tie_break": 1,
+      "wrong_td_formula": 1,
+      "dropped_sample_packet": 1,
+      "wrong_arbiter_priority": 1
+    },
+    "line_a_ready": 10,
+    "line_a_not_ready": 14
+  },
+  "independent_oracle": {
+    "pass": 0,
+    "fail": 0,
+    "not_run": 24,
+    "infrastructure_error": 0,
+    "model_denominator": 0,
+    "model_failures": 0,
+    "by_domain": {
+      "other": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 19,
+        "infrastructure_error": 0
+      },
+      "numeric": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 2,
+        "infrastructure_error": 0
+      },
+      "rl": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 3,
+        "infrastructure_error": 0
+      }
+    },
+    "by_family": {
+      "binary_bcd_counter": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "sync_fifo": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "simple_fsm": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "single_dual_port_ram": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "uart_tx": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "spi_master": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "pwm_generator": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "fir_filter": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "valid_ready_stream_stage": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "matrix_vector_mac": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "alu_control_unit": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "crc_stream_checker": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "t1_event_counter": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "valid_ready_stream_accumulator": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "stream_fork_join": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 2,
+        "infrastructure_error": 0
+      },
+      "mac_array": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "qtable_update_core": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "rl_reward_policy_update": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "t8_replay_sample_shell": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "t9_host_protocol_shell": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      },
+      "p_rl_qlearning_accel": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 2,
+        "infrastructure_error": 0
+      },
+      "t12_replay_arbiter_shell": {
+        "pass": 0,
+        "fail": 0,
+        "not_run": 1,
+        "infrastructure_error": 0
+      }
+    }
+  },
+  "repair_metrics": {
+    "total_patches": 0,
+    "valid_patches": 0,
+    "invalid_edit_surface": 0,
+    "fixed_target": 0,
+    "automatic_pass_credit": 0,
+    "regressing_patches": 0,
+    "regression_rate": 0.0
+  },
+  "calibration_matrix": {
+    "source": {
+      "deterministic": {
+        "total": 24,
+        "pass_levels": {
+          "L3": 24
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "failure_origin": {
+      "deterministic": {
+        "total": 24,
+        "pass_levels": {
+          "L3": 24
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "requirement_style": {
+      "simple_prompt": {
+        "total": 24,
+        "pass_levels": {
+          "L3": 24
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "contract_skeleton_mode": {
+      "deterministic_template": {
+        "total": 24,
+        "pass_levels": {
+          "L3": 24
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "difficulty_tier": {
+      "T0": {
+        "total": 6,
+        "pass_levels": {
+          "L3": 6
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "T1": {
+        "total": 3,
+        "pass_levels": {
+          "L3": 3
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "T3": {
+        "total": 5,
+        "pass_levels": {
+          "L3": 5
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "T2": {
+        "total": 5,
+        "pass_levels": {
+          "L3": 5
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "T4": {
+        "total": 5,
+        "pass_levels": {
+          "L3": 5
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "topology_id": {
+      "t1_event_counter": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t2_stream_accumulator": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t3_stream_fork": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t4_dual_stream_join": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t5_vector_mac_pipeline": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t6_td_update_core": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t7_policy_value_shell": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t8_replay_sample_shell": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t9_host_protocol_shell": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t10_rl_accelerator_shell": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t11_batch_rl_accelerator_shell": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      },
+      "t12_replay_arbiter_shell": {
+        "total": 1,
+        "pass_levels": {
+          "L3": 1
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": {
+        "total": 24,
+        "pass_levels": {
+          "L3": 24
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "evaluation_line": {
+      "line_b": {
+        "total": 24,
+        "pass_levels": {
+          "L3": 24
+        },
+        "l3_pass_rate": 1.0,
+        "l0_contract_failures": 0,
+        "cross_file_consistency_error_rate": 0.0
+      }
+    },
+    "failure_family": {}
+  },
+  "contract_metrics": {
+    "total_labeled": 24,
+    "l0_contract_failures": 0,
+    "cross_file_consistency_error_rate": 0.0
+  },
+  "exports_refreshed": true,
+  "line_b_targets": {
+    "l3_success_ratio": 1.0,
+    "repair_trajectory_ratio": 0.0,
+    "max_samples": 24
+  },
+  "freeze_fingerprint": "d305e191a28e8f7bb4bc0f076681b170ace2c341a4a1e8476a5019951a5ef97c"
+}

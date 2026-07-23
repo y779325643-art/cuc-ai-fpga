@@ -1,0 +1,17 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "[sobel_public_flat_vertical] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_hidden_horizontal_maximum] SR2FPGA_MISMATCH {\"scenario_id\":\"sobel_hidden_horizontal_maximum\",\"class\":\"hidden_deterministic\",\"item_index\":20,\"field\":\"output_count\",\"expected\":\"at_most_25_per_frame\",\"actual\":\"overflow\"}\nTEST_FAIL emitted more than 25 pixels\nsim/tb_top.v:72: $finish called at 575000 (1ps)\n[sobel_randomized_seeded] TEST_PASS\nsim/tb_top.v:399: $finish called at 1265000 (1ps)\n[sobel_stress_reset_stall] TEST_PASS\nsim/tb_top.v:399: $finish called at 975000 (1ps)",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "vvp",
+  "tool_status": "failed"
+}

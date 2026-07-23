@@ -1,0 +1,10 @@
+{
+  "board": "generic",
+  "clock_hz": 100000000,
+  "family": "generic",
+  "name": "generic_verilog",
+  "part": "generic",
+  "reset_polarity": "active_low",
+  "toolchain": "open_source",
+  "vendor": "generic"
+}

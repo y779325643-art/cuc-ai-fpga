@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.29950650001410395,
+  "exit_code": 1,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "",
+  "stdout": "[td_public_declared_examples] SR2FPGA_MISMATCH {\"scenario_id\":\"td_public_declared_examples\",\"class\":\"public_smoke\",\"item_index\":0,\"expected\":{\"td_error\":4,\"updated_value\":11},\"actual\":{\"td_error\":24,\"updated_value\":16}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n[td_hidden_signed_saturation] SR2FPGA_MISMATCH {\"scenario_id\":\"td_hidden_signed_saturation\",\"class\":\"hidden_deterministic\",\"item_index\":0,\"expected\":{\"td_error\":-14,\"updated_value\":-3},\"actual\":{\"td_error\":-6,\"updated_value\":1}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n[td_randomized_seeded] SR2FPGA_MISMATCH {\"scenario_id\":\"td_randomized_seeded\",\"class\":\"randomized_fixed_seed\",\"item_index\":0,\"expected\":{\"td_error\":-28,\"updated_value\":82},\"actual\":{\"td_error\":127,\"updated_value\":127}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 66000 (1ps)\n[td_stress_reset_stall_bounds] SR2FPGA_MISMATCH {\"scenario_id\":\"td_stress_reset_stall_bounds\",\"class\":\"stress\",\"item_index\":1,\"expected\":{\"td_error\":127,\"updated_value\":-1},\"actual\":{\"td_error\":126,\"updated_value\":-2}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:186: $finish called at 126000 (1ps)"
+}

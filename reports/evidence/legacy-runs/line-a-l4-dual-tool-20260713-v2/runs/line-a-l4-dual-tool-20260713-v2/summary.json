@@ -1,0 +1,262 @@
+{
+  "attempt_stage_transition_breakdown": {},
+  "buckets": {
+    "rejected": [],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_line_a_l4_dual_tool_fir_filter_8_000001",
+      "sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002"
+    ]
+  },
+  "calibration_matrix": {
+    "contract_skeleton_mode": {
+      "deterministic_template": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L4": 2
+        },
+        "total": 2
+      }
+    },
+    "difficulty_tier": {
+      "T3": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L4": 2
+        },
+        "total": 2
+      }
+    },
+    "evaluation_line": {
+      "line_a": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L4": 2
+        },
+        "total": 2
+      }
+    },
+    "failure_family": {},
+    "failure_origin": {
+      "deterministic": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L4": 2
+        },
+        "total": 2
+      }
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L4": 2
+        },
+        "total": 2
+      }
+    },
+    "requirement_style": {
+      "simple_prompt": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L4": 2
+        },
+        "total": 2
+      }
+    },
+    "source": {
+      "deterministic": {
+        "cross_file_consistency_error_rate": 0.0,
+        "l0_contract_failures": 0,
+        "l3_pass_rate": 1.0,
+        "pass_levels": {
+          "L4": 2
+        },
+        "total": 2
+      }
+    },
+    "topology_id": {}
+  },
+  "config_fingerprint": "ccfb56a73a3d2ff6fdf971ce7302a9a20274647b02b7d0a8ea624d6b92703c2d",
+  "contract_metrics": {
+    "cross_file_consistency_error_rate": 0.0,
+    "l0_contract_failures": 0,
+    "total_labeled": 2
+  },
+  "derived_training_views": {
+    "req2file": {
+      "available": true,
+      "file_level_passed": 0,
+      "official_eval_unit": false,
+      "project_level_pass_credit": false,
+      "rows": 17,
+      "standalone_pass_credit": false
+    }
+  },
+  "exports_refreshed": true,
+  "failure_family_breakdown": {},
+  "failure_types": {},
+  "freeze_fingerprint": "73b8144201da48a82ce5026a8e385369633b58ad4510f997bc50954132a5859f",
+  "generated_his_credit": {
+    "credited": 2
+  },
+  "generated_his_pass_level_breakdown": {
+    "L4": 2
+  },
+  "h_stage": {
+    "h0": {
+      "fail": 0,
+      "pass": 2
+    },
+    "h1": {
+      "fail": 0,
+      "pass": 2
+    },
+    "h2": {
+      "fail": 0,
+      "pass": 2
+    },
+    "h3": {
+      "fail": 0,
+      "not_applicable": 2,
+      "pass": 0
+    }
+  },
+  "independent_oracle": {
+    "by_domain": {
+      "numeric": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 2,
+        "pass": 0
+      }
+    },
+    "by_family": {
+      "fir_filter": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      },
+      "matrix_vector_mac": {
+        "fail": 0,
+        "infrastructure_error": 0,
+        "not_run": 1,
+        "pass": 0
+      }
+    },
+    "fail": 0,
+    "infrastructure_error": 0,
+    "model_denominator": 0,
+    "model_failures": 0,
+    "not_run": 2,
+    "pass": 0
+  },
+  "l4_commercial": {
+    "fail": 0,
+    "not_run": 2,
+    "pass": 0
+  },
+  "l4_commercial_skip_reasons": {
+    "missing_tool": 2
+  },
+  "l4_open": {
+    "fail": 0,
+    "not_run": 0,
+    "pass": 2
+  },
+  "l4_open_skip_reasons": {},
+  "latent_testbench_issue_breakdown": {},
+  "levels": {
+    "l0": {
+      "fail": 0,
+      "pass": 2
+    },
+    "l1": {
+      "fail": 0,
+      "pass": 2
+    },
+    "l2": {
+      "fail": 0,
+      "pass": 2
+    },
+    "l3": {
+      "fail": 0,
+      "pass": 2
+    },
+    "l4_open": {
+      "fail": 0,
+      "not_run": 0,
+      "pass": 2
+    }
+  },
+  "line_b_targets": {
+    "l3_success_ratio": 1.0,
+    "max_samples": 2,
+    "repair_trajectory_ratio": 0.0
+  },
+  "metadata_breakdown": {
+    "contract_skeleton_mode": {
+      "deterministic_template": 2
+    },
+    "difficulty_tier": {
+      "T3": 2
+    },
+    "evaluation_line": {
+      "line_a": 2
+    },
+    "failure_origin": {
+      "deterministic": 2
+    },
+    "measurement_point": {
+      "a_first_attempt_no_tools": 2
+    },
+    "requirement_style": {
+      "simple_prompt": 2
+    },
+    "source": {
+      "deterministic": 2
+    },
+    "topology_id": {}
+  },
+  "next_index": 2,
+  "oracle_strength": {
+    "killed": 9,
+    "line_a_not_ready": 0,
+    "line_a_ready": 2,
+    "mutation_cases": 9,
+    "mutation_score": 1.0,
+    "non_scoreable_mutations": {},
+    "reference_passed": 2,
+    "samples": 2,
+    "surviving_mutations": {}
+  },
+  "pass_level_breakdown": {
+    "L4": 2
+  },
+  "repair_metrics": {
+    "automatic_pass_credit": 0,
+    "fixed_target": 0,
+    "invalid_edit_surface": 0,
+    "regressing_patches": 0,
+    "regression_rate": 0.0,
+    "total_patches": 0,
+    "valid_patches": 0
+  },
+  "run_id": "line-a-l4-dual-tool-20260713-v2",
+  "toolchain_environment_failures": {},
+  "total_completed": 2,
+  "total_planned": 2
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "sr2fpga-run-summary-curation-v1",
+  "status": "pass",
+  "run_id": "reorganization-final-smoke-fresh",
+  "source_path": "artifacts/agent/runs/reorganization-final-smoke-fresh/summary.json",
+  "destination_path": "reports/evidence/legacy-runs/reorganization-final-smoke-fresh/runs/reorganization-final-smoke-fresh/summary.json",
+  "source_length": 15801,
+  "destination_length": 15801,
+  "source_sha256": "9aac0a58609dd95eebccfda2159995623c0293022022aec3390f6609b16bb919",
+  "destination_sha256": "9aac0a58609dd95eebccfda2159995623c0293022022aec3390f6609b16bb919",
+  "secret_scan_matches": 0,
+  "private_absolute_path_matches": 0
+}

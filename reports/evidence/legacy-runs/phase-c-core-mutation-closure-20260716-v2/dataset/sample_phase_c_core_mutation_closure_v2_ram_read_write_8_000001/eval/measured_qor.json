@@ -1,0 +1,53 @@
+{
+  "bram": 0,
+  "cell_breakdown": {
+    "$_ANDNOT_": 2,
+    "$_AND_": 21,
+    "$_DFFE_PN0P_": 32,
+    "$_DFF_PN0_": 8,
+    "$_NAND_": 40,
+    "$_NOR_": 1
+  },
+  "cell_count": 104,
+  "dsp": 0,
+  "ff": 40,
+  "l4_commercial": {
+    "board_constraints_applied": false,
+    "bram": null,
+    "constraint_scope": "logical_only",
+    "drc_warnings": [],
+    "dsp": null,
+    "expected_board_drc_exceptions": [],
+    "ff": null,
+    "fmax_mhz": null,
+    "invalidating_critical_warnings": [],
+    "lut": null,
+    "methodology_warnings": [],
+    "official_board_ready": false,
+    "report_paths": [],
+    "runtime_sec": null,
+    "skip_reason": "disabled_by_config",
+    "status": "not_run",
+    "tool": "vivado",
+    "wns_ns": null
+  },
+  "l4_openxc7": {
+    "board_constraints_applied": false,
+    "board_profile": "ac820_zynq",
+    "bram": null,
+    "constraint_scope": "logical_only",
+    "critical_warnings": [],
+    "drc_warnings": [],
+    "dsp": null,
+    "ff": null,
+    "fmax_mhz": null,
+    "lut": null,
+    "report_paths": [],
+    "runtime_sec": null,
+    "skip_reason": "disabled_by_config",
+    "status": "not_run",
+    "tool": "openxc7_nextpnr",
+    "wns_ns": null
+  },
+  "lut": 0
+}

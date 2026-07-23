@@ -1,0 +1,37 @@
+{
+  "schema_version": "sr2fpga-task-evidence-ledger-reconciliation-v1",
+  "status": "pass",
+  "ledger_path": "docs/sr2fpga-task-evidence-v0.1.json",
+  "before_sha256": "d845dcba7efe0fb80dcdf0cfdbc87b5836bae9f74a59791878b4414625b0b40e",
+  "after_sha256": "b5f289e0d57af7cf2e843d609fce19b097aa3347a1be4c8befa65b455d9f67fe",
+  "changes": [
+    {
+      "family_ids": [
+        "fir_filter",
+        "matrix_vector_mac"
+      ],
+      "field": "l4_commercial_status",
+      "from": "pass",
+      "to": "not_run",
+      "reason": "The current dual-tool run proves OpenXC7 L4 pass; Vivado was unavailable and is recorded as missing_tool."
+    },
+    {
+      "family_ids": [
+        "binary_bcd_counter",
+        "simple_fsm",
+        "pwm_generator",
+        "rl_reward_policy_update",
+        "alu_control_unit",
+        "crc_stream_checker",
+        "t1_event_counter",
+        "t8_replay_sample_shell",
+        "t9_host_protocol_shell",
+        "t12_replay_arbiter_shell"
+      ],
+      "field": "last_verified_run",
+      "from": "codex-spec-final-clean-smoke-20260713",
+      "to": "reorganization-final-smoke-fresh",
+      "reason": "The current 24-sample deterministic smoke is locally available and reaches L3 for all samples."
+    }
+  ]
+}

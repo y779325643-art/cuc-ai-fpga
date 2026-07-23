@@ -1,0 +1,275 @@
+{
+  "bundle_sha256": "668c707e9133b0eb4ec4801d6ba12552a1a3323c143769835d2a2b45fbb820e3",
+  "family_id": "peak_detector",
+  "reference_model": "python_signal_reference",
+  "reference_version": "1.0.0",
+  "scenarios": [
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 15,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 16,
+          "msb": 16,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 17,
+          "msb": 17,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "public/peak_public_smoke/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "65314e2eb4c4bbc699ac706c849c9bf04637755e9d269baa0f73e62dccc157cd",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "public/peak_public_smoke/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "6c03273d0859775a46d3e0b70a822fa92c91e6467de32e44387550af56f27057",
+      "scenario_class": "public_smoke",
+      "scenario_id": "peak_public_smoke",
+      "seed": 0,
+      "transaction_count": 11
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 15,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 16,
+          "msb": 16,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 17,
+          "msb": 17,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "hidden/peak_hidden_boundaries/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "b053736d354f5f6caafcb3b6fc95727e2d5cd57064459471ad9ccbdd2b2d6dcb",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "hidden/peak_hidden_boundaries/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "22af1c1e5fd563648f7fca9371e8aaeb7839fb575eb94e7290499a750dd5a979",
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "peak_hidden_boundaries",
+      "seed": 210306068529402873159876886001795130375,
+      "transaction_count": 4
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 15,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 16,
+          "msb": 16,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 17,
+          "msb": 17,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "randomized/peak_randomized_seeded/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "dca6c0e47912d2008a0c38d7699aba23dcacc966f546c9547cb6f05158d57b3d",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "randomized/peak_randomized_seeded/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "3dbcf694a8bd3b59eecc523284a6a7a626aa8c84513022262c7e9ead5df5a6dc",
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "peak_randomized_seeded",
+      "seed": 291511357159730289241466635617575971435,
+      "transaction_count": 18
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "value",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 15,
+          "name": "index",
+          "signed": false
+        },
+        {
+          "lsb": 16,
+          "msb": 16,
+          "name": "found",
+          "signed": false
+        },
+        {
+          "lsb": 17,
+          "msb": 17,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "stress/peak_stress_reset_stall/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "5e878098833615bfa86b9ebcb65aa30a781fafba122aa5fb449a05cf7022a9e9",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "stress/peak_stress_reset_stall/input.memh",
+      "input_record_width_bits": 12,
+      "input_sha256": "1667f9b1403f5a840152a5ccdab5960842cc1069feef7a4c4618c450d2bf4824",
+      "scenario_class": "stress",
+      "scenario_id": "peak_stress_reset_stall",
+      "seed": 215727903563686753611460328974288740133,
+      "transaction_count": 6
+    }
+  ],
+  "schema_version": "sr2fpga-oracle-bundle-v1",
+  "task_parameters": {
+    "empty_result": [
+      0,
+      0,
+      0
+    ],
+    "threshold": 10,
+    "tie_break": "first_index",
+    "width": 8
+  }
+}

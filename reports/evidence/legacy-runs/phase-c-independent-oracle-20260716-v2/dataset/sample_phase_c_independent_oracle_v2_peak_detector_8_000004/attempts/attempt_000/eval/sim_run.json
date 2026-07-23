@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.41404249984771013,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "[peak_public_smoke] TEST_PASS\nsim/tb_top.v:212: $finish called at 286000 (1ps)\n[peak_hidden_boundaries] TEST_PASS\nsim/tb_top.v:212: $finish called at 146000 (1ps)\n[peak_randomized_seeded] TEST_PASS\nsim/tb_top.v:212: $finish called at 456000 (1ps)\n[peak_stress_reset_stall] TEST_PASS\nsim/tb_top.v:212: $finish called at 246000 (1ps)"
+}

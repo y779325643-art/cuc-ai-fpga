@@ -1,0 +1,19 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/host_config_bank.v",
+    "rtl/sample_capture_stage.v",
+    "rtl/policy_value_core.v",
+    "rtl/td_update_core.v",
+    "rtl/result_stream_stage.v"
+  ],
+  "duration_seconds": 0.28609499998856336,
+  "exit_code": 0,
+  "stage": "lint",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "- V e r i l a t i o n   R e p o r t: Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)\n- Verilator: Built from 0.147 MB sources in 7 modules, into 0.039 MB in 3 C++ files needing 0.000 MB\n- Verilator: Walltime 0.049 s (elab=0.004, cvt=0.012, bld=0.000); cpu 0.000 s on 1 threads; allocated 14.605 MB\n"
+}

@@ -1,0 +1,419 @@
+{
+  "architecture": {
+    "difficulty_tier": "T0",
+    "oracle_kind": [
+      "transaction_scoreboard",
+      "protocol_checker"
+    ],
+    "skeleton_level": "S2_protocol_skeleton",
+    "style": "single_module",
+    "submodules": [],
+    "system_his_profile": "protocol_interface",
+    "task_family_id": "sync_fifo",
+    "top_module": "top"
+  },
+  "artifacts": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json",
+    "rtl_sources": [
+      "rtl/top.v"
+    ],
+    "testbench": "sim/tb_top.v",
+    "top_module": "top"
+  },
+  "clocks": [
+    {
+      "name": "clk",
+      "target_fmax_mhz": 100.0
+    }
+  ],
+  "components": [
+    {
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": [],
+      "ports": [
+        {
+          "dir": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "wr_en",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "rd_en",
+          "width": 1
+        },
+        {
+          "dir": "input",
+          "name": "din",
+          "width": 8
+        },
+        {
+          "dir": "output",
+          "name": "dout",
+          "width": 8
+        },
+        {
+          "dir": "output",
+          "name": "full",
+          "width": 1
+        },
+        {
+          "dir": "output",
+          "name": "empty",
+          "width": 1
+        }
+      ],
+      "semantic_kind": "top_integration",
+      "source": "rtl/top.v"
+    }
+  ],
+  "connections": [],
+  "control_flow": [
+    {
+      "condition": "rst_n == 0",
+      "effects": [
+        "reset architectural state"
+      ],
+      "kind": "reset_rule",
+      "name": "reset_state",
+      "related_flows": [],
+      "related_state": []
+    }
+  ],
+  "data_flow": [
+    {
+      "name": "fifo_primary_path",
+      "path": [
+        "top.wr_en",
+        "top.dout"
+      ],
+      "payload": {
+        "name": "primary_payload",
+        "width": 8
+      },
+      "protocol": "register",
+      "timing": {
+        "initiation_interval": 1,
+        "latency_cycles": 1,
+        "throughput": "one operation per cycle when enabled"
+      }
+    }
+  ],
+  "instances": [],
+  "intent": {
+    "assumptions": [
+      "single synchronous clock",
+      "no vendor-specific IP"
+    ],
+    "design_goal": "data written into the FIFO is read back in order",
+    "user_prompt": "Generate an 8-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control."
+  },
+  "interface": {
+    "clock": "clk",
+    "inputs": [
+      {
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "name": "wr_en",
+        "width": 1
+      },
+      {
+        "name": "rd_en",
+        "width": 1
+      },
+      {
+        "name": "din",
+        "width": 8
+      }
+    ],
+    "outputs": [
+      {
+        "name": "dout",
+        "width": 8
+      },
+      {
+        "name": "full",
+        "width": 1
+      },
+      {
+        "name": "empty",
+        "width": 1
+      }
+    ],
+    "reset": "rst_n",
+    "reset_polarity": "active_low"
+  },
+  "modules": [
+    {
+      "clock": "clk",
+      "intent": "top-level integration wrapper for the generated RTL project",
+      "name": "top",
+      "parameters": {},
+      "params": [],
+      "ports": [
+        {
+          "direction": "input",
+          "name": "clk",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rst_n",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "wr_en",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "rd_en",
+          "width": 1
+        },
+        {
+          "direction": "input",
+          "name": "din",
+          "width": 8
+        },
+        {
+          "direction": "output",
+          "name": "dout",
+          "width": 8
+        },
+        {
+          "direction": "output",
+          "name": "full",
+          "width": 1
+        },
+        {
+          "direction": "output",
+          "name": "empty",
+          "width": 1
+        }
+      ],
+      "reset": "rst_n",
+      "role": "top",
+      "source": "rtl/top.v"
+    }
+  ],
+  "platform": {
+    "board": "generic",
+    "clock_hz": 100000000,
+    "family": "generic",
+    "name": "generic_verilog",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "project": {
+    "description": "Generate an 8-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control.",
+    "name": "line_a_oracle_evidence_fifo_8_000001",
+    "top": "top"
+  },
+  "project_name": "line_a_oracle_evidence_fifo_8_000001",
+  "qor_intent": {
+    "resources": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 40,
+      "lut": 8
+    }
+  },
+  "resets": [
+    {
+      "kind": "async",
+      "name": "rst_n",
+      "polarity": "active_low"
+    }
+  ],
+  "resources": {
+    "expected": {
+      "bram": 0,
+      "dsp": 0,
+      "ff": 40,
+      "lut": 8
+    },
+    "optimization_goal": "area_first"
+  },
+  "schema_version": "system-his-v1.2",
+  "state": {
+    "buffers": [
+      {
+        "depth": 4,
+        "name": "fifo_storage",
+        "owner": "top",
+        "width": 8
+      }
+    ],
+    "counters": [
+      {
+        "name": "wr_ptr",
+        "owner": "top",
+        "width": 2
+      },
+      {
+        "name": "rd_ptr",
+        "owner": "top",
+        "width": 2
+      },
+      {
+        "name": "count",
+        "owner": "top",
+        "width": 3
+      }
+    ],
+    "fsms": [],
+    "memories": [],
+    "registers": []
+  },
+  "system": {
+    "description": "Generate an 8-bit FPGA RTL project that implements a small synchronous FIFO with ready/valid flow control."
+  },
+  "task_type": "fifo",
+  "timing": {
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100.0
+  },
+  "top": {
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100.0
+      }
+    ],
+    "interfaces": [],
+    "name": "top",
+    "parameters": [],
+    "ports": [
+      {
+        "dir": "input",
+        "name": "clk",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "rst_n",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "wr_en",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "rd_en",
+        "width": 1
+      },
+      {
+        "dir": "input",
+        "name": "din",
+        "width": 8
+      },
+      {
+        "dir": "output",
+        "name": "dout",
+        "width": 8
+      },
+      {
+        "dir": "output",
+        "name": "full",
+        "width": 1
+      },
+      {
+        "dir": "output",
+        "name": "empty",
+        "width": 1
+      }
+    ],
+    "resets": [
+      {
+        "kind": "async",
+        "name": "rst_n",
+        "polarity": "active_low"
+      }
+    ]
+  },
+  "top_ports": [
+    {
+      "direction": "input",
+      "name": "clk",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rst_n",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "wr_en",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "rd_en",
+      "width": 1
+    },
+    {
+      "direction": "input",
+      "name": "din",
+      "width": 8
+    },
+    {
+      "direction": "output",
+      "name": "dout",
+      "width": 8
+    },
+    {
+      "direction": "output",
+      "name": "full",
+      "width": 1
+    },
+    {
+      "direction": "output",
+      "name": "empty",
+      "width": 1
+    }
+  ],
+  "verification": {
+    "checks": [
+      "l0_contract",
+      "l1_lint",
+      "l2_self_checking_sim",
+      "l3_synthesis"
+    ],
+    "expected_behavior": "Self-checking testbench prints TEST_PASS only when data written into the FIFO is read back in order.",
+    "pass_condition": "Self-checking testbench prints TEST_PASS only when data written into the FIFO is read back in order.",
+    "scenarios": [
+      "reset",
+      "nominal_operation"
+    ],
+    "test_pass_means": "Self-checking testbench prints TEST_PASS only when data written into the FIFO is read back in order.",
+    "testbench": "sim/tb_top.v"
+  }
+}

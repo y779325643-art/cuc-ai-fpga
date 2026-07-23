@@ -1,0 +1,16 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "--lint-only",
+    "-Wall",
+    "rtl/top.v",
+    "rtl/clock_divider.v",
+    "rtl/spi_master_core.v"
+  ],
+  "duration_seconds": 0.14415339997503906,
+  "exit_code": 0,
+  "stage": "lint",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "- V e r i l a t i o n   R e p o r t: Verilator 5.049 devel rev v5.048-335-g2d157b29b (mod)\n- Verilator: Built from 0.068 MB sources in 4 modules, into 0.011 MB in 3 C++ files needing 0.000 MB\n- Verilator: Walltime 0.050 s (elab=0.002, cvt=0.009, bld=0.000); cpu 0.000 s on 1 threads; allocated 13.516 MB\n"
+}

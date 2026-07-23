@@ -8,6 +8,7 @@ from typing import Callable
 from sr2fpga_agent.models import ProjectRequest
 from sr2fpga_agent.oracles.bundle import (
     load_oracle_bundle,
+    load_oracle_manifest_commitment,
     sanitize_oracle_profile,
     write_oracle_bundle,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "build_qtable_update_bundle",
     "build_rl_accelerator_bundle",
     "load_oracle_bundle",
+    "load_oracle_manifest_commitment",
     "sanitize_oracle_profile",
     "write_oracle_bundle",
 ]

@@ -1,0 +1,22 @@
+{
+  "affected_files": [],
+  "failure_type": "functional_mismatch",
+  "root_cause": "TEST_FAIL match expected index=3 word=11223311 got valid=1 index=3 word=00000000\nsim/tb_top.v:63: $finish called at 316000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "functional_mismatch",
+    "l4_failure_family": null,
+    "mismatch_detail": [
+      {
+        "actual": "valid=1 index=3 word=00000000",
+        "expected": "index=3 word=11223311"
+      }
+    ],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "<ABSOLUTE_PATH>",
+  "tool_status": "failed"
+}

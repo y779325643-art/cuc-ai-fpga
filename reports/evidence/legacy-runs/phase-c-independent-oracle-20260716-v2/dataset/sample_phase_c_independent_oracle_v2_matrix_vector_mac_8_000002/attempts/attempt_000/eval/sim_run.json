@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.26799360010772943,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "[matrix_public_smoke] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/00.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/00.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 136000 (1ps)\n[matrix_hidden_edges] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/01.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/01.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 226000 (1ps)\n[matrix_randomized_seeded] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/02.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/02.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 336000 (1ps)\n[matrix_stress_reset_stall] WARNING: sim/tb_top.v:113: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/03.input.memh): Not enough words in the file for the requested range [0:4095].\nWARNING: sim/tb_top.v:114: $readmemh(<ABSOLUTE_PATH> Yang/AppData/Local/Temp/sr2fpga_oracle_ef7d91e9abf94f0f99b91a2ef9848789/03.expected.memh): Not enough words in the file for the requested range [0:4095].\nTEST_PASS\nsim/tb_top.v:184: $finish called at 326000 (1ps)"
+}

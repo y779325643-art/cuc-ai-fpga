@@ -1,0 +1,19 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/dot_product_engine.v",
+    "rtl/mac_unit.v",
+    "rtl/vector_rom.v",
+    "sim/tb_top.v"
+  ],
+  "duration_seconds": 0.21027879999019206,
+  "exit_code": 0,
+  "stage": "sim_compile",
+  "status": "passed",
+  "stderr": "",
+  "stdout": ""
+}

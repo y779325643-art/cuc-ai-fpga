@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.33113890001550317,
+  "exit_code": 0,
+  "stage": "sim_run",
+  "status": "passed",
+  "stderr": "",
+  "stdout": "[vision_public_absent_present] TEST_PASS\nsim/tb_top.v:393: $finish called at 1265000 (1ps)\n[vision_hidden_order_threshold] TEST_PASS\nsim/tb_top.v:393: $finish called at 665000 (1ps)\n[vision_randomized_seeded] TEST_PASS\nsim/tb_top.v:393: $finish called at 1265000 (1ps)\n[vision_stress_reset_stall] TEST_PASS\nsim/tb_top.v:393: $finish called at 975000 (1ps)"
+}

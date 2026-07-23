@@ -1,0 +1,21 @@
+{
+  "affected_files": [],
+  "failure_type": "testbench_timeout",
+  "root_cause": "TEST_FAIL timeout waiting for expected input/output behavior\nsim/tb_top.v:92: $finish called at 100000000 (1ps)\n\nSimulation reported TEST_FAIL",
+  "stage": "sim_run",
+  "structured_diagnosis": {
+    "bram_miss": false,
+    "failure_type": "testbench_timeout",
+    "l4_failure_family": null,
+    "mismatch_detail": [
+      {
+        "expected": "input/output behavior"
+      }
+    ],
+    "resource_detail": {},
+    "semantic_trace": {},
+    "warnings": []
+  },
+  "tool": "<ABSOLUTE_PATH>",
+  "tool_status": "failed"
+}

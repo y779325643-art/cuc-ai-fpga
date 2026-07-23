@@ -1,0 +1,19 @@
+{
+  "buckets": {
+    "rejected": [],
+    "repair_trajectory": [],
+    "success_l3": [
+      "sample_line_a_l4_dual_tool_fir_filter_8_000001",
+      "sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002"
+    ]
+  },
+  "completed_samples": [
+    "sample_line_a_l4_dual_tool_fir_filter_8_000001",
+    "sample_line_a_l4_dual_tool_matrix_vector_mac_8_000002"
+  ],
+  "config_fingerprint": "ccfb56a73a3d2ff6fdf971ce7302a9a20274647b02b7d0a8ea624d6b92703c2d",
+  "exports_refreshed": true,
+  "failure_types": {},
+  "next_index": 2,
+  "run_id": "line-a-l4-dual-tool-20260713-v2"
+}

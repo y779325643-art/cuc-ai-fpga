@@ -1,0 +1,304 @@
+{
+  "bundle_sha256": "2c61e0e0657b32ea3c09234de8971c1810540dfdc4a9ddc382233d1c2628a2ec",
+  "family_id": "sobel_threshold",
+  "reference_model": "python_image_reference",
+  "reference_version": "1.1.0",
+  "scenarios": [
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "axis",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 3,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "public/sobel_public_flat_vertical/expected.memh",
+      "expected_record_width_bits": 4,
+      "expected_sha256": "2b1cab2e211bfea13b937498e2904ff687176c63507f688e3e5942581b57c7c4",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "public/sobel_public_flat_vertical/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "6824e2d6c16a37a9b1bdeb7ff49f8886aee23ea0c8e644dc3b2b8b30032bc5b3",
+      "scenario_class": "public_smoke",
+      "scenario_id": "sobel_public_flat_vertical",
+      "seed": 0,
+      "transaction_count": 50
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "axis",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 3,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "hidden/sobel_hidden_horizontal_maximum/expected.memh",
+      "expected_record_width_bits": 4,
+      "expected_sha256": "0f96b6dbdb8c98556600458371241fd328c11500605f3e9384cb54c36f4369d1",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "hidden/sobel_hidden_horizontal_maximum/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "e0dcbe9675e4c9b8ea3b787c21f0403a9d027759b212accf477fe659d6fd38bf",
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "sobel_hidden_horizontal_maximum",
+      "seed": 307069816108922597876985172633876129229,
+      "transaction_count": 25
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "axis",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 3,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "randomized/sobel_randomized_seeded/expected.memh",
+      "expected_record_width_bits": 4,
+      "expected_sha256": "c87e262ea39cbec38625abaef1ea643f5af121209989af8d655339d3ace4fc7e",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "randomized/sobel_randomized_seeded/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "02c2c1cc0ef202f092215fe3bf6d6d43318d686651797e02578d36396cefc138",
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "sobel_randomized_seeded",
+      "seed": 189728696209484606721977663527318103845,
+      "transaction_count": 50
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 0,
+          "name": "edge",
+          "signed": false
+        },
+        {
+          "lsb": 1,
+          "msb": 1,
+          "name": "axis",
+          "signed": false
+        },
+        {
+          "lsb": 2,
+          "msb": 2,
+          "name": "out_last",
+          "signed": false
+        },
+        {
+          "lsb": 3,
+          "msb": 3,
+          "name": "expect_output",
+          "signed": false
+        }
+      ],
+      "expected_path": "stress/sobel_stress_reset_stall/expected.memh",
+      "expected_record_width_bits": 4,
+      "expected_sha256": "388e82309b8e2971922742dae64d2c8d418b3e6d9f834f881b72e1ff4064ddcf",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "pixel",
+          "signed": false
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "in_last",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 9,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 10,
+          "msb": 11,
+          "name": "stall_cycles",
+          "signed": false
+        },
+        {
+          "lsb": 12,
+          "msb": 23,
+          "name": "drain_target",
+          "signed": false
+        }
+      ],
+      "input_path": "stress/sobel_stress_reset_stall/input.memh",
+      "input_record_width_bits": 24,
+      "input_sha256": "710a068344ac4f8481f8e3d4abb346cd397aeb086bb4f6f5bed8030e6464dbf8",
+      "scenario_class": "stress",
+      "scenario_id": "sobel_stress_reset_stall",
+      "seed": 117768549770620146744268023011462668017,
+      "transaction_count": 35
+    }
+  ],
+  "schema_version": "sr2fpga-oracle-bundle-v1",
+  "task_parameters": {
+    "axis_tie": "gx",
+    "border": "one_pixel_zero",
+    "bounding_boxes": false,
+    "connected_components": false,
+    "defect_report": "first_row_major_thresholded_pixel",
+    "frame_contract": "fixed_5x5_row_major",
+    "image_height": 5,
+    "image_width": 5,
+    "magnitude": "abs_gx_plus_abs_gy",
+    "operation_record": "pixel_with_reset_drain_and_output_count_padding",
+    "pixel_width": 8,
+    "threshold": 100,
+    "threshold_comparison": "greater_or_equal"
+  }
+}

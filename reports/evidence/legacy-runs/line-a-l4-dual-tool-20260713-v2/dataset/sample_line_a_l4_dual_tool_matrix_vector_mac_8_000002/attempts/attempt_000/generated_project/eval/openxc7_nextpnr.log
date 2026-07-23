@@ -1,0 +1,424 @@
+Info: Packing constants..
+Info: Inserting IO buffers..
+Info:     IO port 'clk' driven by IBUF '$iopadmap$top.clk'
+Info:     IO port 'result_ready' driven by IBUF '$iopadmap$top.result_ready'
+Info:     IO port 'result_valid' driven by OBUF '$iopadmap$top.result_valid'
+Info:     IO port 'rst_n' driven by IBUF '$iopadmap$top.rst_n'
+Info:     IO port 'sample_ready' driven by OBUF '$iopadmap$top.sample_ready'
+Info:     IO port 'sample_valid' driven by IBUF '$iopadmap$top.sample_valid'
+Info:     IO port 'result[0]' driven by OBUF '$iopadmap$top.result'
+Info:     IO port 'result[1]' driven by OBUF '$iopadmap$top.result_1'
+Info:     IO port 'result[10]' driven by OBUF '$iopadmap$top.result_10'
+Info:     IO port 'result[11]' driven by OBUF '$iopadmap$top.result_11'
+Info:     IO port 'result[2]' driven by OBUF '$iopadmap$top.result_2'
+Info:     IO port 'result[3]' driven by OBUF '$iopadmap$top.result_3'
+Info:     IO port 'result[4]' driven by OBUF '$iopadmap$top.result_4'
+Info:     IO port 'result[5]' driven by OBUF '$iopadmap$top.result_5'
+Info:     IO port 'result[6]' driven by OBUF '$iopadmap$top.result_6'
+Info:     IO port 'result[7]' driven by OBUF '$iopadmap$top.result_7'
+Info:     IO port 'result[8]' driven by OBUF '$iopadmap$top.result_8'
+Info:     IO port 'result[9]' driven by OBUF '$iopadmap$top.result_9'
+Info:     IO port 'sample[0]' driven by IBUF '$iopadmap$top.sample'
+Info:     IO port 'sample[1]' driven by IBUF '$iopadmap$top.sample_1'
+Info:     IO port 'sample[2]' driven by IBUF '$iopadmap$top.sample_2'
+Info:     IO port 'sample[3]' driven by IBUF '$iopadmap$top.sample_3'
+Info:     IO port 'sample[4]' driven by IBUF '$iopadmap$top.sample_4'
+Info:     IO port 'sample[5]' driven by IBUF '$iopadmap$top.sample_5'
+Info:     IO port 'sample[6]' driven by IBUF '$iopadmap$top.sample_6'
+Info:     IO port 'sample[7]' driven by IBUF '$iopadmap$top.sample_7'
+Info: Generating input buffer for '$iopadmap$top.clk'
+Info: Generating input buffer for '$iopadmap$top.result_ready'
+Info: Generating output buffer for '$iopadmap$top.result_valid'
+Info: Generating input buffer for '$iopadmap$top.rst_n'
+Info: Generating output buffer for '$iopadmap$top.sample_ready'
+Info: Generating input buffer for '$iopadmap$top.sample_valid'
+Info: Generating output buffer for '$iopadmap$top.result'
+Info: Generating output buffer for '$iopadmap$top.result_1'
+Info: Generating output buffer for '$iopadmap$top.result_10'
+Info: Generating output buffer for '$iopadmap$top.result_11'
+Info: Generating output buffer for '$iopadmap$top.result_2'
+Info: Generating output buffer for '$iopadmap$top.result_3'
+Info: Generating output buffer for '$iopadmap$top.result_4'
+Info: Generating output buffer for '$iopadmap$top.result_5'
+Info: Generating output buffer for '$iopadmap$top.result_6'
+Info: Generating output buffer for '$iopadmap$top.result_7'
+Info: Generating output buffer for '$iopadmap$top.result_8'
+Info: Generating output buffer for '$iopadmap$top.result_9'
+Info: Generating input buffer for '$iopadmap$top.sample'
+Info: Generating input buffer for '$iopadmap$top.sample_1'
+Info: Generating input buffer for '$iopadmap$top.sample_2'
+Info: Generating input buffer for '$iopadmap$top.sample_3'
+Info: Generating input buffer for '$iopadmap$top.sample_4'
+Info: Generating input buffer for '$iopadmap$top.sample_5'
+Info: Generating input buffer for '$iopadmap$top.sample_6'
+Info: Generating input buffer for '$iopadmap$top.sample_7'
+Info:     Created 26 PAD cells from:
+Info:             26x PAD
+Info: Preparing clocking...
+Info: Packing constants..
+Info: Packing cfg...
+Info: Packing PLLs...
+Info: Packing Gigabit Transceivers..
+Info: Packing global buffers...
+Info: Packing MUX[789]s..
+Info: Packing carries..
+Info:    Grouped 0 MUXCYs and 0 XORCYs into 0 chains.
+Info:    Blasted 0 non-chain MUXCYs and 0 non-chain XORCYs to soft logic
+Info: Packing LUTs..
+Info:     Created 48 SLICE_LUTX cells from:
+Info:             27x LUT1
+Info:              4x LUT2
+Info:             13x LUT3
+Info:              1x LUT4
+Info:              3x LUT5
+Info: Packing DRAM..
+Info:    Transformed 0 tied-low DRAM address inputs to be tied-high
+Info: Packing BRAM..
+Info: Packing DSPs..
+Info:     Created 1 DSP48E1_DSP48E1 cells from:
+Info:              1x DSP48E1
+Info: Packing flipflops..
+Info:     Created 27 SLICE_FFX cells from:
+Info:             27x FDCE
+Info: Constrained 15 LUTFF pairs.
+
+Info: Annotating ports with timing budgets for target frequency 100.00 MHz
+Info: Checksum: 0x66d9039d
+
+Info: Device utilisation:
+Info: 	          SLICE_LUTX:    48/106400     0%
+Info: 	           SLICE_FFX:    27/106400     0%
+Info: 	              CARRY4:     0/13300     0%
+Info: 	          PSEUDO_GND:     1/29359     0%
+Info: 	          PSEUDO_VCC:     1/29359     0%
+Info: 	               HARD0:     0/ 1584     0%
+Info: 	            RAMB18E1:     0/  280     0%
+Info: 	            FIFO18E1:     0/  140     0%
+Info: 	        RAMBFIFO36E1:     0/  140     0%
+Info: 	            RAMB36E1:     0/  140     0%
+Info: 	             DSP48E1:     1/  220     0%
+Info: 	                 PAD:    26/  392     6%
+Info: 	       IOB33M_OUTBUF:     0/   96     0%
+Info: 	       IOB33S_OUTBUF:     0/   96     0%
+Info: 	        IOB33_OUTBUF:    14/  200     7%
+Info: 	     IOB33M_INBUF_EN:     0/   96     0%
+Info: 	     IOB33S_INBUF_EN:     0/   96     0%
+Info: 	      IOB33_INBUF_EN:    12/  200     6%
+Info: 	IOB33M_TERM_OVERRIDE:     0/   96     0%
+Info: 	IOB33S_TERM_OVERRIDE:     0/   96     0%
+Info: 	 IOB33_TERM_OVERRIDE:     0/  200     0%
+Info: 	       PULL_OR_KEEP1:     0/  392     0%
+Info: 	            IDELAYE2:     0/  200     0%
+Info: 	        OLOGICE3_TFF:     0/  200     0%
+Info: 	      OLOGICE3_OUTFF:     0/  200     0%
+Info: 	       OLOGICE3_MISR:     0/  200     0%
+Info: 	           OSERDESE2:     0/  200     0%
+Info: 	        ILOGICE3_IFF:     0/  200     0%
+Info: 	ILOGICE3_ZHOLD_DELAY:     0/  200     0%
+Info: 	           ISERDESE2:     0/  200     0%
+Info: 	               BUFIO:     0/   16     0%
+Info: 	          IDELAYCTRL:     0/    4     0%
+Info: 	            BUFGCTRL:     1/   32     3%
+Info: 	                 PS7:     0/    1     0%
+Info: 	               BSCAN:     0/    4     0%
+Info: 	                BUFG:     0/   32     0%
+Info: 	              BUFHCE:     0/   72     0%
+Info: 	            DCIRESET:     0/    1     0%
+Info: 	            DNA_PORT:     0/    1     0%
+Info: 	           EFUSE_USR:     0/    1     0%
+Info: 	           FRAME_ECC:     0/    1     0%
+Info: 	                ICAP:     0/    2     0%
+Info: 	            INVERTER:     0/   96     0%
+Info: 	          MMCME2_ADV:     0/    4     0%
+Info: 	        OLOGICE2_TFF:     0/  200     0%
+Info: 	      OLOGICE2_OUTFF:     0/  200     0%
+Info: 	           PLLE2_ADV:     0/    4     0%
+Info: 	           SELMUX2_1:     0/40700     0%
+Info: 	             STARTUP:     0/    1     0%
+Info: 	          USR_ACCESS:     0/    1     0%
+Info: 	        ILOGICE2_IFF:     0/  200     0%
+Info: 	       OLOGICE2_MISR:     0/  200     0%
+
+Info: Placed 52 cells based on constraints.
+Info: Creating initial analytic placement for 62 cells, random placement wirelen = 17350.
+Info:     at initial placer iter 0, wirelen = 421
+Info:     at initial placer iter 1, wirelen = 375
+Info:     at initial placer iter 2, wirelen = 362
+Info:     at initial placer iter 3, wirelen = 375
+Info: Running main analytical placer.
+Info:     at iteration #1, type ALL: wirelen solved = 373, spread = 771, legal = 3085; time = 0.02s
+Info:     at iteration #2, type ALL: wirelen solved = 354, spread = 784, legal = 2745; time = 0.02s
+Info:     at iteration #3, type ALL: wirelen solved = 385, spread = 611, legal = 2617; time = 0.02s
+Info:     at iteration #4, type ALL: wirelen solved = 424, spread = 660, legal = 2371; time = 0.01s
+Info:     at iteration #5, type ALL: wirelen solved = 549, spread = 769, legal = 2569; time = 0.02s
+Info:     at iteration #6, type ALL: wirelen solved = 598, spread = 762, legal = 2104; time = 0.01s
+Info:     at iteration #7, type ALL: wirelen solved = 638, spread = 940, legal = 3352; time = 0.03s
+Info:     at iteration #8, type ALL: wirelen solved = 759, spread = 977, legal = 3036; time = 0.01s
+Info:     at iteration #9, type ALL: wirelen solved = 897, spread = 1003, legal = 2026; time = 0.01s
+Info:     at iteration #10, type ALL: wirelen solved = 928, spread = 1020, legal = 2014; time = 0.01s
+Info:     at iteration #11, type ALL: wirelen solved = 1039, spread = 1264, legal = 1913; time = 0.01s
+Info:     at iteration #12, type ALL: wirelen solved = 1122, spread = 1178, legal = 2432; time = 0.01s
+Info:     at iteration #13, type ALL: wirelen solved = 1172, spread = 1222, legal = 1937; time = 0.01s
+Info:     at iteration #14, type ALL: wirelen solved = 1248, spread = 1339, legal = 2751; time = 0.01s
+Info:     at iteration #15, type ALL: wirelen solved = 1344, spread = 1345, legal = 2241; time = 0.01s
+Info:     at iteration #16, type ALL: wirelen solved = 1267, spread = 1330, legal = 2438; time = 0.01s
+Info: HeAP Placer Time: 0.36s
+Info:   of which solving equations: 0.04s
+Info:   of which spreading cells: 0.13s
+Info:   of which strict legalisation: 0.03s
+
+Info: Running simulated annealing placer for refinement.
+Info:   at iteration #1: temp = 0.000000, timing cost = 11, wirelen = 1913
+Info:   at iteration #4: temp = 0.000000, timing cost = 6, wirelen = 1792 
+Info: SA placement time 0.02s
+
+Info: Max frequency for clock '$iopadmap$clk': 502.77 MHz (PASS at 100.00 MHz)
+
+Info: Slack histogram:
+Info:  legend: * represents 1 endpoint(s)
+Info:          + represents [1,1) endpoint(s)
+Info: [  8010,   8065) |*** 
+Info: [  8065,   8120) |** 
+Info: [  8120,   8175) | 
+Info: [  8175,   8230) |**** 
+Info: [  8230,   8285) |********* 
+Info: [  8285,   8340) |** 
+Info: [  8340,   8395) | 
+Info: [  8395,   8450) | 
+Info: [  8450,   8505) | 
+Info: [  8505,   8560) | 
+Info: [  8560,   8615) | 
+Info: [  8615,   8670) | 
+Info: [  8670,   8725) |*** 
+Info: [  8725,   8780) | 
+Info: [  8780,   8835) |* 
+Info: [  8835,   8890) |*** 
+Info: [  8890,   8945) |** 
+Info: [  8945,   9000) |***** 
+Info: [  9000,   9055) |** 
+Info: [  9055,   9110) |*** 
+Info: Checksum: 0x4f943e99
+Info: Running post-placement legalisation...
+Info: Routing global clocks...
+Info:     routing clock '$iopadmap$clk'
+Info: Running router2...
+Info: Setting up routing resources...
+Info: Running main router loop...
+Info:     iter=1 wires=2132 overused=11 overuse=11 archfail=NA
+Info:     iter=2 wires=2140 overused=0 overuse=0 archfail=0
+Info: 1000 slowest nets by runtime:
+                                                                         $PACKER_GND_NET     21 634.2ms
+                                                                     $iopadmap$result[7]      1 84.4ms
+                                                                     $iopadmap$result[8]      1 53.9ms
+                                                                     $iopadmap$result[9]      1 45.0ms
+                                                                     $iopadmap$result[4]      1 44.8ms
+                                                                     $iopadmap$result[3]      1 37.5ms
+                                                                     $iopadmap$result[5]      1 33.5ms
+                                                                     $iopadmap$result[6]      1 29.6ms
+                                                                    $iopadmap$result[11]      1 28.5ms
+                                                                     $iopadmap$result[2]      1 25.9ms
+                                                                         $iopadmap$rst_n     27 24.0ms
+                                                                  $iopadmap$result_valid      7 23.3ms
+                                                                     $iopadmap$result[1]      1 22.3ms
+                                                                     $iopadmap$sample[7]     23 22.3ms
+                                                                    $iopadmap$result[10]      1 22.0ms
+                                                                  $iopadmap$sample_ready      1 19.9ms
+             u_dot_product_engine.$abc$1895$logic_and$rtl/dot_product_engine.v:47$1113_Y     12 17.9ms
+                                                          u_dot_product_engine.accum[11]     37 16.7ms
+                                                                     $iopadmap$result[0]      1 14.9ms
+                                                           u_dot_product_engine.index[0]     19 12.7ms
+                                                           u_dot_product_engine.index[1]     18 11.4ms
+                                                     $auto$clkbufmap.cc:262:execute$2029      1 10.2ms
+             u_dot_product_engine.$abc$1895$auto$opt_dff.cc:251:make_patterns_logic$1168     12 8.9ms
+                                                      u_dot_product_engine.next_accum[6]      2 7.2ms
+                                                     u_dot_product_engine.coefficient[2]     16 6.7ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1887      1 6.2ms
+                                                      u_dot_product_engine.next_accum[8]      2 6.0ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1869      1 5.4ms
+                                                      u_dot_product_engine.next_accum[1]      2 4.9ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1891      1 4.4ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1873      1 4.3ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1879      1 4.3ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1867      1 4.3ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1877      1 4.0ms
+                                                      u_dot_product_engine.next_accum[5]      2 3.8ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1853      1 3.7ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1883      1 3.7ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1881      1 3.6ms
+                                                                  $iopadmap$sample_valid      5 3.5ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1885      1 3.5ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1843      1 3.5ms
+                                                     u_dot_product_engine.next_accum[10]      2 3.5ms
+                                                                  $iopadmap$result_ready      6 3.3ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1863      1 3.3ms
+                                                           u_dot_product_engine.accum[0]      1 3.1ms
+                                                      u_dot_product_engine.next_accum[2]      2 3.0ms
+                                                      u_dot_product_engine.next_accum[4]      2 3.0ms
+                                                      u_dot_product_engine.next_accum[7]      2 2.9ms
+                                                      u_dot_product_engine.next_accum[0]      2 2.9ms
+                                                      u_dot_product_engine.next_accum[9]      2 2.9ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1893      1 2.8ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1851      1 2.8ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1865      1 2.7ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1861      1 2.5ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1841      1 2.4ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1845      1 2.3ms
+                                                           u_dot_product_engine.accum[5]      1 2.2ms
+                                                      u_dot_product_engine.next_accum[3]      2 2.2ms
+                                                           u_dot_product_engine.accum[2]      1 2.1ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1875      1 2.1ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1855      1 2.1ms
+                                                                     $iopadmap$sample[5]      1 2.0ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1857      1 2.0ms
+                                                     u_dot_product_engine.next_accum[11]      2 2.0ms
+                                                                     $iopadmap$sample[0]      1 1.8ms
+                                                           u_dot_product_engine.accum[8]      1 1.8ms
+                                                     u_dot_product_engine.coefficient[0]      1 1.8ms
+                                                           u_dot_product_engine.accum[7]      1 1.8ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1847      1 1.7ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1889      1 1.6ms
+                                                          u_dot_product_engine.accum[10]      1 1.6ms
+                                                           u_dot_product_engine.accum[6]      1 1.5ms
+                                                           u_dot_product_engine.accum[4]      1 1.5ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1849      1 1.5ms
+                                                                     $iopadmap$sample[3]      1 1.5ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1871      1 1.5ms
+                          u_dot_product_engine.$abc$1895$auto$rtlil.cc:3574:NotGate$1859      1 1.3ms
+                                                                         $PACKER_VCC_NET     27 1.2ms
+                                                     u_dot_product_engine.coefficient[1]      1 1.2ms
+                                                                     $iopadmap$sample[4]      1 1.1ms
+                                                           u_dot_product_engine.accum[9]      1 1.1ms
+                                                                     $iopadmap$sample[1]      1 1.1ms
+                                                                     $iopadmap$sample[6]      1 1.1ms
+                                                           u_dot_product_engine.accum[1]      1 1.0ms
+                                                                     $iopadmap$sample[2]      1 0.9ms
+                                                           u_dot_product_engine.accum[3]      1 0.8ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[9]      1 0.6ms
+                            u_dot_product_engine.$auto$xilinx_dffopt.cc:347:execute$2027      1 0.5ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[6]      1 0.5ms
+                                               u_dot_product_engine.$0\result_valid[0:0]      1 0.5ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[1]      1 0.5ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[0]      1 0.5ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[2]      1 0.5ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[4]      1 0.5ms
+                                       u_dot_product_engine.$abc$1895$procmux$1124_Y[10]      1 0.5ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[3]      1 0.4ms
+                            u_dot_product_engine.$auto$xilinx_dffopt.cc:347:execute$2025      1 0.4ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[5]      1 0.4ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[7]      1 0.4ms
+                                        u_dot_product_engine.$abc$1895$procmux$1124_Y[8]      1 0.4ms
+                                       u_dot_product_engine.$abc$1895$procmux$1124_Y[11]      1 0.3ms
+                                                                           $iopadmap$clk     27 0.2ms
+                                                                               result[3]      1 0.1ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[28]      0 0.1ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[0]      0 0.0ms
+                                                                               result[7]      1 0.0ms
+                                                                               result[9]      1 0.0ms
+                                                                               result[1]      1 0.0ms
+                                                                               result[5]      1 0.0ms
+                                                                              result[11]      1 0.0ms
+                                                                               result[2]      1 0.0ms
+                                                                              result[10]      1 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[21]      0 0.0ms
+                                                                               result[8]      1 0.0ms
+                                                                               result[6]      1 0.0ms
+                                                                               result[4]      1 0.0ms
+                                                                               result[0]      1 0.0ms
+                                                                            sample_ready      1 0.0ms
+                                                                            result_valid      1 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[35]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[34]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[33]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[32]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[31]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[30]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[29]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[27]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[26]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[25]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[24]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[23]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[22]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[20]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[19]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[18]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[17]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[16]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[15]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[14]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[13]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[12]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[11]      0 0.0ms
+        u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[10]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[9]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[8]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[7]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[6]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[5]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[4]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[3]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[2]      0 0.0ms
+         u_dot_product_engine.u_mac_unit.$auto$xilinx_dsp.cc:480:xilinx_dsp_pack$1174[1]      0 0.0ms
+                                                                               sample[7]      2 0.0ms
+                                                                               sample[6]      2 0.0ms
+                                                                               sample[5]      2 0.0ms
+                                                                               sample[4]      2 0.0ms
+                                                                               sample[3]      2 0.0ms
+                                                                               sample[2]      2 0.0ms
+                                                                               sample[1]      2 0.0ms
+                                                                               sample[0]      2 0.0ms
+                                                                            sample_valid      2 0.0ms
+                                                                                   rst_n      2 0.0ms
+                                                                            result_ready      2 0.0ms
+                                                                                     clk      2 0.0ms
+Info: Router2 time 3.84s
+Info: Running router1 to check that route is legal...
+
+Info: Routing..
+Info: Setting up routing queue.
+Info: Routing 0 arcs.
+Info:            |   (re-)routed arcs  |   delta    | remaining|       time spent     |
+Info:    IterCnt |  w/ripup   wo/ripup |  w/r  wo/r |      arcs| batch(sec) total(sec)|
+Info:          0 |        0          0 |    0     0 |         0|       0.01       0.01|
+Info: Routing complete.
+Info: Router1 time 0.01s
+Info: Checksum: 0x5f4deccf
+
+Info: Critical path report for clock '$iopadmap$clk' (posedge -> posedge):
+Info: curr total
+Info:  0.1  0.1  Source u_dot_product_engine.$auto$ff.cc:337:slice$1677.Q
+Info:  0.6  0.7    Net u_dot_product_engine.index[1] budget 4.838000 ns (173,2) -> (176,5)
+Info:                Sink u_dot_product_engine.$abc$1895$auto$blifparse.cc:557:parse_blif$1897.A3
+Info:  0.1  0.9  Source u_dot_product_engine.$abc$1895$auto$blifparse.cc:557:parse_blif$1897.O6
+Info:  1.0  1.9    Net u_dot_product_engine.$abc$1895$auto$opt_dff.cc:251:make_patterns_logic$1168 budget 4.815000 ns (176,5) -> (176,9)
+Info:                Sink u_dot_product_engine.$auto$ff.cc:337:slice$1671.CE
+Info:  0.1  2.0  Setup u_dot_product_engine.$auto$ff.cc:337:slice$1671.CE
+Info: 0.3 ns logic, 1.6 ns routing
+
+Info: Max frequency for clock '$iopadmap$clk': 507.10 MHz (PASS at 100.00 MHz)
+
+Info: Slack histogram:
+Info:  legend: * represents 1 endpoint(s)
+Info:          + represents [1,1) endpoint(s)
+Info: [  8028,   8087) |** 
+Info: [  8087,   8146) | 
+Info: [  8146,   8205) | 
+Info: [  8205,   8264) |** 
+Info: [  8264,   8323) |*** 
+Info: [  8323,   8382) |** 
+Info: [  8382,   8441) |**** 
+Info: [  8441,   8500) |** 
+Info: [  8500,   8559) |*** 
+Info: [  8559,   8618) |**** 
+Info: [  8618,   8677) |* 
+Info: [  8677,   8736) |* 
+Info: [  8736,   8795) |** 
+Info: [  8795,   8854) | 
+Info: [  8854,   8913) |**** 
+Info: [  8913,   8972) | 
+Info: [  8972,   9031) |** 
+Info: [  9031,   9090) |***** 
+Info: [  9090,   9149) |* 
+Info: [  9149,   9208) |* 
+Info: Running post-routing legalisation...
+

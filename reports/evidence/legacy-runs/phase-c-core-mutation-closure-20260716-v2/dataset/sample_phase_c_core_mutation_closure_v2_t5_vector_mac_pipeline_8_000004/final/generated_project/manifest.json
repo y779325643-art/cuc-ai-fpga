@@ -1,0 +1,36 @@
+{
+  "clock": {
+    "frequency_hz": 100000000,
+    "name": "clk"
+  },
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "language": "verilog",
+  "project_name": "phase_c_core_mutation_closure_v2_t5_vector_mac_pipeline_8_000004",
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/skid_buffer.v",
+    "rtl/vector_mac_core.v",
+    "rtl/stream_stage.v"
+  ],
+  "target": {
+    "board": "generic",
+    "family": "generic",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "top_module": "top"
+}

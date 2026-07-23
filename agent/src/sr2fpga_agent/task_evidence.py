@@ -13,7 +13,11 @@ from pathlib import Path
 from .repository_paths import RepositoryPaths
 from .task_catalog import CATALOG_PATH
 from .task_families import family_id_for_task_type
-from .oracles.bundle import load_oracle_bundle, sanitize_oracle_profile
+from .oracles.bundle import (
+    load_oracle_bundle,
+    load_oracle_manifest_commitment,
+    sanitize_oracle_profile,
+)
 
 
 _REPOSITORY_PATHS = RepositoryPaths.discover()
@@ -979,10 +983,29 @@ def _audit_qualified_independent_oracle(
 
     oracle_root = sample_dir / "attempts" / "attempt_000" / "eval" / "oracle"
     try:
-        bundle = load_oracle_bundle(oracle_root)
+        commitment = load_oracle_manifest_commitment(oracle_root)
     except ValueError as exc:
         return issues + [
             f"qualified independent oracle bundle is invalid for family_id: {entry.family_id}: {exc}"
+        ]
+    record_paths = tuple(
+        oracle_root / record_path
+        for scenario in commitment.scenarios
+        for record_path in (scenario.input_path, scenario.expected_path)
+    )
+    present_record_files = sum(path.is_file() for path in record_paths)
+    if present_record_files == len(record_paths):
+        try:
+            bundle = load_oracle_bundle(oracle_root)
+        except ValueError as exc:
+            return issues + [
+                f"qualified independent oracle bundle is invalid for family_id: {entry.family_id}: {exc}"
+            ]
+    elif present_record_files == 0 and profile.get("hidden_vectors_exported") is False:
+        bundle = commitment
+    else:
+        return issues + [
+            f"qualified independent oracle bundle has partial record files for family_id: {entry.family_id}"
         ]
     if bundle.family_id != entry.family_id:
         issues.append(

@@ -1,0 +1,38 @@
+{
+  "clock": {
+    "frequency_hz": 100000000,
+    "name": "clk"
+  },
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "language": "verilog",
+  "project_name": "phase_c_independent_oracle_v2_vision_defect_core_8_000007",
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "sources": [
+    "rtl/sobel_line_buffer.v",
+    "rtl/sobel_window.v",
+    "rtl/sobel_threshold_core.v",
+    "rtl/top.v",
+    "rtl/vision_defect_accumulator.v",
+    "rtl/vision_io_control.v"
+  ],
+  "target": {
+    "board": "generic",
+    "family": "generic",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "top_module": "top"
+}

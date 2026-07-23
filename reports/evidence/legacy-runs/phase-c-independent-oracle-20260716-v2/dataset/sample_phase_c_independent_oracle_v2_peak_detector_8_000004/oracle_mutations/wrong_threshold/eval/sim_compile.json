@@ -1,0 +1,17 @@
+{
+  "command": [
+    "<ABSOLUTE_PATH>",
+    "-g2012",
+    "-o",
+    "sim.out",
+    "rtl/top.v",
+    "rtl/peak_detector_core.v",
+    "sim/tb_top.v"
+  ],
+  "duration_seconds": 0.16439010004978627,
+  "exit_code": 0,
+  "stage": "sim_compile",
+  "status": "passed",
+  "stderr": "",
+  "stdout": ""
+}

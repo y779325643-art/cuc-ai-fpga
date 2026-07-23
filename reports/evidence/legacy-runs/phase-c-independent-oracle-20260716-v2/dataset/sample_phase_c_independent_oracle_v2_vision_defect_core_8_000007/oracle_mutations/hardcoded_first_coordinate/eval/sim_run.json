@@ -1,0 +1,13 @@
+{
+  "command": [
+    "vvp",
+    "sim.out",
+    "<independent-oracle-scenarios>"
+  ],
+  "duration_seconds": 0.40626149997115135,
+  "exit_code": 1,
+  "stage": "sim_run",
+  "status": "failed",
+  "stderr": "",
+  "stdout": "[vision_public_absent_present] SR2FPGA_MISMATCH {\"scenario_id\":\"vision_public_absent_present\",\"class\":\"public_smoke\",\"item_index\":49,\"expected\":{\"edge\":0,\"out_last\":1,\"defect_present\":1,\"first_x\":2,\"first_y\":1},\"actual\":{\"edge\":\"0\",\"out_last\":\"1\",\"defect_present\":\"1\",\"first_x\":1,\"first_y\":1}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:86: $finish called at 1165000 (1ps)\n[vision_hidden_order_threshold] TEST_PASS\nsim/tb_top.v:393: $finish called at 665000 (1ps)\n[vision_randomized_seeded] TEST_PASS\nsim/tb_top.v:393: $finish called at 1265000 (1ps)\n[vision_stress_reset_stall] SR2FPGA_MISMATCH {\"scenario_id\":\"vision_stress_reset_stall\",\"class\":\"stress\",\"item_index\":29,\"expected\":{\"edge\":0,\"out_last\":1,\"defect_present\":1,\"first_x\":2,\"first_y\":1},\"actual\":{\"edge\":\"0\",\"out_last\":\"1\",\"defect_present\":\"1\",\"first_x\":1,\"first_y\":1}}\nTEST_FAIL functional mismatch\nsim/tb_top.v:86: $finish called at 875000 (1ps)"
+}

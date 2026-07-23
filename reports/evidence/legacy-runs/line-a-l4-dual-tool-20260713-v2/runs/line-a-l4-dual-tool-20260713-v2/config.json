@@ -1,0 +1,72 @@
+{
+  "api_key_env": "",
+  "base_url": "",
+  "dataset_root": "artifacts\\agent\\candidates\\sr2fpga_line_a_l4_dual_tool\\dataset",
+  "enable_openxc7_l4": true,
+  "env_file": "",
+  "export_root": "artifacts\\agent\\candidates\\sr2fpga_line_a_l4_dual_tool\\exports",
+  "l4_commercial": {
+    "command": "vivado",
+    "run_policy": "representative_subset",
+    "target_part": "XC7Z020CLG484-2",
+    "timeout_seconds": 1800,
+    "tool": "vivado"
+  },
+  "l4_open": {
+    "board_profile": "ac820_zynq",
+    "family_ids": [],
+    "run_policy": "representative_subset",
+    "target_part": "XC7Z020CLG484-2",
+    "timeout_seconds": 600,
+    "tool": "openxc7_nextpnr"
+  },
+  "line_b_targets": {
+    "l3_success_ratio": 1.0,
+    "max_samples": 2,
+    "repair_trajectory_ratio": 0.0
+  },
+  "max_attempts": 1,
+  "model": "deterministic",
+  "platform": "generic_verilog",
+  "provider": "deterministic",
+  "refresh_exports": true,
+  "repair_provider": "none",
+  "run_independent_oracle": false,
+  "run_l4_commercial": true,
+  "run_l4_open": true,
+  "run_root": "artifacts\\agent\\runs\\sr2fpga_line_a_l4_dual_tool",
+  "sample_id_prefix": "line_a_l4_dual_tool",
+  "sources": {},
+  "tasks": [
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "fir_filter",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    },
+    {
+      "count": 1,
+      "difficulty_tier": "",
+      "evaluation_line": "line_a",
+      "failure_injectors": [],
+      "failure_origin": "deterministic",
+      "measurement_point": "a_first_attempt_no_tools",
+      "requirement_style": "simple_prompt",
+      "source": "deterministic",
+      "task_type": "matrix_vector_mac",
+      "topology_ids": [],
+      "widths": [
+        8
+      ]
+    }
+  ]
+}

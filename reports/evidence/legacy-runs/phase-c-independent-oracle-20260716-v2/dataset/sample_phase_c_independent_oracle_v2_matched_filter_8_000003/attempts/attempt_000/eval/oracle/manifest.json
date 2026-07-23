@@ -1,0 +1,180 @@
+{
+  "bundle_sha256": "ff396a9aa78f09e316b6a6f3563cfc097e83685155315ac4460245cd581d9262",
+  "family_id": "matched_filter",
+  "reference_model": "python_signal_reference",
+  "reference_version": "1.0.0",
+  "scenarios": [
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "correlation",
+          "signed": true
+        }
+      ],
+      "expected_path": "public/matched_public_smoke/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "73ab41b797b9389c924c96c2ef7fde23e4935b1ae4d174ffe45627c6da0e875d",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 10,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "public/matched_public_smoke/input.memh",
+      "input_record_width_bits": 11,
+      "input_sha256": "6df7bdd80b048b37aa58919f77db42b640cce618de61aa6c7a2ba83aadc5ccc3",
+      "scenario_class": "public_smoke",
+      "scenario_id": "matched_public_smoke",
+      "seed": 0,
+      "transaction_count": 4
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "correlation",
+          "signed": true
+        }
+      ],
+      "expected_path": "hidden/matched_hidden_edges/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "7d17fd2920f3eb4ae6926bb7b29a959d5ba5d5fb0a9aaa5b4cee29988c698c49",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 10,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "hidden/matched_hidden_edges/input.memh",
+      "input_record_width_bits": 11,
+      "input_sha256": "80ded86210446892f70701c84b42b02bce925ddda3d1f0f9291fb5f3e70b1827",
+      "scenario_class": "hidden_deterministic",
+      "scenario_id": "matched_hidden_edges",
+      "seed": 264164097918421402782402789528948999727,
+      "transaction_count": 4
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "correlation",
+          "signed": true
+        }
+      ],
+      "expected_path": "randomized/matched_randomized_seeded/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "677029d8be2ddec778faaee27dc9aaf2e4ff7373db6c327dd1943ecbb885f147",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 10,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "randomized/matched_randomized_seeded/input.memh",
+      "input_record_width_bits": 11,
+      "input_sha256": "6833f4875a53f8ed151254d17d828023e1001bd3c9addbf2e9f12cdf7ad50f6a",
+      "scenario_class": "randomized_fixed_seed",
+      "scenario_id": "matched_randomized_seeded",
+      "seed": 278079406381997415989692463068688009269,
+      "transaction_count": 16
+    },
+    {
+      "expected_fields": [
+        {
+          "lsb": 0,
+          "msb": 17,
+          "name": "correlation",
+          "signed": true
+        }
+      ],
+      "expected_path": "stress/matched_stress_reset_stall/expected.memh",
+      "expected_record_width_bits": 18,
+      "expected_sha256": "b453c301e8a0516088c9a459ee2f03e11da3d8c92b75c7f3f0b147176b1a56be",
+      "input_fields": [
+        {
+          "lsb": 0,
+          "msb": 7,
+          "name": "sample",
+          "signed": true
+        },
+        {
+          "lsb": 8,
+          "msb": 8,
+          "name": "reset_before",
+          "signed": false
+        },
+        {
+          "lsb": 9,
+          "msb": 10,
+          "name": "stall_cycles",
+          "signed": false
+        }
+      ],
+      "input_path": "stress/matched_stress_reset_stall/input.memh",
+      "input_record_width_bits": 11,
+      "input_sha256": "c9ccd91375bf424e81092015bba4df7e1d9ca6e1908f3ba8049ca6dd504b8f86",
+      "scenario_class": "stress",
+      "scenario_id": "matched_stress_reset_stall",
+      "seed": 197807236560249787255230175216239881219,
+      "transaction_count": 6
+    }
+  ],
+  "schema_version": "sr2fpga-oracle-bundle-v1",
+  "task_parameters": {
+    "acc_width": 18,
+    "history_reset": "zero",
+    "template": [
+      -1,
+      2,
+      -3,
+      4
+    ],
+    "width": 8
+  }
+}

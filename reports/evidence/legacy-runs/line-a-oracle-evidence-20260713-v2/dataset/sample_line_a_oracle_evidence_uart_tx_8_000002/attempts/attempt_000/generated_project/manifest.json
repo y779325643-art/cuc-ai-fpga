@@ -1,0 +1,35 @@
+{
+  "clock": {
+    "frequency_hz": 100000000,
+    "name": "clk"
+  },
+  "constraints": {
+    "timing": "constraints/timing.sdc"
+  },
+  "language": "verilog",
+  "project_name": "line_a_oracle_evidence_uart_tx_8_000002",
+  "reports": {
+    "predicted_qor": "reports/predicted_qor.json"
+  },
+  "reset": {
+    "name": "rst_n",
+    "polarity": "active_low"
+  },
+  "simulation": {
+    "testbench": "sim/tb_top.v",
+    "type": "self_checking"
+  },
+  "sources": [
+    "rtl/top.v",
+    "rtl/baud_tick_gen.v",
+    "rtl/uart_tx_core.v"
+  ],
+  "target": {
+    "board": "generic",
+    "family": "generic",
+    "part": "generic",
+    "toolchain": "open_source",
+    "vendor": "generic"
+  },
+  "top_module": "top"
+}
