@@ -10,3 +10,7 @@ Python scripts import the canonical `sr2fpga_agent` package. When executed
 directly from this repository, they resolve `agent/src` from their own location
 or from `SR2FPGA_REPO_ROOT`. OpenXC7 project and output paths remain
 caller-controlled.
+
+`openxc7_pnr.sh` does not contain a machine-specific toolchain path. Set
+`OPENXC7_FLAKE_PATH` for a Nix flake, or provide `OPENXC7_CHIPDB_DIR` /
+`NEXTPNR_XILINX_CHIPDB_DIR` when the tools are already installed.

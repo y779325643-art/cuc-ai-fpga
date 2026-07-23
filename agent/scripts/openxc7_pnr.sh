@@ -27,8 +27,8 @@ if [[ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
   . "$HOME/.nix-profile/etc/profile.d/nix.sh"
 fi
 
-flake_path="${OPENXC7_FLAKE_PATH:-/mnt/d/WSL/openxc7/toolchain-nix}"
-if [[ "${OPENXC7_IN_NIX_SHELL:-0}" != "1" && -d "$flake_path" ]] && command -v nix >/dev/null 2>&1; then
+flake_path="${OPENXC7_FLAKE_PATH:-}"
+if [[ "${OPENXC7_IN_NIX_SHELL:-0}" != "1" && -n "$flake_path" && -d "$flake_path" ]] && command -v nix >/dev/null 2>&1; then
   export OPENXC7_IN_NIX_SHELL=1
   exec nix develop "$flake_path" --option sandbox false -c bash "$0" "$project_dir" "$part" "$clock_period_ns"
 fi
@@ -46,7 +46,7 @@ chipdb_dir="${OPENXC7_CHIPDB_DIR:-}"
 if [[ -z "$chipdb_dir" && -n "${NEXTPNR_XILINX_CHIPDB_DIR:-}" ]]; then
   chipdb_dir="${NEXTPNR_XILINX_CHIPDB_DIR%%:*}"
 fi
-if [[ -z "$chipdb_dir" && -d "$flake_path" ]] && command -v nix >/dev/null 2>&1; then
+if [[ -z "$chipdb_dir" && -n "$flake_path" && -d "$flake_path" ]] && command -v nix >/dev/null 2>&1; then
   chipdb_dir="$(nix build "$flake_path#nextpnr-xilinx-chipdb.zynq7" --option sandbox false --no-link --print-out-paths)"
 fi
 

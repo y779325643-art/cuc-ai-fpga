@@ -1,5 +1,6 @@
 import ast
 from pathlib import Path
+import re
 import subprocess
 
 import yaml
@@ -105,3 +106,12 @@ def test_openxc7_wrapper_is_executable_in_git() -> None:
         text=True,
     )
     assert completed.stdout.startswith("100755 ")
+
+
+def test_openxc7_wrapper_has_no_machine_specific_default_path() -> None:
+    source = (SCRIPT_ROOT / "openxc7_pnr.sh").read_text(encoding="utf-8")
+
+    assert re.search(r"(?<![A-Za-z0-9_])[A-Za-z]:[\\/]", source) is None
+    assert re.search(r"/mnt/[A-Za-z]/", source) is None
+    assert re.search(r"/home/[^/\s]+/", source) is None
+    assert 'flake_path="${OPENXC7_FLAKE_PATH:-}"' in source
