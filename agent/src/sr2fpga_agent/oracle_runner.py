@@ -6,7 +6,9 @@ import json
 import os
 from pathlib import Path
 import re
+import shutil
 import tempfile
+import uuid
 
 from sr2fpga_agent.log_parser import parse_test_fail_mismatches
 from sr2fpga_agent.models import ToolResult
@@ -41,10 +43,41 @@ def run_oracle_scenarios(
         )
         return evidence, aggregate_oracle_tool_result(evidence)
 
-    scenario_results = tuple(
-        _run_scenario(command_runner, Path(project_dir), validated_bundle, scenario)
-        for scenario in validated_bundle.scenarios
+    project_dir = Path(project_dir)
+    runtime_root = (
+        Path(tempfile.gettempdir()) / f"sr2fpga_oracle_{uuid.uuid4().hex}"
     )
+    try:
+        if os.name == "nt":
+            runtime_root.mkdir()
+        else:
+            runtime_root.mkdir(mode=0o700)
+        try:
+            scenario_results = tuple(
+                _run_scenario(
+                    command_runner,
+                    project_dir,
+                    validated_bundle,
+                    scenario,
+                    runtime_root=runtime_root,
+                    scenario_index=index,
+                )
+                for index, scenario in enumerate(validated_bundle.scenarios)
+            )
+        finally:
+            shutil.rmtree(runtime_root)
+    except OSError as exc:
+        evidence = OracleRunEvidence(
+            family_id=validated_bundle.family_id,
+            bundle_sha256=validated_bundle.bundle_sha256,
+            status="failed",
+            failure_origin="oracle_environment_failure",
+            failure_type="oracle_vector_staging_failure",
+            scenario_results=(),
+            diagnostics=(str(exc),),
+        )
+        return evidence, aggregate_oracle_tool_result(evidence)
+
     evidence = OracleRunEvidence.from_results(validated_bundle, scenario_results)
     return evidence, aggregate_oracle_tool_result(evidence)
 
@@ -54,12 +87,21 @@ def _run_scenario(
     project_dir: Path,
     bundle: OracleBundle,
     scenario: OracleScenarioManifest,
+    *,
+    runtime_root: Path,
+    scenario_index: int,
 ) -> OracleScenarioResult:
+    input_path = runtime_root / f"{scenario_index:02d}.input.memh"
+    expected_path = runtime_root / f"{scenario_index:02d}.expected.memh"
+    shutil.copyfile(bundle.root / scenario.input_path, input_path)
+    shutil.copyfile(bundle.root / scenario.expected_path, expected_path)
+    simulator_input_path = _simulator_path(input_path)
+    simulator_expected_path = _simulator_path(expected_path)
     command = [
         "vvp",
         "sim.out",
-        f"+ORACLE_INPUT={(bundle.root / scenario.input_path).resolve()}",
-        f"+ORACLE_EXPECTED={(bundle.root / scenario.expected_path).resolve()}",
+        f"+ORACLE_INPUT={simulator_input_path}",
+        f"+ORACLE_EXPECTED={simulator_expected_path}",
         f"+ORACLE_SCENARIO_ID={scenario.scenario_id}",
         f"+ORACLE_SCENARIO_CLASS={scenario.scenario_class}",
         f"+ORACLE_TRANSACTION_COUNT={scenario.transaction_count}",
@@ -78,6 +120,10 @@ def _run_scenario(
     )
 
 
+def _simulator_path(path: Path) -> str:
+    return path.resolve().as_posix()
+
+
 def validate_oracle_simulation_output(
     result: ToolResult,
 ) -> tuple[ToolResult, str | None, str | None]:
@@ -92,6 +138,12 @@ def validate_oracle_simulation_output(
             _failed_result(result),
             "toolchain_environment_failure",
             "toolchain_environment_failure",
+        )
+    if _has_oracle_vector_read_failure(lines):
+        return (
+            _failed_result(result),
+            "oracle_environment_failure",
+            "oracle_vector_read_failure",
         )
     if result.status == "timeout":
         return _failed_result(result), "natural_model_failure", "testbench_timeout"
@@ -111,6 +163,24 @@ def validate_oracle_simulation_output(
             "testbench_missing_pass_marker",
         )
     return result, None, None
+
+
+def _has_oracle_vector_read_failure(lines: list[str]) -> bool:
+    for line in lines:
+        lowered = line.lower()
+        if "$readmemh" not in lowered and "$readmemb" not in lowered:
+            continue
+        if "error:" in lowered or any(
+            phrase in lowered
+            for phrase in (
+                "unable to open",
+                "cannot open",
+                "could not open",
+                "failed to open",
+            )
+        ):
+            return True
+    return False
 
 
 def _failed_result(result: ToolResult, *, stderr_suffix: str = "") -> ToolResult:

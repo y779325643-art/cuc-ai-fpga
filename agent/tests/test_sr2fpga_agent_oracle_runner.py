@@ -26,12 +26,32 @@ class FakeCommandRunner:
         self.calls = []
 
     def run(self, command, cwd, stage, timeout_seconds=30):
+        staged_vectors = {}
+        for prefix in ("+ORACLE_INPUT=", "+ORACLE_EXPECTED="):
+            value = next(
+                (
+                    item.removeprefix(prefix)
+                    for item in command
+                    if item.startswith(prefix)
+                ),
+                None,
+            )
+            if value is not None:
+                staged_path = Path(cwd) / value
+                staged_vectors[prefix] = {
+                    "value": value,
+                    "exists": staged_path.is_file(),
+                    "content": staged_path.read_bytes()
+                    if staged_path.is_file()
+                    else None,
+                }
         self.calls.append(
             {
                 "command": list(command),
                 "cwd": Path(cwd),
                 "stage": stage,
                 "timeout_seconds": timeout_seconds,
+                "staged_vectors": staged_vectors,
             }
         )
         if self.results:
@@ -88,10 +108,28 @@ def test_runner_invokes_vvp_once_per_scenario_and_aggregates_all_pass(tmp_path):
     assert all(call["command"][:2] == ["vvp", "sim.out"] for call in runner.calls)
     assert all(call["cwd"] == project_dir for call in runner.calls)
     assert all(call["stage"] == "sim_run" for call in runner.calls)
-    for call, scenario in zip(runner.calls, bundle.scenarios):
+    for index, (call, scenario) in enumerate(zip(runner.calls, bundle.scenarios)):
         command = call["command"]
-        assert f"+ORACLE_INPUT={(bundle.root / scenario.input_path).resolve()}" in command
-        assert f"+ORACLE_EXPECTED={(bundle.root / scenario.expected_path).resolve()}" in command
+        input_argument = next(
+            item for item in command if item.startswith("+ORACLE_INPUT=")
+        )
+        expected_argument = next(
+            item for item in command if item.startswith("+ORACLE_EXPECTED=")
+        )
+        input_value = input_argument.removeprefix("+ORACLE_INPUT=")
+        expected_value = expected_argument.removeprefix("+ORACLE_EXPECTED=")
+        assert Path(input_value).parent.name.startswith("sr2fpga_oracle_")
+        assert Path(input_value).name == f"{index:02d}.input.memh"
+        assert Path(expected_value).parent.name.startswith("sr2fpga_oracle_")
+        assert Path(expected_value).name == f"{index:02d}.expected.memh"
+        assert call["staged_vectors"]["+ORACLE_INPUT="]["exists"]
+        assert call["staged_vectors"]["+ORACLE_EXPECTED="]["exists"]
+        assert call["staged_vectors"]["+ORACLE_INPUT="]["content"] == (
+            bundle.root / scenario.input_path
+        ).read_bytes()
+        assert call["staged_vectors"]["+ORACLE_EXPECTED="]["content"] == (
+            bundle.root / scenario.expected_path
+        ).read_bytes()
         assert f"+ORACLE_SCENARIO_ID={scenario.scenario_id}" in command
         assert f"+ORACLE_SCENARIO_CLASS={scenario.scenario_class}" in command
         assert f"+ORACLE_TRANSACTION_COUNT={scenario.transaction_count}" in command
@@ -100,6 +138,27 @@ def test_runner_invokes_vvp_once_per_scenario_and_aggregates_all_pass(tmp_path):
     assert evidence.failure_origin is None
     assert evidence.scenario_counts() == {scenario_class: 1 for scenario_class in SCENARIO_CLASSES}
     assert all(evidence.class_status(scenario_class) == "pass" for scenario_class in SCENARIO_CLASSES)
+
+
+def test_runner_keeps_oracle_plusargs_relative_in_deep_workspaces(tmp_path):
+    deep_root = tmp_path.joinpath(*(["nested_workspace"] * 6))
+    bundle = _bundle(deep_root)
+    runner = FakeCommandRunner()
+    project_dir = deep_root / "project"
+    project_dir.mkdir()
+
+    run_oracle_scenarios(runner, project_dir, bundle)
+
+    for call in runner.calls:
+        for prefix in ("+ORACLE_INPUT=", "+ORACLE_EXPECTED="):
+            value = next(
+                item.removeprefix(prefix)
+                for item in call["command"]
+                if item.startswith(prefix)
+            )
+            assert Path(value).is_absolute()
+            assert "\\" not in value
+            assert len(value) < 180
 
 
 def test_one_dut_mismatch_fails_aggregate_and_keeps_structured_detail(tmp_path):
@@ -238,6 +297,32 @@ def test_strict_fail_marker_takes_priority_over_strict_pass_marker(tmp_path):
     assert tool_result.status == "failed"
     assert evidence.failure_origin == "natural_model_failure"
     assert evidence.failure_type == "functional_mismatch"
+
+
+def test_oracle_vector_read_failure_takes_priority_over_test_pass(tmp_path):
+    bundle = _bundle(tmp_path)
+    runner = FakeCommandRunner(
+        [
+            _tool_result(
+                stdout=(
+                    "ERROR: sim/tb_top.v:104: $readmemh: "
+                    "Unable to open missing.memh for reading.\n"
+                    "TEST_PASS\n"
+                )
+            )
+        ]
+        + [_tool_result(stdout="TEST_PASS\n") for _ in range(3)]
+    )
+
+    evidence, tool_result = run_oracle_scenarios(runner, tmp_path, bundle)
+
+    assert tool_result.status == "failed"
+    assert evidence.status == "failed"
+    assert evidence.failure_origin == "oracle_environment_failure"
+    assert evidence.failure_type == "oracle_vector_read_failure"
+    assert evidence.scenario_results[0].failure_origin == (
+        "oracle_environment_failure"
+    )
 
 
 def test_fail_marker_with_details_takes_priority_and_nonzero_is_model_failure(tmp_path):
