@@ -4,17 +4,21 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+REPO_ROOT = Path(
+    os.environ.get("SR2FPGA_REPO_ROOT", Path(__file__).resolve().parents[2])
+).expanduser().resolve()
+AGENT_SOURCE_ROOT = REPO_ROOT / "agent" / "src"
+if str(AGENT_SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(AGENT_SOURCE_ROOT))
 
-from LLM.src.sr2fpga_agent.his_validation import validate_system_his_h_stages
-from LLM.src.sr2fpga_agent.models import GeneratedProject, ProjectRequest
+from sr2fpga_agent.his_validation import validate_system_his_h_stages
+from sr2fpga_agent.models import GeneratedProject, ProjectRequest
 
 
 def analyze_dataset(dataset_root: Path) -> dict[str, Any]:

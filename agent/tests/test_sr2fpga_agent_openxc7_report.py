@@ -57,7 +57,7 @@ class OpenXC7ReportTest(unittest.TestCase):
         self.assertTrue(Path(argument).is_absolute())
 
     def test_openxc7_wrapper_normalizes_part_name_for_chipdb_lookup(self) -> None:
-        wrapper = Path("scripts/openxc7_pnr.sh").read_text(encoding="utf-8")
+        wrapper = Path("agent/scripts/openxc7_pnr.sh").read_text(encoding="utf-8")
 
         self.assertIn('part_base="${part_base,,}"', wrapper)
 

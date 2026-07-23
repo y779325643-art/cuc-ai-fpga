@@ -2,9 +2,9 @@
 # source/FSM/range lowerability hardening. This keeps the same paired T1-T4
 # task design as the original config but uses a distinct sample_id_prefix to
 # avoid sample_exists reuse from previous runs.
-dataset_root: datasets/sr2fpga_rtl_v1
-export_root: datasets/sr2fpga_rtl_v1_exports
-run_root: tmp/sr2fpga_runs
+dataset_root: artifacts/agent/candidates/sr2fpga_rtl_v1
+export_root: artifacts/agent/candidates/sr2fpga_rtl_v1_exports
+run_root: artifacts/agent/runs
 provider: deepseek
 repair_provider: none
 model: deepseek-v4-pro

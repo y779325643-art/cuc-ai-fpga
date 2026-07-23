@@ -5,16 +5,20 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
 from typing import Any, Iterable
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+REPO_ROOT = Path(
+    os.environ.get("SR2FPGA_REPO_ROOT", Path(__file__).resolve().parents[2])
+).expanduser().resolve()
+AGENT_SOURCE_ROOT = REPO_ROOT / "agent" / "src"
+if str(AGENT_SOURCE_ROOT) not in sys.path:
+    sys.path.insert(0, str(AGENT_SOURCE_ROOT))
 
-from LLM.src.sr2fpga_agent.measurement_freeze import freeze_fingerprint
+from sr2fpga_agent.measurement_freeze import freeze_fingerprint
 
 
 EXPECTED_SOURCES = {"claude", "gpt", "qwen", "deepseek"}

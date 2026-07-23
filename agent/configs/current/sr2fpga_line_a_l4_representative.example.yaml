@@ -1,7 +1,7 @@
 # Deterministic Line-A OpenXC7 evidence for catalog-selected representative tasks.
-dataset_root: tmp/sr2fpga_line_a_l4_representative/dataset
-export_root: tmp/sr2fpga_line_a_l4_representative/exports
-run_root: tmp/sr2fpga_line_a_l4_representative/runs
+dataset_root: artifacts/agent/candidates/sr2fpga_line_a_l4_representative/dataset
+export_root: artifacts/agent/candidates/sr2fpga_line_a_l4_representative/exports
+run_root: artifacts/agent/runs/sr2fpga_line_a_l4_representative
 provider: deterministic
 repair_provider: none
 model: deterministic

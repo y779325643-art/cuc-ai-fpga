@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from sr2fpga_agent.paired_measurement import build_episode_measurement
 from sr2fpga_agent.runner import load_runner_config, run_batch
-from scripts.audit_phase_d_pilot import audit_run
+from agent.scripts.audit_phase_d_pilot import audit_run
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -13,7 +13,11 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 def test_phase_d_mocked_24_episode_run_is_complete_and_auditable(tmp_path: Path) -> None:
     base = load_runner_config(
-        REPO_ROOT / "configs" / "current" / "sr2fpga_phase_d_multiteacher_pilot.example.yaml"
+        REPO_ROOT
+        / "agent"
+        / "configs"
+        / "current"
+        / "sr2fpga_phase_d_multiteacher_pilot.example.yaml"
     )
     config = replace(
         base,

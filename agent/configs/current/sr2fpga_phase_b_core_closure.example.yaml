@@ -1,6 +1,6 @@
-dataset_root: tmp/sr2fpga_phase_b_core_closure/dataset
-export_root: tmp/sr2fpga_phase_b_core_closure/exports
-run_root: tmp/sr2fpga_phase_b_core_closure/runs
+dataset_root: artifacts/agent/candidates/sr2fpga_phase_b_core_closure/dataset
+export_root: artifacts/agent/candidates/sr2fpga_phase_b_core_closure/exports
+run_root: artifacts/agent/runs/sr2fpga_phase_b_core_closure
 provider: deterministic
 repair_provider: none
 model: deterministic

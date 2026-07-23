@@ -1,8 +1,8 @@
 # Phase D frozen multi-teacher Line-B pilot.
 # Replace example.invalid endpoints only in an ignored configs/local copy.
-dataset_root: datasets/sr2fpga_phase_d_v1
-export_root: datasets/sr2fpga_phase_d_v1_exports
-run_root: tmp/sr2fpga_runs
+dataset_root: artifacts/agent/candidates/sr2fpga_phase_d_v1
+export_root: artifacts/agent/candidates/sr2fpga_phase_d_v1_exports
+run_root: artifacts/agent/runs
 provider: deterministic
 repair_provider: same_as_source
 model: deterministic

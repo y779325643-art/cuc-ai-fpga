@@ -1,8 +1,8 @@
 # Deterministic Line-A closure batch for the remaining implemented Paper1 core
 # families. Catalog DUT-only mutations run automatically for Line-A samples.
-dataset_root: tmp/sr2fpga_phase_c_core_mutation_closure_v2/dataset
-export_root: tmp/sr2fpga_phase_c_core_mutation_closure_v2/exports
-run_root: tmp/sr2fpga_phase_c_core_mutation_closure_v2/runs
+dataset_root: artifacts/agent/candidates/sr2fpga_phase_c_core_mutation_closure_v2/dataset
+export_root: artifacts/agent/candidates/sr2fpga_phase_c_core_mutation_closure_v2/exports
+run_root: artifacts/agent/runs/sr2fpga_phase_c_core_mutation_closure_v2
 provider: deterministic
 repair_provider: none
 model: deterministic

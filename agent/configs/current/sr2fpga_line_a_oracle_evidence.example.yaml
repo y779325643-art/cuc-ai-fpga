@@ -1,9 +1,9 @@
 # Deterministic Line-A oracle-strength evidence batch.
 # Difficulty tiers are intentionally omitted so the v0.2 task catalog remains
 # authoritative. Catalog DUT-only mutations are run automatically by the agent.
-dataset_root: tmp/sr2fpga_line_a_oracle_evidence/dataset
-export_root: tmp/sr2fpga_line_a_oracle_evidence/exports
-run_root: tmp/sr2fpga_line_a_oracle_evidence/runs
+dataset_root: artifacts/agent/candidates/sr2fpga_line_a_oracle_evidence/dataset
+export_root: artifacts/agent/candidates/sr2fpga_line_a_oracle_evidence/exports
+run_root: artifacts/agent/runs/sr2fpga_line_a_oracle_evidence
 provider: deterministic
 repair_provider: none
 model: deterministic

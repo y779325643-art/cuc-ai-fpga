@@ -8,7 +8,7 @@ import pytest
 
 from sr2fpga_agent.measurement_freeze import freeze_fingerprint
 from sr2fpga_agent.paired_measurement import collect_paired_results
-from scripts.audit_phase_d_pilot import audit_run
+from agent.scripts.audit_phase_d_pilot import audit_run
 
 
 SOURCES = ("claude", "gpt", "qwen", "deepseek")
@@ -30,7 +30,7 @@ def test_phase_d_audit_script_runs_directly_from_repo_root(tmp_path: Path) -> No
     result = subprocess.run(
         [
             sys.executable,
-            "scripts/audit_phase_d_pilot.py",
+            "agent/scripts/audit_phase_d_pilot.py",
             "--run-root",
             str(run_root),
             "--output",

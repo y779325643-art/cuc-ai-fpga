@@ -1,8 +1,8 @@
 # Deterministic Phase C independent Python-oracle qualification batch.
 # Task aliases are explicit; the catalog supplies their T3/T4 family metadata.
-dataset_root: tmp/sr2fpga_phase_c_independent_oracle_v2/dataset
-export_root: tmp/sr2fpga_phase_c_independent_oracle_v2/exports
-run_root: tmp/sr2fpga_phase_c_independent_oracle_v2/runs
+dataset_root: artifacts/agent/candidates/sr2fpga_phase_c_independent_oracle_v2/dataset
+export_root: artifacts/agent/candidates/sr2fpga_phase_c_independent_oracle_v2/exports
+run_root: artifacts/agent/runs/sr2fpga_phase_c_independent_oracle_v2
 provider: deterministic
 repair_provider: none
 model: deterministic

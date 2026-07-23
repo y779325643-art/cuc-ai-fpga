@@ -9,7 +9,7 @@ from sr2fpga_agent import PlatformProfile, ProjectGenerator, ProjectRequest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SCRIPT = REPO_ROOT / "scripts" / "analyze_phase_d_h2_failures.py"
+SCRIPT = REPO_ROOT / "agent" / "scripts" / "analyze_phase_d_h2_failures.py"
 
 
 class PhaseDH2FailureAnalysisTests(unittest.TestCase):

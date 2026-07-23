@@ -110,14 +110,14 @@ rejects single-file responses for these families.
 Run the test suite:
 
 ```bash
-python3 -m unittest discover -s LLM/tests -q
+python3 -m pytest agent/tests -q
 ```
 
 Generate one deterministic sample:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.cli \
-  --dataset-root datasets/sr2fpga_rtl_v1 \
+python3 -m sr2fpga_agent.cli \
+  --dataset-root artifacts/agent/candidates/local-counter \
   --sample-id sample_local_counter_000001 \
   --task-type counter \
   --width 8 \
@@ -127,8 +127,8 @@ python3 -m LLM.src.sr2fpga_agent.cli \
 Preview the full no-API deterministic T0-T4 coverage smoke:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml \
+python3 -m sr2fpga_agent.runner \
+  --config agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml \
   --run-id t0-t4-deterministic-smoke \
   --preflight
 ```
@@ -142,13 +142,13 @@ Run baseline (a), first attempt with no tool-loop repair, across the current
 Legacy t1-t4 component-topology tasks:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
+python3 -m sr2fpga_agent.runner \
+  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a \
   --preflight
 
-python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
+python3 -m sr2fpga_agent.runner \
+  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a
 ```
 
@@ -163,8 +163,8 @@ requirements while preserving the same audited contracts.
 Run the autonomous batch runner with the tool-loop example config:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/legacy/sr2fpga_agent.example.yaml \
+python3 -m sr2fpga_agent.runner \
+  --config agent/configs/legacy/sr2fpga_agent.example.yaml \
   --run-id deepseek-tool-loop-smoke
 ```
 
@@ -189,8 +189,8 @@ Add `--validate-provider` to make a minimal DeepSeek authentication request
 before generation:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
+python3 -m sr2fpga_agent.runner \
+  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id deepseek-baseline-a \
   --preflight \
   --validate-provider
@@ -198,15 +198,15 @@ python3 -m LLM.src.sr2fpga_agent.runner \
 
 For a no-network deterministic smoke run, create a temporary JSON config with
 `provider: deterministic` and `repair_provider: none`, or use the unit tests in
-`LLM/tests/test_sr2fpga_agent_runner.py`.
+`agent/tests/test_sr2fpga_agent_runner.py`.
 
 ## Autonomous Runner
 
 The runner is the preferred control entry for producing more than one sample:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.runner \
-  --config configs/legacy/sr2fpga_baseline_a.example.yaml \
+python3 -m sr2fpga_agent.runner \
+  --config agent/configs/legacy/sr2fpga_baseline_a.example.yaml \
   --run-id <run-id>
 ```
 
@@ -227,13 +227,13 @@ The runner writes `baseline_report.md` automatically. Regenerate it manually if
 you edit or copy a `summary.json`:
 
 ```bash
-python3 -m LLM.src.sr2fpga_agent.baseline_report \
-  --summary tmp/sr2fpga_runs/<run-id>/summary.json \
+python3 -m sr2fpga_agent.baseline_report \
+  --summary artifacts/agent/runs/<run-id>/summary.json \
   --knee-threshold 0.8 \
-  --output tmp/sr2fpga_runs/<run-id>/baseline_report.md
+  --output artifacts/agent/runs/<run-id>/baseline_report.md
 ```
 
-Full run logs live under `tmp/sr2fpga_runs/<run-id>/` and should remain local
+Full run logs live under `artifacts/agent/runs/<run-id>/` and should remain local
 by default. Commit compact summaries only when they are useful for research
 traceability.
 
@@ -272,14 +272,14 @@ Training views include:
 
 ## Repository Layout
 
-- `LLM/` - local/cloud LLM deployment, fine-tuning utilities, and SR2FPGA agent
-  code.
-- `LLM/src/sr2fpga_agent/` - generation, tool running, recording, DeepSeek
+- `agent/` - standalone SR2FPGA generation, tool-verification, and trajectory
+  data project.
+- `agent/src/sr2fpga_agent/` - generation, tool running, recording, provider
   integration, and autonomous runner modules.
-- `LLM/tests/` - unit and smoke tests for dataset preparation, serving scripts,
-  and SR2FPGA agent behavior.
-- `configs/` - repository-level runner configs, including the safe example
-  config.
+- `agent/tests/` - Agent unit, integration, oracle, and runner tests.
+- `agent/configs/` - maintained, archived, and compatibility runner configs.
+- `LLM/` - model training, dataset preparation, and serving utilities pending
+  the separate training-project cutover.
 - `datasets/` - committed SR2FPGA milestone dataset snapshot and exported JSONL
   views.
 - `docs/` - research objectives, specs, decisions, handoff notes, and plans.
@@ -288,7 +288,8 @@ Training views include:
 - `reports/` - manuscripts, rendered PDFs, and report outputs.
 - `outputs/` - generated presentation/report deliverables.
 - `references/` - background reading and reference notes.
-- `tmp/` - ignored local run logs and temporary artifacts.
+- `artifacts/agent/` - ignored Agent candidates, run logs, and temporary
+  artifacts.
 
 ## LLM Deployment
 

@@ -66,12 +66,14 @@ class RunnerConfigTest(unittest.TestCase):
     def test_phase_d_configs_expand_frozen_pilot_and_controls(self) -> None:
         pilot = load_runner_config(
             REPO_ROOT
+            / "agent"
             / "configs"
             / "current"
             / "sr2fpga_phase_d_multiteacher_pilot.example.yaml"
         )
         control = load_runner_config(
             REPO_ROOT
+            / "agent"
             / "configs"
             / "current"
             / "sr2fpga_phase_d_control.example.yaml"
@@ -110,6 +112,7 @@ class RunnerConfigTest(unittest.TestCase):
     def test_phase_c_core_mutation_closure_config_targets_remaining_core_families(self) -> None:
         config = load_runner_config(
             REPO_ROOT
+            / "agent"
             / "configs"
             / "current"
             / "sr2fpga_phase_c_core_mutation_closure.example.yaml"
@@ -134,6 +137,7 @@ class RunnerConfigTest(unittest.TestCase):
     def test_phase_c_independent_oracle_config_generates_every_planned_sample(self) -> None:
         config = load_runner_config(
             REPO_ROOT
+            / "agent"
             / "configs"
             / "current"
             / "sr2fpga_phase_c_independent_oracle.example.yaml"
@@ -849,7 +853,7 @@ class RunnerConfigTest(unittest.TestCase):
                 load_runner_config(config_path)
 
     def test_baseline_b_example_config_is_tool_loop_repair_measurement(self) -> None:
-        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b.example.yaml"))
+        config = load_runner_config(Path("agent/configs/legacy/sr2fpga_baseline_b.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -868,7 +872,7 @@ class RunnerConfigTest(unittest.TestCase):
         )
 
     def test_line_a_oracle_evidence_config_uses_catalog_tiers_and_line_a_gate(self) -> None:
-        config = load_runner_config(Path("configs/current/sr2fpga_line_a_oracle_evidence.example.yaml"))
+        config = load_runner_config(Path("agent/configs/current/sr2fpga_line_a_oracle_evidence.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(len(samples), 6)
@@ -886,7 +890,7 @@ class RunnerConfigTest(unittest.TestCase):
         )
 
     def test_line_a_l4_representative_config_targets_catalog_subset(self) -> None:
-        config = load_runner_config(Path("configs/current/sr2fpga_line_a_l4_representative.example.yaml"))
+        config = load_runner_config(Path("agent/configs/current/sr2fpga_line_a_l4_representative.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(len(samples), 2)
@@ -899,7 +903,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertTrue(all(_l4_open_enabled_for_sample(config, sample) for sample in samples))
 
     def test_baseline_b_smoke_config_uses_tightened_prompt_namespace(self) -> None:
-        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b_smoke.example.yaml"))
+        config = load_runner_config(Path("agent/configs/legacy/sr2fpga_baseline_b_smoke.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -917,7 +921,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"b_tool_in_loop_repair"})
 
     def test_baseline_b_tightened_config_runs_full_tier_set_in_new_namespace(self) -> None:
-        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b_tightened.example.yaml"))
+        config = load_runner_config(Path("agent/configs/legacy/sr2fpga_baseline_b_tightened.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -935,7 +939,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"b_tool_in_loop_repair"})
 
     def test_baseline_b_t3_t4_smoke_config_targets_repair_knee(self) -> None:
-        config = load_runner_config(Path("configs/legacy/sr2fpga_baseline_b_t3_t4_smoke.example.yaml"))
+        config = load_runner_config(Path("agent/configs/legacy/sr2fpga_baseline_b_t3_t4_smoke.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -953,7 +957,7 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual({sample.metadata(config)["measurement_point"] for sample in samples}, {"b_tool_in_loop_repair"})
 
     def test_his_v12_smoke_config_uses_catalog_tier(self) -> None:
-        config = load_runner_config(Path("configs/current/sr2fpga_his_v12_smoke.example.yaml"))
+        config = load_runner_config(Path("agent/configs/current/sr2fpga_his_v12_smoke.example.yaml"))
 
         self.assertEqual(planned_samples(config)[0].difficulty_tier, "T2")
 
@@ -965,7 +969,7 @@ class RunnerConfigTest(unittest.TestCase):
             for family in runtime_catalog["task_families"]
             for alias in family.get("current_generator_aliases", [])
         }
-        config = load_runner_config(Path("configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml"))
+        config = load_runner_config(Path("agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deterministic")
@@ -1077,7 +1081,7 @@ class RunnerConfigTest(unittest.TestCase):
         )
 
     def test_official_eval_gap_closure_config_uses_catalog_tiers(self) -> None:
-        config = load_runner_config(Path("configs/current/sr2fpga_official_eval_gap_closure.example.yaml"))
+        config = load_runner_config(Path("agent/configs/current/sr2fpga_official_eval_gap_closure.example.yaml"))
 
         self.assertEqual(
             {sample.task_type: sample.difficulty_tier for sample in planned_samples(config)},
@@ -1100,7 +1104,7 @@ class RunnerConfigTest(unittest.TestCase):
         )
 
     def test_l0_by_construction_ablation_config_pairs_full_and_skeleton_generation(self) -> None:
-        config = load_runner_config(Path("configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml"))
+        config = load_runner_config(Path("agent/configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml"))
         samples = planned_samples(config)
 
         self.assertEqual(config.provider, "deepseek")
@@ -1153,7 +1157,7 @@ class RunnerConfigTest(unittest.TestCase):
         )
 
     def test_l0_by_construction_preflight_preview_shows_ablation_arm_metadata(self) -> None:
-        config = load_runner_config(Path("configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml"))
+        config = load_runner_config(Path("agent/configs/archive/sr2fpga_l0_by_construction_ablation.example.yaml"))
 
         report = runner_preflight(config, run_id="l0-by-construction-ablation")
 
@@ -1416,7 +1420,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(planned_samples(config)[0].difficulty_tier, "T0")
 
     def test_load_baseline_a_example_config_targets_first_attempt_no_tools(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "configs" / "legacy" / "sr2fpga_baseline_a.example.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "agent" / "configs" / "legacy" / "sr2fpga_baseline_a.example.yaml"
 
         config = load_runner_config(config_path)
         samples = planned_samples(config)
@@ -1791,7 +1795,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(report["samples"][0]["family_id"], "binary_bcd_counter")
 
     def test_baseline_a_preflight_sample_preview_lists_t1_to_t4_topologies(self) -> None:
-        config_path = Path(__file__).resolve().parents[2] / "configs" / "legacy" / "sr2fpga_baseline_a.example.yaml"
+        config_path = Path(__file__).resolve().parents[2] / "agent" / "configs" / "legacy" / "sr2fpga_baseline_a.example.yaml"
         config = load_runner_config(config_path)
 
         with (

@@ -1,6 +1,6 @@
-dataset_root: datasets/sr2fpga_rtl_v1
-export_root: datasets/sr2fpga_rtl_v1_exports
-run_root: tmp/sr2fpga_runs
+dataset_root: artifacts/agent/candidates/sr2fpga_rtl_v1
+export_root: artifacts/agent/candidates/sr2fpga_rtl_v1_exports
+run_root: artifacts/agent/runs
 env_file: .env
 provider: deepseek-his-v12
 repair_provider: none
