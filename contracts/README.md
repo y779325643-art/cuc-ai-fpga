@@ -22,6 +22,8 @@ python contracts/tools/verify_phase_a_backup.py `
 The backup verifier writes only the ignored
 `artifacts/reorganization/phase-b4/backup-recheck.json` record after every
 manifest, byte-count, checksum, workspace, and restore-sample check passes.
+The record pins the verified manifest SHA-256 so later curation rejects a
+backup changed after the gate.
 
 After that gate passes, preview the exact legacy evidence selection:
 

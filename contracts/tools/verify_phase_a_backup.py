@@ -270,6 +270,7 @@ def verify_phase_a_backup(
         or datetime.now(timezone.utc).isoformat(),
         "repository": str(repository),
         "backup_root": str(backup),
+        "manifest_sha256": _sha256(backup / "manifest.json"),
         "file_count": manifest_count,
         "byte_count": manifest_bytes,
         "checksum_line_count": checksum_line_count,

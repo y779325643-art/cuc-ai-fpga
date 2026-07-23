@@ -107,11 +107,25 @@ def _fixture(tmp_path: Path) -> tuple[Path, Path, Path, Path]:
             "schema_version": "sr2fpga-phase-b4-backup-recheck-v1",
             "repository": str(repository.resolve()),
             "backup_root": str(backup.resolve()),
+            "manifest_sha256": _sha256(
+                (backup / "manifest.json").read_bytes()
+            ),
             "integrity_failure_count": 0,
             "status": "pass",
         },
     )
     return repository, backup, plan_path, recheck_path
+
+
+def _refresh_recheck_manifest_hash(
+    backup: Path,
+    recheck_path: Path,
+) -> None:
+    recheck = json.loads(recheck_path.read_text(encoding="utf-8"))
+    recheck["manifest_sha256"] = _sha256(
+        (backup / "manifest.json").read_bytes()
+    )
+    _write_json(recheck_path, recheck)
 
 
 def test_preview_expands_only_planned_files(tmp_path: Path) -> None:
@@ -197,6 +211,7 @@ def test_secret_content_blocks_apply(tmp_path: Path) -> None:
             record["length"] = len(secret_content)
             record["sha256"] = _sha256(secret_content)
     _write_json(manifest_path, manifest)
+    _refresh_recheck_manifest_hash(backup, recheck_path)
 
     preview = build_curation_preview(
         repository,
@@ -233,6 +248,7 @@ def test_private_absolute_path_requires_review(tmp_path: Path) -> None:
             record["length"] = len(private_content)
             record["sha256"] = _sha256(private_content)
     _write_json(manifest_path, manifest)
+    _refresh_recheck_manifest_hash(backup, recheck_path)
 
     preview = build_curation_preview(
         repository,
@@ -281,3 +297,19 @@ def test_apply_rejects_destination_outside_curated_root(
 
     with pytest.raises(ValueError, match="escapes curated root"):
         apply_curation(repository, backup, preview)
+
+
+def test_manifest_change_after_recheck_is_rejected(tmp_path: Path) -> None:
+    repository, backup, plan_path, recheck_path = _fixture(tmp_path)
+    manifest_path = backup / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest["note"] = "changed after recheck"
+    _write_json(manifest_path, manifest)
+
+    with pytest.raises(ValueError, match="changed after recheck"):
+        build_curation_preview(
+            repository,
+            backup,
+            plan_path=plan_path,
+            recheck_path=recheck_path,
+        )

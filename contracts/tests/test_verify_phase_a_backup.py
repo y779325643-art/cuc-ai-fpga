@@ -103,6 +103,9 @@ def test_verified_external_backup_produces_pass_recheck(
         "checked_utc": "2026-07-23T00:00:00+00:00",
         "repository": str(repository.resolve()),
         "backup_root": str(backup.resolve()),
+        "manifest_sha256": _sha256(
+            (backup / "manifest.json").read_bytes()
+        ),
         "file_count": 2,
         "byte_count": 36,
         "checksum_line_count": 2,

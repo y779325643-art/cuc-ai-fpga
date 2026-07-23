@@ -136,6 +136,11 @@ def _validate_recheck(
         raise ValueError("backup recheck belongs to another backup root")
     if int(recheck.get("integrity_failure_count", -1)) != 0:
         raise ValueError("backup recheck reports integrity failures")
+    manifest_hash = str(recheck.get("manifest_sha256", ""))
+    if SHA256_PATTERN.fullmatch(manifest_hash) is None:
+        raise ValueError("backup recheck is missing manifest sha256")
+    if _sha256(backup / "manifest.json") != manifest_hash:
+        raise ValueError("backup manifest changed after recheck")
     return recheck
 
 
