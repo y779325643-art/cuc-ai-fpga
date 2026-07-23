@@ -33,14 +33,28 @@ warnings.warn(
 from sr2fpga_agent import *  # noqa: E402,F401,F403
 from sr2fpga_agent import __all__  # noqa: E402,F401
 
+
+def _legacy_module_requested_for_execution() -> str:
+    arguments = tuple(getattr(sys, "orig_argv", ()))
+    try:
+        module_index = arguments.index("-m") + 1
+    except ValueError:
+        return ""
+    return arguments[module_index] if module_index < len(arguments) else ""
+
+
+_executed_legacy_module = _legacy_module_requested_for_execution()
 _canonical_package = importlib.import_module("sr2fpga_agent")
 for _module_info in pkgutil.walk_packages(
     _canonical_package.__path__,
     prefix="sr2fpga_agent.",
 ):
     _canonical_name = _module_info.name
-    _canonical_module = importlib.import_module(_canonical_name)
     _suffix = _canonical_name.removeprefix("sr2fpga_agent")
-    sys.modules[f"{__name__}{_suffix}"] = _canonical_module
+    _legacy_name = f"{__name__}{_suffix}"
+    if _legacy_name == _executed_legacy_module:
+        continue
+    _canonical_module = importlib.import_module(_canonical_name)
+    sys.modules[_legacy_name] = _canonical_module
     if _suffix.count(".") == 1:
         setattr(sys.modules[__name__], _suffix[1:], _canonical_module)
