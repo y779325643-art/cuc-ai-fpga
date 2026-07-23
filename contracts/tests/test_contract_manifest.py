@@ -32,6 +32,6 @@ def test_registered_contract_paths_are_repository_relative() -> None:
         assert (REPO_ROOT / path).resolve().is_relative_to(REPO_ROOT)
 
 
-def test_system_his_contract_exists() -> None:
-    path = load_manifest()["contracts"]["system_his"]["path"]
-    assert (REPO_ROOT / path).is_file()
+def test_all_registered_contracts_exist() -> None:
+    for name, record in load_manifest()["contracts"].items():
+        assert (REPO_ROOT / record["path"]).is_file(), name
