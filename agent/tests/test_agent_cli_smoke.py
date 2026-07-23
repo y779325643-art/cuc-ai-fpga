@@ -41,7 +41,7 @@ def test_canonical_cli_help_works_from_installed_agent(
     assert usage_token in completed.stdout
 
 
-def test_legacy_runner_module_warns_once_and_remains_executable() -> None:
+def test_legacy_runner_module_reports_replacement_and_remains_executable() -> None:
     environment = os.environ.copy()
     environment.pop("PYTHONPATH", None)
 
@@ -63,5 +63,9 @@ def test_legacy_runner_module_warns_once_and_remains_executable() -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert "--config" in completed.stdout
-    assert completed.stderr.count("DeprecationWarning") == 1
+    assert (
+        "DEPRECATED: python -m LLM.src.sr2fpga_agent.runner "
+        "-> python -m sr2fpga_agent.runner"
+    ) in completed.stderr
+    assert "DeprecationWarning" not in completed.stderr
     assert "RuntimeWarning" not in completed.stderr

@@ -98,9 +98,21 @@ def test_canonical_source_contains_no_private_paths_or_keys() -> None:
     assert _private_value_violations(TRAINING_SOURCE) == []
 
 
-def test_legacy_source_contains_compatibility_shim_only() -> None:
+def test_legacy_source_contains_compatibility_files_only() -> None:
     python_files = sorted(
         path.relative_to(REPO_ROOT).as_posix()
         for path in LEGACY_SOURCE.rglob("*.py")
     )
-    assert python_files == ["LLM/src/sr2fpga_agent/__init__.py"]
+    assert python_files == [
+        "LLM/src/_compat.py",
+        "LLM/src/merge_lora.py",
+        "LLM/src/prepare_dataset.py",
+        "LLM/src/req2file_eval.py",
+        "LLM/src/sr2fpga_agent/__init__.py",
+        "LLM/src/sr2fpga_agent/baseline_report.py",
+        "LLM/src/sr2fpga_agent/cli.py",
+        "LLM/src/sr2fpga_agent/runner.py",
+        "LLM/src/sr2fpga_agent/task_evidence.py",
+        "LLM/src/train_lora.py",
+        "LLM/src/training_dry_run.py",
+    ]
