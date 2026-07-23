@@ -1,0 +1,21 @@
+{
+  "contract_registry_version": "1.0",
+  "contracts": {
+    "system_his": {
+      "version": "system-his-v1.2",
+      "path": "contracts/system-his/system-his-v1.2.schema.json"
+    },
+    "trajectory": {
+      "version": "trajectory-v1",
+      "path": "contracts/trajectory/trajectory-v1.schema.json"
+    },
+    "training_view_row": {
+      "version": "training-view-row-v1",
+      "path": "contracts/training-views/training-view-row-v1.schema.json"
+    },
+    "task_catalog": {
+      "version": "v0.2",
+      "path": "contracts/task-catalog/sr2fpga-task-catalog-v0.2.json"
+    }
+  }
+}

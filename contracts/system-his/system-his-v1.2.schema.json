@@ -1,0 +1,570 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/system-his/v1.2",
+  "title": "SR2FPGA System-HIS v1.2",
+  "description": "Canonical project-level hardware intent contract.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "intent",
+    "top",
+    "state",
+    "components",
+    "instances",
+    "data_flow",
+    "control_flow",
+    "timing",
+    "resources",
+    "verification",
+    "artifacts"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "system-his-v1.2"
+    },
+    "intent": {
+      "$ref": "#/$defs/intent"
+    },
+    "top": {
+      "$ref": "#/$defs/top"
+    },
+    "state": {
+      "$ref": "#/$defs/state"
+    },
+    "components": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/component"
+      }
+    },
+    "instances": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/instance"
+      }
+    },
+    "data_flow": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/data_flow"
+      }
+    },
+    "control_flow": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/control_flow"
+      }
+    },
+    "timing": {
+      "$ref": "#/$defs/timing"
+    },
+    "resources": {
+      "$ref": "#/$defs/resources"
+    },
+    "verification": {
+      "$ref": "#/$defs/verification"
+    },
+    "artifacts": {
+      "$ref": "#/$defs/artifacts"
+    },
+    "task_type": {
+      "type": "string"
+    },
+    "project_name": {
+      "type": "string"
+    },
+    "project": {
+      "type": "object"
+    },
+    "clocks": {
+      "type": "array"
+    },
+    "resets": {
+      "type": "array"
+    },
+    "platform": {
+      "type": "object"
+    },
+    "system": {
+      "type": "object"
+    },
+    "interface": {
+      "type": "object"
+    },
+    "architecture": {
+      "type": "object"
+    },
+    "modules": {
+      "type": "array"
+    },
+    "connections": {
+      "type": "array"
+    },
+    "top_ports": {
+      "type": "array"
+    },
+    "qor_intent": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_$]*$"
+    },
+    "endpoint": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z_][A-Za-z0-9_$]*(\\.[A-Za-z_][A-Za-z0-9_$]*)+$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {
+        "pattern": "^(?:[A-Za-z]:[\\\\/]|/|.*(?:^|/)\\.\\.(?:/|$))"
+      }
+    },
+    "intent": {
+      "type": "object",
+      "required": [
+        "user_prompt",
+        "design_goal",
+        "assumptions"
+      ],
+      "properties": {
+        "user_prompt": {
+          "type": "string",
+          "minLength": 1
+        },
+        "design_goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "assumptions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "clock": {
+      "type": "object",
+      "required": [
+        "name",
+        "target_fmax_mhz"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "target_fmax_mhz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "additionalProperties": true
+    },
+    "reset": {
+      "type": "object",
+      "required": [
+        "name",
+        "polarity",
+        "kind"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "polarity": {
+          "enum": [
+            "active_low",
+            "active_high",
+            "low",
+            "high"
+          ]
+        },
+        "kind": {
+          "enum": [
+            "sync",
+            "async",
+            "synchronous",
+            "asynchronous"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "width": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "port": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "dir": {
+          "enum": [
+            "input",
+            "output",
+            "inout"
+          ]
+        },
+        "direction": {
+          "enum": [
+            "input",
+            "output",
+            "inout"
+          ]
+        },
+        "width": {
+          "$ref": "#/$defs/width"
+        }
+      },
+      "additionalProperties": true
+    },
+    "top": {
+      "type": "object",
+      "required": [
+        "name",
+        "clocks",
+        "resets",
+        "ports"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "parameters": {
+          "type": "array"
+        },
+        "clocks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/clock"
+          }
+        },
+        "resets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/reset"
+          }
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "interfaces": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": true
+    },
+    "state_item": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "owner": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "state": {
+      "type": "object",
+      "required": [
+        "registers",
+        "counters",
+        "fsms",
+        "buffers",
+        "memories"
+      ],
+      "properties": {
+        "registers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/state_item"
+          }
+        },
+        "counters": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/state_item"
+          }
+        },
+        "fsms": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/state_item"
+          }
+        },
+        "buffers": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/state_item"
+          }
+        },
+        "memories": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/state_item"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "component": {
+      "type": "object",
+      "required": [
+        "name",
+        "semantic_kind",
+        "source",
+        "ports",
+        "intent"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "semantic_kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "parameters": {
+          "type": "array"
+        },
+        "ports": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "instance": {
+      "type": "object",
+      "required": [
+        "name",
+        "component",
+        "clock",
+        "reset",
+        "parameter_values"
+      ],
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "component": {
+          "$ref": "#/$defs/identifier"
+        },
+        "clock": {
+          "$ref": "#/$defs/identifier"
+        },
+        "reset": {
+          "$ref": "#/$defs/identifier"
+        },
+        "parameter_values": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "data_flow": {
+      "type": "object",
+      "required": [
+        "name",
+        "path",
+        "protocol"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "path": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/endpoint"
+          },
+          "minItems": 2
+        },
+        "protocol": {
+          "type": "string",
+          "minLength": 1
+        },
+        "payload": {
+          "type": "object"
+        },
+        "timing": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "control_flow": {
+      "type": "object",
+      "required": [
+        "name",
+        "kind"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "type": "string",
+          "minLength": 1
+        },
+        "condition": {
+          "type": "string"
+        },
+        "effects": {
+          "type": "array"
+        },
+        "related_state": {
+          "type": "array"
+        },
+        "related_flows": {
+          "type": "array"
+        }
+      },
+      "additionalProperties": true
+    },
+    "timing": {
+      "type": "object",
+      "required": [
+        "primary_clock",
+        "target_fmax_mhz",
+        "constraints"
+      ],
+      "properties": {
+        "primary_clock": {
+          "$ref": "#/$defs/identifier"
+        },
+        "target_fmax_mhz": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/relative_path"
+          }
+        }
+      },
+      "additionalProperties": true
+    },
+    "resources": {
+      "type": "object",
+      "required": [
+        "optimization_goal",
+        "expected"
+      ],
+      "properties": {
+        "optimization_goal": {
+          "type": "string",
+          "minLength": 1
+        },
+        "expected": {
+          "type": "object"
+        }
+      },
+      "additionalProperties": true
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "testbench",
+        "scenarios",
+        "pass_condition"
+      ],
+      "properties": {
+        "testbench": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "scenarios": {
+          "type": "array"
+        },
+        "pass_condition": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "artifacts": {
+      "type": "object",
+      "required": [
+        "top_module",
+        "rtl_sources",
+        "testbench",
+        "constraints",
+        "manifest",
+        "predicted_qor"
+      ],
+      "properties": {
+        "top_module": {
+          "$ref": "#/$defs/identifier"
+        },
+        "rtl_sources": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/relative_path"
+          }
+        },
+        "testbench": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "constraints": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/relative_path"
+          }
+        },
+        "manifest": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "predicted_qor": {
+          "$ref": "#/$defs/relative_path"
+        }
+      },
+      "additionalProperties": true
+    }
+  }
+}
