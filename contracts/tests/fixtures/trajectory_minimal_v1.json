@@ -1,0 +1,101 @@
+{
+  "contract_version": "trajectory-v1",
+  "episode_id": "fixture-episode-001",
+  "requirement": "Implement a synchronous 8-bit counter with enable and reset.",
+  "his_validation": {
+    "h0": {
+      "status": "pass"
+    },
+    "h1": {
+      "status": "pass"
+    },
+    "h2": {
+      "status": "pass"
+    },
+    "h3": {
+      "status": "pass"
+    }
+  },
+  "verification": {
+    "l0": {
+      "status": "pass",
+      "tool": "system_his_checker",
+      "runtime_sec": 0.04,
+      "diagnostics": [],
+      "report_paths": [
+        "reports/l0.json"
+      ]
+    },
+    "l1": {
+      "status": "pass",
+      "tool": "verilator",
+      "runtime_sec": 0.21,
+      "diagnostics": [],
+      "report_paths": [
+        "reports/verilator.log"
+      ]
+    },
+    "l2": {
+      "status": "pass",
+      "tool": "iverilog",
+      "runtime_sec": 0.35,
+      "diagnostics": [],
+      "report_paths": [
+        "reports/simulation.log"
+      ]
+    },
+    "l3": {
+      "status": "pass",
+      "tool": "yosys",
+      "runtime_sec": 0.62,
+      "diagnostics": [],
+      "report_paths": [
+        "reports/yosys.log"
+      ]
+    },
+    "l4_open": {
+      "status": "fail",
+      "tool": "openxc7_nextpnr",
+      "runtime_sec": 3.4,
+      "diagnostics": [
+        {
+          "failure_class": "timing_violation",
+          "wns_ns": -0.18
+        }
+      ],
+      "report_paths": [
+        "reports/openxc7_nextpnr.log"
+      ]
+    },
+    "l4_commercial": {
+      "status": "infrastructure_error",
+      "skip_reason": "vivado_license_unavailable",
+      "tool": "vivado",
+      "runtime_sec": 0.1,
+      "diagnostics": [],
+      "report_paths": [
+        "reports/vivado_startup.log"
+      ]
+    },
+    "l5": {
+      "status": "not_run",
+      "skip_reason": "not_selected_for_board_validation",
+      "tool": null,
+      "runtime_sec": null,
+      "diagnostics": [],
+      "report_paths": []
+    }
+  },
+  "attempts": [
+    {
+      "attempt_id": "attempt-000",
+      "generation_mode": "deterministic_fixture",
+      "result": "completed"
+    }
+  ],
+  "failure_origin": "natural_model_failure",
+  "metadata": {
+    "family_id": "binary_bcd_counter",
+    "sr2fpga_tier": "T0"
+  }
+}

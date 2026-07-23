@@ -1,0 +1,15 @@
+{
+  "contract_version": "training-view-row-v1",
+  "view_type": "requirement_to_file",
+  "source_episode_id": "fixture-episode-001",
+  "file_role": "rtl",
+  "path": "rtl/top.sv",
+  "official_eval_unit": false,
+  "standalone_pass_credit": false,
+  "input": {
+    "requirement": "Implement a synchronous counter."
+  },
+  "output": {
+    "content": "module top(input logic clk); endmodule"
+  }
+}

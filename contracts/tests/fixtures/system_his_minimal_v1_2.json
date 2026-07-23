@@ -1,0 +1,168 @@
+{
+  "schema_version": "system-his-v1.2",
+  "intent": {
+    "user_prompt": "Implement a synchronous 8-bit counter with enable and reset.",
+    "design_goal": "Increment count_out once per enabled clock cycle.",
+    "assumptions": [
+      "single 100 MHz clock",
+      "synchronous active-high reset"
+    ]
+  },
+  "top": {
+    "name": "top",
+    "parameters": [],
+    "clocks": [
+      {
+        "name": "clk",
+        "target_fmax_mhz": 100
+      }
+    ],
+    "resets": [
+      {
+        "name": "rst",
+        "polarity": "active_high",
+        "kind": "sync"
+      }
+    ],
+    "ports": [
+      {
+        "name": "clk",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "rst",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "enable",
+        "dir": "input",
+        "width": 1
+      },
+      {
+        "name": "count_out",
+        "dir": "output",
+        "width": 8
+      }
+    ],
+    "interfaces": []
+  },
+  "state": {
+    "registers": [
+      {
+        "name": "count_reg",
+        "owner": "top",
+        "width": 8
+      }
+    ],
+    "counters": [],
+    "fsms": [],
+    "buffers": [],
+    "memories": []
+  },
+  "components": [
+    {
+      "name": "top",
+      "semantic_kind": "counter",
+      "source": "rtl/top.sv",
+      "parameters": [],
+      "ports": [
+        {
+          "name": "clk",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "rst",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "enable",
+          "dir": "input",
+          "width": 1
+        },
+        {
+          "name": "count_out",
+          "dir": "output",
+          "width": 8
+        }
+      ],
+      "intent": "Implement the counter state transition and output."
+    }
+  ],
+  "instances": [],
+  "data_flow": [
+    {
+      "name": "counter_update",
+      "path": [
+        "top.enable",
+        "top.count_out"
+      ],
+      "protocol": "register",
+      "payload": {
+        "width": 8
+      },
+      "timing": {
+        "latency_cycles": 1,
+        "initiation_interval": 1
+      }
+    }
+  ],
+  "control_flow": [
+    {
+      "name": "counter_reset_and_enable",
+      "kind": "priority_rule",
+      "condition": "rst || enable",
+      "effects": [
+        "reset count_out to zero when rst is high",
+        "increment count_out when enable is high"
+      ],
+      "related_state": [
+        "count_reg"
+      ],
+      "related_flows": [
+        "counter_update"
+      ]
+    }
+  ],
+  "timing": {
+    "primary_clock": "clk",
+    "target_fmax_mhz": 100,
+    "constraints": [
+      "constraints/timing.sdc"
+    ]
+  },
+  "resources": {
+    "optimization_goal": "area_first",
+    "expected": {
+      "lut": 8,
+      "ff": 8,
+      "bram": 0,
+      "dsp": 0
+    }
+  },
+  "verification": {
+    "testbench": "sim/tb_top.sv",
+    "scenarios": [
+      "reset",
+      "enabled_increment",
+      "disabled_hold",
+      "wraparound"
+    ],
+    "pass_condition": "The self-checking testbench prints TEST_PASS after all counter checks pass."
+  },
+  "artifacts": {
+    "top_module": "top",
+    "rtl_sources": [
+      "rtl/top.sv"
+    ],
+    "testbench": "sim/tb_top.sv",
+    "constraints": [
+      "constraints/timing.sdc"
+    ],
+    "manifest": "manifest.json",
+    "predicted_qor": "reports/predicted_qor.json"
+  }
+}
