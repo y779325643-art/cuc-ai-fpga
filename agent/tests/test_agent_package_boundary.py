@@ -1,7 +1,11 @@
 import ast
+import importlib
 from pathlib import Path
 import re
+import sys
 import tomllib
+
+import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -69,3 +73,19 @@ def test_canonical_agent_source_has_no_training_or_legacy_imports() -> None:
     top_level_modules = {module.split(".", maxsplit=1)[0] for module in modules}
     assert top_level_modules.isdisjoint(HEAVY_TRAINING_DEPENDENCIES)
     assert not any(module == "LLM" or module.startswith("LLM.") for module in modules)
+
+
+def test_legacy_namespace_warns_and_resolves_canonical_source() -> None:
+    for module_name in tuple(sys.modules):
+        if module_name == "LLM.src.sr2fpga_agent" or module_name.startswith(
+            "LLM.src.sr2fpga_agent."
+        ):
+            sys.modules.pop(module_name)
+
+    with pytest.warns(DeprecationWarning, match="canonical import is sr2fpga_agent"):
+        legacy_package = importlib.import_module("LLM.src.sr2fpga_agent")
+    legacy_runner = importlib.import_module("LLM.src.sr2fpga_agent.runner")
+    canonical_package = importlib.import_module("sr2fpga_agent")
+
+    assert legacy_package.ProjectRequest is canonical_package.ProjectRequest
+    assert Path(legacy_runner.__file__).resolve().is_relative_to(PACKAGE_ROOT)
