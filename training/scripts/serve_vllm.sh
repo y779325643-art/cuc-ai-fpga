@@ -1,22 +1,22 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
 
-VENV_PATH="${LLM_VENV_PATH:-/mnt/e/Aowen/venvs/cuc-ai-fpga}"
+VENV_PATH="${TRAINING_VENV_PATH:-$REPO_ROOT/training/.venv}"
 if [ -f "$VENV_PATH/bin/activate" ]; then
   source "$VENV_PATH/bin/activate"
-elif [ -f "LLM/.venv/bin/activate" ]; then
-  source LLM/.venv/bin/activate
 fi
 
-if [ -f "LLM/configs/serve_vllm.env" ]; then
+if [ -f "training/configs/local/serve_vllm.env" ]; then
   set -a
-  source LLM/configs/serve_vllm.env
+  source training/configs/local/serve_vllm.env
   set +a
 fi
 
-MODEL_PATH="${MODEL_PATH:-/mnt/c/Users/Administrator/models/gemma-4-12B-it}"
+MODEL_PATH="${MODEL_PATH:-google/gemma-4-12B-it}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 DTYPE="${DTYPE:-float16}"

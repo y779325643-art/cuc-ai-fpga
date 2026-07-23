@@ -16,7 +16,7 @@ class ServingEntrypointsTest(unittest.TestCase):
 
         self.assertIn("*.sh text eol=lf", attributes)
 
-    def test_runtime_scripts_use_persistent_e_drive_venv_by_default(self) -> None:
+    def test_runtime_scripts_use_training_local_venv_by_default(self) -> None:
         scripts = [
             "setup_server.sh",
             "serve_qwen_vllm.sh",
@@ -26,10 +26,13 @@ class ServingEntrypointsTest(unittest.TestCase):
         ]
 
         for script_name in scripts:
-            script = (REPO_ROOT / f"LLM/scripts/{script_name}").read_text(encoding="utf-8")
+            script = (
+                REPO_ROOT / f"training/scripts/{script_name}"
+            ).read_text(encoding="utf-8")
             with self.subTest(script=script_name):
-                self.assertIn("/mnt/e/Aowen/venvs/cuc-ai-fpga", script)
-                self.assertIn("LLM_VENV_PATH", script)
+                self.assertIn("$REPO_ROOT/training/.venv", script)
+                self.assertIn("TRAINING_VENV_PATH", script)
+                self.assertNotIn("LLM_VENV_PATH", script)
 
     def _capture_vllm_args(
         self, script: Path, extra_env: dict[str, str] | None = None
@@ -64,10 +67,12 @@ class ServingEntrypointsTest(unittest.TestCase):
             )
             return capture_file.read_text(encoding="utf-8").splitlines()
 
-    def test_gemma_vllm_uses_known_local_path_and_text_only_flags(self) -> None:
-        args = self._capture_vllm_args(REPO_ROOT / "LLM/scripts/serve_vllm.sh")
+    def test_gemma_vllm_uses_public_default_and_text_only_flags(self) -> None:
+        args = self._capture_vllm_args(
+            REPO_ROOT / "training/scripts/serve_vllm.sh"
+        )
 
-        self.assertEqual(args[0:2], ["serve", "/mnt/c/Users/Administrator/models/gemma-4-12B-it"])
+        self.assertEqual(args[0:2], ["serve", "google/gemma-4-12B-it"])
         self.assertIn("--language-model-only", args)
         self.assertIn("--trust-remote-code", args)
         self.assertIn("--enforce-eager", args)
@@ -79,7 +84,7 @@ class ServingEntrypointsTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as model_dir:
             model_path = _path_for_bash(model_dir, bash)
             args = self._capture_vllm_args(
-                REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh",
+                REPO_ROOT / "training/scripts/serve_qwen_vllm.sh",
                 {"QWEN_MODEL_PATH": model_path},
             )
 
@@ -88,13 +93,13 @@ class ServingEntrypointsTest(unittest.TestCase):
         self.assertEqual(args[args.index("--max-model-len") + 1], "4096")
         self.assertEqual(args[args.index("--served-model-name") + 1], "cuc-ai-fpga")
 
-    def test_qwen_vllm_defaults_to_persistent_e_drive_model_path(self) -> None:
+    def test_qwen_vllm_defaults_to_public_model_identifier(self) -> None:
         script = (
-            REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh"
+            REPO_ROOT / "training/scripts/serve_qwen_vllm.sh"
         ).read_text(encoding="utf-8")
 
         self.assertIn(
-            "/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct",
+            "Qwen/Qwen2.5-Coder-7B-Instruct",
             script,
         )
 
@@ -105,7 +110,10 @@ class ServingEntrypointsTest(unittest.TestCase):
         bash = _bash_executable()
 
         result = subprocess.run(
-            _bash_command(REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh", bash),
+            _bash_command(
+                REPO_ROOT / "training/scripts/serve_qwen_vllm.sh",
+                bash,
+            ),
             cwd=REPO_ROOT,
             env=_env_for_bash(env, bash),
             capture_output=True,
@@ -114,19 +122,23 @@ class ServingEntrypointsTest(unittest.TestCase):
 
         self.assertNotEqual(result.returncode, 0)
         self.assertIn(f"Qwen model directory not found: {missing_path}", result.stderr)
-        self.assertIn("modelscope download", result.stderr)
+        self.assertIn("Set QWEN_MODEL_PATH", result.stderr)
+        self.assertIn("Qwen/Qwen2.5-Coder-7B-Instruct", result.stderr)
 
     def test_qwen_vllm_disables_flashinfer_sampler_without_nvcc(self) -> None:
         script = (
-            REPO_ROOT / "LLM/scripts/serve_qwen_vllm.sh"
+            REPO_ROOT / "training/scripts/serve_qwen_vllm.sh"
         ).read_text(encoding="utf-8")
 
         self.assertIn('export VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}"', script)
 
     def test_transformers_smoke_test_uses_chat_template(self) -> None:
-        script = (REPO_ROOT / "test_gemma_transformers.py").read_text(encoding="utf-8")
+        script = (
+            REPO_ROOT / "training/scripts/test_gemma_transformers.py"
+        ).read_text(encoding="utf-8")
 
-        self.assertIn("/mnt/c/Users/Administrator/models/gemma-4-12B-it", script)
+        self.assertIn('os.environ.get("MODEL_PATH"', script)
+        self.assertIn("google/gemma-4-12B-it", script)
         self.assertIn("tokenizer.apply_chat_template", script)
         self.assertIn("add_generation_prompt=True", script)
         self.assertIn('attn_implementation="eager"', script)
@@ -176,7 +188,11 @@ def _env_for_bash(
             "PATH",
             *(
                 key
-                for key in ("LLM_VENV_PATH", "MODEL_PATH", "QWEN_MODEL_PATH")
+                for key in (
+                    "TRAINING_VENV_PATH",
+                    "MODEL_PATH",
+                    "QWEN_MODEL_PATH",
+                )
                 if key in env
             ),
         ],

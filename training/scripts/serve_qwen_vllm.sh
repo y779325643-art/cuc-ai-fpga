@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-cd "$(dirname "$0")/../.."
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+cd "$REPO_ROOT"
 
-VENV_PATH="${LLM_VENV_PATH:-/mnt/e/Aowen/venvs/cuc-ai-fpga}"
+VENV_PATH="${TRAINING_VENV_PATH:-$REPO_ROOT/training/.venv}"
 if [ -f "$VENV_PATH/bin/activate" ]; then
   source "$VENV_PATH/bin/activate"
-elif [ -f "LLM/.venv/bin/activate" ]; then
-  source LLM/.venv/bin/activate
 fi
 
-MODEL_PATH="${QWEN_MODEL_PATH:-/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct}"
+MODEL_PATH="${QWEN_MODEL_PATH:-Qwen/Qwen2.5-Coder-7B-Instruct}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
 DTYPE="${DTYPE:-float16}"
@@ -22,20 +22,20 @@ SERVED_MODEL_NAME="${SERVED_MODEL_NAME:-cuc-ai-fpga}"
 # FlashInfer sampler so vLLM uses the PyTorch sampler without JIT compilation.
 export VLLM_USE_FLASHINFER_SAMPLER="${VLLM_USE_FLASHINFER_SAMPLER:-0}"
 
-if [ ! -d "$MODEL_PATH" ]; then
+case "$MODEL_PATH" in
+/*|./*|../*)
+  if [ ! -d "$MODEL_PATH" ]; then
   cat >&2 <<EOF
 Qwen model directory not found: $MODEL_PATH
 
-Download it with ModelScope:
-  mkdir -p /mnt/e/Aowen/models
-  modelscope download --model Qwen/Qwen2.5-Coder-7B-Instruct \
-    --local_dir /mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct
-
-Or start with another complete local snapshot:
-  QWEN_MODEL_PATH=/path/to/Qwen2.5-Coder-7B-Instruct bash LLM/scripts/serve_qwen_vllm.sh
+Set QWEN_MODEL_PATH to a complete local snapshot, or use the public model ID:
+  QWEN_MODEL_PATH=Qwen/Qwen2.5-Coder-7B-Instruct \
+    bash training/scripts/serve_qwen_vllm.sh
 EOF
-  exit 1
-fi
+    exit 1
+  fi
+  ;;
+esac
 
 vllm serve "$MODEL_PATH" \
   --host "$HOST" \

@@ -1,6 +1,6 @@
 model_name_or_path: google/gemma-4-12B-it
-train_file: LLM/data/train.jsonl
-output_dir: LLM/runs/gemma4_12b_lora
+train_file: artifacts/training/prepared-data/default/chat.jsonl
+output_dir: artifacts/training/adapters/gemma4_12b_lora
 
 max_seq_length: 2048
 num_train_epochs: 3

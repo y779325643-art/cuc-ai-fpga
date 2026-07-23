@@ -12,24 +12,35 @@ from sr2fpga_training.training_dry_run import dry_run_chat_jsonl
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
+def _release_exports_path(release_id: str) -> Path:
+    manifest = json.loads(
+        (REPO_ROOT / "datasets/manifest.json").read_text(encoding="utf-8")
+    )
+    release = next(
+        item for item in manifest["releases"] if item["release_id"] == release_id
+    )
+    return REPO_ROOT / release["exports_path"]
+
+
 class TrainingSmokeAssetsTest(unittest.TestCase):
     def test_smoke_dataset_can_be_converted_to_chat_jsonl(self) -> None:
-        source = REPO_ROOT / "LLM/data/examples/smoke_verilog_raw.jsonl"
-        target = REPO_ROOT / "tmp/test_smoke_train.jsonl"
+        source = REPO_ROOT / "training/tests/fixtures/smoke_verilog_raw.jsonl"
 
-        count = convert_jsonl(source, target)
-        rows = [
-            json.loads(line)
-            for line in target.read_text(encoding="utf-8").splitlines()
-            if line.strip()
-        ]
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "smoke.chat.jsonl"
+            count = convert_jsonl(source, target)
+            rows = [
+                json.loads(line)
+                for line in target.read_text(encoding="utf-8").splitlines()
+                if line.strip()
+            ]
 
         self.assertGreaterEqual(count, 6)
         self.assertEqual(count, len(rows))
         self.assertTrue(all("messages" in row for row in rows))
 
     def test_t0_t4_export_views_can_be_converted_to_chat_jsonl(self) -> None:
-        export_dir = REPO_ROOT / "datasets/sr2fpga_rtl_v1_exports"
+        export_dir = _release_exports_path("sr2fpga_rtl_v1")
         sample_prefix = "sample_t0_t4_deterministic_smoke_"
         views = [
             "requirement_to_his.jsonl",
@@ -83,7 +94,10 @@ class TrainingSmokeAssetsTest(unittest.TestCase):
                 self.assertTrue(report["fits_max_seq_length"], view)
 
     def test_t0_t4_requirement_to_file_non_his_rows_fit_short_context(self) -> None:
-        source = REPO_ROOT / "datasets/sr2fpga_rtl_v1_exports/requirement_to_file.jsonl"
+        source = (
+            _release_exports_path("sr2fpga_rtl_v1")
+            / "requirement_to_file.jsonl"
+        )
         sample_prefix = "sample_t0_t4_deterministic_smoke_"
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -110,30 +124,47 @@ class TrainingSmokeAssetsTest(unittest.TestCase):
             self.assertTrue(report["fits_max_seq_length"])
             self.assertEqual(report["over_max_seq_length"], 0)
 
-    def test_qwen_smoke_training_config_uses_local_model_and_small_run(self) -> None:
-        config_path = REPO_ROOT / "LLM/configs/train_qwen_smoke.yaml"
+    def test_qwen_smoke_training_config_uses_public_model_and_small_run(self) -> None:
+        config_path = (
+            REPO_ROOT / "training/configs/train_qwen_smoke.example.yaml"
+        )
         config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
         self.assertEqual(
             config["model_name_or_path"],
-            "/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct",
+            "Qwen/Qwen2.5-Coder-7B-Instruct",
         )
-        self.assertEqual(config["train_file"], "LLM/data/train.jsonl")
-        self.assertEqual(config["output_dir"], "/mnt/e/Aowen/runs/qwen2_5_coder_7b_smoke_lora")
+        self.assertEqual(
+            config["train_file"],
+            "artifacts/training/prepared-data/smoke/chat.jsonl",
+        )
+        self.assertEqual(
+            config["output_dir"],
+            "artifacts/training/adapters/qwen2_5_coder_7b_smoke_lora",
+        )
         self.assertLessEqual(config["max_seq_length"], 512)
         self.assertLessEqual(config["max_steps"], 20)
         self.assertTrue(config["use_qlora"])
 
     def test_qwen_req2file_short_training_config_uses_short_context_dataset(self) -> None:
-        config_path = REPO_ROOT / "LLM/configs/train_qwen_req2file_short.yaml"
+        config_path = (
+            REPO_ROOT
+            / "training/configs/train_qwen_req2file_short.example.yaml"
+        )
         config = yaml.safe_load(config_path.read_text(encoding="utf-8"))
 
         self.assertEqual(
             config["model_name_or_path"],
-            "/mnt/e/Aowen/models/Qwen2.5-Coder-7B-Instruct",
+            "Qwen/Qwen2.5-Coder-7B-Instruct",
         )
-        self.assertEqual(config["train_file"], "LLM/data/t0_t4_req2file_short.chat.jsonl")
-        self.assertEqual(config["output_dir"], "/mnt/e/Aowen/runs/qwen2_5_coder_7b_req2file_short_lora")
+        self.assertEqual(
+            config["train_file"],
+            "artifacts/training/prepared-data/t0-t4-req2file-short/chat.jsonl",
+        )
+        self.assertEqual(
+            config["output_dir"],
+            "artifacts/training/adapters/qwen2_5_coder_7b_req2file_short_lora",
+        )
         self.assertEqual(config["max_seq_length"], 2048)
         self.assertLessEqual(config["max_steps"], 50)
         self.assertTrue(config["use_qlora"])

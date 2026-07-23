@@ -13,6 +13,7 @@ LLM/.claude/settings.local.json
 !.env.example
 LLM/.env
 LLM/.env.*
+training/configs/local/
 !LLM/.env.example
 
 # Python/Node caches

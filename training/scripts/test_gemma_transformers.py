@@ -1,10 +1,12 @@
 """Smoke-test Gemma 4 12B through Transformers chat generation."""
 
+import os
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 
-model_path = "/mnt/c/Users/Administrator/models/gemma-4-12B-it"
+model_path = os.environ.get("MODEL_PATH", "google/gemma-4-12B-it")
 
 tokenizer = AutoTokenizer.from_pretrained(
     model_path,
