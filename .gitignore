@@ -45,3 +45,10 @@ outputs/**/layout/
 outputs/**/template-inspect/
 configs/*.local.yaml
 configs/local/
+
+# Repository project boundaries
+/artifacts/*
+!/artifacts/README.md
+/tmp/
+/agent/configs/local/
+/training/configs/local/
