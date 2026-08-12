@@ -1,8 +1,0 @@
-{
-  "stage": "sim_compile",
-  "failure_type": "testbench_simulator_compatibility",
-  "root_cause": "Icarus Verilog cannot elaborate unpacked array aggregate initialization in sim/tb_top.v lines 14-16: {8'd1, 8'd2, 8'd3}.",
-  "affected_files": [
-    "sim/tb_top.v"
-  ]
-}

@@ -1,8 +1,0 @@
-{
-  "stage": "sim_run",
-  "failure_type": "functional_mismatch",
-  "root_cause": "Simulation reached TEST_FAIL at vector 1: expected cumulative sum 12, got 10. The expected sequence 5,12,21 is correct for accumulated joined samples. The current sim/tb_top.v keeps the same input pair valid while waiting for out_valid, so the valid-ready pipeline can accept the same pair more than once before the testbench deasserts valid. Repair the testbench stimulus handshake so each pair is presented for exactly one accepted transfer, then wait for the corresponding output. Do not change expected[0..2].",
-  "affected_files": [
-    "sim/tb_top.v"
-  ]
-}

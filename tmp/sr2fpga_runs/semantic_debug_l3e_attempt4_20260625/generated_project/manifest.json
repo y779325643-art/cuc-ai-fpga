@@ -1,8 +1,0 @@
-{
-  "project_name": "pilot_his_v12_t4_fresh_l3e_20260625_t4_dual_stream_join_8_000001",
-  "top_module": "top",
-  "sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_join.v", "rtl/accumulator_core.v", "rtl/stream_stage.v"],
-  "constraints": {"timing": "constraints/timing.sdc"},
-  "simulation": {"testbench": "sim/tb_top.v"},
-  "reports": ["reports/predicted_qor.json"]
-}

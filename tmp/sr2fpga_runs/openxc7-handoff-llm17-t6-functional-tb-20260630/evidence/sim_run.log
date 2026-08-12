@@ -1,2 +1,0 @@
-TEST_PASS
-sim/tb_top.v:109: $finish called at 70000 (1ps)

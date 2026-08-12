@@ -1,8 +1,0 @@
-{
-  "stage": "sim_run",
-  "failure_type": "testbench_timeout",
-  "root_cause": "The repaired testbench can hang. It asserts in0_valid/in1_valid, checks in0_ready/in1_ready immediately, and may deassert valid in the same simulation timestep before any positive clock edge samples the transfer. Rewrite sim/tb_top.v so each input pair is held stable until a real valid-ready handshake occurs on a clock edge, then deassert on the following cycle. Every wait for ready or out_valid must be bounded by a cycle counter and print TEST_FAIL on timeout. Preserve expected[0]=5, expected[1]=12, expected[2]=21.",
-  "affected_files": [
-    "sim/tb_top.v"
-  ]
-}
