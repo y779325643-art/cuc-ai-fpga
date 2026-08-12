@@ -30,6 +30,14 @@ def test_runtime_and_local_config_paths_are_root_scoped_ignores() -> None:
         "/agent/configs/local/",
         "/training/configs/local/",
     } <= ignore_lines
+    assert {
+        "LLM/runs/",
+        "LLM/data/*.jsonl",
+        "LLM/merged/",
+        "LLM/checkpoints/",
+        "configs/*.local.yaml",
+        "configs/local/",
+    }.isdisjoint(ignore_lines)
 
 
 def test_datasets_and_reports_are_not_globally_ignored() -> None:

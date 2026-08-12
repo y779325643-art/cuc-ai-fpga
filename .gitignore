@@ -11,10 +11,6 @@ LLM/.claude/settings.local.json
 .env
 .env.*
 !.env.example
-LLM/.env
-LLM/.env.*
-training/configs/local/
-!LLM/.env.example
 
 # Python/Node caches
 __pycache__/
@@ -26,12 +22,6 @@ venv/
 
 # Large model artifacts and local runtime files
 models/
-LLM/.venv/
-LLM/data/*.jsonl
-LLM/runs/
-LLM/merged/
-LLM/checkpoints/
-LLM/configs/serve_vllm.env
 *.gguf
 *.safetensors
 *.pt
@@ -45,8 +35,6 @@ outputs/**/preview/
 outputs/**/qa/
 outputs/**/layout/
 outputs/**/template-inspect/
-configs/*.local.yaml
-configs/local/
 
 # Repository project boundaries
 /artifacts/*
