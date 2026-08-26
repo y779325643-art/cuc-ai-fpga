@@ -8,11 +8,11 @@ import urllib.error
 import urllib.request
 
 from sr2fpga_agent.generation import (
-    DeepSeekHisProjectGenerator,
-    DeepSeekOracleHisProjectGenerator,
-    DeepSeekProjectGenerator,
-    DeepSeekSystemHisGenerator,
-    DeepSeekTwoStageProjectGenerator,
+    DirectProjectGenerator,
+    HisProjectGenerator,
+    OracleHisProjectGenerator,
+    SystemHisGenerator,
+    TwoStageProjectGenerator,
 )
 from sr2fpga_agent.generation.his2project import _project_rtl_sources
 from sr2fpga_agent.parsers import (
@@ -78,11 +78,26 @@ from sr2fpga_agent.providers import (
     _response_fileno,
     _response_read_deadline,
 )
-from sr2fpga_agent.repair import DeepSeekRepairer
+from sr2fpga_agent.repair import ProjectRepairer, SystemHisRepairer
+
+# Former provider-specific public names remain aliases for one compatibility cycle.
+DeepSeekProjectGenerator = DirectProjectGenerator
+DeepSeekHisProjectGenerator = HisProjectGenerator
+DeepSeekOracleHisProjectGenerator = OracleHisProjectGenerator
+DeepSeekSystemHisGenerator = SystemHisGenerator
+DeepSeekTwoStageProjectGenerator = TwoStageProjectGenerator
+DeepSeekRepairer = ProjectRepairer
 
 __all__ = [
     "AnthropicCompatibleClient",
     "AnthropicCompatibleConfig",
+    "DirectProjectGenerator",
+    "HisProjectGenerator",
+    "OracleHisProjectGenerator",
+    "ProjectRepairer",
+    "SystemHisGenerator",
+    "SystemHisRepairer",
+    "TwoStageProjectGenerator",
     "DeepSeekHisProjectGenerator",
     "DeepSeekOracleHisProjectGenerator",
     "DeepSeekProjectGenerator",

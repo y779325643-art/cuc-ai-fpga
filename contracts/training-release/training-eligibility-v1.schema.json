@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/training-eligibility/v1",
+  "title": "SR2FPGA evaluator-owned training eligibility certificate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "artifact_sha256",
+    "visibility_class",
+    "episode_id",
+    "method_condition_id",
+    "training_split_id",
+    "source_class",
+    "failure_origin",
+    "policy_id",
+    "policy_sha256",
+    "episode_pack_sha256",
+    "initial_snapshot_id",
+    "initial_snapshot_sha256",
+    "terminal_candidate_sha256",
+    "project_envelope_sha256",
+    "qualification_outcome_sha256",
+    "evidence_bundle_sha256",
+    "checks",
+    "official_hidden_outcome_ref_count",
+    "eligibility_status",
+    "exclusion_reason_ids"
+  ],
+  "properties": {
+    "contract_version": {"const": "training-eligibility-v1"},
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "visibility_class": {"const": "release_internal"},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "method_condition_id": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "training_split_id": {"$ref": "#/$defs/identifier"},
+    "source_class": {"$ref": "#/$defs/identifier"},
+    "failure_origin": {"$ref": "#/$defs/identifier"},
+    "policy_id": {"$ref": "#/$defs/identifier"},
+    "policy_sha256": {"$ref": "#/$defs/sha256"},
+    "episode_pack_sha256": {"$ref": "#/$defs/sha256"},
+    "initial_snapshot_id": {"$ref": "#/$defs/identifier"},
+    "initial_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+    "terminal_candidate_sha256": {"$ref": "#/$defs/sha256"},
+    "project_envelope_sha256": {"$ref": "#/$defs/sha256"},
+    "qualification_outcome_sha256": {"$ref": "#/$defs/sha256"},
+    "evidence_bundle_sha256": {"$ref": "#/$defs/sha256"},
+    "checks": {"$ref": "#/$defs/checks"},
+    "official_hidden_outcome_ref_count": {"type": "integer", "minimum": 0},
+    "eligibility_status": {"enum": ["eligible", "ineligible"]},
+    "exclusion_reason_ids": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"eligibility_status": {"const": "eligible"}}},
+      "then": {
+        "properties": {
+          "official_hidden_outcome_ref_count": {"const": 0},
+          "exclusion_reason_ids": {"maxItems": 0},
+          "checks": {
+            "properties": {
+              "training_split_member": {"const": true},
+              "requirement_ready": {"const": true},
+              "initial_snapshot_serializable": {"const": true},
+              "initial_snapshot_pre_feedback": {"const": true},
+              "qualification_completed_pass": {"const": true},
+              "trusted_edit_surface_intact": {"const": true},
+              "method_applicable_h_pass": {"const": true},
+              "provenance_complete": {"const": true},
+              "budget_compliant": {"const": true},
+              "hidden_material_redacted": {"const": true},
+              "leakage_audit_pass": {"const": true},
+              "source_policy_allowed": {"const": true}
+            }
+          }
+        }
+      },
+      "else": {"properties": {"exclusion_reason_ids": {"minItems": 1}}}
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "checks": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "training_split_member",
+        "requirement_ready",
+        "initial_snapshot_serializable",
+        "initial_snapshot_pre_feedback",
+        "qualification_completed_pass",
+        "trusted_edit_surface_intact",
+        "method_applicable_h_pass",
+        "provenance_complete",
+        "budget_compliant",
+        "hidden_material_redacted",
+        "leakage_audit_pass",
+        "source_policy_allowed"
+      ],
+      "properties": {
+        "training_split_member": {"type": "boolean"},
+        "requirement_ready": {"type": "boolean"},
+        "initial_snapshot_serializable": {"type": "boolean"},
+        "initial_snapshot_pre_feedback": {"type": "boolean"},
+        "qualification_completed_pass": {"type": "boolean"},
+        "trusted_edit_surface_intact": {"type": "boolean"},
+        "method_applicable_h_pass": {"type": "boolean"},
+        "provenance_complete": {"type": "boolean"},
+        "budget_compliant": {"type": "boolean"},
+        "hidden_material_redacted": {"type": "boolean"},
+        "leakage_audit_pass": {"type": "boolean"},
+        "source_policy_allowed": {"type": "boolean"}
+      }
+    }
+  }
+}

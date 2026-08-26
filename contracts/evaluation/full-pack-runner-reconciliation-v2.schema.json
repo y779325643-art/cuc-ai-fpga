@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/full-pack-runner-reconciliation/v2",
+  "title": "SR2FPGA Excluded Full-Pack Runner Reconciliation v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "evaluation_scope", "smoke_id", "analysis_population",
+    "g3_accepted", "g4b_authorized", "official_outcome", "rq1_evidence",
+    "rq2_evidence", "public_projection_sha256", "source_smoke_report_ref",
+    "method_records", "reconciliation"
+  ],
+  "properties": {
+    "contract_version": {"const": "full-pack-runner-reconciliation-v2"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "smoke_id": {"$ref": "#/$defs/identifier"},
+    "analysis_population": {"const": "excluded"},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false},
+    "official_outcome": {"const": false},
+    "rq1_evidence": {"const": false},
+    "rq2_evidence": {"const": false},
+    "public_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "source_smoke_report_ref": {"$ref": "#/$defs/artifact_ref"},
+    "method_records": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {"$ref": "#/$defs/method_record"}
+    },
+    "reconciliation": {"$ref": "#/$defs/reconciliation"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "method": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "media_type": {"const": "application/json"}
+      }
+    },
+    "hidden_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome_id", "contract_id"],
+      "properties": {
+        "outcome_id": {
+          "type": "string",
+          "pattern": "^hidden-outcome-[0-9a-f]{64}$"
+        },
+        "contract_id": {"const": "development-hidden-outcome-v1"}
+      }
+    },
+    "method_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_condition", "episode_id", "trajectory_ref",
+        "terminal_candidate_ref", "cost_summary_refs",
+        "development_hidden_outcome_ref", "lineage_complete",
+        "all_cost_axes_classified"
+      ],
+      "properties": {
+        "method_condition": {"$ref": "#/$defs/method"},
+        "episode_id": {"$ref": "#/$defs/identifier"},
+        "trajectory_ref": {"$ref": "#/$defs/artifact_ref"},
+        "terminal_candidate_ref": {"$ref": "#/$defs/artifact_ref"},
+        "cost_summary_refs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/artifact_ref"}
+        },
+        "development_hidden_outcome_ref": {
+          "oneOf": [{"$ref": "#/$defs/hidden_ref"}, {"type": "null"}]
+        },
+        "lineage_complete": {"const": true},
+        "all_cost_axes_classified": {"const": true}
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_set", "same_public_projection", "all_trajectories_verified",
+        "all_cost_axes_classified", "matching_terminal_seals",
+        "opaque_hidden_ref_count", "blocking_gaps"
+      ],
+      "properties": {
+        "method_set": {"const": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+        "same_public_projection": {"const": true},
+        "all_trajectories_verified": {"const": true},
+        "all_cost_axes_classified": {"const": true},
+        "matching_terminal_seals": {"const": true},
+        "opaque_hidden_ref_count": {"type": "integer", "minimum": 0, "maximum": 6},
+        "blocking_gaps": {
+          "const": [
+            "runtime_scenario_evidence_reconciliation",
+            "official_public_terminal_hidden_authority",
+            "g4b_campaign_authority"
+          ]
+        }
+      }
+    }
+  }
+}

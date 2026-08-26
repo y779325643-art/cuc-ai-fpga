@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -22,6 +23,12 @@ from .oracles.bundle import (
 
 _REPOSITORY_PATHS = RepositoryPaths.discover()
 EVIDENCE_PATH = _REPOSITORY_PATHS.task_evidence
+SUPPORTED_SOURCE_CATALOGS = frozenset(
+    {
+        "contracts/task-catalog/sr2fpga-task-catalog-v0.2.json",
+        "docs/sr2fpga-task-catalog-v0.2.json",
+    }
+)
 
 GENERATOR_STATUSES = frozenset({"not_implemented", "implemented"})
 TESTBENCH_STATUSES = frozenset({"not_implemented", "implemented"})
@@ -36,6 +43,7 @@ REQUIRED_ORACLE_SCENARIO_CLASSES = frozenset(
 SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 VERIFIED_LEVELS = frozenset({"not_run", "L3", "L4", "L5"})
 TOOL_STATUSES = frozenset({"pass", "fail", "not_run"})
+ALIAS_EVIDENCE_STATUSES = frozenset({"verified", "not_run"})
 VERIFICATION_LEVEL_RANK = {
     "GEN_FAIL": -1,
     "not_run": 0,
@@ -97,6 +105,31 @@ class TaskFamilyEvidence:
         object.__setattr__(self, "evidence_refs", references)
 
 
+@dataclass(frozen=True)
+class TaskAliasEvidence:
+    family_id: str
+    alias: str
+    evidence_status: str
+    sample_id: str
+    highest_verified_level: str
+    mutation_status: str
+    independent_oracle_status: str
+    run_id: str
+    evidence_refs: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class L4OpenEvidence:
+    family_id: str
+    status: str
+    run_id: str
+    sample_id: str
+    tool: str
+    constraint_scope: str
+    board_profile: str
+    artifact_sha256: tuple[tuple[str, str], ...]
+
+
 def load_task_family_evidence(
     path: Path = EVIDENCE_PATH,
     *,
@@ -108,7 +141,60 @@ def load_task_family_evidence(
     with catalog_path.open(encoding="utf-8") as handle:
         catalog = json.load(handle)
     entries = tuple(_parse_entry(item) for item in document["task_families"])
-    validate_task_family_evidence(document, entries, catalog)
+    alias_entries = tuple(_parse_alias_entry(item) for item in document.get("alias_evidence", ()))
+    l4_entries = tuple(_parse_l4_entry(item) for item in document.get("l4_open_evidence", ()))
+    validate_task_family_evidence(
+        document,
+        entries,
+        catalog,
+        alias_entries=alias_entries,
+        l4_entries=l4_entries,
+    )
+    if path.resolve() == EVIDENCE_PATH.resolve():
+        verify_task_alias_artifacts(alias_entries)
+        verify_l4_open_artifact_hashes(l4_entries)
+    return entries
+
+
+def load_task_alias_evidence(
+    path: Path = EVIDENCE_PATH,
+    *,
+    catalog_path: Path = CATALOG_PATH,
+) -> tuple[TaskAliasEvidence, ...]:
+    with path.open(encoding="utf-8") as handle:
+        document = json.load(handle)
+    with catalog_path.open(encoding="utf-8") as handle:
+        catalog = json.load(handle)
+    family_entries = tuple(_parse_entry(item) for item in document["task_families"])
+    entries = tuple(_parse_alias_entry(item) for item in document.get("alias_evidence", ()))
+    aliases_by_family = {
+        family["family_id"]: tuple(family.get("current_generator_aliases", ()))
+        for family in catalog["task_families"]
+    }
+    _validate_alias_evidence(entries, aliases_by_family, family_entries)
+    if path.resolve() == EVIDENCE_PATH.resolve():
+        verify_task_alias_artifacts(entries)
+    return entries
+
+
+def load_l4_open_evidence(
+    path: Path = EVIDENCE_PATH,
+    *,
+    catalog_path: Path = CATALOG_PATH,
+) -> tuple[L4OpenEvidence, ...]:
+    with path.open(encoding="utf-8") as handle:
+        document = json.load(handle)
+    with catalog_path.open(encoding="utf-8") as handle:
+        catalog = json.load(handle)
+    family_entries = tuple(_parse_entry(item) for item in document["task_families"])
+    entries = tuple(_parse_l4_entry(item) for item in document.get("l4_open_evidence", ()))
+    aliases_by_family = {
+        family["family_id"]: tuple(family.get("current_generator_aliases", ()))
+        for family in catalog["task_families"]
+    }
+    _validate_l4_evidence(entries, aliases_by_family, family_entries)
+    if path.resolve() == EVIDENCE_PATH.resolve():
+        verify_l4_open_artifact_hashes(entries)
     return entries
 
 
@@ -116,11 +202,14 @@ def validate_task_family_evidence(
     document: dict[str, object],
     entries: tuple[TaskFamilyEvidence, ...],
     catalog: dict[str, object],
+    *,
+    alias_entries: tuple[TaskAliasEvidence, ...] = (),
+    l4_entries: tuple[L4OpenEvidence, ...] = (),
 ) -> None:
     """Reject evidence that disagrees with its declared catalog contract."""
     if document.get("schema_version") != "sr2fpga-task-evidence-v0.1":
         raise ValueError("invalid evidence schema_version")
-    if document.get("source_catalog") != "docs/sr2fpga-task-catalog-v0.2.json":
+    if document.get("source_catalog") not in SUPPORTED_SOURCE_CATALOGS:
         raise ValueError("invalid evidence source_catalog")
 
     families = catalog["task_families"]
@@ -144,6 +233,10 @@ def validate_task_family_evidence(
     }
     for entry in entries:
         _validate_entry(entry, aliases_by_family[entry.family_id])
+    if "alias_evidence" in document:
+        _validate_alias_evidence(alias_entries, aliases_by_family, entries)
+    if "l4_open_evidence" in document:
+        _validate_l4_evidence(l4_entries, aliases_by_family, entries)
 
 
 def _parse_entry(item: dict[str, object]) -> TaskFamilyEvidence:
@@ -187,6 +280,162 @@ def _parse_entry(item: dict[str, object]) -> TaskFamilyEvidence:
             hidden_vectors_exported=independent_oracle.get("hidden_vectors_exported"),
         ),
     )
+
+
+def _parse_alias_entry(item: dict[str, object]) -> TaskAliasEvidence:
+    return TaskAliasEvidence(
+        family_id=item["family_id"],
+        alias=item["alias"],
+        evidence_status=item["evidence_status"],
+        sample_id=item["sample_id"],
+        highest_verified_level=item["highest_verified_level"],
+        mutation_status=item["mutation_status"],
+        independent_oracle_status=item["independent_oracle_status"],
+        run_id=item["run_id"],
+        evidence_refs=tuple(item["evidence_refs"]),
+    )
+
+
+def _parse_l4_entry(item: dict[str, object]) -> L4OpenEvidence:
+    artifacts = item["artifact_sha256"]
+    if not isinstance(artifacts, dict):
+        raise ValueError("L4 artifact_sha256 must be an object")
+    return L4OpenEvidence(
+        family_id=item["family_id"],
+        status=item["status"],
+        run_id=item["run_id"],
+        sample_id=item["sample_id"],
+        tool=item["tool"],
+        constraint_scope=item["constraint_scope"],
+        board_profile=item["board_profile"],
+        artifact_sha256=tuple(artifacts.items()),
+    )
+
+
+def _validate_alias_evidence(
+    alias_entries: tuple[TaskAliasEvidence, ...],
+    aliases_by_family: dict[str, tuple[str, ...]],
+    family_entries: tuple[TaskFamilyEvidence, ...],
+) -> None:
+    expected = {
+        (entry.family_id, alias)
+        for entry in family_entries
+        if entry.generator_status == "implemented" and len(aliases_by_family[entry.family_id]) > 1
+        for alias in aliases_by_family[entry.family_id]
+    }
+    actual = [(entry.family_id, entry.alias) for entry in alias_entries]
+    if len(actual) != len(set(actual)):
+        raise ValueError("duplicate alias evidence")
+    if set(actual) != expected:
+        raise ValueError("alias evidence must cover every implemented multi-alias family")
+    family_by_id = {entry.family_id: entry for entry in family_entries}
+    for entry in alias_entries:
+        _require_status(entry.evidence_status, ALIAS_EVIDENCE_STATUSES, "alias evidence_status")
+        _require_status(entry.highest_verified_level, VERIFIED_LEVELS, "alias highest_verified_level")
+        _require_status(entry.mutation_status, MUTATION_STATUSES, "alias mutation_status")
+        _require_status(
+            entry.independent_oracle_status,
+            INDEPENDENT_ORACLE_STATUSES,
+            "alias independent_oracle_status",
+        )
+        for value in (entry.family_id, entry.alias, entry.sample_id, entry.run_id):
+            _require_trimmed(value)
+        for reference in entry.evidence_refs:
+            _require_trimmed(reference)
+        if entry.alias not in aliases_by_family.get(entry.family_id, ()):
+            raise ValueError("alias evidence does not match catalog ownership")
+        if entry.evidence_status == "not_run":
+            if (
+                entry.sample_id
+                or entry.run_id
+                or entry.evidence_refs
+                or entry.highest_verified_level != "not_run"
+                or entry.mutation_status != "not_run"
+                or entry.independent_oracle_status != "not_run"
+            ):
+                raise ValueError("not_run alias evidence requires empty provenance")
+            continue
+        if not entry.sample_id or not entry.run_id or not entry.evidence_refs:
+            raise ValueError("verified alias evidence requires sample, run, and references")
+        if not any(
+            f"/runs/{entry.run_id}/summary.json" in f"/{reference}"
+            for reference in entry.evidence_refs
+        ):
+            raise ValueError("verified alias evidence must reference its run summary")
+        family = family_by_id[entry.family_id]
+        if VERIFICATION_LEVEL_RANK[entry.highest_verified_level] > VERIFICATION_LEVEL_RANK[family.highest_verified_level]:
+            raise ValueError("alias evidence exceeds family verification level")
+        if entry.mutation_status == "qualified" and family.mutation_evidence.status != "qualified":
+            raise ValueError("alias mutation claim exceeds family evidence")
+        if (
+            entry.independent_oracle_status == "qualified"
+            and family.independent_oracle_evidence.status != "qualified"
+        ):
+            raise ValueError("alias oracle claim exceeds family evidence")
+
+
+def _validate_l4_evidence(
+    l4_entries: tuple[L4OpenEvidence, ...],
+    aliases_by_family: dict[str, tuple[str, ...]],
+    family_entries: tuple[TaskFamilyEvidence, ...],
+) -> None:
+    del aliases_by_family
+    required = {entry.family_id for entry in family_entries if entry.l4_open_status == "pass"}
+    actual = [entry.family_id for entry in l4_entries]
+    if len(actual) != len(set(actual)) or set(actual) != required:
+        raise ValueError("L4 provenance must cover exactly the L4-open pass families")
+    for entry in l4_entries:
+        if entry.status != "pass":
+            raise ValueError("L4 provenance status must be pass")
+        for value in (
+            entry.family_id,
+            entry.run_id,
+            entry.sample_id,
+            entry.tool,
+            entry.constraint_scope,
+            entry.board_profile,
+        ):
+            if not value:
+                raise ValueError("L4 provenance fields must be non-empty")
+            _require_trimmed(value)
+        if not entry.artifact_sha256:
+            raise ValueError("L4 provenance requires artifact hashes")
+        for reference, digest in entry.artifact_sha256:
+            _require_trimmed(reference)
+            if Path(reference).is_absolute() or ".." in Path(reference).parts:
+                raise ValueError("L4 artifact paths must be repository-relative")
+            if not isinstance(digest, str) or not SHA256_RE.fullmatch(digest):
+                raise ValueError("invalid L4 artifact sha256")
+
+
+def verify_task_alias_artifacts(entries: tuple[TaskAliasEvidence, ...]) -> None:
+    for entry in entries:
+        if entry.evidence_status != "verified":
+            continue
+        for reference in entry.evidence_refs:
+            if not _resolve_evidence_ref(reference).exists():
+                raise ValueError(f"missing alias evidence artifact: {reference}")
+        summaries = [
+            _resolve_evidence_ref(reference)
+            for reference in entry.evidence_refs
+            if Path(reference).name == "summary.json"
+        ]
+        if len(summaries) != 1:
+            raise ValueError("verified alias evidence requires exactly one run summary")
+        summary = json.loads(summaries[0].read_text(encoding="utf-8"))
+        if entry.sample_id not in _summary_sample_ids(summary):
+            raise ValueError("alias sample is absent from its run summary")
+
+
+def verify_l4_open_artifact_hashes(entries: tuple[L4OpenEvidence, ...]) -> None:
+    for entry in entries:
+        for reference, expected in entry.artifact_sha256:
+            path = _resolve_evidence_ref(reference)
+            if not path.is_file():
+                raise ValueError(f"missing L4 artifact: {reference}")
+            actual = hashlib.sha256(path.read_bytes()).hexdigest()
+            if actual != expected:
+                raise ValueError(f"L4 artifact sha256 mismatch: {reference}")
 
 
 def _validate_entry(entry: TaskFamilyEvidence, aliases: tuple[str, ...]) -> None:
@@ -299,6 +548,12 @@ def render_task_evidence_markdown(
     with catalog_path.open(encoding="utf-8") as handle:
         catalog = json.load(handle)
     entries = load_task_family_evidence(evidence_path, catalog_path=catalog_path)
+    alias_entries = load_task_alias_evidence(
+        evidence_path, catalog_path=catalog_path
+    )
+    l4_entries = load_l4_open_evidence(
+        evidence_path, catalog_path=catalog_path
+    )
     evidence_by_family = {entry.family_id: entry for entry in entries}
     families = catalog["task_families"]
     paper1_core = catalog["recommended_sets"]["paper1_core"]
@@ -368,6 +623,57 @@ def render_task_evidence_markdown(
                 ", ".join(family["oracle_kind"]),
             )
         )
+
+    if alias_entries:
+        lines.extend(
+            [
+                "",
+                "## Alias/Sample Evidence",
+                "",
+                "Multi-alias families are reported per alias so an unevaluated alias cannot inherit a sibling sample's claim.",
+                "",
+                "| Family | Alias | Status | Sample | Level | Mutation | Independent oracle | Run |",
+                "| --- | --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for entry in alias_entries:
+            lines.append(
+                _markdown_row(
+                    entry.family_id,
+                    entry.alias,
+                    entry.evidence_status,
+                    entry.sample_id or "-",
+                    entry.highest_verified_level,
+                    entry.mutation_status,
+                    entry.independent_oracle_status,
+                    entry.run_id or "-",
+                )
+            )
+
+    if l4_entries:
+        lines.extend(
+            [
+                "",
+                "## L4-open Provenance",
+                "",
+                "These are bounded OpenXC7 results. `logical_only` means board pin constraints were not applied.",
+                "",
+                "| Family | Run | Sample | Tool | Constraint scope | Board profile | Hashed artifacts |",
+                "| --- | --- | --- | --- | --- | --- | --- |",
+            ]
+        )
+        for entry in l4_entries:
+            lines.append(
+                _markdown_row(
+                    entry.family_id,
+                    entry.run_id,
+                    entry.sample_id,
+                    entry.tool,
+                    entry.constraint_scope,
+                    entry.board_profile,
+                    str(len(entry.artifact_sha256)),
+                )
+            )
 
     lines.extend(
         [

@@ -1,9 +1,70 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ $# -lt 3 ]]; then
+probe_mode=0
+if [[ "${1:-}" == "--probe-tool-environment" ]]; then
+  probe_mode=1
+elif [[ $# -lt 3 ]]; then
   echo "usage: openxc7_pnr.sh <project_dir> <part> <clock_period_ns>" >&2
   exit 2
+fi
+
+if [[ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
+  # Non-interactive WSL launches do not always load the single-user Nix profile.
+  # shellcheck source=/dev/null
+  . "$HOME/.nix-profile/etc/profile.d/nix.sh"
+fi
+
+flake_path="${OPENXC7_FLAKE_PATH:-}"
+if [[ "${OPENXC7_IN_NIX_SHELL:-0}" != "1" && -n "$flake_path" && -d "$flake_path" ]] && command -v nix >/dev/null 2>&1; then
+  export OPENXC7_IN_NIX_SHELL=1
+  exec nix develop "$flake_path" --option sandbox false -c bash "$0" "$@"
+fi
+
+if [[ "$probe_mode" == "1" ]]; then
+  for tool in yosys nextpnr-xilinx python3; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      echo "Missing executable: $tool" >&2
+      exit 127
+    fi
+  done
+  python3 - <<'PY'
+import hashlib
+import json
+from pathlib import Path
+import shutil
+import subprocess
+
+commands = {
+    "yosys": ["yosys", "-V"],
+    "nextpnr-xilinx": ["nextpnr-xilinx", "--version"],
+    "python3": ["python3", "--version"],
+}
+records = []
+for name, command in commands.items():
+    resolved = Path(shutil.which(command[0]) or "")
+    content = resolved.read_bytes()
+    completed = subprocess.run(command, check=False, capture_output=True, text=True)
+    output = "\n".join(
+        value.strip()
+        for value in (completed.stdout, completed.stderr)
+        if value and value.strip()
+    )
+    if completed.returncode != 0 or not output:
+        raise SystemExit(f"version probe failed for {name}: exit={completed.returncode}")
+    records.append(
+        {
+            "name": name,
+            "resolved_executable_basename": resolved.name,
+            "resolved_executable_sha256": hashlib.sha256(content).hexdigest(),
+            "resolved_executable_size_bytes": len(content),
+            "version_line": next(line.strip() for line in output.splitlines() if line.strip()),
+            "version_output_sha256": hashlib.sha256(output.encode("utf-8")).hexdigest(),
+        }
+    )
+print(json.dumps({"probe_contract": "openxc7-tool-probe-v1", "tools": records}, sort_keys=True))
+PY
+  exit 0
 fi
 
 project_dir_arg="$1"
@@ -19,18 +80,6 @@ fi
 if [[ ! -f "$project_dir/manifest.json" ]]; then
   echo "manifest not found: $project_dir/manifest.json" >&2
   exit 1
-fi
-
-if [[ -f "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
-  # Non-interactive WSL launches do not always load the single-user Nix profile.
-  # shellcheck source=/dev/null
-  . "$HOME/.nix-profile/etc/profile.d/nix.sh"
-fi
-
-flake_path="${OPENXC7_FLAKE_PATH:-}"
-if [[ "${OPENXC7_IN_NIX_SHELL:-0}" != "1" && -n "$flake_path" && -d "$flake_path" ]] && command -v nix >/dev/null 2>&1; then
-  export OPENXC7_IN_NIX_SHELL=1
-  exec nix develop "$flake_path" --option sandbox false -c bash "$0" "$project_dir" "$part" "$clock_period_ns"
 fi
 
 for tool in yosys nextpnr-xilinx python3; do

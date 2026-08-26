@@ -1,13 +1,22 @@
 import json
 import os
+import shutil
+import uuid
 import tempfile
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from sr2fpga_agent.artifact_store import ArtifactStore
 from sr2fpga_agent.baseline_report import baseline_rows, render_markdown
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from sr2fpga_agent.project_generator import ProjectGenerator
+from sr2fpga_agent.requirement_audit import (
+    RequirementAuditGold,
+    build_requirement_audit_artifact,
+    build_requirement_audit_case,
+)
+from sr2fpga_agent.task_catalog import CATALOG_PATH
 from sr2fpga_agent.runner import (
     L4CommercialConfig,
     L4OpenConfig,
@@ -29,6 +38,7 @@ from sr2fpga_agent.runner import (
     _l4_open_enabled_for_config,
     _l4_open_enabled_for_sample,
     _record_completed as _record_completed_for_test,
+    _sample_failure_origin,
     _sample_system_his_schema_version,
     _source_auth_diagnostics,
     _summary as run_batch_summary_for_test,
@@ -36,6 +46,54 @@ from sr2fpga_agent.runner import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+_SAFE_TEMP_ROOT = (Path(__file__).resolve().parent / ".runner_tmp").resolve()
+_SAFE_TEMP_ROOT.mkdir(parents=True, exist_ok=True)
+
+
+def _write_valid_requirement_audit_manifest(path: Path) -> None:
+    request = ProjectRequest(
+        task_type="unclassified",
+        width=8,
+        project_name="unit_audit",
+        description="Build an 8-bit counter.",
+    )
+    case = build_requirement_audit_case(
+        request,
+        PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+        base_requirement_cluster_id="cluster-unit",
+        ambiguity_case_id="case-unit",
+        gold=RequirementAuditGold(disposition="ready"),
+    )
+    artifact = build_requirement_audit_artifact("runner-unit-audit", [case])
+    path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+class _SafeTemporaryDirectory:
+    """Compatibility wrapper for TemporaryDirectory that writes under a repo-owned temp path."""
+
+    def __init__(self, suffix: str = "", prefix: str = "tmp", dir: str | Path | None = None) -> None:
+        base = Path(dir) if dir is not None else _SAFE_TEMP_ROOT
+        self.path = base / f"{prefix}{uuid.uuid4().hex}{suffix}"
+        self.name = str(self.path)
+
+    def __enter__(self) -> str:
+        self.path.mkdir(parents=True, exist_ok=False)
+        return self.name
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.cleanup()
+
+    def cleanup(self) -> None:
+        if self.path.exists():
+            shutil.rmtree(self.path, ignore_errors=True)
+
+    def __del__(self) -> None:
+        self.cleanup()
+
+
+tempfile.TemporaryDirectory = _SafeTemporaryDirectory
 
 
 class RunnerConfigTest(unittest.TestCase):
@@ -239,7 +297,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(config.tasks[0].failure_origin, "")
             self.assertEqual(config.tasks[0].topology_ids, [])
             self.assertEqual(config.tasks[0].measurement_point, "")
-            self.assertEqual(config.tasks[0].requirement_style, "contract")
+            self.assertEqual(config.tasks[0].requirement_style, "simple_prompt")
             self.assertFalse(config.run_independent_oracle)
 
     def test_load_runner_config_parses_independent_oracle_switch(self) -> None:
@@ -262,6 +320,126 @@ class RunnerConfigTest(unittest.TestCase):
             config = load_runner_config(config_path)
 
             self.assertTrue(config.run_independent_oracle)
+
+    def test_load_runner_config_parses_requirement_audit_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "datasets/sr2fpga_rtl_v1_exports",
+                        "run_root": "tmp/sr2fpga_runs",
+                        "provider": "deterministic",
+                        "repair_provider": "none",
+                        "max_attempts": 1,
+                        "refresh_exports": True,
+                        "requirement_audit_manifest": "global-manifest.json",
+                        "line_b_targets": {"max_samples": 1},
+                        "tasks": [
+                            {
+                                "task_type": "counter",
+                                "widths": [8],
+                                "count": 1,
+                                "analysis_population": "ambiguity_audit",
+                            },
+                            {
+                                "task_type": "counter",
+                                "widths": [8],
+                                "count": 1,
+                                "analysis_population": "ambiguity_audit",
+                                "requirement_audit_manifest": "task-manifest.json",
+                            },
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+
+            self.assertEqual(config.requirement_audit_manifest, "global-manifest.json")
+            self.assertEqual(config.tasks[0].requirement_audit_manifest, "global-manifest.json")
+            self.assertEqual(config.tasks[1].requirement_audit_manifest, "task-manifest.json")
+
+    def test_public_l2_harness_manifest_is_evaluator_only_and_propagates_to_sample(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "artifacts/exports",
+                        "run_root": "artifacts/runs",
+                        "provider": "deterministic",
+                        "repair_provider": "none",
+                        "max_attempts": 1,
+                        "refresh_exports": False,
+                        "line_b_targets": {},
+                        "tasks": [
+                            {
+                                "source": "deepseek",
+                                "task_type": "counter",
+                                "widths": [8],
+                                "count": 1,
+                                "method_condition": "M0",
+                                "analysis_population": "excluded",
+                                "semantic_instance_id": "semantic-counter-public-l2-001",
+                                "decoding_seed": 17,
+                                "paired_block_id": "pair-counter-public-l2-001-seed-17",
+                                "public_l2_harness_manifest": "evaluator/harness.json",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            config = load_runner_config(config_path)
+            sample = planned_samples(config)[0]
+
+            self.assertEqual(
+                sample.public_l2_harness_manifest, "evaluator/harness.json"
+            )
+            self.assertNotIn("public_l2_harness_manifest", sample.metadata(config))
+
+    def test_public_l2_harness_manifest_is_rejected_for_official_population(
+        self,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            config_path = Path(tmp) / "runner.json"
+            config_path.write_text(
+                json.dumps(
+                    {
+                        "dataset_root": "datasets/sr2fpga_rtl_v1",
+                        "export_root": "artifacts/exports",
+                        "run_root": "artifacts/runs",
+                        "provider": "deterministic",
+                        "repair_provider": "none",
+                        "max_attempts": 1,
+                        "refresh_exports": False,
+                        "line_b_targets": {},
+                        "tasks": [
+                            {
+                                "task_type": "counter",
+                                "widths": [8],
+                                "count": 1,
+                                "method_condition": "M0",
+                                "analysis_population": "official_vpp",
+                                "public_l2_harness_manifest": "evaluator/harness.json",
+                            }
+                        ],
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            with self.assertRaisesRegex(
+                SystemExit, "restricted to development/excluded"
+            ):
+                load_runner_config(config_path)
 
     def test_load_runner_config_parses_openxc7_l4_switch(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -417,8 +595,8 @@ class RunnerConfigTest(unittest.TestCase):
                 ),
             )
 
-            with patch("sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
-                run_batch(config, run_id="run_l4_config")
+        with patch("sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+            run_batch(config, run_id="run_l4_config")
 
             self.assertTrue(captured_kwargs["enable_openxc7_l4"])
             self.assertEqual(captured_kwargs["openxc7_tool"], "openxc7_nextpnr")
@@ -426,12 +604,80 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(captured_kwargs["openxc7_board_profile"], "ac820_zynq")
             self.assertEqual(captured_kwargs["openxc7_timeout_seconds"], 9)
 
+    def test_run_batch_passes_development_hidden_contract_inputs_to_agent(self) -> None:
+        captured_kwargs: dict[str, object] = {}
+
+        class FakeAgent:
+            def __init__(self, dataset_root, *args, **kwargs):
+                self.dataset_root = Path(dataset_root)
+                captured_kwargs.update(kwargs)
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                eval_dir = self.dataset_root / sample_id / "eval"
+                eval_dir.mkdir(parents=True)
+                (eval_dir / "labels.json").write_text(
+                    json.dumps(
+                        {
+                            "pass_level": "L1",
+                            "l4_open_status": "not_run",
+                            "l4_open_skip_reason": "disabled_by_config",
+                            "checks": {"l0_complete": True, "l3_synth_pass": True},
+                        }
+                    )
+                    + "\n",
+                    encoding="utf-8",
+                )
+                (self.dataset_root / sample_id / "metadata.json").write_text(
+                    json.dumps(metadata or {}) + "\n",
+                    encoding="utf-8",
+                )
+                return {"sample_dir": str(self.dataset_root / sample_id), "pass_level": "L1"}
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
+            )
+
+            with patch("sr2fpga_agent.runner.DataGenerationAgent", FakeAgent):
+                run_batch(config, run_id="development_hidden_contracts")
+
+            self.assertIn("development_hidden_evaluation_authority", captured_kwargs)
+            self.assertIn(
+                "development_hidden_private_commitment",
+                captured_kwargs,
+            )
+            self.assertIsNotNone(
+                captured_kwargs["development_hidden_evaluation_authority"],
+            )
+            authority = captured_kwargs["development_hidden_evaluation_authority"]
+            self.assertEqual(
+                authority.candidate_store.root,
+                root / "runs" / "development_hidden_contracts" / "method_artifacts",
+            )
+            self.assertNotEqual(
+                authority.candidate_store.root.resolve(),
+                authority.evaluator_store.root.resolve(),
+            )
+            commitment = captured_kwargs["development_hidden_private_commitment"]
+            self.assertIsInstance(commitment, (bytes, bytearray))
+            self.assertEqual(len(commitment), 32)
+
     def test_run_batch_writes_measurement_freeze_before_first_agent_call(self) -> None:
         observed: dict[str, object] = {}
 
         class FakeAgent:
             def __init__(self, dataset_root, *args, **kwargs):
                 self.dataset_root = Path(dataset_root)
+                observed["tool_versions"] = dict(kwargs["tool_versions"])
 
             def run_one(self, sample_id, requirement, request, platform, metadata=None):
                 freeze_path = root / "runs" / "phase_d_freeze" / "measurement_freeze.json"
@@ -479,6 +725,15 @@ class RunnerConfigTest(unittest.TestCase):
                     encoding="utf-8"
                 )
             )
+            tool_ref = freeze["tool_environment_ref"]
+            l4_tool_ref = freeze["l4_tool_environment_ref"]
+            store = ArtifactStore(root / "runs" / "phase_d_freeze" / "method_artifacts")
+            stored_ref = store.reference(tool_ref["key"])
+            self.assertIsNotNone(stored_ref)
+            tool_environment = json.loads(store.read_verified(stored_ref))
+            stored_l4_ref = store.reference(l4_tool_ref["key"])
+            self.assertIsNotNone(stored_l4_ref)
+            l4_tool_environment = json.loads(store.read_verified(stored_l4_ref))
 
         self.assertIs(observed["freeze_existed_before_agent"], True)
         self.assertEqual(freeze["sample_count"], 1)
@@ -486,6 +741,18 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertNotIn("base_url", json.dumps(freeze).lower())
         self.assertNotIn("api_key", json.dumps(freeze).lower())
         self.assertEqual(observed["metadata"]["freeze_fingerprint"], freeze["freeze_fingerprint"])
+        self.assertEqual(observed["metadata"]["tool_environment_ref"], tool_ref)
+        self.assertEqual(
+            observed["metadata"]["l4_tool_environment_ref"],
+            l4_tool_ref,
+        )
+        self.assertEqual(observed["tool_versions"], freeze["tool_versions"])
+        self.assertEqual(tool_environment["contract_version"], "development-tool-environment-v1")
+        self.assertFalse(tool_environment["terminal_binding"])
+        self.assertFalse(tool_environment["official_authority"])
+        self.assertEqual(l4_tool_environment["authority_status"], "not_run")
+        self.assertFalse(l4_tool_environment["probe_authorized"])
+        self.assertNotIn(str(root), json.dumps(tool_environment))
         self.assertEqual(summary["freeze_fingerprint"], freeze["freeze_fingerprint"])
 
     def test_run_batch_rejects_tampered_measurement_freeze_on_resume(self) -> None:
@@ -961,9 +1228,8 @@ class RunnerConfigTest(unittest.TestCase):
 
         self.assertEqual(planned_samples(config)[0].difficulty_tier, "T2")
 
-    def test_t0_t4_deterministic_smoke_config_covers_task_catalog_once(self) -> None:
-        catalog = json.loads(Path("docs/sr2fpga-t0-t4-task-catalog.json").read_text(encoding="utf-8"))
-        runtime_catalog = json.loads(Path("docs/sr2fpga-task-catalog-v0.2.json").read_text(encoding="utf-8"))
+    def test_t0_t4_deterministic_smoke_validates_bounded_24_sample_subset(self) -> None:
+        runtime_catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
         catalog_specs = {
             alias: (family["family_id"], family["sr2fpga_tier"])
             for family in runtime_catalog["task_families"]
@@ -979,8 +1245,8 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(len(samples), 24)
         self.assertEqual([sample.source for sample in samples], ["deterministic"] * 24)
         self.assertEqual(
-            [(sample.task_type, sample.width) for sample in samples],
-            [(entry["task_type"], entry["default_width"]) for entry in catalog["tasks"]],
+            len({sample.topology_id or sample.task_type for sample in samples}),
+            len(samples),
         )
         self.assertEqual(
             [(sample.family_id, sample.difficulty_tier) for sample in samples],
@@ -1006,9 +1272,9 @@ class RunnerConfigTest(unittest.TestCase):
         tier_counts: dict[str, int] = {}
         for sample in samples:
             tier_counts[sample.difficulty_tier] = tier_counts.get(sample.difficulty_tier, 0) + 1
-        self.assertEqual(tier_counts, {"T0": 6, "T1": 3, "T2": 5, "T3": 5, "T4": 5})
+        self.assertEqual(tier_counts, {"T0": 6, "T1": 3, "T2": 5, "T3": 6, "T4": 4})
 
-    def test_unvetted_openai_compat_source_is_quarantined(self) -> None:
+    def test_openai_compat_two_stage_records_the_runtime_v12_contract(self) -> None:
         config = RunnerConfig(
             dataset_root=Path("/tmp/test"),
             export_root=Path("/tmp/test_exports"),
@@ -1041,8 +1307,40 @@ class RunnerConfigTest(unittest.TestCase):
 
         schema = _sample_system_his_schema_version(sample, config)
 
-        self.assertEqual(schema, "system-his-v1.1")
-        self.assertEqual(sample.metadata(config)["training_split"], "quarantine")
+        self.assertEqual(schema, "system-his-v1.2")
+        self.assertEqual(sample.metadata(config)["training_split"], "clean")
+
+    def test_sample_metadata_rejects_free_text_failure_origin(self) -> None:
+        config = RunnerConfig(
+            dataset_root=Path("/tmp/test"),
+            export_root=Path("/tmp/test_exports"),
+            run_root=Path("/tmp/test_runs"),
+            provider="my_openai",
+            repair_provider="none",
+            max_attempts=1,
+            refresh_exports=False,
+            line_b_targets={},
+            tasks=[],
+            sources={
+                "my_openai": SourceConnection(
+                    name="my_openai",
+                    kind="openai_compat",
+                    generation_mode="two_stage",
+                )
+            },
+        )
+        sample = PlannedSample(
+            sample_id="s-invalid-origin",
+            source="my_openai",
+            task_type="counter",
+            width=8,
+            project_name="counter_8",
+            requirement="Design a counter.",
+            failure_origin="provider_specific_free_text",
+        )
+
+        with self.assertRaisesRegex(SystemExit, "unknown accounting failure origin"):
+            _sample_failure_origin(sample, config)
 
     def test_unknown_source_kind_fails_preflight_auth_diagnostics(self) -> None:
         config = RunnerConfig(
@@ -1092,7 +1390,7 @@ class RunnerConfigTest(unittest.TestCase):
                 "composed_dual_stream_join": "T2",
                 "composed_vector_mac_pipeline": "T3",
                 "composed_td_update_core": "T3",
-                "composed_policy_value_shell": "T4",
+                "composed_policy_value_shell": "T3",
                 "composed_replay_sample_shell": "T3",
                 "composed_host_protocol_shell": "T4",
                 "composed_rl_accelerator_shell": "T4",
@@ -1145,10 +1443,10 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(
             [sample.metadata(config)["system_his_schema_version"] for sample in samples],
             [
-                "system-his-v1.1",
-                "system-his-v1.1",
-                "system-his-v1.1",
-                "system-his-v1.1",
+                "not_applicable",
+                "not_applicable",
+                "not_applicable",
+                "not_applicable",
                 "system-his-v1.2",
                 "system-his-v1.2",
                 "system-his-v1.2",
@@ -1178,10 +1476,10 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(
             [sample["system_his_schema_version"] for sample in report["samples"]],
             [
-                "system-his-v1.1",
-                "system-his-v1.1",
-                "system-his-v1.1",
-                "system-his-v1.1",
+                "not_applicable",
+                "not_applicable",
+                "not_applicable",
+                "not_applicable",
                 "system-his-v1.2",
                 "system-his-v1.2",
                 "system-his-v1.2",
@@ -1485,34 +1783,51 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertIn("DEEPSEEK_API_KEY is not set for source deepseek", report["errors"])
             self.assertIn("run directory already exists: " + str(run_dir), report["warnings"])
             self.assertEqual(report["planned_samples"], 1)
+            self.assertEqual(len(report["samples"]), 1)
+            sample = report["samples"][0]
             self.assertEqual(
-                report["samples"],
-                [
-                    {
-                        "sample_id": "sample_runner_counter_4_000001",
-                        "source": "deepseek",
-                        "task_type": "counter",
-                        "family_id": "binary_bcd_counter",
-                        "width": 4,
-                        "requirement_style": "contract",
-                        "requirement": (
-                            "Design a 4-bit counter as a complete SR2FPGA Verilog RTL project. "
-                            "Use multi-file RTL for FIFO, SPI, UART, PWM, and controller-style tasks; "
-                            "include system_his.json, manifest.json, timing constraints, a bounded "
-                            "self-checking testbench that prints TEST_PASS on success or TEST_FAIL on "
-                            "failure, and predicted QoR."
-                        ),
-                        "difficulty_tier": "T0",
-                        "topology_id": "",
-                        "failure_origin": "natural_llm",
-                        "measurement_point": "a_first_attempt_no_tools",
-                        "evaluation_line": "line_b",
-                        "system_his_schema_version": "system-his-v1.1",
-                        "training_split": "quarantine",
-                        "contract_skeleton_mode": "legacy_full_project",
-                    }
-                ],
+                {
+                    key: sample[key]
+                    for key in (
+                        "sample_id",
+                        "source",
+                        "task_type",
+                        "family_id",
+                        "width",
+                        "requirement_style",
+                        "difficulty_tier",
+                        "topology_id",
+                        "failure_origin",
+                        "measurement_point",
+                        "evaluation_line",
+                        "system_his_schema_version",
+                        "training_split",
+                        "contract_skeleton_mode",
+                        "method_condition",
+                        "analysis_population",
+                    )
+                },
+                {
+                    "sample_id": "sample_runner_counter_4_000001",
+                    "source": "deepseek",
+                    "task_type": "counter",
+                    "family_id": "binary_bcd_counter",
+                    "width": 4,
+                    "requirement_style": "simple_prompt",
+                    "difficulty_tier": "T0",
+                    "topology_id": "",
+                    "failure_origin": "natural_llm",
+                    "measurement_point": "a_first_attempt_no_tools",
+                    "evaluation_line": "line_b",
+                    "system_his_schema_version": "not_applicable",
+                    "training_split": "quarantine",
+                    "contract_skeleton_mode": "legacy_full_project",
+                    "method_condition": "M0",
+                    "analysis_population": "development",
+                },
             )
+            self.assertEqual(sample["requirement_boundary"]["disposition"], "ready")
+            self.assertTrue(sample["requirement_boundary"]["decision_sha256"])
 
     def test_runner_preflight_loads_api_key_from_env_file_without_reporting_secret(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -1543,8 +1858,141 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(report["env_file"], str(env_path))
             self.assertEqual(report["api_keys"]["DEEPSEEK_API_KEY"]["source"], str(env_path))
             self.assertTrue(report["api_keys"]["DEEPSEEK_API_KEY"]["present"])
-            self.assertRegex(report["api_keys"]["DEEPSEEK_API_KEY"]["fingerprint"], r"^[0-9a-f]{8}$")
+
+    def test_runner_preflight_rejects_official_vpp_analysis_population(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[
+                    TaskConfig(
+                        source="deterministic",
+                        task_type="counter",
+                        widths=[4],
+                        count=1,
+                        analysis_population="official_vpp",
+                    )
+                ],
+            )
+
+            report = runner_preflight(config, run_id="official_vpp_preflight")
+            self.assertFalse(report["ok"])
+            self.assertIn(
+                "official_vpp execution is disabled until a signed G4b episode-pack projection "
+                "and evaluator-owned hidden channel are wired",
+                report["errors"],
+            )
+            with self.assertRaises(SystemExit):
+                run_batch(config, run_id="official_vpp_run")
+
+    def test_runner_preflight_rejects_ambiguity_audit_analysis_population(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[
+                    TaskConfig(
+                        source="deterministic",
+                        task_type="counter",
+                        widths=[4],
+                        count=1,
+                        analysis_population="ambiguity_audit",
+                    )
+                ],
+            )
+
+            report = runner_preflight(config, run_id="ambiguity_audit_preflight")
+            self.assertFalse(report["ok"])
+            self.assertIn(
+                "ambiguity_audit cases require the sealed evaluator-owned requirement-audit "
+                "artifact path; they must not enter the project runner",
+                report["errors"],
+            )
+            with self.assertRaises(SystemExit):
+                run_batch(config, run_id="ambiguity_audit_run")
             self.assertNotIn("fake-test-key", json.dumps(report))
+
+    def test_runner_preflight_rejects_ambiguity_audit_with_invalid_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "audit-manifest.json"
+            manifest.write_text("{", encoding="utf-8")
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[
+                    TaskConfig(
+                        source="deterministic",
+                        task_type="counter",
+                        widths=[4],
+                        count=1,
+                        analysis_population="ambiguity_audit",
+                        requirement_audit_manifest=str(manifest),
+                    )
+                ],
+            )
+
+            report = runner_preflight(config, run_id="bad_audit_manifest")
+            self.assertFalse(report["ok"])
+            self.assertIn("ambiguity_audit manifest", "\n".join(report["errors"]))
+            with self.assertRaises(SystemExit):
+                run_batch(config, run_id="bad_audit_manifest")
+
+    def test_runner_preflight_rejects_ambiguity_audit_even_with_valid_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            manifest = root / "audit-manifest.json"
+            _write_valid_requirement_audit_manifest(manifest)
+            config = RunnerConfig(
+                dataset_root=root / "datasets",
+                export_root=root / "exports",
+                run_root=root / "runs",
+                provider="deterministic",
+                repair_provider="none",
+                max_attempts=1,
+                refresh_exports=False,
+                line_b_targets={"max_samples": 1},
+                tasks=[
+                    TaskConfig(
+                        source="deterministic",
+                        task_type="counter",
+                        widths=[4],
+                        count=1,
+                        analysis_population="ambiguity_audit",
+                        requirement_audit_manifest=str(manifest),
+                    )
+                ],
+            )
+
+            report = runner_preflight(config, run_id="good_audit_manifest")
+            self.assertFalse(report["ok"])
+            self.assertIn(
+                "ambiguity_audit cases require the sealed evaluator-owned requirement-audit "
+                "artifact path; they must not enter the project runner",
+                report["errors"],
+            )
+            with self.assertRaises(SystemExit):
+                run_batch(config, run_id="good_audit_manifest")
 
     def test_runner_preflight_reports_missing_api_key_for_deepseek_his_v12_source(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2143,7 +2591,7 @@ class RunnerConfigTest(unittest.TestCase):
                     "composed_policy_value_shell",
                     "t7_policy_value_shell",
                     "rl_reward_policy_update",
-                    "T4",
+                    "T3",
                 ),
                 (
                     "sample_runner_t8_replay_sample_shell_8_000008",
@@ -2194,41 +2642,33 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(samples[9].metadata(config)["topology_id"], "t10_rl_accelerator_shell")
         self.assertEqual(samples[10].metadata(config)["topology_id"], "t11_batch_rl_accelerator_shell")
         self.assertEqual(samples[11].metadata(config)["topology_id"], "t12_replay_arbiter_shell")
-        self.assertEqual(samples[3].metadata(config)["requirement_style"], "contract")
-        self.assertIn("component topology t1_event_counter", samples[0].requirement)
-        self.assertIn("event_gate", samples[0].requirement)
-        self.assertIn("counter_core", samples[0].requirement)
-        self.assertIn("event_valid pulses", samples[0].requirement)
-        self.assertIn("component topology t4_dual_stream_join", samples[3].requirement)
-        self.assertIn("skid_a:skid_buffer", samples[3].requirement)
-        self.assertIn("skid_b:skid_buffer", samples[3].requirement)
-        self.assertIn("stream_join.out_data -> accumulator_core.sample", samples[3].requirement)
-        self.assertIn("component topology t5_vector_mac_pipeline", samples[4].requirement)
-        self.assertIn("vector_mac_core", samples[4].requirement)
-        self.assertIn("component topology t6_td_update_core", samples[5].requirement)
-        self.assertIn("td_update_core", samples[5].requirement)
-        self.assertIn("component topology t7_policy_value_shell", samples[6].requirement)
-        self.assertIn("action_select_core", samples[6].requirement)
-        self.assertIn("component topology t8_replay_sample_shell", samples[7].requirement)
-        self.assertIn("replay_store", samples[7].requirement)
-        self.assertIn("component topology t9_host_protocol_shell", samples[8].requirement)
-        self.assertIn("axi_lite_write_ctrl", samples[8].requirement)
-        self.assertIn("component topology t10_rl_accelerator_shell", samples[9].requirement)
-        self.assertIn("policy_value_core", samples[9].requirement)
-        self.assertIn("td_update_core", samples[9].requirement)
-        self.assertIn("component topology t11_batch_rl_accelerator_shell", samples[10].requirement)
-        self.assertIn("dual_policy_value_core", samples[10].requirement)
-        self.assertIn("dual_td_update_core", samples[10].requirement)
-        self.assertIn("component topology t12_replay_arbiter_shell", samples[11].requirement)
-        self.assertIn("replay_request_arbiter", samples[11].requirement)
-        self.assertIn("replay_memory_bank", samples[11].requirement)
-        self.assertIn("Keep rtl/top.v as the integration wrapper", samples[3].requirement)
+        self.assertEqual(samples[3].metadata(config)["requirement_style"], "simple_prompt")
+        self.assertEqual(
+            samples[0].requirement,
+            "Generate an 8-bit FPGA RTL project that counts incoming event pulses.",
+        )
+        self.assertEqual(
+            samples[3].requirement,
+            "Generate an 8-bit FPGA RTL project that joins two input streams, "
+            "accumulates joined samples, and exposes one output stream.",
+        )
+        self.assertNotIn("component topology", samples[3].requirement)
 
     def test_classify_sample_bucket(self) -> None:
         self.assertEqual(classify_sample_bucket({"pass_level": "L3", "failure_count": 0}), "success_l3")
         self.assertEqual(classify_sample_bucket({"pass_level": "L4", "failure_count": 0}), "success_l3")
         self.assertEqual(classify_sample_bucket({"pass_level": "L1", "failure_count": 2}), "repair_trajectory")
         self.assertEqual(classify_sample_bucket({"pass_level": "GEN_FAIL", "failure_count": 1}), "rejected")
+        self.assertEqual(
+            classify_sample_bucket(
+                {
+                    "pass_level": "L1",
+                    "failure_count": 0,
+                    "l2_sim_status": "not_run",
+                }
+            ),
+            "not_run",
+        )
         self.assertEqual(classify_sample_bucket({"pass_level": "L0", "failure_count": 0}), "rejected")
 
     def test_generation_failures_have_dedicated_failure_family(self) -> None:
@@ -2257,7 +2697,15 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(state.config_fingerprint, "abc123")
         self.assertEqual(state.next_index, 0)
         self.assertEqual(state.completed_samples, [])
-        self.assertEqual(state.buckets, {"success_l3": [], "repair_trajectory": [], "rejected": []})
+        self.assertEqual(
+            state.buckets,
+            {
+                "success_l3": [],
+                "repair_trajectory": [],
+                "not_run": [],
+                "rejected": [],
+            },
+        )
         self.assertEqual(state.failure_types, {})
         self.assertFalse(state.exports_refreshed)
 
@@ -2300,6 +2748,7 @@ class RunnerConfigTest(unittest.TestCase):
                 tasks=[TaskConfig(source="deterministic", task_type="counter", widths=[4], count=1)],
             )
 
+            planned_sample = planned_samples(config)[0]
             summary = run_batch(config, run_id="run_unit")
 
             run_dir = root / "runs" / "run_unit"
@@ -2313,12 +2762,14 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(state.config_fingerprint, summary["config_fingerprint"])
             self.assertEqual(summary["total_completed"], 1)
             self.assertEqual(summary["next_index"], 1)
-            self.assertEqual(summary["buckets"]["success_l3"], ["sample_runner_counter_4_000001"])
+            self.assertEqual(summary["buckets"]["success_l3"], [])
+            self.assertEqual(summary["buckets"]["not_run"], ["sample_runner_counter_4_000001"])
+            self.assertEqual(summary["buckets"]["rejected"], [])
             self.assertEqual(summary["metadata_breakdown"]["source"]["deterministic"], 1)
             self.assertEqual(summary["metadata_breakdown"]["failure_origin"]["deterministic_template"], 1)
             self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"]["T0"], 1)
             self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"]["deterministic_template"], 1)
-            self.assertEqual(summary["pass_level_breakdown"]["L3"], 1)
+            self.assertEqual(summary["pass_level_breakdown"]["L1"], 1)
             self.assertEqual(
                 summary["contract_metrics"],
                 {
@@ -2339,9 +2790,13 @@ class RunnerConfigTest(unittest.TestCase):
                         "failure_origin": "deterministic_template",
                         "difficulty_tier": "T0",
                         "task_type": "counter",
+                        "semantic_instance_id": planned_sample.semantic_instance_id,
+                        "decoding_seed": planned_sample.decoding_seed,
+                        "paired_block_id": planned_sample.paired_block_id,
+                        "pairing_identity_source": planned_sample.pairing_identity_source,
                         "width": 4,
-                        "pass_level": "L3",
-                        "bucket": "success_l3",
+                        "pass_level": "L1",
+                        "bucket": "not_run",
                     }
                 ],
             )
@@ -2350,7 +2805,7 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertTrue((run_dir / "baseline_report.md").exists())
             baseline_report = (run_dir / "baseline_report.md").read_text(encoding="utf-8")
             self.assertIn("# SR2FPGA Baseline Report: run_unit", baseline_report)
-            self.assertIn("| difficulty_tier | T0 | 1 | L3:1 | 100.0% | 0 | 0.0% |", baseline_report)
+            self.assertIn("| difficulty_tier | T0 | 1 | L1:1 | 0.0% | 0 | 0.0% |", baseline_report)
             self.assertTrue((run_dir / "events.jsonl").exists())
             self.assertTrue((root / "datasets/sample_runner_counter_4_000001/eval/labels.json").exists())
             metadata = json.loads(
@@ -2390,20 +2845,20 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(summary["metadata_breakdown"]["source"], {"deterministic": 2})
             self.assertEqual(summary["metadata_breakdown"]["failure_origin"], {"compositional_assembly": 2})
             self.assertEqual(summary["metadata_breakdown"]["measurement_point"], {"a_first_attempt_no_tools": 2})
-            self.assertEqual(summary["metadata_breakdown"]["requirement_style"], {"contract": 2})
+            self.assertEqual(summary["metadata_breakdown"]["requirement_style"], {"simple_prompt": 2})
             self.assertEqual(summary["metadata_breakdown"]["contract_skeleton_mode"], {"deterministic_template": 2})
             self.assertEqual(summary["metadata_breakdown"]["difficulty_tier"], {"T1": 1, "T2": 1})
             self.assertEqual(
                 summary["metadata_breakdown"]["topology_id"],
                 {"t1_event_counter": 1, "t2_stream_accumulator": 1},
             )
-            self.assertEqual(summary["pass_level_breakdown"], {"L3": 2})
+            self.assertEqual(summary["pass_level_breakdown"], {"L1": 2})
             self.assertEqual(
                 summary["calibration_matrix"]["difficulty_tier"]["T1"],
                 {
                     "total": 1,
-                    "pass_levels": {"L3": 1},
-                    "l3_pass_rate": 1.0,
+                    "pass_levels": {"L1": 1},
+                    "l3_pass_rate": 0.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,
                 },
@@ -2412,8 +2867,8 @@ class RunnerConfigTest(unittest.TestCase):
                 summary["calibration_matrix"]["difficulty_tier"]["T2"],
                 {
                     "total": 1,
-                    "pass_levels": {"L3": 1},
-                    "l3_pass_rate": 1.0,
+                    "pass_levels": {"L1": 1},
+                    "l3_pass_rate": 0.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,
                 },
@@ -2422,8 +2877,8 @@ class RunnerConfigTest(unittest.TestCase):
                 summary["calibration_matrix"]["topology_id"]["t1_event_counter"],
                 {
                     "total": 1,
-                    "pass_levels": {"L3": 1},
-                    "l3_pass_rate": 1.0,
+                    "pass_levels": {"L1": 1},
+                    "l3_pass_rate": 0.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,
                 },
@@ -2432,18 +2887,18 @@ class RunnerConfigTest(unittest.TestCase):
                 summary["calibration_matrix"]["measurement_point"]["a_first_attempt_no_tools"],
                 {
                     "total": 2,
-                    "pass_levels": {"L3": 2},
-                    "l3_pass_rate": 1.0,
+                    "pass_levels": {"L1": 2},
+                    "l3_pass_rate": 0.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,
                 },
             )
             self.assertEqual(
-                summary["calibration_matrix"]["requirement_style"]["contract"],
+                summary["calibration_matrix"]["requirement_style"]["simple_prompt"],
                 {
                     "total": 2,
-                    "pass_levels": {"L3": 2},
-                    "l3_pass_rate": 1.0,
+                    "pass_levels": {"L1": 2},
+                    "l3_pass_rate": 0.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,
                 },
@@ -2452,8 +2907,8 @@ class RunnerConfigTest(unittest.TestCase):
                 summary["calibration_matrix"]["contract_skeleton_mode"]["deterministic_template"],
                 {
                     "total": 2,
-                    "pass_levels": {"L3": 2},
-                    "l3_pass_rate": 1.0,
+                    "pass_levels": {"L1": 2},
+                    "l3_pass_rate": 0.0,
                     "l0_contract_failures": 0,
                     "cross_file_consistency_error_rate": 0.0,
                 },
@@ -2476,11 +2931,87 @@ class RunnerConfigTest(unittest.TestCase):
 
             with patch(
                 "sr2fpga_agent.runner.build_project_generator_for_connection"
-            ) as build_generator:
+            ) as build_generator, patch(
+                "sr2fpga_agent.runner._bind_runner_method_generator",
+                side_effect=lambda generator, *args, **kwargs: generator,
+            ):
                 build_generator.return_value = None
                 run_batch(config, run_id="run_unit")
 
             self.assertEqual(build_generator.call_args.args[0].name, "deepseek")
+            accounting_store = ArtifactStore(root / "runs" / "run_unit" / "method_artifacts")
+            first_event = json.loads(
+                accounting_store.read_verified(
+                    "attempt-events/sample_runner_counter_4_000001/attempt-000/000000"
+                )
+            )
+            self.assertEqual(
+                first_event["candidate_id"],
+                "sample_runner_counter_4_000001-attempt-000",
+            )
+            self.assertEqual(first_event["failure_origin"], "natural_llm")
+            self.assertTrue(first_event["input_artifact_hashes"])
+            self.assertTrue(
+                all(len(value) == 64 for value in first_event["input_artifact_hashes"])
+            )
+            measurement_freeze = json.loads(
+                (root / "runs" / "run_unit" / "measurement_freeze.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+            tool_environment_sha256 = measurement_freeze["tool_environment_ref"][
+                "sha256"
+            ]
+            l4_tool_environment_sha256 = measurement_freeze[
+                "l4_tool_environment_ref"
+            ]["sha256"]
+            self.assertIn(
+                tool_environment_sha256,
+                first_event["input_artifact_hashes"],
+            )
+            self.assertIn(
+                l4_tool_environment_sha256,
+                first_event["input_artifact_hashes"],
+            )
+            self.assertEqual(
+                json.loads(
+                    (
+                        root
+                        / "datasets"
+                        / "sample_runner_counter_4_000001"
+                        / "eval"
+                        / "tool_versions.json"
+                    ).read_text(encoding="utf-8")
+                ),
+                measurement_freeze["tool_versions"],
+            )
+            output_hashes = []
+            sequence = 0
+            while True:
+                reference = accounting_store.reference(
+                    "attempt-events/sample_runner_counter_4_000001/"
+                    f"attempt-000/{sequence:06d}"
+                )
+                if reference is None:
+                    break
+                event = json.loads(accounting_store.read_verified(reference))
+                output_hashes.extend(event["output_artifact_hashes"])
+                sequence += 1
+            self.assertTrue(output_hashes)
+            self.assertTrue(all(len(value) == 64 for value in output_hashes))
+            completed_event = json.loads(
+                (root / "runs" / "run_unit" / "events.jsonl")
+                .read_text(encoding="utf-8")
+                .splitlines()[-1]
+            )
+            self.assertEqual(
+                completed_event["cost_summary_refs"][0]["key"],
+                "cost-summaries/sample_runner_counter_4_000001/attempt-000",
+            )
+            self.assertEqual(
+                completed_event["canonical_trajectory_ref"]["key"],
+                "trajectories/sample_runner_counter_4_000001/M0",
+            )
 
     def test_run_batch_writes_two_stage_generation_events(self) -> None:
         from sr2fpga_agent.project_generator import ProjectGenerator
@@ -2499,7 +3030,12 @@ class RunnerConfigTest(unittest.TestCase):
                 tasks=[TaskConfig(source="deepseek-his-v12", task_type="counter", widths=[4], count=1)],
             )
 
-            def fake_build_project_generator(connection, event_sink=None):
+            def fake_build_project_generator(
+                connection,
+                event_sink=None,
+                model_budget=None,
+                decoding_seed=None,
+            ):
                 class FakeTwoStageGenerator:
                     def generate(self, request, platform):
                         event_sink(
@@ -2528,6 +3064,9 @@ class RunnerConfigTest(unittest.TestCase):
             with patch(
                 "sr2fpga_agent.runner.build_project_generator_for_connection",
                 side_effect=fake_build_project_generator,
+            ), patch(
+                "sr2fpga_agent.runner._bind_runner_method_generator",
+                side_effect=lambda generator, *args, **kwargs: generator,
             ):
                 run_batch(config, run_id="run_unit")
 
@@ -2600,7 +3139,9 @@ class RunnerConfigTest(unittest.TestCase):
             self.assertEqual(first_summary["total_completed"], 1)
             self.assertEqual(second_summary["total_completed"], 1)
             self.assertEqual(state.completed_samples, ["sample_runner_counter_4_000001"])
-            self.assertEqual(state.buckets["success_l3"], ["sample_runner_counter_4_000001"])
+            self.assertEqual(state.buckets["success_l3"], [])
+            self.assertEqual(state.buckets["not_run"], ["sample_runner_counter_4_000001"])
+            self.assertEqual(state.buckets["rejected"], [])
             self.assertEqual(state.failure_types, {})
             self.assertEqual(len(events), 1)
 

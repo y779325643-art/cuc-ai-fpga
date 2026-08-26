@@ -38,7 +38,7 @@ def test_training_project_metadata_and_entry_points() -> None:
     assert project["requires-python"] == ">=3.11"
     assert {
         _requirement_name(requirement) for requirement in project["dependencies"]
-    } == {"pyyaml"}
+    } == {"jsonschema", "pyyaml"}
 
     extras = project["optional-dependencies"]
     assert {
@@ -57,7 +57,7 @@ def test_training_project_metadata_and_entry_points() -> None:
     } == {"vllm"}
     assert {
         _requirement_name(requirement) for requirement in extras["dev"]
-    } == {"pytest"}
+    } == {"pytest", "ruff"}
 
     assert project["scripts"] == {
         "sr2fpga-prepare-dataset": "sr2fpga_training.prepare_dataset:main",

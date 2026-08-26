@@ -3,232 +3,185 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>HNAI-FPGA 项目生成界面</title>
+    <title>SR2FPGA 项目生成 Demo</title>
     <link rel="stylesheet" href="./styles.css" />
   </head>
   <body>
     <main class="shell">
       <aside class="sidebar" aria-label="主导航">
         <div class="brand">
-          <div class="brand-mark">HF</div>
-          <div>
-            <p class="brand-kicker">HNAI-FPGA</p>
-            <h1>项目生成台</h1>
-          </div>
+          <div class="brand-mark">SR</div>
+          <div><p class="brand-kicker">SR2FPGA</p><h1>项目生成台</h1></div>
         </div>
-
         <nav class="nav-list">
-          <button class="nav-item active" type="button" data-view="workspace" title="项目工作台">
-            <span class="icon">P</span>
-            <span>项目</span>
-          </button>
-          <button class="nav-item" type="button" data-view="verification" title="验证计划">
-            <span class="icon">V</span>
-            <span>验证</span>
-          </button>
-          <button class="nav-item" type="button" data-view="deployment" title="部署">
-            <span class="icon">D</span>
-            <span>部署</span>
-          </button>
+          <button class="nav-item active" type="button" data-view="workspace"><span class="icon">P</span><span>项目</span></button>
+          <button class="nav-item" type="button" data-view="verification"><span class="icon">V</span><span>验证</span></button>
+          <button class="nav-item" type="button" data-view="about"><span class="icon">i</span><span>说明</span></button>
         </nav>
-
         <section class="status-panel" aria-label="系统状态">
-          <div class="status-row">
-            <span>生成范围</span>
-            <strong class="ok">完整项目</strong>
-          </div>
-          <div class="status-row">
-            <span>模型服务</span>
-            <strong>vLLM</strong>
-          </div>
-          <div class="status-row">
-            <span>目标板卡</span>
-            <strong>FPGA</strong>
-          </div>
+          <div class="status-row"><span>后端</span><strong class="status-pending" id="backendStatus">检测中</strong></div>
+          <div class="status-row"><span>执行模式</span><strong id="methodMode">确定性参考</strong></div>
+          <div class="status-row"><span>分析范围</span><strong>development</strong></div>
         </section>
       </aside>
 
       <section class="content">
         <header class="topbar">
-          <div>
-            <p class="eyebrow">Spec to FPGA Project</p>
-            <h2>从系统需求生成完整 FPGA 工程</h2>
+          <div class="topbar-title">
+            <p class="eyebrow">Requirement to verified FPGA project</p>
+            <h2>把需求送入真实 Agent 执行链</h2>
           </div>
-          <div class="api-box">
-            <label for="apiUrl">API 地址</label>
-            <input id="apiUrl" value="http://127.0.0.1:8000/v1" />
+          <div class="topbar-status">
+            <div><span>Mode</span><strong id="topbarMode">确定性模板</strong></div>
+            <div><span>Runtime</span><strong><span class="live-dot"></span> Local Demo</strong></div>
           </div>
         </header>
 
         <section class="workspace-grid view active" id="workspace">
           <form class="panel prompt-panel" id="generateForm">
             <div class="panel-head">
-              <div>
-                <p class="eyebrow">项目规格</p>
-                <h3>工程生成输入</h3>
+              <div><p class="eyebrow">System-HIS driven input</p><h3>自然语言需求入口</h3></div>
+              <button class="icon-button" type="button" id="sampleBtn" title="恢复示例">R</button>
+            </div>
+
+            <section class="form-section">
+              <div class="section-label">生成策略</div>
+              <div class="mode-switch" role="group" aria-label="生成模式">
+                <label><input type="radio" name="generationMode" value="template" checked /> 确定性模板</label>
+                <label><input type="radio" name="generationMode" value="free" /> 自由需求</label>
               </div>
-              <button class="icon-button" type="button" id="sampleBtn" title="填入示例">R</button>
-            </div>
+            </section>
 
-            <div class="control-row">
-              <label class="field">
-                <span>项目名称</span>
-                <input id="projectName" value="uart_sensor_logger" />
-              </label>
-              <label class="field">
-                <span>顶层模块</span>
-                <input id="topModule" value="uart_sensor_logger_top" />
-              </label>
-            </div>
+            <section class="form-section">
+              <div class="section-label">用户需求</div>
+              <label class="field"><span>自然语言工程需求</span><textarea id="projectSpec" rows="8" required>生成一个同步 FIFO 工程，包含读写使能、满空标志、低电平复位和自检 testbench。</textarea></label>
+            </section>
 
-            <div class="control-row">
-              <label class="select-field">
-                <span>项目类型</span>
-                <select id="projectType">
-                  <option value="数据采集与串口输出">数据采集与串口输出</option>
-                  <option value="控制器与状态机">控制器与状态机</option>
-                  <option value="数字信号处理流水线">数字信号处理流水线</option>
-                  <option value="外设接口桥接">外设接口桥接</option>
-                </select>
-              </label>
-              <label class="select-field">
-                <span>目标语言</span>
-                <select id="hdlType">
-                  <option value="Verilog-2001">Verilog-2001</option>
-                  <option value="SystemVerilog">SystemVerilog</option>
-                </select>
-              </label>
-            </div>
+            <section class="ambiguity-panel" aria-label="需求解析结果">
+              <div class="ambiguity-head">
+                <div>
+                  <strong>后端解析结果</strong>
+                  <span>Requirement Boundary / Task Registry / Missing Facts</span>
+                </div>
+                <span class="audit-status" id="ambiguityStatus">尚未解析</span>
+              </div>
+              <div class="fact-summary" id="factSummary">
+                <div><span>任务族</span><strong id="inferredTask">auto</strong></div>
+                <div><span>能力状态</span><strong id="capabilityState">待解析</strong></div>
+              </div>
+              <ol id="ambiguityList"><li>输入自然语言需求后，先解析任务族、能力边界和缺失事实。</li></ol>
+              <div class="action-row">
+                <button class="secondary-button audit-button" type="button" id="checkAmbiguityBtn">解析需求边界</button>
+                <button class="primary-button" type="submit" id="generateBtn"><span class="button-label">生成完整工程并验证</span><span class="button-spinner" aria-hidden="true"></span></button>
+              </div>
+            </section>
 
-            <label class="field">
-              <span>系统级需求</span>
-              <textarea id="projectSpec" rows="7">设计一个完整 FPGA 项目：采集 8 位传感器数据，使用 FIFO 做缓存，通过 UART 以 115200 波特率发送到上位机。系统包含低电平复位、使能控制、忙闲状态输出、错误计数和可仿真的 testbench。</textarea>
-            </label>
-
-            <label class="field">
-              <span>期望模块划分</span>
-              <textarea id="modulePlan" rows="5">clock_reset：统一复位同步
-sensor_capture：采集 sensor_data 和 sensor_valid
-fifo_buffer：缓存采集数据
-uart_tx：串口发送
-control_fsm：调度采集、缓存和发送流程</textarea>
-            </label>
-
-            <label class="field">
-              <span>时钟、接口与约束</span>
-              <textarea id="constraintText" rows="4">系统时钟 50MHz；UART 波特率 115200；输入 sensor_data[7:0]、sensor_valid；输出 uart_tx、busy、error_count[7:0]；生成基础 XDC/SDC 约束模板。</textarea>
-            </label>
-
-            <fieldset class="deliverables">
-              <legend>生成交付物</legend>
-              <label><input type="checkbox" id="deliverRtl" checked /> RTL 多文件</label>
-              <label><input type="checkbox" id="deliverTb" checked /> Testbench</label>
-              <label><input type="checkbox" id="deliverConstraints" checked /> 约束模板</label>
-              <label><input type="checkbox" id="deliverReadme" checked /> 项目 README</label>
-            </fieldset>
-
-            <div class="control-row">
-              <label class="select-field">
-                <span>目标模型</span>
-                <select id="modelName">
-                  <option value="cuc-ai-fpga">cuc-ai-fpga</option>
-                  <option value="Qwen2.5-Coder-7B-Instruct">Qwen2.5-Coder</option>
-                  <option value="gemma-4-12B-it">Gemma 4 12B</option>
-                </select>
-              </label>
-              <label class="range-field">
-                <span>温度 <output id="tempValue">0.2</output></span>
-                <input id="temperature" type="range" min="0" max="1" step="0.1" value="0.2" />
-              </label>
-            </div>
-
-            <button class="primary-button" type="submit">
-              <span>生成完整项目</span>
-            </button>
+            <section class="form-section fact-editor">
+              <div class="section-label">需求事实补充</div>
+              <div class="control-row">
+                <label class="field"><span>项目名称</span><input id="projectName" value="sync_fifo_demo" pattern="[A-Za-z][A-Za-z0-9_-]{0,63}" required /></label>
+                <label class="field"><span>顶层模块</span><input id="topModule" placeholder="例如 sync_fifo_top" pattern="[A-Za-z_][A-Za-z0-9_]{0,63}" /></label>
+              </div>
+              <div class="control-row">
+                <label class="select-field" id="taskField"><span>任务族（可选）</span><select id="taskType">
+                  <option value="auto">根据需求自动识别</option>
+                </select></label>
+                <label class="field readonly-field"><span>方法条件</span><input id="methodCondition" value="reference_deterministic" readonly /></label>
+              </div>
+              <div class="engineering-grid">
+                <label class="field"><span>数据通路位宽</span><input id="dataWidth" type="number" min="1" max="64" value="8" required /></label>
+                <label class="field"><span>时钟频率 MHz</span><input id="clockMHz" type="number" min="1" max="1000" placeholder="待解析/补充" /></label>
+                <label class="select-field"><span>复位策略</span><select id="resetPolarity">
+                  <option value="">待解析/补充</option>
+                  <option value="active_low">低电平复位 rst_n</option>
+                  <option value="active_high">高电平复位 rst</option>
+                  <option value="sync_active_low">同步低电平复位</option>
+                </select></label>
+                <label class="select-field"><span>接口协议</span><select id="interfaceSpec">
+                  <option value="">待解析/补充</option>
+                  <option value="valid_ready">valid / ready</option>
+                  <option value="wr_rd_enable">wr_en / rd_en</option>
+                  <option value="uart_stream">UART stream</option>
+                  <option value="simple_gpio">simple GPIO</option>
+                </select></label>
+              </div>
+              <label class="field"><span>端口与信号摘要</span><input id="ioSpec" placeholder="例如 clk, rst_n, wr_en, rd_en, din[7:0], dout[7:0], full, empty" /></label>
+              <div class="control-row">
+                <label class="field"><span>目标平台 / 约束</span><input id="targetPlatform" placeholder="例如 generic Verilog，生成基础约束模板" /></label>
+                <label class="select-field"><span>验证策略</span><select id="verificationIntent">
+                  <option value="">待解析/补充</option>
+                  <option value="self_checking_tb">自检 testbench</option>
+                  <option value="smoke_tb">smoke testbench</option>
+                  <option value="formal_ready">保留形式验证接口</option>
+                </select></label>
+              </div>
+              <fieldset class="deliverable-strip">
+                <legend>交付范围</legend>
+                <label><input id="deliverRtl" type="checkbox" checked /> RTL</label>
+                <label><input id="deliverTb" type="checkbox" checked /> Testbench</label>
+                <label><input id="deliverConstraints" type="checkbox" checked /> Constraints</label>
+                <label><input id="deliverReadme" type="checkbox" checked /> README</label>
+              </fieldset>
+              <div class="scope-note"><strong>当前边界</strong><p>后端先给出 requirement boundary，再由当前确定性参考后端生成可检查工程；缺失事实不会被静默默认成 ready。</p></div>
+            </section>
           </form>
 
           <section class="panel output-panel" aria-label="生成结果">
             <div class="panel-head">
-              <div>
-                <p class="eyebrow">项目输出</p>
-                <h3>工程结构与文件内容</h3>
-              </div>
-              <div class="tool-group">
-                <button class="icon-button" type="button" id="copyBtn" title="复制项目输出">C</button>
-                <button class="icon-button" type="button" id="downloadBtn" title="下载项目说明">DL</button>
-              </div>
+              <div><p class="eyebrow">真实产物</p><h3>工程文件</h3></div>
+              <div class="result-meta"><span class="result-chip idle" id="passLevel">尚未运行</span><button class="icon-button" type="button" id="copyBtn" title="复制当前文件">C</button></div>
             </div>
-
             <div class="project-summary">
-              <div><span>RTL</span><strong id="rtlCount">5</strong></div>
-              <div><span>验证</span><strong id="tbCount">1</strong></div>
-              <div><span>约束</span><strong id="constraintCount">1</strong></div>
-              <div><span>文档</span><strong id="docCount">1</strong></div>
+              <div><span>RTL</span><strong id="rtlCount">—</strong></div>
+              <div><span>验证</span><strong id="tbCount">—</strong></div>
+              <div><span>约束</span><strong id="constraintCount">—</strong></div>
+              <div><span>全部文件</span><strong id="fileCount">—</strong></div>
             </div>
-
-            <pre class="code-block project-output"><code id="projectOutput"></code></pre>
-          </section>
-
-          <section class="panel review-panel" aria-label="质量检查">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">项目质量门禁</p>
-                <h3>生成后检查</h3>
-              </div>
-              <span class="score">88</span>
-            </div>
-            <div class="check-list">
-              <label><input type="checkbox" checked /> 顶层端口与子模块连线完整</label>
-              <label><input type="checkbox" checked /> 已拆分数据通路与控制状态机</label>
-              <label><input type="checkbox" checked /> 包含仿真入口</label>
-              <label><input type="checkbox" /> 已运行综合与时序检查</label>
+            <div class="artifact-path" id="artifactPath">运行后将在 artifacts/agent/ui-demo/ 下生成可追溯产物</div>
+            <div class="file-browser">
+              <nav class="file-list" id="fileList" aria-label="工程文件列表"><div class="empty-state">等待生成工程</div></nav>
+              <pre class="code-block project-output"><code id="projectOutput">选择一个受支持的任务族，然后运行 demo。</code></pre>
             </div>
           </section>
 
-          <section class="panel flow-panel" aria-label="项目流程">
-            <div class="panel-head">
-              <div>
-                <p class="eyebrow">工程链路</p>
-                <h3>需求 → 架构 → 多文件 RTL → 验证 → 约束</h3>
-              </div>
-            </div>
-            <div class="pipeline">
-              <div class="step done"><span>1</span><strong>系统需求</strong><small>输入功能、接口、性能目标</small></div>
-              <div class="step done"><span>2</span><strong>模块规划</strong><small>生成顶层与子模块边界</small></div>
-              <div class="step active"><span>3</span><strong>工程生成</strong><small>输出 RTL、TB、约束和文档</small></div>
-              <div class="step"><span>4</span><strong>EDA 闭环</strong><small>综合反馈后继续修正</small></div>
+          <section class="panel review-panel" aria-label="质量门禁">
+            <div class="panel-head"><div><p class="eyebrow">执行结果</p><h3>H / L 阶段门禁</h3></div><span class="method-tag">Deterministic HIS</span></div>
+            <div class="stage-grid" id="stageGrid"></div>
+            <p class="stage-help" id="stageHelp">状态来自本次运行的 labels.json，不使用前端模拟分数。</p>
+          </section>
+
+          <section class="panel flow-panel" aria-label="执行链路">
+            <div class="panel-head"><div><p class="eyebrow">当前代码路径</p><h3>需求边界 → 项目生成 → 工具验证 → 产物记录</h3></div></div>
+            <div class="pipeline" id="pipeline">
+              <div class="step"><span>1</span><strong>Requirement Boundary</strong><small>ready / clarification / gap</small></div>
+              <div class="step"><span>2</span><strong>Project Generator</strong><small>完整多文件工程</small></div>
+              <div class="step"><span>3</span><strong>L0–L4</strong><small>契约、lint、仿真、综合</small></div>
+              <div class="step"><span>4</span><strong>Recorder</strong><small>labels 与 trajectory</small></div>
             </div>
           </section>
         </section>
 
-        <section class="view secondary-view" id="verification">
-          <section class="panel full-panel">
-            <p class="eyebrow">验证视图</p>
-            <h3>完整项目验证计划</h3>
-            <div class="metrics">
-              <div><span>单元测试</span><strong>5</strong></div>
-              <div><span>系统 TB</span><strong>1</strong></div>
-              <div><span>约束检查</span><strong>待运行</strong></div>
-              <div><span>EDA 反馈</span><strong>待接入</strong></div>
-            </div>
-          </section>
-        </section>
+        <section class="view secondary-view" id="verification"><section class="panel full-panel">
+          <p class="eyebrow">结果解释</p><h3>门禁不是单一“成功/失败”</h3>
+          <div class="explanation-grid">
+            <div><strong>H0–H3</strong><span>本 demo 的确定性参考工程包含 System-HIS，因此执行 schema、良构、可降低性和需求忠实度检查。</span></div>
+            <div><strong>L0 / L1 / L3</strong><span>分别对应项目契约、lint 与综合；本机缺工具时不会伪造通过。</span></div>
+            <div><strong>L2</strong><span>候选 testbench 只用于公开 smoke；没有 evaluator-trusted oracle 时为 not_run。</span></div>
+            <div><strong>L4</strong><span>本 demo 不自动运行 OpenXC7/Vivado 物理实现。</span></div>
+          </div>
+        </section></section>
 
-        <section class="view secondary-view" id="deployment">
-          <section class="panel full-panel">
-            <p class="eyebrow">部署视图</p>
-            <h3>云端项目生成服务</h3>
-            <div class="deployment-list">
-              <div><span>服务框架</span><strong>vLLM OpenAI-compatible API</strong></div>
-              <div><span>推荐模型</span><strong>Qwen2.5-Coder-7B-Instruct</strong></div>
-              <div><span>输出形态</span><strong>RTL + Testbench + Constraints + README</strong></div>
-              <div><span>访问方式</span><strong>本地端口或 SSH 端口转发</strong></div>
-            </div>
-          </section>
-        </section>
+        <section class="view secondary-view" id="about"><section class="panel full-panel">
+          <p class="eyebrow">Demo 说明</p><h3>连接的是仓库当前实现，不是静态效果稿</h3>
+          <div class="deployment-list">
+            <div><span>后端入口</span><strong>app/server.py</strong></div>
+            <div><span>Agent 路径</span><strong>DataGenerationAgent.run_one()</strong></div>
+            <div><span>产物目录</span><strong>artifacts/agent/ui-demo/</strong></div>
+            <div><span>网络调用</span><strong>无，默认不调用付费模型</strong></div>
+          </div>
+        </section></section>
       </section>
     </main>
-
     <div class="toast" id="toast" role="status" aria-live="polite"></div>
     <script src="./app.js"></script>
   </body>

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/accounting/model-gateway-provenance/v1",
+  "title": "SR2FPGA Development Model Gateway Provenance v1",
+  "description": "Hash-bound, development-only provenance for one provider-backed model call. It carries no official evaluation or pass-credit authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "provenance_id", "analysis_population", "episode_id",
+    "method_condition", "call_id", "stage", "operation", "call_status",
+    "provider_adapter", "provider_model", "gateway_base_url_sha256",
+    "requested_decoding_seed", "seed_forwarding_status",
+    "deterministic_seed_control", "seed_control_evidence_ref",
+    "provider_system_fingerprint", "system_fingerprint_status",
+    "pass_credit_authority", "official_authority", "g3_accepted", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "model-gateway-provenance-v1"},
+    "provenance_id": {"type": "string", "pattern": "^mgp-[0-9a-f]{32}$"},
+    "analysis_population": {"enum": ["development", "excluded"]},
+    "episode_id": {"type": "string", "minLength": 1},
+    "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "call_id": {"type": "integer", "minimum": 1},
+    "stage": {"type": "string", "minLength": 1},
+    "operation": {"type": "string", "minLength": 1},
+    "call_status": {"enum": ["completed", "failed"]},
+    "provider_adapter": {"enum": ["openai_compatible", "anthropic_compatible"]},
+    "provider_model": {"type": "string", "minLength": 1},
+    "gateway_base_url_sha256": {"$ref": "#/$defs/sha256"},
+    "requested_decoding_seed": {"type": ["integer", "null"], "minimum": 0},
+    "seed_forwarding_status": {"enum": ["not_requested", "forwarded", "not_forwarded"]},
+    "deterministic_seed_control": {
+      "enum": ["not_requested", "requested_unverified", "supported", "unsupported", "unavailable"]
+    },
+    "seed_control_evidence_ref": {
+      "oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]
+    },
+    "provider_system_fingerprint": {"type": ["string", "null"], "minLength": 1},
+    "system_fingerprint_status": {"enum": ["reported", "unavailable", "invalid", "conflicting"]},
+    "pass_credit_authority": {"const": false},
+    "official_authority": {"const": false},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"requested_decoding_seed": {"type": "null"}}, "required": ["requested_decoding_seed"]},
+      "then": {
+        "properties": {
+          "seed_forwarding_status": {"const": "not_requested"},
+          "deterministic_seed_control": {"const": "not_requested"}
+        }
+      },
+      "else": {
+        "properties": {
+          "seed_forwarding_status": {"enum": ["forwarded", "not_forwarded"]},
+          "deterministic_seed_control": {
+            "enum": ["requested_unverified", "supported", "unsupported", "unavailable"]
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"deterministic_seed_control": {"const": "supported"}}, "required": ["deterministic_seed_control"]},
+      "then": {"properties": {"seed_control_evidence_ref": {"$ref": "#/$defs/artifact_ref"}}}
+    },
+    {
+      "if": {"properties": {"system_fingerprint_status": {"const": "reported"}}, "required": ["system_fingerprint_status"]},
+      "then": {"properties": {"provider_system_fingerprint": {"type": "string", "minLength": 1}}},
+      "else": {"properties": {"provider_system_fingerprint": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

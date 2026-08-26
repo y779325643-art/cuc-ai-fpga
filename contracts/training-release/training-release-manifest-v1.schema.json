@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/training-release-manifest/v1",
+  "title": "SR2FPGA training release manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "artifact_sha256",
+    "visibility_class",
+    "release_id",
+    "release_state",
+    "training_authorized",
+    "pool_id",
+    "pool_manifest_path",
+    "pool_manifest_sha256",
+    "training_split_id",
+    "e_final_set_sha256",
+    "e_traj_set_sha256",
+    "official_hidden_outcome_reference_count",
+    "leakage_audit",
+    "treatments",
+    "release_files"
+  ],
+  "properties": {
+    "contract_version": {"const": "training-release-manifest-v1"},
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "visibility_class": {"const": "public"},
+    "release_id": {"$ref": "#/$defs/identifier"},
+    "release_state": {"enum": ["candidate_unpromoted", "promoted"]},
+    "training_authorized": {"type": "boolean"},
+    "pool_id": {"$ref": "#/$defs/identifier"},
+    "pool_manifest_path": {"$ref": "#/$defs/relative_path"},
+    "pool_manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "training_split_id": {"$ref": "#/$defs/identifier"},
+    "e_final_set_sha256": {"$ref": "#/$defs/sha256"},
+    "e_traj_set_sha256": {"$ref": "#/$defs/sha256"},
+    "official_hidden_outcome_reference_count": {"const": 0},
+    "leakage_audit": {"$ref": "#/$defs/leakage_audit"},
+    "treatments": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/treatment"}
+    },
+    "release_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/file_record"}
+    },
+    "authorization": {"$ref": "#/$defs/authorization"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"release_state": {"const": "candidate_unpromoted"}}},
+      "then": {
+        "properties": {"training_authorized": {"const": false}},
+        "not": {"required": ["authorization"]}
+      },
+      "else": {
+        "properties": {"training_authorized": {"const": true}},
+        "required": ["authorization"]
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?/)(?!.*\\\\)[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+    },
+    "leakage_audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "policy_id",
+        "policy_sha256",
+        "forbidden_canary_set_sha256",
+        "status"
+      ],
+      "properties": {
+        "policy_id": {"$ref": "#/$defs/identifier"},
+        "policy_sha256": {"$ref": "#/$defs/sha256"},
+        "forbidden_canary_set_sha256": {"$ref": "#/$defs/sha256"},
+        "status": {"const": "pass"}
+      }
+    },
+    "treatment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "treatment",
+        "view_path",
+        "view_sha256",
+        "row_count",
+        "episode_set_sha256",
+        "row_set_sha256"
+      ],
+      "properties": {
+        "treatment": {"enum": ["M6U", "M6F", "M6T", "M6F_E_TRAJ"]},
+        "view_path": {"$ref": "#/$defs/relative_path"},
+        "view_sha256": {"$ref": "#/$defs/sha256"},
+        "row_count": {"type": "integer", "minimum": 0},
+        "episode_set_sha256": {"$ref": "#/$defs/sha256"},
+        "row_set_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "file_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "sha256", "size_bytes", "role", "visibility_class"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relative_path"},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "role": {
+          "enum": [
+            "training_view",
+            "training_pool_manifest",
+            "eligibility_sidecar",
+            "eligibility_certificate"
+          ]
+        },
+        "visibility_class": {"enum": ["model_visible", "release_internal"]}
+      }
+    },
+    "authorization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "campaign_freeze_sha256",
+        "training_plan_sha256",
+        "promotion_record_sha256"
+      ],
+      "properties": {
+        "campaign_freeze_sha256": {"$ref": "#/$defs/sha256"},
+        "training_plan_sha256": {"$ref": "#/$defs/sha256"},
+        "promotion_record_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

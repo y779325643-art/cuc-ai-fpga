@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-tool-environment/v1",
+  "title": "SR2FPGA Development Tool Environment v1",
+  "description": "Content-addressable development preflight snapshot for the core open-source RTL tools. It records no local absolute path and is not terminal, pass-credit, or official campaign authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "collection_scope",
+    "collector_id",
+    "probe_timeout_seconds",
+    "required_tool_names",
+    "authority_status",
+    "tools",
+    "terminal_binding",
+    "pass_credit_authority",
+    "official_authority"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-tool-environment-v1"},
+    "collection_scope": {"const": "development_preflight"},
+    "collector_id": {"const": "sr2fpga-core-tool-probe-v1"},
+    "probe_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 60},
+    "required_tool_names": {
+      "const": ["iverilog", "verilator", "vvp", "yosys"]
+    },
+    "authority_status": {"enum": ["complete", "incomplete"]},
+    "tools": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {"$ref": "#/$defs/tool_record"}
+    },
+    "terminal_binding": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "official_authority": {"const": false}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "tool_name": {"enum": ["iverilog", "verilator", "vvp", "yosys"]},
+    "tool_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "version_command",
+        "status",
+        "resolved_executable_basename",
+        "resolved_executable_sha256",
+        "resolved_executable_size_bytes",
+        "version_line",
+        "version_output_sha256",
+        "exit_code",
+        "probe_failure_type"
+      ],
+      "properties": {
+        "name": {"$ref": "#/$defs/tool_name"},
+        "version_command": {
+          "type": "array",
+          "minItems": 2,
+          "items": {"type": "string", "minLength": 1}
+        },
+        "status": {"enum": ["available", "missing", "probe_failed"]},
+        "resolved_executable_basename": {
+          "oneOf": [
+            {"type": "string", "pattern": "^[^/\\\\]+$", "minLength": 1},
+            {"type": "null"}
+          ]
+        },
+        "resolved_executable_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "resolved_executable_size_bytes": {
+          "type": ["integer", "null"],
+          "minimum": 0
+        },
+        "version_line": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "null"}
+          ]
+        },
+        "version_output_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "exit_code": {"type": ["integer", "null"]},
+        "probe_failure_type": {
+          "enum": [
+            null,
+            "missing_executable",
+            "executable_unreadable",
+            "probe_timeout",
+            "probe_os_error",
+            "nonzero_exit",
+            "empty_version_output"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"const": "available"}},
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "resolved_executable_basename": {"type": "string"},
+              "resolved_executable_sha256": {"$ref": "#/$defs/sha256"},
+              "resolved_executable_size_bytes": {"type": "integer", "minimum": 0},
+              "version_line": {"type": "string", "minLength": 1},
+              "version_output_sha256": {"$ref": "#/$defs/sha256"},
+              "exit_code": {"const": 0},
+              "probe_failure_type": {"type": "null"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "missing"}},
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "resolved_executable_basename": {"type": "null"},
+              "resolved_executable_sha256": {"type": "null"},
+              "resolved_executable_size_bytes": {"type": "null"},
+              "version_line": {"type": "null"},
+              "version_output_sha256": {"type": "null"},
+              "exit_code": {"type": "null"},
+              "probe_failure_type": {"const": "missing_executable"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"status": {"const": "probe_failed"}},
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "probe_failure_type": {
+                "enum": [
+                  "executable_unreadable",
+                  "probe_timeout",
+                  "probe_os_error",
+                  "nonzero_exit",
+                  "empty_version_output"
+                ]
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

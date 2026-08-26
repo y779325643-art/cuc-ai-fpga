@@ -7,37 +7,102 @@ import hashlib
 import json
 import os
 import shutil
-import subprocess
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
-from sr2fpga_agent.agent import DataGenerationAgent
+from sr2fpga_agent.agent import DataGenerationAgent, openxc7_tool_probe_command
 from sr2fpga_agent.baseline_report import baseline_rows, render_markdown
 from sr2fpga_agent.cli import (
     build_project_generator_for_connection,
     build_repairer,
     build_repairer_for_connection,
 )
-from sr2fpga_agent.deepseek import (
+from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.cost_accounting import (
+    AttemptCostLedger,
+    AttemptCostLedgerRouter,
+    validate_accounting_failure_origin,
+)
+from sr2fpga_agent.providers import (
     AnthropicCompatibleClient,
     AnthropicCompatibleConfig,
     OpenAICompatibleClient,
     OpenAICompatibleConfig,
 )
 from sr2fpga_agent.failure_injector import FailureInjectingProjectGenerator
-from sr2fpga_agent.local_tools import resolve_executable
+from sr2fpga_agent.generation import (
+    DirectProjectGenerator,
+    FrozenContextDirectProjectFacade,
+    FrozenContextDirectProjectGenerator,
+)
+from sr2fpga_agent.generation.context_his import (
+    FrozenContextSystemHisCorrectionFacade,
+    FrozenContextSystemHisFacade,
+    FrozenContextSystemHisValidationFacade,
+)
+from sr2fpga_agent.generation.context_plan import FrozenContextUntypedPlanFacade
+from sr2fpga_agent.family_recipe import select_family_recipe
+from sr2fpga_agent.his_validation import SystemHisValidationError
+from sr2fpga_agent.model_gateway_provenance import write_model_gateway_provenance
+from sr2fpga_agent.provider_seed_capability import (
+    load_development_provider_seed_capability,
+    require_paired_confirmatory_seed_capability,
+)
+from sr2fpga_agent.his_correction_outcome import (
+    reconcile_development_his_correction_outcome,
+)
+from sr2fpga_agent.frozen_context import (
+    build_development_episode_pack,
+    context_from_validated_episode_pack,
+    freeze_ready_requirement_context,
+)
 from sr2fpga_agent.measurement_freeze import (
     build_measurement_freeze,
     write_or_validate_freeze,
 )
+from sr2fpga_agent.local_tools import resolve_executable
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from sr2fpga_agent.model_budget import ModelCallBudget, client_for_stage
+from sr2fpga_agent.episode_executor import EpisodeExecutor
+from sr2fpga_agent.episode_outcome import (
+    project_development_public_evaluation,
+    reconcile_development_episode_outcome,
+)
+from sr2fpga_agent.pre_candidate_outcome import (
+    reconcile_development_pre_candidate_stop_outcome,
+)
+from sr2fpga_agent.method_adapters import (
+    GenerationServices,
+    MethodAdapterRegistry,
+    MethodArtifactGateway,
+    PairingKey,
+    PairedArtifactCoordinator,
+    SharedArtifactRefs,
+)
 from sr2fpga_agent.paired_measurement import collect_paired_results
 from sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
+from sr2fpga_agent.public_l2_harness import (
+    PublicL2HarnessError,
+    load_development_public_l2_harness,
+)
 from sr2fpga_agent.recorder import DatasetRecorder
+from sr2fpga_agent.requirement_boundary import evaluate_requirement_boundary
+from sr2fpga_agent.requirement_audit import load_requirement_audit_manifest
+from sr2fpga_agent.system_his_compatibility import load_system_his_compatibility_envelope
 from sr2fpga_agent.task_catalog import task_family_spec_for_alias
+from sr2fpga_agent.evaluator_dispatch import DevelopmentHiddenEvaluationAuthority
 from sr2fpga_agent.testbench_checker import check_testbench_static_issues
+from sr2fpga_agent.tool_environment import (
+    collect_development_tool_environment,
+    tool_version_projection,
+)
+from sr2fpga_agent.l4_tool_environment import (
+    L4_VERSION_PROBE_ENV,
+    collect_development_l4_tool_environment,
+    l4_tool_version_projection,
+)
 
 
 VALID_MEASUREMENT_POINTS = {
@@ -48,6 +113,26 @@ VALID_MEASUREMENT_POINTS = {
 
 VALID_REQUIREMENT_STYLES = {"contract", "natural_component", "simple_prompt"}
 VALID_EVALUATION_LINES = {"line_a", "line_b"}
+VALID_ANALYSIS_POPULATIONS = {
+    "development",
+    "excluded",
+    "official_vpp",
+    "ambiguity_audit",
+}
+IMPLEMENTED_METHOD_CONDITIONS = {
+    "M0",
+    "M1",
+    "M2",
+    "M3",
+    "M4",
+    "M5",
+    "reference_deterministic",
+    "oracle_his_ceiling",
+}
+EPISODE_PACK_METHOD_CONDITIONS = {"M0", "M1", "M2", "M3", "M4", "M5"}
+REQ2HIS_API_KINDS = {"openai_compat", "anthropic_compat", "deepseek-his-v12"}
+DEVELOPMENT_HIDDEN_AUTHORITY_DIR = "development_hidden_authority"
+DEVELOPMENT_PUBLIC_AUTHORITY_DIR = "development_public_authority"
 
 
 @dataclass(frozen=True)
@@ -61,8 +146,16 @@ class TaskConfig:
     failure_origin: str = ""
     topology_ids: list[str] = field(default_factory=list)
     measurement_point: str = ""
-    requirement_style: str = "contract"
+    requirement_style: str = "simple_prompt"
     evaluation_line: str = "line_b"
+    requirement: str = ""
+    method_condition: str = ""
+    analysis_population: str = "development"
+    requirement_audit_manifest: str = ""
+    public_l2_harness_manifest: str = ""
+    semantic_instance_id: str = ""
+    decoding_seed: int | None = None
+    paired_block_id: str = ""
 
 
 @dataclass(frozen=True)
@@ -77,6 +170,7 @@ class SourceConnection:
     transport_attempts: int = 3
     max_tokens: int = 0
     system_his_schema_version: str = ""
+    seed_capability_manifest: str = ""
 
 
 @dataclass(frozen=True)
@@ -109,6 +203,7 @@ class RunnerConfig:
     refresh_exports: bool
     line_b_targets: dict[str, float | int]
     tasks: list[TaskConfig]
+    max_model_calls: int = 0
     model: str = "deepseek-v4-pro"
     base_url: str = "https://api.deepseek.com"
     api_key_env: str = "DEEPSEEK_API_KEY"
@@ -122,6 +217,8 @@ class RunnerConfig:
     run_l4_commercial: bool = False
     l4_commercial: L4CommercialConfig = field(default_factory=L4CommercialConfig)
     run_independent_oracle: bool = False
+    requirement_audit_manifest: str = ""
+    require_paired_confirmatory_seed_control: bool = False
 
 
 @dataclass(frozen=True)
@@ -138,25 +235,43 @@ class PlannedSample:
     failure_origin: str = ""
     topology_id: str = ""
     measurement_point: str = ""
-    requirement_style: str = "contract"
+    requirement_style: str = "simple_prompt"
     evaluation_line: str = "line_b"
     paired_requirement_id: str = ""
     requirement_sha256: str = ""
+    method_condition: str = ""
+    analysis_population: str = "development"
+    requirement_audit_manifest: str = ""
+    public_l2_harness_manifest: str = ""
+    semantic_instance_id: str = ""
+    decoding_seed: int | None = None
+    paired_block_id: str = ""
+    pairing_identity_source: str = ""
 
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
         connection = resolve_source_connection(config, self.source)
         schema_version = _sample_system_his_schema_version(self, config)
-        repair_provider_resolved = (
-            self.source if config.repair_provider == "same_as_source" else config.repair_provider
-        )
-        return {
+        request = _project_request_for_sample(self)
+        platform = _platform_profile_for_config(config)
+        boundary = evaluate_requirement_boundary(request, platform)
+        method_condition = _sample_method_condition(self, config)
+        model_call_ceiling = _sample_model_call_ceiling(self, config, method_condition)
+        repair_provider_resolved = "none"
+        if method_condition in {"M1", "M5"}:
+            repair_provider_resolved = (
+                self.source
+                if config.repair_provider == "same_as_source"
+                else config.repair_provider
+            )
+        metadata = {
             "source": self.source,
             "generator_provider": self.source,
             "model": connection.model,
             "failure_origin": _sample_failure_origin(self, config),
             "family_id": self.family_id,
             "difficulty_tier": self.difficulty_tier,
-            "measurement_point": self.measurement_point or _measurement_point(config),
+            "measurement_point": self.measurement_point
+            or _measurement_point_for_method(config, method_condition),
             "evaluation_line": self.evaluation_line,
             "repair_provider": config.repair_provider,
             "repair_provider_policy": config.repair_provider,
@@ -171,7 +286,214 @@ class PlannedSample:
             "requirement_style": self.requirement_style,
             "paired_requirement_id": self.paired_requirement_id,
             "requirement_sha256": self.requirement_sha256,
+            "method_condition": method_condition,
+            "analysis_population": self.analysis_population,
+            "semantic_instance_id": self.semantic_instance_id,
+            "decoding_seed": self.decoding_seed,
+            "paired_block_id": self.paired_block_id,
+            "pairing_identity_source": self.pairing_identity_source,
+            "requirement_audit_manifest": self.requirement_audit_manifest,
+            "requirement_boundary": boundary.to_dict(),
+            "model_call_budget": {
+                "max_model_calls": model_call_ceiling,
+                "model_calls_used": 0,
+                "model_calls_failed": 0,
+                "remaining_model_calls": model_call_ceiling,
+                "max_parser_schema_retries": 0,
+                "parser_schema_retries_used": 0,
+                "remaining_parser_schema_retries": 0,
+                "token_accounting": "unavailable_provider_response",
+                "input_tokens": None,
+                "output_tokens": None,
+                "cached_tokens": None,
+                "calls": [],
+            },
         }
+        if (
+            boundary.disposition == "ready"
+            and method_condition in EPISODE_PACK_METHOD_CONDITIONS
+            and self.analysis_population in {"development", "excluded"}
+        ):
+            context = freeze_ready_requirement_context(boundary, platform)
+            metadata["episode_pack"] = build_development_episode_pack(
+                context,
+                episode_id=self.sample_id,
+                analysis_population=self.analysis_population,
+                method_condition=method_condition,
+                evaluator_metadata={
+                    "family_id": self.family_id,
+                    "task_type": self.task_type,
+                    "topology_id": self.topology_id,
+                    "difficulty_tier": self.difficulty_tier,
+                    "semantic_instance_id": self.semantic_instance_id,
+                    "decoding_seed": self.decoding_seed,
+                    "paired_block_id": self.paired_block_id,
+                    "pairing_identity_source": self.pairing_identity_source,
+                },
+            ).to_dict()
+        if (
+            boundary.disposition == "ready"
+            and connection.kind in REQ2HIS_API_KINDS
+            and connection.generation_mode == "two_stage"
+        ):
+            metadata["family_recipe_decision"] = select_family_recipe(
+                request,
+                boundary.envelope,
+            ).to_dict()
+        return metadata
+
+
+class _RunnerMethodProjectGenerator:
+    """Bridge a first-class method adapter into the legacy Agent generator slot."""
+
+    his_source_used_for_generation = "generated"
+
+    def __init__(
+        self,
+        *,
+        method_condition: str,
+        context,
+        services: GenerationServices,
+        coordinator: PairedArtifactCoordinator,
+        pairing: PairingKey,
+        system_his: FrozenContextSystemHisFacade,
+        max_his_corrections: int = 0,
+    ) -> None:
+        self._adapter = MethodAdapterRegistry().create(method_condition)
+        self._context = context
+        self._services = services
+        self._coordinator = coordinator
+        self._pairing = pairing
+        self._system_his = system_his
+        self._max_his_corrections = max_his_corrections
+        self.last_outcome = None
+        self.last_initial_planning_artifact = None
+        self.last_skeleton_artifact = None
+        self.last_method_event_refs = ()
+
+    def generate(self, _request: ProjectRequest, _platform: PlatformProfile):
+        shared_his = self._coordinator.materialize_system_his(
+            self._pairing,
+            lambda: self._system_his.emit_his(self._context),
+        )
+        self.last_initial_planning_artifact = shared_his
+        outcome = EpisodeExecutor(
+            max_his_corrections=self._max_his_corrections
+        ).emit_candidate(
+            self._adapter,
+            self._context,
+            self._services,
+            SharedArtifactRefs(system_his=shared_his),
+        )
+        self.last_outcome = outcome
+        self.last_method_event_refs = self._services.artifacts.event_refs(
+            self._services.episode_id
+        )
+        if outcome.candidate is None:
+            failure = outcome.failure
+            if failure is None:
+                raise RuntimeError("method adapter produced no complete candidate")
+            if (
+                failure.stage in {"h0", "h1", "h2", "h3"}
+                and outcome.planning_artifact is not None
+                and isinstance(outcome.h_report, Mapping)
+            ):
+                planning = self._services.artifacts.read_planning(
+                    outcome.planning_artifact
+                )
+                raise SystemHisValidationError(
+                    json.dumps(planning, ensure_ascii=False, sort_keys=True),
+                    dict(outcome.h_report),
+                    candidate_artifact_sha256=(
+                        outcome.planning_artifact.artifact_ref.sha256
+                    ),
+                )
+            raise RuntimeError(
+                f"{failure.stage} failed with {failure.error_type}: {failure.message}"
+            )
+        if self._adapter.contract.uses_deterministic_skeleton:
+            skeleton = self._system_his.last_skeleton_project
+            if skeleton is None:
+                raise RuntimeError("skeleton method produced no deterministic skeleton artifact")
+            method = self._adapter.contract.method_condition.value
+            self.last_skeleton_artifact = self._services.artifacts.put_project(
+                f"method-emissions/{self._context.revision_id}/{method}/deterministic-skeleton",
+                skeleton,
+            )
+        return self._services.artifacts.read_project(outcome.candidate)
+
+
+class _RunnerDirectMethodProjectGenerator:
+    """Bridge M0/M1 through the same paired method-artifact authority."""
+
+    his_source_used_for_generation = None
+
+    def __init__(
+        self,
+        *,
+        method_condition: str,
+        context,
+        services: GenerationServices,
+        coordinator: PairedArtifactCoordinator,
+        pairing: PairingKey,
+        direct: FrozenContextDirectProjectFacade,
+    ) -> None:
+        self._adapter = MethodAdapterRegistry().create(method_condition)
+        self._context = context
+        self._services = services
+        self._coordinator = coordinator
+        self._pairing = pairing
+        self._direct = direct
+        self.last_outcome = None
+
+    def generate(self, _request: ProjectRequest, _platform: PlatformProfile):
+        shared_project = self._coordinator.materialize_initial_project(
+            self._pairing,
+            lambda: self._direct.emit_project(self._context),
+        )
+        outcome = EpisodeExecutor().emit_candidate(
+            self._adapter,
+            self._context,
+            self._services,
+            SharedArtifactRefs(initial_project=shared_project),
+        )
+        if outcome.candidate is None:
+            failure = outcome.failure
+            if failure is None:
+                raise RuntimeError("Direct adapter produced no complete candidate")
+            raise RuntimeError(
+                f"{failure.stage} failed with {failure.error_type}: {failure.message}"
+            )
+        self.last_outcome = outcome
+        return self._services.artifacts.read_project(outcome.candidate)
+
+
+class _RunnerUntypedPlanProjectGenerator:
+    """Bridge the first-class M2 adapter into the legacy generator slot."""
+
+    his_source_used_for_generation = None
+
+    def __init__(self, *, context, services: GenerationServices) -> None:
+        self._adapter = MethodAdapterRegistry().create("M2")
+        self._context = context
+        self._services = services
+        self.last_outcome = None
+
+    def generate(self, _request: ProjectRequest, _platform: PlatformProfile):
+        outcome = EpisodeExecutor().emit_candidate(
+            self._adapter,
+            self._context,
+            self._services,
+        )
+        if outcome.candidate is None:
+            failure = outcome.failure
+            if failure is None:
+                raise RuntimeError("M2 adapter produced no complete candidate")
+            raise RuntimeError(
+                f"{failure.stage} failed with {failure.error_type}: {failure.message}"
+            )
+        self.last_outcome = outcome
+        return self._services.artifacts.read_project(outcome.candidate)
 
 
 @dataclass(frozen=True)
@@ -187,6 +509,14 @@ class RunState:
 
 def load_runner_config(path: Path) -> RunnerConfig:
     raw = _load_mapping(path)
+    if "request_mode" in raw:
+        raise SystemExit(
+            "request_mode has been removed; all requests now use the unified open-world path"
+        )
+    if "family_recipe" in raw:
+        raise SystemExit(
+            "family_recipe has been removed; recipe selection now uses the automatic policy"
+        )
     run_l4_open = _parse_bool(
         raw.get("run_l4_open", raw.get("enable_openxc7_l4", False)),
         "run_l4_open",
@@ -196,6 +526,10 @@ def load_runner_config(path: Path) -> RunnerConfig:
         raw.get("run_independent_oracle", False),
         "run_independent_oracle",
     )
+    raw_audit_manifest = raw.get("requirement_audit_manifest", "")
+    requirement_audit_manifest = ""
+    if raw_audit_manifest is not None:
+        requirement_audit_manifest = str(raw_audit_manifest).strip()
     return RunnerConfig(
         dataset_root=Path(str(raw["dataset_root"])),
         export_root=Path(str(raw["export_root"])),
@@ -206,6 +540,7 @@ def load_runner_config(path: Path) -> RunnerConfig:
         refresh_exports=_parse_bool(raw.get("refresh_exports", True), "refresh_exports"),
         line_b_targets=dict(raw.get("line_b_targets", {})),
         tasks=[_load_task_config(item, raw) for item in raw.get("tasks", [])],
+        max_model_calls=int(raw.get("max_model_calls", 0)),
         model=str(raw.get("model", "deepseek-v4-pro")),
         base_url=str(raw.get("base_url", "https://api.deepseek.com")),
         api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
@@ -225,6 +560,11 @@ def load_runner_config(path: Path) -> RunnerConfig:
             default_run_policy="after_l3_pass" if run_l4_commercial else "never",
         ),
         run_independent_oracle=run_independent_oracle,
+        requirement_audit_manifest=requirement_audit_manifest,
+        require_paired_confirmatory_seed_control=_parse_bool(
+            raw.get("require_paired_confirmatory_seed_control", False),
+            "require_paired_confirmatory_seed_control",
+        ),
     )
 
 
@@ -253,6 +593,7 @@ def main(argv: list[str] | None = None) -> None:
     print(f"total_completed={summary['total_completed']}")
     print(f"success_l3={len(summary['buckets'].get('success_l3', []))}")
     print(f"repair_trajectory={len(summary['buckets'].get('repair_trajectory', []))}")
+    print(f"not_run={len(summary['buckets'].get('not_run', []))}")
     print(f"rejected={len(summary['buckets'].get('rejected', []))}")
 
 
@@ -279,6 +620,22 @@ def runner_preflight(
 
     if not samples:
         errors.append("no planned samples")
+    errors.extend(_analysis_population_errors(samples))
+    seed_capabilities, seed_capability_errors = _seed_capability_diagnostics(
+        config, samples
+    )
+    errors.extend(seed_capability_errors)
+    for manifest in sorted(
+        {
+            sample.public_l2_harness_manifest
+            for sample in samples
+            if sample.public_l2_harness_manifest
+        }
+    ):
+        try:
+            load_development_public_l2_harness(Path(manifest))
+        except PublicL2HarnessError as exc:
+            errors.append(f"invalid public L2 harness manifest: {exc}")
     provider_auth, auth_errors = _source_auth_diagnostics(config, samples, validate_provider)
     errors.extend(auth_errors)
 
@@ -297,12 +654,13 @@ def runner_preflight(
         "env_file": _env_file_label(config.env_file),
         "api_keys": _api_key_diagnostics(config, loaded_env_keys),
         "provider_auth": provider_auth,
+        "provider_seed_capabilities": seed_capabilities,
     }
 
 
 def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> dict[str, Any]:
     metadata = sample.metadata(config)
-    return {
+    preview = {
         "sample_id": sample.sample_id,
         "source": sample.source,
         "task_type": sample.task_type,
@@ -318,7 +676,38 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
         "system_his_schema_version": str(metadata["system_his_schema_version"]),
         "training_split": str(metadata["training_split"]),
         "contract_skeleton_mode": str(metadata["contract_skeleton_mode"]),
+        "method_condition": str(metadata["method_condition"]),
+        "analysis_population": str(metadata["analysis_population"]),
+        "semantic_instance_id": str(metadata["semantic_instance_id"]),
+        "decoding_seed": int(metadata["decoding_seed"]),
+        "paired_block_id": str(metadata["paired_block_id"]),
+        "pairing_identity_source": str(metadata["pairing_identity_source"]),
+        "requirement_audit_manifest": str(metadata["requirement_audit_manifest"]),
+        "requirement_boundary": {
+            key: metadata["requirement_boundary"][key]
+            for key in (
+                "boundary_version",
+                "requirement_id",
+                "envelope_sha256",
+                "capability_profile_id",
+                "capability_profile_sha256",
+                "disposition",
+                "decision_sha256",
+            )
+        },
     }
+    if "family_recipe_decision" in metadata:
+        preview["family_recipe_decision"] = metadata["family_recipe_decision"]
+    if "episode_pack" in metadata:
+        pack = metadata["episode_pack"]
+        preview["episode_pack"] = {
+            "pack_id": pack["pack_id"],
+            "pack_sha256": pack["pack_sha256"],
+            "public_projection_sha256": pack["public_context"][
+                "public_projection_sha256"
+            ],
+        }
+    return preview
 
 
 def _discover_tool_statuses(tools: tuple[str, ...]) -> dict[str, str]:
@@ -328,7 +717,26 @@ def _discover_tool_statuses(tools: tuple[str, ...]) -> dict[str, str]:
     return statuses
 
 
+def _project_request_for_sample(sample: PlannedSample) -> ProjectRequest:
+    return ProjectRequest(
+        task_type=sample.task_type,
+        width=sample.width,
+        project_name=sample.project_name,
+        description=sample.requirement,
+    )
+
+
+def _platform_profile_for_config(config: RunnerConfig) -> PlatformProfile:
+    return PlatformProfile(name=config.platform, vendor="generic", toolchain="open_source")
+
+
 def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = True) -> dict[str, Any]:
+    samples = planned_samples(config)
+    protocol_errors = _analysis_population_errors(samples)
+    _, seed_capability_errors = _seed_capability_diagnostics(config, samples)
+    protocol_errors.extend(seed_capability_errors)
+    if protocol_errors:
+        raise SystemExit("; ".join(protocol_errors))
     _load_env_file(config.env_file)
     if run_id is None:
         run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -353,8 +761,43 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
 
     _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
-    samples = planned_samples(config)
-    freeze_manifest = _measurement_freeze_manifest(config, run_id, config_fingerprint, samples)
+    method_artifact_store = ArtifactStore(run_dir / "method_artifacts")
+    tool_environment = collect_development_tool_environment()
+    tool_environment_ref = method_artifact_store.put_validated_json(
+        "tool-environments/development-preflight",
+        tool_environment,
+        contract_key="development_tool_environment",
+    )
+    l4_tool_environment = collect_development_l4_tool_environment(
+        open_enabled=config.run_l4_open and config.l4_open.run_policy != "never",
+        commercial_enabled=(
+            config.run_l4_commercial and config.l4_commercial.run_policy != "never"
+        ),
+        probe_authorized=_l4_version_probe_authorized(),
+        open_probe_command=openxc7_tool_probe_command(),
+        vivado_command=(
+            os.environ.get("SR2FPGA_VIVADO_COMMAND") or config.l4_commercial.command
+        ),
+    )
+    l4_tool_environment_ref = method_artifact_store.put_validated_json(
+        "tool-environments/development-l4-preflight",
+        l4_tool_environment,
+        contract_key="development_l4_tool_environment",
+    )
+    tool_versions = _measurement_tool_versions(
+        config,
+        tool_environment=tool_environment,
+    )
+    tool_versions.update(l4_tool_version_projection(l4_tool_environment))
+    freeze_manifest = _measurement_freeze_manifest(
+        config,
+        run_id,
+        config_fingerprint,
+        samples,
+        tool_versions=tool_versions,
+        tool_environment_ref=tool_environment_ref.to_dict(),
+        l4_tool_environment_ref=l4_tool_environment_ref.to_dict(),
+    )
     freeze_fingerprint = write_or_validate_freeze(
         run_dir / "measurement_freeze.json",
         freeze_manifest,
@@ -362,6 +805,18 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     )
     project_generators: dict[str, object | None] = {}
     repairers: dict[str, object | None] = {}
+    paired_artifact_coordinator = PairedArtifactCoordinator(method_artifact_store)
+    development_hidden_authority = (
+        _development_hidden_authority_for_run(
+            run_dir,
+            candidate_store=method_artifact_store,
+        )
+        if any(
+            sample.analysis_population in {"development", "excluded"}
+            for sample in samples
+        )
+        else None
+    )
 
     for index, sample in enumerate(samples):
         if index < state.next_index or should_skip_sample(state, sample.sample_id):
@@ -372,16 +827,123 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             write_run_state(state_path, state)
             continue
 
-        sample_project_generator = _project_generator_for_sample(project_generators, config, sample, events_path)
-        sample_repairer = _repairer_for_sample(repairers, config, sample)
         sample_metadata = sample.metadata(config)
         sample_metadata["freeze_fingerprint"] = freeze_fingerprint
+        sample_metadata["tool_environment_ref"] = tool_environment_ref.to_dict()
+        sample_metadata["l4_tool_environment_ref"] = (
+            l4_tool_environment_ref.to_dict()
+        )
+        episode_pack_ref = None
+        episode_pack = sample_metadata.get("episode_pack")
+        if isinstance(episode_pack, dict):
+            episode_pack_ref = method_artifact_store.put_validated_json(
+                f"episode-packs/{sample.sample_id}",
+                episode_pack,
+                contract_key="episode_pack",
+            )
+        event_sink = _generation_event_sink(
+            events_path,
+            sample,
+            config,
+            artifact_store=method_artifact_store,
+        )
+        method_condition = str(sample_metadata.get("method_condition", "")).strip().upper()
+        attempt_cost_router = (
+            AttemptCostLedgerRouter()
+            if method_condition in IMPLEMENTED_METHOD_CONDITIONS
+            else None
+        )
+        model_budget = ModelCallBudget(
+            int(sample_metadata["model_call_budget"]["max_model_calls"]),
+            event_sink=event_sink,
+            attempt_cost_ledger_provider=(
+                attempt_cost_router.current if attempt_cost_router is not None else None
+            ),
+            max_parser_schema_retries=int(
+                sample_metadata["model_call_budget"]["max_parser_schema_retries"]
+            ),
+        )
+        boundary = sample_metadata.get("requirement_boundary")
+        boundary_ready = isinstance(boundary, dict) and boundary.get("disposition") == "ready"
+        if boundary_ready:
+            sample_project_generator = _project_generator_for_sample(
+                project_generators,
+                config,
+                sample,
+                events_path,
+                model_budget=model_budget,
+                metadata=sample_metadata,
+                method_artifact_store=method_artifact_store,
+                paired_artifact_coordinator=paired_artifact_coordinator,
+            )
+            sample_repairer = (
+                _repairer_for_sample(
+                    repairers,
+                    config,
+                    sample,
+                    model_budget=model_budget,
+                )
+                if method_condition in {"M1", "M5"}
+                else None
+            )
+        else:
+            # Preserve the stop outcome without resolving credentials or
+            # constructing a method-specific model client.  The common intake
+            # decision is authoritative before generation allocation.
+            sample_project_generator = None
+            sample_repairer = None
+        request = _project_request_for_sample(sample)
+        platform = _platform_profile_for_config(config)
+        trusted_public_l2_harness = (
+            load_development_public_l2_harness(
+                Path(sample.public_l2_harness_manifest)
+            )
+            if sample.public_l2_harness_manifest
+            else None
+        )
+        attempt_cost_ledger_factory = None
+        if attempt_cost_router is not None:
+            accounting_input_hashes = {
+                freeze_fingerprint,
+                tool_environment_ref.sha256,
+                l4_tool_environment_ref.sha256,
+            }
+            if episode_pack_ref is not None:
+                accounting_input_hashes.add(episode_pack_ref.sha256)
+            if trusted_public_l2_harness is not None:
+                accounting_input_hashes.update(
+                    {
+                        trusted_public_l2_harness.manifest_sha256,
+                        trusted_public_l2_harness.bundle_sha256,
+                    }
+                )
+            episode_pack = sample_metadata.get("episode_pack")
+            if isinstance(episode_pack, dict):
+                public_context = episode_pack.get("public_context")
+                if isinstance(public_context, dict):
+                    public_projection_sha256 = public_context.get(
+                        "public_projection_sha256"
+                    )
+                    if isinstance(public_projection_sha256, str):
+                        accounting_input_hashes.add(public_projection_sha256)
+
+            def attempt_cost_ledger_factory(attempt_id: int) -> AttemptCostLedger:
+                return AttemptCostLedger(
+                    method_artifact_store,
+                    episode_id=sample.sample_id,
+                    attempt_id=f"attempt-{attempt_id:03d}",
+                    method_condition=method_condition,
+                    failure_origin=str(sample_metadata["failure_origin"]) or None,
+                    candidate_id=f"{sample.sample_id}-attempt-{attempt_id:03d}",
+                    input_artifact_hashes=accounting_input_hashes,
+                )
+
         agent = DataGenerationAgent(
             config.dataset_root,
             project_generator=sample_project_generator,
             repairer=sample_repairer,
             repair_provider_name=str(sample_metadata["repair_provider_resolved"]),
-            max_attempts=config.max_attempts,
+            max_attempts=_sample_attempt_limit(config, method_condition),
             enable_openxc7_l4=_l4_open_enabled_for_sample(config, sample),
             openxc7_tool=config.l4_open.tool,
             openxc7_part=config.l4_open.target_part,
@@ -393,36 +955,245 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             vivado_part=config.l4_commercial.target_part,
             vivado_timeout_seconds=config.l4_commercial.timeout_seconds,
             enable_independent_oracle=config.run_independent_oracle,
+            development_hidden_evaluation_authority=development_hidden_authority,
+            development_hidden_private_commitment=_development_hidden_private_commitment(
+                str(config.dataset_root),
+                sample,
+                sample_metadata,
+                run_id=run_id,
+            ),
+            development_public_candidate_store=(
+                method_artifact_store
+                if sample.analysis_population in {"development", "excluded"}
+                else None
+            ),
+            development_public_evaluator_store=(
+                ArtifactStore(
+                    run_dir / DEVELOPMENT_PUBLIC_AUTHORITY_DIR / "evaluator_store"
+                )
+                if sample.analysis_population in {"development", "excluded"}
+                else None
+            ),
+            development_public_workspace_root=(
+                run_dir
+                / DEVELOPMENT_PUBLIC_AUTHORITY_DIR
+                / "workspaces"
+                / sample.sample_id
+                if sample.analysis_population in {"development", "excluded"}
+                else None
+            ),
+            development_trusted_public_l2_harness=trusted_public_l2_harness,
+            attempt_cost_ledger_factory=attempt_cost_ledger_factory,
+            attempt_cost_router=attempt_cost_router,
+            tool_versions=tool_versions,
+            tool_environment_ref=tool_environment_ref.to_dict(),
+            l4_tool_environment=l4_tool_environment,
+            l4_tool_environment_ref=l4_tool_environment_ref.to_dict(),
         )
         result = agent.run_one(
             sample_id=sample.sample_id,
             requirement=sample.requirement,
-            request=ProjectRequest(
-                task_type=sample.task_type,
-                width=sample.width,
-                project_name=sample.project_name,
-                description=sample.requirement,
-            ),
-            platform=PlatformProfile(name=config.platform, vendor="generic", toolchain="open_source"),
+            request=request,
+            platform=platform,
             metadata=sample_metadata,
+        )
+        _update_sample_model_budget(
+            config.dataset_root / sample.sample_id,
+            model_budget.summary(),
         )
         labels = _read_labels(config.dataset_root / sample.sample_id)
         bucket = classify_sample_bucket(labels)
         state = _record_completed(state, sample.sample_id, index + 1, bucket, config.dataset_root / sample.sample_id)
-        _append_event(
-            events_path,
-            {
-                "event": "sample_completed",
-                "sample_id": sample.sample_id,
-                "source": sample.source,
-                "failure_origin": _sample_failure_origin(sample, config),
-                "difficulty_tier": sample.difficulty_tier,
-                "task_type": sample.task_type,
-                "width": sample.width,
-                "pass_level": result["pass_level"],
-                "bucket": bucket,
-            },
+        completion_event = {
+            "event": "sample_completed",
+            "sample_id": sample.sample_id,
+            "source": sample.source,
+            "failure_origin": _sample_failure_origin(sample, config),
+            "difficulty_tier": sample.difficulty_tier,
+            "task_type": sample.task_type,
+            "semantic_instance_id": sample.semantic_instance_id,
+            "decoding_seed": sample.decoding_seed,
+            "paired_block_id": sample.paired_block_id,
+            "pairing_identity_source": sample.pairing_identity_source,
+            "width": sample.width,
+            "pass_level": result["pass_level"],
+            "bucket": bucket,
+        }
+        if result.get("cost_summary_refs"):
+            completion_event["cost_summary_refs"] = list(result["cost_summary_refs"])
+        if result.get("canonical_trajectory_ref"):
+            completion_event["canonical_trajectory_ref"] = dict(
+                result["canonical_trajectory_ref"]
+            )
+        if result.get("development_hidden_outcome_ref"):
+            completion_event["development_hidden_outcome_ref"] = dict(
+                result["development_hidden_outcome_ref"]
+            )
+        if result.get("development_hidden_conformance_outcome_ref"):
+            completion_event["development_hidden_conformance_outcome_ref"] = dict(
+                result["development_hidden_conformance_outcome_ref"]
+            )
+        for ref_field in (
+            "development_terminal_selection_ref",
+            "development_selected_public_outcome_ref",
+            "development_terminal_public_outcome_ref",
+        ):
+            if result.get(ref_field):
+                completion_event[ref_field] = dict(result[ref_field])
+        if (
+            result.get("development_terminal_public_outcome_ref")
+            and sample_metadata.get("analysis_population") == "excluded"
+        ):
+            public_evaluation, public_evaluation_ref = (
+                project_development_public_evaluation(
+                    method_artifact_store,
+                    sample_dir=Path(result["sample_dir"]),
+                    episode_id=sample.sample_id,
+                    method_condition=method_condition,
+                    analysis_population="excluded",
+                    terminal_public_outcome_ref=ArtifactRef(
+                        **result["development_terminal_public_outcome_ref"]
+                    ),
+                )
+            )
+            completion_event["development_public_evaluation_ref"] = (
+                public_evaluation_ref.to_dict()
+            )
+            repair_projection = public_evaluation["repair"]
+            if (
+                repair_projection["reconciliation_status"] == "complete"
+                and not repair_projection["issues"]
+            ):
+                trajectory_ref_payload = result.get("canonical_trajectory_ref")
+                if not isinstance(trajectory_ref_payload, dict):
+                    raise RuntimeError(
+                        "excluded terminal outcome is missing canonical trajectory lineage"
+                    )
+                _, episode_outcome_ref = reconcile_development_episode_outcome(
+                    method_artifact_store,
+                    public_evaluation_ref=public_evaluation_ref,
+                    trajectory_ref=ArtifactRef(**trajectory_ref_payload),
+                )
+                completion_event["development_episode_outcome_ref"] = (
+                    episode_outcome_ref.to_dict()
+                )
+        if episode_pack_ref is not None:
+            completion_event["method_condition"] = method_condition
+            completion_event["analysis_population"] = str(
+                sample_metadata["analysis_population"]
+            )
+            completion_event["episode_pack_ref"] = episode_pack_ref.to_dict()
+            completion_event["episode_pack_sha256"] = episode_pack["pack_sha256"]
+            completion_event["public_projection_sha256"] = episode_pack[
+                "public_context"
+            ]["public_projection_sha256"]
+        method_artifact_record = _method_artifact_completion_record(
+            sample_project_generator,
+            sample_metadata,
         )
+        if method_artifact_record is not None:
+            completion_event["method_artifacts"] = method_artifact_record
+            failure_record = method_artifact_record.get("failure")
+            if (
+                sample_metadata.get("analysis_population") == "excluded"
+                and method_condition == "M4"
+                and isinstance(failure_record, dict)
+                and failure_record.get("stage") in {"h0", "h1", "h2", "h3"}
+            ):
+                if episode_pack_ref is None or not result.get(
+                    "canonical_trajectory_ref"
+                ):
+                    raise RuntimeError(
+                        "M4 H-stage stop is missing episode-pack or trajectory lineage"
+                    )
+                planning_ref_payload = method_artifact_record.get(
+                    "planning_artifact_ref"
+                )
+                event_ref_payloads = method_artifact_record.get(
+                    "method_event_refs"
+                )
+                if (
+                    not isinstance(planning_ref_payload, dict)
+                    or not isinstance(event_ref_payloads, list)
+                ):
+                    raise RuntimeError("M4 H-stage stop method artifacts are incomplete")
+                _, stop_outcome_ref = (
+                    reconcile_development_pre_candidate_stop_outcome(
+                        method_artifact_store,
+                        episode_pack_ref=episode_pack_ref,
+                        planning_artifact_ref=ArtifactRef(**planning_ref_payload),
+                        method_event_refs=(
+                            ArtifactRef(**payload) for payload in event_ref_payloads
+                        ),
+                        trajectory_ref=ArtifactRef(
+                            **result["canonical_trajectory_ref"]
+                        ),
+                        platform=platform,
+                    )
+                )
+                completion_event[
+                    "development_pre_candidate_stop_outcome_ref"
+                ] = stop_outcome_ref.to_dict()
+            if (
+                sample_metadata.get("analysis_population") == "excluded"
+                and method_condition == "M5"
+                and method_artifact_record.get("his_corrections_used") == 1
+            ):
+                required_refs = {
+                    "initial_planning_artifact_ref": method_artifact_record.get(
+                        "initial_planning_artifact_ref"
+                    ),
+                    "planning_artifact_ref": method_artifact_record.get(
+                        "planning_artifact_ref"
+                    ),
+                    "candidate_artifact_ref": method_artifact_record.get(
+                        "candidate_artifact_ref"
+                    ),
+                    "canonical_trajectory_ref": result.get(
+                        "canonical_trajectory_ref"
+                    ),
+                    "development_episode_outcome_ref": completion_event.get(
+                        "development_episode_outcome_ref"
+                    ),
+                }
+                event_ref_payloads = method_artifact_record.get("method_event_refs")
+                if (
+                    episode_pack_ref is None
+                    or not all(isinstance(value, dict) for value in required_refs.values())
+                    or not isinstance(event_ref_payloads, list)
+                ):
+                    raise RuntimeError(
+                        "M5 HIS correction is missing artifact-derived acceptance lineage"
+                    )
+                _, correction_outcome_ref = (
+                    reconcile_development_his_correction_outcome(
+                        method_artifact_store,
+                        episode_pack_ref=episode_pack_ref,
+                        initial_his_ref=ArtifactRef(
+                            **required_refs["initial_planning_artifact_ref"]
+                        ),
+                        corrected_his_ref=ArtifactRef(
+                            **required_refs["planning_artifact_ref"]
+                        ),
+                        method_event_refs=(
+                            ArtifactRef(**payload) for payload in event_ref_payloads
+                        ),
+                        candidate_artifact_ref=ArtifactRef(
+                            **required_refs["candidate_artifact_ref"]
+                        ),
+                        trajectory_ref=ArtifactRef(
+                            **required_refs["canonical_trajectory_ref"]
+                        ),
+                        development_episode_outcome_ref=ArtifactRef(
+                            **required_refs["development_episode_outcome_ref"]
+                        ),
+                        platform=platform,
+                    )
+                )
+                completion_event[
+                    "development_his_correction_outcome_ref"
+                ] = correction_outcome_ref.to_dict()
+        _append_event(events_path, completion_event)
         write_run_state(state_path, state)
 
     if config.refresh_exports:
@@ -463,12 +1234,102 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     return summary
 
 
+def _analysis_population_errors(samples: list[PlannedSample]) -> list[str]:
+    errors: list[str] = []
+    if any(sample.analysis_population == "official_vpp" for sample in samples):
+        errors.append(
+            "official_vpp execution is disabled until a signed G4b episode-pack projection "
+            "and evaluator-owned hidden channel are wired"
+        )
+    if any(sample.analysis_population == "ambiguity_audit" for sample in samples):
+        errors.append(
+            "ambiguity_audit cases require the sealed evaluator-owned requirement-audit "
+            "artifact path; they must not enter the project runner"
+        )
+        validated: set[str] = set()
+        for sample in samples:
+            if sample.analysis_population != "ambiguity_audit":
+                continue
+            if not sample.requirement_audit_manifest:
+                errors.append(
+                    f"ambiguity_audit sample {sample.sample_id} is missing requirement_audit_manifest"
+                )
+                continue
+            if sample.requirement_audit_manifest in validated:
+                continue
+            validated.add(sample.requirement_audit_manifest)
+            try:
+                load_requirement_audit_manifest(sample.requirement_audit_manifest)
+            except ValueError as error:
+                errors.append(
+                    f"ambiguity_audit manifest '{sample.requirement_audit_manifest}' is invalid "
+                    f"for sample {sample.sample_id}: {error}"
+                )
+    return errors
+
+
+def _development_hidden_authority_for_run(
+    run_dir: Path,
+    *,
+    candidate_store: ArtifactStore,
+) -> DevelopmentHiddenEvaluationAuthority:
+    authority_root = run_dir / DEVELOPMENT_HIDDEN_AUTHORITY_DIR
+    evaluator_store = ArtifactStore(authority_root / "evaluator_store")
+    return DevelopmentHiddenEvaluationAuthority(
+        candidate_store,
+        evaluator_store,
+        _development_hidden_evaluator,
+    )
+
+
+def _development_hidden_evaluator(_input) -> dict[str, str]:
+    return {
+        "outcome": "opaque",
+        "private_execution": "completed",
+        "evaluator_scope": "development_hidden",
+    }
+
+
+def _development_hidden_private_commitment(
+    dataset_root: str,
+    sample: PlannedSample,
+    metadata: dict[str, Any],
+    *,
+    run_id: str | None,
+) -> bytes:
+    payload = {
+        "evaluation_scope": "excluded_paired_block_hidden_commitment",
+        "run_id": run_id or "",
+        "requirement_sha256": sample.requirement_sha256,
+        "semantic_instance_id": sample.semantic_instance_id,
+        "decoding_seed": sample.decoding_seed,
+        "paired_block_id": sample.paired_block_id,
+        "analysis_population": str(metadata.get("analysis_population", "")),
+    }
+    if sample.analysis_population != "excluded":
+        payload.update(
+            {
+                "dataset_root": dataset_root,
+                "sample_id": sample.sample_id,
+                "task_type": sample.task_type,
+                "method_condition": str(metadata.get("method_condition", "")),
+            }
+        )
+    digest = json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(digest.encode("utf-8")).digest()
+
+
 def initial_run_state(run_id: str, config_fingerprint: str = "") -> RunState:
     return RunState(
         run_id=run_id,
         next_index=0,
         completed_samples=[],
-        buckets={"success_l3": [], "repair_trajectory": [], "rejected": []},
+        buckets={
+            "success_l3": [],
+            "repair_trajectory": [],
+            "not_run": [],
+            "rejected": [],
+        },
         failure_types={},
         exports_refreshed=False,
         config_fingerprint=config_fingerprint,
@@ -504,11 +1365,22 @@ def classify_sample_bucket(labels: dict[str, Any]) -> str:
         return "rejected"
     if int(labels.get("failure_count", 0)) > 0:
         return "repair_trajectory"
+    if labels.get("l2_sim_status") == "not_run":
+        return "not_run"
     return "rejected"
 
 
 def _config_to_jsonable(config: RunnerConfig) -> dict[str, Any]:
     payload = asdict(config)
+    for task in payload["tasks"]:
+        if not task["requirement"]:
+            del task["requirement"]
+    for source_name, connection in config.sources.items():
+        source_payload = payload["sources"][source_name]
+        source_payload["seed_capability_ref"] = _seed_capability_manifest_ref(
+            connection
+        )
+        del source_payload["seed_capability_manifest"]
     payload["dataset_root"] = str(config.dataset_root)
     payload["export_root"] = str(config.export_root)
     payload["run_root"] = str(config.run_root)
@@ -526,6 +1398,10 @@ def _measurement_freeze_manifest(
     run_id: str,
     config_fingerprint: str,
     samples: list[PlannedSample],
+    *,
+    tool_versions: dict[str, str] | None = None,
+    tool_environment_ref: dict[str, Any] | None = None,
+    l4_tool_environment_ref: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     source_names = sorted({sample.source for sample in samples})
     source_records = []
@@ -540,22 +1416,10 @@ def _measurement_freeze_manifest(
                 "timeout_seconds": connection.timeout_seconds,
                 "transport_attempts": connection.transport_attempts,
                 "max_tokens": connection.max_tokens,
+                "seed_capability_ref": _seed_capability_manifest_ref(connection),
             }
         )
-    sample_records = [
-        {
-            "sample_id": sample.sample_id,
-            "source": sample.source,
-            "family_id": sample.family_id,
-            "task_type": sample.task_type,
-            "topology_id": sample.topology_id,
-            "width": sample.width,
-            "requirement_style": sample.requirement_style,
-            "paired_requirement_id": sample.paired_requirement_id,
-            "requirement_sha256": sample.requirement_sha256,
-        }
-        for sample in samples
-    ]
+    sample_records = [_measurement_freeze_sample_record(sample, config) for sample in samples]
     timeouts = {
         f"source:{record['name']}": int(record["timeout_seconds"])
         for record in source_records
@@ -568,39 +1432,80 @@ def _measurement_freeze_manifest(
         source_records=source_records,
         max_attempts=config.max_attempts,
         timeouts=timeouts,
-        tool_versions=_measurement_tool_versions(config),
+        tool_versions=(
+            dict(tool_versions)
+            if tool_versions is not None
+            else _measurement_tool_versions(config)
+        ),
         l4_family_ids=list(getattr(config.l4_open, "family_ids", ())),
+        tool_environment_ref=tool_environment_ref,
+        l4_tool_environment_ref=l4_tool_environment_ref,
     )
 
 
-def _measurement_tool_versions(config: RunnerConfig) -> dict[str, str]:
-    commands = {
-        "verilator": ["verilator", "--version"],
-        "iverilog": ["iverilog", "-V"],
-        "vvp": ["vvp", "-V"],
-        "yosys": ["yosys", "-V"],
+def _measurement_freeze_sample_record(
+    sample: PlannedSample,
+    config: RunnerConfig,
+) -> dict[str, Any]:
+    record = {
+        "sample_id": sample.sample_id,
+        "source": sample.source,
+        "family_id": sample.family_id,
+        "task_type": sample.task_type,
+        "topology_id": sample.topology_id,
+        "width": sample.width,
+        "requirement_style": sample.requirement_style,
+        "paired_requirement_id": sample.paired_requirement_id,
+        "requirement_sha256": sample.requirement_sha256,
+        "method_condition": _sample_method_condition(sample, config),
+        "analysis_population": sample.analysis_population,
+        "semantic_instance_id": sample.semantic_instance_id,
+        "decoding_seed": sample.decoding_seed,
+        "paired_block_id": sample.paired_block_id,
+        "pairing_identity_source": sample.pairing_identity_source,
+        "max_model_calls": _sample_model_call_ceiling(sample, config),
     }
-    versions: dict[str, str] = {}
-    for name, command in commands.items():
-        executable = resolve_executable(command[0])
-        if executable is None:
-            versions[name] = "missing"
-            continue
-        try:
-            completed = subprocess.run(
-                [str(executable), *command[1:]],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            versions[name] = f"unavailable:{type(exc).__name__}"
-            continue
-        output = (completed.stdout or completed.stderr).strip().splitlines()
-        versions[name] = output[0] if output else f"exit:{completed.returncode}"
+    metadata = sample.metadata(config)
+    boundary = metadata["requirement_boundary"]
+    record["requirement_boundary"] = {
+        key: boundary[key]
+        for key in (
+            "boundary_version",
+            "requirement_id",
+            "envelope_sha256",
+            "capability_profile_id",
+            "capability_profile_sha256",
+            "disposition",
+            "decision_sha256",
+        )
+    }
+    decision = metadata.get("family_recipe_decision")
+    if decision is not None:
+        record["family_recipe_decision"] = decision
+    pack = metadata.get("episode_pack")
+    if pack is not None:
+        record["episode_pack"] = pack
+    return record
+
+
+def _measurement_tool_versions(
+    config: RunnerConfig,
+    *,
+    tool_environment: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    versions = tool_version_projection(
+        tool_environment or collect_development_tool_environment()
+    )
     versions["l4_open"] = config.l4_open.tool if config.run_l4_open else "disabled"
     return versions
+
+
+def _l4_version_probe_authorized() -> bool:
+    return os.environ.get(L4_VERSION_PROBE_ENV, "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+    }
 
 
 def _load_env_file(path: Path) -> set[str]:
@@ -646,6 +1551,103 @@ def _api_key_diagnostics(config: RunnerConfig, loaded_env_keys: set[str]) -> dic
 
 def _secret_fingerprint(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()[:8]
+
+
+def _seed_capability_diagnostics(
+    config: RunnerConfig,
+    samples: list[PlannedSample],
+) -> tuple[dict[str, dict[str, str]], list[str]]:
+    diagnostics: dict[str, dict[str, str]] = {}
+    errors: list[str] = []
+    source_names = {sample.source for sample in samples}
+    if config.repair_provider and config.repair_provider not in {
+        "none",
+        "same_as_source",
+    }:
+        source_names.add(config.repair_provider)
+    for source in sorted(source_names):
+        connection = resolve_source_connection(config, source)
+        if connection.kind == "deterministic":
+            diagnostics[source] = {
+                "status": "not_applicable",
+                "classification": "not_applicable",
+                "paired_confirmatory_eligible": "false",
+            }
+            continue
+        if not connection.seed_capability_manifest:
+            diagnostics[source] = {
+                "status": "unavailable",
+                "classification": "unverified",
+                "paired_confirmatory_eligible": "false",
+            }
+            if config.require_paired_confirmatory_seed_control:
+                errors.append(
+                    f"source {source} lacks a provider seed capability manifest"
+                )
+            continue
+        payload: dict[str, Any] | None = None
+        try:
+            payload = load_development_provider_seed_capability(
+                connection.seed_capability_manifest
+            )
+            require_paired_confirmatory_seed_capability(
+                payload,
+                provider_adapter=(
+                    "anthropic_compatible"
+                    if connection.kind == "anthropic_compat"
+                    else "openai_compatible"
+                ),
+                provider_model=connection.model,
+                gateway_base_url=connection.base_url,
+            )
+        except ValueError as exc:
+            diagnostics[source] = {
+                "status": "ineligible",
+                "classification": (
+                    str(payload.get("seed_control_classification", "invalid"))
+                    if payload is not None
+                    else "invalid"
+                ),
+                "paired_confirmatory_eligible": "false",
+            }
+            if config.require_paired_confirmatory_seed_control:
+                errors.append(f"source {source} seed-control ineligible: {exc}")
+            continue
+        diagnostics[source] = {
+            "status": "eligible_candidate",
+            "classification": str(payload["seed_control_classification"]),
+            "paired_confirmatory_eligible": "true",
+            "capability_profile_id": str(payload["capability_profile_id"]),
+        }
+    return diagnostics, errors
+
+
+def _seed_capability_manifest_ref(
+    connection: SourceConnection,
+) -> dict[str, Any] | None:
+    if not connection.seed_capability_manifest:
+        return None
+    manifest_path = Path(connection.seed_capability_manifest)
+    try:
+        manifest_bytes = manifest_path.read_bytes()
+    except OSError as exc:
+        raise ValueError(
+            "provider seed capability manifest is unreadable: "
+            + connection.seed_capability_manifest
+        ) from exc
+    payload = load_development_provider_seed_capability(
+        connection.seed_capability_manifest
+    )
+    return {
+        "capability_profile_id": str(payload["capability_profile_id"]),
+        "manifest_sha256": hashlib.sha256(manifest_bytes).hexdigest(),
+        "seed_control_classification": str(
+            payload["seed_control_classification"]
+        ),
+        "paired_confirmatory_eligible": bool(
+            payload["paired_confirmatory_eligible"]
+        ),
+    }
 
 
 def _source_auth_diagnostics(
@@ -1040,12 +2042,16 @@ def _calibration_breakdown(dataset_root: Path, sample_ids: list[str]) -> dict[st
         _count_oracle_strength(oracle_strength, sample_dir)
         _count_independent_oracle(independent_oracle, labels, metadata)
         _count_repair_metrics(repair_metrics, sample_dir)
-        for field in metadata_fields:
-            value = str(metadata.get(field, "")).strip()
+        for metadata_field in metadata_fields:
+            value = str(metadata.get(metadata_field, "")).strip()
             if not value:
                 continue
-            metadata_breakdown[field][value] = metadata_breakdown[field].get(value, 0) + 1
-            _record_calibration_cell(calibration_counts[field], value, pass_level, l0_contract_failed)
+            metadata_breakdown[metadata_field][value] = (
+                metadata_breakdown[metadata_field].get(value, 0) + 1
+            )
+            _record_calibration_cell(
+                calibration_counts[metadata_field], value, pass_level, l0_contract_failed
+            )
         for failure_family in sorted(_sample_failure_families(sample_dir)):
             failure_family_breakdown[failure_family] = failure_family_breakdown.get(failure_family, 0) + 1
             _record_calibration_cell(
@@ -1163,8 +2169,8 @@ def _count_independent_oracle(
         family_id,
         "other",
     )
-    for field, value in (("by_domain", domain), ("by_family", family_id)):
-        counts = summary[field].setdefault(
+    for breakdown_field, value in (("by_domain", domain), ("by_family", family_id)):
+        counts = summary[breakdown_field].setdefault(
             value,
             {"pass": 0, "fail": 0, "not_run": 0, "infrastructure_error": 0},
         )
@@ -1287,6 +2293,11 @@ def _count_level_labels(levels: dict[str, dict[str, int]], labels: dict[str, Any
         "l3": "l3_synth_pass",
     }
     for level, check_name in level_checks.items():
+        if level == "l2":
+            explicit_status = labels.get("l2_sim_status")
+            if explicit_status in {"pass", "fail", "not_run"}:
+                levels[level][explicit_status] = levels[level].get(explicit_status, 0) + 1
+                continue
         value = checks.get(check_name)
         if value is True:
             levels[level]["pass"] += 1
@@ -1401,8 +2412,8 @@ def _record_calibration_cell(
 
 def _calibration_rates(counts: dict[str, dict[str, dict[str, Any]]]) -> dict[str, dict[str, dict[str, Any]]]:
     matrix: dict[str, dict[str, dict[str, Any]]] = {}
-    for field, cells in counts.items():
-        matrix[field] = {}
+    for calibration_field, cells in counts.items():
+        matrix[calibration_field] = {}
         for value, cell in cells.items():
             total = int(cell["total"])
             l3_count = sum(
@@ -1411,7 +2422,7 @@ def _calibration_rates(counts: dict[str, dict[str, dict[str, Any]]]) -> dict[str
                 if _passes_at_least(str(pass_level), "L3")
             )
             l0_contract_failures = int(cell.get("l0_contract_failures", 0))
-            matrix[field][value] = {
+            matrix[calibration_field][value] = {
                 "total": total,
                 "pass_levels": cell["pass_levels"],
                 "l3_pass_rate": 0.0 if total == 0 else l3_count / total,
@@ -1542,6 +2553,10 @@ def _l4_commercial_enabled_for_sample(config: RunnerConfig, sample: PlannedSampl
 
 
 def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
+    if "family_recipe" in item:
+        raise SystemExit(
+            "task family_recipe has been removed; recipe selection now uses the automatic policy"
+        )
     widths = [int(width) for width in item.get("widths", [8])]
     count = int(item.get("count", 1))
     if count > 0 and not widths:
@@ -1550,7 +2565,7 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     if measurement_point and measurement_point not in VALID_MEASUREMENT_POINTS:
         allowed = ", ".join(sorted(VALID_MEASUREMENT_POINTS))
         raise SystemExit(f"Unsupported measurement_point: {measurement_point}. Expected one of: {allowed}")
-    requirement_style = str(item.get("requirement_style", "contract"))
+    requirement_style = str(item.get("requirement_style", "simple_prompt"))
     if requirement_style not in VALID_REQUIREMENT_STYLES:
         allowed = ", ".join(sorted(VALID_REQUIREMENT_STYLES))
         raise SystemExit(f"Unsupported requirement_style: {requirement_style}. Expected one of: {allowed}")
@@ -1561,6 +2576,51 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     if evaluation_line not in VALID_EVALUATION_LINES:
         allowed = ", ".join(sorted(VALID_EVALUATION_LINES))
         raise SystemExit(f"Unsupported evaluation_line: {evaluation_line}. Expected one of: {allowed}")
+    requirement = item.get("requirement", "")
+    if not isinstance(requirement, str):
+        raise SystemExit("Task requirement must be a string")
+    method_condition = str(item.get("method_condition", ""))
+    if method_condition and method_condition not in IMPLEMENTED_METHOD_CONDITIONS:
+        allowed = ", ".join(sorted(IMPLEMENTED_METHOD_CONDITIONS))
+        raise SystemExit(
+            f"Unsupported or not-yet-implemented method_condition: {method_condition}. "
+            f"Current adapters: {allowed}"
+        )
+    analysis_population = str(item.get("analysis_population", "development"))
+    if analysis_population not in VALID_ANALYSIS_POPULATIONS:
+        allowed = ", ".join(sorted(VALID_ANALYSIS_POPULATIONS))
+        raise SystemExit(
+            f"Unsupported analysis_population: {analysis_population}. Expected one of: {allowed}"
+        )
+    if analysis_population == "official_vpp" and not method_condition:
+        raise SystemExit("official_vpp tasks require an explicit method_condition")
+    if analysis_population == "ambiguity_audit" and method_condition:
+        raise SystemExit("ambiguity_audit is A_req, not an M0-M5 method_condition")
+    raw_manifest = item.get("requirement_audit_manifest", raw.get("requirement_audit_manifest", ""))
+    requirement_audit_manifest = ""
+    if raw_manifest is not None:
+        requirement_audit_manifest = str(raw_manifest).strip()
+    public_l2_harness_manifest = str(
+        item.get("public_l2_harness_manifest", "") or ""
+    ).strip()
+    if public_l2_harness_manifest and analysis_population not in {
+        "development",
+        "excluded",
+    }:
+        raise SystemExit(
+            "public_l2_harness_manifest is restricted to development/excluded tasks"
+        )
+    semantic_instance_id = str(item.get("semantic_instance_id", "") or "").strip()
+    paired_block_id = str(item.get("paired_block_id", "") or "").strip()
+    decoding_seed = item.get("decoding_seed")
+    _validate_task_pairing_identity(
+        analysis_population=analysis_population,
+        method_condition=method_condition,
+        count=count,
+        semantic_instance_id=semantic_instance_id,
+        decoding_seed=decoding_seed,
+        paired_block_id=paired_block_id,
+    )
     return TaskConfig(
         source=str(item.get("source", raw.get("provider", "deterministic"))),
         task_type=task_type,
@@ -1573,6 +2633,14 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
         measurement_point=measurement_point,
         requirement_style=requirement_style,
         evaluation_line=evaluation_line,
+        requirement=requirement.strip(),
+        method_condition=method_condition,
+        analysis_population=analysis_population,
+        requirement_audit_manifest=requirement_audit_manifest,
+        public_l2_harness_manifest=public_l2_harness_manifest,
+        semantic_instance_id=semantic_instance_id,
+        decoding_seed=decoding_seed,
+        paired_block_id=paired_block_id,
     )
 
 
@@ -1625,12 +2693,13 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
     for name, item in raw.items():
         kind = str(item.get("kind", "openai_compat"))
         generation_mode = str(item.get("generation_mode", ""))
-        if kind == "openai_compat" and generation_mode == "direct":
+        expected_mode = _GENERATION_MODE_BY_KIND.get(kind)
+        if generation_mode and expected_mode is not None and generation_mode != expected_mode:
             raise SystemExit(
-                f"Source {name!r}: generation_mode 'direct' is not supported for kind 'openai_compat'"
+                f"Source {name!r}: kind {kind!r} requires generation_mode {expected_mode!r}"
             )
         if not generation_mode:
-            generation_mode = _GENERATION_MODE_BY_KIND.get(kind, "")
+            generation_mode = expected_mode or ""
         system_his_schema_version = str(item.get("system_his_schema_version", ""))
         if system_his_schema_version not in {"", "system-his-v1.1", "system-his-v1.2"}:
             raise SystemExit(
@@ -1647,6 +2716,7 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             transport_attempts=int(item.get("transport_attempts", 3)),
             max_tokens=int(item.get("max_tokens", 0)),
             system_his_schema_version=system_his_schema_version,
+            seed_capability_manifest=str(item.get("seed_capability_manifest", "")),
         )
     return sources
 
@@ -1666,10 +2736,126 @@ def _load_mapping(path: Path) -> dict[str, Any]:
     return data
 
 
+def _validate_task_pairing_identity(
+    *,
+    analysis_population: str,
+    method_condition: str,
+    count: int,
+    semantic_instance_id: str,
+    decoding_seed: Any,
+    paired_block_id: str,
+) -> None:
+    supplied = (
+        bool(semantic_instance_id),
+        decoding_seed is not None,
+        bool(paired_block_id),
+    )
+    if any(supplied) and not all(supplied):
+        raise SystemExit(
+            "first-class pairing identity requires semantic_instance_id, "
+            "decoding_seed, and paired_block_id together"
+        )
+    if decoding_seed is not None and (
+        not isinstance(decoding_seed, int)
+        or isinstance(decoding_seed, bool)
+        or decoding_seed < 0
+    ):
+        raise SystemExit("first-class pairing identity decoding_seed must be non-negative")
+    for label, value in (
+        ("semantic_instance_id", semantic_instance_id),
+        ("paired_block_id", paired_block_id),
+    ):
+        if value and (
+            len(value) > 128
+            or not value[0].isalnum()
+            or any(not (character.isalnum() or character in "._:-") for character in value)
+        ):
+            raise SystemExit(
+                f"first-class pairing identity {label} contains unsafe characters"
+            )
+    if all(supplied) and count != 1:
+        raise SystemExit(
+            "first-class pairing identity maps to exactly one planned sample; task count must be 1"
+        )
+    if (
+        analysis_population == "excluded"
+        and method_condition in EPISODE_PACK_METHOD_CONDITIONS
+        and not all(supplied)
+    ):
+        raise SystemExit(
+            "excluded M0-M5 tasks require first-class pairing identity: "
+            "semantic_instance_id, decoding_seed, and paired_block_id"
+        )
+
+
+def _resolve_planned_pairing_identity(
+    task: TaskConfig,
+    requirement_sha256: str,
+) -> tuple[str, int, str, str]:
+    if task.semantic_instance_id:
+        assert task.decoding_seed is not None
+        return (
+            task.semantic_instance_id,
+            task.decoding_seed,
+            task.paired_block_id,
+            "explicit",
+        )
+    digest = hashlib.sha256(
+        f"development-pairing-v1:{requirement_sha256}".encode("utf-8")
+    ).hexdigest()
+    seed = int(digest[24:32], 16) or 1
+    semantic_instance_id = f"development-{digest[:24]}"
+    paired_block_id = "paired-" + hashlib.sha256(
+        f"{semantic_instance_id}:{seed}:{requirement_sha256}".encode("utf-8")
+    ).hexdigest()[:24]
+    return semantic_instance_id, seed, paired_block_id, "development_derived"
+
+
+def _validate_planned_pairing_blocks(samples: list[PlannedSample]) -> None:
+    blocks: dict[str, tuple[str, int, str]] = {}
+    methods: set[tuple[str, str]] = set()
+    for sample in samples:
+        if (
+            sample.analysis_population != "excluded"
+            or sample.method_condition not in EPISODE_PACK_METHOD_CONDITIONS
+        ):
+            continue
+        identity = (
+            sample.semantic_instance_id,
+            int(sample.decoding_seed),
+            sample.requirement_sha256,
+        )
+        existing = blocks.setdefault(sample.paired_block_id, identity)
+        if existing != identity:
+            raise SystemExit(
+                f"paired_block_id {sample.paired_block_id!r} is bound to conflicting "
+                "semantic instance, decoding seed, or requirement"
+            )
+        method_key = (sample.paired_block_id, sample.method_condition)
+        if method_key in methods:
+            raise SystemExit(
+                f"paired_block_id {sample.paired_block_id!r} contains duplicate "
+                f"method_condition {sample.method_condition}"
+            )
+        methods.add(method_key)
+
+
 def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
+    if config.max_attempts < 1:
+        raise SystemExit("max_attempts must be >= 1")
+    if config.max_model_calls < 0:
+        raise SystemExit("max_model_calls must be >= 0")
     samples: list[PlannedSample] = []
     sequence = 1
     for task in config.tasks:
+        _validate_task_pairing_identity(
+            analysis_population=task.analysis_population,
+            method_condition=task.method_condition,
+            count=task.count,
+            semantic_instance_id=task.semantic_instance_id,
+            decoding_seed=task.decoding_seed,
+            paired_block_id=task.paired_block_id,
+        )
         if task.count > 0 and not task.widths:
             raise SystemExit("Task widths must not be empty when count is positive")
         produced = 0
@@ -1680,13 +2866,19 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                 sample_key = topology_id or task_type
                 sample_id = f"sample_{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
                 project_name = f"{config.sample_id_prefix}_{sample_key}_{width}_{sequence:06d}"
-                requirement = _default_requirement(
+                requirement = task.requirement.strip() or _default_requirement(
                     task_type,
                     width,
                     topology_id=topology_id,
                     requirement_style=task.requirement_style,
                 )
                 requirement_sha256 = hashlib.sha256(requirement.encode("utf-8")).hexdigest()
+                (
+                    semantic_instance_id,
+                    decoding_seed,
+                    paired_block_id,
+                    pairing_identity_source,
+                ) = _resolve_planned_pairing_identity(task, requirement_sha256)
                 samples.append(
                     PlannedSample(
                         sample_id=sample_id,
@@ -1705,17 +2897,30 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                         evaluation_line=task.evaluation_line,
                         paired_requirement_id=f"{family_id}:{requirement_sha256[:16]}",
                         requirement_sha256=requirement_sha256,
+                        method_condition=task.method_condition,
+                        analysis_population=task.analysis_population,
+                        requirement_audit_manifest=task.requirement_audit_manifest,
+                        public_l2_harness_manifest=task.public_l2_harness_manifest,
+                        semantic_instance_id=semantic_instance_id,
+                        decoding_seed=decoding_seed,
+                        paired_block_id=paired_block_id,
+                        pairing_identity_source=pairing_identity_source,
                     )
                 )
                 sequence += 1
                 produced += 1
     max_samples = int(config.line_b_targets.get("max_samples", len(samples)))
-    return samples[:max_samples]
+    selected = samples[:max_samples]
+    _validate_planned_pairing_blocks(selected)
+    return selected
 
 
 def _task_expansion_items(task: TaskConfig) -> list[tuple[str, str, str, str, int]]:
     if task.task_type != "component_topology":
-        catalog_spec = task_family_spec_for_alias(task.task_type)
+        try:
+            catalog_spec = task_family_spec_for_alias(task.task_type)
+        except KeyError:
+            return [("", task.task_type, "", "unclassified", width) for width in task.widths]
         return [
             ("", task.task_type, catalog_spec.family_id, catalog_spec.sr2fpga_tier, width)
             for width in task.widths
@@ -1741,7 +2946,7 @@ def _default_requirement(
     task_type: str,
     width: int,
     topology_id: str = "",
-    requirement_style: str = "contract",
+    requirement_style: str = "simple_prompt",
 ) -> str:
     if requirement_style == "simple_prompt":
         return _simple_prompt_requirement(task_type, width)
@@ -1749,7 +2954,7 @@ def _default_requirement(
         return _natural_component_requirement(task_type, width, topology_id)
     return (
         f"Design a {width}-bit {task_type} as a complete SR2FPGA Verilog RTL project. "
-        "Use multi-file RTL for FIFO, SPI, UART, PWM, and controller-style tasks; "
+        "Use an appropriate multi-file RTL structure for the requested design; "
         "include system_his.json, manifest.json, "
         "timing constraints, a bounded self-checking testbench that prints TEST_PASS on success "
         f"or TEST_FAIL on failure, and predicted QoR.{_topology_requirement_clause(task_type, topology_id)}"
@@ -1987,15 +3192,84 @@ def _topology_expected_behavior(task_type: str) -> str:
 
 def _sample_failure_origin(sample: PlannedSample, config: RunnerConfig) -> str:
     if sample.failure_origin:
-        return sample.failure_origin
-    if sample.failure_injectors:
-        return "synthetic_injected"
+        origin = sample.failure_origin
+    elif sample.failure_injectors:
+        origin = "synthetic_injected"
+    else:
+        connection = resolve_source_connection(config, sample.source)
+        if connection.kind in LLM_SOURCE_KINDS:
+            origin = "natural_llm"
+        elif connection.kind == "deterministic":
+            origin = "deterministic_template"
+        else:
+            origin = sample.source
+    try:
+        validated = validate_accounting_failure_origin(origin)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
+    if validated is None:
+        raise SystemExit("sample failure origin cannot be null")
+    return validated
+
+
+def _sample_method_condition(sample: PlannedSample, config: RunnerConfig) -> str:
+    """Resolve the method independently from provider/model provenance."""
+
     connection = resolve_source_connection(config, sample.source)
-    if connection.kind in LLM_SOURCE_KINDS:
-        return "natural_llm"
+    repair_enabled = config.repair_provider not in {"", "none", "deterministic"} and config.max_attempts > 1
     if connection.kind == "deterministic":
-        return "deterministic_template"
-    return sample.source
+        inferred = "reference_deterministic"
+    elif connection.generation_mode == "direct":
+        inferred = "M1" if repair_enabled else "M0"
+    elif connection.generation_mode == "two_stage":
+        inferred = "M5" if repair_enabled else "M4"
+    elif connection.generation_mode == "oracle_his2project":
+        inferred = "oracle_his_ceiling"
+    else:
+        raise SystemExit(
+            f"Cannot resolve method_condition for source {sample.source!r} "
+            f"with generation_mode {connection.generation_mode!r}"
+        )
+    compatible_explicit = (
+        connection.generation_mode == "direct"
+        and sample.method_condition in {"M0", "M1"}
+    ) or (
+        connection.generation_mode == "two_stage"
+        and sample.method_condition in {"M2", "M3", "M4", "M5"}
+    )
+    if sample.method_condition and sample.method_condition != inferred and not compatible_explicit:
+        raise SystemExit(
+            f"method_condition {sample.method_condition!r} is inconsistent with source "
+            f"{sample.source!r}, generation_mode {connection.generation_mode!r}, and repair budget"
+        )
+    return sample.method_condition or inferred
+
+
+def _sample_model_call_ceiling(
+    sample: PlannedSample,
+    config: RunnerConfig,
+    method_condition: str | None = None,
+) -> int:
+    if config.max_model_calls > 0:
+        return config.max_model_calls
+    method = method_condition or _sample_method_condition(sample, config)
+    if method == "reference_deterministic":
+        return 0
+    if method in {"M0", "oracle_his_ceiling"}:
+        return 1
+    if method == "M1":
+        return max(1, config.max_attempts)
+    if method in {"M2", "M3", "M4"}:
+        return 2
+    if method == "M5":
+        return 2 + max(0, config.max_attempts - 1)
+    raise SystemExit(f"No model-call allocation is implemented for {method}")
+
+
+def _sample_attempt_limit(config: RunnerConfig, method_condition: str) -> int:
+    if method_condition in {"M1", "M5"}:
+        return max(1, config.max_attempts)
+    return 1
 
 
 def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfig) -> str:
@@ -2004,13 +3278,22 @@ def _sample_system_his_schema_version(sample: PlannedSample, config: RunnerConfi
         return connection.system_his_schema_version
     if connection.kind == "deterministic":
         return "system-his-v1.2"
+    if connection.kind in REQ2HIS_API_KINDS and connection.generation_mode == "two_stage":
+        return "system-his-v1.2"
     if connection.kind in VETTED_TWO_STAGE_KINDS and connection.generation_mode in {"two_stage", "oracle_his2project"}:
         return "system-his-v1.2"
-    return "system-his-v1.1"
+    if connection.generation_mode == "direct":
+        return "not_applicable"
+    return "unknown"
 
 
 def _contract_skeleton_mode(sample: PlannedSample, config: RunnerConfig) -> str:
     connection = resolve_source_connection(config, sample.source)
+    method_condition = _sample_method_condition(sample, config)
+    if method_condition == "M2":
+        return "none"
+    if method_condition == "M3":
+        return "none_free_full_project"
     if connection.generation_mode in {"two_stage", "oracle_his2project"}:
         return "behavior_files"
     if connection.kind == "deterministic":
@@ -2021,7 +3304,7 @@ def _contract_skeleton_mode(sample: PlannedSample, config: RunnerConfig) -> str:
 
 
 def _training_split(schema_version: str) -> str:
-    return "clean" if schema_version == "system-his-v1.2" else "quarantine"
+    return load_system_his_compatibility_envelope().classify(schema_version).training_partition
 
 
 def _measurement_point(config: RunnerConfig) -> str:
@@ -2030,31 +3313,291 @@ def _measurement_point(config: RunnerConfig) -> str:
     return "a_first_attempt_no_tools"
 
 
+def _measurement_point_for_method(
+    config: RunnerConfig,
+    method_condition: str,
+) -> str:
+    if method_condition in {"M1", "M5"}:
+        return _measurement_point(config)
+    return "a_first_attempt_no_tools"
+
+
 def _project_generator_for_sample(
     project_generators: dict[str, object | None],
     config: RunnerConfig,
     sample: PlannedSample,
     events_path: Path,
+    model_budget: ModelCallBudget | None = None,
+    metadata: dict[str, Any] | None = None,
+    method_artifact_store: ArtifactStore | None = None,
+    paired_artifact_coordinator: PairedArtifactCoordinator | None = None,
 ) -> object | None:
     connection = resolve_source_connection(config, sample.source)
-    cache_key = sample.source
+    cache_key = f"{sample.source}:{sample.sample_id}"
     if connection.generation_mode in {"two_stage", "oracle_his2project"}:
+        cache_key = f"{sample.source}:{sample.sample_id}"
+    if metadata is not None and metadata.get("method_condition") in {"M0", "M1"}:
         cache_key = f"{sample.source}:{sample.sample_id}"
     if cache_key not in project_generators:
         event_sink = (
-            _generation_event_sink(events_path, sample, config)
+            _generation_event_sink(
+                events_path,
+                sample,
+                config,
+                artifact_store=method_artifact_store,
+            )
             if connection.generation_mode in {"two_stage", "oracle_his2project"}
             else None
         )
-        project_generators[cache_key] = build_project_generator_for_connection(
+        build_kwargs: dict[str, Any] = {"event_sink": event_sink}
+        if sample.decoding_seed is not None:
+            build_kwargs["decoding_seed"] = sample.decoding_seed
+        if model_budget is not None:
+            build_kwargs["model_budget"] = model_budget
+        generator = build_project_generator_for_connection(
             connection,
-            event_sink=event_sink,
+            **build_kwargs,
         )
+        generator = _bind_runner_method_generator(
+            generator,
+            metadata,
+            config=config,
+            sample=sample,
+            method_artifact_store=method_artifact_store,
+            paired_artifact_coordinator=paired_artifact_coordinator,
+        )
+        generator = _bind_frozen_direct_generator(generator, metadata)
+        project_generators[cache_key] = generator
     project_generator = project_generators[cache_key]
     if not sample.failure_injectors:
         return project_generator
     base_generator = project_generator or ProjectGenerator()
     return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
+
+
+def _bind_frozen_direct_generator(generator, metadata: dict[str, Any] | None):
+    if (
+        metadata is None
+        or metadata.get("method_condition") not in {"M0", "M1"}
+        or not isinstance(generator, DirectProjectGenerator)
+    ):
+        return generator
+    pack = metadata.get("episode_pack")
+    if not isinstance(pack, dict):
+        raise SystemExit("M0/M1 development execution requires a validated episode_pack")
+    return FrozenContextDirectProjectGenerator(
+        generator.client,
+        context_from_validated_episode_pack(pack),
+    )
+
+
+def _bind_runner_method_generator(
+    generator,
+    metadata: dict[str, Any] | None,
+    *,
+    config: RunnerConfig,
+    sample: PlannedSample,
+    method_artifact_store: ArtifactStore | None,
+    paired_artifact_coordinator: PairedArtifactCoordinator | None,
+):
+    method_condition = str((metadata or {}).get("method_condition", ""))
+    if method_condition not in {"M0", "M1", "M2", "M3", "M4", "M5"}:
+        return generator
+    if method_artifact_store is None or paired_artifact_coordinator is None:
+        raise SystemExit(f"{method_condition} Runner dispatch requires a method artifact store")
+    pack = (metadata or {}).get("episode_pack")
+    if not isinstance(pack, dict):
+        raise SystemExit(f"{method_condition} development execution requires a validated episode_pack")
+    context = context_from_validated_episode_pack(pack)
+    if method_condition in {"M0", "M1"}:
+        direct_client = getattr(generator, "client", None)
+        if not isinstance(generator, DirectProjectGenerator) or direct_client is None:
+            raise SystemExit(
+                f"{method_condition} requires a Direct source with a model client"
+            )
+        direct = FrozenContextDirectProjectFacade(direct_client)
+        services = GenerationServices(
+            artifacts=MethodArtifactGateway(method_artifact_store),
+            episode_id=sample.sample_id,
+            direct=direct,
+        )
+        return _RunnerDirectMethodProjectGenerator(
+            method_condition=method_condition,
+            context=context,
+            services=services,
+            coordinator=paired_artifact_coordinator,
+            pairing=_runner_pairing_key(config, sample, context),
+            direct=direct,
+        )
+    system_his_generator = getattr(generator, "system_his_generator", None)
+    project_generator = getattr(generator, "his_project_generator", None)
+    req2his_client = getattr(system_his_generator, "client", None)
+    project_client = getattr(project_generator, "client", None)
+    if req2his_client is None or project_client is None:
+        raise SystemExit(
+            f"{method_condition} requires a two-stage source with separate REQ2HIS and project clients"
+        )
+
+    if method_condition == "M2":
+        services = GenerationServices(
+            artifacts=MethodArtifactGateway(method_artifact_store),
+            episode_id=sample.sample_id,
+            untyped=FrozenContextUntypedPlanFacade(req2his_client, project_client),
+        )
+        return _RunnerUntypedPlanProjectGenerator(
+            context=context,
+            services=services,
+        )
+    platform = _platform_profile_for_config(config)
+    system_his = FrozenContextSystemHisFacade(
+        req2his_client,
+        project_client,
+        platform,
+    )
+    pairing = _runner_pairing_key(config, sample, context)
+    services = GenerationServices(
+        artifacts=MethodArtifactGateway(method_artifact_store),
+        episode_id=sample.sample_id,
+        system_his=system_his,
+        his_validation=FrozenContextSystemHisValidationFacade(platform),
+        repair=(
+            FrozenContextSystemHisCorrectionFacade(
+                client_for_stage(req2his_client, "system_his_repair"),
+                platform,
+            )
+            if method_condition == "M5"
+            else None
+        ),
+    )
+    return _RunnerMethodProjectGenerator(
+        method_condition=method_condition,
+        context=context,
+        services=services,
+        coordinator=paired_artifact_coordinator,
+        pairing=pairing,
+        system_his=system_his,
+        max_his_corrections=1 if method_condition == "M5" else 0,
+    )
+
+
+def _runner_pairing_key(config: RunnerConfig, sample: PlannedSample, context) -> PairingKey:
+    connection = resolve_source_connection(config, sample.source)
+    provenance_payload = {
+        "source": sample.source,
+        "kind": connection.kind,
+        "model": connection.model,
+        "generation_mode": connection.generation_mode,
+        "requested_decoding_seed": sample.decoding_seed,
+    }
+    model_provenance_sha256 = hashlib.sha256(
+        json.dumps(
+            provenance_payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    if not sample.semantic_instance_id or not sample.paired_block_id:
+        raise SystemExit("Runner method dispatch requires first-class pairing identity")
+    if (
+        not isinstance(sample.decoding_seed, int)
+        or isinstance(sample.decoding_seed, bool)
+        or sample.decoding_seed < 0
+    ):
+        raise SystemExit("Runner method dispatch requires a non-negative decoding_seed")
+    return PairingKey(
+        paired_block_id=sample.paired_block_id,
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id=sample.semantic_instance_id,
+        decoding_seed=sample.decoding_seed,
+        model_provenance_sha256=model_provenance_sha256,
+    )
+
+
+def _method_artifact_completion_record(
+    generator: object | None,
+    metadata: dict[str, Any],
+) -> dict[str, Any] | None:
+    current = generator
+    if isinstance(current, FailureInjectingProjectGenerator):
+        current = current.base_generator
+    outcome = getattr(current, "last_outcome", None)
+    if outcome is None:
+        return None
+    candidate = getattr(outcome, "candidate", None)
+    planning = getattr(outcome, "planning_artifact", None)
+    skeleton = getattr(current, "last_skeleton_artifact", None)
+    h_report = getattr(outcome, "h_report", None)
+    h_status = "not_applicable"
+    if isinstance(h_report, dict):
+        h_status = "pass" if h_report.get("passed") is True else "fail"
+    if candidate is None:
+        failure = getattr(outcome, "failure", None)
+        return {
+            "method_condition": str(metadata["method_condition"]),
+            "candidate_artifact_ref": None,
+            "project_package_sha256": None,
+            "planning_kind": planning.kind.value if planning is not None else None,
+            "planning_artifact_ref": (
+                planning.artifact_ref.to_dict() if planning is not None else None
+            ),
+            "skeleton_artifact_ref": None,
+            "skeleton_project_sha256": None,
+            "h_status": h_status,
+            "final_state": outcome.final_state.value,
+            "state_trace": [state.value for state in outcome.state_trace],
+            "method_event_refs": [
+                reference.to_dict()
+                for reference in getattr(current, "last_method_event_refs", ())
+            ],
+            "failure": (
+                {
+                    "stage": failure.stage,
+                    "error_type": failure.error_type,
+                    "message": failure.message,
+                }
+                if failure is not None
+                else None
+            ),
+            "skeleton_mode": str(metadata["contract_skeleton_mode"]),
+            "his_corrections_used": int(outcome.his_corrections_used),
+        }
+    record = {
+        "method_condition": str(metadata["method_condition"]),
+        "candidate_artifact_ref": candidate.artifact_ref.to_dict(),
+        "project_package_sha256": candidate.project_package_sha256,
+        "planning_kind": planning.kind.value if planning is not None else None,
+        "planning_artifact_ref": (
+            planning.artifact_ref.to_dict() if planning is not None else None
+        ),
+        "skeleton_artifact_ref": (
+            skeleton.artifact_ref.to_dict() if skeleton is not None else None
+        ),
+        "skeleton_project_sha256": (
+            skeleton.project_package_sha256 if skeleton is not None else None
+        ),
+        "h_status": h_status,
+        "skeleton_mode": str(metadata["contract_skeleton_mode"]),
+        "his_corrections_used": int(outcome.his_corrections_used),
+    }
+    if str(metadata["method_condition"]) == "M5":
+        record.update(
+            {
+                "initial_planning_artifact_ref": (
+                    current.last_initial_planning_artifact.artifact_ref.to_dict()
+                    if getattr(current, "last_initial_planning_artifact", None)
+                    is not None
+                    else None
+                ),
+                "final_state": outcome.final_state.value,
+                "state_trace": [state.value for state in outcome.state_trace],
+                "method_event_refs": [
+                    reference.to_dict()
+                    for reference in getattr(current, "last_method_event_refs", ())
+                ],
+            }
+        )
+    return record
 
 
 def _repairer_for_config(config: RunnerConfig):
@@ -2072,35 +3615,79 @@ def _repairer_for_sample(
     repairers: dict[str, object | None],
     config: RunnerConfig,
     sample: PlannedSample,
+    model_budget: ModelCallBudget | None = None,
 ) -> object | None:
     provider_name = config.repair_provider
     if provider_name == "same_as_source":
         provider_name = sample.source
     if provider_name in {"", "none", "deterministic"}:
         return None
-    if provider_name not in repairers:
+    cache_key = (
+        provider_name
+        if model_budget is None and sample.decoding_seed is None
+        else f"{provider_name}:{sample.sample_id}"
+    )
+    if cache_key not in repairers:
         connection = resolve_source_connection(config, provider_name)
-        repairers[provider_name] = build_repairer_for_connection(connection)
-    return repairers[provider_name]
+        build_kwargs: dict[str, Any] = {}
+        if model_budget is not None:
+            build_kwargs["model_budget"] = model_budget
+        if sample.decoding_seed is not None:
+            build_kwargs["decoding_seed"] = sample.decoding_seed
+        repairers[cache_key] = build_repairer_for_connection(connection, **build_kwargs)
+    return repairers[cache_key]
 
 
-def _generation_event_sink(events_path: Path, sample: PlannedSample, config: RunnerConfig):
+def _generation_event_sink(
+    events_path: Path,
+    sample: PlannedSample,
+    config: RunnerConfig,
+    *,
+    artifact_store: ArtifactStore | None = None,
+):
     def emit(payload: dict[str, Any]) -> None:
+        enriched = {
+            **payload,
+            "sample_id": sample.sample_id,
+            "source": sample.source,
+            "failure_origin": _sample_failure_origin(sample, config),
+            "difficulty_tier": sample.difficulty_tier,
+            "topology_id": sample.topology_id,
+            "requirement_style": sample.requirement_style,
+            "measurement_point": sample.measurement_point,
+            "semantic_instance_id": sample.semantic_instance_id,
+            "decoding_seed": sample.decoding_seed,
+            "paired_block_id": sample.paired_block_id,
+            "pairing_identity_source": sample.pairing_identity_source,
+        }
+        method_condition = _sample_method_condition(sample, config)
+        if artifact_store is not None and method_condition in IMPLEMENTED_METHOD_CONDITIONS:
+            provenance_ref = write_model_gateway_provenance(
+                artifact_store,
+                episode_id=sample.sample_id,
+                analysis_population=sample.analysis_population,
+                method_condition=method_condition,
+                event=enriched,
+            )
+            if provenance_ref is not None:
+                enriched["model_gateway_provenance_ref"] = provenance_ref.to_dict()
         _append_event(
             events_path,
-            {
-                **payload,
-                "sample_id": sample.sample_id,
-                "source": sample.source,
-                "failure_origin": _sample_failure_origin(sample, config),
-                "difficulty_tier": sample.difficulty_tier,
-                "topology_id": sample.topology_id,
-                "requirement_style": sample.requirement_style,
-                "measurement_point": sample.measurement_point,
-            },
+            enriched,
         )
 
     return emit
+
+
+def _update_sample_model_budget(sample_dir: Path, summary: dict[str, Any]) -> None:
+    metadata_path = sample_dir / "metadata.json"
+    if not metadata_path.exists():
+        return
+    payload = json.loads(metadata_path.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise ValueError(f"sample metadata must be an object: {metadata_path}")
+    payload["model_call_budget"] = summary
+    _write_json(metadata_path, payload)
 
 
 if __name__ == "__main__":

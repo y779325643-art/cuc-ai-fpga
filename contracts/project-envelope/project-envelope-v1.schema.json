@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/project-envelope/v1",
+  "title": "SR2FPGA Trusted Outer Project Envelope v1",
+  "description": "Trusted-builder artifact outside the candidate package. It binds method policy, normalized candidate file ownership, region provenance, and opaque evaluator commitments.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "integrity_scheme",
+    "envelope_sha256",
+    "episode_id",
+    "method_condition_id",
+    "method_policy_sha256",
+    "project_package_sha256",
+    "project_merkle_root_sha256",
+    "files",
+    "evaluator_material_refs"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "project-envelope-v1"
+    },
+    "integrity_scheme": {
+      "const": "sr2fpga-json-sortkeys-merkle-sha256-v1",
+      "description": "Canonical JSON is UTF-8, recursively key-sorted, and compact. Merkle leaves are SHA-256(path UTF-8 || NUL || lowercase digest hex); leaves are path-sorted, internal nodes hash raw child digests, and an odd final node is duplicated."
+    },
+    "envelope_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "SHA-256 of the canonical envelope with envelope_sha256 omitted; the digest never includes its own value."
+    },
+    "episode_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "method_condition_id": {
+      "$ref": "#/$defs/identifier"
+    },
+    "method_policy_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "project_package_sha256": {
+      "$ref": "#/$defs/sha256",
+      "description": "SHA-256(domain sr2fpga-project-package-v1 plus NUL, raw canonical-manifest digest, and raw project Merkle root digest)."
+    },
+    "project_merkle_root_sha256": {
+      "$ref": "#/$defs/sha256"
+    },
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/file_record"
+      },
+      "contains": {
+        "type": "object",
+        "required": [
+          "path",
+          "file_role"
+        ],
+        "properties": {
+          "path": {
+            "const": "manifest.json"
+          },
+          "file_role": {
+            "const": "project_manifest"
+          }
+        }
+      },
+      "minContains": 1,
+      "maxContains": 1
+    },
+    "evaluator_material_refs": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/evaluator_material_ref"
+      }
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/_-]*$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\\\/\\u0000]+(?:/[^\\\\/\\u0000]+)*$",
+      "allOf": [
+        {
+          "not": {
+            "pattern": "^[A-Za-z]:"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(^|/)\\.\\.(/|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(^|/)\\.(/|$)"
+          }
+        }
+      ]
+    },
+    "file_role": {
+      "type": "string",
+      "enum": [
+        "project_manifest",
+        "rtl_source",
+        "constraint",
+        "candidate_testbench",
+        "system_his",
+        "his_validation_report",
+        "predicted_qor",
+        "helper",
+        "board_wrapper"
+      ]
+    },
+    "region_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "region_id",
+        "owner",
+        "start_byte",
+        "end_byte",
+        "sha256",
+        "editable",
+        "event_refs"
+      ],
+      "properties": {
+        "region_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "owner": {
+          "type": "string",
+          "enum": [
+            "model",
+            "trusted_builder"
+          ]
+        },
+        "start_byte": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "end_byte": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "event_refs": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/identifier"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "owner"
+            ],
+            "properties": {
+              "owner": {
+                "const": "trusted_builder"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "editable": {
+                "const": false
+              }
+            }
+          }
+        }
+      ]
+    },
+    "file_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "sha256",
+        "file_role",
+        "owner",
+        "origin",
+        "editable",
+        "snapshot_id"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "sha256": {
+          "$ref": "#/$defs/sha256"
+        },
+        "file_role": {
+          "$ref": "#/$defs/file_role"
+        },
+        "owner": {
+          "type": "string",
+          "enum": [
+            "model",
+            "trusted_builder",
+            "composite"
+          ]
+        },
+        "origin": {
+          "type": "string",
+          "enum": [
+            "model_generated",
+            "deterministic"
+          ]
+        },
+        "editable": {
+          "type": "boolean"
+        },
+        "snapshot_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "regions": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/region_record"
+          },
+          "allOf": [
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "owner"
+                ],
+                "properties": {
+                  "owner": {
+                    "const": "model"
+                  }
+                }
+              },
+              "minContains": 1
+            },
+            {
+              "contains": {
+                "type": "object",
+                "required": [
+                  "owner"
+                ],
+                "properties": {
+                  "owner": {
+                    "const": "trusted_builder"
+                  }
+                }
+              },
+              "minContains": 1
+            }
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "file_role"
+            ],
+            "properties": {
+              "file_role": {
+                "const": "project_manifest"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "path": {
+                "const": "manifest.json"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "path"
+            ],
+            "properties": {
+              "path": {
+                "const": "manifest.json"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "file_role": {
+                "const": "project_manifest"
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "owner"
+            ],
+            "properties": {
+              "owner": {
+                "const": "model"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "origin": {
+                "const": "model_generated"
+              }
+            },
+            "not": {
+              "required": [
+                "regions"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "owner"
+            ],
+            "properties": {
+              "owner": {
+                "const": "trusted_builder"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "origin": {
+                "const": "deterministic"
+              },
+              "editable": {
+                "const": false
+              }
+            },
+            "not": {
+              "required": [
+                "regions"
+              ]
+            }
+          }
+        },
+        {
+          "if": {
+            "required": [
+              "owner"
+            ],
+            "properties": {
+              "owner": {
+                "const": "composite"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "regions"
+            ],
+            "properties": {
+              "origin": {
+                "const": "deterministic"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "evaluator_material_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "opaque_ref_id",
+        "kind",
+        "commitment_sha256"
+      ],
+      "properties": {
+        "opaque_ref_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "trusted_testbench",
+            "public_harness",
+            "hidden_harness",
+            "hidden_cases",
+            "golden_model",
+            "oracle",
+            "scoring_code",
+            "constraint",
+            "board_shell"
+          ]
+        },
+        "commitment_sha256": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    }
+  }
+}

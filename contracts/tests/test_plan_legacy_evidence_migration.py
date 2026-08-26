@@ -12,7 +12,13 @@ TOOL_PATH = (
     / "tools"
     / "plan_legacy_evidence_migration.py"
 )
-LEDGER_PATH = REPO_ROOT / "docs" / "sr2fpga-task-evidence-v0.1.json"
+LEDGER_PATH = (
+    REPO_ROOT
+    / "reports"
+    / "evidence"
+    / "task-ledger"
+    / "sr2fpga-task-evidence-v0.1.json"
+)
 PLAN_PATH = (
     REPO_ROOT
     / "reports"
@@ -150,15 +156,32 @@ def test_empty_plan_is_complete() -> None:
     assert plan["run_groups"] == []
 
 
-def test_repository_plan_matches_active_evidence_ledger() -> None:
+def test_active_evidence_ledger_requires_no_legacy_migration() -> None:
     ledger = json.loads(LEDGER_PATH.read_text(encoding="utf-8"))
-    expected = plan_legacy_evidence_migration.build_plan(
+    plan = plan_legacy_evidence_migration.build_plan(
         ledger,
         source_ledger=LEDGER_PATH.relative_to(REPO_ROOT).as_posix(),
     )
 
-    assert json.loads(PLAN_PATH.read_text(encoding="utf-8")) == expected
-    assert expected["status"] == "complete"
-    assert expected["reference_occurrence_count"] == 0
-    assert expected["unique_reference_count"] == 0
-    assert expected["planned_reference_count"] == 0
+    assert plan["source_ledger"] == (
+        "reports/evidence/task-ledger/sr2fpga-task-evidence-v0.1.json"
+    )
+    assert plan["status"] == "complete"
+    assert plan["reference_occurrence_count"] == 0
+    assert plan["unique_reference_count"] == 0
+    assert plan["planned_reference_count"] == 0
+    assert plan["run_groups"] == []
+
+
+def test_historical_repository_plan_remains_self_consistent() -> None:
+    plan = json.loads(PLAN_PATH.read_text(encoding="utf-8"))
+
+    assert plan["schema_version"] == (
+        "sr2fpga-legacy-active-evidence-migration-v1"
+    )
+    assert plan["source_ledger"] == "docs/sr2fpga-task-evidence-v0.1.json"
+    assert plan["status"] == "complete"
+    assert plan["reference_occurrence_count"] == 0
+    assert plan["unique_reference_count"] == 0
+    assert plan["planned_reference_count"] == 0
+    assert plan["run_count"] == len(plan["run_groups"]) == 0

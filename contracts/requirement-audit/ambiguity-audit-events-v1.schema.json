@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/requirement-audit/ambiguity-audit-events/v1",
+  "title": "SR2FPGA evaluator-owned ambiguity audit event log v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "artifact_sha256",
+    "audit_run_id",
+    "manifest_sha256",
+    "phase_a_audit_sha256",
+    "visibility_class",
+    "events"
+  ],
+  "properties": {
+    "contract_version": {"const": "ambiguity-audit-events-v1"},
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "audit_run_id": {"$ref": "#/$defs/identifier"},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "phase_a_audit_sha256": {"$ref": "#/$defs/sha256"},
+    "visibility_class": {"const": "evaluator_only"},
+    "events": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/event"}
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_calls",
+        "tool_calls",
+        "input_tokens",
+        "output_tokens",
+        "cached_tokens",
+        "wall_time_ms"
+      ],
+      "properties": {
+        "model_calls": {"type": "integer", "minimum": 0},
+        "tool_calls": {"type": "integer", "minimum": 0},
+        "input_tokens": {"type": "integer", "minimum": 0},
+        "output_tokens": {"type": "integer", "minimum": 0},
+        "cached_tokens": {"type": "integer", "minimum": 0},
+        "wall_time_ms": {"type": "number", "minimum": 0}
+      }
+    },
+    "event": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sequence", "ambiguity_case_id", "event_type"],
+      "properties": {
+        "sequence": {"type": "integer", "minimum": 0},
+        "ambiguity_case_id": {"$ref": "#/$defs/identifier"},
+        "event_type": {
+          "enum": [
+            "phase_a_started",
+            "phase_a_completed",
+            "downstream_attempt"
+          ]
+        },
+        "predicted_disposition": {
+          "enum": ["ready", "needs_clarification", "capability_gap"]
+        },
+        "execution_status": {"enum": ["completed", "not_run"]},
+        "not_run_reason_id": {"$ref": "#/$defs/identifier"},
+        "infrastructure_status": {"enum": ["available", "unavailable", "error"]},
+        "counters": {"$ref": "#/$defs/counters"},
+        "downstream_kind": {
+          "enum": [
+            "method_dispatch",
+            "project_planner_call",
+            "req2his_call",
+            "project_generator_call",
+            "repair_model_call",
+            "candidate_workspace_write",
+            "project_evaluator_call"
+          ]
+        },
+        "enforcement_status": {"enum": ["intercepted", "escaped"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"event_type": {"const": "phase_a_completed"}}},
+          "then": {
+            "required": ["execution_status", "infrastructure_status", "counters"],
+            "allOf": [
+              {
+                "if": {"properties": {"execution_status": {"const": "completed"}}},
+                "then": {
+                  "required": ["predicted_disposition"],
+                  "properties": {"infrastructure_status": {"const": "available"}},
+                  "not": {"required": ["not_run_reason_id"]}
+                },
+                "else": {
+                  "required": ["not_run_reason_id"],
+                  "properties": {
+                    "infrastructure_status": {"enum": ["unavailable", "error"]}
+                  },
+                  "not": {"required": ["predicted_disposition"]}
+                }
+              }
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {"required": ["predicted_disposition"]},
+                {"required": ["execution_status"]},
+                {"required": ["not_run_reason_id"]},
+                {"required": ["infrastructure_status"]},
+                {"required": ["counters"]}
+              ]
+            }
+          }
+        },
+        {
+          "if": {"properties": {"event_type": {"const": "downstream_attempt"}}},
+          "then": {"required": ["downstream_kind", "enforcement_status"]},
+          "else": {
+            "not": {
+              "anyOf": [
+                {"required": ["downstream_kind"]},
+                {"required": ["enforcement_status"]}
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}

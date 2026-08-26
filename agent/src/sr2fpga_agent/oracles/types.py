@@ -12,6 +12,37 @@ from sr2fpga_agent.models import ToolResult
 SCENARIO_CLASSES = frozenset(
     {"public_smoke", "hidden_deterministic", "randomized_fixed_seed", "stress"}
 )
+EXECUTION_FAILURE_ORIGINS = frozenset(
+    {
+        "natural_model_failure",
+        "toolchain_environment_failure",
+        "oracle_environment_failure",
+    }
+)
+INFRASTRUCTURE_FAILURE_ORIGINS = frozenset(
+    {"toolchain_environment_failure", "oracle_environment_failure"}
+)
+
+
+def _validate_execution_outcome(
+    *,
+    status: str,
+    failure_origin: str | None,
+    failure_type: str | None,
+) -> None:
+    if status not in {"passed", "failed"}:
+        raise ValueError(f"unsupported oracle execution status: {status!r}")
+    if status == "passed":
+        if failure_origin is not None or failure_type is not None:
+            raise ValueError("passed oracle execution cannot carry failure metadata")
+        return
+    if failure_origin not in EXECUTION_FAILURE_ORIGINS:
+        raise ValueError(
+            "failed oracle execution requires a registered failure_origin; "
+            f"got {failure_origin!r}"
+        )
+    if not isinstance(failure_type, str) or not failure_type.strip():
+        raise ValueError("failed oracle execution requires a non-empty failure_type")
 
 
 @dataclass(frozen=True)
@@ -77,6 +108,13 @@ class OracleScenarioResult:
     duration_seconds: float
     mismatch_detail: tuple[dict[str, object], ...] = ()
 
+    def __post_init__(self) -> None:
+        _validate_execution_outcome(
+            status=self.status,
+            failure_origin=self.failure_origin,
+            failure_type=self.failure_type,
+        )
+
     @classmethod
     def from_tool_result(
         cls,
@@ -127,6 +165,13 @@ class OracleRunEvidence:
     scenario_results: tuple[OracleScenarioResult, ...]
     diagnostics: tuple[str, ...] = ()
 
+    def __post_init__(self) -> None:
+        _validate_execution_outcome(
+            status=self.status,
+            failure_origin=self.failure_origin,
+            failure_type=self.failure_type,
+        )
+
     @classmethod
     def from_results(
         cls,
@@ -175,6 +220,8 @@ class OracleRunEvidence:
 
     def to_dict(self) -> dict[str, Any]:
         return {
+            "contract_version": "development-oracle-run-evidence-v1",
+            "evaluation_scope": "development_independent_oracle",
             "family_id": self.family_id,
             "bundle_sha256": self.bundle_sha256,
             "status": self.status,
@@ -187,6 +234,8 @@ class OracleRunEvidence:
             },
             "scenario_results": [result.to_dict() for result in self.scenario_results],
             "diagnostics": list(self.diagnostics),
+            "pass_credit_authority": False,
+            "official_outcome": False,
         }
 
 

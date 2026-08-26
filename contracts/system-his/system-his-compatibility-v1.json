@@ -1,0 +1,37 @@
+{
+  "contract_version": "system-his-compatibility-v1",
+  "canonical_system_his_version": "system-his-v1.2",
+  "representations": [
+    {
+      "representation_id": "system-his-v1.2",
+      "status": "canonical",
+      "registered_h_stage_policy": "required",
+      "common_l0_policy": "eligible",
+      "training_partition": "clean",
+      "positive_system_his_view_policy": "condition_eligible"
+    },
+    {
+      "representation_id": "system-his-v1.1",
+      "status": "legacy_quarantine",
+      "registered_h_stage_policy": "reject",
+      "common_l0_policy": "eligible",
+      "training_partition": "quarantine",
+      "positive_system_his_view_policy": "forbidden"
+    },
+    {
+      "representation_id": "not_applicable",
+      "status": "method_not_applicable",
+      "registered_h_stage_policy": "not_applicable",
+      "common_l0_policy": "eligible",
+      "training_partition": "quarantine",
+      "positive_system_his_view_policy": "method_neutral_only"
+    }
+  ],
+  "unknown_representation": {
+    "status": "unknown_quarantine",
+    "registered_h_stage_policy": "reject",
+    "common_l0_policy": "eligible",
+    "training_partition": "quarantine",
+    "positive_system_his_view_policy": "forbidden"
+  }
+}

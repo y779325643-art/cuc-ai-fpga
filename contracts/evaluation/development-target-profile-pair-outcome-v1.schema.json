@@ -1,0 +1,223 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-target-profile-pair-outcome/v1",
+  "title": "SR2FPGA Development Target-Profile Pair Outcome v1",
+  "description": "Non-official outcome for one excluded pilot pair and one M0-M5 method. Complete-pair missingness and all-axis cost remain explicit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "artifact_sha256",
+    "outcome_id",
+    "manifest_id",
+    "manifest_sha256",
+    "profile_pair_id",
+    "method_condition",
+    "population_role",
+    "members",
+    "pair_completeness",
+    "tpa_l4_status",
+    "tpa_l4_reasons",
+    "paired_cost",
+    "terminal_binding",
+    "pass_credit_authority",
+    "official_authority"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-target-profile-pair-outcome-v1"},
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "outcome_id": {"$ref": "#/$defs/identifier"},
+    "manifest_id": {"$ref": "#/$defs/identifier"},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "profile_pair_id": {"$ref": "#/$defs/identifier"},
+    "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "population_role": {"const": "pilot_only_excluded"},
+    "members": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {"$ref": "#/$defs/member_outcome"}
+    },
+    "pair_completeness": {"enum": ["complete", "incomplete"]},
+    "tpa_l4_status": {"enum": ["pass", "fail", "not_run"]},
+    "tpa_l4_reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "member_not_run",
+          "member_infrastructure_error",
+          "member_evaluation_not_run",
+          "invariant_failure",
+          "required_change_failure",
+          "forbidden_change_detected",
+          "profile_compliance_failure",
+          "l3_failure",
+          "l4_failure",
+          "paired_cost_incomplete"
+        ]
+      }
+    },
+    "paired_cost": {"$ref": "#/$defs/paired_cost"},
+    "terminal_binding": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "official_authority": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"tpa_l4_status": {"const": "pass"}}},
+      "then": {
+        "properties": {
+          "pair_completeness": {"const": "complete"},
+          "tpa_l4_reasons": {"maxItems": 0},
+          "paired_cost": {"properties": {"status": {"const": "complete"}}}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"tpa_l4_status": {"enum": ["fail", "not_run"]}}},
+      "then": {"properties": {"tpa_l4_reasons": {"minItems": 1}}}
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "minLength": 1}
+      }
+    },
+    "member_outcome": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "member_role",
+        "profile_member_id",
+        "target_profile_id",
+        "target_profile_sha256",
+        "execution_status",
+        "candidate_ref",
+        "invariant_status",
+        "required_changes_status",
+        "forbidden_changes_status",
+        "profile_compliance_status",
+        "l3_status",
+        "l4_status",
+        "violation_ids",
+        "cost_summary_ref",
+        "cost_axes"
+      ],
+      "properties": {
+        "member_role": {"enum": ["baseline", "variant"]},
+        "profile_member_id": {"$ref": "#/$defs/identifier"},
+        "target_profile_id": {"$ref": "#/$defs/identifier"},
+        "target_profile_sha256": {"$ref": "#/$defs/sha256"},
+        "execution_status": {"enum": ["completed", "not_run", "infrastructure_error"]},
+        "candidate_ref": {
+          "oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]
+        },
+        "invariant_status": {"enum": ["pass", "fail", "not_run"]},
+        "required_changes_status": {"enum": ["pass", "fail", "not_run"]},
+        "forbidden_changes_status": {"enum": ["pass", "fail", "not_run"]},
+        "profile_compliance_status": {"enum": ["pass", "fail", "not_run"]},
+        "l3_status": {"enum": ["pass", "fail", "not_run"]},
+        "l4_status": {"enum": ["pass", "fail", "not_run"]},
+        "violation_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "cost_summary_ref": {
+          "oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]
+        },
+        "cost_axes": {"$ref": "#/$defs/cost_axes"}
+      }
+    },
+    "axis_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "reason"],
+      "properties": {
+        "status": {"enum": ["measured", "unavailable"]},
+        "value": {"type": ["number", "null"], "minimum": 0},
+        "reason": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "measured"}}},
+          "then": {
+            "properties": {
+              "value": {"type": "number", "minimum": 0},
+              "reason": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {"type": "null"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "cost_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_model_calls",
+        "input_tokens",
+        "output_tokens",
+        "cached_tokens",
+        "provider_transport_attempts",
+        "planner_parser_schema_retries",
+        "outer_repair_attempts",
+        "public_tool_calls",
+        "hidden_evaluator_tool_calls",
+        "hidden_infrastructure_retries",
+        "wall_time",
+        "eda_time",
+        "hidden_evaluator_runtime"
+      ],
+      "properties": {
+        "logical_model_calls": {"$ref": "#/$defs/axis_result"},
+        "input_tokens": {"$ref": "#/$defs/axis_result"},
+        "output_tokens": {"$ref": "#/$defs/axis_result"},
+        "cached_tokens": {"$ref": "#/$defs/axis_result"},
+        "provider_transport_attempts": {"$ref": "#/$defs/axis_result"},
+        "planner_parser_schema_retries": {"$ref": "#/$defs/axis_result"},
+        "outer_repair_attempts": {"$ref": "#/$defs/axis_result"},
+        "public_tool_calls": {"$ref": "#/$defs/axis_result"},
+        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/axis_result"},
+        "hidden_infrastructure_retries": {"$ref": "#/$defs/axis_result"},
+        "wall_time": {"$ref": "#/$defs/axis_result"},
+        "eda_time": {"$ref": "#/$defs/axis_result"},
+        "hidden_evaluator_runtime": {"$ref": "#/$defs/axis_result"}
+      }
+    },
+    "paired_cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "member_cost_summary_refs", "axes"],
+      "properties": {
+        "status": {"enum": ["complete", "incomplete"]},
+        "member_cost_summary_refs": {
+          "type": "array",
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/artifact_ref"}
+        },
+        "axes": {"$ref": "#/$defs/cost_axes"}
+      }
+    }
+  }
+}

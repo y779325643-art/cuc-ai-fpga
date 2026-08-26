@@ -1,0 +1,64 @@
+{
+  "contract_version": "system-his-well-formedness-v1",
+  "system_his_version": "system-his-v1.2",
+  "checker_api": "sr2fpga_agent.system_his_v12_checker.check_system_his_well_formedness",
+  "conformance_cases": [
+    {
+      "case_id": "schema",
+      "positive_test": "contracts/tests/test_system_his_schema.py::test_system_his_fixture_validates_as_draft_2020_12_instance",
+      "negative_test": "contracts/tests/test_system_his_schema.py::test_system_his_rejects_missing_required_top_level_section"
+    },
+    {
+      "case_id": "h0",
+      "positive_test": "contracts/tests/test_system_his_schema.py::test_system_his_schema_requires_canonical_v12_fields",
+      "negative_test": "agent/tests/test_sr2fpga_agent_his_validation.py::SystemHisHStageValidationTests::test_h0_rejects_missing_schema_required_field"
+    },
+    {
+      "case_id": "h1",
+      "positive_test": "agent/tests/test_sr2fpga_agent_system_his_well_formedness.py::SystemHisWellFormednessTests::test_all_deterministic_system_his_payloads_have_no_failed_w_rule",
+      "negative_test": "agent/tests/test_sr2fpga_agent_his_validation.py::SystemHisHStageValidationTests::test_h1_rejects_unresolved_component_reference"
+    },
+    {
+      "case_id": "h2",
+      "positive_test": "agent/tests/test_sr2fpga_agent_his_validation.py::SystemHisHStageValidationTests::test_h2_accepts_structured_scenario_with_canonical_kind",
+      "negative_test": "agent/tests/test_sr2fpga_agent_his_validation.py::SystemHisHStageValidationTests::test_h2_rejects_unsupported_protocol_and_scenario"
+    },
+    {
+      "case_id": "reset",
+      "positive_test": "contracts/tests/test_system_his_schema.py::test_system_his_accepts_compatibility_direction_and_reset_spellings",
+      "negative_test": "contracts/tests/test_system_his_schema.py::test_system_his_rejects_unknown_reset_spelling"
+    },
+    {
+      "case_id": "lowerer",
+      "positive_test": "agent/tests/test_sr2fpga_agent_system_his_repair.py::test_two_stage_rebuilds_complete_project_after_his_repair",
+      "negative_test": "agent/tests/test_sr2fpga_agent_system_his_repair.py::test_duplicate_component_source_is_repaired_before_his2project"
+    },
+    {
+      "case_id": "compatibility",
+      "positive_test": "contracts/tests/test_system_his_schema.py::test_system_his_accepts_compatibility_direction_and_reset_spellings",
+      "negative_test": "contracts/tests/test_system_his_schema.py::test_system_his_rejects_unknown_port_direction"
+    },
+    {
+      "case_id": "quarantine",
+      "positive_test": "agent/tests/test_sr2fpga_agent_system_his_compatibility.py::test_canonical_v12_is_active_and_condition_eligible",
+      "negative_test": "agent/tests/test_sr2fpga_agent_system_his_compatibility.py::test_legacy_v11_is_quarantined_and_forbidden_for_positive_his_views"
+    },
+    {
+      "case_id": "deterministic_writer",
+      "positive_test": "agent/tests/test_sr2fpga_agent_system_his_well_formedness.py::SystemHisWellFormednessTests::test_all_deterministic_system_his_payloads_pass_h0_h1_h2",
+      "negative_test": "agent/tests/test_sr2fpga_agent_his_validation.py::SystemHisHStageValidationTests::test_h2_rejects_unsupported_protocol_and_scenario"
+    }
+  ],
+  "rules": [
+    {"rule_id": "W1", "h_stage": "h1", "applicability": "always", "subject": "instance_component_reference"},
+    {"rule_id": "W2", "h_stage": "h1", "applicability": "always", "subject": "data_flow_endpoint_reference"},
+    {"rule_id": "W3", "h_stage": "h1", "applicability": "typed_connections_present", "subject": "connection_width_direction"},
+    {"rule_id": "W4", "h_stage": "h1", "applicability": "always", "subject": "state_clock_reset_binding"},
+    {"rule_id": "W5", "h_stage": "h1", "applicability": "combinational_declaration_present", "subject": "combinational_state_ownership"},
+    {"rule_id": "W6", "h_stage": "h1", "applicability": "cdc_flow_present", "subject": "cdc_domain_and_primitive"},
+    {"rule_id": "W7", "h_stage": "h1", "applicability": "memory_intent_present", "subject": "memory_intent_completeness"},
+    {"rule_id": "W8", "h_stage": "h1_h2", "applicability": "always", "subject": "verification_reference_and_backend_template"},
+    {"rule_id": "W9", "h_stage": "h1", "applicability": "always", "subject": "logical_constraint_reference"},
+    {"rule_id": "W10", "h_stage": "h1_l0", "applicability": "always", "subject": "artifact_declaration_reproducibility"}
+  ]
+}

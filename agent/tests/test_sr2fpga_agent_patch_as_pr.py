@@ -35,8 +35,8 @@ class PatchAsPrTest(unittest.TestCase):
             "rtl/scoreboards/counter.v",
             "rtl/uvm/adapter.v",
         ):
-            old = f"module core(input wire a, output wire y); assign y = a; endmodule\n"
-            new = f"module core(input wire a, output wire y); assign y = ~a; endmodule\n"
+            old = "module core(input wire a, output wire y); assign y = a; endmodule\n"
+            new = "module core(input wire a, output wire y); assign y = ~a; endmodule\n"
             metadata = build_patch_metadata(
                 GeneratedProject("demo", {path: old}),
                 GeneratedProject("demo", {path: new}),

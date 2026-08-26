@@ -90,7 +90,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertTrue(trajectory["measurement"]["scoreable"])
             self.assertEqual(trajectory["measurement"]["infrastructure_status"], "scoreable")
 
-    def test_measurement_is_additive_and_paired_metadata_reaches_training_exports(self) -> None:
+    def test_legacy_l3_measurement_is_preserved_but_fails_closed_for_positive_export(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets"
             recorder = DatasetRecorder(root)
@@ -135,14 +135,22 @@ class DatasetRecorderTest(unittest.TestCase):
                 json.loads(line)
                 for line in (export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8").splitlines()
             ]
-            new_row = next(row for row in rows if row["sample_id"] == "sample_new")
-            legacy_row = next(row for row in rows if row["sample_id"] == "sample_legacy")
-
-            self.assertEqual(new_row["episode"]["measurement"], measurement)
-            self.assertEqual(new_row["metadata"]["paired_requirement_id"], "counter:pair")
-            self.assertEqual(new_row["metadata"]["requirement_sha256"], "a" * 64)
-            self.assertEqual(new_row["metadata"]["freeze_fingerprint"], "b" * 64)
-            self.assertNotIn("measurement", legacy_row["episode"])
+            self.assertEqual(rows, [])
+            saved_episode = json.loads(
+                (root / "sample_new" / "eval" / "trajectory.json").read_text(encoding="utf-8")
+            )
+            self.assertEqual(saved_episode["measurement"], measurement)
+            decisions = {
+                row["sample_id"]: row
+                for row in (
+                    json.loads(line)
+                    for line in (export_dir / "training_view_eligibility.jsonl")
+                    .read_text(encoding="utf-8")
+                    .splitlines()
+                )
+            }
+            self.assertFalse(decisions["sample_new"]["views"]["requirement_to_his"]["eligible"])
+            self.assertFalse(decisions["sample_legacy"]["views"]["requirement_to_his"]["eligible"])
 
     def test_oracle_profile_export_uses_strict_fail_closed_schema(self) -> None:
         valid_sha256 = "a" * 64
@@ -694,47 +702,30 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertTrue((sample_dir / "eval/trajectory.json").exists())
             saved_trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
             self.assertEqual(saved_trajectory["verification"]["l4_open"]["status"], "not_run")
-            self.assertEqual(
-                saved_trajectory["derived_training_views"]["req2file"],
-                {
-                    "available": True,
-                    "official_eval_unit": False,
-                    "standalone_pass_credit": False,
-                    "source_episode_id": "sample_000001",
-                },
-            )
+            req2file_metadata = saved_trajectory["derived_training_views"]["req2file"]
+            self.assertFalse(req2file_metadata["available"])
+            self.assertFalse(req2file_metadata["verified_positive"])
+            self.assertFalse(req2file_metadata["official_eval_unit"])
+            self.assertFalse(req2file_metadata["standalone_pass_credit"])
+            self.assertEqual(req2file_metadata["source_episode_id"], "sample_000001")
+            self.assertIn("automatic_pass_credit_not_explicit_true", req2file_metadata["exclusion_reasons"])
             self.assertEqual(json.loads((sample_dir / "metadata.json").read_text(encoding="utf-8")), metadata)
 
             requirement_rows = (export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8").splitlines()
-            self.assertEqual(len(requirement_rows), 1)
-            requirement_row = json.loads(requirement_rows[0])
-            self.assertEqual(requirement_row["sample_id"], "sample_000001")
-            self.assertIn("system_his", requirement_row)
-            self.assertEqual(requirement_row["metadata"]["failure_origin"], "natural_llm")
-            self.assertEqual(requirement_row["metadata"]["training_split"], "quarantine")
+            self.assertEqual(requirement_rows, [])
 
             file_rows = (export_dir / "requirement_to_file.jsonl").read_text(encoding="utf-8").splitlines()
-            self.assertGreaterEqual(len(file_rows), 6)
-            file_row = json.loads(file_rows[0])
-            self.assertEqual(file_row["sample_id"], "sample_000001")
-            self.assertEqual(file_row["requirement"], requirement)
-            self.assertIn("file_path", file_row)
-            self.assertIn("file_content", file_row)
-            self.assertEqual(file_row["source_episode_id"], "sample_000001")
-            self.assertEqual(file_row["view"], "req2file")
-            self.assertFalse(file_row["official_eval_unit"])
-            self.assertFalse(file_row["standalone_pass_credit"])
-            self.assertEqual(file_row["metadata"]["difficulty_tier"], "T2")
+            self.assertEqual(file_rows, [])
 
             patch_rows = (export_dir / "failure_to_patch.jsonl").read_text(encoding="utf-8").splitlines()
             self.assertEqual(len(patch_rows), 1)
             patch_row = json.loads(patch_rows[0])
+            self.assertFalse(patch_row["verified_positive"])
+            self.assertEqual(patch_row["training_target_class"], "diagnostic_unverified")
             self.assertEqual(patch_row["diagnosis"]["failure_type"], "port_mismatch")
             self.assertIn("diff --git", patch_row["patch"])
 
             for export_name in (
-                "his_to_project.jsonl",
-                "requirement_to_project.jsonl",
                 "failure_to_diagnosis.jsonl",
                 "project_to_predicted_qor.jsonl",
                 "project_to_measured_qor.jsonl",
@@ -743,6 +734,12 @@ class DatasetRecorderTest(unittest.TestCase):
                 self.assertEqual(len(rows), 1, export_name)
                 self.assertEqual(json.loads(rows[0])["sample_id"], "sample_000001")
                 self.assertEqual(json.loads(rows[0])["metadata"]["difficulty_tier"], "T2")
+            for export_name in ("his_to_project.jsonl", "requirement_to_project.jsonl"):
+                self.assertEqual(
+                    (export_dir / export_name).read_text(encoding="utf-8").splitlines(),
+                    [],
+                    export_name,
+                )
 
     def test_predicted_qor_rows_exclude_verification_metadata(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -782,7 +779,7 @@ class DatasetRecorderTest(unittest.TestCase):
         self.assertEqual(_behavior_hole_count("  // __BEHAVIOR_HOLE__"), 1)
         self.assertEqual(_behavior_hole_count("  // __BEHAVIOR_HOLE__\n  // __BEHAVIOR_HOLE__"), 2)
 
-    def test_project_metadata_marks_predicted_qor_as_model_generated_for_llm_source(self) -> None:
+    def test_project_metadata_does_not_guess_file_origin_from_path(self) -> None:
         from sr2fpga_agent.recorder import _project_episode_metadata
 
         project = GeneratedProject(
@@ -797,8 +794,9 @@ class DatasetRecorderTest(unittest.TestCase):
 
         metadata = _project_episode_metadata(project)
 
-        self.assertEqual(metadata["files"]["reports/predicted_qor.json"]["origin"], "model_generated")
-        self.assertIn("reports/predicted_qor.json", metadata["model_generated_artifacts"])
+        self.assertEqual(metadata["files"]["reports/predicted_qor.json"]["origin"], "unknown")
+        self.assertIn("reports/predicted_qor.json", metadata["unknown_provenance_artifacts"])
+        self.assertIsNone(metadata["model_token_fraction"])
 
     def test_l0_checker_rejects_manifest_that_violates_system_his_contract(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
@@ -1127,18 +1125,18 @@ class DatasetRecorderTest(unittest.TestCase):
             agent = DataGenerationAgent(
                 dataset_root=root,
                 command_runner=runner,
-                project_generator=MutatingSystemHisGenerator(_break_stream_width_for_h3),
+                project_generator=MutatingSystemHisGenerator(_break_counter_width_for_h3),
             )
             request = ProjectRequest(
-                task_type="composed_stream_accumulator",
+                task_type="counter",
                 width=8,
-                project_name="stream_accum_8bit",
+                project_name="counter_8bit",
             )
             platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
             result = agent.run_one(
                 sample_id="sample_h3_fail",
-                requirement="Build an 8-bit stream accumulator with valid-ready input and output.",
+                requirement="Build an 8-bit counter.",
                 request=request,
                 platform=platform,
             )
@@ -1211,8 +1209,8 @@ class DatasetRecorderTest(unittest.TestCase):
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
             self.assertFalse(labels["generated_his_pass_credit"])
-            self.assertEqual(labels["pass_level"], "L3")
-            self.assertEqual(labels["highest_official_level"], "L3")
+            self.assertEqual(labels["pass_level"], "L1")
+            self.assertEqual(labels["highest_official_level"], "L1")
             self.assertEqual(labels["generated_his_pass_level"], "NO_CREDIT_ORACLE_FALLBACK")
             self.assertEqual(labels["generated_his_no_credit_reason"], "oracle_fallback")
             self.assertEqual(trajectory["his_validation"]["his_source_used_for_generation"], "oracle_fallback")
@@ -1247,7 +1245,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(labels["failure_count"], 1)
             self.assertEqual(diagnosis["stage"], "repair")
             self.assertEqual(diagnosis["failure_type"], "repair_failed")
-            self.assertIn("DeepSeek repair system_his.json failed validation", diagnosis["root_cause"])
+            self.assertIn("Project repair system_his.json failed validation", diagnosis["root_cause"])
             self.assertEqual(diagnosis["upstream_diagnosis"]["stage"], "l0_consistency")
             self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["l0_consistency", "repair"])
             self.assertFalse((sample_dir / "attempts/attempt_001").exists())
@@ -1353,7 +1351,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual([item["stage"] for item in trajectory["attempts"]], ["rtl_identifier_check"])
             self.assertEqual(runner.calls, [])
 
-    def test_agent_stops_before_sim_compile_when_testbench_can_skip_output_transaction(self) -> None:
+    def test_agent_records_candidate_observation_race_but_still_runs_synth(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
             runner = FakeRunner()
@@ -1374,22 +1372,39 @@ class DatasetRecorderTest(unittest.TestCase):
 
             sample_dir = root / "sample_testbench_observation_race"
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
-            diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
+            candidate_check = json.loads(
+                (
+                    sample_dir
+                    / "attempts/attempt_000/eval/candidate_testbench_static_check.json"
+                ).read_text(encoding="utf-8")
+            )
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
             self.assertEqual(result["pass_level"], "L1")
             self.assertTrue(labels["checks"]["l1_lint_pass"])
             self.assertFalse(labels["checks"]["l2_sim_pass"])
-            self.assertEqual(diagnosis["stage"], "testbench_static_check")
-            self.assertEqual(diagnosis["failure_type"], "testbench_observation_race")
-            self.assertIn("wait(out_valid)", diagnosis["root_cause"])
+            self.assertEqual(labels["l2_sim_status"], "not_run")
+            self.assertEqual(labels["l2_sim_skip_reason"], "needs_oracle")
+            self.assertTrue(labels["checks"]["l3_synth_pass"])
+            self.assertEqual(candidate_check["status"], "failed")
+            self.assertIn("wait(out_valid)", candidate_check["stderr"])
+            self.assertFalse((sample_dir / "attempts/attempt_000/diagnosis.json").exists())
             self.assertEqual(
                 [item["stage"] for item in trajectory["attempts"]],
-                ["rtl_identifier_check", "lint", "testbench_static_check"],
+                [
+                    "rtl_identifier_check",
+                    "lint",
+                    "sim_compile",
+                    "sim_run",
+                    "candidate_testbench_static_check",
+                    "candidate_sim_compile",
+                    "candidate_sim_run",
+                    "synth",
+                ],
             )
-            self.assertEqual([call["stage"] for call in runner.calls], ["lint"])
+            self.assertEqual([call["stage"] for call in runner.calls], ["lint", "synth"])
 
-    def test_agent_stops_before_sim_compile_when_testbench_can_reaccept_stimulus(self) -> None:
+    def test_agent_records_candidate_stimulus_risk_but_still_runs_synth(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
             runner = FakeRunner()
@@ -1409,20 +1424,34 @@ class DatasetRecorderTest(unittest.TestCase):
             )
 
             sample_dir = root / "sample_testbench_stimulus_reaccept"
-            diagnosis = json.loads((sample_dir / "attempts/attempt_000/diagnosis.json").read_text(encoding="utf-8"))
+            candidate_check = json.loads(
+                (
+                    sample_dir
+                    / "attempts/attempt_000/eval/candidate_testbench_static_check.json"
+                ).read_text(encoding="utf-8")
+            )
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
             self.assertEqual(result["pass_level"], "L1")
-            self.assertEqual(diagnosis["stage"], "testbench_static_check")
-            self.assertEqual(diagnosis["failure_type"], "testbench_stimulus_reaccept_risk")
-            self.assertIn("same packet can be accepted repeatedly", diagnosis["root_cause"])
+            self.assertEqual(candidate_check["status"], "failed")
+            self.assertIn("same packet can be accepted repeatedly", candidate_check["stderr"])
+            self.assertFalse((sample_dir / "attempts/attempt_000/diagnosis.json").exists())
             self.assertEqual(
                 [item["stage"] for item in trajectory["attempts"]],
-                ["rtl_identifier_check", "lint", "testbench_static_check"],
+                [
+                    "rtl_identifier_check",
+                    "lint",
+                    "sim_compile",
+                    "sim_run",
+                    "candidate_testbench_static_check",
+                    "candidate_sim_compile",
+                    "candidate_sim_run",
+                    "synth",
+                ],
             )
-            self.assertEqual([call["stage"] for call in runner.calls], ["lint"])
+            self.assertEqual([call["stage"] for call in runner.calls], ["lint", "synth"])
 
-    def test_agent_run_one_records_l3_sample_with_fake_runner(self) -> None:
+    def test_agent_run_one_records_l1_without_trusted_harness(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
             runner = FakeRunner()
@@ -1438,11 +1467,11 @@ class DatasetRecorderTest(unittest.TestCase):
             )
 
             sample_dir = root / "sample_000001"
-            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(result["pass_level"], "L1")
             self.assertTrue((sample_dir / "final/generated_project/rtl/top.v").exists())
             self.assertEqual(
                 json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))["pass_level"],
-                "L3",
+                "L1",
             )
             measured_qor = json.loads((sample_dir / "eval/measured_qor.json").read_text(encoding="utf-8"))
             self.assertEqual(measured_qor["lut"], 5)
@@ -1450,11 +1479,23 @@ class DatasetRecorderTest(unittest.TestCase):
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
             self.assertEqual(
                 [item["stage"] for item in trajectory["attempts"]],
-                ["rtl_identifier_check", "lint", "testbench_static_check", "sim_compile", "sim_run", "synth"],
+                [
+                    "rtl_identifier_check",
+                    "lint",
+                    "sim_compile",
+                    "sim_run",
+                    "candidate_testbench_static_check",
+                    "candidate_sim_compile",
+                    "candidate_sim_run",
+                    "synth",
+                ],
             )
-            self.assertEqual([call["stage"] for call in runner.calls], ["lint", "sim_compile", "sim_run", "synth"])
+            self.assertEqual(
+                [call["stage"] for call in runner.calls],
+                ["lint", "candidate_sim_compile", "candidate_sim_run", "synth"],
+            )
 
-    def test_agent_independent_oracle_builds_once_and_reuses_bundle_for_mutations(self) -> None:
+    def test_agent_independent_oracle_is_diagnostic_not_official_hidden_l2(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets"
             runner = FakeRunner()
@@ -1481,7 +1522,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertTrue((oracle_root / "evidence.json").is_file())
             self.assertFalse((sample_dir / "final/generated_project/oracle").exists())
             vvp_calls = [call["command"] for call in runner.calls if call["stage"] == "sim_run"]
-            self.assertGreaterEqual(len(vvp_calls), 4)
+            self.assertEqual(len(vvp_calls), 4)
             staged_paths: list[Path] = []
             for call in vvp_calls:
                 input_args = [
@@ -1507,11 +1548,15 @@ class DatasetRecorderTest(unittest.TestCase):
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
             self.assertEqual(set(trajectory["oracle_profile"]["class_status"].values()), {"pass"})
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
-            self.assertTrue(labels["checks"]["l2_hidden_pass"])
-            self.assertTrue(labels["checks"]["l2_randomized_pass"])
-            self.assertTrue(labels["checks"]["l2_stress_pass"])
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertEqual(labels["l2_sim_status"], "not_run")
+            self.assertEqual(labels["l2_sim_skip_reason"], "needs_oracle")
+            self.assertFalse(labels["checks"]["l2_hidden_pass"])
+            self.assertFalse(labels["checks"]["l2_randomized_pass"])
+            self.assertFalse(labels["checks"]["l2_stress_pass"])
+            self.assertNotIn("oracle_strength", trajectory)
 
-    def test_agent_independent_oracle_unsupported_family_keeps_legacy_simulation(self) -> None:
+    def test_agent_unsupported_independent_oracle_keeps_candidate_smoke_only(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets"
             runner = FakeRunner()
@@ -1529,9 +1574,20 @@ class DatasetRecorderTest(unittest.TestCase):
                 )
 
             sample_dir = Path(result["sample_dir"])
-            vvp_calls = [call["command"] for call in runner.calls if call["stage"] == "sim_run"]
+            vvp_calls = [
+                call["command"]
+                for call in runner.calls
+                if call["stage"] == "candidate_sim_run"
+            ]
             self.assertEqual(vvp_calls, [["vvp", "sim.out"]])
-            profile = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))["oracle_profile"]
+            trajectory = json.loads(
+                (sample_dir / "eval/trajectory.json").read_text(encoding="utf-8")
+            )
+            profile = trajectory["oracle_profile"]
+            labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertEqual(labels["l2_sim_status"], "not_run")
+            self.assertEqual(labels["l2_sim_skip_reason"], "needs_oracle")
             self.assertEqual(profile["status"], "not_run")
             self.assertEqual(profile["skip_reason"], "unsupported_family")
 
@@ -1672,11 +1728,25 @@ class DatasetRecorderTest(unittest.TestCase):
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
             measured_qor = json.loads((sample_dir / "eval/measured_qor.json").read_text(encoding="utf-8"))
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
-            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertEqual(labels["l2_sim_status"], "not_run")
+            self.assertEqual(labels["l2_sim_skip_reason"], "needs_oracle")
             self.assertEqual(labels["l4_commercial_status"], "not_run")
             self.assertFalse(labels["l4_commercial_pass"])
             self.assertEqual(labels["l4_commercial_skip_reason"], "disabled_by_config")
             self.assertEqual(measured_qor["l4_commercial"]["status"], "not_run")
+            self.assertEqual(
+                measured_qor["l4_commercial"]["provenance"]["l4_tool_version_status"],
+                "not_run",
+            )
+            self.assertEqual(
+                measured_qor["l4_commercial"]["provenance"]["incomplete_reasons"],
+                [
+                    "core_tool_environment_ref_missing",
+                    "l4_tool_environment_ref_missing",
+                    "stage_not_run",
+                ],
+            )
             self.assertEqual(
                 trajectory["verification"]["l4_commercial"]["skip_reason"],
                 "disabled_by_config",
@@ -1711,14 +1781,49 @@ class DatasetRecorderTest(unittest.TestCase):
                 vivado_command="vivado",
                 vivado_part="XC7Z020CLG484-2",
                 vivado_timeout_seconds=90,
+                tool_environment_ref={
+                    "key": "tool-environments/test",
+                    "sha256": "b" * 64,
+                    "size_bytes": 1,
+                    "media_type": "application/json",
+                },
+                l4_tool_environment={
+                    "lanes": {
+                        "l4_commercial": {
+                            "status": "complete",
+                            "tools": [
+                                {"name": "vivado", "version_line": "Vivado v2026.1"}
+                            ],
+                        }
+                    }
+                },
+                l4_tool_environment_ref={
+                    "key": "tool-environments/l4-test",
+                    "sha256": "c" * 64,
+                    "size_bytes": 1,
+                    "media_type": "application/json",
+                },
             )
             request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
             platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
+            def fake_vivado(project_dir, **_kwargs):
+                report_dir = project_dir / "eval" / "vivado"
+                report_dir.mkdir(parents=True, exist_ok=True)
+                (report_dir / "vivado_report.json").write_text(
+                    json.dumps(vivado_report),
+                    encoding="utf-8",
+                )
+                (report_dir / "vivado_timing_summary.rpt").write_text(
+                    "WNS(ns)\n5.79\n",
+                    encoding="utf-8",
+                )
+                return vivado_report
+
             with mock.patch.dict("os.environ", {"SR2FPGA_VIVADO_COMMAND": "C:/tools/vivado.bat"}):
                 with mock.patch(
                     "sr2fpga_agent.agent.run_vivado_reference",
-                    return_value=vivado_report,
+                    side_effect=fake_vivado,
                 ) as run_vivado:
                     result = agent.run_one("sample_l4_commercial_pass", "Design a counter.", request, platform)
 
@@ -1726,11 +1831,27 @@ class DatasetRecorderTest(unittest.TestCase):
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
             measured_qor = json.loads((sample_dir / "eval/measured_qor.json").read_text(encoding="utf-8"))
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
-            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertEqual(labels["l2_sim_status"], "not_run")
+            self.assertEqual(labels["l2_sim_skip_reason"], "needs_oracle")
             self.assertEqual(labels["l4_commercial_status"], "pass")
             self.assertTrue(labels["l4_commercial_pass"])
             self.assertEqual(measured_qor["l4_commercial"]["wns_ns"], 5.79)
+            provenance = measured_qor["l4_commercial"]["provenance"]
+            self.assertEqual(provenance["source_stage_status"], "pass")
+            self.assertEqual(
+                provenance["incomplete_reasons"],
+                [],
+            )
+            self.assertEqual(provenance["provenance_status"], "complete")
+            self.assertEqual(provenance["l4_tool_version"], "Vivado v2026.1")
+            self.assertEqual(provenance["core_tool_environment_ref"]["sha256"], "b" * 64)
+            self.assertEqual(len(provenance["raw_evidence_refs"]), 2)
             self.assertFalse(trajectory["verification"]["l4_commercial"]["official_board_ready"])
+            self.assertEqual(
+                trajectory["verification"]["l4_commercial"]["provenance"],
+                provenance,
+            )
             self.assertEqual(
                 trajectory["verification"]["l4_commercial"]["report_paths"],
                 [
@@ -1861,7 +1982,7 @@ class DatasetRecorderTest(unittest.TestCase):
             )
 
             sample_dir = root / "sample_000002"
-            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(result["pass_level"], "L1")
             self.assertTrue((sample_dir / "attempts/attempt_000/diagnosis.json").exists())
             self.assertIn(
                 "fix reset port",
@@ -1885,7 +2006,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(trajectory["measurement"]["initial"]["attempt_id"], 0)
             self.assertEqual(trajectory["measurement"]["initial"]["pass_level"], "L0")
             self.assertEqual(trajectory["measurement"]["final"]["attempt_id"], 1)
-            self.assertEqual(trajectory["measurement"]["final"]["pass_level"], "L3")
+            self.assertEqual(trajectory["measurement"]["final"]["pass_level"], "L1")
             self.assertEqual(trajectory["measurement"]["repair_attempts_used"], 1)
             self.assertTrue(trajectory["measurement"]["repair_success"])
             self.assertEqual(trajectory["measurement"]["l4_open"]["status"], "not_run")
@@ -1995,7 +2116,7 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(patch["repair_regression"]["regressed_levels"], ["lint"])
             self.assertFalse(labels["automatic_pass_credit"])
 
-    def test_agent_treats_test_fail_output_as_failed_simulation(self) -> None:
+    def test_agent_records_candidate_test_fail_without_formal_l2_failure(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "datasets" / "sr2fpga_rtl_v1"
             runner = SemanticFailRunner()
@@ -2013,18 +2134,34 @@ class DatasetRecorderTest(unittest.TestCase):
             sample_dir = root / "sample_000003"
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
             diagnosis_path = sample_dir / "attempts/attempt_000/diagnosis.json"
-            self.assertTrue(diagnosis_path.exists())
-            diagnosis = json.loads(diagnosis_path.read_text(encoding="utf-8"))
+            candidate_result = json.loads(
+                (
+                    sample_dir / "attempts/attempt_000/eval/candidate_sim_run.json"
+                ).read_text(encoding="utf-8")
+            )
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
             self.assertEqual(result["pass_level"], "L1")
             self.assertFalse(labels["checks"]["l2_sim_pass"])
-            self.assertEqual(labels["failure_count"], 1)
-            self.assertEqual(diagnosis["stage"], "sim_run")
-            self.assertIn("TEST_FAIL", diagnosis["root_cause"])
+            self.assertEqual(labels["l2_sim_status"], "not_run")
+            self.assertEqual(labels["l2_sim_skip_reason"], "needs_oracle")
+            self.assertTrue(labels["checks"]["l3_synth_pass"])
+            self.assertEqual(labels["failure_count"], 0)
+            self.assertFalse(diagnosis_path.exists())
+            self.assertEqual(candidate_result["status"], "failed")
+            self.assertIn("TEST_FAIL", candidate_result["stdout"])
             self.assertEqual(
                 [item["stage"] for item in trajectory["attempts"]],
-                ["rtl_identifier_check", "lint", "testbench_static_check", "sim_compile", "sim_run"],
+                [
+                    "rtl_identifier_check",
+                    "lint",
+                    "sim_compile",
+                    "sim_run",
+                    "candidate_testbench_static_check",
+                    "candidate_sim_compile",
+                    "candidate_sim_run",
+                    "synth",
+                ],
             )
 
     def test_agent_records_req_his_fidelity_metrics_for_supported_topology(self) -> None:
@@ -2080,9 +2217,11 @@ class DatasetRecorderTest(unittest.TestCase):
             recorder.export_training_views(export_dir)
 
             rows = (export_dir / "requirement_to_project.jsonl").read_text(encoding="utf-8").splitlines()
-            self.assertEqual(len(rows), 1)
-            exported_paths = [item["path"] for item in json.loads(rows[0])["files"]]
-            self.assertNotIn(".DS_Store", exported_paths)
+            self.assertEqual(rows, [])
+            decision = json.loads(
+                (export_dir / "training_view_eligibility.jsonl").read_text(encoding="utf-8")
+            )
+            self.assertNotIn(".DS_Store", decision["file_provenance"])
 
     def test_write_final_adds_system_his_episode_metadata_and_exports_it(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -2129,8 +2268,9 @@ class DatasetRecorderTest(unittest.TestCase):
             self.assertEqual(trajectory["req_his_fidelity"]["interface_extraction"], None)
             self.assertIn("deterministic_artifacts", trajectory["project"])
             self.assertIn("model_generated_artifacts", trajectory["project"])
-            self.assertEqual(trajectory["project"]["files"]["system_his.json"]["origin"], "deterministic")
-            self.assertEqual(trajectory["project"]["files"]["rtl/top.v"]["origin"], "model_generated")
+            self.assertEqual(trajectory["project"]["files"]["system_his.json"]["origin"], "unknown")
+            self.assertEqual(trajectory["project"]["files"]["rtl/top.v"]["origin"], "unknown")
+            self.assertFalse(trajectory["project"]["provenance_complete"])
             self.assertEqual(trajectory["project"]["behavior_hole_count"], 0)
             self.assertEqual(trajectory["verification"]["l2_core"]["public"]["status"], "pass")
             self.assertEqual(trajectory["verification"]["l2_core"]["hidden"]["status"], "fail")
@@ -2151,9 +2291,17 @@ class DatasetRecorderTest(unittest.TestCase):
 
             export_dir = Path(tmp) / "exports"
             recorder.export_training_views(export_dir)
-            requirement_row = json.loads((export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8"))
-            self.assertEqual(requirement_row["episode"]["verification"]["l2_core"]["public"]["status"], "pass")
-            self.assertEqual(requirement_row["episode"]["data_release"]["vivado_raw_artifacts"], "internal_only")
+            self.assertEqual(
+                (export_dir / "requirement_to_his.jsonl").read_text(encoding="utf-8"),
+                "",
+            )
+            decision = json.loads(
+                (export_dir / "training_view_eligibility.jsonl").read_text(encoding="utf-8")
+            )
+            self.assertIn(
+                "file_provenance_incomplete",
+                decision["views"]["requirement_to_his"]["reasons"],
+            )
 
 
 class FakeRunner:
@@ -2166,6 +2314,8 @@ class FakeRunner:
             "lint": "",
             "sim_compile": "",
             "sim_run": "TEST_PASS\n",
+            "candidate_sim_compile": "",
+            "candidate_sim_run": "TEST_PASS\n",
             "synth": """
                 Number of cells: 13
                   SB_LUT4 5
@@ -2261,7 +2411,7 @@ class FailThenPassRunner(FakeRunner):
 
 class SemanticFailRunner(FakeRunner):
     def run(self, command, cwd, stage, timeout_seconds=30):
-        if stage == "sim_run":
+        if stage == "candidate_sim_run":
             self.calls.append({"command": command, "cwd": cwd, "stage": stage, "timeout_seconds": timeout_seconds})
             return ToolResult(
                 stage=stage,
@@ -2320,14 +2470,14 @@ class SimFailThenLintFailRunner(FakeRunner):
 class FailingRepairer:
     def repair(self, project, diagnosis):
         raise ValueError(
-            "DeepSeek repair system_his.json failed validation: "
+                "Project repair system_his.json failed validation: "
             "control_flow 'join_wait_both'.fsm 'join_fsm' is not declared"
         )
 
 
 class ContractRegressionRepairer:
     def repair(self, project, diagnosis):
-        raise ValueError("DeepSeek repair introduced L0 contract violations: stream_join.in1_data is not declared")
+            raise ValueError("Project repair introduced L0 contract violations: stream_join.in1_data is not declared")
 
 
 class BrokenManifestGenerator:
@@ -2360,8 +2510,8 @@ class OracleFallbackGenerator:
         return ProjectGenerator().generate(request, platform)
 
 
-def _break_stream_width_for_h3(system_his: dict) -> None:
-    next(port for port in system_his["top"]["ports"] if port["name"] == "in_data")["width"] = 7
+def _break_counter_width_for_h3(system_his: dict) -> None:
+    next(port for port in system_his["top"]["ports"] if port["name"] == "count")["width"] = 7
 
 
 def _break_reset_polarity_for_h3(system_his: dict) -> None:

@@ -1,0 +1,159 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/requirement-audit/ambiguity-case-manifest/v1",
+  "title": "SR2FPGA sealed ambiguity case manifest v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "manifest_sha256",
+    "audit_run_id",
+    "visibility_class",
+    "cases"
+  ],
+  "properties": {
+    "contract_version": {"const": "ambiguity-case-manifest-v1"},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "audit_run_id": {"$ref": "#/$defs/identifier"},
+    "visibility_class": {"const": "evaluator_only"},
+    "cases": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/case"}
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier_array": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "vendor", "toolchain"],
+      "properties": {
+        "name": {"$ref": "#/$defs/identifier"},
+        "vendor": {"$ref": "#/$defs/identifier"},
+        "toolchain": {"$ref": "#/$defs/identifier"},
+        "clock_hz": {"type": "integer", "minimum": 1},
+        "family": {"$ref": "#/$defs/identifier"},
+        "part": {"$ref": "#/$defs/identifier"},
+        "board": {"$ref": "#/$defs/identifier"},
+        "reset_polarity": {"enum": ["active_low", "active_high"]}
+      }
+    },
+    "public_projection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["visibility_class", "requirement", "width_bits", "platform"],
+      "properties": {
+        "visibility_class": {"const": "generation_visible"},
+        "requirement": {"type": "string", "minLength": 1},
+        "width_bits": {"type": "integer", "minimum": 1},
+        "platform": {"$ref": "#/$defs/platform"}
+      }
+    },
+    "answer_branch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["branch_id", "answer_facts", "expected_replay_disposition"],
+      "properties": {
+        "branch_id": {"$ref": "#/$defs/identifier"},
+        "answer_facts": {
+          "type": "object",
+          "minProperties": 1,
+          "propertyNames": {"$ref": "#/$defs/identifier"}
+        },
+        "expected_replay_disposition": {"enum": ["ready", "capability_gap"]}
+      }
+    },
+    "gold": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "visibility_class",
+        "audit_stratum",
+        "disposition",
+        "reason_ids",
+        "fact_ids",
+        "capability_ids"
+      ],
+      "properties": {
+        "visibility_class": {"const": "evaluator_only"},
+        "audit_stratum": {
+          "enum": [
+            "ready_fully_specified",
+            "ready_permitted_default",
+            "needs_clarification",
+            "capability_gap"
+          ]
+        },
+        "disposition": {"enum": ["ready", "needs_clarification", "capability_gap"]},
+        "reason_ids": {"$ref": "#/$defs/identifier_array"},
+        "fact_ids": {"$ref": "#/$defs/identifier_array"},
+        "capability_ids": {"$ref": "#/$defs/identifier_array"},
+        "clarification_answer_branches": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {"$ref": "#/$defs/answer_branch"}
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "audit_stratum": {
+                "enum": ["ready_fully_specified", "ready_permitted_default"]
+              }
+            }
+          },
+          "then": {"properties": {"disposition": {"const": "ready"}}}
+        },
+        {
+          "if": {"properties": {"audit_stratum": {"const": "needs_clarification"}}},
+          "then": {"properties": {"disposition": {"const": "needs_clarification"}}}
+        },
+        {
+          "if": {"properties": {"audit_stratum": {"const": "capability_gap"}}},
+          "then": {"properties": {"disposition": {"const": "capability_gap"}}}
+        },
+        {
+          "if": {"properties": {"disposition": {"const": "needs_clarification"}}},
+          "then": {
+            "required": ["clarification_answer_branches"],
+            "properties": {"fact_ids": {"minItems": 1}}
+          },
+          "else": {"not": {"required": ["clarification_answer_branches"]}}
+        },
+        {
+          "if": {"properties": {"disposition": {"const": "capability_gap"}}},
+          "then": {"properties": {"capability_ids": {"minItems": 1}}}
+        }
+      ]
+    },
+    "case": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_requirement_cluster_id",
+        "ambiguity_case_id",
+        "public_projection",
+        "evaluator_only"
+      ],
+      "properties": {
+        "base_requirement_cluster_id": {"$ref": "#/$defs/identifier"},
+        "ambiguity_case_id": {"$ref": "#/$defs/identifier"},
+        "public_projection": {"$ref": "#/$defs/public_projection"},
+        "evaluator_only": {"$ref": "#/$defs/gold"}
+      }
+    }
+  }
+}

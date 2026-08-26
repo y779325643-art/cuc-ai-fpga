@@ -1,0 +1,270 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/full-pack-smoke-report/v1",
+  "title": "SR2FPGA Excluded Full-Pack Smoke Report v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "evaluation_scope", "smoke_id", "analysis_population",
+    "registered_evidence_contract", "g3_accepted", "g4b_authorized",
+    "official_outcome", "rq1_evidence", "rq2_evidence",
+    "public_projection_sha256", "method_records", "scenario_records",
+    "reconciliation"
+  ],
+  "properties": {
+    "contract_version": {"const": "full-pack-smoke-report-v1"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "smoke_id": {"$ref": "#/$defs/identifier"},
+    "analysis_population": {"const": "excluded"},
+    "registered_evidence_contract": {"const": true},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false},
+    "official_outcome": {"const": false},
+    "rq1_evidence": {"const": false},
+    "rq2_evidence": {"const": false},
+    "public_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "method_records": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/method_record"}
+    },
+    "scenario_records": {
+      "type": "array",
+      "minItems": 6,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/scenario_record"}
+    },
+    "reconciliation": {"$ref": "#/$defs/reconciliation"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "method": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "nullable_method": {
+      "oneOf": [{"$ref": "#/$defs/method"}, {"type": "null"}]
+    },
+    "method_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_condition", "analysis_population", "pack_sha256",
+        "public_projection_sha256", "candidate_artifact_key",
+        "candidate_artifact_sha256", "project_package_sha256",
+        "skeleton_artifact_sha256", "planning_kind",
+        "planning_artifact_sha256", "h_status",
+        "skeleton_mode"
+      ],
+      "properties": {
+        "method_condition": {"$ref": "#/$defs/method"},
+        "analysis_population": {"const": "excluded"},
+        "pack_sha256": {"$ref": "#/$defs/sha256"},
+        "public_projection_sha256": {"$ref": "#/$defs/sha256"},
+        "candidate_artifact_key": {"type": "string", "minLength": 1},
+        "candidate_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "project_package_sha256": {"$ref": "#/$defs/sha256"},
+        "skeleton_artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "planning_kind": {
+          "type": ["string", "null"],
+          "enum": [null, "untyped_plan", "system_his"]
+        },
+        "planning_artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "h_status": {"enum": ["pass", "not_applicable"]},
+        "skeleton_mode": {
+          "enum": ["none", "none_free_full_project", "behavior_files"]
+        }
+      }
+    },
+    "scenario_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id", "scenario_kind", "analysis_population",
+        "public_projection_sha256", "method_condition", "status", "facts"
+      ],
+      "properties": {
+        "scenario_id": {"$ref": "#/$defs/identifier"},
+        "scenario_kind": {
+          "enum": [
+            "success", "h_repair", "project_repair", "non_ready",
+            "hidden_fail", "infrastructure_not_run"
+          ]
+        },
+        "analysis_population": {"const": "excluded"},
+        "public_projection_sha256": {"$ref": "#/$defs/sha256"},
+        "method_condition": {"$ref": "#/$defs/nullable_method"},
+        "status": {
+          "enum": [
+            "passed", "needs_clarification", "capability_gap", "fail", "not_run"
+          ]
+        },
+        "facts": {"type": "object"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"scenario_kind": {"const": "success"}}},
+          "then": {
+            "properties": {
+              "method_condition": {"type": "null"},
+              "status": {"const": "passed"},
+              "facts": {"$ref": "#/$defs/success_facts"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"scenario_kind": {"const": "h_repair"}}},
+          "then": {
+            "properties": {
+              "method_condition": {"const": "M5"},
+              "status": {"const": "passed"},
+              "facts": {"$ref": "#/$defs/h_repair_facts"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"scenario_kind": {"const": "project_repair"}}},
+          "then": {
+            "properties": {
+              "method_condition": {"enum": ["M1", "M5"]},
+              "status": {"const": "passed"},
+              "facts": {"$ref": "#/$defs/project_repair_facts"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"scenario_kind": {"const": "non_ready"}}},
+          "then": {
+            "properties": {
+              "method_condition": {"type": "null"},
+              "status": {"enum": ["needs_clarification", "capability_gap"]},
+              "facts": {"$ref": "#/$defs/non_ready_facts"}
+            }
+          }
+        },
+        {
+          "if": {"properties": {"scenario_kind": {"const": "hidden_fail"}}},
+          "then": {
+            "properties": {
+              "method_condition": {"$ref": "#/$defs/method"},
+              "status": {"const": "fail"},
+              "facts": {"$ref": "#/$defs/hidden_fail_facts"}
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {"scenario_kind": {"const": "infrastructure_not_run"}}
+          },
+          "then": {
+            "properties": {
+              "method_condition": {"$ref": "#/$defs/method"},
+              "status": {"const": "not_run"},
+              "facts": {"$ref": "#/$defs/infrastructure_not_run_facts"}
+            }
+          }
+        }
+      ]
+    },
+    "success_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method_count", "scope"],
+      "properties": {
+        "method_count": {"const": 6},
+        "scope": {"const": "pre_candidate_emission_conformance"}
+      }
+    },
+    "h_repair_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["his_corrections_used", "rerun_complete_h_validation"],
+      "properties": {
+        "his_corrections_used": {"const": 1},
+        "rerun_complete_h_validation": {"const": true}
+      }
+    },
+    "project_repair_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "repair_calls_attempted", "repair_transitions", "rerun_performed",
+        "automatic_pass_credit"
+      ],
+      "properties": {
+        "repair_calls_attempted": {"const": 1},
+        "repair_transitions": {"const": 1},
+        "rerun_performed": {"const": true},
+        "automatic_pass_credit": {"const": true}
+      }
+    },
+    "non_ready_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation_calls"],
+      "properties": {"generation_calls": {"const": 0}}
+    },
+    "hidden_fail_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["opaque_outcome_only", "opaque_outcome_id", "repair_after_hidden"],
+      "properties": {
+        "opaque_outcome_only": {"const": true},
+        "opaque_outcome_id": {"type": "string", "minLength": 1},
+        "repair_after_hidden": {"const": false}
+      }
+    },
+    "infrastructure_not_run_facts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["reason", "opaque_outcome_id", "replacement_episode"],
+      "properties": {
+        "reason": {"type": "string", "minLength": 1},
+        "opaque_outcome_id": {"type": "string", "minLength": 1},
+        "replacement_episode": {"const": false}
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_set", "same_public_projection", "m0_m1_initial_project_matched",
+        "m3_m4_system_his_matched", "m3_m4_candidate_artifacts_separate",
+        "m4_m5_skeleton_project_matched", "required_scenarios",
+        "all_required_scenarios_present", "full_axis_costs_reconciled",
+        "blocking_gaps"
+      ],
+      "properties": {
+        "method_set": {
+          "const": ["M0", "M1", "M2", "M3", "M4", "M5"]
+        },
+        "same_public_projection": {"const": true},
+        "m0_m1_initial_project_matched": {"const": true},
+        "m3_m4_system_his_matched": {"const": true},
+        "m3_m4_candidate_artifacts_separate": {"const": true},
+        "m4_m5_skeleton_project_matched": {"const": true},
+        "required_scenarios": {
+          "const": [
+            "h_repair", "hidden_fail", "infrastructure_not_run", "non_ready",
+            "project_repair", "success"
+          ]
+        },
+        "all_required_scenarios_present": {"const": true},
+        "full_axis_costs_reconciled": {"const": false},
+        "blocking_gaps": {
+          "const": [
+            "full_axis_event_derived_cost_reconciliation",
+            "runner_owned_public_terminal_hidden_pipeline"
+          ]
+        }
+      }
+    }
+  }
+}

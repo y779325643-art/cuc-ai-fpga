@@ -253,7 +253,12 @@ def test_missing_saturation_mutation_bypasses_overflow_clamp() -> None:
 
 
 def test_rl_catalog_coverage_matches_declared_core_and_host_stream_contracts() -> None:
-    catalog_path = Path(__file__).resolve().parents[2] / "docs" / "sr2fpga-task-catalog-v0.2.json"
+    catalog_path = (
+        Path(__file__).resolve().parents[2]
+        / "contracts"
+        / "task-catalog"
+        / "sr2fpga-task-catalog-v0.2.json"
+    )
     families = {
         family["family_id"]: family
         for family in json.loads(catalog_path.read_text(encoding="utf-8"))["task_families"]

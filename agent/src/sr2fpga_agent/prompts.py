@@ -3,33 +3,49 @@
 from __future__ import annotations
 
 import json
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from sr2fpga_agent.frozen_context import FrozenRequirementContext
+
+from sr2fpga_agent.family_recipe import (
+    FamilyRecipeDecision,
+    recipe_task_type,
+    select_family_recipe,
+)
 from sr2fpga_agent.contract_skeleton import (
     BEHAVIOR_REGION_BEGIN,
     BEHAVIOR_REGION_END,
     build_contract_skeleton_project,
 )
-from sr2fpga_agent.his_validation import (
-    SUPPORTED_COMPONENT_SEMANTIC_KINDS,
-    SUPPORTED_DATA_FLOW_PROTOCOLS,
-    SUPPORTED_VERIFICATION_SCENARIOS,
-)
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.parsers import (
     MULTIMODULE_RTL_EXAMPLES,
-    REQUIRED_PROJECT_FILES,
     _project_system_his_schema,
     _project_task_type,
+    resolve_project_manifest,
+)
+from sr2fpga_agent.requirement_envelope import (
+    RequirementEnvelope,
+    RequirementRouteResult,
+    build_request_requirement_envelope,
+    effective_request_requirement,
+    route_requirement,
 )
 from sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
+from sr2fpga_agent.system_his_capabilities import load_system_his_backend_capabilities
+from sr2fpga_agent.task_catalog import load_exact_task_family_aliases
+
+
+_BACKEND_CAPABILITIES = load_system_his_backend_capabilities()
 
 
 def _h2_lowerability_prompt_guidance() -> str:
-    semantic_kinds = ", ".join(sorted(SUPPORTED_COMPONENT_SEMANTIC_KINDS))
-    protocols = ", ".join(sorted(SUPPORTED_DATA_FLOW_PROTOCOLS))
-    scenarios = ", ".join(sorted(SUPPORTED_VERIFICATION_SCENARIOS))
+    semantic_kinds = ", ".join(sorted(_BACKEND_CAPABILITIES.supported_component_semantic_kinds))
+    protocols = ", ".join(sorted(_BACKEND_CAPABILITIES.supported_data_flow_protocols))
+    scenarios = ", ".join(sorted(_BACKEND_CAPABILITIES.supported_verification_scenarios))
     return (
+        f"H2 backend capability profile: {_BACKEND_CAPABILITIES.registry_version}.\n"
         f"H2 canonical semantic_kind values: {semantic_kinds}.\n"
         f"H2 canonical data_flow.protocol values: {protocols}.\n"
         "verification.scenarios entries must be canonical strings from: "
@@ -37,7 +53,48 @@ def _h2_lowerability_prompt_guidance() -> str:
         "name may remain a human-readable label.\n"
     )
 
-def _system_his_v12_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:
+def _system_his_v12_messages(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+    *,
+    requirement_envelope: RequirementEnvelope | None = None,
+    requirement_route: RequirementRouteResult | None = None,
+    family_recipe_decision: FamilyRecipeDecision | None = None,
+) -> list[dict[str, str]]:
+    if requirement_envelope is None and requirement_route is None:
+        requirement_envelope = build_request_requirement_envelope(request, platform)
+        if family_recipe_decision is None:
+            family_recipe_decision = select_family_recipe(request, requirement_envelope)
+        route_family = (
+            family_recipe_decision.family_id
+            if family_recipe_decision.status == "applied"
+            else request.task_type
+        )
+        requirement_route = route_requirement(
+            requirement_envelope,
+            declared_family=route_family,
+            exact_family_aliases=load_exact_task_family_aliases(),
+        )
+    elif requirement_envelope is None or requirement_route is None:
+        raise ValueError("System-HIS prompt requires both requirement_envelope and requirement_route")
+    if family_recipe_decision is None:
+        family_recipe_decision = select_family_recipe(request, requirement_envelope)
+    selected_recipe_task_type = recipe_task_type(family_recipe_decision)
+    task_guidance = (
+        _system_his_v12_task_guidance(selected_recipe_task_type)
+        if selected_recipe_task_type
+        else ""
+    )
+    requirement_guidance = _requirement_prompt_guidance(
+        requirement_envelope,
+        requirement_route,
+    )
+    requirement_trace_field = ",\n    \"requirement_trace\": " + json.dumps(
+        requirement_envelope.requirement_trace_template(),
+        ensure_ascii=False,
+        indent=4,
+        sort_keys=True,
+    )
     system = (
         "You are an FPGA system architect. "
         "Return only valid JSON. Do not include markdown. "
@@ -50,7 +107,7 @@ Project:
 - project_name: {request.project_name}
 - task_type: {request.task_type}
 - width: {request.width}
-- user_prompt: {request.description or "No extra user prompt provided."}
+- user_prompt: {effective_request_requirement(request)}
 
 Target platform:
 - name: {platform.name}
@@ -61,6 +118,8 @@ Target platform:
 - toolchain: {platform.toolchain}
 - clock_hz: {platform.clock_hz}
 - reset_polarity: {platform.reset_polarity}
+
+{requirement_guidance}
 
 Return only System-HIS JSON with schema_version "system-his-v1.2".
 Do not generate RTL or project files in this step.
@@ -87,7 +146,8 @@ Architectural rules:
 - Record architectural state, not incidental RTL temporaries.
 - State names across registers, counters, fsms, buffers, and memories must be globally unique.
 - Separate component definitions from concrete instances.
-- Every component must include name, semantic_kind, source, ports, and intent.
+- Every component must include name, semantic_kind, source, ports, intent, and a boolean combinational declaration.
+- Set combinational true only when the component owns no state and declares no clock/reset port; otherwise set it false.
 - Every components[].source must be one of artifacts.rtl_sources.
 - Do not use placeholder sources such as "library"; use concrete RTL paths like rtl/top.v.
 - Every instance must include name, component, parameter_values, clock, reset, and owns_state.
@@ -95,6 +155,9 @@ Architectural rules:
 - Every instances[].parameter_values key must be declared in that component's parameters.
 - top.clocks[].target_fmax_mhz and timing.target_fmax_mhz must be positive numbers.
 - Every data_flow endpoint must name top.<port> or <instance>.<port>.
+- Every direct physical link represented by a data flow must be listed in its connections array as
+  {{"from":"top.port_or_instance.port","to":"instance.port_or_top.port","width":...}}.
+  A path may describe a logical transform, but connections must contain only actual source-to-sink links.
 - data_flow.timing is optional, but when present it must include
   latency_cycles >= 0, initiation_interval > 0, and optional non-empty throughput.
 - Separate data movement from control rules.
@@ -115,7 +178,7 @@ Architectural rules:
 
 {_h2_lowerability_prompt_guidance()}
 
-{_system_his_v12_task_guidance(request.task_type)}
+    {task_guidance}
 
 Return this JSON shape:
 {{
@@ -123,7 +186,8 @@ Return this JSON shape:
   "intent": {{
     "user_prompt": "...",
     "design_goal": "...",
-    "assumptions": []
+    "declared_task_type": "{request.task_type}",
+    "assumptions": []{requirement_trace_field}
   }},
   "top": {{
     "name": "top",
@@ -148,6 +212,7 @@ Return this JSON shape:
       "path": ["top.input_port", "instance.input_port", "instance.output_port", "top.output_port"],
       "payload": {{"name": "...", "width": {{"expr": "DATA_WIDTH", "resolved": 8}}}},
       "protocol": "valid_ready",
+      "connections": [{{"from": "top.input_port", "to": "instance.input_port", "width": 8}}],
       "timing": {{"latency_cycles": 1, "initiation_interval": 1, "throughput": "one transfer per cycle when ready"}}
     }}
   ],
@@ -167,12 +232,14 @@ Return this JSON shape:
     "constraints": ["constraints/timing.sdc"]
   }},
   "resources": {{
+    "target_platform": "{platform.name}",
     "optimization_goal": "area_first",
     "expected": {{"lut": "low", "ff": "low", "bram": 0, "dsp": 0}}
   }},
   "verification": {{
     "testbench": "sim/tb_top.v",
     "scenarios": [],
+    "acceptance_obligation": "independent evaluator checks the requirement",
     "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
   }},
   "artifacts": {{
@@ -193,8 +260,30 @@ def _with_system_his_retry_feedback(
     error: str,
     previous_content: str,
     task_type: str = "",
+    *,
+    family_recipe_task_type: str | None = None,
+    requirement_trace_template: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
-    task_guidance = _system_his_v12_retry_guidance(task_type)
+    task_guidance = _system_his_v12_retry_guidance(family_recipe_task_type or "")
+    requirement_trace_guidance = ""
+    if requirement_trace_template is not None:
+        requirement_trace_guidance = (
+            "Requirement-trace repair rules:\n"
+            "- Preserve intent.requirement_trace.requirement_id and required_facts exactly.\n"
+            "- Keep one or more resolving RFC 6901 pointers for every required fact in fact_to_his.\n"
+            "- Every pointer must target an existing semantic System-HIS field outside "
+            "/intent/requirement_trace.\n"
+            + _requirement_trace_pointer_guidance()
+            + "- unresolved_facts must be [] only after every required fact has a non-empty mapping.\n"
+            "Required trace skeleton:\n"
+            + json.dumps(
+                requirement_trace_template,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n"
+        )
     return [
         *messages,
         {"role": "assistant", "content": previous_content or "{}"},
@@ -206,7 +295,8 @@ def _with_system_his_retry_feedback(
                 "Validation error:\n"
                 f"{error}\n\n"
                 "System-HIS v1.2 IR repair checklist:\n"
-                "- Every components[] object must include name, semantic_kind, source, ports, and intent.\n"
+                "- Every components[] object must include name, semantic_kind, source, ports, intent, and boolean combinational.\n"
+                "- combinational=true is valid only when the component owns no state and declares no clock/reset port.\n"
                 "- Every components[].source must be one of artifacts.rtl_sources.\n"
                 "- Do not use placeholder sources such as \"library\"; use concrete RTL paths like rtl/top.v.\n"
                 "- Every instances[] object must include name, component, parameter_values, clock, reset, and owns_state.\n"
@@ -220,6 +310,7 @@ def _with_system_his_retry_feedback(
                 "- Use {\"name\": \"rst_n\", \"polarity\": \"active_low\", \"kind\": \"sync\"} unless the task "
                 "explicitly says otherwise.\n"
                 "- data_flow.path endpoints must use top.<port> or <instance>.<port>; do not use component names as endpoints.\n"
+                "- data_flow.connections must list actual direct source-to-sink links with from/to endpoint strings and width; do not turn an internal logical transform into a wire.\n"
                 "- control_flow.when signal values must reference declared top ports, instance ports, state names, "
                 "data_flow names, or <fsm>.state.\n"
                 "- control_flow.effect.target must reference a declared data_flow name or state name; do not target "
@@ -230,12 +321,59 @@ def _with_system_his_retry_feedback(
                 "- FSM owner must be top or an instances[].name.\n"
                 "- FSMs must declare non-empty states, initial, and reset_state, and transitions must use those states.\n\n"
                 f"{_h2_lowerability_prompt_guidance()}\n"
+                f"{requirement_trace_guidance}\n"
                 f"{task_guidance}\n"
                 "Previous invalid System-HIS JSON:\n"
                 f"{previous_content.strip()}"
             ),
         },
     ]
+
+
+def _requirement_prompt_guidance(
+    envelope: RequirementEnvelope,
+    route: RequirementRouteResult,
+) -> str:
+    envelope_json = json.dumps(
+        envelope.to_prompt_payload(),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+    route_json = json.dumps(route.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)
+    trace_json = json.dumps(
+        envelope.requirement_trace_template(),
+        ensure_ascii=False,
+        indent=2,
+        sort_keys=True,
+    )
+    return (
+        "Requirement envelope (authoritative explicit facts and declared defaults):\n"
+        f"{envelope_json}\n\n"
+        "Requirement route (audit metadata, not an architecture recipe):\n"
+        f"{route_json}\n\n"
+        "Requirement rules:\n"
+        "- Do not coerce this requirement to a nearby task family. Compose only the recorded capabilities.\n"
+        "- Do not invent values for optional unknown_facts; record any implementation assumption in intent.assumptions.\n"
+        "- Copy requirement_id and required_facts exactly into intent.requirement_trace.\n"
+        "- Replace every empty fact_to_his list below with one or more RFC 6901 JSON pointers.\n"
+        "- Each pointer must resolve to an existing semantic System-HIS field outside /intent/requirement_trace.\n"
+        + _requirement_trace_pointer_guidance()
+        + "- Keep unresolved_facts as [] only after every required fact has a non-empty mapping.\n"
+        "Required intent.requirement_trace skeleton:\n"
+        f"{trace_json}"
+    )
+
+
+def _requirement_trace_pointer_guidance() -> str:
+    return (
+        "- Map width facts to top/component/instance widths or parameters; clock facts to top.clocks or timing; "
+        "reset facts to top.resets; interface facts to top.ports/interfaces or data_flow; acceptance facts to "
+        "verification; target facts to intent, artifacts, or resources; and numeric/latency/throughput facts "
+        "to components, data_flow, timing, or verification. Map functional_capabilities to components, "
+        "instances, data_flow, control_flow, state, or verification, and declared_task_type to intent.declared_task_type, intent.design_goal, "
+        "components, or instances; do not use intent.user_prompt as semantic proof.\n"
+    )
 
 
 def _system_his_v12_task_guidance(task_type: str) -> str:
@@ -737,8 +875,12 @@ def _with_his_project_retry_feedback(
 
 
 def _project_messages(request: ProjectRequest, platform: PlatformProfile) -> list[dict[str, str]]:
-    required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
+    required_files = (
+        "- manifest.json conforming to project-package-v1\n"
+        "- every synthesizable RTL source declared by manifest.sources"
+    )
     rtl_contract = _rtl_contract_for_task(request.task_type)
+    requirement_projection = build_request_requirement_envelope(request, platform).to_prompt_payload()
     system = (
         "You generate complete FPGA RTL project packages as JSON. "
         "Return only valid JSON. Do not include markdown. "
@@ -760,6 +902,9 @@ Platform:
 - clock_hz: {platform.clock_hz}
 - reset_polarity: {platform.reset_polarity}
 
+Shared public requirement projection:
+{json.dumps(requirement_projection, ensure_ascii=False, indent=2)}
+
 Required files:
 {required_files}
 
@@ -770,29 +915,336 @@ Return JSON in this exact shape. The value of each file must be a JSON string;
 escape newlines as \\n and escape any double quotes inside file contents:
 {{
   "files": {{
-    "system_his.json": "...",
     "manifest.json": "...",
-    "rtl/top.v": "...",
-{_additional_project_file_entries(request.task_type)}
-    "constraints/timing.sdc": "...",
-    "sim/tb_top.v": "...",
-    "reports/predicted_qor.json": "..."
+    "rtl/top.v": "..."{_additional_project_file_entries(request.task_type, leading_comma=True)}
   }}
 }}
 
-The manifest.json file content must itself be JSON and must contain this tool
-pipeline schema:
+The manifest.json file content must itself be JSON and use this canonical
+project-package-v1 build-intent schema:
 {{
+  "contract_version": "project-package-v1",
   "project_name": "{request.project_name}",
-  "top_module": "top",
-  "sources": {_manifest_sources_example(request.task_type)},
-  "constraints": {{"timing": "constraints/timing.sdc"}},
-  "simulation": {{"testbench": "sim/tb_top.v"}},
-  "reports": ["reports/predicted_qor.json"]
+  "top": {{
+    "module": "top",
+    "source": "rtl/top.v",
+    "interface": {{"ports": [{{"name": "clk", "direction": "input", "width": 1}}]}}
+  }},
+  "sources": {_manifest_source_records_example(request.task_type)},
+  "artifacts": [],
+  "build": {{"toolchain_id": "{platform.toolchain}", "language_standard": "verilog-2005"}}
 }}
 
-The Verilog must be synthesizable and the testbench must print TEST_PASS on success.
+Source paths are not fixed: manifest.top.source and manifest.sources are
+authoritative, and every returned RTL file must be declared. The interface ports
+must describe the actual top-module RTL ports. Candidate testbench, constraints,
+and predicted QoR are optional. If present, declare each file in manifest.artifacts
+with role candidate_testbench, constraint, or predicted_qor and applicability
+required, conditional (with condition_id), or advisory. A candidate testbench is
+only a public smoke/debug artifact and must print TEST_PASS on success; it is not
+the hidden semantic authority. Do not emit system_his.json in this Direct condition.
 {_icarus_testbench_rules()}
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_direct_project_messages(
+    context: "FrozenRequirementContext",
+    *,
+    project_name: str,
+) -> list[dict[str, str]]:
+    """Build a Direct prompt from the frozen generation-visible projection only."""
+
+    public_context = context.to_dict()
+    system = (
+        "You generate complete FPGA RTL project packages as JSON. Return only "
+        "valid JSON without markdown. Treat the supplied frozen public context "
+        "as the complete requirement authority; do not infer a hidden task family."
+    )
+    user = f"""
+Generate one complete synthesizable Verilog project from this frozen public
+requirement context:
+{json.dumps(public_context, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Use project_name `{project_name}`. Return exactly:
+{{
+  "project_name": "{project_name}",
+  "files": {{
+    "manifest.json": "...",
+    "rtl/top.v": "..."
+  }}
+}}
+
+`manifest.json` must itself be JSON conforming to project-package-v1:
+- contract_version is `project-package-v1`;
+- top declares module, source, and the actual interface ports;
+- sources declares every synthesizable RTL file with role `rtl_source` and a
+  supported language;
+- artifacts contains only files actually returned;
+- build declares toolchain_id and language_standard.
+
+Every returned project file must be declared by the manifest and every
+manifest-declared file must be returned. Source paths are not fixed. Do not
+emit System-HIS. Candidate testbench, constraints, and predicted QoR are
+optional and cannot serve as hidden correctness evidence.
+{_icarus_testbench_rules()}
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_untyped_plan_messages(
+    context: "FrozenRequirementContext",
+) -> list[dict[str, str]]:
+    """Build the M2 planning call from the frozen public projection only."""
+
+    system = (
+        "You plan a complete synthesizable FPGA RTL project. Return plain plan "
+        "text only: no JSON schema, System-HIS, RTL, hidden evaluator details, "
+        "task-family label, or deterministic skeleton."
+    )
+    user = f"""
+Create an implementation plan from this frozen public requirement context:
+{json.dumps(context.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)}
+
+Describe the intended project files, top-level interface, state/data behavior,
+reset and clock behavior, and implementation order. This is deliberately an
+untyped plan; do not emit System-HIS or claim that tools or tests passed.
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_project_from_untyped_plan_messages(
+    context: "FrozenRequirementContext",
+    plan_text: str,
+    *,
+    project_name: str,
+) -> list[dict[str, str]]:
+    """Build M2 project generation from public context plus its untyped plan."""
+
+    system = (
+        "You generate a complete FPGA RTL project package as JSON. Return only "
+        "valid JSON without markdown. The supplied frozen public context and "
+        "untyped plan are the only generation inputs."
+    )
+    user = f"""
+Frozen public requirement context:
+{json.dumps(context.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)}
+
+Untyped implementation plan:
+{plan_text}
+
+Generate one complete synthesizable Verilog project named `{project_name}`.
+Return exactly:
+{{
+  "project_name": "{project_name}",
+  "files": {{
+    "manifest.json": "...",
+    "rtl/top.v": "..."
+  }}
+}}
+
+manifest.json must conform to project-package-v1 and declare every returned
+file, actual top interface, RTL source, artifact role, toolchain_id, and language
+standard. Do not emit System-HIS or BEHAVIOR_HOLE markers. Candidate testbench,
+constraints, and predicted QoR are optional and cannot serve as hidden evidence.
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_system_his_messages(
+    context: "FrozenRequirementContext",
+) -> list[dict[str, str]]:
+    """Build REQ2HIS solely from the frozen generation-visible projection."""
+
+    from sr2fpga_agent.frozen_context import frozen_requirement_trace_template
+    from sr2fpga_agent.system_his_schema import load_registered_system_his_schema
+
+    public_context = context.to_dict()
+    trace = frozen_requirement_trace_template(context)
+    schema = load_registered_system_his_schema()
+    system = (
+        "You are an FPGA system architect. Return only valid System-HIS v1.2 "
+        "JSON without markdown or RTL. The frozen public context is the complete "
+        "requirement authority. Do not infer a hidden task family or recipe."
+    )
+    user = f"""
+Generate one System-HIS v1.2 contract from this frozen public context:
+{json.dumps(public_context, ensure_ascii=False, indent=2, sort_keys=True)}
+
+The intent.requirement_trace object must start with exactly this content:
+{json.dumps(trace, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Replace every empty fact_to_his list with one or more non-empty RFC 6901 JSON
+pointers to semantic fields outside intent.requirement_trace that preserve the
+corresponding fact value. unresolved_facts must remain empty.
+
+{_h2_lowerability_prompt_guidance()}
+
+Return a JSON object conforming exactly to this registered schema:
+{json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True)}
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_his_skeleton_messages(
+    context: "FrozenRequirementContext",
+    system_his: dict[str, Any],
+    skeleton_files: dict[str, str],
+) -> list[dict[str, str]]:
+    behavior_paths = [
+        path
+        for path, content in sorted(skeleton_files.items())
+        if "BEHAVIOR_HOLE" in content
+    ]
+    system = (
+        "You fill behavioral RTL bodies in a trusted deterministic skeleton. "
+        "Return only valid JSON without markdown."
+    )
+    user = f"""
+Frozen public context:
+{json.dumps(context.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)}
+
+Validated System-HIS:
+{json.dumps(system_his, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Trusted skeleton files:
+{json.dumps(skeleton_files, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Return exactly {{"behavior_files": {{path: body}}}} for these paths:
+{json.dumps(behavior_paths, ensure_ascii=False, indent=2)}
+Fill every BEHAVIOR_HOLE with behavior body only. Do not emit modules, headers,
+endmodule, manifest, System-HIS, constraints, testbenches, or reports. Preserve
+all names and widths from the validated contract and skeleton.
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_his_free_project_messages(
+    context: "FrozenRequirementContext",
+    system_his: dict[str, Any],
+    *,
+    project_name: str,
+) -> list[dict[str, str]]:
+    """Build the M3 no-skeleton project prompt from public artifacts only."""
+
+    system = (
+        "You generate a complete FPGA RTL project from a validated System-HIS. "
+        "Return only valid JSON without markdown. No deterministic skeleton, "
+        "task-family template, or hidden evaluator information is available."
+    )
+    user = f"""
+Frozen public context:
+{json.dumps(context.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)}
+
+Validated frozen System-HIS:
+{json.dumps(system_his, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Generate a complete synthesizable project named `{project_name}`. Return:
+{{
+  "project_name": "{project_name}",
+  "files": {{
+    "manifest.json": "...",
+    "rtl/design.v": "..."
+  }}
+}}
+
+manifest.json must conform to project-package-v1. It must declare every returned
+RTL source and actual top interface. Do not return system_his.json: trusted
+packaging code will attach the exact validated HIS after parsing. Candidate
+testbench, constraints, and predicted QoR do not provide hidden correctness
+credit, but every artifact path explicitly required by the validated System-HIS
+must be returned and declared with its matching manifest role. Implement the
+complete behavior directly in the returned RTL; do not emit BEHAVIOR_HOLE markers.
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_system_his_correction_messages(
+    context: "FrozenRequirementContext",
+    system_his: dict[str, Any],
+    *,
+    failed_h_stage: str,
+    diagnostics: list[str],
+) -> list[dict[str, str]]:
+    """Build one public-diagnosis M5 HIS-correction prompt."""
+
+    from sr2fpga_agent.frozen_context import frozen_requirement_trace_template
+
+    system = (
+        "You repair a System-HIS v1.2 contract. Return only the complete "
+        "corrected JSON object without markdown or RTL. The frozen public "
+        "context is the complete requirement authority. Do not infer a hidden "
+        "task family, recipe, oracle, or evaluator metadata."
+    )
+    user = f"""
+Frozen public context:
+{json.dumps(context.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)}
+
+Current System-HIS candidate:
+{json.dumps(system_his, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Public validation failure:
+- failed_h_stage: {failed_h_stage}
+- diagnostics: {json.dumps(diagnostics, ensure_ascii=False, indent=2)}
+
+Correct only the contract defects identified by the public diagnostics. Preserve
+all supported requirement semantics and return the complete System-HIS v1.2
+object. intent.requirement_trace.required_facts must remain exactly:
+{json.dumps(frozen_requirement_trace_template(context)["required_facts"], ensure_ascii=False, indent=2, sort_keys=True)}
+
+Every fact_to_his entry must contain value-preserving RFC 6901 pointers outside
+intent.requirement_trace and unresolved_facts must be empty. The caller will
+rerun H0, H1, H2, and H3 from the beginning; do not claim that validation passed.
+{_h2_lowerability_prompt_guidance()}
+"""
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_project_repair_messages(
+    context: "FrozenRequirementContext",
+    project: GeneratedProject,
+    *,
+    failed_stage: str,
+    diagnostics: list[str],
+    editable_sources: list[str],
+) -> list[dict[str, str]]:
+    """Build an M5 repair prompt with a closed behavior-region edit surface."""
+
+    visible_files = {
+        path: content
+        for path, content in sorted(project.files.items())
+        if path in {"manifest.json", "system_his.json", *editable_sources}
+    }
+    response_shape = {"rtl_files": {path: "..." for path in editable_sources}}
+    system = (
+        "You repair model-owned RTL behavior inside a frozen FPGA project. "
+        "Return only valid JSON without markdown. Do not infer task families, "
+        "recipes, hidden tests, or evaluator metadata."
+    )
+    user = f"""
+Frozen public context:
+{json.dumps(context.to_dict(), ensure_ascii=False, indent=2, sort_keys=True)}
+
+Public evaluator failure:
+- failed_stage: {failed_stage}
+- diagnostics: {json.dumps(diagnostics, ensure_ascii=False, indent=2)}
+
+Read-only contract and editable RTL files:
+{json.dumps(visible_files, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Only these RTL files are editable:
+{json.dumps(editable_sources, ensure_ascii=False, indent=2)}
+
+Return this shape:
+{json.dumps(response_shape, ensure_ascii=False, indent=2, sort_keys=True)}
+
+Return each edited file as complete text. You may omit an unchanged editable
+file, but at least one file must change. In every returned file, preserve all
+bytes outside SR2FPGA_BEHAVIOR_BEGIN/SR2FPGA_BEHAVIOR_END regions and preserve
+the markers themselves. Do not return manifest, System-HIS, constraints,
+testbenches, reports, new paths, deleted paths, module headers, or endmodule
+inside a behavior region. The caller will reject any edit outside the declared
+surface and rerun public validation.
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -802,10 +1254,16 @@ def _repair_messages(project: GeneratedProject, diagnosis: dict[str, object]) ->
         f"### {path}\n{content}" for path, content in sorted(project.files.items())
     )
     diagnosis_text = json.dumps(diagnosis, ensure_ascii=False, indent=2)
-    required_files = "\n".join(f"- {path}" for path in sorted(REQUIRED_PROJECT_FILES))
+    required_paths = set(project.files)
+    required_files = "\n".join(f"- {path}" for path in sorted(required_paths))
     task_type = _project_task_type(project.files)
     rtl_contract = _repair_rtl_contract(project.files, task_type)
     system_his_prompt = _repair_system_his_prompt(project.files, project.project_name)
+    response_shape = json.dumps(
+        {"files": {path: "..." for path in sorted(project.files)}},
+        ensure_ascii=False,
+        indent=2,
+    )
     edit_surface_rules = _repair_edit_surface_rules(project, diagnosis)
     system = (
         "You repair FPGA RTL project packages as JSON. "
@@ -828,41 +1286,26 @@ RTL structure:
 {rtl_contract}
 
 Preserve every file that is not needed for the fix byte-for-byte. If
-manifest.json already has a valid top_module, sources, and simulation.testbench,
-copy the original manifest.json unchanged unless the failure log specifically
-points to manifest.json.
+manifest.json already has valid build intent, copy it unchanged unless the
+failure log specifically points to manifest.json. Do not add candidate
+testbench, constraints, predicted QoR, or System-HIS merely because they are
+absent; these artifacts are method- or episode-conditional.
 
 Return JSON in this exact shape. The value of each file must be a JSON string;
 escape newlines as \\n and escape any double quotes inside file contents:
-{{
-  "files": {{
-    "system_his.json": "...",
-    "manifest.json": "...",
-    "rtl/top.v": "...",
-{_additional_repair_file_entries(project.files, task_type)}
-    "constraints/timing.sdc": "...",
-    "sim/tb_top.v": "...",
-    "reports/predicted_qor.json": "..."
-  }}
-}}
+{response_shape}
 
-The manifest.json file content must itself be JSON and must contain this tool
-pipeline schema:
-{{
-  "project_name": "{project.project_name}",
-  "top_module": "top",
-  "sources": {_repair_sources_example(project.files, task_type)},
-  "constraints": {{"timing": "constraints/timing.sdc"}},
-  "simulation": {{"testbench": "sim/tb_top.v"}},
-  "reports": ["reports/predicted_qor.json"]
-}}
+Canonical manifests use contract_version project-package-v1 with top, sources,
+artifacts, and build records. Legacy manifests remain valid compatibility input;
+do not silently migrate one during an unrelated repair.
 
 {system_his_prompt}
 
 {edit_surface_rules}
 
 Make the smallest practical fix for the failing tool log. Preserve pure
-Verilog RTL and ensure the testbench prints TEST_PASS on success.
+Verilog RTL. If a candidate testbench is present, keep it self-checking and
+print TEST_PASS only on success.
 Repair quality rules:
 - Do not introduce a new syntax error while fixing a lint warning.
 - Use legal Verilog concatenation syntax: nested replication must be wrapped
@@ -883,10 +1326,18 @@ def _repair_edit_surface_rules(project: GeneratedProject, diagnosis: dict[str, o
         "scoreboards, protocol checkers, constraints, and board files.",
         "- Do not add, delete, or rename RTL source files.",
     ]
+    try:
+        repair_sources = set(resolve_project_manifest(project.files).sources)
+    except ValueError:
+        repair_sources = {
+            path
+            for path in project.files
+            if path.lower().endswith((".v", ".sv", ".vhd", ".vhdl"))
+        }
     has_behavior_regions = any(
         BEHAVIOR_REGION_BEGIN in content or BEHAVIOR_REGION_END in content
         for path, content in project.files.items()
-        if path.startswith("rtl/")
+        if path in repair_sources
     )
     if has_behavior_regions:
         rules.extend(
@@ -908,7 +1359,7 @@ def _repair_edit_surface_rules(project: GeneratedProject, diagnosis: dict[str, o
 
 def _icarus_testbench_rules() -> str:
     return (
-        "Testbench portability rules:\n"
+        "If the project includes a candidate testbench, apply these portability rules:\n"
         "- The testbench must compile with Icarus Verilog using iverilog -g2012.\n"
         "- Do not initialize unpacked arrays with aggregate literals such as "
         "`reg [7:0] seq [0:2] = {8'd1, 8'd2, 8'd3};`.\n"
@@ -960,12 +1411,14 @@ def _rtl_contract_for_task(task_type: str) -> str:
     example_sources = MULTIMODULE_RTL_EXAMPLES.get(task_type)
     if example_sources is None:
         return (
-            "Single-file RTL is allowed for this task. Put the synthesizable top module in "
-            "rtl/top.v and list it in manifest.json sources."
+            "Single-file RTL is allowed for this task. Put the synthesizable top module in a "
+            "safe relative source path and declare it as manifest.top.source and in "
+            "manifest.sources."
         )
     return (
-        "Generate a true multi-file RTL implementation. rtl/top.v must be an integration wrapper "
-        "that instantiates task-specific submodules. Generate at least two additional Verilog "
+        "Generate a true multi-file RTL implementation. The manifest-declared top source should "
+        "be an integration wrapper that instantiates task-specific submodules. Generate at least "
+        "two additional Verilog "
         f"source files for this task. Recommended source list: {json.dumps(example_sources)}. "
         "List every RTL source in manifest.json sources and include every listed source in files."
     )
@@ -973,6 +1426,15 @@ def _rtl_contract_for_task(task_type: str) -> str:
 
 def _manifest_sources_example(task_type: str) -> str:
     return json.dumps(MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"]))
+
+
+def _manifest_source_records_example(task_type: str) -> str:
+    return json.dumps(
+        [
+            {"path": path, "role": "rtl_source", "language": "verilog"}
+            for path in MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"])
+        ]
+    )
 
 
 def _artifact_sources_example(system_his: dict[str, Any], task_type: str) -> list[str]:
@@ -985,8 +1447,19 @@ def _artifact_sources_example(system_his: dict[str, Any], task_type: str) -> lis
     return MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"])
 
 
-def _additional_project_file_entries(task_type: str) -> str:
-    return _additional_file_entries(MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"]))
+def _additional_project_file_entries(
+    task_type: str,
+    *,
+    leading_comma: bool = False,
+) -> str:
+    sources = MULTIMODULE_RTL_EXAMPLES.get(task_type, ["rtl/top.v"])
+    if not leading_comma:
+        return _additional_file_entries(sources)
+    return "".join(
+        f',\n    "{source}": "..."'
+        for source in sources
+        if source != "rtl/top.v"
+    )
 
 
 def _additional_file_entries(sources: list[str]) -> str:
@@ -997,51 +1470,46 @@ def _additional_file_entries(sources: list[str]) -> str:
 
 
 def _repair_rtl_contract(files: dict[str, str], task_type: str | None) -> str:
-    if task_type in MULTIMODULE_RTL_EXAMPLES:
-        return (
-            "Preserve the true multi-file RTL structure. Do not collapse submodules into rtl/top.v. "
-            "rtl/top.v must remain an integration wrapper, and manifest.json sources must keep "
-            "rtl/top.v plus at least two submodule .v files unless the failure specifically requires "
-            "renaming a source."
-        )
     try:
-        manifest = json.loads(files.get("manifest.json", "{}"))
-    except json.JSONDecodeError:
-        manifest = {}
-    sources = manifest.get("sources")
-    rtl_sources = sources if isinstance(sources, list) else []
-    if len([path for path in rtl_sources if isinstance(path, str) and path.endswith(".v")]) >= 3:
+        manifest = resolve_project_manifest(files)
+    except ValueError:
+        del task_type
+        return "Preserve the existing RTL source structure unless the failure requires changing it."
+    if len(manifest.sources) >= 3:
         return (
-            "Preserve the existing multi-file RTL structure. Do not collapse submodules into rtl/top.v. "
-            "Return all existing source files unless the repair requires adding or renaming one."
+            "Preserve the existing multi-file RTL structure. Do not collapse submodules into the "
+            f"manifest-declared top source {manifest.top_source or manifest.sources[0]}. Return all "
+            "manifest-declared source files unless the failure requires changing the build intent."
         )
     return "Preserve the existing RTL source structure unless the failure requires changing it."
 
 
 def _repair_sources_example(files: dict[str, str], task_type: str | None) -> str:
     try:
-        manifest = json.loads(files.get("manifest.json", "{}"))
-    except json.JSONDecodeError:
-        manifest = {}
-    sources = manifest.get("sources")
-    if isinstance(sources, list) and all(isinstance(path, str) for path in sources):
-        return json.dumps(sources)
-    if task_type in MULTIMODULE_RTL_EXAMPLES:
-        return json.dumps(MULTIMODULE_RTL_EXAMPLES[task_type])
-    return json.dumps(["rtl/top.v"])
+        sources = list(resolve_project_manifest(files).sources)
+    except ValueError:
+        del task_type
+        sources = sorted(
+            path
+            for path in files
+            if path.lower().endswith((".v", ".sv", ".vhd", ".vhdl"))
+        )
+    return json.dumps(sources)
 
 
 def _additional_repair_file_entries(files: dict[str, str], task_type: str | None) -> str:
     try:
         sources = json.loads(_repair_sources_example(files, task_type))
     except json.JSONDecodeError:
-        sources = ["rtl/top.v"]
+        sources = []
     if not isinstance(sources, list) or not all(isinstance(source, str) for source in sources):
-        sources = ["rtl/top.v"]
+        sources = []
     return _additional_file_entries(sources)
 
 
 def _repair_system_his_prompt(files: dict[str, str], project_name: str) -> str:
+    if "system_his.json" not in files:
+        return "This Direct-method project has no System-HIS artifact; do not create one during repair."
     if _project_system_his_schema(files) == SYSTEM_HIS_V12_SCHEMA:
         return (
             "The system_his.json file content must itself be JSON. Preserve the existing "

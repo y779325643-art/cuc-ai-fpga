@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import json
+import re
 from collections import Counter
-from dataclasses import dataclass, field
-from typing import Any
+from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING, Any
 
+if TYPE_CHECKING:
+    from sr2fpga_agent.frozen_context import FrozenRequirementContext
+
+from sr2fpga_agent.family_recipe import recipe_task_type, select_family_recipe
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
+from sr2fpga_agent.requirement_envelope import build_request_requirement_envelope
 from sr2fpga_agent.rtl_introspect import widths_equivalent
 
 
@@ -287,13 +293,38 @@ _SUPPLEMENTAL_TASK_COMPONENTS = {
 def check_system_his_req_fidelity(
     request: ProjectRequest,
     payload: dict[str, Any],
+    platform: PlatformProfile | None = None,
 ) -> SystemHisReqFidelityResult:
-    """Check that a valid System-HIS still describes the requested synthetic task.
+    """Check the generic trace, then optionally apply a family fidelity plugin."""
 
-    This is intentionally narrower than the structural v1.2 checker. It catches
-    wrong-but-coherent HIS objects for the frozen topology tasks while leaving
-    legacy task types unblocked.
-    """
+    trace_result = _check_requirement_trace(request, payload, platform)
+    if platform is None:
+        return trace_result
+
+    try:
+        envelope = build_request_requirement_envelope(request, platform)
+        decision = select_family_recipe(request, envelope)
+    except ValueError as exc:
+        policy_result = SystemHisReqFidelityResult(
+            passed=False,
+            errors=[f"REQ2HIS family recipe policy: {exc}"],
+            metrics=_metrics_from_errors([f"REQ2HIS family recipe policy: {exc}"]),
+        )
+        return _merge_fidelity_results(trace_result, policy_result)
+    selected_task_type = recipe_task_type(decision)
+    if selected_task_type is None:
+        return trace_result
+
+    family_request = replace(request, task_type=selected_task_type)
+    family_result = check_system_his_family_recipe_fidelity(family_request, payload)
+    return _merge_fidelity_results(trace_result, family_result)
+
+
+def check_system_his_family_recipe_fidelity(
+    request: ProjectRequest,
+    payload: dict[str, Any],
+) -> SystemHisReqFidelityResult:
+    """Apply the optional, known-family fidelity plugin in isolation."""
 
     if request.task_type not in COMPONENT_TOPOLOGIES and request.task_type not in _SUPPLEMENTAL_TASK_COMPONENTS:
         return SystemHisReqFidelityResult(passed=True, metrics=_not_applicable_metrics())
@@ -312,6 +343,856 @@ def check_system_his_req_fidelity(
         errors=errors,
         metrics=_metrics_from_errors(errors),
     )
+
+
+def _check_requirement_trace(
+    request: ProjectRequest,
+    payload: dict[str, Any],
+    platform: PlatformProfile | None,
+) -> SystemHisReqFidelityResult:
+    errors: list[str] = []
+    if platform is None:
+        errors.append(
+            "REQ2HIS requirement fidelity: PlatformProfile is required to verify requirement_trace"
+        )
+        return SystemHisReqFidelityResult(
+            passed=False,
+            errors=errors,
+            metrics=_metrics_from_errors(errors),
+        )
+
+    try:
+        expected_trace = build_request_requirement_envelope(
+            request,
+            platform,
+        ).requirement_trace_template()
+    except ValueError as exc:
+        errors.append(f"REQ2HIS requirement fidelity: invalid requirement: {exc}")
+        return SystemHisReqFidelityResult(
+            passed=False,
+            errors=errors,
+            metrics=_metrics_from_errors(errors),
+        )
+
+    return _check_requirement_trace_against_expected(expected_trace, payload)
+
+
+def check_frozen_context_system_his_fidelity(
+    context: "FrozenRequirementContext",
+    payload: dict[str, Any],
+) -> SystemHisReqFidelityResult:
+    """Check generic H3 directly against the frozen public fact projection."""
+
+    from sr2fpga_agent.frozen_context import frozen_requirement_trace_template
+
+    return _check_requirement_trace_against_expected(
+        frozen_requirement_trace_template(context), payload
+    )
+
+
+def build_frozen_requirement_trace(
+    context: "FrozenRequirementContext",
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    """Build value-aware pointers for deterministic/fake frozen-context HIS."""
+
+    from sr2fpga_agent.frozen_context import frozen_requirement_trace_template
+
+    trace = frozen_requirement_trace_template(context)
+    mappings: dict[str, list[str]] = {}
+    candidates = [
+        (pointer, value, tokens)
+        for pointer, value, tokens in _semantic_pointer_candidates(payload)
+        if tokens[:2] != ("intent", "requirement_trace")
+    ]
+    for key, fact in trace["required_facts"].items():
+        structurally_valid = [
+            (pointer, value, tokens)
+            for pointer, value, tokens in candidates
+            if _pointer_matches_required_fact(key, tokens)
+        ]
+        selected = [
+            pointer
+            for pointer, value, tokens in structurally_valid
+            if _mapped_values_preserve_required_fact(key, fact["value"], [(value, tokens)])
+        ][:1]
+        if not selected and structurally_valid:
+            resolved = [(value, tokens) for _pointer, value, tokens in structurally_valid]
+            if _mapped_values_preserve_required_fact(key, fact["value"], resolved):
+                selected = [pointer for pointer, _value, _tokens in structurally_valid]
+        mappings[key] = selected
+    trace["fact_to_his"] = mappings
+    trace["unresolved_facts"] = [key for key, pointers in mappings.items() if not pointers]
+    return trace
+
+
+def _check_requirement_trace_against_expected(
+    expected_trace: dict[str, Any],
+    payload: dict[str, Any],
+) -> SystemHisReqFidelityResult:
+    errors: list[str] = []
+    intent = payload.get("intent")
+    trace = intent.get("requirement_trace") if isinstance(intent, dict) else None
+    if not isinstance(trace, dict):
+        errors.append(
+            "REQ2HIS requirement fidelity: intent.requirement_trace must be an object"
+        )
+        return SystemHisReqFidelityResult(
+            passed=False,
+            errors=errors,
+            metrics=_metrics_from_errors(errors),
+        )
+
+    expected_keys = {
+        "requirement_id",
+        "required_facts",
+        "fact_to_his",
+        "unresolved_facts",
+    }
+    missing_keys = sorted(expected_keys.difference(trace))
+    unexpected_keys = sorted(set(trace).difference(expected_keys))
+    if missing_keys or unexpected_keys:
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace keys do not match contract; "
+            f"missing={missing_keys}, unexpected={unexpected_keys}"
+        )
+
+    if trace.get("requirement_id") != expected_trace["requirement_id"]:
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace.requirement_id does not match "
+            "the shared Requirement Envelope"
+        )
+
+    expected_facts = expected_trace["required_facts"]
+    required_facts = trace.get("required_facts")
+    if not isinstance(required_facts, dict):
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace.required_facts must be an object"
+        )
+    else:
+        _validate_required_facts(required_facts, expected_facts, errors)
+
+    fact_to_his = trace.get("fact_to_his")
+    if not isinstance(fact_to_his, dict):
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace.fact_to_his must be an object"
+        )
+    else:
+        _validate_fact_to_his(fact_to_his, expected_facts, payload, errors)
+
+    unresolved_facts = trace.get("unresolved_facts")
+    if unresolved_facts != []:
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace.unresolved_facts must be an empty list"
+        )
+
+    return SystemHisReqFidelityResult(
+        passed=not errors,
+        errors=errors,
+        metrics=_metrics_from_errors(errors),
+    )
+
+
+def build_deterministic_requirement_trace(
+    request: ProjectRequest,
+    payload: dict[str, Any],
+    platform: PlatformProfile,
+) -> dict[str, Any]:
+    """Build trace pointers only when existing payload values preserve each fact."""
+
+    trace = build_request_requirement_envelope(request, platform).requirement_trace_template()
+    mappings: dict[str, list[str]] = {}
+    candidates = [
+        (pointer, value, tokens)
+        for pointer, value, tokens in _semantic_pointer_candidates(payload)
+        if tokens[:2] != ("intent", "requirement_trace")
+    ]
+    for key, fact in trace["required_facts"].items():
+        structurally_valid = [
+            (pointer, value, tokens)
+            for pointer, value, tokens in candidates
+            if _pointer_matches_required_fact(key, tokens)
+        ]
+        selected: list[str] = []
+        for pointer, value, tokens in structurally_valid:
+            if _mapped_values_preserve_required_fact(
+                key,
+                fact["value"],
+                [(value, tokens)],
+            ):
+                selected = [pointer]
+                break
+        if not selected and structurally_valid:
+            resolved = [(value, tokens) for _pointer, value, tokens in structurally_valid]
+            if _mapped_values_preserve_required_fact(key, fact["value"], resolved):
+                selected = [pointer for pointer, _value, _tokens in structurally_valid]
+        mappings[key] = selected
+    trace["fact_to_his"] = mappings
+    trace["unresolved_facts"] = [key for key, pointers in mappings.items() if not pointers]
+    return trace
+
+
+def _semantic_pointer_candidates(
+    value: Any,
+    tokens: tuple[str, ...] = (),
+) -> list[tuple[str, Any, tuple[str, ...]]]:
+    items: list[tuple[str, Any, tuple[str, ...]]] = []
+    if tokens:
+        pointer = "/" + "/".join(_json_pointer_escape(token) for token in tokens)
+        items.append((pointer, value, tokens))
+    if isinstance(value, dict):
+        for key, child in value.items():
+            items.extend(_semantic_pointer_candidates(child, (*tokens, str(key))))
+    elif isinstance(value, list):
+        for index, child in enumerate(value):
+            items.extend(_semantic_pointer_candidates(child, (*tokens, str(index))))
+    return items
+
+
+def _json_pointer_escape(token: str) -> str:
+    return token.replace("~", "~0").replace("/", "~1")
+
+
+def _merge_fidelity_results(
+    trace_result: SystemHisReqFidelityResult,
+    family_result: SystemHisReqFidelityResult,
+) -> SystemHisReqFidelityResult:
+    metrics: dict[str, dict[str, Any]] = {}
+    for key in FIDELITY_METRIC_KEYS:
+        trace_metric = trace_result.metrics.get(key, {})
+        family_metric = family_result.metrics.get(key, {})
+        statuses = {trace_metric.get("status"), family_metric.get("status")}
+        status = "fail" if "fail" in statuses else "pass" if "pass" in statuses else "not_applicable"
+        metrics[key] = {
+            "status": status,
+            "errors": [
+                *list(trace_metric.get("errors", [])),
+                *list(family_metric.get("errors", [])),
+            ],
+        }
+    return SystemHisReqFidelityResult(
+        passed=trace_result.passed and family_result.passed,
+        errors=[*trace_result.errors, *family_result.errors],
+        warnings=[*trace_result.warnings, *family_result.warnings],
+        metrics=metrics,
+    )
+
+
+def _validate_required_facts(
+    actual: dict[str, Any],
+    expected: dict[str, Any],
+    errors: list[str],
+) -> None:
+    for key in sorted(set(expected).difference(actual)):
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace.required_facts "
+            f"missing required fact '{key}'"
+        )
+    for key in sorted(set(actual).difference(expected)):
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace.required_facts "
+            f"has unexpected fact '{key}'"
+        )
+    for key in sorted(set(actual).intersection(expected)):
+        if actual[key] != expected[key]:
+            errors.append(
+                "REQ2HIS requirement fidelity: requirement_trace.required_facts "
+                f"fact '{key}' does not match the shared Requirement Envelope"
+            )
+
+
+def _validate_fact_to_his(
+    actual: dict[str, Any],
+    expected_facts: dict[str, Any],
+    payload: dict[str, Any],
+    errors: list[str],
+) -> None:
+    for key in sorted(set(expected_facts).difference(actual)):
+        errors.append(
+            "REQ2HIS requirement fidelity: requirement_trace.fact_to_his "
+            f"missing required fact '{key}'"
+        )
+    for key in sorted(set(actual).difference(expected_facts)):
+        errors.append(
+            f"REQ2HIS requirement fidelity: requirement_trace.fact_to_his has unexpected fact '{key}'"
+        )
+    for key in sorted(set(actual).intersection(expected_facts)):
+        pointers = actual[key]
+        if not isinstance(pointers, list) or not pointers:
+            errors.append(
+                "REQ2HIS requirement fidelity: requirement_trace.fact_to_his "
+                f"fact '{key}' must have a non-empty JSON Pointer list"
+            )
+            continue
+        resolved_values: list[tuple[Any, tuple[str, ...]]] = []
+        for pointer in pointers:
+            if not isinstance(pointer, str):
+                errors.append(
+                    "REQ2HIS requirement fidelity: requirement_trace.fact_to_his "
+                    f"fact '{key}' contains a non-string JSON Pointer"
+                )
+                continue
+            try:
+                resolved_value, tokens = _resolve_json_pointer(payload, pointer)
+            except ValueError as exc:
+                errors.append(
+                    "REQ2HIS requirement fidelity: requirement_trace.fact_to_his "
+                    f"JSON Pointer '{pointer}' for fact '{key}' does not resolve: {exc}"
+                )
+                continue
+            if tokens[:2] == ("intent", "requirement_trace"):
+                errors.append(
+                    "REQ2HIS requirement fidelity: requirement_trace.fact_to_his "
+                    f"JSON Pointer '{pointer}' for fact '{key}' cannot point into "
+                    "requirement_trace"
+                )
+            elif not _pointer_matches_required_fact(key, tokens):
+                errors.append(
+                    "REQ2HIS requirement fidelity: requirement_trace.fact_to_his "
+                    f"JSON Pointer '{pointer}' does not structurally represent fact '{key}'"
+                )
+            else:
+                resolved_values.append((resolved_value, tokens))
+        expected_value = expected_facts[key].get("value")
+        if resolved_values and not _mapped_values_preserve_required_fact(
+            key,
+            expected_value,
+            resolved_values,
+        ):
+            errors.append(
+                "REQ2HIS requirement fidelity: requirement_trace.fact_to_his "
+                f"mapped values do not preserve required fact '{key}'"
+            )
+
+
+def _pointer_matches_required_fact(key: str, tokens: tuple[str, ...]) -> bool:
+    if not tokens:
+        return False
+    root = tokens[0]
+    if key == "data_width_bits":
+        return root in {"top", "components", "instances"} and any(
+            token in {"width", "parameter", "parameters", "parameter_values"}
+            for token in tokens[1:]
+        )
+    if key in {"clock_frequencies_hz", "clock_domain_count"}:
+        return tokens[:2] == ("top", "clocks") or root == "timing"
+    if key == "reset_polarity":
+        return tokens[:2] == ("top", "resets")
+    if key == "interface_protocols":
+        return tokens[:2] in {("top", "ports"), ("top", "interfaces")} or root == "data_flow"
+    if key == "functional_capabilities":
+        return root in {
+            "components",
+            "instances",
+            "data_flow",
+            "control_flow",
+            "state",
+            "verification",
+        }
+    if key == "declared_task_type":
+        return tokens in {("task_type",), ("intent", "declared_task_type")} or tokens[:2] == ("intent", "design_goal") or root in {
+            "components",
+            "instances",
+        }
+    if key == "acceptance_criteria":
+        return root == "verification"
+    if key == "target_platform":
+        return root in {"intent", "artifacts", "resources"} and any(
+            marker in _normalize_semantic_text(token)
+            for token in tokens[1:]
+            for marker in (
+                "target",
+                "platform",
+                "device",
+                "part",
+                "board",
+                "vendor",
+                "family",
+                "toolchain",
+            )
+        )
+    if key in {"numeric_representation", "latency_cycles", "throughput_constraint"}:
+        return root in {"components", "data_flow", "timing", "verification"}
+    if key == "cdc_policy":
+        return tokens[:2] == ("top", "clocks") or root in {
+            "components",
+            "instances",
+            "data_flow",
+        }
+    if key in {"memory_depth", "memory_access_contract"}:
+        return root in {"state", "components", "instances", "data_flow", "resources"}
+    if key in {
+        "adc_interface_contract",
+        "dma_transfer_contract",
+        "pcie_endpoint_contract",
+    }:
+        return tokens[:2] in {("top", "ports"), ("top", "interfaces")} or root in {
+            "components",
+            "instances",
+            "data_flow",
+            "control_flow",
+            "verification",
+        }
+    return False
+
+
+_FUNCTIONAL_CAPABILITY_VALUE_MARKERS = {
+    "adc_interface": ("adc", "adc_interface"),
+    "clock_domain_crossing": (
+        "cdc",
+        "clock_domain_crossing",
+        "dual_clock",
+        "async_fifo",
+    ),
+    "dma": ("dma",),
+    "external_memory": ("external_memory", "ddr", "hbm", "sdram"),
+    "on_chip_memory": ("on_chip_memory", "bram", "sram"),
+    "pcie": ("pcie", "pci_e"),
+    "axi_stream": ("axi_stream", "axi4_stream", "axis"),
+    "spi": ("spi",),
+    "i2c": ("i2c", "iic"),
+    "uart": ("uart",),
+    "streaming": ("stream", "streaming", "valid_ready"),
+    "fifo": ("fifo",),
+    "dsp": ("dsp", "fir", "fft", "mac", "matched_filter", "multiply_accumulate"),
+    "image_pipeline": ("image_pipeline", "image", "pixel", "sobel", "convolution"),
+    "state_machine": ("state_machine", "fsm"),
+    "counter": ("counter",),
+}
+
+_PROTOCOL_VALUE_MARKERS = {
+    "axi_stream": ("axi_stream", "axi4_stream", "axis"),
+    "pcie": ("pcie", "pci_e"),
+    "spi": ("spi",),
+    "i2c": ("i2c", "iic"),
+    "uart": ("uart",),
+    "valid_ready": ("valid_ready",),
+}
+
+
+def _mapped_values_preserve_required_fact(
+    key: str,
+    expected: Any,
+    resolved_values: list[tuple[Any, tuple[str, ...]]],
+) -> bool:
+    if key == "data_width_bits":
+        expected_widths = expected if isinstance(expected, list) else [expected]
+        actual_widths = [
+            scalar
+            for value, _tokens in resolved_values
+            for scalar in _scalar_values(value)
+        ]
+        return all(
+            any(widths_equivalent(expected_width, actual_width) for actual_width in actual_widths)
+            for expected_width in expected_widths
+        )
+
+    if key == "clock_frequencies_hz":
+        expected_frequencies = expected if isinstance(expected, list) else [expected]
+        actual_frequencies = [
+            frequency
+            for value, tokens in resolved_values
+            for frequency in _frequency_hz_values(value, tokens[-1] if tokens else "")
+        ]
+        return all(
+            any(_numbers_equal(expected_frequency, actual_frequency) for actual_frequency in actual_frequencies)
+            for expected_frequency in expected_frequencies
+        )
+
+    if key == "clock_domain_count":
+        actual_counts: list[int] = []
+        for value, tokens in resolved_values:
+            if tokens[:2] == ("top", "clocks") and isinstance(value, list):
+                actual_counts.append(len(value))
+            elif tokens and "domain_count" in _normalize_semantic_text(tokens[-1]):
+                if isinstance(value, int) and not isinstance(value, bool):
+                    actual_counts.append(value)
+        return any(_numbers_equal(expected, count) for count in actual_counts)
+
+    if key == "reset_polarity":
+        expected_polarity = _canonical_reset_polarity(expected)
+        return any(
+            _canonical_reset_polarity(value) == expected_polarity
+            for resolved, _tokens in resolved_values
+            for value in _scalar_values(resolved)
+            if isinstance(value, str)
+        )
+
+    if key == "interface_protocols":
+        return _all_semantic_values_present(
+            expected,
+            resolved_values,
+            _PROTOCOL_VALUE_MARKERS,
+        )
+
+    if key == "functional_capabilities":
+        return _all_semantic_values_present(
+            expected,
+            resolved_values,
+            _FUNCTIONAL_CAPABILITY_VALUE_MARKERS,
+        )
+
+    if key == "declared_task_type":
+        return _semantic_value_present(expected, resolved_values)
+
+    if key == "target_platform":
+        return _normalized_value_present(expected, resolved_values)
+
+    if key == "numeric_representation":
+        return _semantic_value_present(expected, resolved_values)
+
+    if key == "latency_cycles":
+        return _field_number_present(expected, resolved_values, ("latency",))
+
+    if key == "throughput_constraint":
+        return _throughput_present(expected, resolved_values)
+
+    if key == "acceptance_criteria":
+        return _acceptance_criteria_present(expected, resolved_values)
+
+    if key == "memory_depth":
+        return _field_number_present(expected, resolved_values, ("depth",))
+
+    if key in {"cdc_policy", "memory_access_contract", "adc_interface_contract"}:
+        return _semantic_value_present(expected, resolved_values)
+
+    if key == "dma_transfer_contract":
+        if _semantic_value_present(expected, resolved_values):
+            return True
+        match = re.fullmatch(r"burst_length_(\d+)", str(expected))
+        return bool(match) and _field_number_present(
+            int(match.group(1)),
+            resolved_values,
+            ("burst_length",),
+        )
+
+    if key == "pcie_endpoint_contract":
+        if _semantic_value_present(expected, resolved_values):
+            return True
+        match = re.fullmatch(r"gen(\d+)_x(\d+)", str(expected))
+        return bool(match) and (
+            _field_number_present(
+                int(match.group(1)),
+                resolved_values,
+                ("gen", "generation"),
+            )
+            and _field_number_present(
+                int(match.group(2)),
+                resolved_values,
+                ("lane", "lanes"),
+            )
+        )
+
+    return False
+
+
+def _all_semantic_values_present(
+    expected: Any,
+    resolved_values: list[tuple[Any, tuple[str, ...]]],
+    marker_map: dict[str, tuple[str, ...]],
+) -> bool:
+    expected_values = expected if isinstance(expected, list) else [expected]
+    actual_texts = [
+        value
+        for resolved, _tokens in resolved_values
+        for value in _scalar_values(resolved)
+        if isinstance(value, str)
+    ]
+    return all(
+        any(
+            _semantic_marker_matches(text, marker)
+            for text in actual_texts
+            for marker in marker_map.get(str(expected_value), (str(expected_value),))
+        )
+        for expected_value in expected_values
+    )
+
+
+def _semantic_value_present(
+    expected: Any,
+    resolved_values: list[tuple[Any, tuple[str, ...]]],
+) -> bool:
+    return any(
+        _semantic_marker_matches(value, str(expected))
+        for resolved, _tokens in resolved_values
+        for value in _scalar_values(resolved)
+        if isinstance(value, str)
+    )
+
+
+def _normalized_value_present(
+    expected: Any,
+    resolved_values: list[tuple[Any, tuple[str, ...]]],
+) -> bool:
+    normalized_expected = _normalize_semantic_text(str(expected))
+    return any(
+        _normalize_semantic_text(value) == normalized_expected
+        for resolved, _tokens in resolved_values
+        for value in _scalar_values(resolved)
+        if isinstance(value, str)
+    )
+
+
+def _field_number_present(
+    expected: Any,
+    resolved_values: list[tuple[Any, tuple[str, ...]]],
+    field_markers: tuple[str, ...],
+) -> bool:
+    actual_values = [
+        number
+        for value, tokens in resolved_values
+        for number in _field_number_values(
+            value,
+            tokens[-1] if tokens else "",
+            field_markers,
+        )
+    ]
+    return any(_numbers_equal(expected, actual) for actual in actual_values)
+
+
+def _field_number_values(
+    value: Any,
+    field_name: str,
+    field_markers: tuple[str, ...],
+) -> list[float]:
+    if isinstance(value, dict):
+        return [
+            number
+            for key, item in value.items()
+            for number in _field_number_values(item, str(key), field_markers)
+        ]
+    if isinstance(value, list):
+        return [
+            number
+            for item in value
+            for number in _field_number_values(item, field_name, field_markers)
+        ]
+    normalized_field = _normalize_semantic_text(field_name)
+    if (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+        and any(marker in normalized_field for marker in field_markers)
+    ):
+        return [float(value)]
+    return []
+
+
+def _throughput_present(
+    expected: Any,
+    resolved_values: list[tuple[Any, tuple[str, ...]]],
+) -> bool:
+    if _semantic_value_present(expected, resolved_values):
+        return True
+    if str(expected) != "one_per_cycle":
+        return False
+    if any(
+        _semantic_marker_matches(value, marker)
+        for resolved, _tokens in resolved_values
+        for value in _scalar_values(resolved)
+        if isinstance(value, str)
+        for marker in (
+            "one_transfer_per_cycle",
+            "one_sample_per_cycle",
+            "one_word_per_cycle",
+            "1_per_cycle",
+        )
+    ):
+        return True
+    return _field_number_present(
+        1,
+        resolved_values,
+        ("initiation_interval",),
+    )
+
+
+def _acceptance_criteria_present(
+    expected: Any,
+    resolved_values: list[tuple[Any, tuple[str, ...]]],
+) -> bool:
+    actual_text = " ".join(
+        value
+        for resolved, _tokens in resolved_values
+        for value in _scalar_values(resolved)
+        if isinstance(value, str)
+    )
+    if _semantic_marker_matches(actual_text, str(expected)):
+        return True
+
+    actual_terms = _acceptance_terms(actual_text)
+    expected_text = str(expected)
+    if expected_text == (
+        "independent evaluator must verify every explicit functional and protocol clause"
+    ):
+        required_roots = (
+            any(term.startswith("independent") for term in actual_terms),
+            any(term.startswith("evaluator") for term in actual_terms),
+            any(term.startswith(("verif", "check", "assert")) for term in actual_terms),
+        )
+        boilerplate = {
+            "independent",
+            "evaluator",
+            "verify",
+            "verifies",
+            "verification",
+            "check",
+            "checks",
+            "assert",
+            "asserts",
+            "behavior",
+            "design",
+            "every",
+            "explicit",
+            "functional",
+            "protocol",
+            "clause",
+        }
+        return all(required_roots) and bool(actual_terms.difference(boilerplate))
+
+    expected_terms = _acceptance_terms(expected_text)
+    if not expected_terms:
+        return False
+    expected_numbers = {term for term in expected_terms if term.isdigit()}
+    overlap = expected_terms.intersection(actual_terms)
+    return (
+        expected_numbers.issubset(actual_terms)
+        and len(overlap) >= max(1, (len(expected_terms) + 1) // 2)
+    )
+
+
+def _acceptance_terms(value: str) -> set[str]:
+    stop_words = {
+        "a",
+        "an",
+        "and",
+        "as",
+        "at",
+        "be",
+        "by",
+        "for",
+        "from",
+        "in",
+        "is",
+        "must",
+        "of",
+        "on",
+        "or",
+        "the",
+        "to",
+        "when",
+        "with",
+    }
+    return {
+        term
+        for term in _normalize_semantic_text(value).split("_")
+        if term and term not in stop_words
+    }
+
+
+def _semantic_marker_matches(value: str, marker: str) -> bool:
+    normalized_value = _normalize_semantic_text(value)
+    normalized_marker = _normalize_semantic_text(marker)
+    return bool(normalized_marker) and (
+        normalized_value == normalized_marker
+        or f"_{normalized_marker}_" in f"_{normalized_value}_"
+    )
+
+
+def _normalize_semantic_text(value: str) -> str:
+    return re.sub(r"[^\w]+", "_", value.casefold()).strip("_")
+
+
+def _scalar_values(value: Any) -> list[Any]:
+    if isinstance(value, dict):
+        return [scalar for item in value.values() for scalar in _scalar_values(item)]
+    if isinstance(value, list):
+        return [scalar for item in value for scalar in _scalar_values(item)]
+    return [value]
+
+
+def _frequency_hz_values(value: Any, field_name: str) -> list[float]:
+    if isinstance(value, dict):
+        return [
+            frequency
+            for key, item in value.items()
+            for frequency in _frequency_hz_values(item, str(key))
+        ]
+    if isinstance(value, list):
+        return [
+            frequency
+            for item in value
+            for frequency in _frequency_hz_values(item, field_name)
+        ]
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return []
+    normalized_field = _normalize_semantic_text(field_name)
+    if "ghz" in normalized_field:
+        return [float(value) * 1_000_000_000]
+    if "mhz" in normalized_field:
+        return [float(value) * 1_000_000]
+    if "khz" in normalized_field:
+        return [float(value) * 1_000]
+    if normalized_field.endswith("hz"):
+        return [float(value)]
+    return []
+
+
+def _numbers_equal(left: Any, right: Any) -> bool:
+    if isinstance(left, bool) or isinstance(right, bool):
+        return False
+    if not isinstance(left, (int, float)) or not isinstance(right, (int, float)):
+        return False
+    return abs(float(left) - float(right)) <= max(1e-6, abs(float(left)) * 1e-9)
+
+
+def _canonical_reset_polarity(value: Any) -> str:
+    normalized = _normalize_semantic_text(str(value))
+    return {
+        "low": "active_low",
+        "active_low": "active_low",
+        "high": "active_high",
+        "active_high": "active_high",
+    }.get(normalized, normalized)
+
+
+def _resolve_json_pointer(
+    document: Any,
+    pointer: str,
+) -> tuple[Any, tuple[str, ...]]:
+    if not pointer.startswith("/"):
+        raise ValueError("pointer must start with '/'")
+    tokens = tuple(_decode_json_pointer_token(token) for token in pointer[1:].split("/"))
+    current = document
+    for token in tokens:
+        if isinstance(current, dict):
+            if token not in current:
+                raise ValueError(f"object key '{token}' is missing")
+            current = current[token]
+            continue
+        if isinstance(current, list):
+            if token == "0":
+                index = 0
+            elif token.isdigit() and not token.startswith("0"):
+                index = int(token)
+            else:
+                raise ValueError(f"array index '{token}' is invalid")
+            if index >= len(current):
+                raise ValueError(f"array index '{token}' is out of range")
+            current = current[index]
+            continue
+        raise ValueError(f"cannot traverse through scalar at token '{token}'")
+    return current, tokens
+
+
+def _decode_json_pointer_token(token: str) -> str:
+    index = 0
+    while index < len(token):
+        if token[index] != "~":
+            index += 1
+            continue
+        if index + 1 >= len(token) or token[index + 1] not in {"0", "1"}:
+            raise ValueError(f"JSON Pointer token '{token}' has an invalid escape")
+        index += 2
+    return token.replace("~1", "/").replace("~0", "~")
 
 
 def _not_applicable_metrics() -> dict[str, dict[str, Any]]:

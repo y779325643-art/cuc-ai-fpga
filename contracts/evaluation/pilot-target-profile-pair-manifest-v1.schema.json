@@ -1,0 +1,138 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/pilot-target-profile-pair-manifest/v1",
+  "title": "SR2FPGA Pilot Target-Profile Pair Manifest v1",
+  "description": "Excluded, development-only target-profile pair population used to exercise RQ4 plumbing before G4b. It never enters the official population.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "artifact_sha256",
+    "manifest_id",
+    "protocol_sha256",
+    "population_role",
+    "visibility_class",
+    "profile_pair_count",
+    "pairs",
+    "official_population",
+    "g4b_authorized",
+    "pass_credit_authority",
+    "official_authority"
+  ],
+  "properties": {
+    "contract_version": {"const": "pilot-target-profile-pair-manifest-v1"},
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "manifest_id": {"$ref": "#/$defs/identifier"},
+    "protocol_sha256": {"$ref": "#/$defs/sha256"},
+    "population_role": {"const": "pilot_only_excluded"},
+    "visibility_class": {"const": "evaluator_only"},
+    "profile_pair_count": {"type": "integer", "minimum": 1},
+    "pairs": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/pair"}
+    },
+    "official_population": {"const": false},
+    "g4b_authorized": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "official_authority": {"const": false}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier_array": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/identifier"}
+    },
+    "profile_member": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "member_role",
+        "profile_member_id",
+        "target_profile_id",
+        "target_profile_sha256"
+      ],
+      "properties": {
+        "member_role": {"enum": ["baseline", "variant"]},
+        "profile_member_id": {"$ref": "#/$defs/identifier"},
+        "target_profile_id": {"$ref": "#/$defs/identifier"},
+        "target_profile_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "endpoints": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["l3", "l4"],
+      "properties": {
+        "l3": {"const": "independent_synthesis"},
+        "l4": {"const": "openxc7_post_route"}
+      }
+    },
+    "pair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "profile_pair_id",
+        "semantic_instance_id",
+        "family_id",
+        "semantic_obligation_sha256",
+        "hidden_oracle_commitment_sha256",
+        "change_axes",
+        "functional_invariant_ids",
+        "required_change_ids",
+        "allowed_change_ids",
+        "forbidden_change_ids",
+        "profile_compliance_commitment_sha256",
+        "endpoints",
+        "members",
+        "objective_exclusion_ids",
+        "paired_cost_rule",
+        "tpa_l4_rule"
+      ],
+      "properties": {
+        "profile_pair_id": {"$ref": "#/$defs/identifier"},
+        "semantic_instance_id": {"$ref": "#/$defs/identifier"},
+        "family_id": {"$ref": "#/$defs/identifier"},
+        "semantic_obligation_sha256": {"$ref": "#/$defs/sha256"},
+        "hidden_oracle_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "change_axes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "device_part",
+              "clock_target",
+              "resource_mapping_policy",
+              "interface_policy",
+              "build_constraints",
+              "compound_profile"
+            ]
+          }
+        },
+        "functional_invariant_ids": {"$ref": "#/$defs/identifier_array"},
+        "required_change_ids": {"$ref": "#/$defs/identifier_array"},
+        "allowed_change_ids": {"$ref": "#/$defs/identifier_array"},
+        "forbidden_change_ids": {"$ref": "#/$defs/identifier_array"},
+        "profile_compliance_commitment_sha256": {"$ref": "#/$defs/sha256"},
+        "endpoints": {"$ref": "#/$defs/endpoints"},
+        "members": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {"$ref": "#/$defs/profile_member"}
+        },
+        "objective_exclusion_ids": {"$ref": "#/$defs/identifier_array"},
+        "paired_cost_rule": {"const": "full_pair_all_outcomes"},
+        "tpa_l4_rule": {"const": "both_members_complete_and_compliant"}
+      }
+    }
+  }
+}

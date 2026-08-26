@@ -5,7 +5,7 @@ import re
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CORE_ACTIVE_DOCS = (
     Path("README.md"),
-    Path("CLAUDE.md"),
+    Path("AGENTS.md"),
     Path("docs/README.md"),
     Path("docs/current-status.md"),
 )
@@ -14,16 +14,13 @@ ADDITIONAL_ACTIVE_DOCS = (
     Path("training/README.md"),
     Path("contracts/README.md"),
     Path("datasets/README.md"),
-    Path("LLM/README.md"),
-    Path("LLM/DEPLOY.md"),
     Path("agent/configs/README.md"),
     Path("agent/configs/archive/README.md"),
     Path("agent/configs/legacy/README.md"),
     Path("training/configs/README.md"),
     Path("agent/scripts/README.md"),
     Path("training/scripts/README.md"),
-    Path("docs/research-objective-sr2fpga-tcad.md"),
-    Path("docs/sr2fpga-task-evidence-status.md"),
+    Path("reports/evidence/task-ledger/sr2fpga-task-evidence-status.md"),
 )
 
 OLD_PRIMARY_COMMANDS = (
@@ -63,7 +60,20 @@ def test_active_docs_state_cross_project_and_verdict_rules() -> None:
 
     assert "Training does not import Agent" in corpus
     assert "`not_run` is not a failure" in corpus
-    assert "docs/migration/llm-to-agent-training.md" in corpus
+
+
+def test_retired_compatibility_surfaces_are_absent() -> None:
+    assert not (REPO_ROOT / "LLM").exists()
+    assert not (REPO_ROOT / "docs/migration/llm-to-agent-training.md").exists()
+
+
+def test_agents_is_the_only_repository_agent_guidance() -> None:
+    agents = _read(Path("AGENTS.md"))
+    docs_index = _read(Path("docs/README.md"))
+
+    assert "repository-wide operating guide" in agents
+    assert "[Coding-agent guidance](../AGENTS.md)" in docs_index
+    assert not (REPO_ROOT / "CLAUDE.md").exists()
 
 
 def test_markdown_links_in_core_active_docs_resolve() -> None:

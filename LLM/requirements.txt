@@ -1,5 +1,0 @@
-# Deprecated compatibility installer.
-# Prefer: python -m pip install -e "agent[dev]"
-# Training extras are optional and GPU/platform dependent.
--e ../agent
--e ../training

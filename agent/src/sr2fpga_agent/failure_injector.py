@@ -32,6 +32,8 @@ def apply_failure_injectors(project: GeneratedProject, injectors: list[str]) -> 
     for injector in injectors:
         if injector == "rename_reset_port":
             files = _rename_reset_port(files)
+        elif injector == "undefined_signal_reference":
+            files = _undefined_signal_reference(files)
         elif injector == "missing_manifest_source":
             files = _missing_manifest_source(files)
         elif injector == "wrong_top_module":
@@ -700,6 +702,21 @@ def _rename_reset_port(files: dict[str, str]) -> dict[str, str]:
     if top_rtl is None:
         raise ValueError("rename_reset_port requires rtl/top.v")
     updated[top_path] = top_rtl.replace("rst_n", "reset_n", 1)
+    return updated
+
+
+def _undefined_signal_reference(files: dict[str, str]) -> dict[str, str]:
+    updated = dict(files)
+    top_path = "rtl/top.v"
+    top_rtl = updated.get(top_path)
+    if top_rtl is None:
+        raise ValueError("undefined_signal_reference requires rtl/top.v")
+    updated[top_path] = _replace_once(
+        top_rtl,
+        "count <= count +",
+        "count <= missing_count +",
+        "undefined_signal_reference requires counter update logic",
+    )
     return updated
 
 

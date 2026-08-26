@@ -1,68 +1,145 @@
-# SR2FPGA Documentation Index
+# SR2FPGA Documentation Map
 
-This index separates current guidance from dated research and implementation
-history.
+`docs/` is the lean current documentation workspace. It contains current
+status, normative research specifications, and the Paper-1 reasoning/writing
+workspace. Source-grounded literature packets live under `references/`,
+machine contracts live with their owning projects, completed run evidence lives
+under `reports/`, and superseded plans remain available through Git history.
 
-## Current Guidance
+## Start Here
 
-1. [Repository overview](../README.md)
-2. [Current engineering status](current-status.md)
-3. [Coding-agent guidance](../CLAUDE.md)
-4. [Agent project](../agent/README.md)
-5. [Training project](../training/README.md)
-6. [Contracts](../contracts/README.md)
-7. [Dataset releases](../datasets/README.md)
-8. [Runtime artifacts](../artifacts/README.md)
-9. [LLM-to-Agent/Training migration](migration/llm-to-agent-training.md)
+| Order | Entry | Answers | Authority |
+| ---: | --- | --- | --- |
+| 1 | [Current engineering and evidence status](current-status.md) | What this checkout currently implements, verifies, lacks, and should do next | Current-state summary; mutable facts come from code, tests, and evidence |
+| 2 | [Paper-1 English canonical specification](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) | What TRETS-targeted bounded requirement audit, M0-M5 core conditions, optional target-profile extension, privileges, metrics, statistics, and gates govern the no-training experiment | Research and experiment protocol authority |
+| 3 | [Paper-1 code architecture and development specification](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) | How the frozen protocol maps to modules, interfaces, state machines, artifacts, work packages, and acceptance tests | Subordinate normative implementation design; does not change the estimand or create results |
+| 4 | [Paper-1 Chinese companion](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.zh.md) | How to read the canonical protocol in Chinese | Reading companion; English wins on conflict |
+| 5 | [System-HIS v1.2 semantic specification](specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md) | What the retained System-HIS schema, W1-W10, H0-H2, and lowering semantics mean | Narrow semantic authority; not proof of runtime conformance |
 
-Canonical ownership is:
+There are two different north stars:
 
-- `agent/`: generation, verification, repair, and trajectories.
-- `training/`: conversion, training, merge, and serving. Training does not
-  import Agent.
-- `contracts/`: versioned cross-project schemas and task catalog.
-- `datasets/`: immutable releases.
-- `artifacts/`: ignored runtime output.
+- `current-status.md` is the engineering north star for **what is true now**.
+- The English Paper-1 freeze is the research north star for **what protocol to
+  implement and eventually execute**.
 
-`not_run` is not a failure. Current reports preserve it as a separate outcome
-with a skip reason.
+Navigation order is not evidence authority. When sources disagree about present
+behavior, use contracts and current code/tests first, then the task ledger and
+its artifacts, then `current-status.md`. A research specification defines what
+must be built or measured; it does not turn an intended condition into a result.
 
-## Research Definition
+## Choose By Task
 
-- [Research objective](research-objective-sr2fpga-tcad.md)
-- [Task target catalog](sr2fpga-task-catalog-v0.2.json)
-- [Executable task evidence](sr2fpga-task-evidence-v0.1.json)
-- [Task evidence status](sr2fpga-task-evidence-status.md)
-- [Compressed T0-T4 smoke catalog](sr2fpga-t0-t4-task-catalog.json)
+| Task | Reading path |
+| --- | --- |
+| Implement or fix code | [AGENTS.md](../AGENTS.md) -> owning project README -> relevant implementation/contracts/tests; add `current-status.md` for capability or gate claims, the relevant code-architecture section for Paper-1/evaluator work, and the freeze only when research semantics or official evaluation matter |
+| Design or run an experiment | `current-status.md` -> English Paper-1 freeze -> machine contracts and evidence ledger -> signed gate artifacts; do not use dated report commands |
+| Write the paper | English Paper-1 freeze -> [Paper-1 workspace](research-program/paper1-v1/README.md) -> argument map -> section contracts -> style guide |
+| Compare with HORIZON | [Source-grounded HORIZON reader](../references/paper-readers/2606.28279v1/paper.md) -> [dated SR2FPGA positioning memo](../references/paper-readers/2606.28279v1/sr2fpga-positioning-2026-08-12.md) -> current Paper-1 freeze |
+| Audit a claim | task ledger -> referenced stable artifact -> relevant named-run report -> `current-status.md`; preserve `not_run` and infrastructure boundaries |
 
-The target catalog describes the intended target contract and target policy.
-The evidence ledger records the current executable and verification facts. Do
-not infer implementation status from the target catalog alone. The task
-evidence status document is the human-readable derived view. The compressed
-T0-T4 file is the 24-alias deterministic smoke curriculum, not the task
-difficulty authority.
+## Directory Roles
 
-## Active Implementation
+| Directory | Contents | Status rule |
+| --- | --- | --- |
+| [`specs/`](specs/README.md) | Paper-1 canonical protocol, its subordinate code-development specification, Chinese companion, and retained System-HIS semantic spec | Normative specifications; no experiment results or transient task plans |
+| [`research-program/paper1-v1/`](research-program/paper1-v1/README.md) | Frozen foundation, claim ledger, argument/writing aids, design QA, and workflow metadata | Derived support; never overrides the English freeze or machine facts |
 
-- [Repository reorganization design](superpowers/specs/2026-07-17-sr2fpga-repository-reorganization-design.md)
-- [Repository reorganization roadmap](superpowers/plans/2026-07-17-sr2fpga-repository-reorganization-roadmap.md)
-- [B4 compatibility and cleanup plan](superpowers/plans/2026-07-17-sr2fpga-reorganization-phase-b4-compatibility-cutover-cleanup.md)
+Literature and other external source material are catalogued separately in the
+[`references/` index](../references/README.md). This keeps source material out
+of the active-guidance namespace without weakening its provenance.
 
-## Evidence
+The root of `docs/` intentionally contains only this map and
+`current-status.md`.
 
-- [Phase D pilot report](results/2026-07-17-sr2fpga-phase-d-pilot-report.md)
-- [Phase D H2 analysis](results/2026-07-17-sr2fpga-phase-d-failure-analysis-and-h2-hardening.md)
-- [Phase C independent oracle evidence](sr2fpga-phase-c-independent-oracle-evidence-2026-07-14.md)
-- `reports/reorganization/`: repository-reorganization verification reports.
+## Paper-1 Workspace
 
-## Historical Records
+The [workspace README](research-program/paper1-v1/README.md) is the only entry
+point for the local bundle:
 
-- `superpowers/specs/`: dated research and feature specifications.
-- `superpowers/plans/`: dated implementation plans and execution history.
-- `superpowers/decisions/`: decision records.
-- `sr2fpga-agent-handoff-2026-06-22.md`: historical handoff.
-- `research-issues-*.md`: research issue logs.
+- `foundation/` freezes the research canon and claim-to-evidence table at the
+  2026-08-14 design cutoff;
+- `writing/` contains the active argument map, section contracts, and style
+  guide;
+- `audit/` contains the design-time QA snapshot, whose old inventory/test counts
+  are historical rather than current validation; and
+- `state.json` is derived workflow metadata, not gate authority.
 
-Historical documents retain the commands and paths that were valid when they
-were written. Use the migration guide and current project READMEs for executable
-commands.
+## Literature Packet
+
+The HORIZON packet separates three roles:
+
+- [`paper.md`](../references/paper-readers/2606.28279v1/paper.md) records what the source paper
+  says, with figures, tables, and stable page anchors;
+- [`translation_notes.md`](../references/paper-readers/2606.28279v1/translation_notes.md) and
+  [`source_map.json`](../references/paper-readers/2606.28279v1/source_map.json) record extraction
+  and provenance decisions; and
+- [`sr2fpga-positioning-2026-08-12.md`](../references/paper-readers/2606.28279v1/sr2fpga-positioning-2026-08-12.md)
+  records a dated SR2FPGA interpretation. Its old method ladder and task list
+  are superseded by the current Paper-1 freeze.
+
+The seven PNG files in `assets/` belong to this reader packet and are not
+standalone project evidence.
+
+## Evidence Lives Under Reports
+
+- [Reports index](../reports/README.md)
+- [Repository-reorganization final verification](../reports/reorganization/final-verification.md)
+- [Executable task-evidence ledger](../reports/evidence/task-ledger/sr2fpga-task-evidence-v0.1.json)
+- [Human-readable evidence status](../reports/evidence/task-ledger/sr2fpga-task-evidence-status.md)
+- [Phase C independent-oracle report](../reports/evidence/phase-reports/sr2fpga-phase-c-independent-oracle-evidence-2026-07-14.md)
+- [Phase D frozen pilot](../reports/evidence/phase-reports/2026-07-17-sr2fpga-phase-d-pilot-report.md)
+- [Phase D failure and H2 analysis](../reports/evidence/phase-reports/2026-07-17-sr2fpga-phase-d-failure-analysis-and-h2-hardening.md)
+
+Named-run reports are authoritative only for their named runs. Commands and
+paths retained inside them are historical provenance, not current operating
+guidance. An `APPROVED` verdict applies only to its named audit scope;
+`not_run` is not a failure, infrastructure failure is not design failure, and a
+mutation score qualifies an oracle rather than model performance.
+
+## Machine Authorities Outside Docs
+
+- [Contract registry](../contracts/manifest.json)
+- [Canonical task catalog](../contracts/task-catalog/sr2fpga-task-catalog-v0.2.json)
+- [Canonical System-HIS schema](../contracts/system-his/system-his-v1.2.schema.json)
+- [System-HIS backend capability profile](../contracts/system-his/system-his-backend-capabilities-v1.json)
+- [Current deterministic smoke configuration](../agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml)
+- [Dataset release registry](../datasets/manifest.json)
+
+The target catalog describes intended policy; it does not prove verification.
+The evidence ledger records executable and verification facts, and its Markdown
+status is the derived human-readable view. Test-only fixtures live under
+`agent/tests/fixtures/` and are not project authority.
+
+The JSON files in the documentation/reference layer are metadata:
+`references/paper-readers/2606.28279v1/source_map.json` preserves literature
+provenance, while `docs/research-program/paper1-v1/state.json` records
+writing/gate workflow state. Neither is a runtime contract or evidence source.
+
+## Repository Guides
+
+- [Repository overview](../README.md)
+- [Coding-agent guidance](../AGENTS.md)
+- [Agent project](../agent/README.md)
+- [Training project](../training/README.md)
+- [Contracts](../contracts/README.md)
+- [Dataset releases](../datasets/README.md)
+- [Runtime artifacts](../artifacts/README.md)
+
+Project ownership is `agent/` for generation/evaluation, `training/` for
+retained offline-learning infrastructure outside Paper-1, `contracts/` for stable schemas/catalogs, `datasets/` for
+immutable releases, `artifacts/` for ignored runtime output, and `reports/` for
+curated evidence. Training does not import Agent.
+
+## Lifecycle Rule
+
+- Put current navigation, normative research specifications, and active
+  manuscript reasoning under `docs/`.
+- Put source papers, source-grounded readers, hardware manuals, and other
+  external/background material under `references/`.
+- Put immutable machine contracts with their owning project and committed
+  evidence or completed named-run reports under `reports/`.
+- Put generated runtime output under `artifacts/`.
+- Preserve completed plans, superseded designs, handoffs, and process
+  scratchpads in Git history rather than restoring them to the working tree.
+- Add a dated status banner whenever retained historical material could be
+  mistaken for current instructions.

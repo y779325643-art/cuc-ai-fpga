@@ -1,0 +1,263 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/project-package/v1",
+  "title": "SR2FPGA Method-Neutral Project Package Manifest v1",
+  "description": "Canonical schema for the candidate package manifest.json. It declares build intent and package-relative file roles; it does not declare ownership, editability, evaluator material, or pass credit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "project_name",
+    "top",
+    "sources",
+    "artifacts",
+    "build"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "project-package-v1"
+    },
+    "project_name": {
+      "$ref": "#/$defs/identifier"
+    },
+    "top": {
+      "$ref": "#/$defs/top"
+    },
+    "sources": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/source"
+      }
+    },
+    "artifacts": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/artifact"
+      }
+    },
+    "build": {
+      "$ref": "#/$defs/build"
+    }
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/_-]*$"
+    },
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[^\\\\/\\u0000]+(?:/[^\\\\/\\u0000]+)*$",
+      "allOf": [
+        {
+          "not": {
+            "pattern": "^[A-Za-z]:"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(^|/)\\.\\.(/|$)"
+          }
+        },
+        {
+          "not": {
+            "pattern": "(^|/)\\.(/|$)"
+          }
+        }
+      ]
+    },
+    "port_width": {
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 1
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    },
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "direction",
+        "width"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "input",
+            "output",
+            "inout"
+          ]
+        },
+        "width": {
+          "$ref": "#/$defs/port_width"
+        }
+      }
+    },
+    "interface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "ports"
+      ],
+      "properties": {
+        "ports": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/port"
+          }
+        }
+      }
+    },
+    "top": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "module",
+        "source",
+        "interface"
+      ],
+      "properties": {
+        "module": {
+          "type": "string",
+          "minLength": 1
+        },
+        "source": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "interface": {
+          "$ref": "#/$defs/interface"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "role",
+        "language"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "role": {
+          "const": "rtl_source"
+        },
+        "language": {
+          "type": "string",
+          "enum": [
+            "verilog",
+            "systemverilog",
+            "vhdl"
+          ]
+        }
+      }
+    },
+    "artifact_role": {
+      "type": "string",
+      "enum": [
+        "constraint",
+        "candidate_testbench",
+        "system_his",
+        "his_validation_report",
+        "predicted_qor",
+        "helper",
+        "board_wrapper"
+      ]
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "path",
+        "role",
+        "applicability"
+      ],
+      "properties": {
+        "path": {
+          "$ref": "#/$defs/relative_path"
+        },
+        "role": {
+          "$ref": "#/$defs/artifact_role"
+        },
+        "applicability": {
+          "type": "string",
+          "enum": [
+            "required",
+            "conditional",
+            "advisory"
+          ]
+        },
+        "condition_id": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "applicability"
+            ],
+            "properties": {
+              "applicability": {
+                "const": "conditional"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "condition_id"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "condition_id"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "toolchain_id",
+        "language_standard"
+      ],
+      "properties": {
+        "toolchain_id": {
+          "$ref": "#/$defs/identifier"
+        },
+        "language_standard": {
+          "type": "string",
+          "enum": [
+            "verilog-2001",
+            "verilog-2005",
+            "systemverilog-2012",
+            "systemverilog-2017",
+            "vhdl-2008"
+          ]
+        }
+      }
+    }
+  }
+}

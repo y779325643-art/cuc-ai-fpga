@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/terminal-candidate/v1",
+  "title": "SR2FPGA Terminal Candidate v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "candidate_id",
+    "episode_id",
+    "method_condition_id",
+    "project_name",
+    "project_envelope_sha256",
+    "requirement_projection_sha256",
+    "creation_event_id",
+    "project_files",
+    "public_evidence_sha256"
+  ],
+  "properties": {
+    "contract_version": {"const": "terminal-candidate-v1"},
+    "candidate_id": {"$ref": "#/$defs/identifier"},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "method_condition_id": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "project_name": {"$ref": "#/$defs/identifier"},
+    "project_envelope_sha256": {"$ref": "#/$defs/sha256"},
+    "requirement_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "creation_event_id": {"pattern": "^event-[0-9a-f]{64}$"},
+    "project_files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "artifact_key", "sha256"],
+        "properties": {
+          "path": {"$ref": "#/$defs/relative_path"},
+          "artifact_key": {"type": "string", "minLength": 1},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "public_evidence_sha256": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sha256"}
+    }
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "relative_path": {
+      "type": "string",
+      "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.?/)(?!.*\\\\)[A-Za-z0-9_.-]+(?:/[A-Za-z0-9_.-]+)*$"
+    }
+  }
+}

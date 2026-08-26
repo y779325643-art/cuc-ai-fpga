@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/official-hidden-outcome/v1",
+  "title": "SR2FPGA Official Hidden Outcome v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "evaluation_scope", "episode_id", "method_condition_id",
+    "decoding_seed", "terminal_candidate_sha256", "hidden_evaluator_commitment_sha256",
+    "split_id", "purpose", "public_pack_sha256", "private_pack_sha256",
+    "one_shot_ledger_ref", "execution_status"
+  ],
+  "properties": {
+    "contract_version": {"const": "official-hidden-outcome-v1"},
+    "evaluation_scope": {"const": "official_heldout"},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "method_condition_id": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "decoding_seed": {"type": "integer", "minimum": 0},
+    "terminal_candidate_sha256": {"$ref": "#/$defs/sha256"},
+    "hidden_evaluator_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "split_id": {"$ref": "#/$defs/identifier"},
+    "purpose": {"const": "paper1_official_heldout"},
+    "public_pack_sha256": {"$ref": "#/$defs/sha256"},
+    "private_pack_sha256": {"$ref": "#/$defs/sha256"},
+    "one_shot_ledger_ref": {"type": "string", "minLength": 1},
+    "execution_status": {"enum": ["completed", "not_run"]},
+    "outcome": {"enum": ["pass", "fail"]},
+    "infrastructure_reason": {"type": "string", "minLength": 1}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"execution_status": {"const": "completed"}}},
+      "then": {"required": ["outcome"], "not": {"required": ["infrastructure_reason"]}},
+      "else": {"required": ["infrastructure_reason"], "not": {"required": ["outcome"]}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"}
+  }
+}

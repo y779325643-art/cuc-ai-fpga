@@ -10,6 +10,7 @@ import shutil
 import tempfile
 import uuid
 
+from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.log_parser import parse_test_fail_mismatches
 from sr2fpga_agent.models import ToolResult
 from sr2fpga_agent.oracles.bundle import load_oracle_bundle
@@ -226,10 +227,25 @@ def write_oracle_run_evidence(path: Path, evidence: OracleRunEvidence) -> None:
     """Write stable evaluator evidence outside the generated project."""
 
     path = Path(path)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    evidence_payload = evidence.to_dict()
+    contract = ContractRegistry().load_schema("development_oracle_run_evidence")
+    validation_errors = contract.validate(evidence_payload)
+    if validation_errors:
+        raise ValueError(
+            "development Oracle run evidence violates its registered contract:\n"
+            + "\n".join(validation_errors)
+        )
     payload = (
-        json.dumps(evidence.to_dict(), indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+        json.dumps(
+            evidence_payload,
+            indent=2,
+            ensure_ascii=False,
+            sort_keys=True,
+            allow_nan=False,
+        )
+        + "\n"
     ).encode("utf-8")
+    path.parent.mkdir(parents=True, exist_ok=True)
     temporary_path: Path | None = None
     try:
         with tempfile.NamedTemporaryFile(

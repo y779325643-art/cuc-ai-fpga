@@ -13,7 +13,6 @@ from sr2fpga_training.contracts import (
 REPO_ROOT = Path(__file__).resolve().parents[2]
 AGENT_SOURCE = REPO_ROOT / "agent" / "src" / "sr2fpga_agent"
 TRAINING_SOURCE = REPO_ROOT / "training" / "src" / "sr2fpga_training"
-LEGACY_SOURCE = REPO_ROOT / "LLM" / "src"
 
 HEAVY_ML_IMPORTS = {
     "accelerate",
@@ -98,21 +97,5 @@ def test_canonical_source_contains_no_private_paths_or_keys() -> None:
     assert _private_value_violations(TRAINING_SOURCE) == []
 
 
-def test_legacy_source_contains_compatibility_files_only() -> None:
-    python_files = sorted(
-        path.relative_to(REPO_ROOT).as_posix()
-        for path in LEGACY_SOURCE.rglob("*.py")
-    )
-    assert python_files == [
-        "LLM/src/_compat.py",
-        "LLM/src/merge_lora.py",
-        "LLM/src/prepare_dataset.py",
-        "LLM/src/req2file_eval.py",
-        "LLM/src/sr2fpga_agent/__init__.py",
-        "LLM/src/sr2fpga_agent/baseline_report.py",
-        "LLM/src/sr2fpga_agent/cli.py",
-        "LLM/src/sr2fpga_agent/runner.py",
-        "LLM/src/sr2fpga_agent/task_evidence.py",
-        "LLM/src/train_lora.py",
-        "LLM/src/training_dry_run.py",
-    ]
+def test_retired_llm_compatibility_source_is_absent() -> None:
+    assert not (REPO_ROOT / "LLM").exists()

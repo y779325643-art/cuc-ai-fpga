@@ -1,8 +1,8 @@
 # Dataset Releases
 
 The existing directories registered in `datasets/manifest.json` are read-only
-historical evidence. Phase B1 adds metadata and checksum inventories without
-modifying their payload or export bytes.
+historical evidence. Repository reorganization added metadata and checksum
+inventories without modifying their payload or export bytes.
 
 New runner output must be written to `artifacts/` first. Promotion into
 `datasets/` requires:

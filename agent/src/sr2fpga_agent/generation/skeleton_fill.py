@@ -5,14 +5,14 @@ from __future__ import annotations
 import time
 from typing import Any, Callable
 
-from sr2fpga_agent.generation.his2project import DeepSeekHisProjectGenerator
+from sr2fpga_agent.generation.his2project import HisProjectGenerator
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.parsers import parse_system_his_v12
 from sr2fpga_agent.project_generator import ProjectGenerator
 from sr2fpga_agent.providers import OpenAICompatibleClient
 from sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
 
-class DeepSeekOracleHisProjectGenerator:
+class OracleHisProjectGenerator:
     """Generate behavior files from deterministic oracle System-HIS v1.2."""
 
     his_source_used_for_generation = "oracle_fallback"
@@ -24,7 +24,7 @@ class DeepSeekOracleHisProjectGenerator:
         event_sink: Callable[[dict[str, Any]], None] | None = None,
     ) -> None:
         self.oracle_generator = ProjectGenerator()
-        self.his_project_generator = DeepSeekHisProjectGenerator(client, max_attempts=max_attempts)
+        self.his_project_generator = HisProjectGenerator(client, max_attempts=max_attempts)
         self.event_sink = event_sink
 
     def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
@@ -42,7 +42,7 @@ class DeepSeekOracleHisProjectGenerator:
     def _oracle_system_his(self, request: ProjectRequest, platform: PlatformProfile) -> dict[str, Any]:
         project = self.oracle_generator.generate(request, platform)
         system_his = parse_system_his_v12(project.files["system_his.json"])
-        fidelity = check_system_his_req_fidelity(request, system_his)
+        fidelity = check_system_his_req_fidelity(request, system_his, platform)
         if not fidelity.passed:
             raise ValueError("Oracle System-HIS REQ2HIS fidelity failed: " + "; ".join(fidelity.errors))
         return system_his

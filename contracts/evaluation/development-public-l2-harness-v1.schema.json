@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-public-l2-harness/v1",
+  "title": "SR2FPGA Development Trusted Public L2 Harness v1",
+  "description": "Evaluator-owned public L2 harness manifest for development/excluded runs only.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "harness_id", "evaluation_scope", "testbench_top",
+    "language_standard", "files", "timeout_seconds", "pass_rule",
+    "official_authority", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-public-l2-harness-v1"},
+    "harness_id": {"$ref": "#/$defs/identifier"},
+    "evaluation_scope": {"const": "development_excluded_public_l2"},
+    "testbench_top": {"$ref": "#/$defs/identifier"},
+    "language_standard": {"enum": ["verilog-2005", "systemverilog-2012"]},
+    "files": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["path", "sha256"],
+        "properties": {
+          "path": {"type": "string", "minLength": 1},
+          "sha256": {"$ref": "#/$defs/sha256"}
+        }
+      }
+    },
+    "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 300},
+    "pass_rule": {"const": "simulator_exit_zero"},
+    "official_authority": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

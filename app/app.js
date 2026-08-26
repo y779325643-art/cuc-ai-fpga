@@ -1,249 +1,454 @@
-const sampleProject = {
-  projectName: "uart_sensor_logger",
-  topModule: "uart_sensor_logger_top",
-  projectSpec:
-    "设计一个完整 FPGA 项目：采集 8 位传感器数据，使用 FIFO 做缓存，通过 UART 以 115200 波特率发送到上位机。系统包含低电平复位、使能控制、忙闲状态输出、错误计数和可仿真的 testbench。",
-  modulePlan:
-    "clock_reset：统一复位同步\nsensor_capture：采集 sensor_data 和 sensor_valid\nfifo_buffer：缓存采集数据\nuart_tx：串口发送\ncontrol_fsm：调度采集、缓存和发送流程",
-  constraintText:
-    "系统时钟 50MHz；UART 波特率 115200；输入 sensor_data[7:0]、sensor_valid；输出 uart_tx、busy、error_count[7:0]；生成基础 XDC/SDC 约束模板。",
+const samples = {
+  uart_fifo_loopback: {
+    projectName: "uart_fifo_demo", topModule: "uart_fifo_top", width: 8, clockMHz: 50,
+    resetPolarity: "active_low", interfaceSpec: "uart_stream",
+    ioSpec: "clk, rst_n, rx, tx, loopback_en, fifo_full, fifo_empty, error_count[7:0]",
+    targetPlatform: "generic Verilog，UART 115200 baud，生成基础约束模板",
+    verificationIntent: "self_checking_tb",
+    requirement: "生成一个 UART FIFO 回环 FPGA 工程。接收端将串行数据写入同步 FIFO，发送端在数据可用时读出并回传。",
+  },
+  fifo: {
+    projectName: "sync_fifo_demo", topModule: "sync_fifo_top", width: 8, clockMHz: 100,
+    resetPolarity: "active_low", interfaceSpec: "wr_rd_enable",
+    ioSpec: "clk, rst_n, wr_en, rd_en, din[7:0], dout[7:0], full, empty",
+    targetPlatform: "generic Verilog，生成基础 XDC/SDC 约束模板",
+    verificationIntent: "self_checking_tb",
+    requirement: "生成一个同步 FIFO 工程，包含读写使能、满空标志、溢出保护和下溢保护。",
+  },
+  counter: {
+    projectName: "counter_demo", topModule: "counter_top", width: 8, clockMHz: 100,
+    resetPolarity: "active_low", interfaceSpec: "simple_gpio",
+    ioSpec: "clk, rst_n, en, clear, count[7:0], overflow",
+    targetPlatform: "generic Verilog，生成基础约束模板",
+    verificationIntent: "self_checking_tb",
+    requirement: "生成一个同步计数器工程，支持使能、清零、溢出标志和参数化计数宽度。",
+  },
+  composed_event_counter: {
+    projectName: "event_counter_demo", topModule: "event_counter_top", width: 8, clockMHz: 100,
+    resetPolarity: "active_low", interfaceSpec: "valid_ready",
+    ioSpec: "clk, rst_n, event_valid, gate_en, event_ready, count[7:0], overflow",
+    targetPlatform: "generic Verilog，生成基础约束模板",
+    verificationIntent: "self_checking_tb",
+    requirement: "生成一个事件门控计数器工程：有效事件通过门控模块后驱动计数核心，并输出计数值和溢出状态。",
+  },
+  pwm_controller: {
+    projectName: "pwm_demo", topModule: "pwm_top", width: 8, clockMHz: 100,
+    resetPolarity: "active_low", interfaceSpec: "simple_gpio",
+    ioSpec: "clk, rst_n, duty[7:0], period[7:0], enable, pwm_out",
+    targetPlatform: "generic Verilog，生成基础约束模板",
+    verificationIntent: "self_checking_tb",
+    requirement: "生成一个 PWM 控制器工程，包含占空比控制、周期配置、使能控制和复位后的确定性输出。",
+  },
 };
 
-const toast = document.querySelector("#toast");
-const projectOutput = document.querySelector("#projectOutput");
-const projectName = document.querySelector("#projectName");
-const topModule = document.querySelector("#topModule");
-const projectSpec = document.querySelector("#projectSpec");
-const modulePlan = document.querySelector("#modulePlan");
-const constraintText = document.querySelector("#constraintText");
-const temperature = document.querySelector("#temperature");
-const tempValue = document.querySelector("#tempValue");
+const elements = {
+  toast: document.querySelector("#toast"), form: document.querySelector("#generateForm"),
+  button: document.querySelector("#generateBtn"), backendStatus: document.querySelector("#backendStatus"),
+  projectName: document.querySelector("#projectName"), topModule: document.querySelector("#topModule"),
+  taskType: document.querySelector("#taskType"), width: document.querySelector("#dataWidth"),
+  clockMHz: document.querySelector("#clockMHz"), resetPolarity: document.querySelector("#resetPolarity"),
+  interfaceSpec: document.querySelector("#interfaceSpec"), ioSpec: document.querySelector("#ioSpec"),
+  targetPlatform: document.querySelector("#targetPlatform"), verificationIntent: document.querySelector("#verificationIntent"),
+  requirement: document.querySelector("#projectSpec"),
+  taskField: document.querySelector("#taskField"), methodCondition: document.querySelector("#methodCondition"),
+  methodMode: document.querySelector("#methodMode"),
+  passLevel: document.querySelector("#passLevel"), artifactPath: document.querySelector("#artifactPath"),
+  fileList: document.querySelector("#fileList"), output: document.querySelector("#projectOutput"),
+  stageGrid: document.querySelector("#stageGrid"), stageHelp: document.querySelector("#stageHelp"),
+  ambiguityButton: document.querySelector("#checkAmbiguityBtn"),
+  ambiguityStatus: document.querySelector("#ambiguityStatus"),
+  ambiguityList: document.querySelector("#ambiguityList"),
+  inferredTask: document.querySelector("#inferredTask"),
+  capabilityState: document.querySelector("#capabilityState"),
+};
 
-function showToast(message) {
-  toast.textContent = message;
-  toast.classList.add("show");
-  window.setTimeout(() => toast.classList.remove("show"), 2200);
+let activeFile = null;
+let taskRegistry = [];
+const API_BASE = window.location.protocol === "file:" ? null : "";
+
+function taskDisplayName(taskType) {
+  if (taskType === "auto") return "自动识别";
+  if (taskType === "unclassified") return "未分类";
+  if (taskType === "freeform") return "自由需求";
+  return taskRegistry.find((task) => task.id === taskType)?.label || taskType || "自动识别";
 }
 
-function selectedDeliverables() {
+function generationMode() {
+  return document.querySelector('input[name="generationMode"]:checked')?.value || "template";
+}
+
+function showToast(message) {
+  elements.toast.textContent = message;
+  elements.toast.classList.add("show");
+  window.setTimeout(() => elements.toast.classList.remove("show"), 2400);
+}
+
+function applySample(taskType) {
+  const sample = samples[taskType] || genericSample(taskType);
+  elements.projectName.value = sample.projectName;
+  elements.topModule.value = sample.topModule;
+  elements.width.value = sample.width;
+  elements.clockMHz.value = sample.clockMHz;
+  elements.resetPolarity.value = sample.resetPolarity;
+  elements.interfaceSpec.value = sample.interfaceSpec;
+  elements.ioSpec.value = sample.ioSpec;
+  elements.targetPlatform.value = sample.targetPlatform;
+  elements.verificationIntent.value = sample.verificationIntent;
+  elements.requirement.value = sample.requirement;
+}
+
+function genericSample(taskType) {
+  const normalized = taskType && taskType !== "auto" ? taskType : "fifo";
+  const readable = normalized.replaceAll("_", " ");
   return {
-    rtl: document.querySelector("#deliverRtl").checked,
-    tb: document.querySelector("#deliverTb").checked,
-    constraints: document.querySelector("#deliverConstraints").checked,
-    readme: document.querySelector("#deliverReadme").checked,
+    projectName: `${normalized}_demo`.replace(/[^A-Za-z0-9_-]/g, "_"),
+    topModule: `${normalized}_top`.replace(/[^A-Za-z0-9_]/g, "_"),
+    width: 8,
+    clockMHz: 100,
+    resetPolarity: "active_low",
+    interfaceSpec: normalized.includes("uart") ? "uart_stream" : normalized.includes("stream") ? "valid_ready" : "simple_gpio",
+    ioSpec: "clk, rst_n, in_valid, in_ready, data_in[7:0], out_valid, out_ready, data_out[7:0]",
+    targetPlatform: "generic Verilog，生成基础约束模板",
+    verificationIntent: "self_checking_tb",
+    requirement: `生成一个 ${readable} FPGA 工程，包含顶层集成、RTL 子模块、自检 testbench、约束模板和 README。`,
   };
 }
 
-function updateCounts(deliverables) {
-  document.querySelector("#rtlCount").textContent = deliverables.rtl ? "5" : "0";
-  document.querySelector("#tbCount").textContent = deliverables.tb ? "1" : "0";
-  document.querySelector("#constraintCount").textContent = deliverables.constraints ? "1" : "0";
-  document.querySelector("#docCount").textContent = deliverables.readme ? "1" : "0";
+function statusClass(status) {
+  const normalized = String(status || "not_run").toLowerCase();
+  if (["pass", "passed", "ready"].includes(normalized) || /^l[0-4]$/.test(normalized)) return "pass";
+  if (["fail", "failed", "error"].some((word) => normalized.includes(word))) return "fail";
+  if (normalized === "not_applicable") return "na";
+  return "not-run";
 }
 
-function fallbackProject() {
-  const name = projectName.value || "generated_fpga_project";
-  const top = topModule.value || `${name}_top`;
-  const deliverables = selectedDeliverables();
-
-  const sections = [
-    `# ${name}`,
-    "",
-    "## Project Tree",
-    "```text",
-    `${name}/`,
-    deliverables.rtl ? "  rtl/" : "",
-    deliverables.rtl ? `    ${top}.v` : "",
-    deliverables.rtl ? "    clock_reset.v" : "",
-    deliverables.rtl ? "    sensor_capture.v" : "",
-    deliverables.rtl ? "    fifo_buffer.v" : "",
-    deliverables.rtl ? "    uart_tx.v" : "",
-    deliverables.tb ? "  sim/" : "",
-    deliverables.tb ? `    tb_${top}.v` : "",
-    deliverables.constraints ? "  constraints/" : "",
-    deliverables.constraints ? `    ${name}.xdc` : "",
-    deliverables.readme ? "  README.md" : "",
-    "```",
-    "",
-    "## Architecture",
-    "- clock_reset synchronizes the active-low reset into the system clock domain.",
-    "- sensor_capture qualifies 8-bit sensor samples and raises a write request.",
-    "- fifo_buffer decouples sensor input from UART output.",
-    "- control_fsm schedules capture, FIFO read, UART transmit, busy, and error states.",
-    "- uart_tx serializes data at the configured baud rate.",
-    "",
-  ].filter(Boolean);
-
-  if (deliverables.rtl) {
-    sections.push(
-      "## rtl/" + top + ".v",
-      "```verilog",
-      `module ${top} (`,
-      "    input  wire       clk,",
-      "    input  wire       rst_n,",
-      "    input  wire       en,",
-      "    input  wire [7:0] sensor_data,",
-      "    input  wire       sensor_valid,",
-      "    output wire       uart_tx,",
-      "    output wire       busy,",
-      "    output reg  [7:0] error_count",
-      ");",
-      "",
-      "wire rst_sync;",
-      "wire sample_valid;",
-      "wire [7:0] sample_data;",
-      "wire fifo_wr_en;",
-      "wire fifo_rd_en;",
-      "wire fifo_empty;",
-      "wire fifo_full;",
-      "wire [7:0] fifo_dout;",
-      "wire uart_start;",
-      "wire uart_busy;",
-      "",
-      "clock_reset u_clock_reset (.clk(clk), .rst_n(rst_n), .rst_sync(rst_sync));",
-      "sensor_capture u_sensor_capture (.clk(clk), .rst(rst_sync), .en(en), .sensor_data(sensor_data), .sensor_valid(sensor_valid), .sample_data(sample_data), .sample_valid(sample_valid));",
-      "fifo_buffer u_fifo_buffer (.clk(clk), .rst(rst_sync), .wr_en(fifo_wr_en), .rd_en(fifo_rd_en), .din(sample_data), .dout(fifo_dout), .empty(fifo_empty), .full(fifo_full));",
-      "control_fsm u_control_fsm (.clk(clk), .rst(rst_sync), .en(en), .sample_valid(sample_valid), .fifo_empty(fifo_empty), .fifo_full(fifo_full), .uart_busy(uart_busy), .fifo_wr_en(fifo_wr_en), .fifo_rd_en(fifo_rd_en), .uart_start(uart_start), .busy(busy));",
-      "uart_tx #(.CLK_HZ(50000000), .BAUD(115200)) u_uart_tx (.clk(clk), .rst(rst_sync), .start(uart_start), .data(fifo_dout), .tx(uart_tx), .busy(uart_busy));",
-      "",
-      "always @(posedge clk) begin",
-      "    if (rst_sync) begin",
-      "        error_count <= 8'd0;",
-      "    end else if (sample_valid && fifo_full) begin",
-      "        error_count <= error_count + 8'd1;",
-      "    end",
-      "end",
-      "",
-      "endmodule",
-      "```",
-      "",
-      "## rtl/control_fsm.v",
-      "```verilog",
-      "module control_fsm (",
-      "    input  wire clk, rst, en, sample_valid, fifo_empty, fifo_full, uart_busy,",
-      "    output reg  fifo_wr_en, fifo_rd_en, uart_start, busy",
-      ");",
-      "localparam IDLE = 2'd0, CAPTURE = 2'd1, SEND = 2'd2;",
-      "reg [1:0] state;",
-      "always @(posedge clk) begin",
-      "    if (rst) begin",
-      "        state <= IDLE;",
-      "        fifo_wr_en <= 1'b0;",
-      "        fifo_rd_en <= 1'b0;",
-      "        uart_start <= 1'b0;",
-      "        busy <= 1'b0;",
-      "    end else begin",
-      "        fifo_wr_en <= en && sample_valid && !fifo_full;",
-      "        fifo_rd_en <= 1'b0;",
-      "        uart_start <= 1'b0;",
-      "        busy <= en;",
-      "        case (state)",
-      "            IDLE: state <= en ? CAPTURE : IDLE;",
-      "            CAPTURE: if (!fifo_empty && !uart_busy) begin fifo_rd_en <= 1'b1; state <= SEND; end",
-      "            SEND: begin uart_start <= 1'b1; state <= CAPTURE; end",
-      "            default: state <= IDLE;",
-      "        endcase",
-      "    end",
-      "end",
-      "endmodule",
-      "```",
-      "",
-      "## Other RTL Files",
-      "- clock_reset.v: two-stage reset synchronizer.",
-      "- sensor_capture.v: registers valid sensor samples.",
-      "- fifo_buffer.v: small synchronous FIFO with full and empty flags.",
-      "- uart_tx.v: parameterized UART transmitter."
-    );
-  }
-
-  if (deliverables.tb) {
-    sections.push(
-      "",
-      "## sim/tb_" + top + ".v",
-      "```verilog",
-      `module tb_${top};`,
-      "reg clk = 1'b0;",
-      "reg rst_n = 1'b0;",
-      "reg en = 1'b0;",
-      "reg [7:0] sensor_data = 8'd0;",
-      "reg sensor_valid = 1'b0;",
-      "wire uart_tx;",
-      "wire busy;",
-      "wire [7:0] error_count;",
-      "",
-      "always #10 clk = ~clk;",
-      "",
-      `${top} dut (.clk(clk), .rst_n(rst_n), .en(en), .sensor_data(sensor_data), .sensor_valid(sensor_valid), .uart_tx(uart_tx), .busy(busy), .error_count(error_count));`,
-      "",
-      "initial begin",
-      "    #100 rst_n = 1'b1;",
-      "    en = 1'b1;",
-      "    repeat (16) begin",
-      "        @(posedge clk);",
-      "        sensor_data <= sensor_data + 8'd1;",
-      "        sensor_valid <= 1'b1;",
-      "        @(posedge clk);",
-      "        sensor_valid <= 1'b0;",
-      "    end",
-      "    #20000 $finish;",
-      "end",
-      "endmodule",
-      "```"
-    );
-  }
-
-  if (deliverables.constraints) {
-    sections.push(
-      "",
-      "## constraints/" + name + ".xdc",
-      "```tcl",
-      "create_clock -period 20.000 [get_ports clk]",
-      "set_property IOSTANDARD LVCMOS33 [get_ports {clk rst_n en sensor_valid uart_tx busy}]",
-      "set_property IOSTANDARD LVCMOS33 [get_ports {sensor_data[*] error_count[*]}]",
-      "```"
-    );
-  }
-
-  if (deliverables.readme) {
-    sections.push(
-      "",
-      "## README.md",
-      "Run simulation first, then synthesize the top module. Replace placeholder pin locations in the constraint file before implementation."
-    );
-  }
-
-  return sections.join("\n");
+function renderStages(stages) {
+  elements.stageGrid.innerHTML = "";
+  Object.entries(stages).forEach(([name, detail]) => {
+    const item = document.createElement("div");
+    item.className = `stage-card ${statusClass(detail.status)}`;
+    item.title = detail.reason || detail.status;
+    const label = document.createElement("strong");
+    label.textContent = name;
+    const state = document.createElement("span");
+    state.textContent = detail.status;
+    item.append(label, state);
+    elements.stageGrid.appendChild(item);
+  });
 }
 
-function buildPrompt() {
-  const deliverables = selectedDeliverables();
+function requestPayload() {
+  const mode = generationMode();
+  return {
+    project_name: elements.projectName.value.trim(),
+    task_type: mode === "free" ? "freeform" : elements.taskType.value || "auto",
+    width: Number(elements.width.value),
+    requirement: compiledRequirement(),
+    generation_mode: mode,
+    engineering_context: engineeringContext(),
+  };
+}
+
+function engineeringContext() {
+  return {
+    top_module: elements.topModule.value.trim(),
+    clock_mhz: elements.clockMHz.value.trim(),
+    reset_polarity: elements.resetPolarity.value,
+    interface_spec: elements.interfaceSpec.value,
+    io_spec: elements.ioSpec.value.trim(),
+    target_platform: elements.targetPlatform.value.trim(),
+    verification_intent: elements.verificationIntent.value,
+    deliverables: selectedDeliverables(),
+  };
+}
+
+function selectedDeliverables() {
   return [
-    "你是 FPGA 项目生成助手。请生成一个完整、可落地的 FPGA 工程，而不是单一模块。",
+    ["RTL", document.querySelector("#deliverRtl").checked],
+    ["Testbench", document.querySelector("#deliverTb").checked],
+    ["Constraints", document.querySelector("#deliverConstraints").checked],
+    ["README", document.querySelector("#deliverReadme").checked],
+  ].filter(([, enabled]) => enabled).map(([name]) => name);
+}
+
+function labelFor(select) {
+  return select.options[select.selectedIndex]?.textContent.trim() || select.value;
+}
+
+function compiledRequirement() {
+  const context = engineeringContext();
+  const goal = elements.requirement.value.trim();
+  const lines = [
+    goal,
     "",
-    `项目名称：${projectName.value}`,
-    `顶层模块：${topModule.value}`,
-    `项目类型：${document.querySelector("#projectType").value}`,
-    `目标语言：${document.querySelector("#hdlType").value}`,
+    "工程生成上下文：",
+    `- 顶层模块：${context.top_module}`,
+    `- 数据通路位宽：${elements.width.value} bit`,
+    context.clock_mhz ? `- 时钟频率：${context.clock_mhz} MHz` : null,
+    `- 复位策略：${labelFor(elements.resetPolarity)}`,
+    `- 接口协议：${labelFor(elements.interfaceSpec)}`,
+    context.io_spec ? `- 端口与信号摘要：${context.io_spec}` : null,
+    context.target_platform ? `- 目标平台 / 约束：${context.target_platform}` : null,
+    `- 验证策略：${labelFor(elements.verificationIntent)}`,
+    `- 交付范围：${context.deliverables.join(", ") || "未指定"}`,
+    "",
+    "输出必须是完整 FPGA 工程，而不是单一模块。",
+  ];
+  return lines.filter((line) => line !== null && line !== undefined).join("\n");
+}
+
+function renderAmbiguityAudit(data) {
+  const disposition = data.disposition || "unknown";
+  if (data.inferred_task_type && elements.taskType.querySelector(`option[value="${data.inferred_task_type}"]`)) {
+    elements.taskType.value = data.inferred_task_type;
+  }
+  elements.inferredTask.textContent = taskDisplayName(data.inferred_task_type || data.task_type || "unclassified");
+  elements.capabilityState.textContent =
+    disposition === "capability_gap"
+      ? "capability gap"
+      : disposition === "needs_clarification"
+        ? "missing facts"
+        : disposition;
+  elements.ambiguityStatus.textContent =
+    disposition === "ready"
+      ? "需求明确"
+      : disposition === "needs_clarification"
+        ? "需要澄清"
+        : disposition === "capability_gap"
+          ? "能力缺口"
+          : "无法判断";
+  elements.ambiguityStatus.className = `audit-status ${statusClass(disposition)}`;
+  elements.ambiguityList.innerHTML = "";
+
+  const questions = data.clarification_questions || [];
+  const gaps = data.capability_gap_ids || [];
+  const items = questions.length
+    ? questions
+    : gaps.length
+      ? gaps.map((gap) => `当前确定性后端不支持能力：${gap}`)
+      : ["需求边界评估为 ready，可以继续运行项目生成与验证。"];
+
+  items.forEach((text) => {
+    const item = document.createElement("li");
+    item.textContent = text;
+    elements.ambiguityList.appendChild(item);
+  });
+}
+
+async function readJsonResponse(response) {
+  const text = await response.text();
+  try {
+    return text ? JSON.parse(text) : {};
+  } catch {
+    return { error: text || `HTTP ${response.status}` };
+  }
+}
+
+async function auditRequirement() {
+  if (API_BASE === null) {
+    throw new Error("请先启动本地服务，并用 http://127.0.0.1:8000 打开页面后再检查。");
+  }
+  const response = await fetch("/api/audit-requirement", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(requestPayload()),
+  });
+  const data = await readJsonResponse(response);
+  if (!response.ok) {
+    if (response.status === 404) {
+      throw new Error("后端尚未部署需求歧义检查接口，请更新 app/server.py 后重新部署。");
+    }
+    throw new Error(data.error || `HTTP ${response.status}`);
+  }
+  renderAmbiguityAudit(data);
+  return data;
+}
+
+function showClarificationStop(audit) {
+  elements.passLevel.textContent = "NEEDS CLARIFICATION";
+  elements.passLevel.className = "result-chip not-run";
+  elements.artifactPath.textContent = "需求仍有关键歧义，未生成工程产物。";
+  elements.output.textContent = [
+    "需求歧义检查未通过。请先补充以下问题，再运行项目生成：",
+    "",
+    ...(audit.clarification_questions || []).map((question, index) => `${index + 1}. ${question}`),
+  ].join("\n");
+  elements.fileList.innerHTML = '<div class="empty-state">等待需求澄清</div>';
+  updateCounts({}, 0);
+  renderStages(Object.fromEntries(["H0", "H1", "H2", "H3", "L0", "L1", "L2", "L3", "L4"].map((name) => [name, { status: "not_run" }])));
+  elements.stageHelp.textContent = `本次停止原因：${(audit.reason_codes || []).join(", ") || "needs_clarification"}`;
+}
+
+function freeModeFiles(audit) {
+  const payload = requestPayload();
+  const prompt = [
+    "你是 FPGA 项目生成助手。请基于以下自由需求生成完整多文件 FPGA 工程。",
+    "",
+    `项目名称：${payload.project_name}`,
+    `顶层模块：${elements.topModule.value.trim()}`,
+    `参考位宽：${payload.width}`,
+    `需求边界结论：${audit.disposition}`,
+    `能力缺口：${(audit.capability_gap_ids || []).join(", ") || "无"}`,
     "",
     "系统级需求：",
-    projectSpec.value,
+    payload.requirement,
     "",
-    "期望模块划分：",
-    modulePlan.value,
-    "",
-    "时钟、接口与约束：",
-    constraintText.value,
-    "",
-    "必须输出：",
-    deliverables.rtl ? "- rtl/ 下的顶层模块和子模块代码" : "",
-    deliverables.tb ? "- sim/ 下的 testbench" : "",
-    deliverables.constraints ? "- constraints/ 下的 XDC 或 SDC 约束模板" : "",
-    deliverables.readme ? "- README.md，说明工程结构、仿真步骤和综合注意事项" : "",
-    "",
-    "输出格式要求：先给项目目录树，再按文件路径逐个给完整文件内容。不要只给一个模块。",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    "输出要求：",
+    "1. 先给工程目录树。",
+    "2. 再按路径给出 RTL、testbench、约束模板和 README。",
+    "3. 标明未确认假设，不要把未验证内容称为通过。",
+  ].join("\n");
+  return [
+    {
+      path: "requirement.md",
+      role: "requirement",
+      content: [
+        `# ${payload.project_name}`,
+        "",
+        "## 自由需求",
+        payload.requirement,
+        "",
+        "## 需求边界",
+        `- disposition: ${audit.disposition}`,
+        `- reason_codes: ${(audit.reason_codes || []).join(", ") || "ready"}`,
+        `- capability_gap_ids: ${(audit.capability_gap_ids || []).join(", ") || "none"}`,
+      ].join("\n"),
+    },
+    {
+      path: "generation_prompt.md",
+      role: "prompt",
+      content: prompt,
+    },
+    {
+      path: "boundary.json",
+      role: "boundary",
+      content: JSON.stringify(audit.boundary || audit, null, 2),
+    },
+  ];
+}
+
+function renderFreeHandoff(audit) {
+  const files = freeModeFiles(audit);
+  elements.passLevel.textContent = "HANDOFF";
+  elements.passLevel.className = "result-chip not-run";
+  elements.artifactPath.textContent = "自由需求模式：已生成需求交接包，未运行工程验证。";
+  renderFiles(files);
+  updateCounts({}, files.length);
+  renderStages(Object.fromEntries(["H0", "H1", "H2", "H3", "L0", "L1", "L2", "L3", "L4"].map((name) => [name, { status: "not_run" }])));
+  elements.stageHelp.textContent = `自由需求模式只完成需求边界评估：${audit.disposition}。`;
+  showToast("已生成自由需求交接包");
+}
+
+function selectFile(file) {
+  activeFile = file;
+  elements.output.textContent = file.content;
+  elements.fileList.querySelectorAll("button").forEach((button) => button.classList.toggle("active", button.dataset.path === file.path));
+}
+
+function renderFiles(files) {
+  elements.fileList.innerHTML = "";
+  if (!files.length) {
+    elements.fileList.innerHTML = '<div class="empty-state">本次运行没有生成工程文件</div>';
+    elements.output.textContent = "请查看门禁状态与错误提示。";
+    activeFile = null;
+    return;
+  }
+  files.forEach((file) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.dataset.path = file.path;
+    const role = document.createElement("span");
+    role.className = "file-role";
+    role.textContent = file.role;
+    const path = document.createElement("span");
+    path.textContent = file.path;
+    button.append(role, path);
+    button.addEventListener("click", () => selectFile(file));
+    elements.fileList.appendChild(button);
+  });
+  selectFile(files.find((file) => file.path === "system_his.json") || files.find((file) => file.path.startsWith("rtl/")) || files[0]);
+}
+
+function updateCounts(counts, total) {
+  document.querySelector("#rtlCount").textContent = counts.rtl || 0;
+  document.querySelector("#tbCount").textContent = counts.verification || 0;
+  document.querySelector("#constraintCount").textContent = counts.constraints || 0;
+  document.querySelector("#fileCount").textContent = total;
+}
+
+function setBusy(busy) {
+  elements.button.disabled = busy;
+  elements.button.classList.toggle("loading", busy);
+  elements.button.querySelector(".button-label").textContent = busy
+    ? "正在处理..."
+    : generationMode() === "free"
+      ? "生成自由需求交接包"
+      : "生成完整工程并验证";
+}
+
+function updateModeUi() {
+  const free = generationMode() === "free";
+  elements.taskField.classList.toggle("is-disabled", free);
+  elements.taskType.disabled = free;
+  elements.taskType.value = free ? "auto" : elements.taskType.value || "auto";
+  elements.methodCondition.value = free ? "free_requirement_handoff" : "reference_deterministic";
+  elements.methodMode.textContent = free ? "自由需求交接" : "确定性参考";
+  document.querySelector("#topbarMode").textContent = free ? "自由需求" : "System-HIS 解析";
+  document.querySelector(".scope-note p").textContent = free
+    ? "自由需求模式会复用后端需求边界评估，并输出交接包；当前不会伪造 RTL 生成、综合或仿真通过。"
+    : "后端先给出 requirement boundary，再由当前确定性参考后端生成可检查工程；缺失事实不会被静默默认成 ready。";
+  setBusy(false);
+}
+
+async function checkBackend() {
+  try {
+    if (API_BASE === null) {
+      throw new Error("file mode");
+    }
+    const response = await fetch("/api/health", { cache: "no-store" });
+    if (!response.ok) throw new Error();
+    elements.backendStatus.textContent = "已连接";
+    elements.backendStatus.className = "ok";
+  } catch {
+    elements.backendStatus.textContent = "未连接";
+    elements.backendStatus.className = "status-error";
+  }
+}
+
+async function loadTaskRegistry() {
+  if (API_BASE === null) return;
+  try {
+    const response = await fetch("/api/tasks", { cache: "no-store" });
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    taskRegistry = Array.isArray(data.tasks) ? data.tasks : [];
+    renderTaskRegistry(taskRegistry, data.family_count);
+  } catch (error) {
+    showToast(`任务族列表加载失败：${error.message}`);
+  }
+}
+
+function renderTaskRegistry(tasks, familyCount) {
+  const current = elements.taskType.value || "auto";
+  elements.taskType.innerHTML = "";
+  const auto = document.createElement("option");
+  auto.value = "auto";
+  auto.textContent = tasks.length
+    ? `根据需求自动识别（${familyCount || tasks.length} 个任务族）`
+    : "根据需求自动识别";
+  elements.taskType.appendChild(auto);
+  tasks.forEach((task) => {
+    const option = document.createElement("option");
+    option.value = task.id;
+    option.textContent = task.label;
+    elements.taskType.appendChild(option);
+  });
+  elements.taskType.value = elements.taskType.querySelector(`option[value="${current}"]`) ? current : "auto";
+}
+
+function setAuditBusy(busy) {
+  elements.ambiguityButton.disabled = busy;
+  elements.ambiguityButton.textContent = busy ? "正在解析..." : "解析需求边界";
 }
 
 document.querySelectorAll(".nav-item").forEach((button) => {
@@ -255,73 +460,87 @@ document.querySelectorAll(".nav-item").forEach((button) => {
   });
 });
 
-temperature.addEventListener("input", () => {
-  tempValue.textContent = temperature.value;
+elements.taskType.addEventListener("change", () => {
+  elements.inferredTask.textContent = taskDisplayName(elements.taskType.value);
 });
-
-document.querySelectorAll(".deliverables input").forEach((input) => {
-  input.addEventListener("change", () => {
-    updateCounts(selectedDeliverables());
-    projectOutput.textContent = fallbackProject();
-  });
+document.querySelectorAll('input[name="generationMode"]').forEach((input) => {
+  input.addEventListener("change", updateModeUi);
 });
-
 document.querySelector("#sampleBtn").addEventListener("click", () => {
-  projectName.value = sampleProject.projectName;
-  topModule.value = sampleProject.topModule;
-  projectSpec.value = sampleProject.projectSpec;
-  modulePlan.value = sampleProject.modulePlan;
-  constraintText.value = sampleProject.constraintText;
-  projectOutput.textContent = fallbackProject();
-  showToast("已填入完整项目示例");
+  const current = elements.taskType.value === "auto" ? "fifo" : elements.taskType.value;
+  applySample(current);
+  showToast("已恢复该任务族的示例需求");
 });
-
-document.querySelector("#generateForm").addEventListener("submit", async (event) => {
-  event.preventDefault();
-
-  const apiUrl = document.querySelector("#apiUrl").value.replace(/\/$/, "");
-  const model = document.querySelector("#modelName").value;
-  projectOutput.textContent = "正在生成完整 FPGA 工程...";
-
+elements.ambiguityButton.addEventListener("click", async () => {
+  setAuditBusy(true);
+  elements.ambiguityStatus.textContent = "解析中";
+  elements.ambiguityStatus.className = "audit-status running";
   try {
-    const response = await fetch(`${apiUrl}/chat/completions`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        model,
-        messages: [{ role: "user", content: buildPrompt() }],
-        temperature: Number(temperature.value),
-        max_tokens: 4096,
-      }),
-    });
-
-    if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
-    }
-
-    const data = await response.json();
-    projectOutput.textContent = data.choices?.[0]?.message?.content?.trim() || fallbackProject();
-    showToast("完整项目生成完成");
+    const audit = await auditRequirement();
+    showToast(audit.disposition === "ready" ? "需求边界解析通过" : "需求边界需要处理");
   } catch (error) {
-    projectOutput.textContent = fallbackProject();
-    showToast("未连接到本地服务，已显示完整项目演示输出");
+    elements.ambiguityStatus.textContent = "检查失败";
+    elements.ambiguityStatus.className = "audit-status fail";
+    elements.ambiguityList.innerHTML = "";
+    const item = document.createElement("li");
+    item.textContent = error.message;
+    elements.ambiguityList.appendChild(item);
+    showToast(error.message);
+  } finally {
+    setAuditBusy(false);
   }
 });
 
+elements.form.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setBusy(true);
+  elements.passLevel.textContent = "RUNNING";
+  elements.passLevel.className = "result-chip running";
+  elements.output.textContent = "正在执行需求边界、项目生成和本机工具验证…";
+  document.querySelectorAll("#pipeline .step").forEach((step) => step.classList.add("active"));
+  try {
+    const audit = await auditRequirement();
+    if (audit.disposition === "needs_clarification") {
+      showClarificationStop(audit);
+      showToast("需求需要先澄清");
+      return;
+    }
+    if (generationMode() === "free") {
+      renderFreeHandoff(audit);
+      return;
+    }
+    const response = await fetch("/api/generate", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(requestPayload()),
+    });
+    const data = await readJsonResponse(response);
+    if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+    const boundaryStop = ["capability_gap", "requirement_clarification_required"].includes(data.failure_type);
+    elements.passLevel.textContent = data.failure_type === "capability_gap" ? "CAPABILITY GAP" : data.failure_type === "requirement_clarification_required" ? "NEEDS CLARIFICATION" : data.pass_level;
+    elements.passLevel.className = `result-chip ${boundaryStop ? "not-run" : statusClass(data.pass_level)}`;
+    elements.artifactPath.textContent = `${data.sample_id} · ${data.artifact_path}`;
+    renderFiles(data.files);
+    renderStages(data.stages);
+    updateCounts(data.counts, data.files.length);
+    elements.stageHelp.textContent = data.failure_type ? `本次停止原因：${data.failure_type}` : `Requirement Boundary：${data.boundary.disposition}；结果来自本次 labels.json。`;
+    document.querySelectorAll("#pipeline .step").forEach((step) => { step.classList.remove("active"); step.classList.add("done"); });
+    showToast(`执行完成：${data.pass_level}`);
+  } catch (error) {
+    elements.passLevel.textContent = "ERROR";
+    elements.passLevel.className = "result-chip fail";
+    elements.output.textContent = `无法完成本次运行：${error.message}`;
+    elements.stageHelp.textContent = "这是服务或输入错误，没有生成模拟结果。";
+    showToast(error.message);
+  } finally { setBusy(false); }
+});
+
 document.querySelector("#copyBtn").addEventListener("click", async () => {
-  await navigator.clipboard.writeText(projectOutput.textContent);
-  showToast("项目输出已复制");
+  if (!activeFile) { showToast("当前没有可复制的文件"); return; }
+  await navigator.clipboard.writeText(activeFile.content);
+  showToast(`已复制 ${activeFile.path}`);
 });
 
-document.querySelector("#downloadBtn").addEventListener("click", () => {
-  const blob = new Blob([projectOutput.textContent], { type: "text/markdown;charset=utf-8" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = `${projectName.value || "generated_fpga_project"}_project.md`;
-  link.click();
-  URL.revokeObjectURL(link.href);
-  showToast("已下载项目说明");
-});
-
-updateCounts(selectedDeliverables());
-projectOutput.textContent = fallbackProject();
+renderStages(Object.fromEntries(["H0", "H1", "H2", "H3", "L0", "L1", "L2", "L3", "L4"].map((name) => [name, { status: "not_run" }])));
+updateModeUi();
+checkBackend();
+loadTaskRegistry();

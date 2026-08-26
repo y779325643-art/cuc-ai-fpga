@@ -1,0 +1,72 @@
+{
+  "capability_registry_version": "system-his-backend-capabilities-v1",
+  "system_his_version": "system-his-v1.2",
+  "component_semantic_kinds": {
+    "supported": [
+      "accumulator",
+      "buffer",
+      "counter",
+      "fifo",
+      "fork",
+      "fsm",
+      "gate",
+      "join",
+      "mac",
+      "pwm",
+      "rtl_component",
+      "spi",
+      "stage",
+      "top_integration"
+    ],
+    "aliases": {
+      "arithmetic_accumulator": "accumulator",
+      "dual_stream_join": "join",
+      "elastic_stream_buffer": "buffer",
+      "pipeline_stage": "stage",
+      "registered_stream_stage": "stage",
+      "stream_accumulator": "accumulator",
+      "stream_buffer": "buffer",
+      "synchronous_fifo": "fifo"
+    }
+  },
+  "data_flow_protocols": {
+    "supported": [
+      "register",
+      "valid_ready",
+      "wire"
+    ],
+    "aliases": {
+      "combinational": "wire",
+      "combinational_operand": "wire",
+      "registered_data": "register",
+      "registered_enable": "register"
+    }
+  },
+  "verification": {
+    "supported_scenarios": [
+      "axis_sensitive_edges",
+      "back_to_back_matches",
+      "border_policy",
+      "boundary_match_index",
+      "continuous_frames",
+      "defect_present_absent",
+      "exact_match",
+      "first_defect_coordinate",
+      "flat_image",
+      "frame_boundary",
+      "input_stall",
+      "missing_final_in_last",
+      "no_false_positive",
+      "no_match",
+      "nominal_operation",
+      "overlapping_match",
+      "partial_match",
+      "reset",
+      "reset_during_frame",
+      "reset_during_partial_match",
+      "stall_stability",
+      "threshold_boundary"
+    ],
+    "canonical_testbench": "sim/tb_top.v"
+  }
+}

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ast
 import json
 import re
 from dataclasses import dataclass, field
@@ -73,6 +74,14 @@ class SystemHisV12CheckResult:
     warnings: list[str] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class SystemHisWellFormednessRuleResult:
+    """One machine-readable W1-W10 conformance result."""
+
+    status: str
+    diagnostics: list[str] = field(default_factory=list)
+
+
 def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
     """Validate v1.2 System-HIS internal structure.
 
@@ -133,8 +142,44 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
         errors,
     )
     _validate_artifacts(artifacts, errors)
+    for rule_id, rule_result in check_system_his_well_formedness(payload).items():
+        for diagnostic in rule_result.diagnostics:
+            message = f"[{rule_id}] {diagnostic}"
+            if message not in errors:
+                errors.append(message)
 
     return SystemHisV12CheckResult(passed=not errors, errors=errors, warnings=warnings)
+
+
+def check_system_his_well_formedness(
+    payload: dict[str, Any],
+) -> dict[str, SystemHisWellFormednessRuleResult]:
+    """Return independently attributable W1-W10 results.
+
+    ``not_applicable`` is used only when the governed construct is absent
+    (currently CDC flows or memories). It is never treated as evidence that an
+    uninspected construct passed.
+    """
+
+    rules = {
+        "W1": _w1_component_references(payload),
+        "W2": _w2_endpoint_references(payload),
+        "W3": _w3_connection_types(payload),
+        "W4": _w4_state_clock_reset_bindings(payload),
+        "W5": _w5_combinational_state(payload),
+        "W6": _w6_cdc_paths(payload),
+        "W7": _w7_memory_intent(payload),
+        "W8": _w8_verification_references(payload),
+        "W9": _w9_constraint_references(payload),
+        "W10": _w10_artifact_reproducibility(payload),
+    }
+    return {
+        rule_id: SystemHisWellFormednessRuleResult(
+            status="fail" if diagnostics else ("not_applicable" if diagnostics is None else "pass"),
+            diagnostics=[] if diagnostics is None else diagnostics,
+        )
+        for rule_id, diagnostics in rules.items()
+    }
 
 
 def check_system_his_v12_against_rtl(
@@ -1015,3 +1060,384 @@ def _artifact_rtl_sources(artifacts: dict[str, Any], errors: list[str]) -> list[
         else:
             errors.append(f"system_his.artifacts.rtl_sources[{index}] must be a non-empty string")
     return sources
+
+
+def _w1_component_references(payload: dict[str, Any]) -> list[str]:
+    components = _named_objects(payload.get("components"))
+    diagnostics: list[str] = []
+    for index, instance in enumerate(_object_list(payload.get("instances"))):
+        component = str(instance.get("component", "")).strip()
+        if len(components.get(component, [])) != 1:
+            diagnostics.append(f"instances[{index}].component '{component}' does not resolve exactly once")
+    return diagnostics
+
+
+def _w2_endpoint_references(payload: dict[str, Any]) -> list[str]:
+    contracts = _endpoint_contracts(payload)
+    diagnostics: list[str] = []
+    for flow_index, flow in enumerate(_object_list(payload.get("data_flow"))):
+        for endpoint_index, endpoint in enumerate(_string_list(flow.get("path"))):
+            if endpoint not in contracts:
+                diagnostics.append(
+                    f"data_flow[{flow_index}].path[{endpoint_index}] endpoint '{endpoint}' does not resolve"
+                )
+    return diagnostics
+
+
+def _w3_connection_types(payload: dict[str, Any]) -> list[str] | None:
+    typed_connections = _object_list(payload.get("connections")) + [
+        connection
+        for flow in _object_list(payload.get("data_flow"))
+        for connection in _object_list(flow.get("connections"))
+    ]
+    if not typed_connections:
+        return None
+    contracts = _endpoint_contracts(payload)
+    diagnostics: list[str] = []
+    for connection_index, connection in enumerate(typed_connections):
+        source_name = _typed_endpoint_name(connection.get("from"), payload)
+        target_name = _typed_endpoint_name(connection.get("to"), payload)
+        source = contracts.get(source_name)
+        target = contracts.get(target_name)
+        if source is None:
+            diagnostics.append(f"typed connection[{connection_index}] source '{source_name}' does not resolve")
+        if target is None:
+            diagnostics.append(f"typed connection[{connection_index}] target '{target_name}' does not resolve")
+        if source is None or target is None:
+            continue
+        if source["width"] is not None and target["width"] is not None and not widths_equivalent(
+            source["width"], target["width"]
+        ):
+            diagnostics.append(
+                f"typed connection[{connection_index}] '{source_name}' -> '{target_name}' has incompatible widths"
+            )
+        declared_width = _resolved_width(connection.get("width"))
+        if isinstance(declared_width, int) and not isinstance(declared_width, bool):
+            for endpoint_name, endpoint in ((source_name, source), (target_name, target)):
+                if endpoint["width"] is not None and not widths_equivalent(declared_width, endpoint["width"]):
+                    diagnostics.append(
+                        f"typed connection[{connection_index}] width {declared_width} is incompatible with endpoint '{endpoint_name}'"
+                    )
+        if source["owner"] == target["owner"]:
+            compatible = source["role"] in {"sink", "bidirectional"} and target["role"] in {
+                "source",
+                "bidirectional",
+            }
+        else:
+            compatible = source["role"] in {"source", "bidirectional"} and target["role"] in {
+                "sink",
+                "bidirectional",
+            }
+        if not compatible:
+            diagnostics.append(
+                f"typed connection[{connection_index}] '{source_name}' -> '{target_name}' has incompatible directions"
+            )
+    return diagnostics
+
+
+def _typed_endpoint_name(value: Any, payload: dict[str, Any]) -> str:
+    if isinstance(value, str):
+        return value.strip()
+    if not isinstance(value, dict):
+        return ""
+    port = str(value.get("port", "")).strip()
+    instance = str(value.get("instance", "")).strip()
+    module = str(value.get("module", "")).strip()
+    top = payload.get("top") if isinstance(payload.get("top"), dict) else {}
+    top_name = str(top.get("name", "")).strip()
+    owner = instance or ("top" if module in {"top", top_name} else module)
+    return f"{owner}.{port}" if owner and port else ""
+
+
+def _w4_state_clock_reset_bindings(payload: dict[str, Any]) -> list[str]:
+    top = payload.get("top") if isinstance(payload.get("top"), dict) else {}
+    clocks = set(_object_names(top.get("clocks")))
+    resets = set(_object_names(top.get("resets")))
+    state_owners: set[str] = set()
+    state = payload.get("state") if isinstance(payload.get("state"), dict) else {}
+    for group in STATE_GROUPS:
+        for item in _object_list(state.get(group)):
+            owner = str(item.get("owner", "")).strip()
+            if owner and owner != "top":
+                state_owners.add(owner)
+    diagnostics: list[str] = []
+    instances = _object_list(payload.get("instances"))
+    instance_names = {str(instance.get("name", "")).strip() for instance in instances}
+    for owner in sorted(state_owners - instance_names):
+        diagnostics.append(f"state owner '{owner}' is not a declared instance")
+    for index, instance in enumerate(instances):
+        name = str(instance.get("name", "")).strip()
+        owns_state = bool(instance.get("owns_state")) or name in state_owners
+        if not owns_state:
+            continue
+        clock = str(instance.get("clock", "")).strip()
+        reset = str(instance.get("reset", "")).strip()
+        if clock not in clocks:
+            diagnostics.append(f"state-owning instance '{name}' clock '{clock}' is not declared")
+        if reset not in resets:
+            diagnostics.append(f"state-owning instance '{name}' reset '{reset}' is not declared")
+    primary_clock = str(payload.get("timing", {}).get("primary_clock", "")).strip() if isinstance(payload.get("timing"), dict) else ""
+    if primary_clock and primary_clock not in clocks:
+        diagnostics.append(f"timing.primary_clock '{primary_clock}' is not declared")
+    return diagnostics
+
+
+def _w5_combinational_state(payload: dict[str, Any]) -> list[str] | None:
+    declarations = [
+        component
+        for component in _object_list(payload.get("components"))
+        if "combinational" in component
+    ]
+    if not declarations:
+        return None
+    combinational = {
+        str(component.get("name", "")).strip()
+        for component in declarations
+        if component.get("combinational") is True
+    }
+    diagnostics: list[str] = []
+    state = payload.get("state") if isinstance(payload.get("state"), dict) else {}
+    state_owners = {
+        str(item.get("owner", "")).strip()
+        for group in STATE_GROUPS
+        for item in _object_list(state.get(group))
+    }
+    for instance in _object_list(payload.get("instances")):
+        component = str(instance.get("component", "")).strip()
+        if component not in combinational:
+            continue
+        name = str(instance.get("name", "")).strip()
+        if instance.get("owns_state") or name in state_owners:
+            diagnostics.append(f"combinational component instance '{name}' owns state")
+    top = payload.get("top") if isinstance(payload.get("top"), dict) else {}
+    top_name = str(top.get("name", "")).strip()
+    clock_reset_names = set(_object_names(top.get("clocks"))) | set(_object_names(top.get("resets")))
+    for component in _object_list(payload.get("components")):
+        component_name = str(component.get("name", "")).strip()
+        if component_name == top_name or component_name not in combinational:
+            continue
+        owned_clock_reset_ports = clock_reset_names & set(_object_names(component.get("ports")))
+        for port_name in sorted(owned_clock_reset_ports):
+            diagnostics.append(
+                f"combinational component '{component.get('name')}' declares clock/reset port '{port_name}'"
+            )
+    return diagnostics
+
+
+def _w6_cdc_paths(payload: dict[str, Any]) -> list[str] | None:
+    flows = [flow for flow in _object_list(payload.get("data_flow")) if flow.get("cdc") is True]
+    if not flows:
+        return None
+    contracts = _endpoint_contracts(payload)
+    component_kinds = {
+        str(component.get("name", "")).strip(): str(component.get("semantic_kind", "")).strip().lower()
+        for component in _object_list(payload.get("components"))
+    }
+    instance_components = {
+        str(instance.get("name", "")).strip(): str(instance.get("component", "")).strip()
+        for instance in _object_list(payload.get("instances"))
+    }
+    diagnostics: list[str] = []
+    for flow in flows:
+        name = str(flow.get("name", "")).strip()
+        endpoints = _string_list(flow.get("path"))
+        endpoint_clocks = [contracts[endpoint]["clock"] for endpoint in endpoints if endpoint in contracts and contracts[endpoint]["clock"]]
+        if len(set(endpoint_clocks)) < 2:
+            diagnostics.append(f"cdc data_flow '{name}' does not cross two declared clock domains")
+        owners = {contracts[endpoint]["owner"] for endpoint in endpoints if endpoint in contracts}
+        has_cdc_primitive = any(
+            component_kinds.get(instance_components.get(owner, ""), "")
+            in {"synchronizer", "cdc", "cdc_primitive", "async_fifo"}
+            for owner in owners
+        )
+        if not has_cdc_primitive:
+            diagnostics.append(f"cdc data_flow '{name}' has no synchronizer or declared CDC primitive")
+    return diagnostics
+
+
+def _w7_memory_intent(payload: dict[str, Any]) -> list[str] | None:
+    state = payload.get("state") if isinstance(payload.get("state"), dict) else {}
+    memories = _object_list(state.get("memories"))
+    if not memories:
+        return None
+    diagnostics: list[str] = []
+    for index, memory in enumerate(memories):
+        for field_name in ("depth", "width", "read_latency", "read_type", "memory_style"):
+            value = memory.get(field_name)
+            if value is None or (isinstance(value, str) and not value.strip()):
+                diagnostics.append(f"state.memories[{index}].{field_name} is required")
+        for field_name in ("depth", "read_latency"):
+            value = memory.get(field_name)
+            if value is not None and (not _is_non_bool_int(value) or value < (0 if field_name == "read_latency" else 1)):
+                diagnostics.append(f"state.memories[{index}].{field_name} is invalid")
+        width = _resolved_width(memory.get("width"))
+        if width is not None and (not _is_non_bool_int(width) or width <= 0):
+            diagnostics.append(f"state.memories[{index}].width is invalid")
+    return diagnostics
+
+
+def _w8_verification_references(payload: dict[str, Any]) -> list[str]:
+    verification = payload.get("verification") if isinstance(payload.get("verification"), dict) else {}
+    flow_names = set(_object_names(payload.get("data_flow")))
+    control_names = set(_object_names(payload.get("control_flow")))
+    signal_names = set(_endpoint_contracts(payload))
+    diagnostics: list[str] = []
+    for index, scenario in enumerate(_object_list(verification.get("scenarios"))):
+        for field_name, valid_names in (
+            ("related_flows", flow_names),
+            ("related_control", control_names),
+            ("signals", signal_names),
+        ):
+            for reference in _string_list(scenario.get(field_name)):
+                if reference not in valid_names:
+                    diagnostics.append(
+                        f"verification.scenarios[{index}].{field_name} reference '{reference}' is not declared"
+                    )
+    return diagnostics
+
+
+def _w9_constraint_references(payload: dict[str, Any]) -> list[str]:
+    top = payload.get("top") if isinstance(payload.get("top"), dict) else {}
+    timing = payload.get("timing") if isinstance(payload.get("timing"), dict) else {}
+    artifacts = payload.get("artifacts") if isinstance(payload.get("artifacts"), dict) else {}
+    diagnostics: list[str] = []
+    primary_clock = str(timing.get("primary_clock", "")).strip()
+    if primary_clock not in set(_object_names(top.get("clocks"))):
+        diagnostics.append(f"timing.primary_clock '{primary_clock}' is not declared")
+    timing_constraints = set(_string_list(timing.get("constraints")))
+    artifact_constraints = set(_string_list(artifacts.get("constraints")))
+    for path in sorted(timing_constraints - artifact_constraints):
+        diagnostics.append(f"timing constraint '{path}' is not declared in artifacts.constraints")
+    return diagnostics
+
+
+def _w10_artifact_reproducibility(payload: dict[str, Any]) -> list[str]:
+    top = payload.get("top") if isinstance(payload.get("top"), dict) else {}
+    timing = payload.get("timing") if isinstance(payload.get("timing"), dict) else {}
+    verification = payload.get("verification") if isinstance(payload.get("verification"), dict) else {}
+    artifacts = payload.get("artifacts") if isinstance(payload.get("artifacts"), dict) else {}
+    diagnostics: list[str] = []
+    if str(artifacts.get("top_module", "")).strip() != str(top.get("name", "")).strip():
+        diagnostics.append("artifacts.top_module does not match top.name")
+    if str(artifacts.get("manifest", "")).strip() != "manifest.json":
+        diagnostics.append("artifacts.manifest must be manifest.json")
+    if str(artifacts.get("testbench", "")).strip() != str(verification.get("testbench", "")).strip():
+        diagnostics.append("artifacts.testbench does not match verification.testbench")
+    if set(_string_list(artifacts.get("constraints"))) != set(_string_list(timing.get("constraints"))):
+        diagnostics.append("artifacts.constraints does not match timing.constraints")
+    sources = set(_string_list(artifacts.get("rtl_sources")))
+    for component in _object_list(payload.get("components")):
+        source = str(component.get("source", "")).strip()
+        if source and source not in sources:
+            diagnostics.append(f"component source '{source}' is not reproducible from artifacts.rtl_sources")
+    return diagnostics
+
+
+def _endpoint_contracts(payload: dict[str, Any]) -> dict[str, dict[str, Any]]:
+    contracts: dict[str, dict[str, Any]] = {}
+    top = payload.get("top") if isinstance(payload.get("top"), dict) else {}
+    primary_clock = str(payload.get("timing", {}).get("primary_clock", "")).strip() if isinstance(payload.get("timing"), dict) else ""
+    top_parameters = {
+        str(parameter.get("name", "")).strip(): parameter.get("value", parameter.get("default"))
+        for parameter in _object_list(top.get("parameters"))
+    }
+    for port in _object_list(top.get("ports")):
+        name = str(port.get("name", "")).strip()
+        direction = _normalized_direction(port)
+        role = {"input": "source", "output": "sink", "inout": "bidirectional"}.get(direction, "unknown")
+        contracts[f"top.{name}"] = {
+            "owner": "top",
+            "role": role,
+            "width": _resolved_width(port.get("width"), top_parameters),
+            "clock": primary_clock,
+        }
+    component_ports: dict[str, list[dict[str, Any]]] = {}
+    for component in _object_list(payload.get("components")):
+        component_ports.setdefault(
+            str(component.get("name", "")).strip(),
+            _object_list(component.get("ports")),
+        )
+    for instance in _object_list(payload.get("instances")):
+        owner = str(instance.get("name", "")).strip()
+        component = str(instance.get("component", "")).strip()
+        parameter_values = instance.get("parameter_values") if isinstance(instance.get("parameter_values"), dict) else {}
+        for port in component_ports.get(component, []):
+            name = str(port.get("name", "")).strip()
+            direction = _normalized_direction(port)
+            role = {"input": "sink", "output": "source", "inout": "bidirectional"}.get(direction, "unknown")
+            contracts.setdefault(f"{owner}.{name}", {
+                "owner": owner,
+                "role": role,
+                "width": _resolved_width(port.get("width"), parameter_values),
+                "clock": str(instance.get("clock", "")).strip(),
+            })
+    return contracts
+
+
+def _normalized_direction(port: dict[str, Any]) -> str:
+    value = str(port.get("dir", port.get("direction", ""))).strip()
+    return {"in": "input", "out": "output"}.get(value, value)
+
+
+def _resolved_width(value: Any, parameters: dict[str, Any] | None = None) -> Any:
+    if isinstance(value, dict):
+        value = value.get("resolved", value.get("expr"))
+    if not isinstance(value, str) or not parameters:
+        return value
+    text = value.strip()
+    range_match = re.fullmatch(r"\[(.+):\s*0\]", text)
+    expression = range_match.group(1) if range_match else text
+    resolved = _evaluate_width_expression(expression, parameters)
+    if resolved is None:
+        return value
+    return resolved + 1 if range_match else resolved
+
+
+def _evaluate_width_expression(expression: str, parameters: dict[str, Any]) -> int | None:
+    try:
+        root = ast.parse(expression, mode="eval").body
+    except SyntaxError:
+        return None
+
+    def evaluate(node: ast.AST) -> int:
+        if isinstance(node, ast.Constant) and isinstance(node.value, int) and not isinstance(node.value, bool):
+            return node.value
+        if isinstance(node, ast.Name):
+            value = parameters.get(node.id)
+            if isinstance(value, int) and not isinstance(value, bool):
+                return value
+            raise ValueError
+        if isinstance(node, ast.BinOp) and isinstance(node.op, (ast.Add, ast.Sub, ast.Mult)):
+            left = evaluate(node.left)
+            right = evaluate(node.right)
+            if isinstance(node.op, ast.Add):
+                return left + right
+            if isinstance(node.op, ast.Sub):
+                return left - right
+            return left * right
+        raise ValueError
+
+    try:
+        value = evaluate(root)
+    except ValueError:
+        return None
+    return value if value > 0 else None
+
+
+def _named_objects(value: Any) -> dict[str, list[dict[str, Any]]]:
+    result: dict[str, list[dict[str, Any]]] = {}
+    for item in _object_list(value):
+        result.setdefault(str(item.get("name", "")).strip(), []).append(item)
+    return result
+
+
+def _object_names(value: Any) -> list[str]:
+    return [str(item.get("name", "")).strip() for item in _object_list(value)]
+
+
+def _object_list(value: Any) -> list[dict[str, Any]]:
+    return [item for item in value if isinstance(item, dict)] if isinstance(value, list) else []
+
+
+def _string_list(value: Any) -> list[str]:
+    return [str(item).strip() for item in value if isinstance(item, str) and item.strip()] if isinstance(value, list) else []

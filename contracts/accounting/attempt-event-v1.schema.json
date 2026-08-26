@@ -1,0 +1,200 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/accounting/attempt-event/v1",
+  "title": "SR2FPGA Attempt Event v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "event_id", "parent_event_id", "sequence",
+    "episode_id", "candidate_id", "attempt_id", "method_condition",
+    "stage", "visibility_class", "event_type", "status", "started_at",
+    "duration_seconds", "input_artifact_hashes", "output_artifact_hashes",
+    "budget_reservation", "cost_delta", "unavailable_axes", "failure_origin"
+  ],
+  "properties": {
+    "contract_version": {"const": "attempt-event-v1"},
+    "event_id": {
+      "type": "string",
+      "pattern": "^attempt-event-[0-9a-f]{64}$"
+    },
+    "parent_event_id": {
+      "oneOf": [
+        {"type": "string", "pattern": "^attempt-event-[0-9a-f]{64}$"},
+        {"type": "null"}
+      ]
+    },
+    "sequence": {"type": "integer", "minimum": 0},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "candidate_id": {
+      "oneOf": [{"$ref": "#/$defs/identifier"}, {"type": "null"}]
+    },
+    "attempt_id": {"$ref": "#/$defs/identifier"},
+    "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "stage": {"$ref": "#/$defs/identifier"},
+    "visibility_class": {
+      "enum": ["model_visible", "public", "evaluator_private", "accounting"]
+    },
+    "event_type": {
+      "enum": [
+        "axis_cost", "budget_reserved", "budget_exhausted", "accounting_closed"
+      ]
+    },
+    "status": {
+      "enum": ["completed", "failed", "reserved", "exhausted", "closed"]
+    },
+    "started_at": {"type": "number", "minimum": 0},
+    "duration_seconds": {
+      "oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]
+    },
+    "input_artifact_hashes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "output_artifact_hashes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "budget_reservation": {
+      "oneOf": [{"$ref": "#/$defs/budget_reservation"}, {"type": "null"}]
+    },
+    "cost_delta": {"$ref": "#/$defs/cost_delta"},
+    "unavailable_axes": {"$ref": "#/$defs/unavailable_axes"},
+    "failure_origin": {
+      "$ref": "#/$defs/failure_origin"
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"event_type": {"const": "budget_reserved"}}},
+      "then": {
+        "properties": {
+          "status": {"const": "reserved"},
+          "budget_reservation": {"$ref": "#/$defs/budget_reservation"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"event_type": {"const": "budget_exhausted"}}},
+      "then": {
+        "properties": {
+          "status": {"const": "exhausted"},
+          "budget_reservation": {"$ref": "#/$defs/budget_reservation"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"event_type": {"const": "axis_cost"}}},
+      "then": {
+        "properties": {
+          "status": {"enum": ["completed", "failed"]},
+          "budget_reservation": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {"properties": {"event_type": {"const": "accounting_closed"}}},
+      "then": {
+        "properties": {
+          "status": {"const": "closed"},
+          "visibility_class": {"const": "accounting"},
+          "budget_reservation": {"type": "null"},
+          "cost_delta": {
+            "required": [
+              "logical_model_calls", "input_tokens", "output_tokens",
+              "cached_tokens", "provider_transport_attempts",
+              "planner_parser_schema_retries", "outer_repair_attempts",
+              "public_tool_calls", "hidden_evaluator_tool_calls",
+              "hidden_infrastructure_retries", "wall_time", "eda_time",
+              "hidden_evaluator_runtime"
+            ]
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"
+    },
+    "failure_origin": {
+      "oneOf": [
+        {
+          "enum": [
+            "natural_llm", "synthetic_injected", "deterministic",
+            "deterministic_template", "compositional_assembly"
+          ]
+        },
+        {"type": "null"}
+      ]
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "axis": {
+      "enum": [
+        "logical_model_calls", "input_tokens", "output_tokens", "cached_tokens",
+        "provider_transport_attempts", "planner_parser_schema_retries",
+        "outer_repair_attempts", "public_tool_calls",
+        "hidden_evaluator_tool_calls", "hidden_infrastructure_retries",
+        "wall_time", "eda_time", "hidden_evaluator_runtime"
+      ]
+    },
+    "nullable_count": {
+      "oneOf": [{"type": "integer", "minimum": 0}, {"type": "null"}]
+    },
+    "nullable_duration": {
+      "oneOf": [{"type": "number", "minimum": 0}, {"type": "null"}]
+    },
+    "cost_delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "logical_model_calls": {"$ref": "#/$defs/nullable_count"},
+        "input_tokens": {"$ref": "#/$defs/nullable_count"},
+        "output_tokens": {"$ref": "#/$defs/nullable_count"},
+        "cached_tokens": {"$ref": "#/$defs/nullable_count"},
+        "provider_transport_attempts": {"$ref": "#/$defs/nullable_count"},
+        "planner_parser_schema_retries": {"$ref": "#/$defs/nullable_count"},
+        "outer_repair_attempts": {"$ref": "#/$defs/nullable_count"},
+        "public_tool_calls": {"$ref": "#/$defs/nullable_count"},
+        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/nullable_count"},
+        "hidden_infrastructure_retries": {"$ref": "#/$defs/nullable_count"},
+        "wall_time": {"$ref": "#/$defs/nullable_duration"},
+        "eda_time": {"$ref": "#/$defs/nullable_duration"},
+        "hidden_evaluator_runtime": {"$ref": "#/$defs/nullable_duration"}
+      }
+    },
+    "unavailable_axes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "logical_model_calls": {"type": "string", "minLength": 1},
+        "input_tokens": {"type": "string", "minLength": 1},
+        "output_tokens": {"type": "string", "minLength": 1},
+        "cached_tokens": {"type": "string", "minLength": 1},
+        "provider_transport_attempts": {"type": "string", "minLength": 1},
+        "planner_parser_schema_retries": {"type": "string", "minLength": 1},
+        "outer_repair_attempts": {"type": "string", "minLength": 1},
+        "public_tool_calls": {"type": "string", "minLength": 1},
+        "hidden_evaluator_tool_calls": {"type": "string", "minLength": 1},
+        "hidden_infrastructure_retries": {"type": "string", "minLength": 1},
+        "wall_time": {"type": "string", "minLength": 1},
+        "eda_time": {"type": "string", "minLength": 1},
+        "hidden_evaluator_runtime": {"type": "string", "minLength": 1}
+      }
+    },
+    "budget_reservation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["axis", "amount", "limit", "used_after"],
+      "properties": {
+        "axis": {"$ref": "#/$defs/axis"},
+        "amount": {"type": "number", "exclusiveMinimum": 0},
+        "limit": {"type": "number", "minimum": 0},
+        "used_after": {"type": "number", "minimum": 0}
+      }
+    }
+  }
+}

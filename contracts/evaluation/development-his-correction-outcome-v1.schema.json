@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-his-correction-outcome/v1",
+  "title": "SR2FPGA Development HIS Correction Outcome v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "outcome_id", "evaluation_scope", "episode_id",
+    "method_condition", "analysis_population", "failure_origin",
+    "episode_pack_ref", "public_projection_sha256", "method_policy_sha256",
+    "platform_profile", "platform_profile_id", "platform_profile_sha256",
+    "capability_profile_id", "capability_profile_sha256",
+    "initial_his_ref", "corrected_his_ref", "correction_lineage",
+    "h_validation", "method_event_refs", "source_method_events_sha256",
+    "state_trace", "candidate_artifact_ref", "project_package_sha256",
+    "trajectory_ref", "terminal_candidate_ref", "development_episode_outcome_ref",
+    "cost_summary_refs", "cost", "development_outcome",
+    "comparison_status", "denominator", "reducer_visible", "generation_visible",
+    "repair_visible", "official_outcome", "official_authority",
+    "pass_credit_authority", "rq1_evidence", "rq2_evidence",
+    "g3_accepted", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-his-correction-outcome-v1"},
+    "outcome_id": {"type": "string", "pattern": "^his-correction-outcome-[0-9a-f]{64}$"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "method_condition": {"const": "M5"},
+    "analysis_population": {"const": "excluded"},
+    "failure_origin": {"enum": ["natural_llm", "synthetic_injected"]},
+    "episode_pack_ref": {"$ref": "#/$defs/artifact_ref"},
+    "public_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "method_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "platform_profile": {"$ref": "#/$defs/platform_profile"},
+    "platform_profile_id": {"$ref": "#/$defs/identifier"},
+    "platform_profile_sha256": {"$ref": "#/$defs/sha256"},
+    "capability_profile_id": {"$ref": "#/$defs/identifier"},
+    "capability_profile_sha256": {"$ref": "#/$defs/sha256"},
+    "initial_his_ref": {"$ref": "#/$defs/artifact_ref"},
+    "corrected_his_ref": {"$ref": "#/$defs/artifact_ref"},
+    "correction_lineage": {
+      "type": "object", "additionalProperties": false,
+      "required": ["failed_stage", "input_artifact_sha256", "parent_artifact_sha256", "corrected_artifact_sha256", "correction_count", "extra_correction_count"],
+      "properties": {
+        "failed_stage": {"enum": ["h0", "h1", "h2", "h3"]},
+        "input_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "parent_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "corrected_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "correction_count": {"const": 1},
+        "extra_correction_count": {"const": 0}
+      }
+    },
+    "h_validation": {
+      "type": "object", "additionalProperties": false,
+      "required": ["initial_report_sha256", "initial_failed_stage", "initial_stage_statuses", "corrected_report_sha256", "corrected_stage_statuses"],
+      "properties": {
+        "initial_report_sha256": {"$ref": "#/$defs/sha256"},
+        "initial_failed_stage": {"enum": ["h0", "h1", "h2", "h3"]},
+        "initial_stage_statuses": {"$ref": "#/$defs/h_statuses"},
+        "corrected_report_sha256": {"$ref": "#/$defs/sha256"},
+        "corrected_stage_statuses": {"const": {"h0": "pass", "h1": "pass", "h2": "pass", "h3": "pass"}}
+      }
+    },
+    "method_event_refs": {"type": "array", "minItems": 8, "maxItems": 8, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact_ref"}},
+    "source_method_events_sha256": {"$ref": "#/$defs/sha256"},
+    "state_trace": {"const": ["method_prepared", "planning_artifact_emitted", "h_validated", "his_correction_requested", "planning_artifact_emitted", "h_validated", "candidate_emitted"]},
+    "candidate_artifact_ref": {"$ref": "#/$defs/artifact_ref"},
+    "project_package_sha256": {"$ref": "#/$defs/sha256"},
+    "trajectory_ref": {"$ref": "#/$defs/artifact_ref"},
+    "terminal_candidate_ref": {"$ref": "#/$defs/artifact_ref"},
+    "development_episode_outcome_ref": {"$ref": "#/$defs/artifact_ref"},
+    "cost_summary_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact_ref"}},
+    "cost": {
+      "type": "object", "additionalProperties": false,
+      "required": ["all_axes_classified", "logical_model_calls", "logical_model_stages", "his_corrections", "extra_his_corrections", "project_repairs", "unavailable_axes"],
+      "properties": {
+        "all_axes_classified": {"const": true},
+        "logical_model_calls": {"const": 3},
+        "logical_model_stages": {"const": {"req2his": 1, "system_his_repair": 1, "his2project": 1}},
+        "his_corrections": {"const": 1},
+        "extra_his_corrections": {"const": 0},
+        "project_repairs": {"const": 0},
+        "unavailable_axes": {"type": "array", "uniqueItems": true, "items": {"type": "string"}}
+      }
+    },
+    "development_outcome": {
+      "type": "object", "additionalProperties": false,
+      "required": ["status", "development_vpp_l3", "official_vpp_l3_status"],
+      "properties": {
+        "status": {"enum": ["completed", "design_failure", "infrastructure_not_run"]},
+        "development_vpp_l3": {"type": ["boolean", "null"]},
+        "official_vpp_l3_status": {"const": "not_evaluated"}
+      }
+    },
+    "comparison_status": {"const": "m5_development_conformance_only_unpaired"},
+    "denominator": {"const": {"population": "excluded", "retained": true, "replacement_allowed": false}},
+    "reducer_visible": {"const": true},
+    "generation_visible": {"const": false},
+    "repair_visible": {"const": false},
+    "official_outcome": {"const": false},
+    "official_authority": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "rq1_evidence": {"const": false},
+    "rq2_evidence": {"const": false},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact_ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "media_type": {"const": "application/json"}
+      }
+    },
+    "platform_profile": {
+      "type": "object", "additionalProperties": false,
+      "required": ["name", "vendor", "toolchain", "clock_hz", "family", "part", "board", "reset_polarity"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1}, "vendor": {"type": "string", "minLength": 1},
+        "toolchain": {"type": "string", "minLength": 1}, "clock_hz": {"type": "integer", "minimum": 1},
+        "family": {"type": "string"}, "part": {"type": "string"}, "board": {"type": "string"},
+        "reset_polarity": {"enum": ["active_low", "active_high"]}
+      }
+    },
+    "h_statuses": {
+      "type": "object", "additionalProperties": false,
+      "required": ["h0", "h1", "h2", "h3"],
+      "properties": {
+        "h0": {"enum": ["pass", "fail", "not_run"]}, "h1": {"enum": ["pass", "fail", "not_run"]},
+        "h2": {"enum": ["pass", "fail", "not_run"]}, "h3": {"enum": ["pass", "fail", "not_run"]}
+      }
+    }
+  }
+}

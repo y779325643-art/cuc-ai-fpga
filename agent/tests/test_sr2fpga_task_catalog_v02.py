@@ -1,6 +1,5 @@
 import json
 import unittest
-from pathlib import Path
 
 import pytest
 
@@ -13,9 +12,7 @@ from sr2fpga_agent.task_catalog import (
 )
 
 
-CATALOG_PATH = (
-    Path(__file__).resolve().parents[2] / "docs" / "sr2fpga-task-catalog-v0.2.json"
-)
+CATALOG_PATH = task_catalog.CATALOG_PATH
 EXPECTED_FAMILY_IDS = {
     "async_fifo_cdc",
     "baud_generator",
@@ -118,7 +115,7 @@ CURRENT_DETERMINISTIC_ALIASES = {
     "t4_dual_stream_join": ("stream_fork_join", "T2"),
     "t5_vector_mac_pipeline": ("mac_array", "T3"),
     "t6_td_update_core": ("qtable_update_core", "T3"),
-    "t7_policy_value_shell": ("rl_reward_policy_update", "T4"),
+    "t7_policy_value_shell": ("rl_reward_policy_update", "T3"),
     "t8_replay_sample_shell": ("t8_replay_sample_shell", "T3"),
     "t9_host_protocol_shell": ("t9_host_protocol_shell", "T4"),
     "t10_rl_accelerator_shell": ("p_rl_qlearning_accel", "T4"),
@@ -139,6 +136,21 @@ OMITTED_CURRENT_FAMILY_IDS = {
 def _load_catalog():
     with CATALOG_PATH.open(encoding="utf-8") as handle:
         return json.load(handle)
+
+
+def test_catalog_repairs_clock_divider_t7_and_l3_semantics():
+    catalog = _load_catalog()
+    families = {item["family_id"]: item for item in catalog["task_families"]}
+
+    assert catalog["catalog_version"] == "0.2.2"
+    assert families["clock_divider"]["core_modules"] == ["clock_divider"]
+    assert not any(
+        "sobel" in module for module in families["clock_divider"]["core_modules"]
+    )
+    assert families["rl_reward_policy_update"]["sr2fpga_tier"] == "T3"
+    assert catalog["naming"]["verification_levels"]["L3"] == (
+        "Yosys synth -top plus stat/resource extraction"
+    )
 
 
 def test_task_catalog_v02_has_stable_family_metadata_and_l4_policy():

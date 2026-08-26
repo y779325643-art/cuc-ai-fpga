@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-terminal-selection/v1",
+  "title": "SR2FPGA Development Terminal Selection v1",
+  "description": "Recomputable development/excluded AT_1 or AT_A selection over evaluator-owned public outcomes. It is not official campaign authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "selection_id", "evaluation_scope", "episode_id",
+    "method_condition", "attempt_profile", "candidate_records", "selected_attempt_id",
+    "selected_candidate_id", "selected_public_evaluation_candidate_ref",
+    "selected_public_outcome_ref", "selection_reason", "terminal_selection_authority",
+    "pass_credit_authority", "official_authority", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-terminal-selection-v1"},
+    "selection_id": {"type": "string", "pattern": "^development-terminal-selection-[0-9a-f]{64}$"},
+    "evaluation_scope": {"enum": ["development", "excluded"]},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "attempt_profile": {"enum": ["@1", "@A"]},
+    "candidate_records": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/candidate_record"}
+    },
+    "selected_attempt_id": {"$ref": "#/$defs/identifier"},
+    "selected_candidate_id": {"$ref": "#/$defs/identifier"},
+    "selected_public_evaluation_candidate_ref": {"$ref": "#/$defs/artifact_ref"},
+    "selected_public_outcome_ref": {"$ref": "#/$defs/artifact_ref"},
+    "selection_reason": {"enum": ["at1_declared_candidate", "earliest_public_acceptance", "last_complete_budget_exhausted"]},
+    "terminal_selection_authority": {"const": true},
+    "pass_credit_authority": {"const": true},
+    "official_authority": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "media_type": {"const": "application/json"}
+      }
+    },
+    "candidate_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attempt_id", "candidate_id", "public_evaluation_candidate_ref",
+        "public_outcome_ref", "complete_project", "public_acceptance"
+      ],
+      "properties": {
+        "attempt_id": {"$ref": "#/$defs/identifier"},
+        "candidate_id": {"$ref": "#/$defs/identifier"},
+        "public_evaluation_candidate_ref": {"$ref": "#/$defs/artifact_ref"},
+        "public_outcome_ref": {"$ref": "#/$defs/artifact_ref"},
+        "complete_project": {"type": "boolean"},
+        "public_acceptance": {"type": "boolean"}
+      }
+    }
+  }
+}

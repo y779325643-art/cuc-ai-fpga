@@ -4,8 +4,8 @@
 # Local assistant/tooling state
 .superpowers/
 .gh-config/
+.claude/settings.local.json
 hf_token.txt
-LLM/.claude/settings.local.json
 
 # Local secrets
 .env
@@ -40,5 +40,10 @@ outputs/**/template-inspect/
 /artifacts/*
 !/artifacts/README.md
 /tmp/
+/tmp_test/
+/tmp_write_test/
+/tmp_perm_probe/
+/agent/tests/.runner_tmp/
 /agent/configs/local/
 /training/configs/local/
+/outputs/sr2fpga-project-end-report/

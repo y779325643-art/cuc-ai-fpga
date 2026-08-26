@@ -401,6 +401,7 @@ def _deterministic_functional_testbench(
 def _fail_safe_testbench(task_type: str) -> str:
     safe_task_type = task_type.replace("\\", "\\\\").replace('"', '\\"')
     return (
+        "// SR2FPGA_ORACLE_STATUS: needs_oracle\n"
         "module tb_top;\n"
         "  initial begin\n"
         f"    $display(\"TEST_FAIL missing independent functional oracle for {safe_task_type}\");\n"

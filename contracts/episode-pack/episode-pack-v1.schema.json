@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/episode-pack/v1",
+  "title": "SR2FPGA Frozen Episode Pack v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "pack_id", "pack_sha256", "public_context", "audit_only"],
+  "properties": {
+    "contract_version": {"const": "episode-pack-v1"},
+    "pack_id": {"$ref": "#/$defs/identifier"},
+    "pack_sha256": {"$ref": "#/$defs/sha256"},
+    "public_context": {"$ref": "#/$defs/public_context"},
+    "audit_only": {"$ref": "#/$defs/audit_only"}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "minLength": 1, "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "fact_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["fact_id", "value", "provenance", "source_ids"],
+      "properties": {
+        "fact_id": {"$ref": "#/$defs/identifier"},
+        "value": true,
+        "provenance": {"enum": ["user_explicit", "platform_default", "system_assumption", "unresolved"]},
+        "source_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "public_context": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "requirement_id", "revision_id", "public_text", "fact_records",
+        "platform_profile_id", "platform_profile_sha256", "capability_profile_id",
+        "capability_profile_sha256", "disposition", "public_projection_sha256"
+      ],
+      "properties": {
+        "requirement_id": {"$ref": "#/$defs/identifier"},
+        "revision_id": {"$ref": "#/$defs/identifier"},
+        "public_text": {"type": "string", "minLength": 1},
+        "fact_records": {"type": "array", "items": {"$ref": "#/$defs/fact_record"}},
+        "platform_profile_id": {"$ref": "#/$defs/identifier"},
+        "platform_profile_sha256": {"$ref": "#/$defs/sha256"},
+        "capability_profile_id": {"$ref": "#/$defs/identifier"},
+        "capability_profile_sha256": {"$ref": "#/$defs/sha256"},
+        "disposition": {"const": "ready"},
+        "public_projection_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "audit_only": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["episode_id", "analysis_population", "method_condition_id", "evaluator_metadata_sha256", "private_ref_ids"],
+      "properties": {
+        "episode_id": {"$ref": "#/$defs/identifier"},
+        "analysis_population": {"enum": ["development", "excluded", "official"]},
+        "method_condition_id": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+        "evaluator_metadata_sha256": {"$ref": "#/$defs/sha256"},
+        "private_ref_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}}
+      }
+    }
+  }
+}

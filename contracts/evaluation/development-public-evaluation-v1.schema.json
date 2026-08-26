@@ -1,0 +1,140 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-public-evaluation/v1",
+  "title": "SR2FPGA Development Public Evaluation Projection v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "projection_id", "evaluation_scope", "episode_id",
+    "method_condition", "analysis_population", "source", "public_authority_status",
+    "stage_outcomes", "repair", "missingness", "official_outcome", "vpp_l3"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-public-evaluation-v1"},
+    "projection_id": {"type": "string", "pattern": "^public-evaluation-[0-9a-f]{64}$"},
+    "evaluation_scope": {"const": "development_public_projection_only"},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "method_condition": {"$ref": "#/$defs/method"},
+    "analysis_population": {"enum": ["development", "excluded"]},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "labels_sha256", "trajectory_sha256"],
+      "properties": {
+        "kind": {"enum": ["legacy_recorder_projection", "development_terminal_authority_projection"]},
+        "labels_sha256": {"$ref": "#/$defs/sha256"},
+        "trajectory_sha256": {"$ref": "#/$defs/sha256"},
+        "authority_outcome_ref": {"$ref": "#/$defs/artifact_ref"}
+      }
+    },
+    "public_authority_status": {"enum": ["legacy_projection_not_official", "development_terminal_shadow_not_official"]},
+    "stage_outcomes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["generation", "h0", "h1", "h2", "h3", "l0", "l1", "public_l2", "l3"],
+      "properties": {
+        "generation": {"$ref": "#/$defs/stage"},
+        "h0": {"$ref": "#/$defs/stage"},
+        "h1": {"$ref": "#/$defs/stage"},
+        "h2": {"$ref": "#/$defs/stage"},
+        "h3": {"$ref": "#/$defs/stage"},
+        "l0": {"$ref": "#/$defs/stage"},
+        "l1": {"$ref": "#/$defs/stage"},
+        "public_l2": {"$ref": "#/$defs/stage"},
+        "l3": {"$ref": "#/$defs/stage"}
+      }
+    },
+    "repair": {"$ref": "#/$defs/repair"},
+    "missingness": {"$ref": "#/$defs/missingness"},
+    "official_outcome": {"const": false},
+    "vpp_l3": {"type": "null"}
+  },
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "method": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "artifact_ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "media_type": {"const": "application/json"}
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "not_run", "not_applicable"]},
+        "reason": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]}
+      }
+    },
+    "repair_scope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calls_attempted", "transitions"],
+      "properties": {
+        "calls_attempted": {"type": "integer", "minimum": 0},
+        "transitions": {"type": "integer", "minimum": 0}
+      }
+    },
+    "repair": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reconciliation_status", "calls_attempted", "transitions", "successes",
+        "diagnosis_count", "valid_patch_count", "rerun_count", "by_scope", "issues"
+      ],
+      "properties": {
+        "reconciliation_status": {"enum": ["complete", "incomplete"]},
+        "calls_attempted": {"type": "integer", "minimum": 0},
+        "transitions": {"type": "integer", "minimum": 0},
+        "successes": {"type": "integer", "minimum": 0},
+        "diagnosis_count": {"type": "integer", "minimum": 0},
+        "valid_patch_count": {"type": "integer", "minimum": 0},
+        "rerun_count": {"type": "integer", "minimum": 0},
+        "by_scope": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["system_his", "project"],
+          "properties": {
+            "system_his": {"$ref": "#/$defs/repair_scope"},
+            "project": {"$ref": "#/$defs/repair_scope"}
+          }
+        },
+        "issues": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "missingness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["classification", "reason", "retained", "replacement_allowed"],
+      "properties": {
+        "classification": {"enum": ["scoreable_public_record", "design_outcome", "infrastructure_unscorable"]},
+        "reason": {"oneOf": [{"type": "string", "minLength": 1}, {"type": "null"}]},
+        "retained": {"const": true},
+        "replacement_allowed": {"const": false}
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"source": {"properties": {"kind": {"const": "development_terminal_authority_projection"}}}}},
+      "then": {
+        "properties": {
+          "source": {"required": ["authority_outcome_ref"]},
+          "public_authority_status": {"const": "development_terminal_shadow_not_official"}
+        }
+      },
+      "else": {
+        "properties": {
+          "source": {"not": {"required": ["authority_outcome_ref"]}},
+          "public_authority_status": {"const": "legacy_projection_not_official"}
+        }
+      }
+    }
+  ]
+}

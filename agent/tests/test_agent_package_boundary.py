@@ -1,11 +1,7 @@
 import ast
-import importlib
 from pathlib import Path
 import re
-import sys
 import tomllib
-
-import pytest
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -27,16 +23,7 @@ EXPECTED_SCRIPTS = {
     "sr2fpga-baseline-report": "sr2fpga_agent.baseline_report:main",
     "sr2fpga-req2file-eval": "sr2fpga_agent.req2file_eval:main",
     "sr2fpga-task-evidence": "sr2fpga_agent.task_evidence:main",
-}
-EXPLICIT_AGENT_TESTS = {
-    "test_req2file_eval.py",
-    "test_analyze_phase_d_h2_failures.py",
-    "test_sr2fpga_measurement_freeze.py",
-    "test_sr2fpga_paired_measurement.py",
-    "test_sr2fpga_phase_d_audit.py",
-    "test_sr2fpga_phase_d_integration.py",
-    "test_sr2fpga_task_catalog_v02.py",
-    "test_sr2fpga_task_evidence_v01.py",
+    "sr2fpga-ambiguity-audit": "sr2fpga_agent.ambiguity_audit_runner:main",
 }
 
 
@@ -85,43 +72,6 @@ def test_canonical_agent_source_has_no_training_or_legacy_imports() -> None:
     assert not any(module == "LLM" or module.startswith("LLM.") for module in modules)
 
 
-def test_legacy_namespace_warns_and_resolves_canonical_source() -> None:
-    for module_name in tuple(sys.modules):
-        if module_name == "LLM.src.sr2fpga_agent" or module_name.startswith(
-            "LLM.src.sr2fpga_agent."
-        ):
-            sys.modules.pop(module_name)
-
-    with pytest.warns(DeprecationWarning, match="canonical import is sr2fpga_agent"):
-        legacy_package = importlib.import_module("LLM.src.sr2fpga_agent")
-    legacy_runner = importlib.import_module("LLM.src.sr2fpga_agent.runner")
-    legacy_oracle_types = importlib.import_module(
-        "LLM.src.sr2fpga_agent.oracles.types"
-    )
-    canonical_package = importlib.import_module("sr2fpga_agent")
-    canonical_oracle_types = importlib.import_module(
-        "sr2fpga_agent.oracles.types"
-    )
-
-    assert legacy_package.ProjectRequest is canonical_package.ProjectRequest
-    assert Path(legacy_runner.__file__).resolve().is_relative_to(PACKAGE_ROOT)
-    assert (
-        legacy_oracle_types.OracleScenarioSpec
-        is canonical_oracle_types.OracleScenarioSpec
-    )
-
-
-def test_agent_owned_tests_live_only_in_agent_project() -> None:
-    legacy_test_root = REPO_ROOT / "LLM" / "tests"
-    remaining = {
-        path.name
-        for path in legacy_test_root.glob("test_*.py")
-        if path.name.startswith("test_sr2fpga_agent_")
-        or path.name in EXPLICIT_AGENT_TESTS
-    }
-    assert not remaining
-
-
 def test_canonical_agent_tests_do_not_import_legacy_namespace() -> None:
     imported = {
         module
@@ -144,9 +94,3 @@ def test_agent_implementation_has_one_source_of_truth() -> None:
             for path in root.rglob(filename)
         ]
         assert canonical_matches == [(PACKAGE_ROOT / filename).resolve()]
-
-    legacy_runner = REPO_ROOT / "LLM" / "src" / "sr2fpga_agent" / "runner.py"
-    legacy_source = legacy_runner.read_text(encoding="utf-8")
-    assert "from LLM.src._compat import run_module" in legacy_source
-    assert "run_module(" in legacy_source
-    assert '"sr2fpga_agent.runner"' in legacy_source

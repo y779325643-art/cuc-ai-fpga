@@ -1,3 +1,4 @@
+import hashlib
 import json
 import os
 import tempfile
@@ -127,6 +128,31 @@ class OpenXC7PipelineTest(unittest.TestCase):
                 dataset_root=root,
                 command_runner=runner,
                 enable_openxc7_l4=True,
+                tool_environment_ref={
+                    "key": "tool-environments/test",
+                    "sha256": "a" * 64,
+                    "size_bytes": 1,
+                    "media_type": "application/json",
+                },
+                l4_tool_environment={
+                    "lanes": {
+                        "l4_open": {
+                            "status": "complete",
+                            "tools": [
+                                {
+                                    "name": "nextpnr-xilinx",
+                                    "version_line": "nextpnr-xilinx 0.9",
+                                }
+                            ],
+                        }
+                    }
+                },
+                l4_tool_environment_ref={
+                    "key": "tool-environments/l4-test",
+                    "sha256": "b" * 64,
+                    "size_bytes": 1,
+                    "media_type": "application/json",
+                },
             )
             request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
             platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
@@ -143,8 +169,8 @@ class OpenXC7PipelineTest(unittest.TestCase):
             measured_qor = json.loads((sample_dir / "eval/measured_qor.json").read_text(encoding="utf-8"))
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(result["pass_level"], "L4")
-            self.assertEqual(labels["pass_level"], "L4")
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertEqual(labels["pass_level"], "L1")
             self.assertTrue(labels["checks"]["l4_lite_timing_pass"])
             self.assertEqual(measured_qor["lut"], 42)
             self.assertEqual(measured_qor["ff"], 31)
@@ -165,11 +191,43 @@ class OpenXC7PipelineTest(unittest.TestCase):
             ]
             self.assertEqual(measured_qor["l4_openxc7"]["report_paths"], expected_report_paths)
             self.assertEqual(trajectory["verification"]["l4_open"]["report_paths"], expected_report_paths)
+            provenance = measured_qor["l4_openxc7"]["provenance"]
+            self.assertEqual(provenance["source_stage"], "pnr")
+            self.assertEqual(provenance["source_stage_status"], "pass")
+            self.assertEqual(provenance["provenance_status"], "complete")
+            self.assertEqual(provenance["incomplete_reasons"], [])
+            self.assertEqual(provenance["l4_tool_version"], "nextpnr-xilinx 0.9")
+            self.assertEqual(provenance["core_tool_environment_ref"]["sha256"], "a" * 64)
+            self.assertGreaterEqual(len(provenance["raw_evidence_refs"]), 2)
+            for evidence_ref in provenance["raw_evidence_refs"]:
+                evidence_path = sample_dir / evidence_ref["path"]
+                self.assertTrue(evidence_path.is_file())
+                self.assertEqual(
+                    hashlib.sha256(evidence_path.read_bytes()).hexdigest(),
+                    evidence_ref["sha256"],
+                )
+            self.assertEqual(
+                trajectory["verification"]["l4_open"]["provenance"],
+                provenance,
+            )
             self.assertEqual(
                 [item["stage"] for item in trajectory["attempts"]],
-                ["rtl_identifier_check", "lint", "testbench_static_check", "sim_compile", "sim_run", "synth", "pnr"],
+                [
+                    "rtl_identifier_check",
+                    "lint",
+                    "sim_compile",
+                    "sim_run",
+                    "candidate_testbench_static_check",
+                    "candidate_sim_compile",
+                    "candidate_sim_run",
+                    "synth",
+                    "pnr",
+                ],
             )
-            self.assertEqual([call["stage"] for call in runner.calls], ["lint", "sim_compile", "sim_run", "synth", "pnr"])
+            self.assertEqual(
+                [call["stage"] for call in runner.calls],
+                ["lint", "candidate_sim_compile", "candidate_sim_run", "synth", "pnr"],
+            )
 
     def test_agent_applies_l4_command_part_and_timeout_config(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -227,8 +285,8 @@ class OpenXC7PipelineTest(unittest.TestCase):
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(result["pass_level"], "L3")
-            self.assertEqual(labels["pass_level"], "L3")
+            self.assertEqual(result["pass_level"], "L1")
+            self.assertEqual(labels["pass_level"], "L1")
             self.assertEqual(labels["failure_count"], 0)
             self.assertEqual(labels["l4_open_status"], "not_run")
             self.assertEqual(labels["l4_open_skip_reason"], "tool_timeout")
@@ -256,7 +314,7 @@ class OpenXC7PipelineTest(unittest.TestCase):
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
             expected_report_paths = ["attempts/attempt_000/generated_project/eval/openxc7_nextpnr.log"]
 
-            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(result["pass_level"], "L1")
             self.assertEqual(labels["l4_open_status"], "fail")
             self.assertEqual(measured_qor["l4_openxc7"]["status"], "fail")
             self.assertEqual(measured_qor["l4_openxc7"]["report_paths"], expected_report_paths)
@@ -282,7 +340,7 @@ class OpenXC7PipelineTest(unittest.TestCase):
             labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
             trajectory = json.loads((sample_dir / "eval/trajectory.json").read_text(encoding="utf-8"))
 
-            self.assertEqual(result["pass_level"], "L3")
+            self.assertEqual(result["pass_level"], "L1")
             self.assertEqual(labels["failure_count"], 0)
             self.assertEqual(labels["l4_open_status"], "not_run")
             self.assertEqual(labels["l4_open_skip_reason"], "toolchain_environment_failure")
@@ -310,7 +368,7 @@ class OpenXC7PipelineTest(unittest.TestCase):
 
                 sample_dir = root / "sample_openxc7_l4_setup_failure"
                 labels = json.loads((sample_dir / "eval/labels.json").read_text(encoding="utf-8"))
-                self.assertEqual(labels["pass_level"], "L3")
+                self.assertEqual(labels["pass_level"], "L1")
                 self.assertEqual(labels["failure_count"], 0)
                 self.assertEqual(labels["l4_open_status"], "not_run")
                 self.assertEqual(labels["l4_open_skip_reason"], "toolchain_environment_failure")
@@ -327,6 +385,8 @@ class PnrPassingRunner:
             "lint": "",
             "sim_compile": "",
             "sim_run": "TEST_PASS\n",
+            "candidate_sim_compile": "",
+            "candidate_sim_run": "TEST_PASS\n",
             "synth": """
                 Number of cells: 13
                   SB_LUT4 5

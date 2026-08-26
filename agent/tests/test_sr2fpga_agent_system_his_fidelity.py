@@ -4,7 +4,9 @@ import unittest
 
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from sr2fpga_agent.project_generator import ProjectGenerator
-from sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
+from sr2fpga_agent.system_his_fidelity import (
+    check_system_his_family_recipe_fidelity as check_system_his_req_fidelity,
+)
 
 
 class SystemHisReqFidelityTest(unittest.TestCase):

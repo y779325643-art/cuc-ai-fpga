@@ -1,9 +1,12 @@
+import copy
+import hashlib
 import json
 import http.client
 import importlib
 import os
 import unittest
 import urllib.error
+from pathlib import Path
 from unittest import mock
 
 from sr2fpga_agent import providers
@@ -31,6 +34,8 @@ from sr2fpga_agent.deepseek import (
 from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.project_generator import ProjectGenerator
+from sr2fpga_agent.requirement_envelope import build_request_requirement_envelope
+from sr2fpga_agent.system_his_fidelity import build_deterministic_requirement_trace
 
 
 class DeepSeekProviderTest(unittest.TestCase):
@@ -45,16 +50,26 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIs(deepseek.AnthropicCompatibleClient, providers.AnthropicCompatibleClient)
         self.assertIs(deepseek.parse_project_files, parsers.parse_project_files)
         self.assertIs(deepseek.diff_projects, parsers.diff_projects)
-        self.assertIs(deepseek.DeepSeekRepairer, repair.DeepSeekRepairer)
-        self.assertIs(deepseek.DeepSeekProjectGenerator, generation.DeepSeekProjectGenerator)
-        self.assertIs(deepseek.DeepSeekSystemHisGenerator, generation.DeepSeekSystemHisGenerator)
-        self.assertIs(deepseek.DeepSeekHisProjectGenerator, generation.DeepSeekHisProjectGenerator)
-        self.assertIs(deepseek.DeepSeekTwoStageProjectGenerator, generation.DeepSeekTwoStageProjectGenerator)
-        self.assertIs(deepseek.DeepSeekOracleHisProjectGenerator, generation.DeepSeekOracleHisProjectGenerator)
+        self.assertIs(deepseek.DeepSeekRepairer, repair.ProjectRepairer)
+        self.assertIs(deepseek.DeepSeekProjectGenerator, generation.DirectProjectGenerator)
+        self.assertIs(deepseek.DeepSeekSystemHisGenerator, generation.SystemHisGenerator)
+        self.assertIs(deepseek.DeepSeekHisProjectGenerator, generation.HisProjectGenerator)
+        self.assertIs(deepseek.DeepSeekTwoStageProjectGenerator, generation.TwoStageProjectGenerator)
+        self.assertIs(deepseek.DeepSeekOracleHisProjectGenerator, generation.OracleHisProjectGenerator)
 
     def test_anthropic_compatible_client_uses_official_messages_headers(self) -> None:
         response = FakeHTTPResponse(
-            json.dumps({"content": [{"type": "text", "text": "{\"ok\": true}"}]}).encode("utf-8")
+            json.dumps(
+                {
+                    "content": [{"type": "text", "text": "{\"ok\": true}"}],
+                    "usage": {
+                        "input_tokens": 10,
+                        "cache_creation_input_tokens": 2,
+                        "cache_read_input_tokens": 3,
+                        "output_tokens": 4,
+                    },
+                }
+            ).encode("utf-8")
         )
         client = AnthropicCompatibleClient(
             AnthropicCompatibleConfig(
@@ -62,6 +77,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 model="claude-opus-4-8",
                 base_url="https://w.ciykj.cn/v1",
                 timeout_seconds=7,
+                requested_seed=17,
             )
         )
 
@@ -83,7 +99,27 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(request.headers["Anthropic-version"], "2023-06-01")
         self.assertEqual(payload["system"], "Return strict JSON.")
         self.assertEqual(payload["messages"], [{"role": "user", "content": "Return ok."}])
+        self.assertNotIn("seed", payload)
         self.assertEqual(content, '{"ok": true}')
+        self.assertEqual(
+            client.consume_token_usage(),
+            {"input_tokens": 15, "output_tokens": 4, "cached_tokens": 3},
+        )
+        self.assertEqual(
+            client.consume_response_provenance(),
+            {
+                "provider_adapter": "anthropic_compatible",
+                "provider_model": "claude-opus-4-8",
+                "gateway_base_url_sha256": hashlib.sha256(
+                    "https://w.ciykj.cn/v1".encode("utf-8")
+                ).hexdigest(),
+                "requested_decoding_seed": 17,
+                "seed_forwarding_status": "not_forwarded",
+                "deterministic_seed_control": "unsupported",
+                "provider_system_fingerprint": None,
+                "system_fingerprint_status": "unavailable",
+            },
+        )
 
     def test_anthropic_stream_reader_collects_text_deltas(self) -> None:
         response = FakeStreamingHTTPResponse(
@@ -120,8 +156,14 @@ class DeepSeekProviderTest(unittest.TestCase):
     def test_anthropic_stream_chat_retries_and_sends_stream_true(self) -> None:
         response = FakeStreamingHTTPResponse(
             [
+                b"event: message_start\n",
+                b'data: {"type":"message_start","message":{"usage":{"input_tokens":10,"cache_creation_input_tokens":2,"cache_read_input_tokens":3,"output_tokens":1}}}\n',
+                b"\n",
                 b"event: content_block_delta\n",
                 b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"ok\\":true}"}}\n',
+                b"\n",
+                b"event: message_delta\n",
+                b'data: {"type":"message_delta","usage":{"output_tokens":4}}\n',
                 b"\n",
                 b"event: message_stop\n",
                 b'data: {"type":"message_stop"}\n',
@@ -157,9 +199,50 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(content, '{"ok":true}')
         self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(client.consume_transport_attempt_count(), 2)
+        self.assertIsNone(client.consume_token_usage())
         for call in urlopen.call_args_list:
             payload = json.loads(call.args[0].data.decode("utf-8"))
             self.assertIs(payload["stream"], True)
+
+    def test_anthropic_stream_retry_accumulates_usage_from_failed_attempt(self) -> None:
+        failed = FakeIncompleteStreamingHTTPResponse(
+            [
+                b'data: {"type":"message_start","message":{"usage":{"input_tokens":2,"cache_creation_input_tokens":0,"cache_read_input_tokens":1,"output_tokens":1}}}\n',
+            ]
+        )
+        succeeded = FakeStreamingHTTPResponse(
+            [
+                b'data: {"type":"message_start","message":{"usage":{"input_tokens":5,"cache_creation_input_tokens":0,"cache_read_input_tokens":2,"output_tokens":1}}}\n',
+                b'data: {"type":"content_block_delta","delta":{"type":"text_delta","text":"ok"}}\n',
+                b'data: {"type":"message_delta","usage":{"output_tokens":3}}\n',
+                b'data: {"type":"message_stop"}\n',
+            ]
+        )
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key="fake-key",
+                model="claude-test",
+                base_url="https://api.claude.example",
+                transport_attempts=2,
+                retry_backoff_seconds=0,
+            )
+        )
+
+        with (
+            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                side_effect=[failed, succeeded],
+            ),
+        ):
+            self.assertEqual(client.stream_chat([{"role": "user", "content": "hello"}]), "ok")
+
+        self.assertEqual(client.consume_transport_attempt_count(), 2)
+        self.assertEqual(
+            client.consume_token_usage(),
+            {"input_tokens": 10, "output_tokens": 4, "cached_tokens": 3},
+        )
 
     def test_openai_compatible_client_passes_ssl_context_to_urlopen(self) -> None:
         ssl_context = object()
@@ -248,7 +331,16 @@ class DeepSeekProviderTest(unittest.TestCase):
 
     def test_openai_compatible_client_retries_transient_http_errors(self) -> None:
         response = FakeHTTPResponse(
-            json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
+            json.dumps(
+                {
+                    "choices": [{"message": {"content": "{\"ok\": true}"}}],
+                    "usage": {
+                        "prompt_tokens": 12,
+                        "completion_tokens": 5,
+                        "prompt_tokens_details": {"cached_tokens": 4},
+                    },
+                }
+            ).encode("utf-8")
         )
         transient_error = urllib.error.HTTPError(
             url="https://api.deepseek.example/chat/completions",
@@ -279,6 +371,9 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(content, '{"ok": true}')
         self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(client.consume_transport_attempt_count(), 2)
+        self.assertIsNone(client.consume_transport_attempt_count())
+        self.assertIsNone(client.consume_token_usage())
 
     def test_openai_compatible_client_retries_incomplete_read(self) -> None:
         response = FakeHTTPResponse(
@@ -306,6 +401,7 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         self.assertEqual(content, '{"ok": true}')
         self.assertEqual(urlopen.call_count, 2)
+        self.assertEqual(client.consume_transport_attempt_count(), 2)
 
     def test_openai_compatible_client_omits_response_format_for_claude_models(self) -> None:
         response = FakeHTTPResponse(
@@ -356,6 +452,78 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(content, '{"ok": true}')
         self.assertEqual(payload["max_tokens"], 4096)
 
+    def test_openai_compatible_client_forwards_seed_and_captures_fingerprint(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps(
+                {
+                    "choices": [{"message": {"content": "{\"ok\": true}"}}],
+                    "system_fingerprint": "fp_backend_2026_08",
+                }
+            ).encode("utf-8")
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="seeded-model",
+                base_url="https://api.example/v1",
+                timeout_seconds=7,
+                transport_attempts=1,
+                seed=17,
+            )
+        )
+
+        with (
+            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                return_value=response,
+            ) as urlopen,
+        ):
+            self.assertEqual(
+                client.chat([{"role": "user", "content": "hello"}]),
+                '{"ok": true}',
+            )
+
+        payload = json.loads(urlopen.call_args.args[0].data.decode("utf-8"))
+        self.assertEqual(payload["seed"], 17)
+        self.assertEqual(
+            client.consume_response_provenance(),
+            {
+                "provider_adapter": "openai_compatible",
+                "provider_model": "seeded-model",
+                "gateway_base_url_sha256": hashlib.sha256(
+                    "https://api.example/v1".encode("utf-8")
+                ).hexdigest(),
+                "requested_decoding_seed": 17,
+                "seed_forwarding_status": "forwarded",
+                "deterministic_seed_control": "requested_unverified",
+                "provider_system_fingerprint": "fp_backend_2026_08",
+                "system_fingerprint_status": "reported",
+            },
+        )
+        self.assertIsNone(client.consume_response_provenance())
+
+    def test_openai_compatible_config_rejects_invalid_seed(self) -> None:
+        with self.assertRaisesRegex(ValueError, "seed must be a non-negative integer"):
+            OpenAICompatibleConfig(api_key="fake-key", seed=-1)
+
+    def test_openai_provenance_distinguishes_invalid_and_conflicting_fingerprint(self) -> None:
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(api_key="fake-key", model="test-model", seed=17)
+        )
+        client._reset_response_provenance()
+        client._store_system_fingerprint(42)
+        invalid = client.consume_response_provenance()
+        self.assertEqual(invalid["system_fingerprint_status"], "invalid")
+        self.assertIsNone(invalid["provider_system_fingerprint"])
+
+        client._reset_response_provenance()
+        client._store_system_fingerprint("fp-a")
+        client._store_system_fingerprint("fp-b")
+        conflicting = client.consume_response_provenance()
+        self.assertEqual(conflicting["system_fingerprint_status"], "conflicting")
+        self.assertIsNone(conflicting["provider_system_fingerprint"])
+
     def test_openai_compatible_client_merges_system_messages_for_claude_models(self) -> None:
         response = FakeHTTPResponse(
             json.dumps({"choices": [{"message": {"content": "{\"ok\": true}"}}]}).encode("utf-8")
@@ -394,7 +562,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             [
                 b": keep-alive\n",
                 b"\n",
-                b'data: {"choices":[{"delta":{"content":"{\\"files\\":"}}]}\n',
+                b'data: {"system_fingerprint":"fp_stream_backend","choices":[{"delta":{"content":"{\\"files\\":"}}]}\n',
                 b'data: {"choices":[{"delta":{"content":" {}}"}}]}\n',
                 b"data: [DONE]\n",
             ]
@@ -420,6 +588,21 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertTrue(payload["stream"])
         self.assertIs(urlopen.call_args.kwargs["context"], ssl_context)
         self.assertEqual(urlopen.call_args.kwargs["timeout"], 7)
+        self.assertEqual(
+            client.consume_response_provenance(),
+            {
+                "provider_adapter": "openai_compatible",
+                "provider_model": "deepseek-test",
+                "gateway_base_url_sha256": hashlib.sha256(
+                    "https://api.deepseek.example".encode("utf-8")
+                ).hexdigest(),
+                "requested_decoding_seed": None,
+                "seed_forwarding_status": "not_requested",
+                "deterministic_seed_control": "not_requested",
+                "provider_system_fingerprint": "fp_stream_backend",
+                "system_fingerprint_status": "reported",
+            },
+        )
 
     def test_openai_compatible_client_stream_chat_ignores_metadata_chunks(self) -> None:
         response = FakeStreamingHTTPResponse(
@@ -447,6 +630,108 @@ class DeepSeekProviderTest(unittest.TestCase):
             content = client.stream_chat([{"role": "user", "content": "hello"}])
 
         self.assertEqual(content, '{"files": {}}')
+        self.assertEqual(
+            client.consume_token_usage(),
+            {"input_tokens": 1, "output_tokens": 1, "cached_tokens": None},
+        )
+
+    def test_openai_stream_retry_accumulates_usage_from_failed_attempt(self) -> None:
+        failed = FakeIncompleteStreamingHTTPResponse(
+            [
+                b'data: {"usage":{"prompt_tokens":2,"completion_tokens":1,"prompt_tokens_details":{"cached_tokens":1}}}\n',
+            ]
+        )
+        succeeded = FakeStreamingHTTPResponse(
+            [
+                b'data: {"choices":[{"delta":{"content":"ok"}}]}\n',
+                b'data: {"usage":{"prompt_tokens":5,"completion_tokens":3,"prompt_tokens_details":{"cached_tokens":2}}}\n',
+                b"data: [DONE]\n",
+            ]
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                transport_attempts=2,
+                retry_backoff_seconds=0,
+            )
+        )
+
+        with (
+            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                side_effect=[failed, succeeded],
+            ),
+        ):
+            self.assertEqual(client.stream_chat([{"role": "user", "content": "hello"}]), "ok")
+
+        self.assertEqual(client.consume_transport_attempt_count(), 2)
+        self.assertEqual(
+            client.consume_token_usage(),
+            {"input_tokens": 7, "output_tokens": 4, "cached_tokens": 3},
+        )
+
+    def test_unobserved_failed_stream_attempt_keeps_logical_usage_unavailable(self) -> None:
+        failed = FakeIncompleteStreamingHTTPResponse(
+            [b'data: {"choices":[{"delta":{"content":"partial"}}]}\n']
+        )
+        succeeded = FakeStreamingHTTPResponse(
+            [
+                b'data: {"choices":[{"delta":{"content":"ok"}}]}\n',
+                b'data: {"usage":{"prompt_tokens":5,"completion_tokens":3}}\n',
+                b"data: [DONE]\n",
+            ]
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                transport_attempts=2,
+                retry_backoff_seconds=0,
+            )
+        )
+
+        with (
+            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch(
+                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                side_effect=[failed, succeeded],
+            ),
+        ):
+            self.assertEqual(client.stream_chat([{"role": "user", "content": "hello"}]), "ok")
+
+        self.assertIsNone(client.consume_token_usage())
+
+    def test_stream_error_preserves_usage_observed_before_failure(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b'data: {"usage":{"prompt_tokens":2,"completion_tokens":1}}\n',
+                b"data: invalid-json\n",
+            ]
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="deepseek-test",
+                base_url="https://api.deepseek.example",
+                transport_attempts=1,
+            )
+        )
+
+        with (
+            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "invalid chat completion data"):
+                client.stream_chat([{"role": "user", "content": "hello"}])
+
+        self.assertEqual(
+            client.consume_token_usage(),
+            {"input_tokens": 2, "output_tokens": 1, "cached_tokens": None},
+        )
 
     def test_openai_compatible_client_stream_chat_times_out_before_blocking_readline(self) -> None:
         response = FakeBlockingSelectableHTTPResponse()
@@ -623,14 +908,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         client = FakeChatClient(
             json.dumps(
                 {
-                    "files": {
-                        "system_his.json": "{}\n",
-                        "manifest.json": _valid_manifest(),
-                        "rtl/top.v": "module top; endmodule\n",
-                        "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
-                        "sim/tb_top.v": "module tb_top; endmodule\n",
-                        "reports/predicted_qor.json": "{}\n",
-                    }
+                    "files": _canonical_direct_files()
                 }
             )
         )
@@ -667,7 +945,6 @@ class DeepSeekProviderTest(unittest.TestCase):
             parse_system_his_v12(json.dumps(payload))
 
     def test_deepseek_system_his_generator_uses_short_prompt_and_checker(self) -> None:
-        client = FakeChatClient(json.dumps(_system_his_v12_fixture()))
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -682,6 +959,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             board="AC820-ZYNQ",
             toolchain="openxc7",
         )
+        client = FakeChatClient(json.dumps(_deterministic_system_his(request, platform)))
 
         system_his = DeepSeekSystemHisGenerator(client).generate(request, platform)
 
@@ -694,9 +972,6 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Do not generate RTL", client.messages[1]["content"])
 
     def test_deepseek_system_his_generator_retries_after_invalid_his(self) -> None:
-        invalid = _system_his_v12_fixture()
-        invalid["instances"][0]["component"] = "missing_component"
-        client = FakeChatClient([json.dumps(invalid), json.dumps(_system_his_v12_fixture())])
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -704,8 +979,12 @@ class DeepSeekProviderTest(unittest.TestCase):
             description="Build a dual stream join accumulator.",
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        corrected = _deterministic_system_his(request, platform)
+        invalid = copy.deepcopy(corrected)
+        invalid["instances"][0]["component"] = "missing_component"
+        client = FakeChatClient([json.dumps(invalid), json.dumps(corrected)])
 
-        system_his = DeepSeekSystemHisGenerator(client).generate(request, platform)
+        system_his = DeepSeekSystemHisGenerator(client, max_attempts=2).generate(request, platform)
 
         self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 2)
@@ -713,16 +992,6 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("missing component 'missing_component'", client.messages_history[1][-1]["content"])
 
     def test_deepseek_system_his_generator_retries_after_req_fidelity_mismatch(self) -> None:
-        mismatched_system_his = _system_his_v12_fixture()
-        corrected_system_his = _deterministic_system_his(
-            ProjectRequest(
-                task_type="composed_event_counter",
-                width=8,
-                project_name="event_counter_8bit",
-                description="Build an event counter.",
-            )
-        )
-        client = FakeChatClient([json.dumps(mismatched_system_his), json.dumps(corrected_system_his)])
         request = ProjectRequest(
             task_type="composed_event_counter",
             width=8,
@@ -730,8 +999,22 @@ class DeepSeekProviderTest(unittest.TestCase):
             description="Build an event counter.",
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        corrected_system_his = _deterministic_system_his(request, platform)
+        mismatched_system_his = copy.deepcopy(corrected_system_his)
+        event_gate = next(
+            component
+            for component in mismatched_system_his["components"]
+            if component["name"] == "event_gate"
+        )
+        event_gate["name"] = "renamed_event_gate"
+        for instance in mismatched_system_his["instances"]:
+            if instance["component"] == "event_gate":
+                instance["component"] = "renamed_event_gate"
+        client = FakeChatClient(
+            [json.dumps(mismatched_system_his), json.dumps(corrected_system_his)]
+        )
 
-        system_his = DeepSeekSystemHisGenerator(client).generate(request, platform)
+        system_his = DeepSeekSystemHisGenerator(client, max_attempts=2).generate(request, platform)
 
         self.assertEqual(system_his["top"]["name"], "top")
         self.assertEqual(client.call_count, 2)
@@ -739,7 +1022,15 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("composed_event_counter requires component 'event_gate'", client.messages_history[1][-1]["content"])
 
     def test_system_his_retry_feedback_includes_previous_json_and_ir_repair_rules(self) -> None:
-        invalid = _system_his_v12_fixture()
+        request = ProjectRequest(
+            task_type="composed_dual_stream_join",
+            width=8,
+            project_name="join_8bit",
+            description="Build a dual stream join accumulator.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        corrected = _deterministic_system_his(request, platform)
+        invalid = copy.deepcopy(corrected)
         invalid["instances"][0].pop("name")
         invalid["data_flow"][0]["path"][1] = "skid_buffer.in_data"
         invalid["control_flow"].append(
@@ -752,16 +1043,9 @@ class DeepSeekProviderTest(unittest.TestCase):
                 "related_flows": [],
             }
         )
-        client = FakeChatClient([json.dumps(invalid), json.dumps(_system_his_v12_fixture())])
-        request = ProjectRequest(
-            task_type="composed_dual_stream_join",
-            width=8,
-            project_name="join_8bit",
-            description="Build a dual stream join accumulator.",
-        )
-        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        client = FakeChatClient([json.dumps(invalid), json.dumps(corrected)])
 
-        DeepSeekSystemHisGenerator(client).generate(request, platform)
+        DeepSeekSystemHisGenerator(client, max_attempts=2).generate(request, platform)
 
         retry_prompt = client.messages_history[1][-1]["content"]
         self.assertIn("Previous invalid System-HIS JSON", retry_prompt)
@@ -770,6 +1054,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Every instances[].owns_state must be a JSON array", retry_prompt)
         self.assertIn("top.clocks[].target_fmax_mhz and timing.target_fmax_mhz must be positive numbers", retry_prompt)
         self.assertIn("data_flow.path endpoints must use top.<port> or <instance>.<port>", retry_prompt)
+        self.assertIn("data_flow.connections must list actual direct source-to-sink links", retry_prompt)
+        self.assertIn("boolean combinational", retry_prompt)
         self.assertIn("effect.target must reference a declared data_flow name or state name", retry_prompt)
 
     def test_system_his_v12_prompt_requests_canonical_architecture_contract(self) -> None:
@@ -794,13 +1080,13 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("control_flow", user_prompt)
         self.assertIn("component definitions from concrete instances", user_prompt)
         self.assertIn("Do not generate RTL", user_prompt)
-        self.assertIn("Required architecture for composed_dual_stream_join", user_prompt)
-        self.assertIn("components: skid_buffer, stream_join, accumulator_core, stream_stage", user_prompt)
-        self.assertIn("instances: in0_buffer, in1_buffer, join_core, accumulator, out_stage", user_prompt)
-        self.assertIn("Do not collapse this topology into one fused component", user_prompt)
+        self.assertNotIn("Required architecture for composed_dual_stream_join", user_prompt)
+        self.assertNotIn("components: skid_buffer, stream_join, accumulator_core, stream_stage", user_prompt)
         self.assertIn("Every clock and reset declared in top.clocks/top.resets must also appear in top.ports", user_prompt)
         self.assertIn("Every instances[].parameter_values key must be declared in that component's parameters", user_prompt)
         self.assertIn("Every components[].source must be one of artifacts.rtl_sources", user_prompt)
+        self.assertIn("boolean combinational declaration", user_prompt)
+        self.assertIn("Every direct physical link represented by a data flow", user_prompt)
         self.assertIn('Do not use placeholder sources such as "library"', user_prompt)
         self.assertIn("Every instances[].owns_state must be a JSON array", user_prompt)
         self.assertIn("top.clocks[].target_fmax_mhz and timing.target_fmax_mhz must be positive numbers", user_prompt)
@@ -860,7 +1146,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Do not introduce sample_valid_in", user_prompt)
         self.assertIn("accumulator.sample_valid to top.sample_valid", user_prompt)
 
-    def test_system_his_v12_prompt_spells_out_join_ready_valid_and_timing_contract(self) -> None:
+    def test_system_his_v12_prompt_does_not_expose_heldout_join_recipe(self) -> None:
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -871,12 +1157,10 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
 
-        self.assertIn("data_flow.timing entries must use concrete integer latency_cycles", user_prompt)
-        self.assertIn("join_core.out_valid, accumulator.sample_valid", user_prompt)
-        self.assertIn("out_stage.in_ready, accumulator.sample_ready", user_prompt)
-        self.assertIn("Do not introduce accumulator_core sample_valid_in", user_prompt)
+        self.assertNotIn("Required architecture for composed_dual_stream_join", user_prompt)
+        self.assertNotIn("join_core.out_valid, accumulator.sample_valid", user_prompt)
 
-    def test_system_his_v12_prompt_spells_out_stream_fork_contract(self) -> None:
+    def test_system_his_v12_prompt_does_not_expose_heldout_stream_fork_recipe(self) -> None:
         request = ProjectRequest(
             task_type="composed_stream_fork",
             width=8,
@@ -887,8 +1171,8 @@ class DeepSeekProviderTest(unittest.TestCase):
 
         user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
 
-        self.assertIn("top ports must include clk, rst_n, in_valid, in_data, in_ready, out0_valid", user_prompt)
-        self.assertIn("both output payload paths and the corresponding valid/ready paths", user_prompt)
+        self.assertNotIn("Required architecture for composed_stream_fork", user_prompt)
+        self.assertNotIn("both output payload paths and the corresponding valid/ready paths", user_prompt)
 
     def test_system_his_v12_prompt_includes_vector_mac_pipeline_guidance(self) -> None:
         request = ProjectRequest(
@@ -1102,6 +1386,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             "DeepSeek System-HIS REQ2HIS fidelity failed: missing top ports",
             '{"schema_version":"system-his-v1.2"}',
             task_type="composed_stream_accumulator",
+            family_recipe_task_type="composed_stream_accumulator",
         )
         retry_prompt = retry_messages[-1]["content"]
 
@@ -1164,12 +1449,14 @@ class DeepSeekProviderTest(unittest.TestCase):
             "DeepSeek System-HIS v1.2 failed validation: fsm states are empty",
             '{"schema_version":"system-his-v1.2"}',
             task_type="composed_vector_mac_pipeline",
+            family_recipe_task_type="composed_vector_mac_pipeline",
         )[-1]["content"]
         td_retry = _with_system_his_retry_feedback(
             messages,
             "DeepSeek System-HIS v1.2 failed validation: fsm states are empty",
             '{"schema_version":"system-his-v1.2"}',
             task_type="composed_td_update_core",
+            family_recipe_task_type="composed_td_update_core",
         )[-1]["content"]
 
         self.assertIn("mac_core_fsm is declared", vector_retry)
@@ -1190,6 +1477,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             "REQ2HIS fidelity: component accumulator_core has unexpected port 'sample_valid_in'",
             '{"schema_version":"system-his-v1.2"}',
             task_type="composed_dual_stream_join",
+            family_recipe_task_type="composed_dual_stream_join",
         )[-1]["content"]
 
         self.assertIn("accumulator_core.sample_valid must remain a single input port", retry_prompt)
@@ -1206,6 +1494,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             "DeepSeek System-HIS REQ2HIS fidelity failed: missing top ports",
             '{"schema_version":"system-his-v1.2"}',
             task_type="crc_stream_checker",
+            family_recipe_task_type="crc_stream_checker",
         )
         retry_prompt = retry_messages[-1]["content"]
 
@@ -1408,13 +1697,6 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertNotIn('"files"', user_prompt)
 
     def test_deepseek_two_stage_project_generator_runs_req2his_then_his2project(self) -> None:
-        system_his = _system_his_v12_fixture()
-        client = FakeChatClient(
-            [
-                json.dumps(system_his),
-                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
-            ]
-        )
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
             width=8,
@@ -1422,6 +1704,13 @@ class DeepSeekProviderTest(unittest.TestCase):
             description="Generate a dual-stream join and accumulator project.",
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        system_his = _traced_system_his_v12_fixture(request, platform)
+        client = FakeChatClient(
+            [
+                json.dumps(system_his),
+                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
+            ]
+        )
 
         project = DeepSeekTwoStageProjectGenerator(client).generate(request, platform)
 
@@ -1462,13 +1751,6 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual([event["stage"] for event in events], ["oracle_req2his", "oracle_req2his", "his2project", "his2project"])
 
     def test_deepseek_two_stage_project_generator_emits_stage_events(self) -> None:
-        system_his = _system_his_v12_fixture()
-        client = FakeChatClient(
-            [
-                json.dumps(system_his),
-                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
-            ]
-        )
         events = []
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
@@ -1477,6 +1759,13 @@ class DeepSeekProviderTest(unittest.TestCase):
             description="Generate a dual-stream join and accumulator project.",
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        system_his = _traced_system_his_v12_fixture(request, platform)
+        client = FakeChatClient(
+            [
+                json.dumps(system_his),
+                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
+            ]
+        )
 
         DeepSeekTwoStageProjectGenerator(client, event_sink=events.append).generate(request, platform)
 
@@ -1495,16 +1784,6 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertTrue(all("duration_seconds" in event for event in events if event["event"].endswith("finished")))
 
     def test_deepseek_two_stage_project_generator_emits_req2his_retry_events(self) -> None:
-        invalid = _system_his_v12_fixture()
-        invalid["instances"][0]["component"] = "missing_component"
-        system_his = _system_his_v12_fixture()
-        client = FakeChatClient(
-            [
-                json.dumps(invalid),
-                json.dumps(system_his),
-                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
-            ]
-        )
         events = []
         request = ProjectRequest(
             task_type="composed_dual_stream_join",
@@ -1513,8 +1792,20 @@ class DeepSeekProviderTest(unittest.TestCase):
             description="Generate a dual-stream join and accumulator project.",
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+        system_his = _traced_system_his_v12_fixture(request, platform)
+        invalid = copy.deepcopy(system_his)
+        invalid["instances"][0]["component"] = "missing_component"
+        client = FakeChatClient(
+            [
+                json.dumps(invalid),
+                json.dumps(system_his),
+                json.dumps({"behavior_files": _behavior_files_for_system_his_v12(system_his)}),
+            ]
+        )
 
-        DeepSeekTwoStageProjectGenerator(client, event_sink=events.append).generate(request, platform)
+        DeepSeekTwoStageProjectGenerator(
+            client, max_attempts=2, event_sink=events.append
+        ).generate(request, platform)
 
         retry_events = [event for event in events if event["event"] == "generation_stage_retry"]
         self.assertEqual(len(retry_events), 1)
@@ -1528,14 +1819,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 '{"files": {"system_his.json": "{}"',
                 json.dumps(
                     {
-                        "files": {
-                            "system_his.json": "{}\n",
-                            "manifest.json": _valid_manifest(),
-                            "rtl/top.v": "module top; endmodule\n",
-                            "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
-                            "sim/tb_top.v": "module tb_top; endmodule\n",
-                            "reports/predicted_qor.json": "{}\n",
-                        }
+                        "files": _canonical_direct_files()
                     }
                 ),
             ]
@@ -1543,55 +1827,32 @@ class DeepSeekProviderTest(unittest.TestCase):
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekProjectGenerator(client=client).generate(request, platform)
+        project = DeepSeekProjectGenerator(client=client, max_attempts=2).generate(request, platform)
 
         self.assertIn("rtl/top.v", project.files)
         self.assertEqual(client.call_count, 2)
 
-    def test_deepseek_project_generator_retries_single_file_multimodule_response(self) -> None:
+    def test_deepseek_project_generator_does_not_use_common_parser_for_family_shape(self) -> None:
         single_file_payload = json.dumps(
             {
-                "files": {
-                    "system_his.json": json.dumps({"task_type": "uart_tx"}) + "\n",
-                    "manifest.json": _valid_manifest(),
-                    "rtl/top.v": "module top; endmodule\n",
-                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
-                    "sim/tb_top.v": "module tb_top; initial $display(\"TEST_PASS\"); endmodule\n",
-                    "reports/predicted_qor.json": "{}\n",
-                }
+                "files": _canonical_direct_files(project_name="uart_tx_8bit")
             }
         )
-        multi_file_payload = json.dumps(
-            {
-                "files": {
-                    "system_his.json": json.dumps({"task_type": "uart_tx"}) + "\n",
-                    "manifest.json": _valid_manifest(
-                        sources=["rtl/top.v", "rtl/baud_tick_gen.v", "rtl/uart_tx_core.v"]
-                    ),
-                    "rtl/top.v": "module top; baud_tick_gen u_tick(); uart_tx_core u_core(); endmodule\n",
-                    "rtl/baud_tick_gen.v": "module baud_tick_gen; endmodule\n",
-                    "rtl/uart_tx_core.v": "module uart_tx_core; endmodule\n",
-                    "constraints/timing.sdc": "create_clock -name clk -period 10 [get_ports clk]\n",
-                    "sim/tb_top.v": "module tb_top; initial $display(\"TEST_PASS\"); endmodule\n",
-                    "reports/predicted_qor.json": "{}\n",
-                }
-            }
-        )
-        client = FakeChatClient([single_file_payload, multi_file_payload])
+        client = FakeChatClient([single_file_payload])
         request = ProjectRequest(task_type="uart_tx", width=8, project_name="uart_tx_8bit")
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekProjectGenerator(client=client).generate(request, platform)
+        project = DeepSeekProjectGenerator(client=client, max_attempts=2).generate(request, platform)
 
         manifest = json.loads(project.files["manifest.json"])
-        self.assertEqual(client.call_count, 2)
+        self.assertEqual(client.call_count, 1)
         self.assertEqual(
             manifest["sources"],
-            ["rtl/top.v", "rtl/baud_tick_gen.v", "rtl/uart_tx_core.v"],
+            [{"path": "rtl/top.v", "role": "rtl_source", "language": "verilog"}],
         )
-        self.assertIn("rtl/uart_tx_core.v", project.files)
+        self.assertNotIn("rtl/uart_tx_core.v", project.files)
 
-    def test_parse_project_files_rejects_single_file_composed_topology_response(self) -> None:
+    def test_parse_project_files_does_not_enforce_family_topology(self) -> None:
         content = json.dumps(
             {
                 "files": {
@@ -1605,8 +1866,9 @@ class DeepSeekProviderTest(unittest.TestCase):
             }
         )
 
-        with self.assertRaisesRegex(ValueError, "must include rtl/top.v and at least two submodule"):
-            parse_project_files(content, expected_task_type="composed_dual_stream_join")
+        files = parse_project_files(content, expected_task_type="composed_dual_stream_join")
+
+        self.assertEqual(files["rtl/top.v"], "module top; endmodule\n")
 
     def test_deepseek_repairer_uses_failure_context_and_returns_patch(self) -> None:
         original = GeneratedProject(
@@ -1699,7 +1961,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("--- a/rtl/top.v", result.patch_diff)
         self.assertNotIn("manifest.json", result.patch_diff)
 
-    def test_repair_prompt_requests_complete_project_package(self) -> None:
+    def test_repair_prompt_requests_complete_direct_project_package(self) -> None:
         project = GeneratedProject(
             project_name="counter_8bit",
             files={
@@ -1715,35 +1977,18 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Return JSON in this exact shape", prompt)
         self.assertIn('"manifest.json"', prompt)
         self.assertIn('"top_module": "top"', prompt)
-        self.assertIn("system-his-v1.1", prompt)
-        self.assertIn('"project": {', prompt)
-        self.assertIn('"project_name": "counter_8bit"', prompt)
-        self.assertIn('"name": "counter_8bit"', prompt)
-        self.assertIn('"clocks": [', prompt)
-        self.assertIn('"name": "clk"', prompt)
-        self.assertIn('"role": "top"', prompt)
+        self.assertIn("This Direct-method project has no System-HIS artifact", prompt)
+        self.assertIn("do not create one during repair", prompt)
+        self.assertNotIn('"system_his.json"', prompt)
+        self.assertNotIn("system-his-v1.1", prompt)
         self.assertIn("Repair quality rules", prompt)
         self.assertIn("Do not introduce a new syntax error", prompt)
         self.assertIn("WIDTHEXPAND, WIDTHTRUNC, UNUSEDSIGNAL", prompt)
-        self.assertIn('"role": "submodule"', prompt)
-        self.assertIn('"clock": "clk"', prompt)
-        self.assertIn('"parameters": {', prompt)
-        self.assertIn('"WIDTH": 8', prompt)
-        self.assertIn('"params": [', prompt)
-        self.assertIn('"value": 8', prompt)
-        self.assertIn('"protocol": "register"', prompt)
-        self.assertIn('"constraints": {"timing": "constraints/timing.sdc"}', prompt)
-        self.assertIn("Do not use Verilog reserved keywords as any RTL identifier", prompt)
-        self.assertIn("connection endpoint module values must use System-HIS module names", prompt)
-        self.assertIn("not instance aliases such as sb0, join, acc, or stg", prompt)
-        self.assertIn("width strings must match parsed RTL ranges exactly", prompt)
-        self.assertIn('"modules": [', prompt)
-        self.assertIn('"connections": [', prompt)
-        self.assertIn('"top_ports": [', prompt)
-        self.assertIn('"verification": {', prompt)
-        self.assertIn('"testbench": "sim/tb_top.v"', prompt)
-        self.assertIn('"qor_intent": {', prompt)
-        self.assertIn('"resources": {', prompt)
+        self.assertIn("Do not add, delete, or rename RTL source files", prompt)
+        self.assertIn("Preserve module names, parameters, and ports", prompt)
+        self.assertNotIn('"constraints/timing.sdc": "..."', prompt)
+        self.assertNotIn('"sim/tb_top.v": "..."', prompt)
+        self.assertNotIn('"reports/predicted_qor.json": "..."', prompt)
         self.assertIn("Preserve every file that is not needed", prompt)
         self.assertIn("syntax error", prompt)
 
@@ -1792,6 +2037,45 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("Do not modify unmarked RTL files such as the deterministic top shell", prompt)
         self.assertIn("Do not add, delete, or rename RTL source files", prompt)
 
+    def test_repair_prompt_uses_manifest_sources_outside_rtl_directory(self) -> None:
+        manifest = {
+            "contract_version": "project-package-v1",
+            "project_name": "region_demo",
+            "top": {
+                "module": "design_top",
+                "source": "src/design_top.v",
+                "interface": {"ports": []},
+            },
+            "sources": [
+                {"path": "src/design_top.v", "role": "rtl_source", "language": "verilog"},
+                {"path": "src/core.v", "role": "rtl_source", "language": "verilog"},
+                {"path": "src/state.v", "role": "rtl_source", "language": "verilog"},
+            ],
+            "artifacts": [],
+            "build": {"toolchain_id": "open_source", "language_standard": "verilog-2005"},
+        }
+        project = GeneratedProject(
+            project_name="region_demo",
+            files={
+                "manifest.json": json.dumps(manifest) + "\n",
+                "src/design_top.v": "module design_top; core u_core(); state u_state(); endmodule\n",
+                "src/core.v": (
+                    "module core;\n"
+                    "  // SR2FPGA_BEHAVIOR_BEGIN\n"
+                    "  wire value = 1'b0;\n"
+                    "  // SR2FPGA_BEHAVIOR_END\n"
+                    "endmodule\n"
+                ),
+                "src/state.v": "module state; endmodule\n",
+            },
+        )
+
+        prompt = _repair_messages(project, {"stage": "lint"})[1]["content"]
+
+        self.assertIn("Only edit text between // SR2FPGA_BEHAVIOR_BEGIN", prompt)
+        self.assertIn("manifest-declared top source src/design_top.v", prompt)
+        self.assertNotIn("rtl/top.v must remain", prompt)
+
     def test_repair_prompt_allows_legacy_interface_change_only_for_l0_repair(self) -> None:
         project = GeneratedProject(
             project_name="legacy_demo",
@@ -1822,7 +2106,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         client = FakeChatClient(json.dumps({"files": repaired_files}))
         diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "syntax error"}
 
-        with self.assertRaisesRegex(ValueError, "DeepSeek repair system_his.json failed validation"):
+        with self.assertRaisesRegex(ValueError, "Project repair system_his.json failed validation"):
             DeepSeekRepairer(client, max_attempts=1).repair(original, diagnosis)
 
     def test_deepseek_repairer_rejects_unrelated_v12_contract_mutation(self) -> None:
@@ -1872,10 +2156,19 @@ class DeepSeekProviderTest(unittest.TestCase):
         messages = _project_messages(request, platform)
         user_prompt = messages[1]["content"]
 
-        self.assertIn('"top_module": "top"', user_prompt)
-        self.assertIn('"sources": ["rtl/top.v"]', user_prompt)
-        self.assertIn('"constraints": {"timing": "constraints/timing.sdc"}', user_prompt)
-        self.assertIn('"simulation": {"testbench": "sim/tb_top.v"}', user_prompt)
+        self.assertIn('"contract_version": "project-package-v1"', user_prompt)
+        self.assertIn('"module": "top"', user_prompt)
+        self.assertIn('"source": "rtl/top.v"', user_prompt)
+        self.assertIn('"role": "rtl_source"', user_prompt)
+        self.assertIn('"interface": {"ports":', user_prompt)
+        self.assertIn('"artifacts": []', user_prompt)
+        self.assertIn('"language_standard": "verilog-2005"', user_prompt)
+        self.assertIn("Source paths are not fixed", user_prompt)
+        self.assertIn("Candidate testbench, constraints,", user_prompt)
+        self.assertIn("and predicted QoR are optional", user_prompt)
+        self.assertNotIn('"constraints/timing.sdc": "..."', user_prompt)
+        self.assertNotIn('"sim/tb_top.v": "..."', user_prompt)
+        self.assertNotIn('"reports/predicted_qor.json": "..."', user_prompt)
 
     def test_project_prompt_requires_icarus_portable_testbench_arrays(self) -> None:
         request = ProjectRequest(task_type="composed_dual_stream_join", width=8, project_name="join_8bit")
@@ -1991,12 +2284,12 @@ class DeepSeekProviderTest(unittest.TestCase):
         user_prompt = messages[1]["content"]
 
         self.assertIn("Generate a true multi-file RTL implementation", user_prompt)
-        self.assertIn("rtl/top.v must be an integration wrapper", user_prompt)
+        self.assertIn("manifest-declared top source", user_prompt)
         self.assertIn('"rtl/clock_divider.v"', user_prompt)
         self.assertIn('"rtl/spi_master_core.v"', user_prompt)
         self.assertIn('"rtl/clock_divider.v": "..."', user_prompt)
         self.assertIn('"rtl/spi_master_core.v": "..."', user_prompt)
-        self.assertIn('"sources": ["rtl/top.v", "rtl/clock_divider.v", "rtl/spi_master_core.v"]', user_prompt)
+        self.assertIn('"path": "rtl/clock_divider.v"', user_prompt)
 
     def test_project_prompt_requests_true_multifile_rtl_for_composed_topology_tasks(self) -> None:
         request = ProjectRequest(task_type="composed_dual_stream_join", width=8, project_name="join_8bit")
@@ -2006,18 +2299,22 @@ class DeepSeekProviderTest(unittest.TestCase):
         user_prompt = messages[1]["content"]
 
         self.assertIn("Generate a true multi-file RTL implementation", user_prompt)
-        self.assertIn("rtl/top.v must be an integration wrapper", user_prompt)
+        self.assertIn("manifest-declared top source", user_prompt)
         self.assertIn('"rtl/skid_buffer.v"', user_prompt)
         self.assertIn('"rtl/stream_join.v"', user_prompt)
         self.assertIn('"rtl/accumulator_core.v"', user_prompt)
         self.assertIn('"rtl/stream_stage.v"', user_prompt)
-        self.assertIn(
-            (
-                '"sources": ["rtl/top.v", "rtl/skid_buffer.v", "rtl/stream_join.v", '
-                '"rtl/accumulator_core.v", "rtl/stream_stage.v"]'
-            ),
-            user_prompt,
-        )
+        for source_path in (
+            "rtl/top.v",
+            "rtl/skid_buffer.v",
+            "rtl/stream_join.v",
+            "rtl/accumulator_core.v",
+            "rtl/stream_stage.v",
+        ):
+            self.assertIn(
+                f'{{"path": "{source_path}", "role": "rtl_source", "language": "verilog"}}',
+                user_prompt,
+            )
 
     def test_cli_builds_deepseek_generator_from_env_without_exposing_key(self) -> None:
         with mock.patch.dict(os.environ, {"DEEPSEEK_API_KEY": "secret-value"}):
@@ -2063,11 +2360,12 @@ class DeepSeekProviderTest(unittest.TestCase):
                 captured["repairer"] = repairer
                 captured["max_attempts"] = max_attempts
 
-            def run_one(self, sample_id, requirement, request, platform):
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
                 captured["sample_id"] = sample_id
                 captured["requirement"] = requirement
                 captured["request"] = request
                 captured["platform"] = platform
+                captured["metadata"] = metadata
                 return {"sample_dir": "datasets/sr2fpga_rtl_v1/sample_llm_000001", "pass_level": "L0"}
 
         requirement = "Design an 8-bit counter with enable, reset, and a self-checking testbench."
@@ -2109,6 +2407,13 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(captured["project_generator"], "fake-llm-generator")
         self.assertEqual(captured["repairer"], "fake-repairer")
         self.assertEqual(captured["max_attempts"], 2)
+        metadata = captured["metadata"]
+        self.assertEqual(metadata["analysis_population"], "development")
+        self.assertEqual(metadata["method_condition"], "M1")
+        self.assertEqual(metadata["requirement_boundary"]["disposition"], "ready")
+        self.assertEqual(metadata["requirement_boundary"]["reason_codes"], ["ready"])
+        self.assertEqual(metadata["model_call_budget"]["max_model_calls"], 2)
+        self.assertEqual(metadata["model_call_budget"]["model_calls_used"], 0)
 
     def test_cli_builds_no_repairer_by_default(self) -> None:
         from sr2fpga_agent.cli import build_repairer
@@ -2225,6 +2530,13 @@ class FakeStreamingHTTPResponse:
         return self.lines.pop(0)
 
 
+class FakeIncompleteStreamingHTTPResponse(FakeStreamingHTTPResponse):
+    def readline(self) -> bytes:
+        if self.lines:
+            return self.lines.pop(0)
+        raise http.client.IncompleteRead(b"partial")
+
+
 class FakeBlockingSelectableHTTPResponse:
     def __init__(self) -> None:
         self.readline_called = False
@@ -2271,13 +2583,73 @@ def _valid_manifest(sources=None) -> str:
     )
 
 
+def _canonical_direct_files(project_name: str = "counter_8bit") -> dict[str, str]:
+    return {
+        "manifest.json": json.dumps(
+            {
+                "contract_version": "project-package-v1",
+                "project_name": project_name,
+                "top": {
+                    "module": "top",
+                    "source": "rtl/top.v",
+                    "interface": {"ports": []},
+                },
+                "sources": [
+                    {"path": "rtl/top.v", "role": "rtl_source", "language": "verilog"}
+                ],
+                "artifacts": [],
+                "build": {
+                    "toolchain_id": "open_source",
+                    "language_standard": "verilog-2005",
+                },
+            }
+        )
+        + "\n",
+        "rtl/top.v": "module top; endmodule\n",
+    }
+
+
 def _system_his_v12_fixture() -> dict[str, object]:
-    with open("docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json", encoding="utf-8") as handle:
+    fixture = (
+        Path(__file__).parent
+        / "fixtures"
+        / "t4_dual_stream_join.system-his-v1.2.json"
+    )
+    with fixture.open(encoding="utf-8") as handle:
         return json.load(handle)
 
 
-def _deterministic_system_his(request: ProjectRequest) -> dict[str, object]:
-    platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+def _traced_system_his_v12_fixture(
+    request: ProjectRequest,
+    platform: PlatformProfile,
+) -> dict[str, object]:
+    payload = _system_his_v12_fixture()
+    required_facts = build_request_requirement_envelope(
+        request,
+        platform,
+    ).requirement_trace_template()["required_facts"]
+    payload["intent"]["declared_task_type"] = request.task_type
+    payload["resources"]["target_platform"] = platform.name
+    payload["verification"]["acceptance_obligation"] = required_facts[
+        "acceptance_criteria"
+    ]["value"]
+    payload["intent"]["requirement_trace"] = build_deterministic_requirement_trace(
+        request,
+        payload,
+        platform,
+    )
+    return payload
+
+
+def _deterministic_system_his(
+    request: ProjectRequest,
+    platform: PlatformProfile | None = None,
+) -> dict[str, object]:
+    platform = platform or PlatformProfile(
+        name="generic_verilog",
+        vendor="generic",
+        toolchain="open_source",
+    )
     project = ProjectGenerator().generate(request, platform)
     return json.loads(project.files["system_his.json"])
 

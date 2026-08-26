@@ -180,19 +180,41 @@
           "$ref": "#/$defs/identifier"
         },
         "polarity": {
-          "enum": [
-            "active_low",
-            "active_high",
-            "low",
-            "high"
+          "oneOf": [
+            {
+              "enum": [
+                "active_low",
+                "active_high"
+              ],
+              "description": "Canonical reset-polarity spelling."
+            },
+            {
+              "enum": [
+                "low",
+                "high"
+              ],
+              "description": "Legacy compatibility alias; writers should emit active_low or active_high.",
+              "deprecated": true
+            }
           ]
         },
         "kind": {
-          "enum": [
-            "sync",
-            "async",
-            "synchronous",
-            "asynchronous"
+          "oneOf": [
+            {
+              "enum": [
+                "sync",
+                "async"
+              ],
+              "description": "Canonical reset-kind spelling."
+            },
+            {
+              "enum": [
+                "synchronous",
+                "asynchronous"
+              ],
+              "description": "Legacy compatibility alias; writers should emit sync or async.",
+              "deprecated": true
+            }
           ]
         }
       },
@@ -207,6 +229,24 @@
         {
           "type": "string",
           "minLength": 1
+        },
+        {
+          "type": "object",
+          "required": [
+            "expr",
+            "resolved"
+          ],
+          "properties": {
+            "expr": {
+              "type": "string",
+              "minLength": 1
+            },
+            "resolved": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          "additionalProperties": false
         }
       ]
     },
@@ -214,6 +254,18 @@
       "type": "object",
       "required": [
         "name"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "dir"
+          ]
+        },
+        {
+          "required": [
+            "direction"
+          ]
+        }
       ],
       "properties": {
         "name": {
@@ -224,14 +276,17 @@
             "input",
             "output",
             "inout"
-          ]
+          ],
+          "description": "Canonical System-HIS port-direction field."
         },
         "direction": {
           "enum": [
             "input",
             "output",
             "inout"
-          ]
+          ],
+          "description": "Legacy compatibility alias for dir.",
+          "deprecated": true
         },
         "width": {
           "$ref": "#/$defs/width"
@@ -370,6 +425,9 @@
         "intent": {
           "type": "string",
           "minLength": 1
+        },
+        "combinational": {
+          "type": "boolean"
         }
       },
       "additionalProperties": true
@@ -428,11 +486,36 @@
         "payload": {
           "type": "object"
         },
+        "connections": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/typed_connection"
+          }
+        },
         "timing": {
           "type": "object"
         }
       },
       "additionalProperties": true
+    },
+    "typed_connection": {
+      "type": "object",
+      "required": [
+        "from",
+        "to"
+      ],
+      "properties": {
+        "from": {
+          "$ref": "#/$defs/endpoint"
+        },
+        "to": {
+          "$ref": "#/$defs/endpoint"
+        },
+        "width": {
+          "$ref": "#/$defs/width"
+        }
+      },
+      "additionalProperties": false
     },
     "control_flow": {
       "type": "object",

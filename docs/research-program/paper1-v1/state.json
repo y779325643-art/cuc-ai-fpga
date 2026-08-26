@@ -1,0 +1,28 @@
+{
+  "project": "sr2fpga-paper1",
+  "mode": "hybrid",
+  "round": 7,
+  "evidence_cutoff": "2026-08-26",
+  "status": "canonical_program_spec_v1_6_active_trets_no_training_core_rq1_rq2_execution_blocked_at_g3",
+  "qa_score": null,
+  "qa_status": "v1_6_decoding_control_revision_complete_no_outcome_execution",
+  "qa_report": "docs/research-program/paper1-v1/audit/qa_report-v1.6.md",
+  "canonical_spec": "docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md",
+  "canonical_spec_version": "paper1-freeze-v1.6",
+  "open_debts": [
+    "positive_artifact_derived_g3_acceptance_authority",
+    "first_class_semantic_instance_replicate_requested_seed_and_paired_block_runtime",
+    "independent_execution_schedule_seed_and_decoding_control_mode",
+    "reducer_verified_provider_capability_observations_and_documentation_review",
+    "shared_checkpoint_and_three_view_cost_reconciliation",
+    "sanitized_two_axis_hidden_outcome_and_missingness_closure",
+    "remaining_real_project_repair_and_full_pack_scenarios",
+    "heldout_oracle_qualification_2_of_4",
+    "frozen_split_and_episode_pack_manifests",
+    "signed_ambiguity_fixtures_thresholds_and_replay",
+    "excluded_natural_g5_pilot_and_power_precision_simulation",
+    "signed_g4b_verifier_receipt_and_official_m0_m5_evaluation",
+    "optional_target_profile_extension_only_if_explicitly_enabled"
+  ],
+  "stop_condition": "No further abstract scope expansion; next milestone is positive non-official G3 acceptance, then core G4a and excluded natural G5 before verifier-derived G4b authorization"
+}

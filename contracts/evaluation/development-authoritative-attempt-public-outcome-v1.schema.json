@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-authoritative-attempt-public-outcome/v1",
+  "title": "SR2FPGA Development Authoritative Attempt Public Outcome v1",
+  "description": "Sanitized evaluator-owned public outcome for development/excluded repair and AT_A terminal selection. It cannot mint an official outcome.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "outcome_id", "evaluation_scope", "evaluator_identity",
+    "episode_id", "attempt_id", "method_condition", "public_evaluation_candidate_sha256",
+    "public_contract_sha256", "public_profile_sha256", "tool_environment_policy_sha256",
+    "one_shot_ledger_ref", "execution_status", "infrastructure_reason", "stage_outcomes",
+    "diagnostic_codes", "repair_diagnosis", "complete_project", "public_acceptance",
+    "repair_visible", "terminal_selection_authority", "pass_credit_authority",
+    "official_outcome", "vpp_l3"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-authoritative-attempt-public-outcome-v1"},
+    "outcome_id": {"type": "string", "pattern": "^authoritative-public-attempt-outcome-[0-9a-f]{64}$"},
+    "evaluation_scope": {"const": "development_attempt_authority"},
+    "evaluator_identity": {"const": "development-public-evaluator-v1"},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "attempt_id": {"$ref": "#/$defs/identifier"},
+    "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "public_evaluation_candidate_sha256": {"$ref": "#/$defs/sha256"},
+    "public_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "public_profile_sha256": {"$ref": "#/$defs/sha256"},
+    "tool_environment_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "one_shot_ledger_ref": {"type": "string", "minLength": 1},
+    "execution_status": {"enum": ["completed", "not_run"]},
+    "infrastructure_reason": {"type": ["string", "null"]},
+    "stage_outcomes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["l0", "l1", "public_l2", "l3"],
+      "properties": {
+        "l0": {"$ref": "#/$defs/stage"},
+        "l1": {"$ref": "#/$defs/stage"},
+        "public_l2": {"$ref": "#/$defs/stage"},
+        "l3": {"$ref": "#/$defs/stage"}
+      }
+    },
+    "public_l2_harness": {"$ref": "#/$defs/public_l2_harness"},
+    "diagnostic_codes": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.:-]*$"}
+    },
+    "repair_diagnosis": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["stage", "failure_type", "diagnostic_codes"],
+          "properties": {
+            "stage": {"enum": ["l0", "l1", "public_l2", "l3"]},
+            "failure_type": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.:-]*$"},
+            "diagnostic_codes": {
+              "type": "array",
+              "uniqueItems": true,
+              "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_.:-]*$"}
+            }
+          }
+        }
+      ]
+    },
+    "complete_project": {"type": "boolean"},
+    "public_acceptance": {"type": "boolean"},
+    "repair_visible": {"const": true},
+    "terminal_selection_authority": {"const": true},
+    "pass_credit_authority": {"const": true},
+    "official_outcome": {"const": false},
+    "vpp_l3": {"type": "null"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"public_acceptance": {"const": true}}},
+      "then": {
+        "properties": {
+          "execution_status": {"const": "completed"},
+          "complete_project": {"const": true},
+          "repair_diagnosis": {"type": "null"},
+          "stage_outcomes": {
+            "properties": {
+              "l0": {"properties": {"status": {"const": "pass"}}},
+              "l1": {"properties": {"status": {"const": "pass"}}},
+              "public_l2": {"properties": {"status": {"const": "pass"}}},
+              "l3": {"properties": {"status": {"const": "pass"}}}
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {"properties": {"execution_status": {"const": "not_run"}}},
+      "then": {"properties": {"public_acceptance": {"const": false}, "repair_diagnosis": {"type": "null"}}}
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "not_run"]},
+        "reason": {"type": ["string", "null"]}
+      }
+    },
+    "public_l2_harness": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "harness_id", "manifest_sha256", "bundle_sha256", "reason"],
+      "properties": {
+        "status": {"enum": ["available", "unavailable"]},
+        "harness_id": {"type": ["string", "null"], "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+        "manifest_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "bundle_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "reason": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

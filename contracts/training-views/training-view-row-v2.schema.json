@@ -1,0 +1,136 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/training-view-row/v2",
+  "title": "SR2FPGA canonical model-visible training view row v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "row_id",
+    "row_sha256",
+    "source_episode_id",
+    "snapshot_id",
+    "treatment",
+    "payload"
+  ],
+  "properties": {
+    "contract_version": {"const": "training-view-row-v2"},
+    "row_id": {"$ref": "#/$defs/identifier"},
+    "row_sha256": {"$ref": "#/$defs/sha256"},
+    "source_episode_id": {"$ref": "#/$defs/identifier"},
+    "snapshot_id": {"$ref": "#/$defs/identifier"},
+    "treatment": {"enum": ["M6U", "M6F", "M6T", "M6F_E_TRAJ"]},
+    "payload": {"$ref": "#/$defs/payload"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"treatment": {"const": "M6T"}}},
+      "then": {
+        "properties": {
+          "payload": {
+            "properties": {
+              "assistant_target": {"$ref": "#/$defs/public_transition_target"}
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "payload": {
+            "properties": {
+              "assistant_target": {"$ref": "#/$defs/project_files_target"}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "relative_path": {
+      "type": "string",
+      "minLength": 1,
+      "not": {"pattern": "^(?:[A-Za-z]:[\\\\/]|/|.*(?:^|/)\\.\\.(?:/|$))"}
+    },
+    "prompt_message": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "content"],
+      "properties": {
+        "role": {"enum": ["system", "user"]},
+        "content": {"type": "string", "minLength": 1}
+      }
+    },
+    "model_file": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "role", "content"],
+      "properties": {
+        "path": {"$ref": "#/$defs/relative_path"},
+        "role": {"enum": ["rtl", "model_region", "behavior_delta"]},
+        "content": {"type": "string", "minLength": 1}
+      }
+    },
+    "project_files_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "files"],
+      "properties": {
+        "kind": {"const": "project_files"},
+        "files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/model_file"}
+        }
+      }
+    },
+    "public_transition_target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "public_failure",
+        "public_diagnosis",
+        "public_patch",
+        "public_rerun",
+        "final_files"
+      ],
+      "properties": {
+        "kind": {"const": "public_transition"},
+        "public_failure": {"type": "object", "minProperties": 1},
+        "public_diagnosis": {"type": "object", "minProperties": 1},
+        "public_patch": {"type": "string", "minLength": 1},
+        "public_rerun": {"type": "object", "minProperties": 1},
+        "final_files": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/model_file"}
+        }
+      }
+    },
+    "assistant_target": {
+      "oneOf": [
+        {"$ref": "#/$defs/project_files_target"},
+        {"$ref": "#/$defs/public_transition_target"}
+      ]
+    },
+    "payload": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt_messages", "assistant_target"],
+      "properties": {
+        "prompt_messages": {
+          "type": "array",
+          "minItems": 1,
+          "items": {"$ref": "#/$defs/prompt_message"}
+        },
+        "assistant_target": {"$ref": "#/$defs/assistant_target"}
+      }
+    }
+  }
+}

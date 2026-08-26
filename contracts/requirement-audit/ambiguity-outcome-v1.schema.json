@@ -1,0 +1,255 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/requirement-audit/ambiguity-outcome/v1",
+  "title": "SR2FPGA cluster-aware ambiguity audit outcome v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "artifact_sha256",
+    "audit_run_id",
+    "manifest_sha256",
+    "witness_artifact_sha256",
+    "visibility_class",
+    "observations",
+    "clusters",
+    "summary"
+  ],
+  "properties": {
+    "contract_version": {"const": "ambiguity-outcome-v1"},
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "audit_run_id": {"$ref": "#/$defs/identifier"},
+    "manifest_sha256": {"$ref": "#/$defs/sha256"},
+    "witness_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "visibility_class": {"const": "evaluator_only"},
+    "observations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/observation"}
+    },
+    "clusters": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/cluster"}
+    },
+    "summary": {"$ref": "#/$defs/summary"}
+  },
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "count": {"type": "integer", "minimum": 0},
+    "counters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "model_calls",
+        "tool_calls",
+        "input_tokens",
+        "output_tokens",
+        "cached_tokens",
+        "wall_time_ms"
+      ],
+      "properties": {
+        "model_calls": {"$ref": "#/$defs/count"},
+        "tool_calls": {"$ref": "#/$defs/count"},
+        "input_tokens": {"$ref": "#/$defs/count"},
+        "output_tokens": {"$ref": "#/$defs/count"},
+        "cached_tokens": {"$ref": "#/$defs/count"},
+        "wall_time_ms": {"type": "number", "minimum": 0}
+      }
+    },
+    "infrastructure_status_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["available", "unavailable", "error"],
+      "properties": {
+        "available": {"$ref": "#/$defs/count"},
+        "unavailable": {"$ref": "#/$defs/count"},
+        "error": {"$ref": "#/$defs/count"}
+      }
+    },
+    "audit_cost": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["counters", "infrastructure_status_counts"],
+      "properties": {
+        "counters": {"$ref": "#/$defs/counters"},
+        "infrastructure_status_counts": {
+          "$ref": "#/$defs/infrastructure_status_counts"
+        }
+      }
+    },
+    "rate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["numerator", "denominator", "value"],
+      "properties": {
+        "numerator": {"$ref": "#/$defs/count"},
+        "denominator": {"$ref": "#/$defs/count"},
+        "value": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "precision_recall": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "true_positive_count",
+        "predicted_count",
+        "gold_count",
+        "precision",
+        "recall"
+      ],
+      "properties": {
+        "true_positive_count": {"$ref": "#/$defs/count"},
+        "predicted_count": {"$ref": "#/$defs/count"},
+        "gold_count": {"$ref": "#/$defs/count"},
+        "precision": {"type": ["number", "null"], "minimum": 0, "maximum": 1},
+        "recall": {"type": ["number", "null"], "minimum": 0, "maximum": 1}
+      }
+    },
+    "disposition_counts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ready", "needs_clarification", "capability_gap"],
+      "properties": {
+        "ready": {"$ref": "#/$defs/count"},
+        "needs_clarification": {"$ref": "#/$defs/count"},
+        "capability_gap": {"$ref": "#/$defs/count"}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "observation_id",
+        "phase_a_audit_sha256",
+        "event_artifact_sha256",
+        "replay_artifact_sha256",
+        "case_count",
+        "completed_count",
+        "not_run_count",
+        "audit_cost"
+      ],
+      "properties": {
+        "observation_id": {"$ref": "#/$defs/identifier"},
+        "phase_a_audit_sha256": {"$ref": "#/$defs/sha256"},
+        "event_artifact_sha256": {"$ref": "#/$defs/sha256"},
+        "replay_artifact_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "case_count": {"$ref": "#/$defs/count"},
+        "completed_count": {"$ref": "#/$defs/count"},
+        "not_run_count": {"$ref": "#/$defs/count"},
+        "audit_cost": {"$ref": "#/$defs/audit_cost"}
+      }
+    },
+    "cluster": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "base_requirement_cluster_id",
+        "case_ids",
+        "case_observation_count",
+        "not_run_count",
+        "false_proceed_count",
+        "generation_boundary_violation_count",
+        "replay_eligible_count",
+        "replay_closed_count",
+        "counterfactual_eligible_observation_count",
+        "counterfactual_consistent_observation_count",
+        "primary_safety_failure"
+      ],
+      "properties": {
+        "base_requirement_cluster_id": {"$ref": "#/$defs/identifier"},
+        "case_ids": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/identifier"}
+        },
+        "case_observation_count": {"$ref": "#/$defs/count"},
+        "not_run_count": {"$ref": "#/$defs/count"},
+        "false_proceed_count": {"$ref": "#/$defs/count"},
+        "generation_boundary_violation_count": {"$ref": "#/$defs/count"},
+        "replay_eligible_count": {"$ref": "#/$defs/count"},
+        "replay_closed_count": {"$ref": "#/$defs/count"},
+        "counterfactual_eligible_observation_count": {"$ref": "#/$defs/count"},
+        "counterfactual_consistent_observation_count": {"$ref": "#/$defs/count"},
+        "primary_safety_failure": {"type": "boolean"}
+      }
+    },
+    "summary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cluster_count",
+        "observation_count",
+        "case_observation_count",
+        "semantic_case_observation_count",
+        "not_run_count",
+        "confusion_matrix",
+        "fp_amb",
+        "fp_gap",
+        "primary_safety_max_false_proceed_rate",
+        "ready_fully_specified_false_block",
+        "ready_permitted_default_false_block",
+        "one_replay_closure",
+        "critical_fact_precision_recall",
+        "capability_precision_recall",
+        "permitted_default_precision_recall",
+        "explicit_assumption_precision_recall",
+        "repeated_known_fact_question",
+        "unknown_family_coercion",
+        "counterfactual_consistency",
+        "cluster_primary_safety_failure",
+        "generation_boundary_violation_count",
+        "audit_cost",
+        "interval_status",
+        "interval_not_frozen_reason"
+      ],
+      "properties": {
+        "cluster_count": {"$ref": "#/$defs/count"},
+        "observation_count": {"$ref": "#/$defs/count"},
+        "case_observation_count": {"$ref": "#/$defs/count"},
+        "semantic_case_observation_count": {"$ref": "#/$defs/count"},
+        "not_run_count": {"$ref": "#/$defs/count"},
+        "confusion_matrix": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["ready", "needs_clarification", "capability_gap"],
+          "properties": {
+            "ready": {"$ref": "#/$defs/disposition_counts"},
+            "needs_clarification": {"$ref": "#/$defs/disposition_counts"},
+            "capability_gap": {"$ref": "#/$defs/disposition_counts"}
+          }
+        },
+        "fp_amb": {"$ref": "#/$defs/rate"},
+        "fp_gap": {"$ref": "#/$defs/rate"},
+        "primary_safety_max_false_proceed_rate": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1
+        },
+        "ready_fully_specified_false_block": {"$ref": "#/$defs/rate"},
+        "ready_permitted_default_false_block": {"$ref": "#/$defs/rate"},
+        "one_replay_closure": {"$ref": "#/$defs/rate"},
+        "critical_fact_precision_recall": {"$ref": "#/$defs/precision_recall"},
+        "capability_precision_recall": {"$ref": "#/$defs/precision_recall"},
+        "permitted_default_precision_recall": {"$ref": "#/$defs/precision_recall"},
+        "explicit_assumption_precision_recall": {"$ref": "#/$defs/precision_recall"},
+        "repeated_known_fact_question": {"$ref": "#/$defs/rate"},
+        "unknown_family_coercion": {"$ref": "#/$defs/rate"},
+        "counterfactual_consistency": {"$ref": "#/$defs/rate"},
+        "cluster_primary_safety_failure": {"$ref": "#/$defs/rate"},
+        "generation_boundary_violation_count": {"$ref": "#/$defs/count"},
+        "audit_cost": {"$ref": "#/$defs/audit_cost"},
+        "interval_status": {"const": "not_frozen"},
+        "interval_not_frozen_reason": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

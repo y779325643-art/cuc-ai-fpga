@@ -1,0 +1,324 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/accounting/development-provider-seed-capability/v1",
+  "title": "SR2FPGA Development Provider Seed Capability v1",
+  "description": "Development-only provider seed-control qualification. Raw probe observations are authoritative; all summaries are recomputed by the loader and grant no official or campaign authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "evaluation_scope", "capability_profile_id",
+    "provider_adapter", "provider_model", "gateway_base_url_sha256",
+    "probe_protocol", "probe_protocol_sha256", "documentation_status",
+    "documentation_snapshot_sha256", "documentation_source_url_sha256",
+    "documentation_review", "observations", "requested_decoding_seed",
+    "planned_repetitions", "completed_repetitions", "failed_repetitions",
+    "failure_categories", "probe_status", "output_sha256s",
+    "system_fingerprints", "exact_output_match", "fingerprint_status",
+    "fingerprint_match", "seed_control_classification",
+    "provider_token_usage_status", "input_tokens", "output_tokens",
+    "cached_tokens", "paired_confirmatory_eligible", "limitations",
+    "official_outcome", "official_authority", "pass_credit_authority",
+    "g3_accepted", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-provider-seed-capability-v1"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "capability_profile_id": {"type": "string", "pattern": "^seedcap-[0-9a-f]{32}$"},
+    "provider_adapter": {"enum": ["openai_compatible", "anthropic_compatible"]},
+    "provider_model": {"type": "string", "minLength": 1},
+    "gateway_base_url_sha256": {"$ref": "#/$defs/sha256"},
+    "probe_protocol": {"$ref": "#/$defs/probe_protocol"},
+    "probe_protocol_sha256": {"$ref": "#/$defs/sha256"},
+    "documentation_status": {
+      "enum": [
+        "not_checked", "seed_undocumented", "unsupported_documented",
+        "best_effort_documented", "deterministic_documented"
+      ]
+    },
+    "documentation_snapshot_sha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "documentation_source_url_sha256": {
+      "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+    },
+    "documentation_review": {
+      "oneOf": [{"$ref": "#/$defs/documentation_review"}, {"type": "null"}]
+    },
+    "observations": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/observation"}
+    },
+    "requested_decoding_seed": {"type": "integer", "minimum": 0},
+    "planned_repetitions": {"type": "integer", "minimum": 2},
+    "completed_repetitions": {"type": "integer", "minimum": 0},
+    "failed_repetitions": {"type": "integer", "minimum": 0},
+    "failure_categories": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/failure_category"}
+    },
+    "probe_status": {
+      "enum": ["not_run", "complete", "partial", "infrastructure_error"]
+    },
+    "output_sha256s": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/sha256"}
+    },
+    "system_fingerprints": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1}
+    },
+    "exact_output_match": {"type": ["boolean", "null"]},
+    "fingerprint_status": {
+      "enum": ["consistent", "missing", "inconsistent", "not_evaluated"]
+    },
+    "fingerprint_match": {"type": ["boolean", "null"]},
+    "provider_token_usage_status": {
+      "enum": ["provider_reported", "partial", "unavailable"]
+    },
+    "input_tokens": {"type": ["integer", "null"], "minimum": 0},
+    "output_tokens": {"type": ["integer", "null"], "minimum": 0},
+    "cached_tokens": {"type": ["integer", "null"], "minimum": 0},
+    "seed_control_classification": {
+      "enum": [
+        "unverified", "unsupported", "best_effort_observed",
+        "nonrepeatable_observed", "backend_identity_unverified",
+        "reproducible_frozen_candidate", "unavailable"
+      ]
+    },
+    "paired_confirmatory_eligible": {"type": "boolean"},
+    "limitations": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "documentation_not_hash_bound", "seed_not_documented",
+          "best_effort_not_guaranteed", "documentation_self_reviewed",
+          "independent_documentation_review_required", "probe_not_complete",
+          "output_mismatch", "fingerprint_missing", "fingerprint_inconsistent",
+          "development_only_no_campaign_authority"
+        ]
+      }
+    },
+    "official_outcome": {"const": false},
+    "official_authority": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"documentation_status": {"const": "not_checked"}},
+        "required": ["documentation_status"]
+      },
+      "then": {
+        "properties": {
+          "documentation_snapshot_sha256": {"type": "null"},
+          "documentation_source_url_sha256": {"type": "null"},
+          "documentation_review": {"type": "null"}
+        }
+      },
+      "else": {
+        "properties": {
+          "documentation_snapshot_sha256": {"$ref": "#/$defs/sha256"},
+          "documentation_source_url_sha256": {"$ref": "#/$defs/sha256"},
+          "documentation_review": {"$ref": "#/$defs/documentation_review"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"probe_status": {"const": "complete"}},
+        "required": ["probe_status"]
+      },
+      "then": {
+        "properties": {
+          "completed_repetitions": {"minimum": 2},
+          "failed_repetitions": {"const": 0},
+          "failure_categories": {"maxItems": 0},
+          "exact_output_match": {"type": "boolean"},
+          "fingerprint_status": {
+            "enum": ["consistent", "missing", "inconsistent"]
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "probe_status": {"enum": ["partial", "infrastructure_error"]}
+        },
+        "required": ["probe_status"]
+      },
+      "then": {
+        "properties": {
+          "failed_repetitions": {"minimum": 1},
+          "failure_categories": {"minItems": 1},
+          "exact_output_match": {"type": "null"},
+          "fingerprint_status": {"const": "not_evaluated"},
+          "fingerprint_match": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"probe_status": {"const": "not_run"}},
+        "required": ["probe_status"]
+      },
+      "then": {
+        "properties": {
+          "completed_repetitions": {"const": 0},
+          "failed_repetitions": {"const": 0},
+          "failure_categories": {"maxItems": 0},
+          "observations": {"maxItems": 0},
+          "exact_output_match": {"type": "null"},
+          "fingerprint_status": {"const": "not_evaluated"},
+          "fingerprint_match": {"type": "null"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"fingerprint_status": {"const": "consistent"}},
+        "required": ["fingerprint_status"]
+      },
+      "then": {"properties": {"fingerprint_match": {"const": true}}}
+    },
+    {
+      "if": {
+        "properties": {"fingerprint_status": {"const": "inconsistent"}},
+        "required": ["fingerprint_status"]
+      },
+      "then": {"properties": {"fingerprint_match": {"const": false}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "fingerprint_status": {"enum": ["missing", "not_evaluated"]}
+        },
+        "required": ["fingerprint_status"]
+      },
+      "then": {"properties": {"fingerprint_match": {"type": "null"}}}
+    },
+    {
+      "if": {
+        "properties": {"paired_confirmatory_eligible": {"const": true}},
+        "required": ["paired_confirmatory_eligible"]
+      },
+      "then": {
+        "properties": {
+          "documentation_status": {"const": "deterministic_documented"},
+          "documentation_review": {
+            "type": "object",
+            "properties": {"review_type": {"const": "independent_review"}},
+            "required": ["review_type"]
+          },
+          "probe_status": {"const": "complete"},
+          "exact_output_match": {"const": true},
+          "fingerprint_status": {"const": "consistent"},
+          "fingerprint_match": {"const": true},
+          "seed_control_classification": {
+            "const": "reproducible_frozen_candidate"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "seed_control_classification": {
+            "const": "reproducible_frozen_candidate"
+          }
+        },
+        "required": ["seed_control_classification"]
+      },
+      "then": {
+        "properties": {"paired_confirmatory_eligible": {"const": true}}
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "failure_category": {
+      "enum": [
+        "authentication", "authorization", "quota", "rate_limit",
+        "model_unavailable", "seed_rejected", "network", "timeout",
+        "provider_error", "response_invalid", "unknown"
+      ]
+    },
+    "probe_protocol": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "prompt_sha256", "seed", "temperature", "max_tokens",
+        "repetitions", "probe_implementation_sha256"
+      ],
+      "properties": {
+        "prompt_sha256": {"$ref": "#/$defs/sha256"},
+        "seed": {"type": "integer", "minimum": 0},
+        "temperature": {"type": "number", "minimum": 0, "maximum": 2},
+        "max_tokens": {"type": "integer", "minimum": 1},
+        "repetitions": {"type": "integer", "minimum": 2},
+        "probe_implementation_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "documentation_review": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["review_type", "reviewer_provenance_sha256"],
+      "properties": {
+        "review_type": {
+          "enum": ["self_reviewed_development", "independent_review"]
+        },
+        "reviewer_provenance_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "call_index", "status", "output_size_bytes", "output_sha256",
+        "system_fingerprint", "input_tokens", "output_tokens",
+        "cached_tokens", "failure_category"
+      ],
+      "properties": {
+        "call_index": {"type": "integer", "minimum": 0},
+        "status": {"enum": ["completed", "failed"]},
+        "output_size_bytes": {"type": ["integer", "null"], "minimum": 1},
+        "output_sha256": {
+          "oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]
+        },
+        "system_fingerprint": {"type": ["string", "null"], "minLength": 1},
+        "input_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "output_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "cached_tokens": {"type": ["integer", "null"], "minimum": 0},
+        "failure_category": {
+          "oneOf": [{"$ref": "#/$defs/failure_category"}, {"type": "null"}]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"status": {"const": "completed"}},
+            "required": ["status"]
+          },
+          "then": {
+            "properties": {
+              "output_size_bytes": {"type": "integer", "minimum": 1},
+              "output_sha256": {"$ref": "#/$defs/sha256"},
+              "failure_category": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "output_size_bytes": {"type": "null"},
+              "output_sha256": {"type": "null"},
+              "failure_category": {"$ref": "#/$defs/failure_category"}
+            }
+          }
+        }
+      ]
+    }
+  }
+}

@@ -18,7 +18,11 @@ def test_repository_paths_expose_agent_runtime_and_evidence_resources() -> None:
     paths = RepositoryPaths.discover()
     assert paths.agent_artifacts_dir == REPO_ROOT / "artifacts" / "agent"
     assert paths.task_evidence == (
-        REPO_ROOT / "docs" / "sr2fpga-task-evidence-v0.1.json"
+        REPO_ROOT
+        / "reports"
+        / "evidence"
+        / "task-ledger"
+        / "sr2fpga-task-evidence-v0.1.json"
     )
 
 
@@ -81,7 +85,11 @@ def test_repository_resources_ignore_process_cwd(tmp_path: Path) -> None:
         / "sr2fpga-task-catalog-v0.2.json"
     )
     assert Path(resources["evidence"]) == (
-        REPO_ROOT / "docs" / "sr2fpga-task-evidence-v0.1.json"
+        REPO_ROOT
+        / "reports"
+        / "evidence"
+        / "task-ledger"
+        / "sr2fpga-task-evidence-v0.1.json"
     )
 
 

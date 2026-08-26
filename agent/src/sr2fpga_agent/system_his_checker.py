@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from sr2fpga_agent.models import GeneratedProject
 from sr2fpga_agent.rtl_introspect import (
@@ -17,28 +17,68 @@ from sr2fpga_agent.rtl_introspect import (
 from sr2fpga_agent.system_his_v12_checker import SCHEMA_VERSION as SYSTEM_HIS_V12_SCHEMA
 from sr2fpga_agent.system_his_v12_checker import check_system_his_v12_against_rtl
 
+if TYPE_CHECKING:
+    from sr2fpga_agent.parsers import ResolvedProjectManifest
+
 
 @dataclass(frozen=True)
 class L0CheckResult:
-    """Result of validating generated project structure against System-HIS."""
+    """Result of one project-level L0 check."""
 
     passed: bool
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
 
+def check_common_project_l0(project: GeneratedProject) -> L0CheckResult:
+    """Validate the method-neutral package through the canonical resolver."""
+
+    # Local import breaks the legacy parser/checker import cycle while keeping
+    # one canonical+legacy manifest resolver as the source of common L0 rules.
+    from sr2fpga_agent.parsers import check_project_package_l0
+
+    return check_project_package_l0(project)
+
+
 def check_project_l0(project: GeneratedProject) -> L0CheckResult:
-    """Validate the file/package contract before running HDL tools."""
+    """Compatibility entry point for common plus System-HIS consistency checks."""
+
+    common = check_common_project_l0(project)
+    consistency = check_his_project_consistency(project)
+    return L0CheckResult(
+        passed=common.passed and consistency.passed,
+        errors=[*common.errors, *consistency.errors],
+        warnings=[*common.warnings, *consistency.warnings],
+    )
+
+
+def check_his_project_consistency(project: GeneratedProject) -> L0CheckResult:
+    """Validate System-HIS-to-project consistency for methods that emit it."""
 
     errors: list[str] = []
     warnings: list[str] = []
     system_his = _read_json_file(project, "system_his.json", errors)
-    manifest = _read_json_file(project, "manifest.json", errors)
-    if system_his is None or manifest is None:
+    if system_his is None:
         return L0CheckResult(passed=False, errors=errors, warnings=warnings)
 
-    _require_mapping(system_his, "system_his", errors)
-    _require_mapping(manifest, "manifest", errors)
+    # Local import avoids the historical parser/checker import cycle. Both
+    # canonical and legacy manifests are projected through one validated view.
+    from sr2fpga_agent.parsers import resolve_project_manifest
+
+    try:
+        manifest = resolve_project_manifest(project.files)
+    except ValueError as exc:
+        errors.append(str(exc))
+        return L0CheckResult(passed=False, errors=errors, warnings=warnings)
+
+    if not manifest.is_legacy:
+        _require_manifest_artifact_role(
+            manifest,
+            role="system_his",
+            expected_path="system_his.json",
+            context="System-HIS project",
+            errors=errors,
+        )
     if errors:
         return L0CheckResult(passed=False, errors=errors, warnings=warnings)
 
@@ -76,41 +116,37 @@ def check_project_l0(project: GeneratedProject) -> L0CheckResult:
         architecture = {}
     his_top = str(architecture.get("top_module", "")).strip()
     project_top = str(project_record.get("top", "")).strip()
-    manifest_top = str(manifest.get("top_module", "")).strip()
+    manifest_top = manifest.top_module
     if not his_top:
         errors.append("system_his.architecture.top_module is required")
     if not project_top:
         errors.append("system_his.project.top is required")
     if his_top and project_top and his_top != project_top:
         errors.append(f"system_his.project.top '{project_top}' does not match architecture.top_module '{his_top}'")
-    if not manifest_top:
-        errors.append("manifest.top_module is required")
     if his_top and manifest_top and his_top != manifest_top:
         errors.append(
-            f"manifest.top_module '{manifest_top}' does not match System-HIS top_module '{his_top}'"
+            f"manifest top module '{manifest_top}' does not match System-HIS top_module '{his_top}'"
         )
 
-    sources = _string_list(manifest.get("sources"), "manifest.sources", errors)
-    for source in sources:
-        if source not in project.files:
-            errors.append(f"manifest source '{source}' is missing from project files")
-
-    testbench = _manifest_testbench(manifest)
-    if not testbench:
-        errors.append("manifest.simulation.testbench is required")
-    elif testbench not in project.files:
-        errors.append(f"manifest testbench '{testbench}' is missing from project files")
-
-    timing_constraint = _manifest_timing_constraint(manifest)
-    if not timing_constraint:
-        errors.append("manifest.constraints.timing is required")
-    elif timing_constraint not in project.files:
-        errors.append(f"manifest timing constraint '{timing_constraint}' is missing from project files")
+    sources = list(manifest.sources)
+    testbenches = _manifest_artifact_paths(manifest, "candidate_testbench")
+    timing_constraints = _manifest_artifact_paths(manifest, "constraint")
 
     _validate_clocks(system_his.get("clocks"), errors)
     _validate_resets(system_his.get("resets"), errors)
     _validate_qor_intent(system_his.get("qor_intent"), errors)
-    _validate_verification(system_his.get("verification"), errors)
+    verification = system_his.get("verification")
+    _validate_verification(verification, errors)
+    if isinstance(verification, dict):
+        testbench = str(verification.get("testbench", "")).strip()
+        if testbench:
+            _require_manifest_artifact_role(
+                manifest,
+                role="candidate_testbench",
+                expected_path=testbench,
+                context="system_his.verification.testbench",
+                errors=errors,
+            )
 
     rtl_modules = declared_modules(project.files, sources)
     if manifest_top and manifest_top not in rtl_modules:
@@ -132,21 +168,40 @@ def check_project_l0(project: GeneratedProject) -> L0CheckResult:
     _validate_his_connections(system_his.get("connections"), his_modules, ports_by_module, errors)
     if manifest_top:
         _validate_top_ports(system_his.get("top_ports"), manifest_top, declared_ports, errors)
-        _validate_testbench_instantiates_top(project, testbench, manifest_top, errors)
-        _validate_timing_constraint_ports(project, timing_constraint, manifest_top, declared_ports, errors)
+        for testbench in testbenches:
+            _validate_testbench_instantiates_top(project, testbench, manifest_top, errors)
+        for timing_constraint in timing_constraints:
+            _validate_timing_constraint_ports(
+                project,
+                timing_constraint,
+                manifest_top,
+                declared_ports,
+                errors,
+            )
 
     return L0CheckResult(passed=not errors, errors=errors, warnings=warnings)
 
 
 def _check_project_l0_v12(
     system_his: dict[str, Any],
-    manifest: dict[str, Any],
+    manifest: ResolvedProjectManifest,
     project: GeneratedProject,
 ) -> L0CheckResult:
     errors: list[str] = []
     warnings: list[str] = []
-    result = check_system_his_v12_against_rtl(system_his, project)
-    errors.extend(result.errors)
+    rtl_check_project = _v12_rtl_check_project(project, manifest)
+    result = check_system_his_v12_against_rtl(system_his, rtl_check_project)
+    ignored_legacy_projection_errors = (
+        {
+            "manifest.simulation.testbench is required",
+            "manifest.constraints.timing is required",
+        }
+        if not manifest.is_legacy
+        else set()
+    )
+    errors.extend(
+        error for error in result.errors if error not in ignored_legacy_projection_errors
+    )
     warnings.extend(result.warnings)
 
     artifacts = system_his.get("artifacts", {})
@@ -154,34 +209,111 @@ def _check_project_l0_v12(
         errors.append("system_his.artifacts must be an object")
         artifacts = {}
     artifact_top = str(artifacts.get("top_module", "")).strip()
-    manifest_top = str(manifest.get("top_module", "")).strip()
+    manifest_top = manifest.top_module
     if artifact_top and manifest_top and artifact_top != manifest_top:
-        errors.append(f"manifest.top_module '{manifest_top}' does not match System-HIS v1.2 artifacts.top_module '{artifact_top}'")
+        errors.append(
+            f"manifest top module '{manifest_top}' does not match System-HIS v1.2 "
+            f"artifacts.top_module '{artifact_top}'"
+        )
 
-    manifest_sources = _string_list(manifest.get("sources"), "manifest.sources", errors)
+    manifest_sources = list(manifest.sources)
     artifact_sources = artifacts.get("rtl_sources")
     if isinstance(artifact_sources, list) and all(isinstance(source, str) for source in artifact_sources):
         if manifest_sources and manifest_sources != artifact_sources:
             errors.append("manifest.sources does not match System-HIS v1.2 artifacts.rtl_sources")
-    for source in manifest_sources:
-        if source not in project.files:
-            errors.append(f"manifest source '{source}' is missing from project files")
 
-    testbench = _manifest_testbench(manifest)
-    if not testbench:
-        errors.append("manifest.simulation.testbench is required")
-    elif testbench not in project.files:
-        errors.append(f"manifest testbench '{testbench}' is missing from project files")
+    artifact_manifest = str(artifacts.get("manifest", "")).strip()
+    if artifact_manifest and artifact_manifest != "manifest.json":
+        errors.append(
+            f"system_his.artifacts.manifest '{artifact_manifest}' does not reference manifest.json"
+        )
+    testbench = str(artifacts.get("testbench", "")).strip()
+    if testbench:
+        _require_manifest_artifact_role(
+            manifest,
+            role="candidate_testbench",
+            expected_path=testbench,
+            context="system_his.artifacts.testbench",
+            errors=errors,
+        )
+    artifact_constraints = artifacts.get("constraints")
+    if isinstance(artifact_constraints, list):
+        for constraint in artifact_constraints:
+            if isinstance(constraint, str) and constraint.strip():
+                _require_manifest_artifact_role(
+                    manifest,
+                    role="constraint",
+                    expected_path=constraint,
+                    context="system_his.artifacts.constraints",
+                    errors=errors,
+                )
+    predicted_qor = str(artifacts.get("predicted_qor", "")).strip()
+    if predicted_qor:
+        _require_manifest_artifact_role(
+            manifest,
+            role="predicted_qor",
+            expected_path=predicted_qor,
+            context="system_his.artifacts.predicted_qor",
+            errors=errors,
+        )
 
-    timing_constraint = _manifest_timing_constraint(manifest)
-    if not timing_constraint:
-        errors.append("manifest.constraints.timing is required")
-    elif timing_constraint not in project.files:
-        errors.append(f"manifest timing constraint '{timing_constraint}' is missing from project files")
+    declared_ports = declared_module_ports(project.files, manifest_sources)
+    # A candidate testbench is an advisory public-smoke artifact. Its ability
+    # to instantiate the top module is not part of formal HIS/project
+    # consistency and cannot confer semantic pass credit.
+    for constraint_path in _manifest_artifact_paths(manifest, "constraint"):
+        _validate_timing_constraint_ports(
+            project,
+            constraint_path,
+            manifest_top,
+            declared_ports,
+            errors,
+        )
 
     _validate_v12_transitional_fields(system_his, manifest_sources, project, manifest_top, errors)
 
     return L0CheckResult(passed=not errors, errors=errors, warnings=warnings)
+
+
+def _manifest_artifact_paths(
+    manifest: ResolvedProjectManifest,
+    role: str,
+) -> tuple[str, ...]:
+    return manifest.artifact_paths_by_role.get(role, ())
+
+
+def _require_manifest_artifact_role(
+    manifest: ResolvedProjectManifest,
+    *,
+    role: str,
+    expected_path: str,
+    context: str,
+    errors: list[str],
+) -> None:
+    if expected_path not in _manifest_artifact_paths(manifest, role):
+        errors.append(
+            f"{context} '{expected_path}' is not declared with manifest artifact role '{role}'"
+        )
+
+
+def _v12_rtl_check_project(
+    project: GeneratedProject,
+    manifest: ResolvedProjectManifest,
+) -> GeneratedProject:
+    """Give the legacy v1.2 RTL checker a resolver-backed compatibility view."""
+
+    if manifest.is_legacy:
+        return project
+    compatibility_manifest: dict[str, Any] = {
+        "top_module": manifest.top_module,
+        "sources": list(manifest.sources),
+    }
+    constraints = _manifest_artifact_paths(manifest, "constraint")
+    if constraints:
+        compatibility_manifest["constraints"] = {"timing": constraints[0]}
+    files = dict(project.files)
+    files["manifest.json"] = json.dumps(compatibility_manifest) + "\n"
+    return GeneratedProject(project_name=project.project_name, files=files)
 
 
 def _validate_v12_transitional_fields(
@@ -239,11 +371,6 @@ def _read_json_file(project: GeneratedProject, path: str, errors: list[str]) -> 
     return payload
 
 
-def _require_mapping(value: Any, name: str, errors: list[str]) -> None:
-    if not isinstance(value, dict):
-        errors.append(f"{name} must be an object")
-
-
 def _string_list(value: Any, name: str, errors: list[str]) -> list[str]:
     if not isinstance(value, list):
         errors.append(f"{name} must be a list")
@@ -255,20 +382,6 @@ def _string_list(value: Any, name: str, errors: list[str]) -> list[str]:
         else:
             strings.append(item)
     return strings
-
-
-def _manifest_testbench(manifest: dict[str, Any]) -> str:
-    simulation = manifest.get("simulation")
-    if isinstance(simulation, dict):
-        return str(simulation.get("testbench", "")).strip()
-    return ""
-
-
-def _manifest_timing_constraint(manifest: dict[str, Any]) -> str:
-    constraints = manifest.get("constraints")
-    if isinstance(constraints, dict):
-        return str(constraints.get("timing", "")).strip()
-    return ""
 
 
 def _validate_his_modules(

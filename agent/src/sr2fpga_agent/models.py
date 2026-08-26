@@ -49,6 +49,7 @@ class ToolResult:
     stdout: str
     stderr: str
     duration_seconds: float
+    skip_reason: str | None = None
 
 
 @dataclass(frozen=True)

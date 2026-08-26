@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/training-view-eligibility-sidecar/v1",
+  "title": "SR2FPGA training view eligibility sidecar v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "artifact_sha256",
+    "visibility_class",
+    "row_id",
+    "row_sha256",
+    "source_episode_id",
+    "snapshot_id",
+    "treatment",
+    "eligibility_artifact_sha256",
+    "eligibility_evidence_bundle_sha256",
+    "snapshot_envelope_sha256"
+  ],
+  "properties": {
+    "contract_version": {"const": "training-view-eligibility-sidecar-v1"},
+    "artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "visibility_class": {"const": "release_internal"},
+    "row_id": {"$ref": "#/$defs/identifier"},
+    "row_sha256": {"$ref": "#/$defs/sha256"},
+    "source_episode_id": {"$ref": "#/$defs/identifier"},
+    "snapshot_id": {"$ref": "#/$defs/identifier"},
+    "treatment": {"enum": ["M6U", "M6F", "M6T", "M6F_E_TRAJ"]},
+    "eligibility_artifact_sha256": {"$ref": "#/$defs/sha256"},
+    "eligibility_evidence_bundle_sha256": {"$ref": "#/$defs/sha256"},
+    "snapshot_envelope_sha256": {"$ref": "#/$defs/sha256"},
+    "transition_evidence_sha256": {"$ref": "#/$defs/sha256"}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"treatment": {"enum": ["M6T", "M6F_E_TRAJ"]}}
+      },
+      "then": {"required": ["transition_evidence_sha256"]},
+      "else": {"not": {"required": ["transition_evidence_sha256"]}}
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "minLength": 1,
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9._:/-]*$"
+    },
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+  }
+}

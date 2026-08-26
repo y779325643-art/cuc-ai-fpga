@@ -1,6 +1,6 @@
-# Deterministic T0-T4 coverage smoke for the canonical task catalog.
-# This is a local, no-API check that every catalog task can enter the
-# SR2FPGA project-generation and tool-labeling pipeline once.
+# Deterministic 24-sample T0-T4 smoke curriculum.
+# This local, no-API bounded subset checks each configured sample once against
+# canonical family/tier metadata and the project-generation/tool-labeling path.
 dataset_root: artifacts/agent/candidates/sr2fpga_rtl_v1
 export_root: artifacts/agent/candidates/sr2fpga_rtl_v1_exports
 run_root: artifacts/agent/runs

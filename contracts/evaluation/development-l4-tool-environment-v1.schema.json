@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-l4-tool-environment/v1",
+  "title": "SR2FPGA Development L4 Tool Environment v1",
+  "description": "Development-only exact-version snapshot for the tools launched by L4-open and L4-commercial flows. Potential WSL/Nix/Vivado probes require an explicit local authorization switch.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "collection_scope",
+    "collector_id",
+    "probe_authorized",
+    "authority_status",
+    "lanes",
+    "terminal_binding",
+    "pass_credit_authority",
+    "official_authority"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-l4-tool-environment-v1"},
+    "collection_scope": {"const": "development_l4_preflight"},
+    "collector_id": {"const": "sr2fpga-l4-tool-probe-v1"},
+    "probe_authorized": {"type": "boolean"},
+    "authority_status": {"enum": ["complete", "incomplete", "not_run"]},
+    "lanes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["l4_open", "l4_commercial"],
+      "properties": {
+        "l4_open": {"$ref": "#/$defs/lane"},
+        "l4_commercial": {"$ref": "#/$defs/lane"}
+      }
+    },
+    "terminal_binding": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "official_authority": {"const": false}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "lane": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["enabled", "status", "failure_type", "tools"],
+      "properties": {
+        "enabled": {"type": "boolean"},
+        "status": {
+          "enum": ["disabled", "probe_not_authorized", "complete", "incomplete"]
+        },
+        "failure_type": {
+          "enum": [
+            null,
+            "probe_not_authorized",
+            "unsupported_custom_launcher",
+            "missing_executable",
+            "probe_timeout",
+            "probe_os_error",
+            "nonzero_exit",
+            "invalid_probe_output"
+          ]
+        },
+        "tools": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {"$ref": "#/$defs/tool"}
+        }
+      }
+    },
+    "tool": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "resolved_executable_basename",
+        "resolved_executable_sha256",
+        "resolved_executable_size_bytes",
+        "version_line",
+        "version_output_sha256"
+      ],
+      "properties": {
+        "name": {"enum": ["yosys", "nextpnr-xilinx", "python3", "vivado"]},
+        "resolved_executable_basename": {
+          "type": "string",
+          "pattern": "^[^/\\\\]+$",
+          "minLength": 1
+        },
+        "resolved_executable_sha256": {"$ref": "#/$defs/sha256"},
+        "resolved_executable_size_bytes": {"type": "integer", "minimum": 0},
+        "version_line": {"type": "string", "minLength": 1},
+        "version_output_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    }
+  }
+}

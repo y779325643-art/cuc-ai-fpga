@@ -4,21 +4,113 @@ from __future__ import annotations
 
 import difflib
 import json
-from typing import Any
+import re
+from dataclasses import dataclass
+from typing import Any, Literal
 
 from sr2fpga_agent.models import GeneratedProject
 from sr2fpga_agent.path_safety import validate_project_relative_path
-from sr2fpga_agent.system_his_checker import check_project_l0
+from sr2fpga_agent.project_contract import validate_project_package_manifest
+from sr2fpga_agent.rtl_introspect import (
+    declared_module_ports,
+    declared_modules,
+    module_port_body,
+    widths_equivalent,
+)
+from sr2fpga_agent.system_his_checker import L0CheckResult, check_project_l0
 from sr2fpga_agent.system_his_v12_checker import check_system_his_v12
 
-REQUIRED_PROJECT_FILES = {
-    "system_his.json",
-    "manifest.json",
-    "rtl/top.v",
-    "constraints/timing.sdc",
-    "sim/tb_top.v",
-    "reports/predicted_qor.json",
-}
+REQUIRED_PROJECT_FILES = {"manifest.json"}
+PROJECT_PACKAGE_VERSION = "project-package-v1"
+ManifestPolicy = Literal["compatible", "canonical", "legacy"]
+
+
+@dataclass(frozen=True)
+class ResolvedTopPort:
+    """Canonical top-interface port used by common L0."""
+
+    name: str
+    direction: str
+    width: int | str
+
+
+@dataclass(frozen=True)
+class ResolvedProjectManifest:
+    """Method-neutral build intent resolved from canonical or legacy manifests."""
+
+    contract_version: str
+    project_name: str
+    top_module: str
+    top_source: str | None
+    sources: tuple[str, ...]
+    source_languages: dict[str, str]
+    top_ports: tuple[ResolvedTopPort, ...] | None
+    artifact_paths_by_role: dict[str, tuple[str, ...]]
+    is_legacy: bool
+
+
+def resolve_project_manifest(files: dict[str, str]) -> ResolvedProjectManifest:
+    """Resolve and validate canonical project-package-v1 or a legacy manifest."""
+
+    for path in files:
+        validate_project_relative_path(path)
+    try:
+        manifest_content = files["manifest.json"]
+    except KeyError as exc:
+        raise ValueError("project is missing required files: manifest.json") from exc
+    try:
+        manifest = json.loads(manifest_content)
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"manifest.json is not valid JSON: {exc.msg}") from exc
+    if not isinstance(manifest, dict):
+        raise ValueError("manifest.json must contain a JSON object")
+
+    contract_version = manifest.get("contract_version")
+    if contract_version is None:
+        return _resolve_legacy_manifest(manifest, files)
+    if contract_version != PROJECT_PACKAGE_VERSION:
+        raise ValueError(f"unsupported manifest.json contract_version: {contract_version}")
+    return _resolve_project_package_v1(manifest, files)
+
+
+def check_project_package_l0(project: GeneratedProject) -> L0CheckResult:
+    """Validate the method-neutral project package without requiring System-HIS."""
+
+    errors: list[str] = []
+    missing = sorted(REQUIRED_PROJECT_FILES - set(project.files))
+    if missing:
+        errors.append(f"project is missing required files: {', '.join(missing)}")
+    if "manifest.json" not in project.files:
+        return L0CheckResult(passed=False, errors=errors)
+
+    try:
+        manifest = resolve_project_manifest(project.files)
+    except ValueError as exc:
+        errors.append(str(exc))
+        return L0CheckResult(passed=False, errors=errors)
+
+    sources = list(manifest.sources)
+    top_language = (
+        manifest.source_languages.get(manifest.top_source)
+        if manifest.top_source is not None
+        else None
+    )
+    if manifest.is_legacy or top_language in {"verilog", "systemverilog"}:
+        if manifest.top_module not in declared_modules(project.files, sources):
+            errors.append(f"top module '{manifest.top_module}' is not declared in manifest sources")
+        if (
+            manifest.top_source is not None
+            and manifest.top_module not in declared_modules(project.files, [manifest.top_source])
+        ):
+            errors.append(
+                f"top source '{manifest.top_source}' does not declare top module "
+                f"'{manifest.top_module}'"
+            )
+    if not manifest.is_legacy:
+        _validate_canonical_top_interface(project.files, manifest, errors)
+
+    return L0CheckResult(passed=not errors, errors=errors)
+
 
 MULTIMODULE_RTL_EXAMPLES = {
     "uart_tx": ["rtl/top.v", "rtl/baud_tick_gen.v", "rtl/uart_tx_core.v"],
@@ -123,13 +215,18 @@ MULTIMODULE_RTL_EXAMPLES = {
 }
 
 
-def parse_project_files(content: str, expected_task_type: str | None = None) -> dict[str, str]:
-    """Parse DeepSeek JSON output into project files."""
+def parse_project_files(
+    content: str,
+    expected_task_type: str | None = None,
+    *,
+    manifest_policy: ManifestPolicy = "compatible",
+) -> dict[str, str]:
+    """Parse model JSON output into project files."""
     cleaned = _strip_markdown_fence(content)
     try:
         payload = json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"DeepSeek output is not valid JSON: {exc.msg}") from exc
+        raise ValueError(f"Model output is not valid JSON: {exc.msg}") from exc
 
     raw_files = payload.get("files")
     if isinstance(raw_files, dict):
@@ -137,7 +234,7 @@ def parse_project_files(content: str, expected_task_type: str | None = None) -> 
     elif isinstance(raw_files, list):
         files = _files_from_list(raw_files)
     else:
-        raise ValueError("DeepSeek output must contain files as an object or list")
+        raise ValueError("Model output must contain files as an object or list")
 
     files = {
         validate_project_relative_path(path): _ensure_trailing_newline(content)
@@ -145,8 +242,9 @@ def parse_project_files(content: str, expected_task_type: str | None = None) -> 
     }
     missing = sorted(REQUIRED_PROJECT_FILES - set(files))
     if missing:
-        raise ValueError(f"DeepSeek output is missing required files: {', '.join(missing)}")
-    _validate_manifest(files)
+        raise ValueError(f"Model output is missing required files: {', '.join(missing)}")
+    resolved_manifest = resolve_project_manifest(files)
+    _enforce_manifest_policy(resolved_manifest, manifest_policy)
     _validate_expected_rtl_structure(files, expected_task_type)
     return files
 
@@ -158,7 +256,7 @@ def parse_behavior_files(content: str) -> dict[str, str]:
     try:
         payload = json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"DeepSeek HIS2PROJECT behavior output is not valid JSON: {exc.msg}") from exc
+        raise ValueError(f"HIS2PROJECT behavior output is not valid JSON: {exc.msg}") from exc
     if "files" in payload:
         raise ValueError("HIS2PROJECT response must contain behavior_files, not files")
     raw_behavior = payload.get("behavior_files")
@@ -167,23 +265,31 @@ def parse_behavior_files(content: str) -> dict[str, str]:
     return {str(path): str(body) for path, body in raw_behavior.items()}
 
 
-def parse_system_his_v12(content: str) -> dict[str, Any]:
-    """Parse and validate DeepSeek output as System-HIS v1.2 JSON."""
+def parse_system_his_payload(content: str) -> dict[str, Any]:
+    """Parse model output as a System-HIS object without semantic validation."""
+
     cleaned = _strip_markdown_fence(content)
     try:
         payload = json.loads(cleaned)
     except json.JSONDecodeError as exc:
-        raise ValueError(f"DeepSeek System-HIS output is not valid JSON: {exc.msg}") from exc
+        raise ValueError(f"Model System-HIS output is not valid JSON: {exc.msg}") from exc
 
     if not isinstance(payload, dict):
-        raise ValueError("DeepSeek System-HIS output must be a JSON object")
+        raise ValueError("Model System-HIS output must be a JSON object")
     system_his = payload.get("system_his", payload)
     if not isinstance(system_his, dict):
-        raise ValueError("DeepSeek System-HIS output field system_his must be an object")
+        raise ValueError("Model System-HIS output field system_his must be an object")
+    return system_his
+
+
+def parse_system_his_v12(content: str) -> dict[str, Any]:
+    """Parse and validate model output as System-HIS v1.2 JSON."""
+
+    system_his = parse_system_his_payload(content)
 
     result = check_system_his_v12(system_his)
     if not result.passed:
-        raise ValueError("DeepSeek System-HIS v1.2 failed validation: " + "; ".join(result.errors))
+        raise ValueError("Model System-HIS v1.2 failed validation: " + "; ".join(result.errors))
     return system_his
 
 
@@ -191,7 +297,7 @@ def _validate_system_his_contract_unchanged(expected: dict[str, Any], actual: di
     frozen_keys = ("schema_version", "top", "state", "components", "instances", "data_flow", "control_flow", "artifacts")
     for key in frozen_keys:
         if _canonical_json(expected.get(key)) != _canonical_json(actual.get(key)):
-            raise ValueError(f"DeepSeek HIS2PROJECT changed frozen System-HIS contract section '{key}'")
+            raise ValueError(f"HIS2PROJECT changed frozen System-HIS contract section '{key}'")
 
 
 def _canonical_json(value: Any) -> str:
@@ -249,7 +355,7 @@ def _validate_repair_preserves_l0_when_not_repairing_l0(
     l0_result = check_project_l0(repaired_project)
     if l0_result.passed:
         return
-    raise ValueError("DeepSeek repair introduced L0 contract violations: " + "; ".join(l0_result.errors))
+    raise ValueError("Project repair introduced L0 contract violations: " + "; ".join(l0_result.errors))
 
 
 def _diagnosis_mentions_path(diagnosis: dict[str, object], path: str) -> bool:
@@ -263,49 +369,343 @@ def _ensure_trailing_newline(content: str) -> str:
     return content if content.endswith("\n") else content + "\n"
 
 
-def _validate_manifest(files: dict[str, str]) -> None:
+def _manifest_policy_for_project(files: dict[str, str]) -> ManifestPolicy:
+    """Return the manifest generation a repair response must preserve."""
+
     try:
-        manifest = json.loads(files["manifest.json"])
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"manifest.json is not valid JSON: {exc.msg}") from exc
+        manifest = json.loads(files.get("manifest.json", ""))
+    except json.JSONDecodeError:
+        return "compatible"
+    if not isinstance(manifest, dict):
+        return "compatible"
+    return "canonical" if "contract_version" in manifest else "legacy"
 
+
+def _enforce_manifest_policy(
+    manifest: ResolvedProjectManifest,
+    policy: ManifestPolicy,
+) -> None:
+    if policy not in {"compatible", "canonical", "legacy"}:
+        raise ValueError(f"unsupported manifest policy: {policy}")
+    if policy == "canonical" and manifest.is_legacy:
+        raise ValueError(
+            "Model output must use canonical project-package-v1 manifest.json"
+        )
+    if policy == "legacy" and not manifest.is_legacy:
+        raise ValueError("Project repair must preserve the legacy manifest generation")
+
+
+def _validate_canonical_top_interface(
+    files: dict[str, str],
+    manifest: ResolvedProjectManifest,
+    errors: list[str],
+) -> None:
+    if manifest.top_source is None or manifest.top_ports is None:
+        return
+    language = manifest.source_languages.get(manifest.top_source)
+    if language == "vhdl":
+        # The package contract is valid; backend capability routing reports the
+        # unsupported language before tools run rather than mislabeling L0.
+        return
+    if language not in {"verilog", "systemverilog"}:
+        errors.append(
+            f"top interface introspection does not support source language '{language}'"
+        )
+        return
+
+    expected_names = [port.name for port in manifest.top_ports]
+    duplicate_names = sorted(
+        {name for name in expected_names if expected_names.count(name) > 1}
+    )
+    if duplicate_names:
+        errors.append(
+            "manifest.top.interface.ports contains duplicate names: "
+            + ", ".join(duplicate_names)
+        )
+        return
+
+    top_source_content = files.get(manifest.top_source, "")
+    port_body = module_port_body(top_source_content, manifest.top_module)
+    if port_body is not None:
+        port_body_without_comments = re.sub(
+            r"/\*.*?\*/|//[^\n]*",
+            "",
+            port_body,
+            flags=re.DOTALL,
+        ).strip()
+        if port_body_without_comments and re.search(
+            r"\b(?:input|output|inout)\b",
+            port_body_without_comments,
+        ) is None:
+            errors.append(
+                "top interface validation does not support non-ANSI port declarations"
+            )
+            return
+
+    actual_ports = declared_module_ports(files, [manifest.top_source]).get(
+        manifest.top_module,
+        {},
+    )
+    expected_by_name = {port.name: port for port in manifest.top_ports}
+    missing_in_manifest = sorted(set(actual_ports) - set(expected_by_name))
+    missing_in_rtl = sorted(set(expected_by_name) - set(actual_ports))
+    if missing_in_manifest:
+        errors.append(
+            "manifest.top.interface.ports omits RTL ports: "
+            + ", ".join(missing_in_manifest)
+        )
+    if missing_in_rtl:
+        errors.append(
+            "manifest.top.interface.ports references missing RTL ports: "
+            + ", ".join(missing_in_rtl)
+        )
+    for name in sorted(set(expected_by_name) & set(actual_ports)):
+        expected = expected_by_name[name]
+        actual = actual_ports[name]
+        if expected.direction != actual["direction"]:
+            errors.append(
+                f"top port '{name}' direction '{actual['direction']}' does not match "
+                f"manifest direction '{expected.direction}'"
+            )
+        if not widths_equivalent(expected.width, actual["width"]):
+            errors.append(
+                f"top port '{name}' width '{actual['width']}' does not match "
+                f"manifest width '{expected.width}'"
+            )
+
+
+def _validate_manifest(files: dict[str, str]) -> None:
+    resolve_project_manifest(files)
+
+
+def _resolve_project_package_v1(
+    manifest: dict[str, Any],
+    files: dict[str, str],
+) -> ResolvedProjectManifest:
+    contract_errors = validate_project_package_manifest(manifest)
+    if contract_errors:
+        raise ValueError(
+            "manifest.json does not satisfy project-package-v1: "
+            + "; ".join(contract_errors)
+        )
+
+    project_name = manifest["project_name"]
+    top = manifest["top"]
+    top_module = top["module"]
+    top_source_value = top["source"]
+    raw_sources = manifest["sources"]
+    raw_artifacts = manifest["artifacts"]
+
+    sources: list[str] = []
+    source_languages: dict[str, str] = {}
+    for index, record in enumerate(raw_sources):
+        path = _manifest_path(record.get("path"), f"manifest.sources[{index}].path")
+        sources.append(path)
+        source_languages[path] = record["language"]
+    _reject_duplicate_paths(sources, "manifest.sources")
+
+    top_source = _manifest_path(top_source_value, "manifest.top.source")
+    if top_source not in sources:
+        raise ValueError("manifest.top.source must reference a manifest.sources path")
+
+    artifact_paths_by_role: dict[str, list[str]] = {}
+    artifact_paths: list[str] = []
+    for index, record in enumerate(raw_artifacts):
+        path = _manifest_path(record.get("path"), f"manifest.artifacts[{index}].path")
+        role = record["role"]
+        artifact_paths.append(path)
+        artifact_paths_by_role.setdefault(role, []).append(path)
+    _reject_duplicate_paths(artifact_paths, "manifest.artifacts")
+
+    overlap = sorted(set(sources) & set(artifact_paths))
+    if overlap:
+        raise ValueError(
+            "manifest paths cannot be both sources and artifacts: " + ", ".join(overlap)
+        )
+    _require_referenced_files(files, sources, "source")
+    _require_referenced_files(files, artifact_paths, "artifact")
+
+    declared_paths = {"manifest.json", *sources, *artifact_paths}
+    undeclared = sorted(set(files) - declared_paths)
+    if undeclared:
+        raise ValueError(
+            "canonical manifest.json does not declare project files: " + ", ".join(undeclared)
+        )
+    _require_complete_rtl_source_set(files, sources, artifact_paths_by_role)
+
+    return ResolvedProjectManifest(
+        contract_version=PROJECT_PACKAGE_VERSION,
+        project_name=project_name.strip(),
+        top_module=top_module.strip(),
+        top_source=top_source,
+        sources=tuple(sources),
+        source_languages=source_languages,
+        top_ports=tuple(
+            ResolvedTopPort(
+                name=port["name"],
+                direction=port["direction"],
+                width=port["width"],
+            )
+            for port in top["interface"]["ports"]
+        ),
+        artifact_paths_by_role={
+            role: tuple(paths) for role, paths in artifact_paths_by_role.items()
+        },
+        is_legacy=False,
+    )
+
+
+def _resolve_legacy_manifest(
+    manifest: dict[str, Any],
+    files: dict[str, str],
+) -> ResolvedProjectManifest:
     missing_fields: list[str] = []
-    if not isinstance(manifest.get("top_module"), str) or not manifest["top_module"]:
+    top_module = manifest.get("top_module")
+    if not isinstance(top_module, str) or not top_module.strip():
         missing_fields.append("top_module")
-
-    sources = manifest.get("sources")
-    if not isinstance(sources, list) or not all(isinstance(item, str) for item in sources):
+    raw_sources = manifest.get("sources")
+    if (
+        not isinstance(raw_sources, list)
+        or not raw_sources
+        or not all(isinstance(item, str) and item for item in raw_sources)
+    ):
         missing_fields.append("sources")
-
-    simulation = manifest.get("simulation")
-    testbench = simulation.get("testbench") if isinstance(simulation, dict) else None
-    if not isinstance(testbench, str) or not testbench:
-        missing_fields.append("simulation.testbench")
-
+        raw_sources = []
     if missing_fields:
         raise ValueError(f"manifest.json missing required fields: {', '.join(missing_fields)}")
 
-    missing_sources = sorted(path for path in sources if path not in files)
-    if missing_sources:
-        raise ValueError(f"manifest.json references missing source files: {', '.join(missing_sources)}")
-    if testbench not in files:
-        raise ValueError(f"manifest.json references missing testbench file: {testbench}")
+    sources = [_manifest_path(path, "manifest.sources") for path in raw_sources]
+    _reject_duplicate_paths(sources, "manifest.sources")
+    _require_referenced_files(files, sources, "source")
+    artifact_paths_by_role = _legacy_artifact_paths(manifest, files)
+    declared_artifacts = [path for paths in artifact_paths_by_role.values() for path in paths]
+    _require_referenced_files(files, declared_artifacts, "artifact")
+    _require_complete_rtl_source_set(files, sources, artifact_paths_by_role)
+
+    normalized_top = top_module.strip()
+    top_candidates = [
+        source
+        for source in sources
+        if normalized_top in declared_modules(files, [source])
+    ]
+    return ResolvedProjectManifest(
+        contract_version="legacy-unversioned",
+        project_name=str(manifest.get("project_name", "")).strip(),
+        top_module=normalized_top,
+        top_source=top_candidates[0] if len(top_candidates) == 1 else None,
+        sources=tuple(sources),
+        source_languages={},
+        top_ports=None,
+        artifact_paths_by_role={
+            role: tuple(paths) for role, paths in artifact_paths_by_role.items()
+        },
+        is_legacy=True,
+    )
+
+
+def _legacy_artifact_paths(
+    manifest: dict[str, Any],
+    files: dict[str, str],
+) -> dict[str, list[str]]:
+    artifacts: dict[str, list[str]] = {}
+    simulation = manifest.get("simulation")
+    if simulation is not None:
+        if not isinstance(simulation, dict):
+            raise ValueError("manifest.simulation must be an object when present")
+        testbench = simulation.get("testbench")
+        if testbench is not None:
+            artifacts["candidate_testbench"] = [
+                _manifest_path(testbench, "manifest.simulation.testbench")
+            ]
+
+    constraints = _legacy_named_paths(manifest.get("constraints"), "manifest.constraints")
+    if constraints:
+        artifacts["constraint"] = [path for paths in constraints.values() for path in paths]
+    reports = _legacy_named_paths(manifest.get("reports"), "manifest.reports")
+    if reports:
+        for key, paths in reports.items():
+            for path in paths:
+                filename = path.rsplit("/", 1)[-1]
+                role = (
+                    "predicted_qor"
+                    if key == "predicted_qor" or filename == "predicted_qor.json"
+                    else "report"
+                )
+                artifacts.setdefault(role, []).append(path)
+    if "system_his.json" in files:
+        artifacts["system_his"] = ["system_his.json"]
+    return artifacts
+
+
+def _legacy_named_paths(value: Any, field: str) -> dict[str, list[str]]:
+    if value is None:
+        return {}
+    if isinstance(value, list):
+        paths = [_manifest_path(item, field) for item in value]
+        return {"items": paths}
+    if isinstance(value, dict):
+        paths_by_key: dict[str, list[str]] = {}
+        for key, item in value.items():
+            if not isinstance(key, str) or not key:
+                raise ValueError(f"{field} keys must be non-empty strings")
+            paths_by_key[key] = [_manifest_path(item, f"{field}.{key}")]
+        return paths_by_key
+    raise ValueError(f"{field} must be an object or list when present")
+
+
+def _manifest_path(value: Any, field: str) -> str:
+    if not isinstance(value, str) or not value:
+        raise ValueError(f"{field} must be a non-empty string")
+    return validate_project_relative_path(value)
+
+
+def _reject_duplicate_paths(paths: list[str], field: str) -> None:
+    duplicates = sorted({path for path in paths if paths.count(path) > 1})
+    if duplicates:
+        raise ValueError(f"{field} contains duplicate paths: {', '.join(duplicates)}")
+
+
+def _require_referenced_files(
+    files: dict[str, str],
+    paths: list[str],
+    role: str,
+) -> None:
+    missing = sorted(path for path in paths if path not in files)
+    if missing:
+        raise ValueError(
+            f"manifest.json references missing {role} files: {', '.join(missing)}"
+        )
+
+
+def _require_complete_rtl_source_set(
+    files: dict[str, str],
+    sources: list[str],
+    artifact_paths_by_role: dict[str, list[str]],
+) -> None:
+    artifact_rtl_exemptions = {
+        path
+        for role in ("candidate_testbench", "board_wrapper")
+        for path in artifact_paths_by_role.get(role, [])
+    }
+    undeclared_rtl = sorted(
+        path
+        for path in files
+        if path.lower().endswith((".v", ".sv"))
+        and path not in sources
+        and path not in artifact_rtl_exemptions
+    )
+    if undeclared_rtl:
+        raise ValueError(
+            "manifest.sources does not declare all RTL files: " + ", ".join(undeclared_rtl)
+        )
 
 
 def _validate_expected_rtl_structure(files: dict[str, str], expected_task_type: str | None) -> None:
-    if expected_task_type not in MULTIMODULE_RTL_EXAMPLES:
-        return
-
-    manifest = json.loads(files["manifest.json"])
-    sources = manifest["sources"]
-    rtl_sources = [path for path in sources if path.startswith("rtl/") and path.endswith(".v")]
-    if "rtl/top.v" not in rtl_sources:
-        raise ValueError("manifest.json sources must include rtl/top.v for multi-module tasks")
-    if len(rtl_sources) < 3:
-        raise ValueError(
-            "DeepSeek output for multi-module task "
-            f"{expected_task_type} must include rtl/top.v and at least two submodule .v files"
-        )
+    # Family-specific topology is not part of the method-neutral package contract.
+    # Keep the argument for caller compatibility while the checks move to their
+    # method/family-specific validation layer.
+    del files
+    del expected_task_type
 
 
 def _project_task_type(files: dict[str, str]) -> str | None:

@@ -8,7 +8,11 @@ from sr2fpga_agent.project_generator import ProjectGenerator
 from sr2fpga_agent.system_his_v12_checker import check_system_his_v12_against_rtl
 
 
-FIXTURE = Path("docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json")
+FIXTURE = (
+    Path(__file__).parent
+    / "fixtures"
+    / "t4_dual_stream_join.system-his-v1.2.json"
+)
 
 
 class ContractSkeletonTest(unittest.TestCase):

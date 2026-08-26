@@ -5,8 +5,13 @@ from __future__ import annotations
 import json
 import re
 from textwrap import dedent
+from typing import Any
 
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
+from sr2fpga_agent.requirement_envelope import (
+    build_request_requirement_envelope,
+    effective_request_requirement,
+)
 from sr2fpga_agent.task_catalog import task_family_spec_for_family_id
 from sr2fpga_agent.task_families import (
     SUPPORTED_TASK_TYPES,
@@ -60,7 +65,7 @@ from sr2fpga_agent.task_families.protocol import (
     uart_tx_testbench as _uart_tx_testbench,
 )
 from sr2fpga_agent.task_families.rl import (
-    batch_config_bank_rtl as _batch_config_bank_rtl,
+    batch_config_bank_rtl as _batch_config_bank_rtl,  # noqa: F401 - compatibility re-export
     composed_batch_rl_accelerator_shell_rtl_files as _composed_batch_rl_accelerator_shell_rtl_files,
     composed_batch_rl_accelerator_shell_testbench as _composed_batch_rl_accelerator_shell_testbench,
     composed_host_protocol_shell_rtl_files as _composed_host_protocol_shell_rtl_files,
@@ -646,12 +651,17 @@ def _system_his(
     interface = _interface(request, platform)
     architecture = _architecture(request)
     modules = _modules(interface, architecture, rtl_files)
-    description = request.description or _default_description(request)
+    description = effective_request_requirement(request)
+    required_facts = build_request_requirement_envelope(
+        request,
+        platform,
+    ).requirement_trace_template()["required_facts"]
+    acceptance_obligation = required_facts["acceptance_criteria"]["value"]
     predicted_resources = _resource_shape(request)
     top_module = str(architecture["top_module"])
     top_ports = _v12_ports(_top_ports(interface))
     top_parameters = _top_parameters(request)
-    components = _v12_components(modules)
+    components = _v12_components(modules, rtl_files)
     instances = _v12_instances(
         rtl_files,
         components,
@@ -666,8 +676,9 @@ def _system_his(
         clock_name=str(interface["clock"]),
         reset_name=str(interface["reset"]),
     )
+    _resolve_instance_parameter_values(instances, top_parameters, default_width=request.width)
     data_flow = _v12_data_flow(request, top_ports, instances, components)
-    return {
+    payload: dict[str, Any] = {
         "schema_version": "system-his-v1.2",
         "task_type": request.task_type,
         "project_name": request.project_name,
@@ -687,6 +698,7 @@ def _system_his(
         "intent": {
             "user_prompt": description,
             "design_goal": _expected_behavior(request),
+            "declared_task_type": request.task_type,
             "assumptions": ["single synchronous clock", "no vendor-specific IP"],
         },
         "top": {
@@ -701,7 +713,7 @@ def _system_his(
                 }
             ],
             "ports": top_ports,
-            "interfaces": [],
+            "interfaces": _v12_actual_interfaces(request),
         },
         "state": _v12_state(request, top_module, instances),
         "components": components,
@@ -714,6 +726,7 @@ def _system_his(
             "constraints": ["constraints/timing.sdc"],
         },
         "resources": {
+            "target_platform": platform.name,
             "optimization_goal": "area_first",
             "expected": {
                 "lut": predicted_resources["lut"],
@@ -726,6 +739,7 @@ def _system_his(
             "testbench": "sim/tb_top.v",
             "scenarios": _verification_scenarios(request),
             "pass_condition": _test_pass_means(request),
+            "acceptance_obligation": acceptance_obligation,
             "checks": ["l0_contract", "l1_lint", "l2_self_checking_sim", "l3_synthesis"],
             "test_pass_means": _test_pass_means(request),
             "expected_behavior": _test_pass_means(request),
@@ -757,6 +771,29 @@ def _system_his(
             "clock_hz": platform.clock_hz,
         },
     }
+    from sr2fpga_agent.system_his_fidelity import build_deterministic_requirement_trace
+
+    payload["intent"]["requirement_trace"] = build_deterministic_requirement_trace(
+        request,
+        payload,
+        platform,
+    )
+    return payload
+
+
+def _v12_actual_interfaces(request: ProjectRequest) -> list[dict[str, str]]:
+    """Describe protocols implemented by deterministic task generators."""
+
+    protocol_by_task = {
+        "uart_tx": "uart",
+        "uart_rx": "uart",
+        "uart_fifo_loopback": "uart",
+        "spi_master": "spi",
+    }
+    protocol = protocol_by_task.get(request.task_type)
+    if protocol is None:
+        return []
+    return [{"name": f"{protocol}_interface", "protocol": protocol}]
 
 
 def _v12_ports(ports: list[dict[str, object]]) -> list[dict[str, object]]:
@@ -770,7 +807,10 @@ def _v12_ports(ports: list[dict[str, object]]) -> list[dict[str, object]]:
     ]
 
 
-def _v12_components(modules: list[dict[str, object]]) -> list[dict[str, object]]:
+def _v12_components(
+    modules: list[dict[str, object]],
+    rtl_files: dict[str, str],
+) -> list[dict[str, object]]:
     return [
         {
             "name": module["name"],
@@ -782,9 +822,23 @@ def _v12_components(modules: list[dict[str, object]]) -> list[dict[str, object]]
             ],
             "ports": _v12_ports(module["ports"]),
             "intent": module.get("intent") or _module_intent(str(module["name"])),
+            "combinational": not _module_has_edge_triggered_state(
+                rtl_files.get(str(module["source"]), ""),
+                str(module["name"]),
+            ),
         }
         for module in modules
     ]
+
+
+def _module_has_edge_triggered_state(content: str, module_name: str) -> bool:
+    match = re.search(
+        rf"\bmodule\s+{re.escape(module_name)}\b(?P<body>.*?\bendmodule\b)",
+        content,
+        re.DOTALL,
+    )
+    body = match.group("body") if match else content
+    return re.search(r"@\s*\([^)]*\b(?:posedge|negedge)\b", body) is not None
 
 
 def _v12_semantic_kind(module_name: str, role: str) -> str:
@@ -893,6 +947,28 @@ def _v12_component_parameter_values(component: dict[str, object]) -> dict[str, o
     return values
 
 
+def _resolve_instance_parameter_values(
+    instances: list[dict[str, object]],
+    top_parameters: list[dict[str, object]],
+    *,
+    default_width: int,
+) -> None:
+    top_values = {
+        str(parameter.get("name", "")).strip(): parameter.get("value", parameter.get("default"))
+        for parameter in top_parameters
+        if isinstance(parameter, dict)
+    }
+    for instance in instances:
+        values = instance.get("parameter_values")
+        if not isinstance(values, dict):
+            continue
+        for name, value in list(values.items()):
+            if isinstance(value, str) and value in top_values:
+                values[name] = top_values[value]
+            elif value == name and name in {"WIDTH", "DATA_WIDTH"}:
+                values[name] = default_width
+
+
 def _v12_state(
     request: ProjectRequest,
     top_module: str,
@@ -927,7 +1003,17 @@ def _v12_state(
         )
         registers.append({"name": "state_value", "owner": top_module, "width": max(2, request.width)})
     elif request.task_type == "ram_read_write":
-        memories.append({"name": "mem", "owner": top_module, "width": request.width, "depth": 4})
+        memories.append(
+            {
+                "name": "mem",
+                "owner": top_module,
+                "width": request.width,
+                "depth": 4,
+                "read_latency": 1,
+                "read_type": "synchronous",
+                "memory_style": "register",
+            }
+        )
         registers.append({"name": "rdata", "owner": top_module, "width": request.width})
     elif request.task_type == "alu_control_unit":
         flag_owner = next(
@@ -979,8 +1065,8 @@ def _v12_state(
             (str(instance["name"]) for instance in instances if instance.get("component") == "td_input_stage"),
             owner,
         )
-        update_owner = next(
-            (str(instance["name"]) for instance in instances if instance.get("component") == "td_update_core"),
+        output_owner = next(
+            (str(instance["name"]) for instance in instances if instance.get("component") == "stream_stage"),
             owner,
         )
         registers.extend(
@@ -988,8 +1074,8 @@ def _v12_state(
                 {"name": "captured_reward", "owner": input_owner, "width": request.width},
                 {"name": "captured_value", "owner": input_owner, "width": request.width},
                 {"name": "captured_next_value", "owner": input_owner, "width": request.width},
-                {"name": "td_error", "owner": update_owner, "width": request.width},
-                {"name": "updated_value", "owner": update_owner, "width": request.width},
+                {"name": "td_error", "owner": output_owner, "width": request.width},
+                {"name": "updated_value", "owner": output_owner, "width": request.width},
             ]
         )
     elif request.task_type == "composed_policy_value_shell":
@@ -1159,7 +1245,17 @@ def _v12_state(
                 {"name": "irq_state", "owner": sample_owner, "width": 1},
             ]
         )
-        memories.append({"name": "replay_entries", "owner": memory_owner, "width": request.width * 3 + 2, "depth": 4})
+        memories.append(
+            {
+                "name": "replay_entries",
+                "owner": memory_owner,
+                "width": request.width * 3 + 2,
+                "depth": 4,
+                "read_latency": 1,
+                "read_type": "synchronous",
+                "memory_style": "register",
+            }
+        )
     return {
         "registers": registers,
         "counters": counters,

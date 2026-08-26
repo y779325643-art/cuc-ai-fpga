@@ -18,8 +18,9 @@ from sr2fpga_agent.task_families import (
     TASK_FAMILY_IDS,
     family_id_for_task_type,
 )
-from sr2fpga_agent.task_families import basic, datapath, image, protocol, rl, stream
+from sr2fpga_agent.task_families import basic, datapath, protocol, rl, stream
 from sr2fpga_agent.task_catalog import task_family_spec_for_family_id
+from sr2fpga_agent.runner import load_runner_config, planned_samples
 from sr2fpga_agent.system_his_checker import check_project_l0
 from sr2fpga_agent.his_validation import validate_system_his_h_stages
 from sr2fpga_agent.testbench_checker import check_testbench_static_issues
@@ -888,7 +889,7 @@ class ProjectGeneratorTest(unittest.TestCase):
 
         self.assertEqual(architecture["generator"], "component_topology")
         self.assertEqual(architecture["topology_id"], "t7_policy_value_shell")
-        self.assertEqual(architecture["difficulty_tier"], "T4")
+        self.assertEqual(architecture["difficulty_tier"], "T3")
         self.assertEqual(
             [node["component"] for node in architecture["topology"]["nodes"]],
             ["config_reg_bank", "observation_stage", "policy_score_core", "action_select_core", "stream_stage"],
@@ -1247,28 +1248,27 @@ class ProjectGeneratorTest(unittest.TestCase):
                 self.assertEqual(architecture["skeleton_level"], family.skeleton_level)
                 self.assertEqual(architecture["oracle_kind"], list(family.oracle_kind))
 
-    def test_legacy_t0_t4_catalog_still_covers_supported_generator_cases(self) -> None:
-        catalog = json.loads(Path("docs/sr2fpga-t0-t4-task-catalog.json").read_text(encoding="utf-8"))
-        entries = catalog["tasks"]
+    def test_current_smoke_curriculum_matches_bounded_generator_case_set(self) -> None:
+        config_path = (
+            Path(__file__).resolve().parents[1]
+            / "configs"
+            / "current"
+            / "sr2fpga_deterministic_curriculum_smoke.example.yaml"
+        )
+        samples = planned_samples(load_runner_config(config_path))
         supported_cases = _supported_task_cases()
 
-        self.assertEqual(catalog["taxonomy"], "T0-T4")
-        self.assertEqual(len(entries), len(supported_cases))
-        self.assertEqual([entry["task_type"] for entry in entries], [task_type for task_type, _, _ in supported_cases])
-
-        supported_widths = {task_type: width for task_type, width, _ in supported_cases}
-        for entry in entries:
-            task_type = entry["task_type"]
-            self.assertEqual(entry["default_width"], supported_widths[task_type])
-            self.assertIn(entry["tier"], {"T0", "T1", "T2", "T3", "T4"})
-            self.assertTrue(entry["rtl_category"])
-            self.assertTrue(entry["testbench_oracle"])
-
-            if task_type in COMPONENT_TOPOLOGIES:
-                topology = COMPONENT_TOPOLOGIES[task_type]
-                self.assertEqual(entry["topology_id"], topology["topology_id"])
-            else:
-                self.assertIsNone(entry["topology_id"])
+        self.assertEqual(
+            [(sample.task_type, sample.width) for sample in samples],
+            [(task_type, width) for task_type, width, _ in supported_cases],
+        )
+        for sample in samples:
+            expected_topology_id = (
+                COMPONENT_TOPOLOGIES[sample.task_type]["topology_id"]
+                if sample.task_type in COMPONENT_TOPOLOGIES
+                else ""
+            )
+            self.assertEqual(sample.topology_id, expected_topology_id)
 
     def test_all_generated_testbenches_are_black_box_io_oracles_with_timeout(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")

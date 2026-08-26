@@ -12,6 +12,12 @@ from typing import Any
 
 from sr2fpga_agent.models import GeneratedProject, PatchMetadata, PlatformProfile, ToolResult
 from sr2fpga_agent.path_safety import project_file_target, validate_sample_id
+from sr2fpga_agent.system_his_compatibility import load_system_his_compatibility_envelope
+
+
+_TRAINING_VIEW_POLICY_ID = "sr2fpga-paper1-freeze-8.2-positive-views"
+_TRAINING_VIEW_POLICY_VERSION = "2026-08-14"
+_KNOWN_FILE_ORIGINS = frozenset({"deterministic", "model_generated"})
 
 
 @dataclass(frozen=True)
@@ -92,9 +98,27 @@ class DatasetRecorder:
         eval_dir = sample_dir / "eval"
         eval_dir.mkdir(parents=True, exist_ok=True)
         episode = _system_his_episode(sample_id, generated_project, labels, measured_qor, trajectory)
+        eligibility = _training_view_eligibility(
+            sample_id=sample_id,
+            requirement_present=_has_nonempty_text(sample_dir / "requirement.txt"),
+            system_his_present="system_his.json" in generated_project.files,
+            final_file_paths=sorted(generated_project.files),
+            metadata=_read_metadata(sample_dir),
+            episode=episode,
+            labels=labels,
+            decision_phase="write_final",
+        )
+        episode["training_view_eligibility"] = eligibility
+        req2file = episode["derived_training_views"]["req2file"]
+        req2file["available"] = eligibility["views"]["requirement_to_file"]["eligible"]
+        req2file["verified_positive"] = eligibility["views"]["requirement_to_file"]["eligible"]
+        req2file["eligibility_policy_id"] = _TRAINING_VIEW_POLICY_ID
+        req2file["eligibility_policy_version"] = _TRAINING_VIEW_POLICY_VERSION
+        req2file["exclusion_reasons"] = eligibility["views"]["requirement_to_file"]["reasons"]
         _write_json(eval_dir / "labels.json", labels)
         _write_json(eval_dir / "measured_qor.json", measured_qor)
         _write_json(eval_dir / "tool_versions.json", tool_versions)
+        _write_json(eval_dir / "training_view_eligibility.json", eligibility)
         _write_json(eval_dir / "trajectory.json", episode)
         return sample_dir
 
@@ -108,6 +132,7 @@ class DatasetRecorder:
         patch_rows: list[dict[str, Any]] = []
         predicted_qor_rows: list[dict[str, Any]] = []
         measured_qor_rows: list[dict[str, Any]] = []
+        eligibility_rows: list[dict[str, Any]] = []
 
         for sample_dir in sorted(path for path in self.dataset_root.iterdir() if path.is_dir()):
             sample_id = sample_dir.name
@@ -118,47 +143,79 @@ class DatasetRecorder:
             measured_qor_path = sample_dir / "eval" / "measured_qor.json"
             metadata = _read_metadata(sample_dir)
             episode = _read_episode(sample_dir)
+            labels = _read_labels(sample_dir)
             independent_oracle = _is_independent_oracle_episode(episode)
             requirement = requirement_path.read_text(encoding="utf-8").strip() if requirement_path.exists() else ""
             system_his = json.loads(his_path.read_text(encoding="utf-8")) if his_path.exists() else None
-            final_files = _read_project_files(final_project_dir) if final_project_dir.exists() else []
+            final_files = (
+                _read_project_files(final_project_dir, episode=episode)
+                if final_project_dir.exists()
+                else []
+            )
+            eligibility = _training_view_eligibility(
+                sample_id=sample_id,
+                requirement_present=bool(requirement),
+                system_his_present=system_his is not None,
+                final_file_paths=[item["path"] for item in final_files],
+                metadata=metadata,
+                episode=episode,
+                labels=labels,
+                decision_phase="export",
+            )
+            episode = dict(episode)
+            episode["training_view_eligibility"] = eligibility
+            eligibility_rows.append(eligibility)
+            _write_json(sample_dir / "eval" / "training_view_eligibility.json", eligibility)
 
-            if requirement_path.exists() and his_path.exists():
+            if eligibility["views"]["requirement_to_his"]["eligible"]:
                 requirement_rows.append(
                     {
                         "sample_id": sample_id,
+                        "verified_positive": True,
+                        "training_view_eligibility": eligibility["views"]["requirement_to_his"],
                         "metadata": metadata,
                         "episode": episode,
                         "requirement": requirement,
                         "system_his": system_his,
+                        "system_his_origin": _file_origin_from_episode(episode, "system_his.json"),
                     }
                 )
 
-            if system_his is not None and final_files:
+            if eligibility["views"]["his_to_project"]["eligible"]:
                 his_project_rows.append(
                     {
                         "sample_id": sample_id,
+                        "verified_positive": True,
+                        "training_view_eligibility": eligibility["views"]["his_to_project"],
                         "metadata": metadata,
                         "episode": episode,
                         "system_his": system_his,
                         "files": final_files,
                     }
                 )
+
+            if eligibility["views"]["requirement_to_project"]["eligible"]:
                 requirement_project_rows.append(
                     {
                         "sample_id": sample_id,
+                        "verified_positive": True,
+                        "training_view_eligibility": eligibility["views"]["requirement_to_project"],
                         "metadata": metadata,
                         "episode": episode,
                         "requirement": requirement,
                         "files": final_files,
                     }
                 )
+
+            if eligibility["views"]["requirement_to_file"]["eligible"]:
                 for file_item in final_files:
                     requirement_file_rows.append(
                         {
                             "sample_id": sample_id,
                             "source_episode_id": _source_episode_id(sample_id, episode),
                             "view": "req2file",
+                            "verified_positive": True,
+                            "training_view_eligibility": eligibility["views"]["requirement_to_file"],
                             "official_eval_unit": False,
                             "standalone_pass_credit": False,
                             "metadata": metadata,
@@ -166,6 +223,7 @@ class DatasetRecorder:
                             "requirement": requirement,
                             "file_path": file_item["path"],
                             "file_content": file_item["content"],
+                            "file_origin": file_item["origin"],
                         }
                     )
 
@@ -205,6 +263,8 @@ class DatasetRecorder:
                         diagnosis_rows.append(
                             {
                                 "sample_id": sample_id,
+                                "verified_positive": False,
+                                "training_target_class": "diagnostic",
                                 "metadata": metadata,
                                 "episode": episode,
                                 "attempt_id": attempt_dir.name,
@@ -215,6 +275,8 @@ class DatasetRecorder:
                         patch_rows.append(
                             {
                                 "sample_id": sample_id,
+                                "verified_positive": False,
+                                "training_target_class": "diagnostic_unverified",
                                 "metadata": metadata,
                                 "episode": episode,
                                 "attempt_id": attempt_dir.name,
@@ -242,6 +304,7 @@ class DatasetRecorder:
         _write_jsonl(output_dir / "failure_to_patch.jsonl", patch_rows)
         _write_jsonl(output_dir / "project_to_predicted_qor.jsonl", predicted_qor_rows)
         _write_jsonl(output_dir / "project_to_measured_qor.jsonl", measured_qor_rows)
+        _write_jsonl(output_dir / "training_view_eligibility.jsonl", eligibility_rows)
 
 
 def _write_project(project_dir: Path, project: GeneratedProject, *, replace_existing: bool = True) -> None:
@@ -268,6 +331,10 @@ def _write_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
     finally:
         if temp_path.exists():
             temp_path.unlink()
+
+
+def _has_nonempty_text(path: Path) -> bool:
+    return path.is_file() and bool(path.read_text(encoding="utf-8").strip())
 
 
 def _episode_without_verification(episode: dict[str, Any]) -> dict[str, Any]:
@@ -310,6 +377,331 @@ def _system_his_episode(
 def _source_episode_id(sample_id: str, episode: dict[str, Any]) -> str:
     episode_id = str(episode.get("sample_id", "")).strip()
     return episode_id or sample_id
+
+
+def _training_view_eligibility(
+    *,
+    sample_id: str,
+    requirement_present: bool,
+    system_his_present: bool,
+    final_file_paths: list[str],
+    metadata: dict[str, Any],
+    episode: dict[str, Any],
+    labels: dict[str, Any],
+    decision_phase: str,
+) -> dict[str, Any]:
+    terminal_candidate = bool(final_file_paths)
+    automatic_pass_credit = _automatic_pass_credit(labels, episode)
+    provenance_compliant = _explicit_compliance(labels, episode, "provenance")
+    budget_compliant = _budget_compliance(labels, episode, metadata)
+    vpp_l3 = _explicit_vpp_l3(labels, episode)
+    h_stages_applicable = _training_h_stage_applicability(
+        metadata, episode, system_his_present
+    )
+    file_origins = {
+        path: _file_origin_from_episode(episode, path)
+        for path in final_file_paths
+    }
+
+    common_reasons: list[str] = []
+    if not terminal_candidate:
+        common_reasons.append("terminal_candidate_missing")
+    if automatic_pass_credit is not True:
+        common_reasons.append("automatic_pass_credit_not_explicit_true")
+    if provenance_compliant is not True:
+        common_reasons.append("provenance_compliance_not_explicit_true")
+    if budget_compliant is not True:
+        common_reasons.append("budget_compliance_not_explicit_true")
+    source = str(metadata.get("source", "")).strip()
+    generator_provider = str(metadata.get("generator_provider", "")).strip()
+    if not source or not generator_provider:
+        common_reasons.append("generation_source_provenance_missing")
+    if metadata.get("failure_origin") == "deterministic_template":
+        common_reasons.append("deterministic_reference_not_training_source")
+    boundary = metadata.get("requirement_boundary")
+    boundary_disposition = boundary.get("disposition") if isinstance(boundary, dict) else None
+    if boundary_disposition != "ready":
+        if isinstance(boundary_disposition, str) and boundary_disposition:
+            common_reasons.append(f"requirement_boundary_{boundary_disposition}")
+        else:
+            common_reasons.append("requirement_boundary_not_explicit_ready")
+    if any(origin == "unknown" for origin in file_origins.values()):
+        common_reasons.append("file_provenance_incomplete")
+    if _patch_credit_is_incomplete(episode):
+        common_reasons.append("patch_credit_not_explicit_true")
+    official_hidden_count = metadata.get("official_hidden_outcome_reference_count")
+    if official_hidden_count != 0:
+        common_reasons.append("official_hidden_outcome_reference_count_not_zero")
+    if _contains_contract_version(episode, "official-hidden-outcome-v1"):
+        common_reasons.append("official_hidden_outcome_reference_forbidden")
+
+    requirement_reasons = [] if requirement_present else ["requirement_missing"]
+    if not system_his_present:
+        his_reasons = ["system_his_missing"]
+    elif h_stages_applicable is True:
+        his_reasons = _his_positive_reasons(episode)
+    else:
+        his_reasons = ["h_stages_not_applicable_for_his_view"]
+    if h_stages_applicable is True:
+        project_h_reasons = _his_positive_reasons(episode)
+    elif h_stages_applicable is False:
+        project_h_reasons = []
+    else:
+        project_h_reasons = ["h_stage_applicability_unknown"]
+    project_reasons = _verified_project_reasons(episode, vpp_l3)
+
+    views = {
+        "requirement_to_his": _view_eligibility(
+            [
+                *common_reasons,
+                *requirement_reasons,
+                *his_reasons,
+                *(
+                    []
+                    if labels.get("generated_his_pass_credit") is True
+                    else ["generated_his_pass_credit_not_explicit_true"]
+                ),
+            ]
+        ),
+        "his_to_project": _view_eligibility(
+            [*common_reasons, *his_reasons, *project_reasons]
+        ),
+        "requirement_to_project": _view_eligibility(
+            [
+                *common_reasons,
+                *requirement_reasons,
+                *project_h_reasons,
+                *project_reasons,
+            ]
+        ),
+        "requirement_to_file": _view_eligibility(
+            [
+                *common_reasons,
+                *requirement_reasons,
+                *project_h_reasons,
+                *project_reasons,
+            ]
+        ),
+    }
+    return {
+        "sample_id": sample_id,
+        "source_episode_id": _source_episode_id(sample_id, episode),
+        "policy_id": _TRAINING_VIEW_POLICY_ID,
+        "policy_version": _TRAINING_VIEW_POLICY_VERSION,
+        "decision_phase": decision_phase,
+        "source": source or None,
+        "generator_provider": generator_provider or None,
+        "terminal_candidate": terminal_candidate,
+        "automatic_pass_credit": automatic_pass_credit,
+        "provenance_compliant": provenance_compliant,
+        "budget_compliant": budget_compliant,
+        "vpp_l3": vpp_l3,
+        "h_stages_applicable": h_stages_applicable,
+        "requirement_disposition": boundary_disposition,
+        "file_provenance": file_origins,
+        "views": views,
+    }
+
+
+def _view_eligibility(reasons: list[str]) -> dict[str, Any]:
+    unique_reasons = list(dict.fromkeys(reasons))
+    return {
+        "eligible": not unique_reasons,
+        "reasons": unique_reasons,
+        "policy_id": _TRAINING_VIEW_POLICY_ID,
+        "policy_version": _TRAINING_VIEW_POLICY_VERSION,
+    }
+
+
+def _contains_contract_version(value: Any, contract_version: str) -> bool:
+    if isinstance(value, dict):
+        if value.get("contract_version") == contract_version:
+            return True
+        return any(
+            _contains_contract_version(item, contract_version) for item in value.values()
+        )
+    if isinstance(value, list):
+        return any(_contains_contract_version(item, contract_version) for item in value)
+    return False
+
+
+def _automatic_pass_credit(labels: dict[str, Any], episode: dict[str, Any]) -> bool | None:
+    value = labels.get("automatic_pass_credit")
+    measurement = episode.get("measurement")
+    if isinstance(measurement, dict):
+        final = measurement.get("final")
+        if isinstance(final, dict) and final.get("automatic_pass_credit") is False:
+            return False
+    return value if isinstance(value, bool) else None
+
+
+def _explicit_compliance(
+    labels: dict[str, Any], episode: dict[str, Any], name: str
+) -> bool | None:
+    values: list[bool] = []
+    label_value = labels.get(f"{name}_compliant")
+    if isinstance(label_value, bool):
+        values.append(label_value)
+    section = episode.get(name)
+    if isinstance(section, dict):
+        compliant = section.get("compliant")
+        if isinstance(compliant, bool):
+            values.append(compliant)
+        status = section.get("status")
+        if status == "compliant":
+            values.append(True)
+        elif status in {"violation", "noncompliant"}:
+            values.append(False)
+    if False in values:
+        return False
+    return True if True in values else None
+
+
+def _explicit_vpp_l3(labels: dict[str, Any], episode: dict[str, Any]) -> bool | None:
+    values: list[bool] = []
+    value = labels.get("vpp_l3")
+    if isinstance(value, bool):
+        values.append(value)
+    verification = episode.get("verification")
+    if isinstance(verification, dict):
+        vpp = verification.get("vpp_l3")
+        if isinstance(vpp, dict):
+            status = vpp.get("status")
+            if status == "pass":
+                values.append(True)
+            elif status == "fail":
+                values.append(False)
+    if False in values:
+        return False
+    return True if True in values else None
+
+
+def _budget_compliance(
+    labels: dict[str, Any], episode: dict[str, Any], metadata: dict[str, Any]
+) -> bool | None:
+    explicit = _explicit_compliance(labels, episode, "budget")
+    if explicit is not True:
+        return explicit
+    summary = metadata.get("model_call_budget")
+    if not isinstance(summary, dict):
+        return False
+    maximum = summary.get("max_model_calls")
+    used = summary.get("model_calls_used")
+    failed = summary.get("model_calls_failed")
+    remaining = summary.get("remaining_model_calls")
+    if not all(
+        isinstance(value, int) and not isinstance(value, bool) and value >= 0
+        for value in (maximum, used, failed, remaining)
+    ):
+        return False
+    if used > maximum or failed > used or remaining != maximum - used:
+        return False
+    calls = summary.get("calls")
+    if not isinstance(calls, list) or len(calls) != used:
+        return False
+    for call_id, call in enumerate(calls):
+        if not isinstance(call, dict) or call.get("call_id") != call_id:
+            return False
+        if call.get("status") not in {"completed", "failed"}:
+            return False
+    if sum(call["status"] == "failed" for call in calls) != failed:
+        return False
+    # A consistent call ledger is necessary evidence, but it cannot attest the
+    # independently frozen token, retry, repair, tool, wall-time, and EDA
+    # ceilings.  Only an evaluator-produced all-axis compliance result may make
+    # a positive training target eligible.
+    return True
+
+
+def _patch_credit_is_incomplete(episode: dict[str, Any]) -> bool:
+    patches = episode.get("patches")
+    if not isinstance(patches, list):
+        return False
+    return any(
+        not isinstance(patch, dict) or patch.get("automatic_pass_credit") is not True
+        for patch in patches
+    )
+
+
+def _training_h_stage_applicability(
+    metadata: dict[str, Any], episode: dict[str, Any], system_his_present: bool
+) -> bool | None:
+    method_condition = str(metadata.get("method_condition", "")).strip().upper()
+    if method_condition:
+        method_token = method_condition.replace("_", " ").replace("-", " ").split()[0]
+        method_match = re.fullmatch(r"M([0-6])[A-Z]*", method_token)
+        if method_match is not None:
+            return int(method_match.group(1)) >= 3
+    if str(metadata.get("contract_skeleton_mode", "")).strip() == "legacy_full_project":
+        return False
+    validation = episode.get("his_validation")
+    if isinstance(validation, dict):
+        if validation.get("not_applicable_reason") == "method_does_not_emit_system_his":
+            return False
+        h0 = validation.get("h0")
+        h0_status = h0.get("status") if isinstance(h0, dict) else None
+        if h0_status in {"pass", "fail", "not_run"}:
+            return True
+        if h0_status == "not_applicable":
+            return False
+    return False if not system_his_present else None
+
+
+def _his_positive_reasons(episode: dict[str, Any]) -> list[str]:
+    validation = episode.get("his_validation")
+    if not isinstance(validation, dict):
+        return ["his_validation_missing"]
+    reasons: list[str] = []
+    for stage in ("h0", "h1", "h2"):
+        record = validation.get(stage)
+        status = record.get("status") if isinstance(record, dict) else None
+        if status != "pass":
+            reasons.append(f"{stage}_not_pass")
+    h3 = validation.get("h3")
+    h3_status = h3.get("status") if isinstance(h3, dict) else None
+    if h3_status not in {"pass", "not_applicable"}:
+        reasons.append("h3_not_pass_or_not_applicable")
+    return reasons
+
+
+def _verified_project_reasons(
+    episode: dict[str, Any], vpp_l3: bool | None
+) -> list[str]:
+    reasons: list[str] = []
+    if vpp_l3 is not True:
+        reasons.append("vpp_l3_not_explicit_true")
+    verification = episode.get("verification")
+    if not isinstance(verification, dict):
+        return [*reasons, "verification_missing"]
+    for stage in ("l0", "l1", "l3"):
+        record = verification.get(stage)
+        status = record.get("status") if isinstance(record, dict) else None
+        if status != "pass":
+            reasons.append(f"{stage}_not_pass")
+    l2 = verification.get("l2_core")
+    if not isinstance(l2, dict):
+        l2 = verification.get("l2")
+    if not isinstance(l2, dict):
+        reasons.extend(["public_l2_not_pass", "hidden_l2_not_pass"])
+    else:
+        public = l2.get("public")
+        public_status = public.get("status") if isinstance(public, dict) else l2.get("status")
+        hidden = l2.get("hidden")
+        hidden_status = hidden.get("status") if isinstance(hidden, dict) else None
+        if public_status != "pass":
+            reasons.append("public_l2_not_pass")
+        if hidden_status != "pass":
+            reasons.append("hidden_l2_not_pass")
+    return reasons
+
+
+def _file_origin_from_episode(episode: dict[str, Any], path: str) -> str:
+    project = episode.get("project")
+    files = project.get("files") if isinstance(project, dict) else None
+    metadata = files.get(path) if isinstance(files, dict) else None
+    origin = metadata.get("origin") if isinstance(metadata, dict) else None
+    origin_source = metadata.get("origin_source") if isinstance(metadata, dict) else None
+    return origin if origin_source == "explicit" and origin in _KNOWN_FILE_ORIGINS else "unknown"
 
 
 _ORACLE_KINDS = frozenset({"python_reference"})
@@ -656,10 +1048,22 @@ def _merge_project_episode_metadata(existing: Any, defaults: dict[str, Any]) -> 
         return defaults
     merged = dict(defaults)
     merged.update(existing)
-    if isinstance(existing.get("files"), dict):
-        files = dict(defaults["files"])
-        files.update(existing["files"])
-        merged["files"] = files
+    explicit_files = existing.get("files")
+    explicit_files = explicit_files if isinstance(explicit_files, dict) else {}
+    files: dict[str, dict[str, Any]] = {}
+    for path, default_metadata in defaults["files"].items():
+        metadata = dict(default_metadata)
+        explicit_metadata = explicit_files.get(path)
+        if isinstance(explicit_metadata, dict):
+            origin = explicit_metadata.get("origin")
+            metadata = {**explicit_metadata, **metadata}
+            metadata["origin"] = origin if origin in _KNOWN_FILE_ORIGINS else "unknown"
+            metadata["origin_source"] = (
+                "explicit" if origin in _KNOWN_FILE_ORIGINS else "invalid"
+            )
+        files[path] = metadata
+    merged["files"] = files
+    merged.update(_project_provenance_summary(files))
     return merged
 
 
@@ -668,45 +1072,56 @@ def _project_episode_metadata(project: GeneratedProject) -> dict[str, Any]:
         path: _project_file_metadata(path, content)
         for path, content in sorted(project.files.items())
     }
-    model_bytes = sum(item["bytes"] for item in files.values() if item["origin"] == "model_generated")
-    total_bytes = sum(item["bytes"] for item in files.values())
     return {
         "files": files,
-        "deterministic_artifacts": [
-            path
-            for path, item in files.items()
-            if item["origin"] == "deterministic"
-        ],
-        "model_generated_artifacts": [
-            path
-            for path, item in files.items()
-            if item["origin"] == "model_generated"
-        ],
-        "model_token_fraction": round(model_bytes / total_bytes, 6) if total_bytes else None,
         "behavior_hole_count": sum(item["behavior_holes"] for item in files.values()),
+        **_project_provenance_summary(files),
     }
 
 
 def _project_file_metadata(path: str, content: str) -> dict[str, Any]:
     return {
         "origin": _project_file_origin(path),
+        "origin_source": "missing",
         "bytes": len(content.encode("utf-8")),
         "behavior_holes": _behavior_hole_count(content),
     }
 
 
 def _project_file_origin(path: str) -> str:
-    if path == "system_his.json" or path == "manifest.json":
-        return "deterministic"
-    if path.startswith("constraints/"):
-        return "deterministic"
-    if path.startswith("rtl/") or path.startswith("sim/"):
-        return "model_generated"
-    if path == "reports/predicted_qor.json":
-        return "model_generated"
-    if path.startswith("reports/"):
-        return "deterministic"
+    del path
     return "unknown"
+
+
+def _project_provenance_summary(files: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    deterministic_artifacts = [
+        path for path, item in files.items() if item.get("origin") == "deterministic"
+    ]
+    model_generated_artifacts = [
+        path for path, item in files.items() if item.get("origin") == "model_generated"
+    ]
+    unknown_artifacts = [
+        path for path, item in files.items() if item.get("origin") not in _KNOWN_FILE_ORIGINS
+    ]
+    total_bytes = sum(
+        item.get("bytes", 0) for item in files.values() if isinstance(item.get("bytes"), int)
+    )
+    model_bytes = sum(
+        item.get("bytes", 0)
+        for item in files.values()
+        if item.get("origin") == "model_generated" and isinstance(item.get("bytes"), int)
+    )
+    return {
+        "deterministic_artifacts": deterministic_artifacts,
+        "model_generated_artifacts": model_generated_artifacts,
+        "unknown_provenance_artifacts": unknown_artifacts,
+        "provenance_complete": not unknown_artifacts,
+        "model_token_fraction": (
+            round(model_bytes / total_bytes, 6)
+            if total_bytes and not unknown_artifacts
+            else None
+        ),
+    }
 
 
 def _behavior_hole_count(content: str) -> int:
@@ -726,19 +1141,7 @@ def _verification_episode_metadata(labels: dict[str, Any], measured_qor: dict[st
             "warnings": _dict_list(labels.get("l1_warnings")),
             "errors": [],
         },
-        "l2_core": {
-            "status": _check_status(checks.get("l2_sim_pass")),
-            "public": {
-                "status": _check_status(checks.get("l2_sim_pass")),
-                "mismatch_detail": _dict_list(labels.get("l2_mismatch_detail")),
-            },
-            "hidden": {"status": _check_status(checks.get("l2_hidden_pass"))},
-            "stress": {"status": _check_status(checks.get("l2_stress_pass"))},
-            "coverage": {
-                "scenario_profile": checks.get("l2_coverage_profile"),
-                "seeds": _int_list(checks.get("l2_coverage_seeds")),
-            },
-        },
+        "l2_core": _l2_core_verification_metadata(labels, checks),
         "l2s": {
             "status": _check_status(checks.get("l2s_pass")),
             "divergences": _string_list(checks.get("l2s_divergences")),
@@ -758,6 +1161,35 @@ def _verification_episode_metadata(labels: dict[str, Any], measured_qor: dict[st
         "l4_agreement": {"class": str(checks.get("l4_agreement_class", "not_applicable"))},
         "l5": {"status": "not_run", "log_path": None},
     }
+
+
+def _l2_core_verification_metadata(
+    labels: dict[str, Any], checks: dict[str, Any]
+) -> dict[str, Any]:
+    status = labels.get("l2_sim_status", checks.get("l2_sim_status"))
+    if status not in {"pass", "fail", "not_run"}:
+        status = _check_status(checks.get("l2_sim_pass"))
+    skip_reason = labels.get("l2_sim_skip_reason", checks.get("l2_sim_skip_reason"))
+    if status == "not_run" and not isinstance(skip_reason, str):
+        skip_reason = "not_reached"
+    public = {
+        "status": status,
+        "mismatch_detail": _dict_list(labels.get("l2_mismatch_detail")),
+    }
+    result = {
+        "status": status,
+        "public": public,
+        "hidden": {"status": _check_status(checks.get("l2_hidden_pass"))},
+        "stress": {"status": _check_status(checks.get("l2_stress_pass"))},
+        "coverage": {
+            "scenario_profile": checks.get("l2_coverage_profile"),
+            "seeds": _int_list(checks.get("l2_coverage_seeds")),
+        },
+    }
+    if status == "not_run":
+        result["skip_reason"] = skip_reason
+        public["skip_reason"] = skip_reason
+    return result
 
 
 def _l4_open_verification_metadata(
@@ -795,6 +1227,11 @@ def _l4_open_verification_metadata(
         "runtime_sec": qor.get("runtime_sec"),
         "report_paths": _string_list(qor.get("report_paths")),
         "failure_family": labels.get("l4_failure_family", qor.get("failure_family")),
+        "provenance": (
+            dict(qor["provenance"])
+            if isinstance(qor.get("provenance"), dict)
+            else {}
+        ),
     }
 
 
@@ -826,6 +1263,11 @@ def _l4_commercial_verification_metadata(
         "methodology_warnings": _string_list(qor.get("methodology_warnings")),
         "runtime_sec": qor.get("runtime_sec"),
         "report_paths": _string_list(qor.get("report_paths")),
+        "provenance": (
+            dict(qor["provenance"])
+            if isinstance(qor.get("provenance"), dict)
+            else {}
+        ),
     }
 
 
@@ -885,8 +1327,20 @@ def _read_metadata(sample_dir: Path) -> dict[str, Any]:
     metadata = json.loads(path.read_text(encoding="utf-8"))
     if "training_split" not in metadata:
         schema_version = str(metadata.get("system_his_schema_version", "legacy"))
-        metadata["training_split"] = "clean" if schema_version == "system-his-v1.2" else "quarantine"
+        metadata["training_split"] = (
+            load_system_his_compatibility_envelope()
+            .classify(schema_version)
+            .training_partition
+        )
     return metadata
+
+
+def _read_labels(sample_dir: Path) -> dict[str, Any]:
+    path = sample_dir / "eval" / "labels.json"
+    if not path.exists():
+        return {}
+    labels = json.loads(path.read_text(encoding="utf-8"))
+    return labels if isinstance(labels, dict) else {}
 
 
 def _read_episode(sample_dir: Path) -> dict[str, Any]:
@@ -904,7 +1358,9 @@ def _read_episode(sample_dir: Path) -> dict[str, Any]:
     return result
 
 
-def _read_project_files(project_dir: Path) -> list[dict[str, str]]:
+def _read_project_files(
+    project_dir: Path, *, episode: dict[str, Any]
+) -> list[dict[str, str]]:
     files: list[dict[str, str]] = []
     for path in sorted(item for item in project_dir.rglob("*") if item.is_file()):
         relative_path = path.relative_to(project_dir)
@@ -914,6 +1370,7 @@ def _read_project_files(project_dir: Path) -> list[dict[str, str]]:
             {
                 "path": relative_path.as_posix(),
                 "content": path.read_text(encoding="utf-8"),
+                "origin": _file_origin_from_episode(episode, relative_path.as_posix()),
             }
         )
     return files

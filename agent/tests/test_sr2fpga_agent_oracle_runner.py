@@ -10,6 +10,7 @@ from sr2fpga_agent.oracle_runner import (
     write_oracle_run_evidence,
 )
 from sr2fpga_agent.oracles import OracleField, OracleScenarioSpec, write_oracle_bundle
+from sr2fpga_agent.oracles.types import OracleRunEvidence, OracleScenarioResult
 
 
 SCENARIO_CLASSES = (
@@ -368,10 +369,48 @@ def test_write_oracle_run_evidence_uses_stable_json(tmp_path):
     write_oracle_run_evidence(target, evidence)
 
     payload = json.loads(target.read_text(encoding="utf-8"))
+    assert payload["contract_version"] == "development-oracle-run-evidence-v1"
+    assert payload["evaluation_scope"] == "development_independent_oracle"
     assert payload["family_id"] == "fir_filter"
     assert payload["bundle_sha256"] == bundle.bundle_sha256
     assert payload["status"] == "passed"
+    assert payload["pass_credit_authority"] is False
+    assert payload["official_outcome"] is False
     assert len(payload["scenario_results"]) == 4
+
+
+def test_write_oracle_run_evidence_validates_before_creating_target(tmp_path):
+    bundle = _bundle(tmp_path)
+    evidence, _ = run_oracle_scenarios(FakeCommandRunner(), tmp_path, bundle)
+    payload = evidence.to_dict()
+    payload["official_outcome"] = True
+
+    class InvalidEvidence:
+        def to_dict(self):
+            return payload
+
+    target = tmp_path / "uncreated" / "oracle_run.json"
+    with pytest.raises(ValueError, match="registered contract"):
+        write_oracle_run_evidence(target, InvalidEvidence())
+
+    assert not target.parent.exists()
+
+
+def test_write_oracle_run_evidence_rejects_non_json_number_before_write(tmp_path):
+    bundle = _bundle(tmp_path)
+    evidence, _ = run_oracle_scenarios(FakeCommandRunner(), tmp_path, bundle)
+    payload = evidence.to_dict()
+    payload["scenario_results"][0]["duration_seconds"] = float("nan")
+
+    class NonJsonEvidence:
+        def to_dict(self):
+            return payload
+
+    target = tmp_path / "uncreated" / "oracle_run.json"
+    with pytest.raises(ValueError, match="Out of range float"):
+        write_oracle_run_evidence(target, NonJsonEvidence())
+
+    assert not target.parent.exists()
 
 
 def test_write_oracle_run_evidence_is_byte_stable_across_rewrites(tmp_path):
@@ -403,3 +442,60 @@ def test_atomic_evidence_replace_failure_preserves_previous_file(tmp_path, monke
 
     assert target.read_bytes() == b"previous evidence\n"
     assert list(target.parent.glob(f".{target.name}.*.tmp")) == []
+
+
+@pytest.mark.parametrize(
+    ("status", "failure_origin", "failure_type"),
+    (
+        ("not_run", None, None),
+        ("failed", None, "functional_mismatch"),
+        ("failed", "provider_specific_free_text", "functional_mismatch"),
+        ("failed", "natural_model_failure", None),
+        ("failed", "natural_model_failure", ""),
+        ("passed", "natural_model_failure", "functional_mismatch"),
+        ("passed", None, "functional_mismatch"),
+    ),
+)
+def test_scenario_result_rejects_invalid_execution_failure_metadata(
+    status,
+    failure_origin,
+    failure_type,
+):
+    with pytest.raises(ValueError):
+        OracleScenarioResult(
+            scenario_id="public_smoke_001",
+            scenario_class="public_smoke",
+            status=status,
+            failure_origin=failure_origin,
+            failure_type=failure_type,
+            command=("vvp", "sim.out"),
+            exit_code=1,
+            stdout="",
+            stderr="",
+            duration_seconds=0.01,
+        )
+
+
+@pytest.mark.parametrize(
+    ("status", "failure_origin", "failure_type"),
+    (
+        ("not_run", None, None),
+        ("failed", "synthetic_injected", "functional_mismatch"),
+        ("failed", "oracle_environment_failure", None),
+        ("passed", "oracle_environment_failure", "oracle_hash_mismatch"),
+    ),
+)
+def test_run_evidence_rejects_invalid_execution_failure_metadata(
+    status,
+    failure_origin,
+    failure_type,
+):
+    with pytest.raises(ValueError):
+        OracleRunEvidence(
+            family_id="fir_filter",
+            bundle_sha256="a" * 64,
+            status=status,
+            failure_origin=failure_origin,
+            failure_type=failure_type,
+            scenario_results=(),
+        )

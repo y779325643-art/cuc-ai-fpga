@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from pathlib import Path, PurePosixPath
 import re
 
@@ -26,6 +27,10 @@ _TRUSTED_VERIFICATION_ROOTS = (
     "verification/scoreboards",
     "verification/uvm",
 )
+
+
+class UnsupportedSynthesisLanguageError(ValueError):
+    """A valid project language is unsupported by the selected synth backend."""
 
 
 def validate_sample_id(sample_id: str) -> str:
@@ -63,18 +68,70 @@ def project_file_target(project_dir: Path, relative_path: str) -> Path:
     return target
 
 
-def build_yosys_script(sources: list[str], top_module: str) -> str:
+def build_yosys_script(
+    sources: list[str],
+    top_module: str,
+    source_languages: Mapping[str, str] | None = None,
+) -> str:
     """Build a Yosys command script from validated manifest fields."""
 
     safe_sources = [validate_project_relative_path(source) for source in sources]
     if not safe_sources:
         raise ValueError("unsafe Yosys manifest: no Verilog sources")
-    for source in safe_sources:
-        if not source.endswith(".v"):
-            raise ValueError(f"unsafe Yosys manifest source: {source}")
     if not _SAFE_VERILOG_IDENTIFIER.fullmatch(top_module):
         raise ValueError(f"unsafe Yosys top_module: {top_module}")
-    return f"read_verilog {' '.join(safe_sources)}; synth -top {top_module}; stat"
+
+    languages = dict(source_languages or {})
+    unknown_language_paths = sorted(set(languages) - set(safe_sources))
+    if unknown_language_paths:
+        raise ValueError(
+            "Yosys source language metadata references unknown sources: "
+            + ", ".join(unknown_language_paths)
+        )
+
+    source_groups: list[tuple[str, list[str]]] = []
+    for source in safe_sources:
+        language = _yosys_source_language(source, languages.get(source))
+        command_prefix = "read_verilog -sv" if language == "systemverilog" else "read_verilog"
+        if source_groups and source_groups[-1][0] == command_prefix:
+            source_groups[-1][1].append(source)
+        else:
+            source_groups.append((command_prefix, [source]))
+
+    read_commands = [
+        f"{command_prefix} {' '.join(group_sources)}"
+        for command_prefix, group_sources in source_groups
+    ]
+    return "; ".join([*read_commands, f"synth -top {top_module}", "stat"])
+
+
+def _yosys_source_language(source: str, declared_language: str | None) -> str:
+    if declared_language is not None:
+        if not isinstance(declared_language, str):
+            raise ValueError(
+                f"Yosys source language metadata for '{source}' must be a string"
+            )
+        language = declared_language.strip().lower()
+        if language == "vhdl":
+            raise UnsupportedSynthesisLanguageError(
+                f"unsupported Yosys synthesis language 'vhdl' for source: {source}"
+            )
+        if language not in {"verilog", "systemverilog"}:
+            raise UnsupportedSynthesisLanguageError(
+                f"unsupported Yosys synthesis language '{language}' for source: {source}"
+            )
+        return language
+
+    suffix = PurePosixPath(source).suffix.lower()
+    if suffix == ".v":
+        return "verilog"
+    if suffix == ".sv":
+        return "systemverilog"
+    if suffix in {".vhd", ".vhdl"}:
+        raise UnsupportedSynthesisLanguageError(
+            f"unsupported Yosys synthesis language 'vhdl' for source: {source}"
+        )
+    raise ValueError(f"unsafe Yosys manifest source: {source}")
 
 
 def build_patch_metadata(

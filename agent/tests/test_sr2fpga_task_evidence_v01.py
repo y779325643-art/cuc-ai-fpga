@@ -1,6 +1,6 @@
 import json
+import hashlib
 import shutil
-import unittest
 from dataclasses import replace
 from pathlib import Path
 
@@ -13,10 +13,15 @@ from sr2fpga_agent.task_evidence import (
     MutationEvidence,
     TaskFamilyEvidence,
     audit_local_run_artifacts,
+    load_l4_open_evidence,
+    load_task_alias_evidence,
     load_task_family_evidence,
     main,
     render_task_evidence_markdown,
+    verify_l4_open_artifact_hashes,
+    verify_task_alias_artifacts,
 )
+from sr2fpga_agent.task_catalog import CATALOG_PATH
 from sr2fpga_agent.task_families import TASK_FAMILY_IDS
 from sr2fpga_agent.oracle_runner import write_oracle_run_evidence
 from sr2fpga_agent.oracles.bundle import sanitize_oracle_profile, write_oracle_bundle
@@ -29,6 +34,7 @@ from sr2fpga_agent.oracles.types import (
 
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+STATUS_PATH = EVIDENCE_PATH.with_name("sr2fpga-task-evidence-status.md")
 
 
 def _write_catalog(tmp_path, family_ids, aliases=()):
@@ -71,7 +77,9 @@ def _entry(family_id, **overrides):
 def _write_evidence(tmp_path, entries, **overrides):
     document = {
         "schema_version": "sr2fpga-task-evidence-v0.1",
-        "source_catalog": "docs/sr2fpga-task-catalog-v0.2.json",
+        "source_catalog": (
+            "contracts/task-catalog/sr2fpga-task-catalog-v0.2.json"
+        ),
         "task_families": entries,
     }
     document.update(overrides)
@@ -264,6 +272,29 @@ def test_evidence_requires_one_entry_per_catalog_family(tmp_path):
 
     with pytest.raises(ValueError, match="missing evidence family_ids: b"):
         load_task_family_evidence(evidence, catalog_path=catalog)
+
+
+@pytest.mark.parametrize(
+    "source_catalog",
+    (
+        "contracts/task-catalog/sr2fpga-task-catalog-v0.2.json",
+        "docs/sr2fpga-task-catalog-v0.2.json",
+    ),
+)
+def test_evidence_accepts_current_and_legacy_catalog_provenance(
+    tmp_path,
+    source_catalog,
+):
+    catalog = _write_catalog(tmp_path, ["a"])
+    evidence = _write_evidence(
+        tmp_path,
+        [_entry("a")],
+        source_catalog=source_catalog,
+    )
+
+    (entry,) = load_task_family_evidence(evidence, catalog_path=catalog)
+
+    assert entry.family_id == "a"
 
 
 @pytest.mark.parametrize(
@@ -765,6 +796,10 @@ def test_renderer_separates_target_implementation_and_evidence():
     assert "Implemented families | 31 / 71" in markdown
     assert "Paper 1 core implemented | 14 / 14" in markdown
     assert "OpenXC7 L4 pass | 2" in markdown
+    assert "## Alias/Sample Evidence" in markdown
+    assert "t11_batch_rl_accelerator_shell | verified" in markdown
+    assert "## L4-open Provenance" in markdown
+    assert "logical_only" in markdown
     assert "Independent Python oracle qualified" in markdown
     assert "Independent oracle" in markdown
 
@@ -776,17 +811,120 @@ def test_renderer_separates_target_implementation_and_evidence():
     )
 
 
+def test_multi_alias_evidence_is_sample_scoped_and_fail_closed():
+    entries = {(item.family_id, item.alias): item for item in load_task_alias_evidence()}
+
+    t3 = entries[("stream_fork_join", "t3_stream_fork")]
+    assert t3.evidence_status == "verified"
+    assert t3.highest_verified_level == "L3"
+    assert t3.mutation_status == "not_run"
+    assert entries[("stream_fork_join", "t4_dual_stream_join")].sample_id == (
+        "sample_phase_c_core_mutation_closure_v2_t4_dual_stream_join_8_000003"
+    )
+    assert entries[("p_rl_qlearning_accel", "t10_rl_accelerator_shell")].independent_oracle_status == "qualified"
+    t11 = entries[("p_rl_qlearning_accel", "t11_batch_rl_accelerator_shell")]
+    assert t11.evidence_status == "verified"
+    assert t11.highest_verified_level == "L3"
+    assert t11.mutation_status == "not_run"
+    assert t11.independent_oracle_status == "not_run"
+    assert t11.sample_id == (
+        "sample_t0_t4_deterministic_smoke_t11_batch_rl_accelerator_shell_8_000023"
+    )
+
+
+def test_multi_alias_evidence_rejects_missing_sibling_alias(tmp_path):
+    catalog = _write_catalog(tmp_path, ["family"], aliases=("t10", "t11"))
+    evidence = _write_evidence(
+        tmp_path,
+        [
+            _entry(
+                "family",
+                generator_status="implemented",
+                testbench_status="implemented",
+                highest_verified_level="L3",
+            )
+        ],
+        alias_evidence=[
+            {
+                "family_id": "family",
+                "alias": "t10",
+                "evidence_status": "not_run",
+                "sample_id": "",
+                "highest_verified_level": "not_run",
+                "mutation_status": "not_run",
+                "independent_oracle_status": "not_run",
+                "run_id": "",
+                "evidence_refs": [],
+            }
+        ],
+    )
+
+    with pytest.raises(ValueError, match="cover every implemented multi-alias"):
+        load_task_family_evidence(evidence, catalog_path=catalog)
+
+
+def test_alias_evidence_rejects_sample_absent_from_run_summary():
+    entry = load_task_alias_evidence()[0]
+    tampered = replace(entry, sample_id="sample_not_in_summary")
+
+    with pytest.raises(ValueError, match="absent from its run summary"):
+        verify_task_alias_artifacts((tampered,))
+
+
+def test_l4_open_provenance_hashes_match_stable_artifacts():
+    entries = load_l4_open_evidence()
+
+    assert {entry.family_id for entry in entries} == {"fir_filter", "matrix_vector_mac"}
+    for entry in entries:
+        assert entry.constraint_scope == "logical_only"
+        assert entry.tool == "openxc7_nextpnr"
+        for reference, expected in entry.artifact_sha256:
+            artifact = REPO_ROOT / reference
+            assert artifact.is_file()
+            assert hashlib.sha256(artifact.read_bytes()).hexdigest() == expected
+
+
+def test_l4_open_provenance_rejects_tampered_artifact_commitment():
+    entry = load_l4_open_evidence()[0]
+    reference, _ = entry.artifact_sha256[0]
+    tampered = replace(entry, artifact_sha256=((reference, "0" * 64),))
+
+    with pytest.raises(ValueError, match="sha256 mismatch"):
+        verify_l4_open_artifact_hashes((tampered,))
+
+
+def test_implemented_smoke_rows_reference_stable_run_artifact_not_status_page():
+    document = json.loads(EVIDENCE_PATH.read_text(encoding="utf-8"))
+    rows = [
+        row
+        for row in document["task_families"]
+        if row["last_verified_run"] == "reorganization-final-smoke-fresh"
+    ]
+
+    assert rows
+    for row in rows:
+        assert row["evidence_refs"] == [
+            "reports/evidence/legacy-runs/reorganization-final-smoke-fresh/"
+            "runs/reorganization-final-smoke-fresh/summary.json"
+        ]
+def test_committed_status_matches_the_evidence_renderer():
+    assert (
+        STATUS_PATH.read_text(encoding="utf-8")
+        == render_task_evidence_markdown()
+    )
+
+
 def test_docs_index_links_catalog_and_evidence_separately():
     text = (REPO_ROOT / "docs" / "README.md").read_text(encoding="utf-8")
-    normalized_text = text.lower()
+    normalized_text = " ".join(text.lower().split())
 
     assert "sr2fpga-task-catalog-v0.2.json" in text
     assert "sr2fpga-task-evidence-v0.1.json" in text
     assert "sr2fpga-task-evidence-status.md" in text
-    assert "intended target contract and target policy" in normalized_text
-    assert "current executable and verification facts" in normalized_text
-    assert "human-readable derived view" in normalized_text
-    assert "24-alias deterministic smoke curriculum" in normalized_text
+    assert "describes intended policy" in normalized_text
+    assert "records executable and verification facts" in normalized_text
+    assert "derived human-readable view" in normalized_text
+    assert "current deterministic smoke configuration" in normalized_text
 
 
 def test_current_status_names_the_paper1_core_denominator():
@@ -1333,11 +1471,7 @@ def test_phase_c_promotes_exactly_nine_independent_python_reference_families():
 
 
 def test_all_catalog_paper1_core_families_are_mutation_qualified():
-    catalog = json.loads(
-        (REPO_ROOT / "docs" / "sr2fpga-task-catalog-v0.2.json").read_text(
-            encoding="utf-8"
-        )
-    )
+    catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
     entries = {entry.family_id: entry for entry in load_task_family_evidence()}
 
     for family_id in catalog["recommended_sets"]["paper1_core"]:

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import http.client
 import json
 import select
@@ -16,6 +17,9 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Any, Callable
 
+
+_MISSING_SYSTEM_FINGERPRINT = object()
+
 @dataclass(frozen=True)
 class OpenAICompatibleConfig:
     """OpenAI-compatible chat completions API configuration."""
@@ -27,6 +31,10 @@ class OpenAICompatibleConfig:
     max_tokens: int = 0
     transport_attempts: int = 3
     retry_backoff_seconds: float = 0.5
+    seed: int | None = None
+
+    def __post_init__(self) -> None:
+        _validate_requested_seed(self.seed)
 
 
 class OpenAICompatibleClient:
@@ -34,14 +42,75 @@ class OpenAICompatibleClient:
 
     def __init__(self, config: OpenAICompatibleConfig) -> None:
         self.config = config
+        self._transport_state = threading.local()
+
+    def consume_transport_attempt_count(self) -> int | None:
+        """Return and clear this thread's most recent request-attempt count."""
+
+        count = getattr(self._transport_state, "last_attempt_count", None)
+        if hasattr(self._transport_state, "last_attempt_count"):
+            del self._transport_state.last_attempt_count
+        return count
+
+    def consume_token_usage(self) -> dict[str, int | None] | None:
+        usage = getattr(self._transport_state, "last_token_usage", None)
+        if hasattr(self._transport_state, "last_token_usage"):
+            del self._transport_state.last_token_usage
+        if hasattr(self._transport_state, "token_usage_attempt_count"):
+            del self._transport_state.token_usage_attempt_count
+        return _present_token_usage(dict(usage)) if isinstance(usage, dict) else None
+
+    def consume_response_provenance(self) -> dict[str, Any] | None:
+        if not getattr(self._transport_state, "response_provenance_available", False):
+            return None
+        self._transport_state.response_provenance_available = False
+        fingerprints = tuple(
+            sorted(getattr(self._transport_state, "system_fingerprints", set()))
+        )
+        invalid = getattr(self._transport_state, "invalid_system_fingerprint", False)
+        if invalid and fingerprints:
+            fingerprint = None
+            fingerprint_status = "conflicting"
+        elif invalid:
+            fingerprint = None
+            fingerprint_status = "invalid"
+        elif len(fingerprints) == 1:
+            fingerprint = fingerprints[0]
+            fingerprint_status = "reported"
+        elif fingerprints:
+            fingerprint = None
+            fingerprint_status = "conflicting"
+        else:
+            fingerprint = None
+            fingerprint_status = "unavailable"
+        return {
+            "provider_adapter": "openai_compatible",
+            "provider_model": self.config.model,
+            "gateway_base_url_sha256": hashlib.sha256(
+                self.config.base_url.rstrip("/").encode("utf-8")
+            ).hexdigest(),
+            "requested_decoding_seed": self.config.seed,
+            "seed_forwarding_status": (
+                "forwarded" if self.config.seed is not None else "not_requested"
+            ),
+            "deterministic_seed_control": (
+                "requested_unverified" if self.config.seed is not None else "not_requested"
+            ),
+            "provider_system_fingerprint": fingerprint,
+            "system_fingerprint_status": fingerprint_status,
+        }
 
     def chat(self, messages: list[dict[str, str]]) -> str:
+        self._reset_token_usage()
+        self._reset_response_provenance()
         payload = self._chat_payload(messages)
         data = self._request_with_retries(
             payload,
             lambda response: _read_chat_completion_json(response, self.config.timeout_seconds),
         )
 
+        self._store_token_usage(_openai_token_usage(data))
+        self._store_system_fingerprint(_provider_system_fingerprint(data))
         try:
             return str(data["choices"][0]["message"]["content"])
         except (KeyError, IndexError, TypeError) as exc:
@@ -50,12 +119,44 @@ class OpenAICompatibleClient:
             ) from exc
 
     def stream_chat(self, messages: list[dict[str, str]]) -> str:
+        self._reset_token_usage()
+        self._reset_response_provenance()
         payload = self._chat_payload(messages)
         payload["stream"] = True
         return self._request_with_retries(
             payload,
-            lambda response: _read_streaming_chat_content(response, self.config.timeout_seconds),
+            lambda response: _read_streaming_chat_content(
+                response,
+                self.config.timeout_seconds,
+                usage_sink=self._store_token_usage,
+                fingerprint_sink=self._store_system_fingerprint,
+            ),
         )
+
+    def _store_token_usage(self, usage: dict[str, int | None] | None) -> None:
+        attempts = getattr(self._transport_state, "token_usage_attempt_count", 0)
+        existing = getattr(self._transport_state, "last_token_usage", None)
+        self._transport_state.last_token_usage = _accumulate_token_usage(
+            existing, usage, has_existing_attempt=attempts > 0
+        )
+        self._transport_state.token_usage_attempt_count = attempts + 1
+
+    def _reset_token_usage(self) -> None:
+        self._transport_state.last_token_usage = None
+        self._transport_state.token_usage_attempt_count = 0
+
+    def _reset_response_provenance(self) -> None:
+        self._transport_state.system_fingerprints = set()
+        self._transport_state.invalid_system_fingerprint = False
+        self._transport_state.response_provenance_available = True
+
+    def _store_system_fingerprint(self, fingerprint: Any) -> None:
+        if fingerprint is _MISSING_SYSTEM_FINGERPRINT:
+            return
+        if isinstance(fingerprint, str) and fingerprint.strip():
+            self._transport_state.system_fingerprints.add(fingerprint.strip())
+            return
+        self._transport_state.invalid_system_fingerprint = True
 
     def _chat_payload(self, messages: list[dict[str, str]]) -> dict[str, Any]:
         payload: dict[str, Any] = {
@@ -67,15 +168,27 @@ class OpenAICompatibleClient:
             payload["response_format"] = {"type": "json_object"}
         if self.config.max_tokens > 0:
             payload["max_tokens"] = self.config.max_tokens
+        if self.config.seed is not None:
+            payload["seed"] = self.config.seed
         return payload
 
     def _request_with_retries(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
         last_error: _TransientOpenAICompatibleError | None = None
         attempts = max(1, self.config.transport_attempts)
+        self._transport_state.last_attempt_count = 0
         for attempt in range(attempts):
+            self._transport_state.last_attempt_count += 1
+            usage_attempts_before = getattr(
+                self._transport_state, "token_usage_attempt_count", 0
+            )
             try:
                 return self._request_once(payload, reader)
             except _TransientOpenAICompatibleError as exc:
+                if (
+                    getattr(self._transport_state, "token_usage_attempt_count", 0)
+                    == usage_attempts_before
+                ):
+                    self._store_token_usage(None)
                 last_error = exc
                 if attempt + 1 >= attempts:
                     break
@@ -138,6 +251,10 @@ class AnthropicCompatibleConfig:
     anthropic_version: str = "2023-06-01"
     transport_attempts: int = 3
     retry_backoff_seconds: float = 0.5
+    requested_seed: int | None = None
+
+    def __post_init__(self) -> None:
+        _validate_requested_seed(self.requested_seed)
 
 
 class AnthropicCompatibleClient:
@@ -145,29 +262,105 @@ class AnthropicCompatibleClient:
 
     def __init__(self, config: AnthropicCompatibleConfig) -> None:
         self.config = config
+        self._transport_state = threading.local()
+
+    def consume_transport_attempt_count(self) -> int | None:
+        """Return and clear this thread's most recent request-attempt count."""
+
+        count = getattr(self._transport_state, "last_attempt_count", None)
+        if hasattr(self._transport_state, "last_attempt_count"):
+            del self._transport_state.last_attempt_count
+        return count
+
+    def consume_token_usage(self) -> dict[str, int | None] | None:
+        usage = getattr(self._transport_state, "last_token_usage", None)
+        if hasattr(self._transport_state, "last_token_usage"):
+            del self._transport_state.last_token_usage
+        if hasattr(self._transport_state, "token_usage_attempt_count"):
+            del self._transport_state.token_usage_attempt_count
+        return _present_token_usage(dict(usage)) if isinstance(usage, dict) else None
+
+    def consume_response_provenance(self) -> dict[str, Any] | None:
+        if not getattr(self._transport_state, "response_provenance_available", False):
+            return None
+        self._transport_state.response_provenance_available = False
+        return {
+            "provider_adapter": "anthropic_compatible",
+            "provider_model": self.config.model,
+            "gateway_base_url_sha256": hashlib.sha256(
+                self.config.base_url.rstrip("/").encode("utf-8")
+            ).hexdigest(),
+            "requested_decoding_seed": self.config.requested_seed,
+            "seed_forwarding_status": (
+                "not_forwarded"
+                if self.config.requested_seed is not None
+                else "not_requested"
+            ),
+            "deterministic_seed_control": (
+                "unsupported"
+                if self.config.requested_seed is not None
+                else "not_requested"
+            ),
+            "provider_system_fingerprint": None,
+            "system_fingerprint_status": "unavailable",
+        }
 
     def chat(self, messages: list[dict[str, str]]) -> str:
+        self._reset_token_usage()
+        self._reset_response_provenance()
         data = self._request_with_retries(
             _anthropic_messages_payload(self.config, messages),
             lambda response: _read_chat_completion_json(response, self.config.timeout_seconds),
         )
+        self._store_token_usage(_anthropic_token_usage(data))
         return _read_anthropic_message_text(data)
 
     def stream_chat(self, messages: list[dict[str, str]]) -> str:
+        self._reset_token_usage()
+        self._reset_response_provenance()
         payload = _anthropic_messages_payload(self.config, messages)
         payload["stream"] = True
         return self._request_with_retries(
             payload,
-            lambda response: _read_anthropic_streaming_text(response, self.config.timeout_seconds),
+            lambda response: _read_anthropic_streaming_text(
+                response,
+                self.config.timeout_seconds,
+                usage_sink=self._store_token_usage,
+            ),
         )
+
+    def _store_token_usage(self, usage: dict[str, int | None] | None) -> None:
+        attempts = getattr(self._transport_state, "token_usage_attempt_count", 0)
+        existing = getattr(self._transport_state, "last_token_usage", None)
+        self._transport_state.last_token_usage = _accumulate_token_usage(
+            existing, usage, has_existing_attempt=attempts > 0
+        )
+        self._transport_state.token_usage_attempt_count = attempts + 1
+
+    def _reset_token_usage(self) -> None:
+        self._transport_state.last_token_usage = None
+        self._transport_state.token_usage_attempt_count = 0
+
+    def _reset_response_provenance(self) -> None:
+        self._transport_state.response_provenance_available = True
 
     def _request_with_retries(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
         last_error: _TransientOpenAICompatibleError | None = None
         attempts = max(1, self.config.transport_attempts)
+        self._transport_state.last_attempt_count = 0
         for attempt in range(attempts):
+            self._transport_state.last_attempt_count += 1
+            usage_attempts_before = getattr(
+                self._transport_state, "token_usage_attempt_count", 0
+            )
             try:
                 return self._request_once(payload, reader)
             except _TransientOpenAICompatibleError as exc:
+                if (
+                    getattr(self._transport_state, "token_usage_attempt_count", 0)
+                    == usage_attempts_before
+                ):
+                    self._store_token_usage(None)
                 last_error = exc
                 if attempt + 1 >= attempts:
                     break
@@ -262,6 +455,19 @@ def _model_supports_json_response_format(model: str) -> bool:
     return not model.startswith("claude-")
 
 
+def _validate_requested_seed(seed: int | None) -> None:
+    if seed is not None and (
+        not isinstance(seed, int) or isinstance(seed, bool) or seed < 0
+    ):
+        raise ValueError("seed must be a non-negative integer or None")
+
+
+def _provider_system_fingerprint(data: Any) -> Any:
+    if not isinstance(data, dict) or "system_fingerprint" not in data:
+        return _MISSING_SYSTEM_FINGERPRINT
+    return data["system_fingerprint"]
+
+
 def _messages_for_model(model: str, messages: list[dict[str, str]]) -> list[dict[str, str]]:
     if not model.startswith("claude-"):
         return messages
@@ -347,73 +553,236 @@ def _read_anthropic_message_text(data: Any) -> str:
     raise RuntimeError("Anthropic-compatible API response did not contain text content")
 
 
-def _read_anthropic_streaming_text(response: Any, timeout_seconds: int) -> str:
-    chunks: list[str] = []
-    started_at = time.monotonic()
-    while True:
-        raw_line = _read_streaming_line(response, timeout_seconds, started_at)
-        if not raw_line:
-            break
-        line = raw_line.decode("utf-8", errors="replace").strip()
-        if not line or line.startswith(":") or not line.startswith("data:"):
-            continue
-        data = line.removeprefix("data:").strip()
-        try:
-            event = json.loads(data)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("Anthropic-compatible streaming response contained invalid event data") from exc
-        event_type = str(event.get("type", "")) if isinstance(event, dict) else ""
-        if event_type == "content_block_delta":
-            delta = event.get("delta", {})
-            if isinstance(delta, dict) and delta.get("type") == "text_delta":
-                chunks.append(str(delta.get("text", "")))
-        elif event_type == "error":
-            error = event.get("error", {})
-            if isinstance(error, dict):
-                raise RuntimeError(f"{error.get('type', 'error')}: {error.get('message', '')}")
-            raise RuntimeError(f"Anthropic-compatible streaming response error: {error}")
-        elif event_type == "message_stop":
-            break
-    text = "".join(chunks)
-    if not text:
-        raise RuntimeError("Anthropic-compatible streaming response contained no text")
-    return text
+def _openai_token_usage(data: Any) -> dict[str, int | None] | None:
+    if not isinstance(data, dict) or not isinstance(data.get("usage"), dict):
+        return None
+    usage = data["usage"]
+    input_tokens = _nonnegative_int(usage.get("prompt_tokens"))
+    if input_tokens is None:
+        input_tokens = _nonnegative_int(usage.get("input_tokens"))
+    output_tokens = _nonnegative_int(usage.get("completion_tokens"))
+    if output_tokens is None:
+        output_tokens = _nonnegative_int(usage.get("output_tokens"))
+    details = usage.get("prompt_tokens_details")
+    if not isinstance(details, dict):
+        details = usage.get("input_tokens_details")
+    cached_tokens = (
+        _nonnegative_int(details.get("cached_tokens"))
+        if isinstance(details, dict)
+        else None
+    )
+    if input_tokens is None and output_tokens is None and cached_tokens is None:
+        return None
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cached_tokens": cached_tokens,
+    }
 
 
-def _read_streaming_chat_content(response: Any, timeout_seconds: int) -> str:
+def _anthropic_token_usage(data: Any) -> dict[str, int | None] | None:
+    if not isinstance(data, dict) or not isinstance(data.get("usage"), dict):
+        return None
+    usage = data["usage"]
+    uncached_input = _nonnegative_int(usage.get("input_tokens"))
+    cache_creation = _nonnegative_int(usage.get("cache_creation_input_tokens"))
+    cache_read = _nonnegative_int(usage.get("cache_read_input_tokens"))
+    output_tokens = _nonnegative_int(usage.get("output_tokens"))
+    input_tokens = (
+        uncached_input + cache_creation + cache_read
+        if None not in (uncached_input, cache_creation, cache_read)
+        else None
+    )
+    if input_tokens is None and output_tokens is None and cache_read is None:
+        return None
+    return {
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "cached_tokens": cache_read,
+    }
+
+
+def _nonnegative_int(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+        return None
+    return value
+
+
+def _read_anthropic_streaming_text(
+    response: Any,
+    timeout_seconds: int,
+    *,
+    usage_sink: Callable[[dict[str, int | None] | None], None] | None = None,
+) -> str:
     chunks: list[str] = []
+    token_usage: dict[str, int | None] = {
+        "input_tokens": None,
+        "output_tokens": None,
+        "cached_tokens": None,
+    }
     started_at = time.monotonic()
-    while True:
-        raw_line = _read_streaming_line(response, timeout_seconds, started_at)
-        if not raw_line:
-            break
-        if time.monotonic() - started_at > timeout_seconds:
-            raise _TransientOpenAICompatibleError("OpenAI-compatible API response read timed out")
-        line = raw_line.decode("utf-8", errors="replace").strip()
-        if not line or line.startswith(":"):
-            continue
-        if not line.startswith("data:"):
-            continue
-        data = line.removeprefix("data:").strip()
-        if data == "[DONE]":
-            break
-        try:
-            event = json.loads(data)
-        except json.JSONDecodeError as exc:
-            raise RuntimeError("OpenAI-compatible streaming response contained invalid chat completion data") from exc
-        if isinstance(event, dict) and "error" in event:
-            raise RuntimeError(f"OpenAI-compatible streaming response error: {event['error']}")
-        choices = event.get("choices") if isinstance(event, dict) else None
-        if not choices:
-            continue
-        try:
-            delta = choices[0].get("delta", {})
-        except (AttributeError, IndexError, TypeError) as exc:
-            raise RuntimeError("OpenAI-compatible streaming response contained invalid chat completion data") from exc
-        content = delta.get("content")
-        if content is not None:
-            chunks.append(str(content))
-    return "".join(chunks)
+    try:
+        while True:
+            raw_line = _read_streaming_line(response, timeout_seconds, started_at)
+            if not raw_line:
+                break
+            line = raw_line.decode("utf-8", errors="replace").strip()
+            if not line or line.startswith(":") or not line.startswith("data:"):
+                continue
+            data = line.removeprefix("data:").strip()
+            try:
+                event = json.loads(data)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    "Anthropic-compatible streaming response contained invalid event data"
+                ) from exc
+            event_type = str(event.get("type", "")) if isinstance(event, dict) else ""
+            if event_type == "message_start":
+                message = event.get("message")
+                usage = _anthropic_token_usage(message)
+                _merge_token_usage(token_usage, usage)
+            elif event_type == "message_delta":
+                usage = _anthropic_token_usage({"usage": event.get("usage")})
+                _merge_token_usage(token_usage, usage)
+            elif event_type == "content_block_delta":
+                delta = event.get("delta", {})
+                if isinstance(delta, dict) and delta.get("type") == "text_delta":
+                    chunks.append(str(delta.get("text", "")))
+            elif event_type == "error":
+                error = event.get("error", {})
+                if isinstance(error, dict):
+                    raise RuntimeError(
+                        f"{error.get('type', 'error')}: {error.get('message', '')}"
+                    )
+                raise RuntimeError(f"Anthropic-compatible streaming response error: {error}")
+            elif event_type == "message_stop":
+                break
+        text = "".join(chunks)
+        if not text:
+            raise RuntimeError("Anthropic-compatible streaming response contained no text")
+        return text
+    finally:
+        if usage_sink is not None:
+            usage_sink(_present_token_usage(token_usage))
+
+
+def _read_streaming_chat_content(
+    response: Any,
+    timeout_seconds: int,
+    *,
+    usage_sink: Callable[[dict[str, int | None] | None], None] | None = None,
+    fingerprint_sink: Callable[[str | None], None] | None = None,
+) -> str:
+    chunks: list[str] = []
+    token_usage: dict[str, int | None] = {
+        "input_tokens": None,
+        "output_tokens": None,
+        "cached_tokens": None,
+    }
+    started_at = time.monotonic()
+    try:
+        while True:
+            raw_line = _read_streaming_line(response, timeout_seconds, started_at)
+            if not raw_line:
+                break
+            if time.monotonic() - started_at > timeout_seconds:
+                raise _TransientOpenAICompatibleError(
+                    "OpenAI-compatible API response read timed out"
+                )
+            line = raw_line.decode("utf-8", errors="replace").strip()
+            if not line or line.startswith(":"):
+                continue
+            if not line.startswith("data:"):
+                continue
+            data = line.removeprefix("data:").strip()
+            if data == "[DONE]":
+                break
+            try:
+                event = json.loads(data)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    "OpenAI-compatible streaming response contained invalid chat completion data"
+                ) from exc
+            if isinstance(event, dict) and "error" in event:
+                raise RuntimeError(f"OpenAI-compatible streaming response error: {event['error']}")
+            if fingerprint_sink is not None:
+                fingerprint_sink(_provider_system_fingerprint(event))
+            _merge_token_usage(token_usage, _openai_token_usage(event))
+            choices = event.get("choices") if isinstance(event, dict) else None
+            if not choices:
+                continue
+            try:
+                delta = choices[0].get("delta", {})
+            except (AttributeError, IndexError, TypeError) as exc:
+                raise RuntimeError(
+                    "OpenAI-compatible streaming response contained invalid chat completion data"
+                ) from exc
+            content = delta.get("content")
+            if content is not None:
+                chunks.append(str(content))
+        return "".join(chunks)
+    finally:
+        if usage_sink is not None:
+            usage_sink(_present_token_usage(token_usage))
+
+
+def _merge_token_usage(
+    target: dict[str, int | None],
+    update: dict[str, int | None] | None,
+) -> None:
+    if update is None:
+        return
+    for axis, value in update.items():
+        if value is not None:
+            target[axis] = value
+
+
+def _present_token_usage(
+    usage: dict[str, int | None],
+) -> dict[str, int | None] | None:
+    return usage if any(value is not None for value in usage.values()) else None
+
+
+def _accumulate_token_usage(
+    existing: Any,
+    update: dict[str, int | None] | None,
+    *,
+    has_existing_attempt: bool,
+) -> dict[str, int | None]:
+    axes = ("input_tokens", "output_tokens", "cached_tokens")
+    normalized_update = {
+        axis: (
+            update.get(axis)
+            if isinstance(update, dict)
+            and isinstance(update.get(axis), int)
+            and not isinstance(update.get(axis), bool)
+            and update.get(axis) >= 0
+            else None
+        )
+        for axis in axes
+    }
+    if not has_existing_attempt:
+        return normalized_update
+    normalized_existing = {
+        axis: (
+            existing.get(axis)
+            if isinstance(existing, dict)
+            and isinstance(existing.get(axis), int)
+            and not isinstance(existing.get(axis), bool)
+            and existing.get(axis) >= 0
+            else None
+        )
+        for axis in axes
+    }
+    return {
+        axis: (
+            normalized_existing[axis] + normalized_update[axis]
+            if normalized_existing[axis] is not None
+            and normalized_update[axis] is not None
+            else None
+        )
+        for axis in axes
+    }
 
 
 def _read_streaming_line(response: Any, timeout_seconds: int, started_at: float) -> bytes:

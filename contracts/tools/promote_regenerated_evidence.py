@@ -1072,7 +1072,9 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--ledger",
         type=Path,
-        default=Path("docs/sr2fpga-task-evidence-v0.1.json"),
+        default=Path(
+            "reports/evidence/task-ledger/sr2fpga-task-evidence-v0.1.json"
+        ),
     )
     parser.add_argument(
         "--output",

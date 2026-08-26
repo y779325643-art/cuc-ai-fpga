@@ -10,11 +10,19 @@ INVENTORY_PATH = (
 )
 ACTIVE_EVIDENCE_PATHS = (
     REPO_ROOT / "README.md",
-    REPO_ROOT / "CLAUDE.md",
+    REPO_ROOT / "AGENTS.md",
     REPO_ROOT / "docs" / "README.md",
     REPO_ROOT / "docs" / "current-status.md",
-    REPO_ROOT / "docs" / "sr2fpga-task-evidence-v0.1.json",
-    REPO_ROOT / "docs" / "sr2fpga-task-evidence-status.md",
+    REPO_ROOT
+    / "reports"
+    / "evidence"
+    / "task-ledger"
+    / "sr2fpga-task-evidence-v0.1.json",
+    REPO_ROOT
+    / "reports"
+    / "evidence"
+    / "task-ledger"
+    / "sr2fpga-task-evidence-status.md",
 )
 
 

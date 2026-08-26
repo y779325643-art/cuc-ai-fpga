@@ -9,7 +9,6 @@ CANONICAL_PATH = (
     / "task-catalog"
     / "sr2fpga-task-catalog-v0.2.json"
 )
-COMPATIBILITY_PATH = REPO_ROOT / "docs" / "sr2fpga-task-catalog-v0.2.json"
 REQUIRED_TASK_FIELDS = {
     "family_id",
     "sr2fpga_tier",
@@ -54,6 +53,37 @@ def test_each_task_family_declares_required_metadata() -> None:
         assert target["l4_open_policy"] in L4_OPEN_POLICIES, task["family_id"]
 
 
-def test_docs_compatibility_copy_is_byte_identical() -> None:
-    assert COMPATIBILITY_PATH.is_file()
-    assert CANONICAL_PATH.read_bytes() == COMPATIBILITY_PATH.read_bytes()
+def test_catalog_declares_its_canonical_repository_path() -> None:
+    assert load_catalog()["intended_path"] == (
+        CANONICAL_PATH.relative_to(REPO_ROOT).as_posix()
+    )
+
+
+def test_candidate_primary_family_heldout_set_matches_active_freeze_candidates() -> None:
+    catalog = load_catalog()
+    candidate_ids = catalog["recommended_sets"]["paper1_candidate_primary_family_heldout"]
+    canonical_ids = {family["family_id"] for family in catalog["task_families"]}
+
+    assert catalog["catalog_version"] == "0.2.2"
+    assert candidate_ids == [
+        "uart_fifo_loopback",
+        "stream_fork_join",
+        "matched_filter",
+        "sobel_threshold",
+    ]
+    assert len(candidate_ids) == len(set(candidate_ids))
+    assert set(candidate_ids) <= canonical_ids
+    assert set(candidate_ids) < set(catalog["recommended_sets"]["paper1_core"])
+
+
+def test_family_recipe_policy_labels_candidate_set_as_not_signed_g4b() -> None:
+    catalog = load_catalog()
+    policy = catalog["global_policies"]["family_recipe_selection"]
+
+    assert policy == {
+        "policy_id": "sr2fpga-family-recipe-deny",
+        "policy_version": "1.0.0",
+        "status": "candidate_g4a_not_signed",
+        "deny_recommended_set": "paper1_candidate_primary_family_heldout",
+        "deny_reason": "candidate_primary_family_heldout",
+    }

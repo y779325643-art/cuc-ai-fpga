@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-hidden-conformance-outcome/v1",
+  "title": "SR2FPGA Development Hidden Conformance Outcome v1",
+  "description": "Reducer-only sanitized hidden outcome for development/excluded conformance. It carries no official or repair authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "outcome_id", "evaluation_scope", "episode_id",
+    "method_condition", "decoding_seed", "terminal_candidate_sha256",
+    "hidden_evaluator_commitment_sha256", "public_contract_sha256",
+    "public_profile_sha256", "tool_environment_policy_sha256",
+    "opaque_outcome_ref", "one_shot_ledger_ref", "execution_status",
+    "hidden_l2", "reducer_visible", "generation_visible", "repair_visible",
+    "official_outcome", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-hidden-conformance-outcome-v1"},
+    "outcome_id": {"type": "string", "pattern": "^hidden-conformance-outcome-[0-9a-f]{64}$"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "episode_id": {"$ref": "#/$defs/identifier"},
+    "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "decoding_seed": {"type": "integer", "minimum": 0},
+    "terminal_candidate_sha256": {"$ref": "#/$defs/sha256"},
+    "hidden_evaluator_commitment_sha256": {"$ref": "#/$defs/sha256"},
+    "public_contract_sha256": {"$ref": "#/$defs/sha256"},
+    "public_profile_sha256": {"$ref": "#/$defs/sha256"},
+    "tool_environment_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "opaque_outcome_ref": {"$ref": "#/$defs/opaque_ref"},
+    "one_shot_ledger_ref": {"type": "string", "minLength": 1},
+    "execution_status": {"enum": ["completed", "not_run"]},
+    "hidden_l2": {"$ref": "#/$defs/stage"},
+    "reducer_visible": {"const": true},
+    "generation_visible": {"const": false},
+    "repair_visible": {"const": false},
+    "official_outcome": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"execution_status": {"const": "completed"}}},
+      "then": {
+        "properties": {
+          "hidden_l2": {
+            "properties": {
+              "status": {"enum": ["pass", "fail"]},
+              "reason": {"type": "null"}
+            }
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "hidden_l2": {
+            "properties": {
+              "status": {"const": "not_run"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {"type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]*$"},
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "opaque_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["outcome_id", "contract_id"],
+      "properties": {
+        "outcome_id": {"type": "string", "pattern": "^hidden-outcome-[0-9a-f]{64}$"},
+        "contract_id": {"const": "development-hidden-outcome-v1"}
+      }
+    },
+    "stage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "reason"],
+      "properties": {
+        "status": {"enum": ["pass", "fail", "not_run"]},
+        "reason": {"type": ["string", "null"]}
+      }
+    }
+  }
+}

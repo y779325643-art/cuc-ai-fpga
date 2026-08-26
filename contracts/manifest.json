@@ -5,13 +5,209 @@
       "version": "system-his-v1.2",
       "path": "contracts/system-his/system-his-v1.2.schema.json"
     },
+    "system_his_backend_capabilities": {
+      "version": "system-his-backend-capabilities-v1",
+      "path": "contracts/system-his/system-his-backend-capabilities-v1.json"
+    },
+    "system_his_well_formedness": {
+      "version": "system-his-well-formedness-v1",
+      "path": "contracts/system-his/system-his-well-formedness-v1.json"
+    },
+    "system_his_compatibility": {
+      "version": "system-his-compatibility-v1",
+      "path": "contracts/system-his/system-his-compatibility-v1.json"
+    },
+    "requirement_audit": {
+      "version": "requirement-audit-v1",
+      "path": "contracts/requirement-audit/requirement-audit-v1.schema.json"
+    },
+    "ambiguity_case_manifest": {
+      "version": "ambiguity-case-manifest-v1",
+      "path": "contracts/requirement-audit/ambiguity-case-manifest-v1.schema.json"
+    },
+    "clarification_replay": {
+      "version": "clarification-replay-v1",
+      "path": "contracts/requirement-audit/clarification-replay-v1.schema.json"
+    },
+    "ambiguity_outcome": {
+      "version": "ambiguity-outcome-v1",
+      "path": "contracts/requirement-audit/ambiguity-outcome-v1.schema.json"
+    },
+    "ambiguity_witness": {
+      "version": "ambiguity-witness-v1",
+      "path": "contracts/requirement-audit/ambiguity-witness-v1.schema.json"
+    },
+    "ambiguity_audit_events": {
+      "version": "ambiguity-audit-events-v1",
+      "path": "contracts/requirement-audit/ambiguity-audit-events-v1.schema.json"
+    },
+    "project_package": {
+      "version": "project-package-v1",
+      "path": "contracts/project-package/project-package-v1.schema.json"
+    },
+    "project_envelope": {
+      "version": "project-envelope-v1",
+      "path": "contracts/project-envelope/project-envelope-v1.schema.json"
+    },
+    "terminal_candidate": {
+      "version": "terminal-candidate-v1",
+      "path": "contracts/terminal-candidate/terminal-candidate-v1.schema.json"
+    },
+    "public_evaluation_candidate": {
+      "version": "public-evaluation-candidate-v1",
+      "path": "contracts/public-evaluation-candidate/public-evaluation-candidate-v1.schema.json"
+    },
+    "public_evaluation_candidate_v2": {
+      "version": "public-evaluation-candidate-v2",
+      "path": "contracts/public-evaluation-candidate/public-evaluation-candidate-v2.schema.json"
+    },
+    "official_hidden_outcome": {
+      "version": "official-hidden-outcome-v1",
+      "path": "contracts/evaluation/official-hidden-outcome-v1.schema.json"
+    },
+    "development_hidden_conformance_outcome": {
+      "version": "development-hidden-conformance-outcome-v1",
+      "path": "contracts/evaluation/development-hidden-conformance-outcome-v1.schema.json"
+    },
+    "training_qualification_outcome": {
+      "version": "training-qualification-outcome-v1",
+      "path": "contracts/evaluation/training-qualification-outcome-v1.schema.json"
+    },
+    "full_pack_smoke_report": {
+      "version": "full-pack-smoke-report-v1",
+      "path": "contracts/evaluation/full-pack-smoke-report-v1.schema.json"
+    },
+    "full_pack_runner_reconciliation": {
+      "version": "full-pack-runner-reconciliation-v1",
+      "path": "contracts/evaluation/full-pack-runner-reconciliation-v1.schema.json"
+    },
+    "full_pack_runner_reconciliation_v2": {
+      "version": "full-pack-runner-reconciliation-v2",
+      "path": "contracts/evaluation/full-pack-runner-reconciliation-v2.schema.json"
+    },
+    "development_public_evaluation": {
+      "version": "development-public-evaluation-v1",
+      "path": "contracts/evaluation/development-public-evaluation-v1.schema.json"
+    },
+    "development_public_l2_harness": {
+      "version": "development-public-l2-harness-v1",
+      "path": "contracts/evaluation/development-public-l2-harness-v1.schema.json"
+    },
+    "development_terminal_public_outcome": {
+      "version": "development-terminal-public-outcome-v1",
+      "path": "contracts/evaluation/development-terminal-public-outcome-v1.schema.json"
+    },
+    "development_attempt_public_outcome": {
+      "version": "development-attempt-public-outcome-v1",
+      "path": "contracts/evaluation/development-attempt-public-outcome-v1.schema.json"
+    },
+    "development_authoritative_attempt_public_outcome": {
+      "version": "development-authoritative-attempt-public-outcome-v1",
+      "path": "contracts/evaluation/development-authoritative-attempt-public-outcome-v1.schema.json"
+    },
+    "development_terminal_selection": {
+      "version": "development-terminal-selection-v1",
+      "path": "contracts/evaluation/development-terminal-selection-v1.schema.json"
+    },
+    "development_oracle_run_evidence": {
+      "version": "development-oracle-run-evidence-v1",
+      "path": "contracts/evaluation/development-oracle-run-evidence-v1.schema.json"
+    },
+    "development_tool_environment": {
+      "version": "development-tool-environment-v1",
+      "path": "contracts/evaluation/development-tool-environment-v1.schema.json"
+    },
+    "development_l4_qor_provenance": {
+      "version": "development-l4-qor-provenance-v1",
+      "path": "contracts/evaluation/development-l4-qor-provenance-v1.schema.json"
+    },
+    "development_l4_tool_environment": {
+      "version": "development-l4-tool-environment-v1",
+      "path": "contracts/evaluation/development-l4-tool-environment-v1.schema.json"
+    },
+    "pilot_target_profile_pair_manifest": {
+      "version": "pilot-target-profile-pair-manifest-v1",
+      "path": "contracts/evaluation/pilot-target-profile-pair-manifest-v1.schema.json"
+    },
+    "development_target_profile_pair_outcome": {
+      "version": "development-target-profile-pair-outcome-v1",
+      "path": "contracts/evaluation/development-target-profile-pair-outcome-v1.schema.json"
+    },
+    "development_episode_outcome": {
+      "version": "development-episode-outcome-v1",
+      "path": "contracts/evaluation/development-episode-outcome-v1.schema.json"
+    },
+    "development_pre_candidate_stop_outcome": {
+      "version": "development-pre-candidate-stop-outcome-v1",
+      "path": "contracts/evaluation/development-pre-candidate-stop-outcome-v1.schema.json"
+    },
+    "development_pre_candidate_stop_outcome_v2": {
+      "version": "development-pre-candidate-stop-outcome-v2",
+      "path": "contracts/evaluation/development-pre-candidate-stop-outcome-v2.schema.json"
+    },
+    "development_his_correction_outcome": {
+      "version": "development-his-correction-outcome-v1",
+      "path": "contracts/evaluation/development-his-correction-outcome-v1.schema.json"
+    },
+    "full_pack_outcome_reconciliation": {
+      "version": "full-pack-outcome-reconciliation-v1",
+      "path": "contracts/evaluation/full-pack-outcome-reconciliation-v1.schema.json"
+    },
+    "full_pack_outcome_reconciliation_v2": {
+      "version": "full-pack-outcome-reconciliation-v2",
+      "path": "contracts/evaluation/full-pack-outcome-reconciliation-v2.schema.json"
+    },
+    "attempt_event": {
+      "version": "attempt-event-v1",
+      "path": "contracts/accounting/attempt-event-v1.schema.json"
+    },
+    "cost_summary": {
+      "version": "cost-summary-v1",
+      "path": "contracts/accounting/cost-summary-v1.schema.json"
+    },
+    "model_gateway_provenance": {
+      "version": "model-gateway-provenance-v1",
+      "path": "contracts/accounting/model-gateway-provenance-v1.schema.json"
+    },
+    "development_provider_seed_capability": {
+      "version": "development-provider-seed-capability-v1",
+      "path": "contracts/accounting/development-provider-seed-capability-v1.schema.json"
+    },
+    "training_eligibility": {
+      "version": "training-eligibility-v1",
+      "path": "contracts/training-release/training-eligibility-v1.schema.json"
+    },
+    "training_view_eligibility_sidecar": {
+      "version": "training-view-eligibility-sidecar-v1",
+      "path": "contracts/training-release/training-view-eligibility-sidecar-v1.schema.json"
+    },
+    "training_pool_manifest": {
+      "version": "training-pool-manifest-v1",
+      "path": "contracts/training-release/training-pool-manifest-v1.schema.json"
+    },
+    "training_release_manifest": {
+      "version": "training-release-manifest-v1",
+      "path": "contracts/training-release/training-release-manifest-v1.schema.json"
+    },
+    "episode_pack": {
+      "version": "episode-pack-v1",
+      "path": "contracts/episode-pack/episode-pack-v1.schema.json"
+    },
     "trajectory": {
       "version": "trajectory-v1",
       "path": "contracts/trajectory/trajectory-v1.schema.json"
     },
-    "training_view_row": {
+    "trajectory_v2": {
+      "version": "trajectory-v2",
+      "path": "contracts/trajectory/trajectory-v2.schema.json"
+    },
+    "training_view_row_legacy": {
       "version": "training-view-row-v1",
       "path": "contracts/training-views/training-view-row-v1.schema.json"
+    },
+    "training_view_row": {
+      "version": "training-view-row-v2",
+      "path": "contracts/training-views/training-view-row-v2.schema.json"
     },
     "task_catalog": {
       "version": "v0.2",

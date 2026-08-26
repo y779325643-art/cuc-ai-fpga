@@ -66,6 +66,20 @@ class SystemHisHStageValidationTests(unittest.TestCase):
         self.assertEqual(report["h1"]["status"], "fail")
         self.assertEqual(report["h2"]["status"], "not_run")
         self.assertFalse(report["passed"])
+        self.assertEqual(report["h1"]["well_formedness_rules"]["W1"]["status"], "fail")
+
+    def test_h1_records_all_well_formedness_rule_statuses(self) -> None:
+        report = validate_system_his_h_stages(
+            _counter_request(),
+            _counter_project_with(lambda payload: None),
+        )
+
+        self.assertEqual(
+            list(report["h1"]["well_formedness_rules"]),
+            [f"W{index}" for index in range(1, 11)],
+        )
+        self.assertEqual(report["h1"]["well_formedness_rules"]["W1"]["status"], "pass")
+        self.assertEqual(report["h1"]["well_formedness_rules"]["W3"]["status"], "not_applicable")
 
     def test_h2_rejects_unsupported_protocol_and_scenario(self) -> None:
         def mutate(payload):
@@ -196,37 +210,54 @@ class SystemHisHStageValidationTests(unittest.TestCase):
         self.assertIn("unsupported protocol 'mystery_transport'", diagnostics)
 
     def test_h3_rejects_requirement_width_mismatch_after_lowerable_his(self) -> None:
+        request = ProjectRequest(
+            task_type="counter",
+            width=8,
+            project_name="counter_8bit",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
         project = ProjectGenerator().generate(
-            ProjectRequest(task_type="composed_stream_accumulator", width=8, project_name="stream_accum_8bit"),
-            PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source"),
+            request,
+            platform,
         )
         files = dict(project.files)
         payload = json.loads(files["system_his.json"])
-        next(port for port in payload["top"]["ports"] if port["name"] == "in_data")["width"] = 7
+        next(port for port in payload["top"]["ports"] if port["name"] == "count")["width"] = 7
         files["system_his.json"] = json.dumps(payload) + "\n"
         broken = GeneratedProject(project_name=project.project_name, files=files)
 
         report = validate_system_his_h_stages(
-            ProjectRequest(task_type="composed_stream_accumulator", width=8, project_name="stream_accum_8bit"),
+            request,
             broken,
+            platform=platform,
         )
 
         self.assertEqual(report["h0"]["status"], "pass")
         self.assertEqual(report["h1"]["status"], "pass")
         self.assertEqual(report["h2"]["status"], "pass")
         self.assertEqual(report["h3"]["status"], "fail")
-        self.assertEqual(report["h3"]["scores"]["parameter_fidelity"], 0.0)
+        self.assertEqual(report["h3"]["scores"]["interface_extraction"], 0.0)
+        self.assertTrue(
+            any("data_width_bits" in diagnostic for diagnostic in report["h3"]["diagnostics"])
+        )
         self.assertFalse(report["passed"])
 
     def test_h3_rejects_reset_fidelity_mismatch_after_lowerable_his(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_stream_accumulator",
+            width=8,
+            project_name="stream_accum_8bit",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
         project = _project_with(
-            ProjectRequest(task_type="composed_stream_accumulator", width=8, project_name="stream_accum_8bit"),
+            request,
             lambda payload: payload["top"]["resets"][0].update({"polarity": "active_high"}),
         )
 
         report = validate_system_his_h_stages(
-            ProjectRequest(task_type="composed_stream_accumulator", width=8, project_name="stream_accum_8bit"),
+            request,
             project,
+            platform=platform,
         )
 
         self.assertEqual(report["h0"]["status"], "pass")

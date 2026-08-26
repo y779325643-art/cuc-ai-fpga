@@ -27,6 +27,8 @@ def build_measurement_freeze(
     timeouts: dict[str, int],
     tool_versions: dict[str, str],
     l4_family_ids: list[str],
+    tool_environment_ref: dict[str, Any] | None = None,
+    l4_tool_environment_ref: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     manifest: dict[str, Any] = {
         "schema_version": "sr2fpga-phase-d-freeze-v1",
@@ -40,6 +42,10 @@ def build_measurement_freeze(
         "tool_versions": tool_versions,
         "l4_family_ids": sorted(l4_family_ids),
     }
+    if tool_environment_ref is not None:
+        manifest["tool_environment_ref"] = dict(tool_environment_ref)
+    if l4_tool_environment_ref is not None:
+        manifest["l4_tool_environment_ref"] = dict(l4_tool_environment_ref)
     _reject_secret_like_fields(manifest)
     return manifest
 

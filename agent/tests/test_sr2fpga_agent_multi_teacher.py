@@ -93,7 +93,7 @@ class SourcesParsingTest(unittest.TestCase):
             config = load_runner_config(config_path)
             self.assertEqual(config.sources, {})
 
-    def test_openai_compat_without_generation_mode_defaults_to_two_stage_quarantine(self) -> None:
+    def test_openai_compat_without_generation_mode_defaults_to_two_stage_v12(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             path = _write_config(
                 tmp,
@@ -113,8 +113,8 @@ class SourcesParsingTest(unittest.TestCase):
                 sample_id="s_claude", source="claude", task_type="counter", width=8,
                 project_name="p", requirement="r",
             ).metadata(config)
-            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
-            self.assertEqual(metadata["training_split"], "quarantine")
+            self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+            self.assertEqual(metadata["training_split"], "clean")
 
     def test_deepseek_his_v12_without_generation_mode_defaults_to_two_stage(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -218,6 +218,21 @@ class SourcesParsingTest(unittest.TestCase):
             )
             with self.assertRaises(SystemExit):
                 load_runner_config(path)
+
+    def test_direct_and_deterministic_kinds_reject_forged_two_stage_mode(self) -> None:
+        for kind in ("deepseek", "deterministic"):
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory() as tmp:
+                path = _write_config(
+                    tmp,
+                    {
+                        "source": {
+                            "kind": kind,
+                            "generation_mode": "two_stage",
+                        }
+                    },
+                )
+                with self.assertRaisesRegex(SystemExit, "requires generation_mode"):
+                    load_runner_config(path)
 
 
 def _base_config(**overrides) -> RunnerConfig:
@@ -547,7 +562,7 @@ class MetadataTest(unittest.TestCase):
             difficulty_tier="T1",
         )
 
-    def test_openai_compat_two_stage_is_quarantined_until_vetted(self) -> None:
+    def test_openai_compat_two_stage_records_the_runtime_v12_contract(self) -> None:
         claude = SourceConnection(
             name="claude", kind="openai_compat", model="claude-opus-4-8",
             base_url="https://api.anthropic.com/v1", api_key_env="ANTHROPIC_API_KEY",
@@ -556,8 +571,8 @@ class MetadataTest(unittest.TestCase):
         config = _base_config(sources={"claude": claude})
         metadata = self._sample("claude").metadata(config)
         self.assertEqual(metadata["failure_origin"], "natural_llm")
-        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
-        self.assertEqual(metadata["training_split"], "quarantine")
+        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
+        self.assertEqual(metadata["training_split"], "clean")
         self.assertEqual(metadata["model"], "claude-opus-4-8")
 
     def test_deterministic_metadata_unchanged(self) -> None:
@@ -566,11 +581,11 @@ class MetadataTest(unittest.TestCase):
         self.assertEqual(metadata["failure_origin"], "deterministic_template")
         self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.2")
 
-    def test_legacy_deepseek_direct_is_v11_quarantine(self) -> None:
+    def test_direct_method_has_no_system_his_and_remains_quarantined(self) -> None:
         config = _base_config(api_key_env="DEEPSEEK_API_KEY")
         metadata = self._sample("deepseek").metadata(config)
         self.assertEqual(metadata["failure_origin"], "natural_llm")
-        self.assertEqual(metadata["system_his_schema_version"], "system-his-v1.1")
+        self.assertEqual(metadata["system_his_schema_version"], "not_applicable")
         self.assertEqual(metadata["training_split"], "quarantine")
 
     def test_deepseek_oracle_his_metadata_is_clean_v12_behavior_files(self) -> None:
@@ -775,4 +790,20 @@ class TimeoutConfigTest(unittest.TestCase):
         self.assertIsInstance(generator.his_project_generator.client.config, OpenAICompatibleConfig)
         self.assertEqual(
             generator.his_project_generator.client.config.max_tokens, 4096
+        )
+
+    def test_builder_passes_requested_decoding_seed_to_provider_adapter(self) -> None:
+        conn = SourceConnection(
+            name="seeded", kind="openai_compat", model="qwen3.7-plus",
+            base_url="https://example/v1", api_key_env="X_API_KEY",
+            generation_mode="two_stage",
+        )
+        with patch.dict(os.environ, {"X_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(
+                conn,
+                decoding_seed=17,
+            )
+        self.assertEqual(
+            generator.his_project_generator.client.config.seed,
+            17,
         )

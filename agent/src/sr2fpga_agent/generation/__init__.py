@@ -1,15 +1,33 @@
-"""SR2FPGA LLM project generators."""
+"""SR2FPGA provider-neutral model-backed project generators."""
 
-from sr2fpga_agent.generation.direct_project import DeepSeekProjectGenerator
-from sr2fpga_agent.generation.his2project import DeepSeekHisProjectGenerator
-from sr2fpga_agent.generation.req2his import DeepSeekSystemHisGenerator
-from sr2fpga_agent.generation.skeleton_fill import DeepSeekOracleHisProjectGenerator
-from sr2fpga_agent.generation.two_stage import DeepSeekTwoStageProjectGenerator
+from sr2fpga_agent.generation.direct_project import DirectProjectGenerator
+from sr2fpga_agent.generation.context_direct import (
+    FrozenContextDirectProjectFacade,
+    FrozenContextDirectProjectGenerator,
+    FrozenContextProjectRepairFacade,
+)
+from sr2fpga_agent.generation.context_his import (
+    FrozenContextSystemHisCorrectionFacade,
+    FrozenContextSystemHisFacade,
+    FrozenContextSystemHisValidationFacade,
+)
+from sr2fpga_agent.generation.context_plan import FrozenContextUntypedPlanFacade
+from sr2fpga_agent.generation.his2project import HisProjectGenerator
+from sr2fpga_agent.generation.req2his import SystemHisGenerator
+from sr2fpga_agent.generation.skeleton_fill import OracleHisProjectGenerator
+from sr2fpga_agent.generation.two_stage import TwoStageProjectGenerator
 
 __all__ = [
-    "DeepSeekHisProjectGenerator",
-    "DeepSeekOracleHisProjectGenerator",
-    "DeepSeekProjectGenerator",
-    "DeepSeekSystemHisGenerator",
-    "DeepSeekTwoStageProjectGenerator",
+    "DirectProjectGenerator",
+    "FrozenContextDirectProjectFacade",
+    "FrozenContextDirectProjectGenerator",
+    "FrozenContextProjectRepairFacade",
+    "FrozenContextSystemHisCorrectionFacade",
+    "FrozenContextSystemHisFacade",
+    "FrozenContextSystemHisValidationFacade",
+    "FrozenContextUntypedPlanFacade",
+    "HisProjectGenerator",
+    "OracleHisProjectGenerator",
+    "SystemHisGenerator",
+    "TwoStageProjectGenerator",
 ]

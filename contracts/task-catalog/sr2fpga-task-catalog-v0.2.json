@@ -1,14 +1,15 @@
 {
   "$schema": "https://sr2fpga.local/schemas/sr2fpga-task-catalog-v0.2.schema.json",
   "catalog_schema_version": "sr2fpga-task-catalog-v0.2",
-  "catalog_version": "0.2.0",
-  "intended_path": "docs/sr2fpga-task-catalog-v0.2.json",
-  "generated_at_utc": "2026-07-10T05:24:27Z",
+  "catalog_version": "0.2.2",
+  "intended_path": "contracts/task-catalog/sr2fpga-task-catalog-v0.2.json",
+  "generated_at_utc": "2026-08-18T09:21:03Z",
   "purpose": "Executable task-family catalog for SR2FPGA Codex implementation, benchmark planning, Line A/Line B selection, oracle readiness, skeleton strategy, and L0-L5 target policy.",
   "source_notes": [
     "Aligned with current SR2FPGA code report: deterministic generator, System-HIS v1.2 checker, contract skeleton, L0-L3 tool loop, optional OpenXC7 L4, recorder/training views.",
     "Aligned with SR2FPGA research spec: T0-T4 compressed curriculum, System-HIS v1.2, L0-L5 evaluation, L4 representative-subset policy, black-box testbench oracle discipline.",
-    "ArchXBench informs design-complexity pressure but its Level 0-6 is orthogonal to SR2FPGA T0-T4 and L0-L5."
+    "ArchXBench informs design-complexity pressure but its Level 0-6 is orthogonal to SR2FPGA T0-T4 and L0-L5.",
+    "The family-recipe deny set mirrors the active Paper-1 candidate G4a primary held-out list and is explicitly not a signed G4b campaign split."
   ],
   "naming": {
     "module_difficulty": {
@@ -36,7 +37,7 @@
       "L0": "System-HIS/manifest/RTL/testbench/constraint consistency",
       "L1": "Verilator lint / synthesizable subset",
       "L2": "black-box functional simulation",
-      "L3": "Yosys synth_xilinx and resource/QoR extraction",
+      "L3": "Yosys synth -top plus stat/resource extraction",
       "L4": "OpenXC7/Vivado place-and-route timing closure",
       "L5": "fixed-shell board validation"
     }
@@ -180,6 +181,13 @@
         "p_rl_qlearning_accel"
       ],
       "commercial_reference_policy": "Run Vivado only on TCAD subset if license permits; raw Vivado artifacts are internal_only."
+    },
+    "family_recipe_selection": {
+      "policy_id": "sr2fpga-family-recipe-deny",
+      "policy_version": "1.0.0",
+      "status": "candidate_g4a_not_signed",
+      "deny_recommended_set": "paper1_candidate_primary_family_heldout",
+      "deny_reason": "candidate_primary_family_heldout"
     }
   },
   "recommended_sets": {
@@ -198,6 +206,12 @@
       "pattern_matcher",
       "p_stream_trigger_filter",
       "qtable_update_core"
+    ],
+    "paper1_candidate_primary_family_heldout": [
+      "uart_fifo_loopback",
+      "stream_fork_join",
+      "matched_filter",
+      "sobel_threshold"
     ],
     "paper1_complex_eval": [
       "p_vision_defect_core",
@@ -251,10 +265,7 @@
       "system_his_profile": "simple_control",
       "skeleton_level": "S1_structure_skeleton",
       "core_modules": [
-        "sobel_line_buffer",
-        "sobel_window",
-        "sobel_threshold_core",
-        "io_control"
+        "clock_divider"
       ],
       "oracle_kind": [
         "reference_model"
@@ -3185,7 +3196,7 @@
       "category": "host_facing_accelerator",
       "module_difficulty": "M5",
       "project_difficulty": null,
-      "sr2fpga_tier": "T4",
+      "sr2fpga_tier": "T3",
       "system_his_profile": "host_facing_accelerator",
       "skeleton_level": "S3_architecture_skeleton",
       "core_modules": [],

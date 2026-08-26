@@ -8,6 +8,8 @@ Supported input rows:
   requirement_to_his, his_to_project, requirement_to_project,
   requirement_to_file, failure_to_diagnosis, failure_to_patch,
   project_to_predicted_qor, and project_to_measured_qor.
+- Canonical training-view-row-v2 rows after fail-closed contract and leakage
+  validation by the Training release reader.
 """
 
 from __future__ import annotations
@@ -18,6 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from .contracts import TrainingContractError, validate_training_view_provenance
+from .release_reader import render_training_view_row_v2
 
 
 class DatasetFormatError(ValueError):
@@ -56,6 +59,12 @@ def convert_jsonl(
 
 
 def _row_to_messages(row: dict[str, Any], line_number: int) -> list[dict[str, str]]:
+    if row.get("contract_version") == "training-view-row-v2":
+        try:
+            return render_training_view_row_v2(row)
+        except TrainingContractError as exc:
+            raise DatasetFormatError(f"Row {line_number}: {exc}") from exc
+
     if row.get("view_type") == "requirement_to_file":
         try:
             validate_training_view_provenance(row)

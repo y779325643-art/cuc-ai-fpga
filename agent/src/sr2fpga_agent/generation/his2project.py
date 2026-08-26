@@ -7,16 +7,17 @@ from typing import Any
 
 from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project, merge_behavior_files
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
+from sr2fpga_agent.model_budget import record_parser_schema_retry
 from sr2fpga_agent.parsers import parse_behavior_files
 from sr2fpga_agent.prompts import _his_project_messages, _with_his_project_retry_feedback
 from sr2fpga_agent.providers import OpenAICompatibleClient
 from sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
 from sr2fpga_agent.system_his_v12_checker import check_system_his_v12_against_rtl
 
-class DeepSeekHisProjectGenerator:
+class HisProjectGenerator:
     """Generate a project package from a checked System-HIS v1.2 contract."""
 
-    def __init__(self, client: OpenAICompatibleClient, max_attempts: int = 3) -> None:
+    def __init__(self, client: OpenAICompatibleClient, max_attempts: int = 1) -> None:
         self.client = client
         self.max_attempts = max_attempts
 
@@ -53,10 +54,11 @@ class DeepSeekHisProjectGenerator:
             except ValueError as exc:
                 last_error = exc
                 if _attempt + 1 < self.max_attempts:
+                    record_parser_schema_retry(self.client, "parse_behavior_or_contract")
                     messages = _with_his_project_retry_feedback(messages, str(exc), content)
         if last_error is not None:
             raise last_error
-        raise RuntimeError("DeepSeek HIS2PROJECT generator did not run")
+        raise RuntimeError("HIS2PROJECT generator did not run")
 
 
 def _project_rtl_sources(project: GeneratedProject) -> list[str]:

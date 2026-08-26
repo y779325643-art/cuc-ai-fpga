@@ -85,4 +85,9 @@ class RepositoryPaths:
 
     @property
     def task_evidence(self) -> Path:
-        return self.root / "docs" / "sr2fpga-task-evidence-v0.1.json"
+        return (
+            self.reports_dir
+            / "evidence"
+            / "task-ledger"
+            / "sr2fpga-task-evidence-v0.1.json"
+        )

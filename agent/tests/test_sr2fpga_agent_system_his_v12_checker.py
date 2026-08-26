@@ -13,7 +13,11 @@ from sr2fpga_agent.system_his_v12_checker import (
 )
 
 
-FIXTURE = Path("docs/system_his_examples/t4_dual_stream_join.system-his-v1.2.json")
+FIXTURE = (
+    Path(__file__).parent
+    / "fixtures"
+    / "t4_dual_stream_join.system-his-v1.2.json"
+)
 
 
 class SystemHisV12CheckerTest(unittest.TestCase):
@@ -469,6 +473,9 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         for instance in payload["instances"]:
             if instance["name"] == "u_stream_join":
                 instance["owns_state"] = ["u_stream_join.arb_fsm"]
+        for component in payload["components"]:
+            if component["name"] == "stream_join":
+                component["combinational"] = False
         files = dict(project.files)
         files["system_his.json"] = json.dumps(payload) + "\n"
         files["rtl/stream_join.v"] = files["rtl/stream_join.v"].replace(

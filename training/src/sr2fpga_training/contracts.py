@@ -5,8 +5,10 @@ from __future__ import annotations
 from functools import lru_cache
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any
+
+from jsonschema import Draft202012Validator
 
 
 class TrainingContractError(ValueError):
@@ -72,14 +74,39 @@ def _require_repository_root(candidate: Path) -> Path:
 
 @lru_cache(maxsize=1)
 def _training_view_schema() -> dict[str, Any]:
+    return load_registered_schema("training_view_row_legacy")
+
+
+@lru_cache(maxsize=None)
+def load_registered_schema(key: str) -> dict[str, Any]:
+    """Load and verify one manifest-registered contract without importing Agent."""
+
     root = discover_repository_root()
     manifest_path = root / "contracts" / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-    registry_entry = manifest["contracts"]["training_view_row"]
-    schema_path = root / registry_entry["path"]
+    contracts = manifest.get("contracts")
+    registry_entry = contracts.get(key) if isinstance(contracts, dict) else None
+    if not isinstance(registry_entry, dict):
+        raise TrainingContractError(f"unregistered training contract: {key}")
+    relative_text = registry_entry.get("path")
+    if not isinstance(relative_text, str) or not relative_text:
+        raise TrainingContractError(f"registered training contract {key!r} has no path")
+    relative = PurePosixPath(relative_text)
+    if relative.is_absolute() or ".." in relative.parts:
+        raise TrainingContractError(f"registered training contract {key!r} has unsafe path")
+    schema_path = (root / Path(*relative.parts)).resolve()
+    contracts_root = (root / "contracts").resolve()
+    if schema_path != contracts_root and contracts_root not in schema_path.parents:
+        raise TrainingContractError(f"registered training contract {key!r} escapes contracts/")
     schema = json.loads(schema_path.read_text(encoding="utf-8"))
     if not isinstance(schema, dict):
         raise TrainingContractError(
-            f"Training-view contract must be a JSON object: {schema_path}"
+            f"Training contract must be a JSON object: {schema_path}"
+        )
+    Draft202012Validator.check_schema(schema)
+    declared_version = schema.get("properties", {}).get("contract_version", {}).get("const")
+    if declared_version != registry_entry.get("version"):
+        raise TrainingContractError(
+            f"registered training contract {key!r} version does not match schema"
         )
     return schema
