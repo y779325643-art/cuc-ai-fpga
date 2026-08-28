@@ -193,6 +193,10 @@
       "version": "episode-pack-v1",
       "path": "contracts/episode-pack/episode-pack-v1.schema.json"
     },
+    "paired_block": {
+      "version": "paired-block-v1",
+      "path": "contracts/episode-pack/paired-block-v1.schema.json"
+    },
     "trajectory": {
       "version": "trajectory-v1",
       "path": "contracts/trajectory/trajectory-v1.schema.json"

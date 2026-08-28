@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/episode-pack/paired-block/v1",
+  "title": "SR2FPGA Development Paired Block v1",
+  "description": "Development-only identity and execution-order authority for one excluded M0-M5 replicate block. It grants no outcome, pass-credit, G3, or G4b authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "evaluation_scope",
+    "paired_block_id",
+    "semantic_instance_id",
+    "replicate_id",
+    "public_projection_sha256",
+    "model_provenance_sha256",
+    "decoding_control_mode",
+    "requested_decoding_seed",
+    "execution_schedule_seed",
+    "method_order",
+    "official_outcome",
+    "official_authority",
+    "pass_credit_authority",
+    "g3_accepted",
+    "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "paired-block-v1"},
+    "evaluation_scope": {
+      "const": "excluded_development_conformance_only"
+    },
+    "paired_block_id": {"$ref": "#/$defs/identifier"},
+    "semantic_instance_id": {"$ref": "#/$defs/identifier"},
+    "replicate_id": {"$ref": "#/$defs/identifier"},
+    "public_projection_sha256": {"$ref": "#/$defs/sha256"},
+    "model_provenance_sha256": {"$ref": "#/$defs/sha256"},
+    "decoding_control_mode": {
+      "enum": ["documented_seed_control", "stochastic_blocked"]
+    },
+    "requested_decoding_seed": {
+      "type": ["integer", "null"],
+      "minimum": 0
+    },
+    "execution_schedule_seed": {"type": "integer", "minimum": 0},
+    "method_order": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]}
+    },
+    "official_outcome": {"const": false},
+    "official_authority": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decoding_control_mode": {"const": "documented_seed_control"}
+        },
+        "required": ["decoding_control_mode"]
+      },
+      "then": {
+        "properties": {
+          "requested_decoding_seed": {"type": "integer", "minimum": 0}
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  }
+}

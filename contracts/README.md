@@ -84,6 +84,9 @@ signed OASA fixture set or official audit outcome yet.
 ## Episode, Candidate, And Project Contracts
 
 - `episode-pack/episode-pack-v1.schema.json`
+- `episode-pack/paired-block-v1.schema.json` — excluded-development identity
+  and execution-order commitment for one semantic-instance replicate across
+  M0-M5; it carries no official, pass-credit, G3, or G4b authority
 - `project-package/project-package-v1.schema.json`
 - `project-envelope/project-envelope-v1.schema.json`
 - `public-evaluation-candidate/public-evaluation-candidate-v1.schema.json`
@@ -97,6 +100,13 @@ commitments; evaluator family metadata is represented only by a hash in the
 audit projection. The current builder is deliberately limited to development
 and excluded-pilot packs. It cannot create an official pack; that requires a
 future signed G4b loader.
+
+`paired-block-v1` binds the semantic-instance and replicate identities, public
+projection and model-provenance digests, decoding-control commitment,
+independent schedule seed, and the complete M0-M5 execution order. It is a
+development contract needed to close G3 ordering and pairing debt; validation
+or registration alone does not accept G3 or authorize an outcome-producing
+campaign.
 
 `project-package-v1` is the canonical schema for the candidate package's
 `manifest.json`. It declares role-based top/source/interface/build intent and

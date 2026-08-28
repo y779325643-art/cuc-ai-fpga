@@ -61,6 +61,7 @@ def test_contract_manifest_declares_required_contracts() -> None:
         "training_pool_manifest",
         "training_release_manifest",
         "episode_pack",
+        "paired_block",
         "trajectory",
         "trajectory_v2",
         "training_view_row_legacy",
