@@ -22,6 +22,22 @@
     "rq2_evidence": {"const": false},
     "public_projection_sha256": {"$ref": "#/$defs/sha256"},
     "source_smoke_report_ref": {"$ref": "#/$defs/artifact_ref"},
+    "paired_block_ref": {"$ref": "#/$defs/artifact_ref"},
+    "method_order": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/method"}
+    },
+    "actual_method_order": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "uniqueItems": true,
+      "items": {"$ref": "#/$defs/method"}
+    },
+    "method_order_verified": {"const": true},
     "method_records": {
       "type": "array",
       "minItems": 6,
@@ -29,6 +45,12 @@
       "items": {"$ref": "#/$defs/method_record"}
     },
     "reconciliation": {"$ref": "#/$defs/reconciliation"}
+  },
+  "dependentRequired": {
+    "paired_block_ref": ["method_order", "actual_method_order", "method_order_verified"],
+    "method_order": ["paired_block_ref", "actual_method_order", "method_order_verified"],
+    "actual_method_order": ["paired_block_ref", "method_order", "method_order_verified"],
+    "method_order_verified": ["paired_block_ref", "method_order", "actual_method_order"]
   },
   "$defs": {
     "identifier": {

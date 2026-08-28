@@ -7,6 +7,8 @@ from sr2fpga_agent.artifact_store import ArtifactStore
 from sr2fpga_agent.paired_block import (
     METHODS,
     build_balanced_method_orders,
+    build_development_paired_block,
+    development_paired_block_reference,
     load_development_paired_block,
     write_development_paired_block,
 )
@@ -83,6 +85,27 @@ def test_development_paired_block_round_trips_through_artifact_store(
     assert payload["pass_credit_authority"] is False
     assert payload["g3_accepted"] is False
     assert payload["g4b_authorized"] is False
+
+
+def test_pure_planned_reference_matches_materialized_reference(tmp_path) -> None:
+    store = ArtifactStore(tmp_path / "store")
+    arguments = {
+        "paired_block_id": "pair-fir-planned-001",
+        "semantic_instance_id": "semantic-fir-001",
+        "replicate_id": "replicate-000",
+        "public_projection_sha256": "1" * 64,
+        "model_provenance_sha256": "2" * 64,
+        "decoding_control_mode": "documented_seed_control",
+        "requested_decoding_seed": 17,
+        "execution_schedule_seed": 991,
+        "method_order": build_balanced_method_orders(991)[0],
+    }
+
+    payload = build_development_paired_block(**arguments)
+    planned = development_paired_block_reference(payload)
+    materialized = write_development_paired_block(store, **arguments)
+
+    assert planned == materialized
 
 
 def test_writer_uses_filesystem_safe_key_for_contract_legal_colon_id(tmp_path) -> None:

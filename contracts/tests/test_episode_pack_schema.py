@@ -3,7 +3,6 @@ from pathlib import Path
 
 from jsonschema import Draft202012Validator
 
-
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMA_PATH = REPO_ROOT / "contracts" / "episode-pack" / "episode-pack-v1.schema.json"
 
@@ -58,3 +57,35 @@ def test_generation_visible_context_rejects_evaluator_fields() -> None:
 
     assert errors
     assert any("Additional properties" in error.message for error in errors)
+
+
+def test_episode_pack_accepts_paired_block_ref_only_in_audit_projection() -> None:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    validator = Draft202012Validator(schema)
+    paired_ref = {
+        "key": "paired-blocks/block-" + "1" * 64,
+        "sha256": "2" * 64,
+        "size_bytes": 512,
+        "media_type": "application/json",
+    }
+    payload = _payload()
+    payload["audit_only"]["paired_block_ref"] = paired_ref
+
+    assert list(validator.iter_errors(payload)) == []
+
+    leaked = _payload()
+    leaked["public_context"]["paired_block_ref"] = paired_ref
+    assert list(validator.iter_errors(leaked))
+
+
+def test_episode_pack_rejects_malformed_paired_block_ref() -> None:
+    schema = json.loads(SCHEMA_PATH.read_text(encoding="utf-8"))
+    payload = _payload()
+    payload["audit_only"]["paired_block_ref"] = {
+        "key": "paired-blocks/block-001",
+        "sha256": "not-a-hash",
+        "size_bytes": 0,
+        "media_type": "text/plain",
+    }
+
+    assert list(Draft202012Validator(schema).iter_errors(payload))

@@ -77,20 +77,24 @@ class FrozenEpisodePack:
     evaluator_metadata_sha256: str
     private_ref_ids: tuple[str, ...]
     pack_sha256: str
+    paired_block_ref: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
+        audit_only = {
+            "episode_id": self.episode_id,
+            "analysis_population": self.analysis_population,
+            "method_condition_id": self.method_condition.value,
+            "evaluator_metadata_sha256": self.evaluator_metadata_sha256,
+            "private_ref_ids": list(self.private_ref_ids),
+        }
+        if self.paired_block_ref is not None:
+            audit_only["paired_block_ref"] = dict(self.paired_block_ref)
         return {
             "contract_version": "episode-pack-v1",
             "pack_id": self.pack_id,
             "pack_sha256": self.pack_sha256,
             "public_context": self.context.to_dict(),
-            "audit_only": {
-                "episode_id": self.episode_id,
-                "analysis_population": self.analysis_population,
-                "method_condition_id": self.method_condition.value,
-                "evaluator_metadata_sha256": self.evaluator_metadata_sha256,
-                "private_ref_ids": list(self.private_ref_ids),
-            },
+            "audit_only": audit_only,
         }
 
     def generation_visible(self) -> dict[str, Any]:
@@ -228,6 +232,7 @@ def build_development_episode_pack(
     method_condition: MethodConditionId | str,
     evaluator_metadata: Mapping[str, Any],
     private_ref_ids: tuple[str, ...] = (),
+    paired_block_ref: Mapping[str, Any] | None = None,
 ) -> FrozenEpisodePack:
     if analysis_population not in {"development", "excluded"}:
         raise ValueError(
@@ -246,6 +251,11 @@ def build_development_episode_pack(
         "evaluator_metadata_sha256": _sha256(evaluator_metadata),
         "private_ref_ids": list(private_ref_ids),
     }
+    frozen_paired_block_ref = (
+        dict(paired_block_ref) if paired_block_ref is not None else None
+    )
+    if frozen_paired_block_ref is not None:
+        audit_only["paired_block_ref"] = frozen_paired_block_ref
     without_hash = {
         "contract_version": "episode-pack-v1",
         "pack_id": "pack-" + _sha256(
@@ -266,6 +276,7 @@ def build_development_episode_pack(
         method_condition=condition,
         evaluator_metadata_sha256=audit_only["evaluator_metadata_sha256"],
         private_ref_ids=private_ref_ids,
+        paired_block_ref=frozen_paired_block_ref,
         pack_sha256=_sha256(without_hash),
     )
     errors = validate_episode_pack(pack.to_dict())

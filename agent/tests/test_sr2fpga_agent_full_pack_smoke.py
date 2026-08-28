@@ -51,6 +51,7 @@ from sr2fpga_agent.method_adapters import (
     SharedArtifactRefs,
 )
 from sr2fpga_agent.method_contract import method_policy_sha256
+from sr2fpga_agent.measurement_freeze import freeze_fingerprint
 from sr2fpga_agent.generation.direct_project import DirectProjectGenerator
 from sr2fpga_agent.models import (
     GeneratedProject,
@@ -60,6 +61,10 @@ from sr2fpga_agent.models import (
 )
 from sr2fpga_agent.parsers import parse_system_his_v12
 from sr2fpga_agent.paired_measurement import build_episode_measurement
+from sr2fpga_agent.paired_block import (
+    load_development_paired_block,
+    write_development_paired_block,
+)
 from sr2fpga_agent.project_contract import build_project_envelope
 from sr2fpga_agent.project_generator import ProjectGenerator
 from sr2fpga_agent.public_evaluator import (
@@ -74,6 +79,7 @@ from sr2fpga_agent.runner import (
     TaskConfig,
     planned_samples,
     run_batch,
+    runner_preflight,
 )
 from sr2fpga_agent.system_his_fidelity import build_frozen_requirement_trace
 
@@ -1232,6 +1238,7 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         generation_mode="two_stage",
         system_his_schema_version="system-his-v1.2",
     )
+    method_order = ("M3", "M5", "M1", "M4", "M0", "M2")
     config = RunnerConfig(
         dataset_root=root / "datasets",
         export_root=root / "exports",
@@ -1255,11 +1262,11 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
                 replicate_id="replicate-000",
                 decoding_seed=17,
                 paired_block_id="pair-fir-full-pack-001-seed-17",
-                execution_schedule_seed=909991,
+                execution_schedule_seed=24,
                 decoding_control_mode="documented_seed_control",
                 public_l2_harness_manifest=str(harness_manifest_path),
             )
-            for method in ("M0", "M1", "M2", "M3", "M4", "M5")
+            for method in method_order
         ],
     )
     samples = planned_samples(config)
@@ -1307,23 +1314,23 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
     )
     trusted_harness = load_development_public_l2_harness(harness_manifest_path)
     generators = [
+        _TwoStageGeneratorStub(
+            _StaticClient(his_response),
+            _StaticClient(free_project_response),
+        ),
+        _TwoStageGeneratorStub(
+            _StaticClient(his_response),
+            _StaticClient(behavior_response),
+        ),
         DirectProjectGenerator(_StaticClient(free_project_response)),
+        _TwoStageGeneratorStub(
+            _StaticClient(his_response),
+            _StaticClient(behavior_response),
+        ),
         DirectProjectGenerator(_StaticClient(free_project_response)),
         _TwoStageGeneratorStub(
             _StaticClient("Use one registered counter module with active-low reset."),
             _StaticClient(free_project_response),
-        ),
-        _TwoStageGeneratorStub(
-            _StaticClient(his_response),
-            _StaticClient(free_project_response),
-        ),
-        _TwoStageGeneratorStub(
-            _StaticClient(his_response),
-            _StaticClient(behavior_response),
-        ),
-        _TwoStageGeneratorStub(
-            _StaticClient(his_response),
-            _StaticClient(behavior_response),
         ),
     ]
 
@@ -1350,6 +1357,13 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         },
     )
 
+    preflight = runner_preflight(config, validate_provider=False)
+    assert [sample["method_condition"] for sample in preflight["samples"]] == list(
+        method_order
+    )
+    preflight_by_sample = {
+        sample["sample_id"]: sample["episode_pack"] for sample in preflight["samples"]
+    }
     summary = run_batch(config, run_id="excluded-m0-m5-full-pack", resume=False)
     run_dir = config.run_root / "excluded-m0-m5-full-pack"
     store = ArtifactStore(run_dir / "method_artifacts")
@@ -1401,6 +1415,39 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         "development_episode_outcome_ref" in event for event in completion_events
     )
     assert all("method_artifacts" in event for event in completion_events)
+    paired_refs = {
+        json.dumps(event["paired_block_ref"], sort_keys=True)
+        for event in completion_events
+    }
+    assert len(paired_refs) == 1
+    paired_ref = ArtifactRef(**completion_events[0]["paired_block_ref"])
+    paired_block = load_development_paired_block(store, paired_ref)
+    assert paired_block["method_order"] == [
+        event["method_condition"] for event in completion_events
+    ]
+    assert paired_block["replicate_id"] == "replicate-000"
+    assert paired_block["execution_schedule_seed"] == 24
+    assert paired_block["requested_decoding_seed"] == 17
+    for event in completion_events:
+        assert event["execution_ordinal"] == paired_block["method_order"].index(
+            event["method_condition"]
+        )
+        assert event["replicate_id"] == paired_block["replicate_id"]
+        assert event["execution_schedule_seed"] == 24
+        assert event["decoding_control_mode"] == "documented_seed_control"
+        pack = json.loads(store.read_verified(ArtifactRef(**event["episode_pack_ref"])))
+        assert pack["audit_only"]["paired_block_ref"] == paired_ref.to_dict()
+        assert preflight_by_sample[event["sample_id"]]["pack_sha256"] == pack["pack_sha256"]
+        assert preflight_by_sample[event["sample_id"]][
+            "paired_block_ref"
+        ] == paired_ref.to_dict()
+    measurement_freeze = json.loads(
+        (run_dir / "measurement_freeze.json").read_text(encoding="utf-8")
+    )
+    assert {
+        json.dumps(record["paired_block_ref"], sort_keys=True)
+        for record in measurement_freeze["samples"]
+    } == paired_refs
     assert smoke["g3_accepted"] is False
     assert outcomes["summary"]["frozen_episode_count"] == 6
     assert outcomes["summary"]["retained_episode_count"] == 6
@@ -1426,6 +1473,10 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
     ]
     assert json.loads(store.read_verified(outcomes_ref)) == outcomes
     assert runner["reconciliation"]["all_trajectories_verified"] is True
+    assert runner["paired_block_ref"] == paired_ref.to_dict()
+    assert runner["method_order"] == paired_block["method_order"]
+    assert runner["actual_method_order"] == paired_block["method_order"]
+    assert runner["method_order_verified"] is True
     assert json.loads(store.read_verified(smoke_ref)) == smoke
     assert json.loads(store.read_verified(runner_ref)) == runner
     expected_harness_evidence = trusted_harness.public_evidence()
@@ -1466,7 +1517,119 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
             trusted_harness.bundle_sha256
             in trajectory["attempts"][0]["input_artifact_hashes"]
         )
+        assert paired_ref.sha256 in trajectory["attempts"][0]["input_artifact_hashes"]
         assert cost_summary["axes"]["public_tool_calls"]["value"] >= 8
+
+    reordered_dir = run_dir / "tampered-completion-order"
+    reordered_dir.mkdir()
+    (reordered_dir / "measurement_freeze.json").write_text(
+        (run_dir / "measurement_freeze.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (reordered_dir / "events.jsonl").write_text(
+        "\n".join(json.dumps(event) for event in reversed(completion_events)) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(FullPackReconciliationError, match="execution order"):
+        assemble_excluded_run_full_pack(
+            store,
+            events_path=reordered_dir / "events.jsonl",
+            smoke_id="tampered-completion-order",
+            scenarios=scenarios,
+        )
+
+    missing_block_trajectory = json.loads(
+        store.read_verified(ArtifactRef(**completion_events[0]["canonical_trajectory_ref"]))
+    )
+    missing_block_trajectory["attempts"][0]["input_artifact_hashes"].remove(
+        paired_ref.sha256
+    )
+    missing_block_trajectory_ref = store.put_validated_json(
+        "tampered-trajectories/missing-paired-block-sha",
+        missing_block_trajectory,
+        contract_key="trajectory_v2",
+    )
+    missing_hash_events = [dict(event) for event in completion_events]
+    missing_hash_events[0]["canonical_trajectory_ref"] = (
+        missing_block_trajectory_ref.to_dict()
+    )
+    missing_hash_dir = run_dir / "tampered-trajectory-input"
+    missing_hash_dir.mkdir()
+    (missing_hash_dir / "measurement_freeze.json").write_text(
+        (run_dir / "measurement_freeze.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    (missing_hash_dir / "events.jsonl").write_text(
+        "\n".join(json.dumps(event) for event in missing_hash_events) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(FullPackReconciliationError, match="trajectory attempt"):
+        assemble_excluded_run_full_pack(
+            store,
+            events_path=missing_hash_dir / "events.jsonl",
+            smoke_id="tampered-trajectory-input",
+            scenarios=scenarios,
+        )
+
+    tampered_freeze = json.loads(
+        (run_dir / "measurement_freeze.json").read_text(encoding="utf-8")
+    )
+    tampered_freeze["samples"][0]["execution_ordinal"] = 5
+    tampered_freeze["freeze_fingerprint"] = freeze_fingerprint(tampered_freeze)
+    tampered_freeze_events = [dict(event) for event in completion_events]
+    for event in tampered_freeze_events:
+        event["freeze_fingerprint"] = tampered_freeze["freeze_fingerprint"]
+    tampered_freeze_dir = run_dir / "tampered-freeze-ordinal"
+    tampered_freeze_dir.mkdir()
+    (tampered_freeze_dir / "measurement_freeze.json").write_text(
+        json.dumps(tampered_freeze),
+        encoding="utf-8",
+    )
+    (tampered_freeze_dir / "events.jsonl").write_text(
+        "\n".join(json.dumps(event) for event in tampered_freeze_events) + "\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(FullPackReconciliationError, match="execution ordinal"):
+        assemble_excluded_run_full_pack(
+            store,
+            events_path=tampered_freeze_dir / "events.jsonl",
+            smoke_id="tampered-freeze-ordinal",
+            scenarios=scenarios,
+        )
+
+    other_ref = write_development_paired_block(
+        store,
+        paired_block_id="pair-fir-full-pack-other",
+        semantic_instance_id=paired_block["semantic_instance_id"],
+        replicate_id=paired_block["replicate_id"],
+        public_projection_sha256=paired_block["public_projection_sha256"],
+        model_provenance_sha256=paired_block["model_provenance_sha256"],
+        decoding_control_mode=paired_block["decoding_control_mode"],
+        requested_decoding_seed=paired_block["requested_decoding_seed"],
+        execution_schedule_seed=paired_block["execution_schedule_seed"],
+        method_order=tuple(paired_block["method_order"]),
+    )
+    tampered_events = []
+    replaced = False
+    for line in events_path.read_text(encoding="utf-8").splitlines():
+        event = json.loads(line)
+        if event.get("event") == "sample_completed" and not replaced:
+            event["paired_block_ref"] = other_ref.to_dict()
+            replaced = True
+        tampered_events.append(json.dumps(event))
+    tampered_path = run_dir / "events-paired-ref-tampered.jsonl"
+    tampered_path.write_text("\n".join(tampered_events) + "\n", encoding="utf-8")
+    with pytest.raises(FullPackReconciliationError, match="paired-block reference"):
+        assemble_excluded_run_full_pack(
+            store,
+            events_path=tampered_path,
+            smoke_id="tampered-paired-ref",
+            scenarios=scenarios,
+        )
+
+    resumed = run_batch(config, run_id="excluded-m0-m5-full-pack", resume=True)
+    assert resumed["total_completed"] == 6
+    assert load_development_paired_block(store, paired_ref) == paired_block
     public_ref = ArtifactRef(**completion_events[0]["development_public_evaluation_ref"])
     public_blob = store.root / "blobs" / public_ref.sha256[:2] / public_ref.sha256
     public_blob.write_bytes(b"{}\n")

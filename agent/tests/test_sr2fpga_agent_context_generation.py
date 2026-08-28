@@ -110,6 +110,28 @@ def test_frozen_direct_prompt_contains_only_public_context_not_audit_metadata() 
     assert '"family_id"' not in serialized_prompt
 
 
+def test_paired_block_reference_stays_out_of_generation_visible_context() -> None:
+    context = _context()
+    paired_ref = {
+        "key": "paired-blocks/block-" + "1" * 64,
+        "sha256": "2" * 64,
+        "size_bytes": 512,
+        "media_type": "application/json",
+    }
+
+    pack = build_development_episode_pack(
+        context,
+        episode_id="episode-paired-001",
+        analysis_population="excluded",
+        method_condition="M4",
+        evaluator_metadata={"scope": "paired-block-visibility-test"},
+        paired_block_ref=paired_ref,
+    )
+
+    assert pack.to_dict()["audit_only"]["paired_block_ref"] == paired_ref
+    assert "paired_block_ref" not in pack.generation_visible()
+
+
 def test_frozen_direct_facade_uses_one_budgeted_call_and_real_canonical_parser(
     tmp_path,
 ) -> None:

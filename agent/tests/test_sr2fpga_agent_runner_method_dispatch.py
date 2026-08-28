@@ -14,6 +14,7 @@ from sr2fpga_agent.method_adapters import PairedArtifactCoordinator
 from sr2fpga_agent.model_budget import ModelCallBudget
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from sr2fpga_agent.parsers import parse_system_his_v12
+from sr2fpga_agent.paired_block import build_balanced_method_orders
 from sr2fpga_agent.project_generator import ProjectGenerator
 from sr2fpga_agent.provider_seed_capability import (
     ProviderSeedProbeObservation,
@@ -425,6 +426,29 @@ def test_runner_pairing_key_uses_explicit_instance_seed_and_block(tmp_path) -> N
     assert m3_pairing == m4_pairing
 
 
+def test_pairing_key_ignores_source_alias_for_same_effective_model_identity(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "direct-runner.json"
+    _write_direct_config(config_path, tmp_path)
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["sources"]["direct-alias"] = dict(payload["sources"]["direct"])
+    payload["tasks"][1]["source"] = "direct-alias"
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    config = load_runner_config(config_path)
+    m0_sample, m1_sample = planned_samples(config)
+    m0_context = context_from_validated_episode_pack(
+        m0_sample.metadata(config)["episode_pack"]
+    )
+    m1_context = context_from_validated_episode_pack(
+        m1_sample.metadata(config)["episode_pack"]
+    )
+
+    assert _runner_pairing_key(config, m0_sample, m0_context) == _runner_pairing_key(
+        config, m1_sample, m1_context
+    )
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     (
@@ -621,6 +645,105 @@ def test_legacy_development_derived_identity_remains_non_g3(tmp_path) -> None:
     assert sample.replicate_id == ""
     assert sample.execution_schedule_seed is None
     assert sample.decoding_control_mode == ""
+
+
+def test_complete_block_rejects_non_williams_config_order_before_run(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=("M0", "M1", "M2", "M3", "M4", "M5"),
+        analysis_population="excluded",
+    )
+    config = load_runner_config(config_path)
+
+    with pytest.raises(SystemExit, match="balanced order"):
+        run_batch(config, run_id="invalid-paired-order", resume=False)
+
+    assert not (tmp_path / "runs" / "invalid-paired-order").exists()
+
+
+def test_complete_block_model_config_conflict_stops_before_run_side_effects(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    method_order = build_balanced_method_orders(909991)[0]
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=method_order,
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["sources"]["direct"] = {
+        **payload["sources"]["his"],
+        "kind": "deepseek",
+        "generation_mode": "direct",
+        "system_his_schema_version": "",
+    }
+    for task in payload["tasks"]:
+        if task["method_condition"] in {"M0", "M1"}:
+            task["source"] = "direct"
+    payload["sources"]["other"] = {
+        **payload["sources"]["his"],
+        "model": "different-fake-model",
+    }
+    next(
+        task
+        for task in payload["tasks"]
+        if task["method_condition"] not in {"M0", "M1"}
+    )["source"] = "other"
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    config = load_runner_config(config_path)
+
+    with pytest.raises(SystemExit, match="conflicting model or gateway"):
+        run_batch(config, run_id="conflicting-paired-model", resume=False)
+
+    assert not (tmp_path / "runs" / "conflicting-paired-model").exists()
+
+
+def test_max_samples_cannot_truncate_a_complete_paired_block(tmp_path) -> None:
+    config_path = tmp_path / "runner.json"
+    method_order = build_balanced_method_orders(909991)[0]
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=method_order,
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["line_b_targets"] = {"max_samples": 5}
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="truncates complete paired_block_id"):
+        planned_samples(load_runner_config(config_path))
+
+
+def test_complete_block_rejects_same_id_reused_by_nonmember_before_run(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    method_order = build_balanced_method_orders(909991)[0]
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=method_order,
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    nonmember = dict(payload["tasks"][0])
+    nonmember["analysis_population"] = "development"
+    nonmember["method_condition"] = "M3"
+    payload["tasks"].append(nonmember)
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    config = load_runner_config(config_path)
+
+    with pytest.raises(SystemExit, match="reused outside"):
+        run_batch(config, run_id="reused-block-id", resume=False)
+
+    assert not (tmp_path / "runs" / "reused-block-id").exists()
 
 
 def test_replicate_and_schedule_identity_never_enter_m0_m5_model_prompts(

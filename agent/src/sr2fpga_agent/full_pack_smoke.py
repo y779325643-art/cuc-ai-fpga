@@ -8,7 +8,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.artifact_store import ArtifactIntegrityError, ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import COST_AXES
 from sr2fpga_agent.episode_outcome import (
@@ -21,6 +21,8 @@ from sr2fpga_agent.method_adapters import (
     ProjectCandidateEmission,
 )
 from sr2fpga_agent.method_contract import MethodConditionId
+from sr2fpga_agent.measurement_freeze import freeze_fingerprint
+from sr2fpga_agent.paired_block import load_development_paired_block
 
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -66,6 +68,7 @@ class FullPackScenarioRecord:
 class FullPackRunnerArtifactRecord:
     method_condition: str
     trajectory_ref: ArtifactRef
+    paired_block_ref: ArtifactRef | None = None
 
 
 class FullPackReconciliationError(ValueError):
@@ -161,6 +164,35 @@ def reconcile_full_pack_runner_artifacts(
     method_records: list[dict[str, Any]] = []
     hidden_count = 0
     projection = source_report["public_projection_sha256"]
+    paired_refs = [record.paired_block_ref for record in records]
+    paired_block_ref = None
+    paired_block = None
+    if any(reference is not None for reference in paired_refs):
+        if any(reference is None for reference in paired_refs):
+            raise FullPackReconciliationError(
+                "runner reconciliation has incomplete paired-block references"
+            )
+        unique_refs = {reference for reference in paired_refs if reference is not None}
+        if len(unique_refs) != 1:
+            raise FullPackReconciliationError(
+                "runner reconciliation paired-block references do not match"
+            )
+        paired_block_ref = next(iter(unique_refs))
+        try:
+            paired_block = load_development_paired_block(store, paired_block_ref)
+        except (ArtifactIntegrityError, ValueError) as exc:
+            raise FullPackReconciliationError(
+                "runner reconciliation paired-block reference is invalid"
+            ) from exc
+        actual_order = tuple(record.method_condition for record in records)
+        if actual_order != tuple(paired_block["method_order"]):
+            raise FullPackReconciliationError(
+                "runner execution order does not match paired-block method order"
+            )
+        if paired_block["public_projection_sha256"] != projection:
+            raise FullPackReconciliationError(
+                "runner paired block does not match the smoke public projection"
+            )
     seen_episodes: set[str] = set()
     for method in _METHODS:
         record = by_method[method]
@@ -202,6 +234,13 @@ def reconcile_full_pack_runner_artifacts(
         if projection not in input_hashes:
             raise FullPackReconciliationError(
                 f"{method} trajectory is not bound to the smoke public projection"
+            )
+        if paired_block_ref is not None and any(
+            paired_block_ref.sha256 not in attempt["input_artifact_hashes"]
+            for attempt in trajectory["attempts"]
+        ):
+            raise FullPackReconciliationError(
+                f"{method} trajectory attempt is not bound to the paired block"
             )
         summary_refs = [
             ArtifactRef(**attempt["cost_summary_ref"])
@@ -269,6 +308,13 @@ def reconcile_full_pack_runner_artifacts(
             ],
         },
     }
+    if paired_block_ref is not None and paired_block is not None:
+        report["paired_block_ref"] = paired_block_ref.to_dict()
+        report["method_order"] = list(paired_block["method_order"])
+        report["actual_method_order"] = [
+            record.method_condition for record in records
+        ]
+        report["method_order_verified"] = True
     reference = store.put_validated_json(
         f"full-pack-smokes/{smoke_id}/runner-reconciliation-v2",
         report,
@@ -310,11 +356,16 @@ def assemble_excluded_run_full_pack(
         raise FullPackReconciliationError(
             "excluded Runner full pack requires exactly one M0-M5 completion"
         )
+    paired_block_ref, paired_block = _validated_completion_paired_block(
+        store,
+        completed,
+        events_path=events_path,
+    )
 
     registry = ContractRegistry()
     artifact_gateway = MethodArtifactGateway(store)
     method_records: list[FullPackMethodRecord] = []
-    runner_records: list[FullPackRunnerArtifactRecord] = []
+    runner_by_method: dict[str, FullPackRunnerArtifactRecord] = {}
     projections: set[str] = set()
     for method in _METHODS:
         event = by_method[method]
@@ -335,6 +386,15 @@ def assemble_excluded_run_full_pack(
             raise FullPackReconciliationError(f"{method} episode-pack identity mismatch")
         if event.get("episode_pack_sha256") != pack["pack_sha256"]:
             raise FullPackReconciliationError(f"{method} episode-pack digest mismatch")
+        if paired_block_ref is not None:
+            if audit_only.get("paired_block_ref") != paired_block_ref.to_dict():
+                raise FullPackReconciliationError(
+                    f"{method} episode-pack paired-block reference mismatch"
+                )
+        elif "paired_block_ref" in audit_only:
+            raise FullPackReconciliationError(
+                f"{method} episode pack has an unexpected paired-block reference"
+            )
         projection = pack["public_context"]["public_projection_sha256"]
         if event.get("public_projection_sha256") != projection:
             raise FullPackReconciliationError(f"{method} public projection mismatch")
@@ -400,11 +460,10 @@ def assemble_excluded_run_full_pack(
                 skeleton_mode=skeleton_mode,
             )
         )
-        runner_records.append(
-            FullPackRunnerArtifactRecord(
-                method,
-                _artifact_ref_from_event(event, "canonical_trajectory_ref", method),
-            )
+        runner_by_method[method] = FullPackRunnerArtifactRecord(
+            method,
+            _artifact_ref_from_event(event, "canonical_trajectory_ref", method),
+            paired_block_ref,
         )
     if len(projections) != 1:
         raise FullPackReconciliationError("excluded Runner methods use different projections")
@@ -419,7 +478,9 @@ def assemble_excluded_run_full_pack(
         store,
         smoke_id=smoke_id,
         source_smoke_report_ref=smoke_ref,
-        runner_artifacts=runner_records,
+        runner_artifacts=[
+            runner_by_method[str(event["method_condition"])] for event in completed
+        ],
     )
     return smoke_report, smoke_ref, runner_report, runner_ref
 
@@ -479,6 +540,119 @@ def assemble_excluded_run_full_pack_with_outcomes(
         outcomes=outcome_records,
     )
     return smoke, smoke_ref, runner, runner_ref, outcome_report, outcome_ref
+
+
+def _validated_completion_paired_block(
+    store: ArtifactStore,
+    completed: list[dict[str, Any]],
+    *,
+    events_path: Path,
+) -> tuple[ArtifactRef | None, dict[str, Any] | None]:
+    ref_payloads = [event.get("paired_block_ref") for event in completed]
+    if not any(payload is not None for payload in ref_payloads):
+        return None, None
+    if not all(isinstance(payload, dict) for payload in ref_payloads):
+        raise FullPackReconciliationError(
+            "completion events have incomplete paired-block references"
+        )
+    try:
+        references = [ArtifactRef(**payload) for payload in ref_payloads]
+    except TypeError as exc:
+        raise FullPackReconciliationError(
+            "completion event has an invalid paired-block reference"
+        ) from exc
+    if len(set(references)) != 1:
+        raise FullPackReconciliationError(
+            "completion paired-block references do not match"
+        )
+    reference = references[0]
+    try:
+        block = load_development_paired_block(store, reference)
+    except (ArtifactIntegrityError, ValueError) as exc:
+        raise FullPackReconciliationError(
+            "completion paired-block reference is invalid"
+        ) from exc
+
+    actual_order = [str(event.get("method_condition")) for event in completed]
+    if actual_order != block["method_order"]:
+        raise FullPackReconciliationError(
+            "completion execution order does not match paired-block method order"
+        )
+    if [event.get("execution_ordinal") for event in completed] != list(range(6)):
+        raise FullPackReconciliationError(
+            "completion execution ordinals do not match paired-block method order"
+        )
+    identity_fields = {
+        "paired_block_id": "paired_block_id",
+        "semantic_instance_id": "semantic_instance_id",
+        "replicate_id": "replicate_id",
+        "decoding_seed": "requested_decoding_seed",
+        "execution_schedule_seed": "execution_schedule_seed",
+        "decoding_control_mode": "decoding_control_mode",
+        "public_projection_sha256": "public_projection_sha256",
+    }
+    for event in completed:
+        for event_field, block_field in identity_fields.items():
+            if event.get(event_field) != block[block_field]:
+                raise FullPackReconciliationError(
+                    f"completion {event_field} does not match paired block"
+                )
+
+    freeze_path = events_path.parent / "measurement_freeze.json"
+    try:
+        measurement_freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise FullPackReconciliationError(
+            "paired completion measurement freeze is unavailable"
+        ) from exc
+    if not isinstance(measurement_freeze, dict):
+        raise FullPackReconciliationError(
+            "paired completion measurement freeze must be an object"
+        )
+    expected_fingerprint = freeze_fingerprint(measurement_freeze)
+    if measurement_freeze.get("freeze_fingerprint") != expected_fingerprint:
+        raise FullPackReconciliationError(
+            "paired completion measurement freeze fingerprint mismatch"
+        )
+    if {
+        event.get("freeze_fingerprint") for event in completed
+    } != {expected_fingerprint}:
+        raise FullPackReconciliationError(
+            "completion events do not match the measurement freeze"
+        )
+    sample_records = measurement_freeze.get("samples")
+    if not isinstance(sample_records, list):
+        raise FullPackReconciliationError(
+            "paired completion measurement freeze samples are missing"
+        )
+    by_sample_id = {
+        record.get("sample_id"): record
+        for record in sample_records
+        if isinstance(record, dict)
+    }
+    for event in completed:
+        record = by_sample_id.get(event.get("sample_id"))
+        if not isinstance(record, dict) or record.get(
+            "paired_block_ref"
+        ) != reference.to_dict():
+            raise FullPackReconciliationError(
+                "measurement freeze paired-block reference mismatch"
+            )
+        if record.get("execution_ordinal") != event.get("execution_ordinal"):
+            raise FullPackReconciliationError(
+                "measurement freeze execution ordinal mismatch"
+            )
+    frozen_order = [
+        str(record.get("method_condition"))
+        for record in sample_records
+        if isinstance(record, dict)
+        and record.get("paired_block_ref") == reference.to_dict()
+    ]
+    if frozen_order != block["method_order"]:
+        raise FullPackReconciliationError(
+            "measurement freeze method order does not match paired block"
+        )
+    return reference, block
 
 
 def _excluded_completion_events(events_path: Path) -> dict[str, dict[str, Any]]:

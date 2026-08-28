@@ -56,7 +56,19 @@
         "analysis_population": {"enum": ["development", "excluded", "official"]},
         "method_condition_id": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
         "evaluator_metadata_sha256": {"$ref": "#/$defs/sha256"},
-        "private_ref_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}}
+        "private_ref_ids": {"type": "array", "uniqueItems": true, "items": {"$ref": "#/$defs/identifier"}},
+        "paired_block_ref": {"$ref": "#/$defs/artifact_ref"}
+      }
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 1},
+        "media_type": {"const": "application/json"}
       }
     }
   }

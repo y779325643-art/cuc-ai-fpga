@@ -54,6 +54,42 @@ def write_development_paired_block(
 ) -> ArtifactRef:
     """Validate and persist one non-authoritative development paired block."""
 
+    payload = build_development_paired_block(
+        paired_block_id=paired_block_id,
+        semantic_instance_id=semantic_instance_id,
+        replicate_id=replicate_id,
+        public_projection_sha256=public_projection_sha256,
+        model_provenance_sha256=model_provenance_sha256,
+        decoding_control_mode=decoding_control_mode,
+        requested_decoding_seed=requested_decoding_seed,
+        execution_schedule_seed=execution_schedule_seed,
+        method_order=method_order,
+    )
+    expected = development_paired_block_reference(payload)
+    reference = store.put_validated_json(
+        expected.key,
+        payload,
+        contract_key="paired_block",
+    )
+    if reference != expected:
+        raise RuntimeError("paired-block materialization does not match pure plan")
+    return reference
+
+
+def build_development_paired_block(
+    *,
+    paired_block_id: str,
+    semantic_instance_id: str,
+    replicate_id: str,
+    public_projection_sha256: str,
+    model_provenance_sha256: str,
+    decoding_control_mode: str,
+    requested_decoding_seed: int | None,
+    execution_schedule_seed: int,
+    method_order: Sequence[str],
+) -> dict[str, Any]:
+    """Build one validated block payload without filesystem side effects."""
+
     payload = {
         "contract_version": "paired-block-v1",
         "evaluation_scope": "excluded_development_conformance_only",
@@ -73,13 +109,22 @@ def write_development_paired_block(
         "g4b_authorized": False,
     }
     _validate_paired_block(payload)
+    return payload
+
+
+def development_paired_block_reference(payload: dict[str, Any]) -> ArtifactRef:
+    """Predict the exact immutable reference for a validated block payload."""
+
+    _validate_paired_block(payload)
+    content = _canonical_json(payload)
     key_digest = hashlib.sha256(
-        f"paired-block-v1:{paired_block_id}".encode("utf-8")
+        f"paired-block-v1:{payload['paired_block_id']}".encode("utf-8")
     ).hexdigest()
-    return store.put_validated_json(
-        f"paired-blocks/block-{key_digest}",
-        payload,
-        contract_key="paired_block",
+    return ArtifactRef(
+        key=f"paired-blocks/block-{key_digest}",
+        sha256=hashlib.sha256(content).hexdigest(),
+        size_bytes=len(content),
+        media_type="application/json",
     )
 
 
@@ -109,3 +154,10 @@ def _validate_paired_block(payload: dict[str, Any]) -> None:
             "paired block method_order is not a balanced order derived from "
             "execution_schedule_seed"
         )
+
+
+def _canonical_json(payload: Any) -> bytes:
+    return (
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        + "\n"
+    ).encode("utf-8")

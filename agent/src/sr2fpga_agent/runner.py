@@ -11,7 +11,7 @@ import shutil
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 from sr2fpga_agent.agent import DataGenerationAgent, openxc7_tool_probe_command
 from sr2fpga_agent.baseline_report import baseline_rows, render_markdown
@@ -81,6 +81,13 @@ from sr2fpga_agent.method_adapters import (
     PairingKey,
     PairedArtifactCoordinator,
     SharedArtifactRefs,
+)
+from sr2fpga_agent.paired_block import (
+    build_balanced_method_orders,
+    build_development_paired_block,
+    development_paired_block_reference,
+    load_development_paired_block,
+    write_development_paired_block,
 )
 from sr2fpga_agent.paired_measurement import collect_paired_results
 from sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
@@ -259,7 +266,12 @@ class PlannedSample:
     decoding_control_mode: str = ""
     pairing_identity_source: str = ""
 
-    def metadata(self, config: RunnerConfig) -> dict[str, Any]:
+    def metadata(
+        self,
+        config: RunnerConfig,
+        *,
+        paired_block_ref: ArtifactRef | None = None,
+    ) -> dict[str, Any]:
         connection = resolve_source_connection(config, self.source)
         schema_version = _sample_system_his_schema_version(self, config)
         request = _project_request_for_sample(self)
@@ -323,6 +335,8 @@ class PlannedSample:
                 "calls": [],
             },
         }
+        if paired_block_ref is not None:
+            metadata["paired_block_ref"] = paired_block_ref.to_dict()
         if (
             boundary.disposition == "ready"
             and method_condition in EPISODE_PACK_METHOD_CONDITIONS
@@ -347,6 +361,11 @@ class PlannedSample:
                     "decoding_control_mode": self.decoding_control_mode,
                     "pairing_identity_source": self.pairing_identity_source,
                 },
+                paired_block_ref=(
+                    paired_block_ref.to_dict()
+                    if paired_block_ref is not None
+                    else None
+                ),
             ).to_dict()
         if (
             boundary.disposition == "ready"
@@ -358,6 +377,13 @@ class PlannedSample:
                 boundary.envelope,
             ).to_dict()
         return metadata
+
+
+@dataclass(frozen=True)
+class _PlannedPairedBlock:
+    payload: dict[str, Any]
+    artifact_ref: ArtifactRef
+    sample_ids: tuple[str, ...]
 
 
 class _RunnerDirectMethodProjectGenerator:
@@ -542,6 +568,14 @@ def runner_preflight(
     """Check whether a runner config is ready to launch without creating samples."""
     loaded_env_keys = _load_env_file(config.env_file)
     samples = planned_samples(config)
+    paired_block_plans = _plan_development_paired_blocks(config, samples)
+    planned_block_refs = _paired_block_refs_by_sample(
+        paired_block_plans,
+        {
+            paired_block_id: plan.artifact_ref
+            for paired_block_id, plan in paired_block_plans.items()
+        },
+    )
     run_dir = config.run_root / run_id if run_id else None
     required_tools = ("verilator", "iverilog", "vvp", "yosys")
     tools = _discover_tool_statuses(required_tools)
@@ -584,7 +618,14 @@ def runner_preflight(
         "errors": errors,
         "warnings": warnings,
         "planned_samples": len(samples),
-        "samples": [_preflight_sample_preview(sample, config) for sample in samples],
+        "samples": [
+            _preflight_sample_preview(
+                sample,
+                config,
+                paired_block_ref=planned_block_refs.get(sample.sample_id),
+            )
+            for sample in samples
+        ],
         "run_dir": str(run_dir) if run_dir is not None else "",
         "tools": tools,
         "providers": sorted(provider for provider in providers if provider),
@@ -595,8 +636,13 @@ def runner_preflight(
     }
 
 
-def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> dict[str, Any]:
-    metadata = sample.metadata(config)
+def _preflight_sample_preview(
+    sample: PlannedSample,
+    config: RunnerConfig,
+    *,
+    paired_block_ref: ArtifactRef | None = None,
+) -> dict[str, Any]:
+    metadata = sample.metadata(config, paired_block_ref=paired_block_ref)
     preview = {
         "sample_id": sample.sample_id,
         "source": sample.source,
@@ -647,6 +693,10 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
                 "public_projection_sha256"
             ],
         }
+        if paired_block_ref is not None:
+            preview["episode_pack"]["paired_block_ref"] = (
+                paired_block_ref.to_dict()
+            )
     return preview
 
 
@@ -672,6 +722,7 @@ def _platform_profile_for_config(config: RunnerConfig) -> PlatformProfile:
 
 def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = True) -> dict[str, Any]:
     samples = planned_samples(config)
+    paired_block_plans = _plan_development_paired_blocks(config, samples)
     protocol_errors = _analysis_population_errors(samples)
     _, seed_capability_errors = _seed_capability_diagnostics(config, samples)
     protocol_errors.extend(seed_capability_errors)
@@ -702,6 +753,26 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
     method_artifact_store = ArtifactStore(run_dir / "method_artifacts")
+    paired_block_refs = _materialize_development_paired_blocks(
+        paired_block_plans,
+        method_artifact_store,
+    )
+    paired_block_refs_by_sample = _paired_block_refs_by_sample(
+        paired_block_plans,
+        paired_block_refs,
+    )
+    samples = _order_samples_by_paired_blocks(
+        samples,
+        paired_block_plans,
+        paired_block_refs,
+        method_artifact_store,
+    )
+    paired_execution_ordinals = _paired_execution_ordinals(
+        samples,
+        paired_block_plans,
+        paired_block_refs,
+        method_artifact_store,
+    )
     tool_environment = collect_development_tool_environment()
     tool_environment_ref = method_artifact_store.put_validated_json(
         "tool-environments/development-preflight",
@@ -737,6 +808,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         tool_versions=tool_versions,
         tool_environment_ref=tool_environment_ref.to_dict(),
         l4_tool_environment_ref=l4_tool_environment_ref.to_dict(),
+        paired_block_refs=paired_block_refs_by_sample,
+        paired_execution_ordinals=paired_execution_ordinals,
     )
     freeze_fingerprint = write_or_validate_freeze(
         run_dir / "measurement_freeze.json",
@@ -767,7 +840,12 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             write_run_state(state_path, state)
             continue
 
-        sample_metadata = sample.metadata(config)
+        paired_block_ref = paired_block_refs_by_sample.get(sample.sample_id)
+        execution_ordinal = paired_execution_ordinals.get(sample.sample_id)
+        sample_metadata = sample.metadata(
+            config,
+            paired_block_ref=paired_block_ref,
+        )
         sample_metadata["freeze_fingerprint"] = freeze_fingerprint
         sample_metadata["tool_environment_ref"] = tool_environment_ref.to_dict()
         sample_metadata["l4_tool_environment_ref"] = (
@@ -786,6 +864,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             sample,
             config,
             artifact_store=method_artifact_store,
+            paired_block_ref=paired_block_ref,
+            execution_ordinal=execution_ordinal,
         )
         method_condition = str(sample_metadata.get("method_condition", "")).strip().upper()
         attempt_cost_router = (
@@ -815,6 +895,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 metadata=sample_metadata,
                 method_artifact_store=method_artifact_store,
                 paired_artifact_coordinator=paired_artifact_coordinator,
+                paired_block_ref=paired_block_ref,
+                execution_ordinal=execution_ordinal,
             )
             sample_repairer = (
                 _repairer_for_sample(
@@ -850,6 +932,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             }
             if episode_pack_ref is not None:
                 accounting_input_hashes.add(episode_pack_ref.sha256)
+            if paired_block_ref is not None:
+                accounting_input_hashes.add(paired_block_ref.sha256)
             if trusted_public_l2_harness is not None:
                 accounting_input_hashes.update(
                     {
@@ -959,6 +1043,18 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             "pass_level": result["pass_level"],
             "bucket": bucket,
         }
+        if sample.replicate_id:
+            completion_event.update(
+                {
+                    "replicate_id": sample.replicate_id,
+                    "execution_schedule_seed": sample.execution_schedule_seed,
+                    "decoding_control_mode": sample.decoding_control_mode,
+                }
+            )
+        if paired_block_ref is not None:
+            completion_event["paired_block_ref"] = paired_block_ref.to_dict()
+            completion_event["execution_ordinal"] = execution_ordinal
+            completion_event["freeze_fingerprint"] = freeze_fingerprint
         if result.get("cost_summary_refs"):
             completion_event["cost_summary_refs"] = list(result["cost_summary_refs"])
         if result.get("canonical_trajectory_ref"):
@@ -1242,8 +1338,16 @@ def _development_hidden_private_commitment(
         "run_id": run_id or "",
         "requirement_sha256": sample.requirement_sha256,
         "semantic_instance_id": sample.semantic_instance_id,
+        "replicate_id": sample.replicate_id,
         "decoding_seed": sample.decoding_seed,
         "paired_block_id": sample.paired_block_id,
+        "execution_schedule_seed": sample.execution_schedule_seed,
+        "decoding_control_mode": sample.decoding_control_mode,
+        "paired_block_sha256": (
+            metadata.get("paired_block_ref", {}).get("sha256")
+            if isinstance(metadata.get("paired_block_ref"), dict)
+            else None
+        ),
         "analysis_population": str(metadata.get("analysis_population", "")),
     }
     if sample.analysis_population != "excluded":
@@ -1342,6 +1446,8 @@ def _measurement_freeze_manifest(
     tool_versions: dict[str, str] | None = None,
     tool_environment_ref: dict[str, Any] | None = None,
     l4_tool_environment_ref: dict[str, Any] | None = None,
+    paired_block_refs: Mapping[str, ArtifactRef] | None = None,
+    paired_execution_ordinals: Mapping[str, int] | None = None,
 ) -> dict[str, Any]:
     source_names = sorted({sample.source for sample in samples})
     source_records = []
@@ -1362,7 +1468,17 @@ def _measurement_freeze_manifest(
                 "seed_capability_ref": _seed_capability_manifest_ref(connection),
             }
         )
-    sample_records = [_measurement_freeze_sample_record(sample, config) for sample in samples]
+    block_refs = paired_block_refs or {}
+    execution_ordinals = paired_execution_ordinals or {}
+    sample_records = [
+        _measurement_freeze_sample_record(
+            sample,
+            config,
+            paired_block_ref=block_refs.get(sample.sample_id),
+            execution_ordinal=execution_ordinals.get(sample.sample_id),
+        )
+        for sample in samples
+    ]
     timeouts = {
         f"source:{record['name']}": int(record["timeout_seconds"])
         for record in source_records
@@ -1389,6 +1505,9 @@ def _measurement_freeze_manifest(
 def _measurement_freeze_sample_record(
     sample: PlannedSample,
     config: RunnerConfig,
+    *,
+    paired_block_ref: ArtifactRef | None = None,
+    execution_ordinal: int | None = None,
 ) -> dict[str, Any]:
     record = {
         "sample_id": sample.sample_id,
@@ -1408,6 +1527,17 @@ def _measurement_freeze_sample_record(
         "pairing_identity_source": sample.pairing_identity_source,
         "max_model_calls": _sample_model_call_ceiling(sample, config),
     }
+    if sample.replicate_id:
+        record.update(
+            {
+                "replicate_id": sample.replicate_id,
+                "execution_schedule_seed": sample.execution_schedule_seed,
+                "decoding_control_mode": sample.decoding_control_mode,
+            }
+        )
+    if paired_block_ref is not None:
+        record["paired_block_ref"] = paired_block_ref.to_dict()
+        record["execution_ordinal"] = execution_ordinal
     metadata = sample.metadata(config)
     boundary = metadata["requirement_boundary"]
     record["requirement_boundary"] = {
@@ -2868,6 +2998,7 @@ def _resolve_planned_pairing_identity(
 
 def _validate_planned_pairing_blocks(samples: list[PlannedSample]) -> None:
     blocks: dict[str, tuple[str, str, int | None, int | None, str, str]] = {}
+    block_methods: dict[str, list[str]] = {}
     methods: set[tuple[str, str]] = set()
     for sample in samples:
         if (
@@ -2897,6 +3028,23 @@ def _validate_planned_pairing_blocks(samples: list[PlannedSample]) -> None:
                 f"method_condition {sample.method_condition}"
             )
         methods.add(method_key)
+        block_methods.setdefault(sample.paired_block_id, []).append(
+            sample.method_condition
+        )
+    for paired_block_id, method_order in block_methods.items():
+        if len(method_order) != len(EPISODE_PACK_METHOD_CONDITIONS):
+            continue
+        if set(method_order) != EPISODE_PACK_METHOD_CONDITIONS:
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} must contain exactly M0-M5"
+            )
+        schedule_seed = blocks[paired_block_id][3]
+        assert schedule_seed is not None
+        if tuple(method_order) not in build_balanced_method_orders(schedule_seed):
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} method order is not a "
+                "balanced order derived from execution_schedule_seed"
+            )
 
 
 def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
@@ -2982,9 +3130,37 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                 sequence += 1
                 produced += 1
     max_samples = int(config.line_b_targets.get("max_samples", len(samples)))
+    _validate_planned_pairing_blocks(samples)
     selected = samples[:max_samples]
-    _validate_planned_pairing_blocks(selected)
+    _validate_paired_block_truncation(samples, selected)
     return selected
+
+
+def _validate_paired_block_truncation(
+    all_samples: list[PlannedSample],
+    selected_samples: list[PlannedSample],
+) -> None:
+    declared_counts: dict[str, int] = {}
+    selected_counts: dict[str, int] = {}
+    for sample in all_samples:
+        if sample.analysis_population == "excluded" and sample.replicate_id:
+            declared_counts[sample.paired_block_id] = (
+                declared_counts.get(sample.paired_block_id, 0) + 1
+            )
+    for sample in selected_samples:
+        if sample.analysis_population == "excluded" and sample.replicate_id:
+            selected_counts[sample.paired_block_id] = (
+                selected_counts.get(sample.paired_block_id, 0) + 1
+            )
+    for paired_block_id, declared_count in declared_counts.items():
+        selected_count = selected_counts.get(paired_block_id, 0)
+        if declared_count == len(EPISODE_PACK_METHOD_CONDITIONS) and selected_count not in {
+            0,
+            declared_count,
+        }:
+            raise SystemExit(
+                f"max_samples truncates complete paired_block_id {paired_block_id!r}"
+            )
 
 
 def _task_expansion_items(task: TaskConfig) -> list[tuple[str, str, str, str, int]]:
@@ -3403,6 +3579,8 @@ def _project_generator_for_sample(
     metadata: dict[str, Any] | None = None,
     method_artifact_store: ArtifactStore | None = None,
     paired_artifact_coordinator: PairedArtifactCoordinator | None = None,
+    paired_block_ref: ArtifactRef | None = None,
+    execution_ordinal: int | None = None,
 ) -> object | None:
     connection = resolve_source_connection(config, sample.source)
     cache_key = f"{sample.source}:{sample.sample_id}"
@@ -3417,6 +3595,8 @@ def _project_generator_for_sample(
                 sample,
                 config,
                 artifact_store=method_artifact_store,
+                paired_block_ref=paired_block_ref,
+                execution_ordinal=execution_ordinal,
             )
             if connection.generation_mode in {"two_stage", "oracle_his2project"}
             else None
@@ -3552,27 +3732,209 @@ def _bind_runner_method_generator(
     )
 
 
-def _runner_pairing_key(config: RunnerConfig, sample: PlannedSample, context) -> PairingKey:
-    connection = resolve_source_connection(config, sample.source)
-    provenance_payload = {
-        "source": sample.source,
-        "kind": connection.kind,
-        "model": connection.model,
-        "generation_mode": connection.generation_mode,
-        "max_tokens": connection.max_tokens,
-        "wire_api": connection.wire_api,
-        "reasoning_effort": connection.reasoning_effort,
-        "disable_response_storage": connection.disable_response_storage,
-        "requested_decoding_seed": sample.decoding_seed,
-    }
-    model_provenance_sha256 = hashlib.sha256(
+def _runner_model_provenance_sha256(
+    config: RunnerConfig,
+    sample: PlannedSample,
+) -> str:
+    return hashlib.sha256(
         json.dumps(
-            provenance_payload,
+            _runner_block_model_identity(config, sample),
             ensure_ascii=False,
             sort_keys=True,
             separators=(",", ":"),
         ).encode("utf-8")
     ).hexdigest()
+
+
+def _plan_development_paired_blocks(
+    config: RunnerConfig,
+    samples: list[PlannedSample],
+) -> dict[str, _PlannedPairedBlock]:
+    grouped: dict[str, list[PlannedSample]] = {}
+    for sample in samples:
+        if (
+            sample.analysis_population == "excluded"
+            and sample.method_condition in EPISODE_PACK_METHOD_CONDITIONS
+            and sample.pairing_identity_source == "explicit"
+        ):
+            grouped.setdefault(sample.paired_block_id, []).append(sample)
+
+    plans: dict[str, _PlannedPairedBlock] = {}
+    for paired_block_id, block_samples in grouped.items():
+        if len(block_samples) != len(EPISODE_PACK_METHOD_CONDITIONS):
+            continue
+        member_ids = tuple(sample.sample_id for sample in block_samples)
+        if any(
+            sample.paired_block_id == paired_block_id
+            and sample.sample_id not in member_ids
+            for sample in samples
+        ):
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} is reused outside its "
+                "excluded explicit member set"
+            )
+        metadata = [sample.metadata(config) for sample in block_samples]
+        episode_packs = [item.get("episode_pack") for item in metadata]
+        if not all(isinstance(pack, dict) for pack in episode_packs):
+            continue
+        projections = {
+            pack["public_context"]["public_projection_sha256"]
+            for pack in episode_packs
+            if isinstance(pack, dict)
+        }
+        if len(projections) != 1:
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} uses conflicting public projections"
+            )
+        model_identities = [
+            _runner_block_model_identity(config, sample) for sample in block_samples
+        ]
+        if any(identity != model_identities[0] for identity in model_identities[1:]):
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} uses conflicting model or "
+                "gateway configuration"
+            )
+        block_model_provenance_sha256 = hashlib.sha256(
+            json.dumps(
+                model_identities[0],
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        first = block_samples[0]
+        payload = build_development_paired_block(
+            paired_block_id=paired_block_id,
+            semantic_instance_id=first.semantic_instance_id,
+            replicate_id=first.replicate_id,
+            public_projection_sha256=next(iter(projections)),
+            model_provenance_sha256=block_model_provenance_sha256,
+            decoding_control_mode=first.decoding_control_mode,
+            requested_decoding_seed=first.decoding_seed,
+            execution_schedule_seed=int(first.execution_schedule_seed),
+            method_order=tuple(sample.method_condition for sample in block_samples),
+        )
+        plans[paired_block_id] = _PlannedPairedBlock(
+            payload=payload,
+            artifact_ref=development_paired_block_reference(payload),
+            sample_ids=member_ids,
+        )
+    return plans
+
+
+def _materialize_development_paired_blocks(
+    plans: Mapping[str, _PlannedPairedBlock],
+    store: ArtifactStore,
+) -> dict[str, ArtifactRef]:
+    references: dict[str, ArtifactRef] = {}
+    for paired_block_id, plan in plans.items():
+        payload = plan.payload
+        expected_reference = plan.artifact_ref
+        reference = write_development_paired_block(
+            store,
+            paired_block_id=payload["paired_block_id"],
+            semantic_instance_id=payload["semantic_instance_id"],
+            replicate_id=payload["replicate_id"],
+            public_projection_sha256=payload["public_projection_sha256"],
+            model_provenance_sha256=payload["model_provenance_sha256"],
+            decoding_control_mode=payload["decoding_control_mode"],
+            requested_decoding_seed=payload["requested_decoding_seed"],
+            execution_schedule_seed=payload["execution_schedule_seed"],
+            method_order=tuple(payload["method_order"]),
+        )
+        if reference != expected_reference:
+            raise RuntimeError(
+                f"paired_block_id {paired_block_id!r} materialization mismatch"
+            )
+        if load_development_paired_block(store, reference) != payload:
+            raise RuntimeError(
+                f"paired_block_id {paired_block_id!r} verified read-back mismatch"
+            )
+        references[paired_block_id] = reference
+    return references
+
+
+def _runner_block_model_identity(
+    config: RunnerConfig,
+    sample: PlannedSample,
+) -> dict[str, Any]:
+    connection = resolve_source_connection(config, sample.source)
+    return {
+        "provider_adapter": (
+            "anthropic_compatible"
+            if connection.kind == "anthropic_compat"
+            else "deterministic"
+            if connection.kind == "deterministic"
+            else "openai_compatible"
+        ),
+        "model": connection.model,
+        "gateway_base_url_sha256": hashlib.sha256(
+            connection.base_url.rstrip("/").encode("utf-8")
+        ).hexdigest(),
+        "max_tokens": connection.max_tokens,
+        "wire_api": connection.wire_api,
+        "reasoning_effort": connection.reasoning_effort,
+        "disable_response_storage": connection.disable_response_storage,
+        "decoding_control_mode": sample.decoding_control_mode,
+        "requested_decoding_seed": sample.decoding_seed,
+    }
+
+
+def _order_samples_by_paired_blocks(
+    samples: list[PlannedSample],
+    plans: Mapping[str, _PlannedPairedBlock],
+    paired_block_refs: Mapping[str, ArtifactRef],
+    store: ArtifactStore,
+) -> list[PlannedSample]:
+    ordered = list(samples)
+    for paired_block_id, reference in paired_block_refs.items():
+        block = load_development_paired_block(store, reference)
+        member_ids = set(plans[paired_block_id].sample_ids)
+        positions = [
+            index
+            for index, sample in enumerate(ordered)
+            if sample.sample_id in member_ids
+        ]
+        by_method = {ordered[index].method_condition: ordered[index] for index in positions}
+        if set(by_method) != set(block["method_order"]):
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} sample set does not match artifact"
+            )
+        for index, method in zip(positions, block["method_order"], strict=True):
+            ordered[index] = by_method[method]
+    return ordered
+
+
+def _paired_execution_ordinals(
+    samples: list[PlannedSample],
+    plans: Mapping[str, _PlannedPairedBlock],
+    paired_block_refs: Mapping[str, ArtifactRef],
+    store: ArtifactStore,
+) -> dict[str, int]:
+    ordinals: dict[str, int] = {}
+    for paired_block_id, reference in paired_block_refs.items():
+        block = load_development_paired_block(store, reference)
+        rank = {method: index for index, method in enumerate(block["method_order"])}
+        member_ids = set(plans[paired_block_id].sample_ids)
+        for sample in samples:
+            if sample.sample_id in member_ids:
+                ordinals[sample.sample_id] = rank[sample.method_condition]
+    return ordinals
+
+
+def _paired_block_refs_by_sample(
+    plans: Mapping[str, _PlannedPairedBlock],
+    paired_block_refs: Mapping[str, ArtifactRef],
+) -> dict[str, ArtifactRef]:
+    return {
+        sample_id: paired_block_refs[paired_block_id]
+        for paired_block_id, plan in plans.items()
+        for sample_id in plan.sample_ids
+    }
+
+
+def _runner_pairing_key(config: RunnerConfig, sample: PlannedSample, context) -> PairingKey:
+    model_provenance_sha256 = _runner_model_provenance_sha256(config, sample)
     if not sample.semantic_instance_id or not sample.paired_block_id:
         raise SystemExit("Runner method dispatch requires first-class pairing identity")
     if sample.decoding_seed is not None and (
@@ -3721,6 +4083,8 @@ def _generation_event_sink(
     config: RunnerConfig,
     *,
     artifact_store: ArtifactStore | None = None,
+    paired_block_ref: ArtifactRef | None = None,
+    execution_ordinal: int | None = None,
 ):
     def emit(payload: dict[str, Any]) -> None:
         enriched = {
@@ -3737,6 +4101,17 @@ def _generation_event_sink(
             "paired_block_id": sample.paired_block_id,
             "pairing_identity_source": sample.pairing_identity_source,
         }
+        if sample.replicate_id:
+            enriched.update(
+                {
+                    "replicate_id": sample.replicate_id,
+                    "execution_schedule_seed": sample.execution_schedule_seed,
+                    "decoding_control_mode": sample.decoding_control_mode,
+                }
+            )
+        if paired_block_ref is not None:
+            enriched["paired_block_ref"] = paired_block_ref.to_dict()
+            enriched["execution_ordinal"] = execution_ordinal
         method_condition = _sample_method_condition(sample, config)
         if artifact_store is not None and method_condition in IMPLEMENTED_METHOD_CONDITIONS:
             provenance_ref = write_model_gateway_provenance(
