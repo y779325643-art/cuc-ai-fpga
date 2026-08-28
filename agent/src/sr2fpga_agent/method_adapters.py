@@ -33,13 +33,40 @@ class ProjectCandidateEmission:
 
 
 @dataclass(frozen=True)
+class SkeletonProjectOutput:
+    content: str
+    skeleton_project_sha256: str
+
+
+@dataclass(frozen=True)
 class MethodStageFailure:
     stage: str
     error_type: str
     message: str
 
 
-MethodEmission = PlanningArtifactEmission | ProjectCandidateEmission | MethodStageFailure
+@dataclass(frozen=True)
+class RepairableProjectOutputFailure(MethodStageFailure):
+    invalid_output_ref: ArtifactRef
+    planning_artifact_sha256: str
+    skeleton_project_sha256: str
+
+
+@dataclass(frozen=True)
+class ProjectOutputNoProgressFailure(MethodStageFailure):
+    parent_output_ref: ArtifactRef
+    produced_output_ref: ArtifactRef
+    planning_artifact_sha256: str
+    skeleton_project_sha256: str
+
+
+MethodEmission = (
+    PlanningArtifactEmission
+    | ProjectCandidateEmission
+    | MethodStageFailure
+    | RepairableProjectOutputFailure
+    | ProjectOutputNoProgressFailure
+)
 
 
 @dataclass(frozen=True)
@@ -106,6 +133,29 @@ class SystemHisValidationFacade(Protocol):
     ) -> Mapping[str, Any]: ...
 
 
+class SystemHisProjectOutputRepairFacade(Protocol):
+    def emit_skeleton_project_output(
+        self,
+        context: FrozenRequirementContext,
+        system_his: Mapping[str, Any],
+    ) -> SkeletonProjectOutput: ...
+
+    def lower_skeleton_project_output(
+        self,
+        context: FrozenRequirementContext,
+        system_his: Mapping[str, Any],
+        output: SkeletonProjectOutput,
+    ) -> GeneratedProject: ...
+
+    def repair_skeleton_project_output(
+        self,
+        context: FrozenRequirementContext,
+        system_his: Mapping[str, Any],
+        previous_output: SkeletonProjectOutput,
+        error: str,
+    ) -> SkeletonProjectOutput: ...
+
+
 class RepairFacade(Protocol):
     def correct_his(
         self,
@@ -156,6 +206,16 @@ class MethodArtifactGateway:
             raise ValueError("shared project package digest mismatch")
         return project
 
+    def put_model_output(self, key: str, content: str) -> ArtifactRef:
+        return self.__store.put_blob(
+            key,
+            content.encode("utf-8"),
+            media_type="text/plain; charset=utf-8",
+        )
+
+    def read_model_output(self, reference: ArtifactRef) -> str:
+        return self.__store.read_verified(reference).decode("utf-8")
+
     def append_event(self, episode_id: str, event_type: str, payload: Mapping[str, Any]) -> ArtifactRef:
         reference = self.__store.append_event(episode_id, event_type, payload)
         self.__event_refs.setdefault(episode_id, []).append(reference)
@@ -173,6 +233,7 @@ class GenerationServices:
     untyped: UntypedPlanFacade | None = None
     system_his: SystemHisFacade | None = None
     his_validation: SystemHisValidationFacade | None = None
+    project_output_repair: SystemHisProjectOutputRepairFacade | None = None
     repair: RepairFacade | None = None
 
 
@@ -307,6 +368,16 @@ class HisMethodAdapter(_AdapterBase):
             return shared_artifacts.initial_project
         if services.system_his is None:
             return _failure("project_from_system_his", "missing System-HIS generation facade")
+        if (
+            self.contract.uses_deterministic_skeleton
+            and services.project_output_repair is not None
+        ):
+            return self._emit_repairable_skeleton_project(
+                context,
+                planning,
+                services,
+                attempt=0,
+            )
         try:
             payload = services.artifacts.read_planning(planning)
             if self.contract.uses_deterministic_skeleton:
@@ -316,6 +387,88 @@ class HisMethodAdapter(_AdapterBase):
             return services.artifacts.put_project(self._key(context, "initial-project"), project)
         except Exception as exc:
             return _exception_failure("project_from_system_his", exc)
+
+    def _emit_repairable_skeleton_project(
+        self,
+        context,
+        planning,
+        services,
+        *,
+        attempt: int,
+        previous_failure: RepairableProjectOutputFailure | None = None,
+    ) -> MethodEmission:
+        facade = services.project_output_repair
+        if facade is None:
+            return _failure(
+                "his2project_output_repair",
+                "missing HIS2PROJECT output repair facade",
+            )
+        payload = services.artifacts.read_planning(planning)
+        stage = "project_from_system_his" if attempt == 0 else "his2project_output_repair"
+        try:
+            if previous_failure is None:
+                output = facade.emit_skeleton_project_output(context, payload)
+            else:
+                previous_output = SkeletonProjectOutput(
+                    content=services.artifacts.read_model_output(
+                        previous_failure.invalid_output_ref
+                    ),
+                    skeleton_project_sha256=previous_failure.skeleton_project_sha256,
+                )
+                output = facade.repair_skeleton_project_output(
+                    context,
+                    payload,
+                    previous_output,
+                    previous_failure.message,
+                )
+        except Exception as exc:
+            return _exception_failure(stage, exc)
+
+        parent = (
+            f"-{previous_failure.invalid_output_ref.sha256[:16]}"
+            if previous_failure is not None
+            else ""
+        )
+        output_ref = services.artifacts.put_model_output(
+            self._key(
+                context,
+                f"his2project-output-{planning.artifact_ref.sha256[:16]}"
+                f"{parent}-attempt-{attempt}",
+            ),
+            output.content,
+        )
+        if (
+            previous_failure is not None
+            and output_ref.sha256 == previous_failure.invalid_output_ref.sha256
+        ):
+            return ProjectOutputNoProgressFailure(
+                stage=stage,
+                error_type="NoProgress",
+                message="HIS2PROJECT output repair produced unchanged output",
+                parent_output_ref=previous_failure.invalid_output_ref,
+                produced_output_ref=output_ref,
+                planning_artifact_sha256=planning.artifact_ref.sha256,
+                skeleton_project_sha256=output.skeleton_project_sha256,
+            )
+        try:
+            project = facade.lower_skeleton_project_output(
+                context,
+                payload,
+                output,
+            )
+        except Exception as exc:
+            return RepairableProjectOutputFailure(
+                stage=stage,
+                error_type=type(exc).__name__,
+                message=str(exc),
+                invalid_output_ref=output_ref,
+                planning_artifact_sha256=planning.artifact_ref.sha256,
+                skeleton_project_sha256=output.skeleton_project_sha256,
+            )
+        return services.artifacts.put_project(
+            self._key(context, "initial-project"),
+            project,
+        )
 
 
 class HisRepairMethodAdapter(HisMethodAdapter):
@@ -333,6 +486,23 @@ class HisRepairMethodAdapter(HisMethodAdapter):
         )
         return services.artifacts.put_planning(
             self._key(context, suffix), PlanningArtifactKind.SYSTEM_HIS, corrected
+        )
+
+    def repair_project_output(
+        self,
+        context,
+        planning,
+        failure: RepairableProjectOutputFailure,
+        services,
+        *,
+        attempt: int,
+    ) -> MethodEmission:
+        return self._emit_repairable_skeleton_project(
+            context,
+            planning,
+            services,
+            attempt=attempt,
+            previous_failure=failure,
         )
 
     def repair_project(self, context, candidate, diagnosis, services) -> ProjectCandidateEmission:
@@ -355,6 +525,19 @@ class HisCorrectionCapable(Protocol):
 @runtime_checkable
 class ProjectRepairCapable(Protocol):
     def repair_project(self, context, candidate, diagnosis, services) -> ProjectCandidateEmission: ...
+
+
+@runtime_checkable
+class ProjectOutputRepairCapable(Protocol):
+    def repair_project_output(
+        self,
+        context,
+        planning,
+        failure: RepairableProjectOutputFailure,
+        services,
+        *,
+        attempt: int,
+    ) -> MethodEmission: ...
 
 
 class RepairController:

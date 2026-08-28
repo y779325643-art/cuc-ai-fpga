@@ -11,9 +11,11 @@ intent. Current executable evidence remains in
 referenced stable artifacts. Do not infer verification from catalog
 `implementation_status`.
 
-The current Paper-1 freeze requires schema/checker/fixture conformance and
-known catalog semantic defects to close before the M0-M5 official campaign.
-It targets ACM TRETS and does not train models.
+The active
+[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+requires schema/checker/fixture conformance and known catalog semantic defects
+to close before the M0-M5 official campaign. It targets ACM TRETS and does not
+train models.
 
 ## System-HIS Layer
 
@@ -246,16 +248,13 @@ the pair. Final-candidate package equality is not skeleton evidence. Runtime
 persistence validates this schema; registration does not make the smoke an
 evidence-ledger or campaign result.
 
-The current v2 runner/outcome reconciliation contracts name
-`runtime_scenario_evidence_reconciliation` as an open blocker. The gold-ready
-M0-M5 run, one excluded M1/L1 repair episode, the four excluded M4 H0-H3
-permission-denied stops and one repair-capable M1 hidden-fail episode are
-artifact-derived. Four excluded M5 H0-H3 correction fixtures are also
-artifact-derived through the registered correction outcome. Other project-repair stages, broader hidden-fail and
-infrastructure-missingness scenarios must not be treated as accepted until
-their authoritative artifact refs are re-read by an acceptance companion. The
-v1 contracts remain registered as backward-compatible historical shapes and
-retain their original blocker values.
+The v2 runner/outcome reconciliation contracts validate artifact-derived
+runtime-scenario evidence and restrict `open_blockers` to a closed enum that
+still includes the live `runtime_scenario_evidence_reconciliation` blocker. The v1
+contracts remain registered as backward-compatible historical shapes and retain
+their original blocker values. Contract registration does not establish current
+G3 closure; use [`docs/current-status.md`](../docs/current-status.md) for fixture,
+acceptance, and open-debt status.
 
 ## Accounting Contracts
 
@@ -277,10 +276,11 @@ raw-event totals and unavailable reasons. Missing provider usage remains
 `unavailable`, not zero. These contracts do not imply that every Runner/tool
 producer is connected or that G3 is closed.
 
-`model-gateway-provenance-v1` records requested seed, adapter forwarding,
-provider support status, system fingerprint status, and hashed gateway identity
-for one instrumented development/excluded model call. It does not infer
-deterministic support from a successful request or a reported fingerprint.
+`model-gateway-provenance-v1` records the zero-based logical call ID, requested
+seed, adapter forwarding, provider support status, system fingerprint status,
+and hashed gateway identity for one instrumented development/excluded model
+call. It does not infer deterministic support from a successful request or a
+reported fingerprint.
 `development-provider-seed-capability-v1` binds the complete repeated-call
 protocol, documentation snapshot/source/review provenance, and ordered per-call
 observations. The application reader recomputes every aggregate conclusion,
@@ -290,6 +290,12 @@ semantically inconsistent summary therefore fails closed. Only a complete
 matching profile with independently reviewed `deterministic_documented` support
 can become a paired-confirmatory candidate; self-reviewed, best-effort,
 undocumented, unavailable, or failed profiles remain ineligible.
+The v1 probe/eligibility identity is limited to Chat Completions. Responses
+requests do not forward seed in the current adapter and therefore fail the
+strict paired-confirmatory guard even when the provider/model/gateway match a
+v1 capability file. `wire_api`, reasoning effort, response-storage policy and
+`max_tokens` are separately frozen in Runner model provenance; supporting a
+Responses seed mechanism requires a future versioned capability contract.
 Both contracts fix official, pass-credit, G3, and G4b authority to false.
 
 ## Training-Release Contracts

@@ -10,7 +10,7 @@ import shutil
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Mapping
+from typing import Any
 
 from sr2fpga_agent.agent import DataGenerationAgent, openxc7_tool_probe_command
 from sr2fpga_agent.baseline_report import baseline_rows, render_markdown
@@ -36,6 +36,7 @@ from sr2fpga_agent.generation import (
     DirectProjectGenerator,
     FrozenContextDirectProjectFacade,
     FrozenContextDirectProjectGenerator,
+    FrozenContextHisGeneratorBridge,
 )
 from sr2fpga_agent.generation.context_his import (
     FrozenContextSystemHisCorrectionFacade,
@@ -44,7 +45,6 @@ from sr2fpga_agent.generation.context_his import (
 )
 from sr2fpga_agent.generation.context_plan import FrozenContextUntypedPlanFacade
 from sr2fpga_agent.family_recipe import select_family_recipe
-from sr2fpga_agent.his_validation import SystemHisValidationError
 from sr2fpga_agent.model_gateway_provenance import write_model_gateway_provenance
 from sr2fpga_agent.provider_seed_capability import (
     load_development_provider_seed_capability,
@@ -169,6 +169,9 @@ class SourceConnection:
     timeout_seconds: int = 120
     transport_attempts: int = 3
     max_tokens: int = 0
+    wire_api: str = "chat_completions"
+    reasoning_effort: str = ""
+    disable_response_storage: bool = False
     system_his_schema_version: str = ""
     seed_capability_manifest: str = ""
 
@@ -341,86 +344,6 @@ class PlannedSample:
                 boundary.envelope,
             ).to_dict()
         return metadata
-
-
-class _RunnerMethodProjectGenerator:
-    """Bridge a first-class method adapter into the legacy Agent generator slot."""
-
-    his_source_used_for_generation = "generated"
-
-    def __init__(
-        self,
-        *,
-        method_condition: str,
-        context,
-        services: GenerationServices,
-        coordinator: PairedArtifactCoordinator,
-        pairing: PairingKey,
-        system_his: FrozenContextSystemHisFacade,
-        max_his_corrections: int = 0,
-    ) -> None:
-        self._adapter = MethodAdapterRegistry().create(method_condition)
-        self._context = context
-        self._services = services
-        self._coordinator = coordinator
-        self._pairing = pairing
-        self._system_his = system_his
-        self._max_his_corrections = max_his_corrections
-        self.last_outcome = None
-        self.last_initial_planning_artifact = None
-        self.last_skeleton_artifact = None
-        self.last_method_event_refs = ()
-
-    def generate(self, _request: ProjectRequest, _platform: PlatformProfile):
-        shared_his = self._coordinator.materialize_system_his(
-            self._pairing,
-            lambda: self._system_his.emit_his(self._context),
-        )
-        self.last_initial_planning_artifact = shared_his
-        outcome = EpisodeExecutor(
-            max_his_corrections=self._max_his_corrections
-        ).emit_candidate(
-            self._adapter,
-            self._context,
-            self._services,
-            SharedArtifactRefs(system_his=shared_his),
-        )
-        self.last_outcome = outcome
-        self.last_method_event_refs = self._services.artifacts.event_refs(
-            self._services.episode_id
-        )
-        if outcome.candidate is None:
-            failure = outcome.failure
-            if failure is None:
-                raise RuntimeError("method adapter produced no complete candidate")
-            if (
-                failure.stage in {"h0", "h1", "h2", "h3"}
-                and outcome.planning_artifact is not None
-                and isinstance(outcome.h_report, Mapping)
-            ):
-                planning = self._services.artifacts.read_planning(
-                    outcome.planning_artifact
-                )
-                raise SystemHisValidationError(
-                    json.dumps(planning, ensure_ascii=False, sort_keys=True),
-                    dict(outcome.h_report),
-                    candidate_artifact_sha256=(
-                        outcome.planning_artifact.artifact_ref.sha256
-                    ),
-                )
-            raise RuntimeError(
-                f"{failure.stage} failed with {failure.error_type}: {failure.message}"
-            )
-        if self._adapter.contract.uses_deterministic_skeleton:
-            skeleton = self._system_his.last_skeleton_project
-            if skeleton is None:
-                raise RuntimeError("skeleton method produced no deterministic skeleton artifact")
-            method = self._adapter.contract.method_condition.value
-            self.last_skeleton_artifact = self._services.artifacts.put_project(
-                f"method-emissions/{self._context.revision_id}/{method}/deterministic-skeleton",
-                skeleton,
-            )
-        return self._services.artifacts.read_project(outcome.candidate)
 
 
 class _RunnerDirectMethodProjectGenerator:
@@ -1416,6 +1339,9 @@ def _measurement_freeze_manifest(
                 "timeout_seconds": connection.timeout_seconds,
                 "transport_attempts": connection.transport_attempts,
                 "max_tokens": connection.max_tokens,
+                "wire_api": connection.wire_api,
+                "reasoning_effort": connection.reasoning_effort,
+                "disable_response_storage": connection.disable_response_storage,
                 "seed_capability_ref": _seed_capability_manifest_ref(connection),
             }
         )
@@ -1574,6 +1500,19 @@ def _seed_capability_diagnostics(
                 "paired_confirmatory_eligible": "false",
             }
             continue
+        if connection.wire_api == "responses":
+            diagnostics[source] = {
+                "status": "ineligible",
+                "classification": "seed_not_forwarded",
+                "paired_confirmatory_eligible": "false",
+            }
+            if config.require_paired_confirmatory_seed_control:
+                errors.append(
+                    f"source {source} wire_api=responses cannot use a "
+                    "seed-control capability because the adapter does not "
+                    "forward seed"
+                )
+            continue
         if not connection.seed_capability_manifest:
             diagnostics[source] = {
                 "status": "unavailable",
@@ -1727,6 +1666,8 @@ def _preflight_client(connection: SourceConnection, api_key: str):
                 model=connection.model,
                 base_url=connection.base_url,
                 timeout_seconds=timeout_seconds,
+                max_tokens=connection.max_tokens or 16384,
+                transport_attempts=connection.transport_attempts,
             )
         )
     return OpenAICompatibleClient(
@@ -1735,6 +1676,11 @@ def _preflight_client(connection: SourceConnection, api_key: str):
             model=connection.model,
             base_url=connection.base_url,
             timeout_seconds=timeout_seconds,
+            max_tokens=connection.max_tokens,
+            transport_attempts=connection.transport_attempts,
+            wire_api=connection.wire_api,
+            reasoning_effort=connection.reasoning_effort,
+            disable_response_storage=connection.disable_response_storage,
         )
     )
 
@@ -2705,6 +2651,36 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             raise SystemExit(
                 f"Source {name!r}: system_his_schema_version must be system-his-v1.1 or system-his-v1.2"
             )
+        wire_api = str(item.get("wire_api", "chat_completions"))
+        if wire_api not in {"chat_completions", "responses"}:
+            raise SystemExit(
+                f"Source {name!r}: wire_api must be chat_completions or responses"
+            )
+        reasoning_effort = str(item.get("reasoning_effort", ""))
+        if reasoning_effort not in {
+            "",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+        }:
+            raise SystemExit(f"Source {name!r}: unsupported reasoning_effort")
+        disable_response_storage = item.get("disable_response_storage", False)
+        if not isinstance(disable_response_storage, bool):
+            raise SystemExit(
+                f"Source {name!r}: disable_response_storage must be a boolean"
+            )
+        if wire_api != "responses" and reasoning_effort:
+            raise SystemExit(
+                f"Source {name!r}: reasoning_effort requires wire_api=responses"
+            )
+        if wire_api != "responses" and disable_response_storage:
+            raise SystemExit(
+                f"Source {name!r}: disable_response_storage requires "
+                "wire_api=responses"
+            )
         sources[str(name)] = SourceConnection(
             name=str(name),
             kind=kind,
@@ -2715,6 +2691,9 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             timeout_seconds=int(item.get("timeout_seconds", 120)),
             transport_attempts=int(item.get("transport_attempts", 3)),
             max_tokens=int(item.get("max_tokens", 0)),
+            wire_api=wire_api,
+            reasoning_effort=reasoning_effort,
+            disable_response_storage=disable_response_storage,
             system_his_schema_version=system_his_schema_version,
             seed_capability_manifest=str(item.get("seed_capability_manifest", "")),
         )
@@ -3469,7 +3448,7 @@ def _bind_runner_method_generator(
             else None
         ),
     )
-    return _RunnerMethodProjectGenerator(
+    return FrozenContextHisGeneratorBridge(
         method_condition=method_condition,
         context=context,
         services=services,
@@ -3487,6 +3466,10 @@ def _runner_pairing_key(config: RunnerConfig, sample: PlannedSample, context) ->
         "kind": connection.kind,
         "model": connection.model,
         "generation_mode": connection.generation_mode,
+        "max_tokens": connection.max_tokens,
+        "wire_api": connection.wire_api,
+        "reasoning_effort": connection.reasoning_effort,
+        "disable_response_storage": connection.disable_response_storage,
         "requested_decoding_seed": sample.decoding_seed,
     }
     model_provenance_sha256 = hashlib.sha256(

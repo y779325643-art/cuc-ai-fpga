@@ -54,15 +54,24 @@
 - Forbidden claims: cherry-picked families, post-outcome metric changes, or
   canonical-HIS access in headline end-to-end conditions.
 - Required evidence: exact manifests, hashes, model/tool versions, decoding
-  seeds, paired-block identities/shared checkpoints, sample counts, exclusions,
-  artifact-derived G3 acceptance, and a verifier-derived G4b authorization
-  receipt. Target-profile pairs, invariants, change rules, and compliance
-  commitments are required only when the optional extension is enabled.
+  provenance, `replicate_id`, independent `execution_schedule_seed`, paired-block
+  identities/shared checkpoints, sample counts, exclusions, artifact-derived G3
+  acceptance, and a verifier-derived G4b authorization receipt. The analysis
+  manifest must bind the RQ1 primary Holm family (`M4-M3`, `M4-M0`), mandatory
+  secondary M3-M2 contract, separate RQ2 Holm family, threshold tests and
+  intervals, the RQ1 statistical-success/validity-gate/claim-activation
+  indicators and gate-conditional full-claim joint-power rule, and RQ2 Holm-
+  adjusted marginal-power rules. Target-profile pairs, invariants, change rules,
+  and
+  compliance commitments are required only when the optional extension is
+  enabled.
 - Validation checklist: A_req is disjoint from VPP; M0-M5 privileges and global
-  budgets are explicit; confirmatory gatekeeping applies once to the equal-family
-  macro estimator; paired methods share the frozen initial artifacts named by
-  v1.6; each hidden evaluator commits at most one semantic outcome on an
-  immutable terminal candidate and is inaccessible during generation/repair.
+  budgets are explicit; the two RQ1 primary hypotheses use equal-family macro
+  estimators and Holm control, each activates only its local claim, and the full
+  RQ1 claim requires both; M3-M2 remains secondary. Paired methods share the
+  frozen initial artifacts named by the active freeze; each hidden evaluator
+  commits at most one semantic outcome on an immutable terminal candidate and is
+  inaccessible during generation/repair.
 
 ## Section: Results
 
@@ -76,11 +85,16 @@
   design failure, visible pass as hidden correctness, or deterministic references
   as model-generated output.
 - Required evidence: audit/VPP run IDs, ambiguity confusion matrix and bounds,
-  aggregate and per-family project tables, uncertainty, attrition/accounting
-  diagram, all-axis episode cost, hidden completion/missingness bounds, and
-  negative cases. An enabled extension additionally requires its full pair
-  denominator, compliance outcomes, and pair-cost availability.
-- Validation checklist: totals reconcile from episode to paper table.
+  aggregate and per-family `VPP-L3@1` project tables, uncertainty,
+  attrition/accounting diagram, raw and Holm-adjusted RQ1/RQ2 p-values,
+  two-sided 95% intervals,
+  all-axis episode cost, hidden completion/missingness bounds, and negative cases.
+  The two RQ1 primary rows and the secondary M3-M2 row remain visibly distinct.
+  An enabled extension additionally requires its full pair denominator,
+  compliance outcomes, and pair-cost availability.
+- Validation checklist: totals reconcile from episode to paper table; a local
+  RQ1 claim appears only when its own threshold, multiplicity, and interval rules
+  pass and the common RQ1 validity gate remains satisfied.
 
 ## Section: Discussion and threats
 

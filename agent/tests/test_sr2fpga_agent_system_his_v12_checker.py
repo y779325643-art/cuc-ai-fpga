@@ -195,6 +195,48 @@ class SystemHisV12CheckerTest(unittest.TestCase):
 
         self.assertTrue(result.passed, result.errors)
 
+    def test_rejects_non_object_and_unnamed_parameter_declarations(self) -> None:
+        payload = _fixture()
+        payload["top"]["parameters"] = [
+            "DATA_WIDTH",
+            {},
+            {"name": None},
+            {"name": 0},
+        ]
+        payload["components"][0]["parameters"] = [
+            "DATA_WIDTH",
+            {},
+            {"name": None},
+            {"name": 0},
+        ]
+
+        result = check_system_his_v12(payload)
+
+        self.assertFalse(result.passed)
+        self.assertIn(
+            "system_his.top.parameters[0] must be an object",
+            result.errors,
+        )
+        self.assertIn(
+            "system_his.top.parameters[1].name is required",
+            result.errors,
+        )
+        self.assertIn(
+            "components[0].parameters[0] must be an object",
+            result.errors,
+        )
+        self.assertIn(
+            "components[0].parameters[1].name is required",
+            result.errors,
+        )
+        for path in (
+            "system_his.top.parameters[2].name",
+            "system_his.top.parameters[3].name",
+            "components[0].parameters[2].name",
+            "components[0].parameters[3].name",
+        ):
+            self.assertIn(f"{path} must be a string", result.errors)
+
     def test_rejects_control_rule_references_to_missing_state_and_flow(self) -> None:
         payload = _fixture()
         payload["control_flow"][0]["related_state"].append("missing_state")
@@ -206,23 +248,19 @@ class SystemHisV12CheckerTest(unittest.TestCase):
         self.assertIn("control_flow 'reset_all_state' references missing state 'missing_state'", result.errors)
         self.assertIn("control_flow 'reset_all_state' references missing data_flow 'missing_flow'", result.errors)
 
-    def test_accepts_declared_reset_as_control_guard_when_not_repeated_in_top_ports(self) -> None:
-        payload = _fixture()
-        payload["top"]["ports"] = [port for port in payload["top"]["ports"] if port["name"] != "rst_n"]
-        payload["control_flow"].append(
-            {
-                "name": "reset_accum",
-                "kind": "reset_rule",
-                "when": {"signal": "top.rst_n", "op": "==", "value": 0},
-                "effect": {"action": "clear", "target": "sum_q"},
-                "related_state": ["sum_q"],
-                "related_flows": [],
-            }
-        )
+    def test_rejects_declared_clock_or_reset_missing_from_top_ports(self) -> None:
+        for section, name in (("clocks", "clk"), ("resets", "rst_n")):
+            with self.subTest(section=section):
+                payload = _fixture()
+                payload["top"]["ports"] = [port for port in payload["top"]["ports"] if port["name"] != name]
 
-        result = check_system_his_v12(payload)
+                result = check_system_his_v12(payload)
 
-        self.assertTrue(result.passed, result.errors)
+                self.assertFalse(result.passed)
+                self.assertIn(
+                    f"system_his.top.{section}[0].name '{name}' must also appear in system_his.top.ports",
+                    result.errors,
+                )
 
     def test_rejects_fsm_initial_state_outside_declared_states(self) -> None:
         payload = _fixture_with_fsm({"initial": "BROKEN"})

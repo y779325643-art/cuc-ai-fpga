@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 
 from sr2fpga_agent.agent import DataGenerationAgent
+from sr2fpga_agent.artifact_store import ArtifactStore
 from sr2fpga_agent.family_recipe import select_family_recipe
 from sr2fpga_agent.frozen_context import (
     build_development_episode_pack,
@@ -17,9 +18,14 @@ from sr2fpga_agent.frozen_context import (
 from sr2fpga_agent.generation import (
     DirectProjectGenerator,
     FrozenContextDirectProjectGenerator,
+    FrozenContextHisGeneratorBridge,
+    FrozenContextSystemHisCorrectionFacade,
+    FrozenContextSystemHisFacade,
+    FrozenContextSystemHisValidationFacade,
     OracleHisProjectGenerator,
     TwoStageProjectGenerator,
 )
+from sr2fpga_agent.method_adapters import GenerationServices, MethodArtifactGateway
 from sr2fpga_agent.providers import (
     AnthropicCompatibleClient,
     AnthropicCompatibleConfig,
@@ -29,7 +35,7 @@ from sr2fpga_agent.providers import (
 from sr2fpga_agent.repair import ProjectRepairer
 from sr2fpga_agent.requirement_boundary import evaluate_requirement_boundary
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
-from sr2fpga_agent.model_budget import ModelCallBudget
+from sr2fpga_agent.model_budget import ModelCallBudget, client_for_stage
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -49,6 +55,27 @@ def main(argv: list[str] | None = None) -> None:
     parser.add_argument("--model", default="deepseek-v4-pro")
     parser.add_argument("--base-url", default="https://api.deepseek.com")
     parser.add_argument("--api-key-env", default="DEEPSEEK_API_KEY")
+    parser.add_argument(
+        "--wire-api",
+        choices=["chat_completions", "responses"],
+        default="chat_completions",
+    )
+    parser.add_argument(
+        "--reasoning-effort",
+        choices=["none", "minimal", "low", "medium", "high", "xhigh"],
+        default="",
+    )
+    parser.add_argument("--disable-response-storage", action="store_true")
+    parser.add_argument("--timeout-seconds", default=120, type=int)
+    parser.add_argument("--transport-attempts", default=3, type=int)
+    parser.add_argument(
+        "--development-his2project-output-repair",
+        action="store_true",
+        help=(
+            "Enable bounded excluded-development HIS2PROJECT output repair; "
+            "this is not the formal M5 method"
+        ),
+    )
     parser.add_argument("--repair-provider", choices=["none", "deepseek"], default="none")
     parser.add_argument("--max-attempts", default=1, type=int)
     parser.add_argument("--decoding-seed", type=int)
@@ -66,8 +93,29 @@ def main(argv: list[str] | None = None) -> None:
         raise SystemExit("--max-model-calls must be >= 0")
     if args.decoding_seed is not None and args.decoding_seed < 0:
         raise SystemExit("--decoding-seed must be >= 0")
+    if args.timeout_seconds < 1:
+        raise SystemExit("--timeout-seconds must be >= 1")
+    if args.transport_attempts < 1:
+        raise SystemExit("--transport-attempts must be >= 1")
     if args.provider == "deterministic" and not args.task_type:
         raise SystemExit("--task-type is required when --provider deterministic is selected")
+    if args.development_his2project_output_repair:
+        if args.provider not in {"deepseek-his-v12", "openai_compat"}:
+            raise SystemExit(
+                "--development-his2project-output-repair requires a two-stage provider"
+            )
+        if args.repair_provider != "none":
+            raise SystemExit(
+                "--development-his2project-output-repair cannot be combined with outer project repair"
+            )
+        if args.max_attempts != 1:
+            raise SystemExit(
+                "--development-his2project-output-repair requires --max-attempts 1"
+            )
+        if 0 < args.max_model_calls < 4:
+            raise SystemExit(
+                "--development-his2project-output-repair requires --max-model-calls >= 4"
+            )
 
     task_type = args.task_type or "unclassified"
     requirement = args.requirement or f"Generate an {args.width}-bit {task_type} FPGA RTL project."
@@ -82,24 +130,44 @@ def main(argv: list[str] | None = None) -> None:
     method_condition = _cli_method_condition(
         args.provider,
         repair_enabled=args.repair_provider != "none" and args.max_attempts > 1,
+        output_repair_enabled=args.development_his2project_output_repair,
     )
     model_call_ceiling = args.max_model_calls or _default_model_call_ceiling(
         method_condition,
         args.max_attempts,
+        output_repair_enabled=args.development_his2project_output_repair,
     )
     model_budget = ModelCallBudget(model_call_ceiling)
+    analysis_population = (
+        "excluded" if args.development_his2project_output_repair else "development"
+    )
     metadata = {
-        "analysis_population": "development",
+        "analysis_population": analysis_population,
         "method_condition": method_condition,
         "requirement_boundary": boundary.to_dict(),
         "model_call_budget": model_budget.summary(),
+        "provider_transport_policy": {
+            "policy_id": "cli-openai-compatible-transport-v1",
+            "timeout_seconds": args.timeout_seconds,
+            "max_transport_attempts_per_logical_call": args.transport_attempts,
+        },
     }
+    if args.development_his2project_output_repair:
+        metadata["execution_variant"] = {
+            "variant_id": "m5-his2project-output-repair-dev-v1",
+            "base_method_condition": "M5",
+            "formal_method_conformant": False,
+            "official_evidence_eligible": False,
+            "max_his2project_output_repairs": 2,
+            "shared_pre_candidate_repair_ceiling": 2,
+        }
+    frozen_context = None
     if boundary.disposition == "ready" and method_condition in {"M0", "M1", "M4", "M5"}:
-        context = freeze_ready_requirement_context(boundary, platform)
+        frozen_context = freeze_ready_requirement_context(boundary, platform)
         metadata["episode_pack"] = build_development_episode_pack(
-            context,
+            frozen_context,
             episode_id=args.sample_id,
-            analysis_population="development",
+            analysis_population=analysis_population,
             method_condition=method_condition,
             evaluator_metadata={"task_type": task_type},
         ).to_dict()
@@ -118,6 +186,11 @@ def main(argv: list[str] | None = None) -> None:
             api_key_env=args.api_key_env,
             model_budget=model_budget,
             decoding_seed=args.decoding_seed,
+            wire_api=args.wire_api,
+            reasoning_effort=args.reasoning_effort,
+            disable_response_storage=args.disable_response_storage,
+            timeout_seconds=args.timeout_seconds,
+            transport_attempts=args.transport_attempts,
         )
         if method_condition in {"M0", "M1"} and isinstance(
             project_generator, DirectProjectGenerator
@@ -126,6 +199,18 @@ def main(argv: list[str] | None = None) -> None:
                 project_generator.client,
                 context_from_validated_episode_pack(metadata["episode_pack"]),
             )
+        if method_condition in {"M4", "M5"}:
+            project_generator = _bind_cli_frozen_his_generator(
+                project_generator,
+                method_condition=method_condition,
+                context=context_from_validated_episode_pack(metadata["episode_pack"]),
+                platform=platform,
+                artifact_store=ArtifactStore(
+                    args.dataset_root / args.sample_id / "method_artifacts"
+                ),
+                episode_id=args.sample_id,
+                output_repair_enabled=args.development_his2project_output_repair,
+            )
         repairer = build_repairer(
             provider=args.repair_provider,
             model=args.model,
@@ -133,6 +218,8 @@ def main(argv: list[str] | None = None) -> None:
             api_key_env=args.api_key_env,
             model_budget=model_budget,
             decoding_seed=args.decoding_seed,
+            timeout_seconds=args.timeout_seconds,
+            transport_attempts=args.transport_attempts,
         )
     result = DataGenerationAgent(
         args.dataset_root,
@@ -157,20 +244,84 @@ def main(argv: list[str] | None = None) -> None:
         print("capability_gaps=" + ",".join(result["capability_gaps"]))
 
 
-def _cli_method_condition(provider: str, *, repair_enabled: bool) -> str:
+def _cli_method_condition(
+    provider: str,
+    *,
+    repair_enabled: bool,
+    output_repair_enabled: bool = False,
+) -> str:
     if provider == "deterministic":
         return "reference_deterministic"
     if provider == "deepseek":
         return "M1" if repair_enabled else "M0"
-    return "M5" if repair_enabled else "M4"
+    return "M5" if repair_enabled or output_repair_enabled else "M4"
 
 
-def _default_model_call_ceiling(method_condition: str, max_attempts: int) -> int:
+def _bind_cli_frozen_his_generator(
+    generator,
+    *,
+    method_condition: str,
+    context,
+    platform: PlatformProfile,
+    artifact_store: ArtifactStore,
+    episode_id: str,
+    output_repair_enabled: bool = False,
+) -> FrozenContextHisGeneratorBridge:
+    if not isinstance(generator, TwoStageProjectGenerator):
+        raise SystemExit(
+            f"{method_condition} requires a two-stage source with separate model clients"
+        )
+    req2his_client = generator.system_his_generator.client
+    project_client = generator.his_project_generator.client
+    system_his = FrozenContextSystemHisFacade(
+        req2his_client,
+        project_client,
+        platform,
+        project_output_repair_client=(
+            client_for_stage(project_client, "his2project_output_repair")
+            if output_repair_enabled
+            else None
+        ),
+    )
+    services = GenerationServices(
+        artifacts=MethodArtifactGateway(artifact_store),
+        episode_id=episode_id,
+        system_his=system_his,
+        his_validation=FrozenContextSystemHisValidationFacade(platform),
+        project_output_repair=system_his if output_repair_enabled else None,
+        repair=(
+            FrozenContextSystemHisCorrectionFacade(
+                client_for_stage(req2his_client, "system_his_repair"),
+                platform,
+            )
+            if method_condition == "M5"
+            else None
+        ),
+    )
+    return FrozenContextHisGeneratorBridge(
+        method_condition=method_condition,
+        context=context,
+        services=services,
+        system_his=system_his,
+        max_his_corrections=1 if method_condition == "M5" else 0,
+        max_project_output_repairs=2 if output_repair_enabled else 0,
+        max_shared_pre_candidate_repairs=2 if output_repair_enabled else None,
+    )
+
+
+def _default_model_call_ceiling(
+    method_condition: str,
+    max_attempts: int,
+    *,
+    output_repair_enabled: bool = False,
+) -> int:
     if method_condition == "reference_deterministic":
         return 0
     if method_condition in {"M0", "M1"}:
         return max_attempts
     if method_condition in {"M4", "M5"}:
+        if output_repair_enabled:
+            return 4
         return 2 + max(0, max_attempts - 1)
     raise SystemExit(f"No model-call allocation is implemented for {method_condition}")
 
@@ -195,6 +346,11 @@ def build_project_generator(
     event_sink=None,
     model_budget: ModelCallBudget | None = None,
     decoding_seed: int | None = None,
+    wire_api: str = "chat_completions",
+    reasoning_effort: str = "",
+    disable_response_storage: bool = False,
+    timeout_seconds: int = 120,
+    transport_attempts: int = 3,
 ):
     if provider == "deterministic":
         return None
@@ -208,6 +364,11 @@ def build_project_generator(
                     model=model,
                     base_url=base_url,
                     seed=decoding_seed,
+                    wire_api=wire_api,
+                    reasoning_effort=reasoning_effort,
+                    disable_response_storage=disable_response_storage,
+                    timeout_seconds=timeout_seconds,
+                    transport_attempts=transport_attempts,
                 )
             )
         if model_budget is not None:
@@ -223,6 +384,11 @@ def build_project_generator(
                     model=model,
                     base_url=base_url,
                     seed=decoding_seed,
+                    wire_api=wire_api,
+                    reasoning_effort=reasoning_effort,
+                    disable_response_storage=disable_response_storage,
+                    timeout_seconds=timeout_seconds,
+                    transport_attempts=transport_attempts,
                 )
             )
         if model_budget is not None:
@@ -273,6 +439,11 @@ def build_project_generator_for_connection(
             max_tokens=getattr(connection, "max_tokens", 0),
             transport_attempts=getattr(connection, "transport_attempts", 3),
             seed=decoding_seed,
+            wire_api=getattr(connection, "wire_api", "chat_completions"),
+            reasoning_effort=getattr(connection, "reasoning_effort", ""),
+            disable_response_storage=getattr(
+                connection, "disable_response_storage", False
+            ),
         )
     )
     if model_budget is not None:
@@ -294,6 +465,8 @@ def build_repairer(
     api_key_env: str,
     model_budget: ModelCallBudget | None = None,
     decoding_seed: int | None = None,
+    timeout_seconds: int = 120,
+    transport_attempts: int = 3,
 ):
     if provider == "none":
         return None
@@ -307,6 +480,8 @@ def build_repairer(
                     model=model,
                     base_url=base_url,
                     seed=decoding_seed,
+                    timeout_seconds=timeout_seconds,
+                    transport_attempts=transport_attempts,
                 )
             )
         if model_budget is not None:
@@ -352,6 +527,11 @@ def build_repairer_for_connection(
             transport_attempts=getattr(connection, "transport_attempts", 3),
             max_tokens=getattr(connection, "max_tokens", 0),
             seed=decoding_seed,
+            wire_api=getattr(connection, "wire_api", "chat_completions"),
+            reasoning_effort=getattr(connection, "reasoning_effort", ""),
+            disable_response_storage=getattr(
+                connection, "disable_response_storage", False
+            ),
         )
     )
     if model_budget is not None:

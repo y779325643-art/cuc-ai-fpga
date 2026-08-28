@@ -2,11 +2,11 @@
 
 ## 0. 状态、权威与适用范围
 
-- **规范版本：** `sr2fpga-paper1-code-dev-v1.8`
-- **生效日期：** 2026-08-26
+- **规范版本：** `sr2fpga-paper1-code-dev-v1.10`
+- **生效日期：** 2026-08-28
 - **规范类型：** Paper-1 下位实现设计规范（implementation design spec）
 - **研究上位权威：**
-  [`paper1-freeze-v1.6`](2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+  [`paper1-freeze-v1.7`](2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
 - **机器格式权威：** [`contracts/manifest.json`](../../contracts/manifest.json)
   注册的版本化 contracts
 - **当前事实权威：** 当前代码、可复现测试、证据 ledger，以及
@@ -17,7 +17,8 @@ artifact 生命周期、开发顺序和验收测试。它不修改 Paper-1 的 e
 方法条件、信息权限、统计规则、held-out 设计或 gate 顺序；冲突时以上位
 English freeze 为准。
 
-本规范首先约束 G1-G3 的代码闭环，并定义 G4a/G4b 和 G6 正式评测所需的机器接口。
+本规范首先约束 G1-G3 的代码闭环，并定义 G4a/G4b、G6 campaign materialization
+与 G7 official execution 所需的机器接口。
 它**不授权**付费 API campaign、正式 hidden evaluation、数据 release、模型训练、
 模型发布或结果声明。`official_vpp` 必须保持 fail-closed，直到签名 G4b
 manifest 通过验证。
@@ -52,6 +53,41 @@ effect，并禁止 common-randomness、seed-effect 或 bitwise-replay 论断。G
 protocol/documentation-review/per-call observations 重算 classifier 与 strict guard 的正负
 fixtures，不等待现实 provider eligible。当前 Runner 尚未实现 `replicate_id`、schedule
 authority 或 mode-aware G4b verifier，因此本同步新增实现债，不产生 G3 closure 或结果。
+
+v1.9 同步 `paper1-freeze-v1.7` 的结果前 RQ1 统计修订：`M4-M3` 与
+`M4-M0` 构成两项主要 Holm family，`M3-M2` 是强制报告的 secondary
+estimation contrast。`M4-M3` 的规范解释是 deterministic materialization 与
+editable-surface policy 的联合增量，不是 skeleton-only effect。该同步不改变
+M0-M5 dispatch、episode 数、信息权限、预算、RQ2/RQ0/RQ4 或 v1.6 decoding-control
+规则；它只增加 G4a/G4b analysis contract、RQ1 gate-conditional joint/marginal-
+power report、RQ2 Holm-adjusted marginal-power report、结果 reducer 与 claim
+activation 的实现义务，不产生任何 outcome 或 gate closure。
+
+v1.10 封存 2026-08-28 development/excluded generation 与 gateway errata。OpenAI-
+compatible gateway 现在显式区分 Chat Completions 与 Responses wire API，记录
+`reasoning_effort`/response-storage policy，并将这些配置连同 `max_tokens` 绑定到
+measurement freeze 与 paired model-provenance hash；Responses 不转发 seed，因而不能使用
+现有 development seed-capability v1 通过 strict paired-confirmatory guard；Chat
+Completions 配置若声明 Responses-only reasoning/storage 选项则在 source/client 创建时
+fail closed，不能静默忽略。Logical
+`call_id` 的 v1 Schema 下界修正为与 writer 一致的 zero-based。System-HIS H1 现在要求
+top clock/reset 也存在于 `top.ports`，并把 `top.parameters[*]` 与
+`components[*].parameters[*]` 约束为具有非空字符串 `name` 的对象；不自动把字符串
+parameter 归一化为对象，registered System-HIS v1.2 Schema 保持不变。Canonical timing-
+constraint 与 predicted-QoR 路径由 deterministic skeleton layout 单点定义，而不是冒充
+backend capability profile 字段。Deterministic skeleton 在任何 HIS2PROJECT API 前执行
+static consistency preflight；被拒的 raw HIS2PROJECT 文本使用 text media type 保存；相同
+repair output 消耗本次调用后以 non-repairable `NoProgress` 停止，并保留 parent/produced
+artifact refs。以上均为 development protocol correction，不改变
+`paper1-freeze-v1.7`、正式 M0-M5 定义或 `g3_accepted=false`。
+
+迁移策略保持 additive/read-compatible：既有 System-HIS v1.2、seed-capability v1、
+model-gateway-provenance v1、model-output refs 与 measurement freezes 不原地改写；旧
+`application/json` model-output refs 仍按 bytes 读取；seed-capability v1 视为 Chat
+Completions probe identity，Responses 需要未来 versioned capability contract 才可能进入
+strict paired mode；新增 freeze 字段只由 v1.10 producer 写入。M4/M5 shared immutable
+initial project、M5 `@1`/`@A` correction separation、`replicate_id` 与 schedule authority
+继续是 G3 debt，本版本不宣称关闭。
 
 v1.4 同步 development/excluded evaluator authority 的实现进度：每个 attempt 在
 evaluation 前进入 immutable candidate authority，public diagnosis 是 repair 的唯一
@@ -1176,8 +1212,8 @@ release shape 也不等于验签或训练授权。
 | standalone `requirement_envelope` / `requirement_disposition` v1 | Intake | adapters/H3/audit | 当前语义分散在 runtime/episode artifacts；尚无独立注册 contract |
 | `benchmark_split` v1 | G4a/G4b pack builder | runner/leakage audit | evaluator-only/public commitment；未注册 |
 | `method_condition` v1 | protocol | runner/adapters | runtime vocabulary 存在；独立 artifact contract 未注册 |
-| `model_gateway_provenance` v1 | gateway wrapper | accounting/analysis | 已注册 audit-only contract；built-in OpenAI-compatible adapter 转发 frozen seed 并记录 fingerprint，Anthropic-compatible adapter 显式记录 `not_forwarded/unsupported`；Runner 将带 provenance 的完成/失败 model-call event 写成 immutable development/excluded artifact。`supported` 必须另有 hash-bound capability evidence；当前无该证明，且所有 official/pass-credit/G3/G4b authority 固定为 false |
-| `development_provider_seed_capability` v1 | development probe | runner/preflight | 已注册 development-only contract；绑定 provider/model/hashed gateway、完整固定协议、文档 snapshot/source/review provenance 与有序 per-call observations。reader/guard 从 raw 字段重算 counts/status、output/fingerprint 结论、token totals、classification、limitations、profile ID 与 eligibility，summary tamper fail closed；缺失/不一致 fingerprint 单列 `backend_identity_unverified`。仅独立 review 的 `deterministic_documented` 且完整匹配 profile 可成为 paired-confirmatory candidate；CLI self-review 不能授予正向资格。strict Runner guard 在网络与 run-directory side effect 前拒绝 missing/mismatched/ineligible profile。2026-08-26 DeepSeek 三次非空输出/fingerprint 匹配但 seed 未文档化且仅 self-reviewed，故仍为 `unverified`；OpenAI probe 为 authentication infrastructure error；二者均不 eligible，且 contract 固定无 official/pass-credit/G3/G4b authority |
+| `model_gateway_provenance` v1 | gateway wrapper | accounting/analysis | 已注册 audit-only contract；built-in OpenAI-compatible Chat Completions adapter 转发 frozen seed 并记录 fingerprint，Responses path 与 Anthropic-compatible adapter 显式记录 `not_forwarded/unsupported`；Runner 将带 provenance 的完成/失败 model-call event 写成 immutable development/excluded artifact。`supported` 必须另有 hash-bound capability evidence；当前无该证明，且所有 official/pass-credit/G3/G4b authority 固定为 false |
+| `development_provider_seed_capability` v1 | development probe | runner/preflight | 已注册 development-only contract，且 v1 identity 限于 Chat Completions；绑定 provider/model/hashed gateway、完整固定协议、文档 snapshot/source/review provenance 与有序 per-call observations。reader/guard 从 raw 字段重算 counts/status、output/fingerprint 结论、token totals、classification、limitations、profile ID 与 eligibility，summary tamper fail closed；缺失/不一致 fingerprint 单列 `backend_identity_unverified`。仅独立 review 的 `deterministic_documented` 且完整匹配 profile 可成为 paired-confirmatory candidate；CLI self-review 不能授予正向资格。strict Runner guard 在网络与 run-directory side effect 前拒绝 missing/mismatched/ineligible profile，并拒绝 Responses 错配 v1 capability。2026-08-26 DeepSeek 三次非空输出/fingerprint 匹配但 seed 未文档化且仅 self-reviewed，故仍为 `unverified`；OpenAI probe 为 authentication infrastructure error；二者均不 eligible，且 contract 固定无 official/pass-credit/G3/G4b authority |
 | `attempt_event` v1 | executor | recorder/analysis | 已注册 closed Schema；write-once writer/reducer 已测试，Runner/tool producers 尚未完整接入 |
 | `cost_summary` v1 | accounting reducer | analysis | 已注册且可从 closed raw events 重建；全轴 runtime producer 与 full-pack 对账未闭合 |
 | `paired_outcome` v1 | analysis reducer | paper analysis | 未注册 |
@@ -1194,8 +1230,12 @@ freeze/hash、split/sample、semantic clusters、method contracts、randomized/b
 execution order 与 seed、prompts/effective-information hashes、base model/tokenizer、
 all-axis budgets、terminal rule、paired hidden commitments/seeds、tool/evaluator
 hashes、infrastructure retry/abort thresholds、contrast-specific MOI/design
-alternatives、non-inferiority margin、primary cost axis、estimators/multiplicity、
-positive G3 ref、G5 provenance，以及四个 primary held-out family 全部 oracle-ready
+alternatives、non-inferiority margin、primary cost axis、RQ1/RQ2 独立 Holm family、
+RQ1 mandatory secondary role、threshold-test/CI implementation hashes、RQ1 的
+statistical-success/validity-gate/claim-activation indicator、gate-conditional
+joint/marginal power report、RQ2 Holm-adjusted marginal-power report、estimators/
+multiplicity、positive G3 ref、G5 provenance，
+以及四个 primary held-out family 全部 oracle-ready
 commitments。只有 `tpa_extension_status=enabled` 时，它还必须绑定 target-profile pair population、
 baseline/variant profile hashes、change axes、functional invariants、required/allowed/
 forbidden changes、compliance commitments、L3/L4 endpoint、`TPA-L4` estimator、

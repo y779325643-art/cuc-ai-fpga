@@ -1,6 +1,11 @@
 # AI驱动硬件自动设计技术发展脉络综述
 ## ——从RTL设计到MLIR/CIRCT自动架构生成
 
+> **文档角色：背景综述，不是当前协议、实现状态或实验结果。** SR2FPGA
+> 当前事实见 [`docs/current-status.md`](../docs/current-status.md)，Paper-1 研究定义以
+> [`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+> 为准。
+
 # 一、引言
 
 集成电路设计长期依赖人工完成硬件架构设计、RTL编码和验证工作。随着芯片复杂度不断提高，传统设计方法面临开发周期长、设计成本高以及跨层协同优化困难等问题。

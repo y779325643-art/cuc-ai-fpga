@@ -7,7 +7,10 @@ import copy
 import re
 from typing import Any, Callable, Mapping
 
+from sr2fpga_agent.episode_executor import EpisodeExecutor
 from sr2fpga_agent.contract_skeleton import (
+    CANONICAL_PREDICTED_QOR_PATH,
+    CANONICAL_TIMING_CONSTRAINT_PATH,
     build_contract_skeleton_project,
     merge_behavior_files,
 )
@@ -17,9 +20,18 @@ from sr2fpga_agent.frozen_context import (
     platform_profile_sha256,
 )
 from sr2fpga_agent.his_validation import (
+    SystemHisValidationError,
     validate_frozen_system_his_payload_h_stages,
 )
-from sr2fpga_agent.models import GeneratedProject, PlatformProfile
+from sr2fpga_agent.method_adapters import (
+    GenerationServices,
+    MethodAdapterRegistry,
+    PairedArtifactCoordinator,
+    PairingKey,
+    SkeletonProjectOutput,
+    SharedArtifactRefs,
+)
+from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.parsers import (
     parse_behavior_files,
     parse_project_files,
@@ -33,6 +45,7 @@ from sr2fpga_agent.prompts import (
     _frozen_project_repair_messages,
     _frozen_system_his_correction_messages,
     _frozen_system_his_messages,
+    _with_his_project_retry_feedback,
 )
 from sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
 from sr2fpga_agent.system_his_checker import check_his_project_consistency
@@ -47,9 +60,12 @@ class FrozenContextSystemHisFacade:
         req2his_client: Any,
         project_client: Any,
         platform: PlatformProfile,
+        *,
+        project_output_repair_client: Any | None = None,
     ) -> None:
         self._req2his_client = req2his_client
         self._project_client = project_client
+        self._project_output_repair_client = project_output_repair_client
         self._platform = platform
         self.last_skeleton_project: GeneratedProject | None = None
 
@@ -91,21 +107,84 @@ class FrozenContextSystemHisFacade:
         context: FrozenRequirementContext,
         system_his: Mapping[str, Any],
     ) -> GeneratedProject:
-        self._check_platform(context)
+        output = self.emit_skeleton_project_output(context, system_his)
+        return self.lower_skeleton_project_output(context, system_his, output)
+
+    def emit_skeleton_project_output(
+        self,
+        context: FrozenRequirementContext,
+        system_his: Mapping[str, Any],
+    ) -> SkeletonProjectOutput:
         payload = dict(system_his)
-        request = frozen_public_project_request(context)
-        skeleton = _canonicalize_skeleton(
-            build_contract_skeleton_project(request, self._platform, payload),
-            payload,
-            self._platform,
-        )
-        self.last_skeleton_project = skeleton
+        skeleton = self._build_skeleton(context, payload)
+        _validate_static_his_skeleton(skeleton)
         content = self._project_client.stream_chat(
             _frozen_his_skeleton_messages(context, payload, skeleton.files)
         )
-        project = merge_behavior_files(skeleton, parse_behavior_files(content))
+        return SkeletonProjectOutput(
+            content=content,
+            skeleton_project_sha256=project_package_sha256(skeleton),
+        )
+
+    def lower_skeleton_project_output(
+        self,
+        context: FrozenRequirementContext,
+        system_his: Mapping[str, Any],
+        output: SkeletonProjectOutput,
+    ) -> GeneratedProject:
+        payload = dict(system_his)
+        skeleton = self._build_skeleton(context, payload)
+        if project_package_sha256(skeleton) != output.skeleton_project_sha256:
+            raise ValueError("deterministic skeleton changed across HIS2PROJECT output handling")
+        project = merge_behavior_files(
+            skeleton,
+            parse_behavior_files(output.content),
+        )
         _validate_his_project(project)
         return project
+
+    def repair_skeleton_project_output(
+        self,
+        context: FrozenRequirementContext,
+        system_his: Mapping[str, Any],
+        previous_output: SkeletonProjectOutput,
+        error: str,
+    ) -> SkeletonProjectOutput:
+        if self._project_output_repair_client is None:
+            raise RuntimeError("missing HIS2PROJECT output repair client")
+        payload = dict(system_his)
+        skeleton = self._build_skeleton(context, payload)
+        skeleton_sha256 = project_package_sha256(skeleton)
+        if skeleton_sha256 != previous_output.skeleton_project_sha256:
+            raise ValueError("deterministic skeleton changed before HIS2PROJECT output repair")
+        _validate_static_his_skeleton(skeleton)
+        messages = _frozen_his_skeleton_messages(context, payload, skeleton.files)
+        content = self._project_output_repair_client.stream_chat(
+            _with_his_project_retry_feedback(
+                messages,
+                error,
+                previous_output.content,
+            )
+        )
+        return SkeletonProjectOutput(
+            content=content,
+            skeleton_project_sha256=skeleton_sha256,
+        )
+
+    def _build_skeleton(
+        self,
+        context: FrozenRequirementContext,
+        system_his: Mapping[str, Any],
+    ) -> GeneratedProject:
+        self._check_platform(context)
+        request = frozen_public_project_request(context)
+        skeleton = _canonicalize_skeleton(
+            build_contract_skeleton_project(request, self._platform, system_his),
+            system_his,
+            self._platform,
+        )
+        self.last_skeleton_project = skeleton
+        return skeleton
 
     def _check_platform(self, context: FrozenRequirementContext) -> None:
         if platform_profile_sha256(self._platform) != context.platform_profile_sha256:
@@ -126,6 +205,106 @@ class FrozenContextSystemHisValidationFacade:
             dict(system_his),
             platform=self._platform,
         )
+
+
+class FrozenContextHisGeneratorBridge:
+    """Bridge a frozen-context HIS method into the Agent generator slot."""
+
+    his_source_used_for_generation = "generated"
+
+    def __init__(
+        self,
+        *,
+        method_condition: str,
+        context: FrozenRequirementContext,
+        services: GenerationServices,
+        system_his: FrozenContextSystemHisFacade,
+        coordinator: PairedArtifactCoordinator | None = None,
+        pairing: PairingKey | None = None,
+        max_his_corrections: int = 0,
+        max_project_output_repairs: int = 0,
+        max_shared_pre_candidate_repairs: int | None = None,
+    ) -> None:
+        if (coordinator is None) != (pairing is None):
+            raise ValueError("coordinator and pairing must be supplied together")
+        self._adapter = MethodAdapterRegistry().create(method_condition)
+        self._context = context
+        self._services = services
+        self._system_his = system_his
+        self._coordinator = coordinator
+        self._pairing = pairing
+        self._max_his_corrections = max_his_corrections
+        self._max_project_output_repairs = max_project_output_repairs
+        self._max_shared_pre_candidate_repairs = max_shared_pre_candidate_repairs
+        self.last_outcome = None
+        self.last_initial_planning_artifact = None
+        self.last_skeleton_artifact = None
+        self.last_method_event_refs = ()
+
+    def generate(
+        self,
+        _request: ProjectRequest,
+        _platform: PlatformProfile,
+    ) -> GeneratedProject:
+        shared = SharedArtifactRefs()
+        if self._coordinator is not None and self._pairing is not None:
+            shared_his = self._coordinator.materialize_system_his(
+                self._pairing,
+                lambda: self._system_his.emit_his(self._context),
+            )
+            self.last_initial_planning_artifact = shared_his
+            shared = SharedArtifactRefs(system_his=shared_his)
+
+        outcome = EpisodeExecutor(
+            max_his_corrections=self._max_his_corrections,
+            max_project_output_repairs=self._max_project_output_repairs,
+            max_shared_pre_candidate_repairs=self._max_shared_pre_candidate_repairs,
+        ).emit_candidate(
+            self._adapter,
+            self._context,
+            self._services,
+            shared,
+        )
+        self.last_outcome = outcome
+        if self.last_initial_planning_artifact is None:
+            self.last_initial_planning_artifact = outcome.planning_artifact
+        self.last_method_event_refs = self._services.artifacts.event_refs(
+            self._services.episode_id
+        )
+        if outcome.candidate is None:
+            failure = outcome.failure
+            if failure is None:
+                raise RuntimeError("method adapter produced no complete candidate")
+            if (
+                failure.stage in {"h0", "h1", "h2", "h3"}
+                and outcome.planning_artifact is not None
+                and isinstance(outcome.h_report, Mapping)
+            ):
+                planning = self._services.artifacts.read_planning(
+                    outcome.planning_artifact
+                )
+                raise SystemHisValidationError(
+                    json.dumps(planning, ensure_ascii=False, sort_keys=True),
+                    dict(outcome.h_report),
+                    candidate_artifact_sha256=(
+                        outcome.planning_artifact.artifact_ref.sha256
+                    ),
+                )
+            raise RuntimeError(
+                f"{failure.stage} failed with {failure.error_type}: {failure.message}"
+            )
+        if self._adapter.contract.uses_deterministic_skeleton:
+            skeleton = self._system_his.last_skeleton_project
+            if skeleton is None:
+                raise RuntimeError(
+                    "skeleton method produced no deterministic skeleton artifact"
+                )
+            method = self._adapter.contract.method_condition.value
+            self.last_skeleton_artifact = self._services.artifacts.put_project(
+                f"method-emissions/{self._context.revision_id}/{method}/deterministic-skeleton",
+                skeleton,
+            )
+        return self._services.artifacts.read_project(outcome.candidate)
 
 
 class FrozenContextSystemHisCorrectionFacade:
@@ -280,9 +459,9 @@ def _canonicalize_skeleton(
         )
     artifact_roles = {
         "system_his.json": "system_his",
-        "constraints/timing.sdc": "constraint",
+        CANONICAL_TIMING_CONSTRAINT_PATH: "constraint",
         "sim/tb_top.v": "candidate_testbench",
-        "reports/predicted_qor.json": "predicted_qor",
+        CANONICAL_PREDICTED_QOR_PATH: "predicted_qor",
     }
     manifest = {
         "contract_version": "project-package-v1",
@@ -361,6 +540,15 @@ def _validate_his_project(project: GeneratedProject) -> None:
     if not crosscheck.passed:
         raise ValueError(
             "HIS2PROJECT RTL cross-check failed: " + "; ".join(crosscheck.errors)
+        )
+
+
+def _validate_static_his_skeleton(skeleton: GeneratedProject) -> None:
+    crosscheck = check_his_project_consistency(skeleton)
+    if not crosscheck.passed:
+        raise ValueError(
+            "static deterministic skeleton is inconsistent: "
+            + "; ".join(crosscheck.errors)
         )
 
 

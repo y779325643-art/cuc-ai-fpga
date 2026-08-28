@@ -11,6 +11,8 @@ from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectReque
 
 BEHAVIOR_REGION_BEGIN = "// SR2FPGA_BEHAVIOR_BEGIN"
 BEHAVIOR_REGION_END = "// SR2FPGA_BEHAVIOR_END"
+CANONICAL_TIMING_CONSTRAINT_PATH = "constraints/timing.sdc"
+CANONICAL_PREDICTED_QOR_PATH = "reports/predicted_qor.json"
 
 
 def build_contract_skeleton_project(
@@ -48,9 +50,9 @@ def build_contract_skeleton_project(
             files[source] = _component_module(components_by_source[source], system_his)
         else:
             files[source] = _placeholder_module(source, component_names, system_his)
-    files["constraints/timing.sdc"] = _timing_sdc(system_his)
+    files[CANONICAL_TIMING_CONSTRAINT_PATH] = _timing_sdc(system_his)
     files["sim/tb_top.v"] = _testbench(request, platform, system_his, top_module)
-    files["reports/predicted_qor.json"] = _json(_predicted_qor(system_his))
+    files[CANONICAL_PREDICTED_QOR_PATH] = _json(_predicted_qor(system_his))
     return GeneratedProject(project_name=request.project_name, files=files)
 
 
@@ -142,9 +144,14 @@ def _manifest(
             "toolchain": platform.toolchain,
         },
         "sources": sources,
-        "constraints": {"timing": _first_string(_mapping(system_his.get("timing")).get("constraints"), "constraints/timing.sdc")},
+        "constraints": {
+            "timing": _first_string(
+                _mapping(system_his.get("timing")).get("constraints"),
+                CANONICAL_TIMING_CONSTRAINT_PATH,
+            )
+        },
         "simulation": {"testbench": _mapping(system_his.get("verification")).get("testbench", "sim/tb_top.v")},
-        "reports": {"predicted_qor": "reports/predicted_qor.json"},
+        "reports": {"predicted_qor": CANONICAL_PREDICTED_QOR_PATH},
     }
 
 

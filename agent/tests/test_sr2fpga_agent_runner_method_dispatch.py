@@ -32,6 +32,7 @@ from sr2fpga_agent.runner import (
     load_runner_config,
     planned_samples,
     run_batch,
+    runner_preflight,
 )
 from sr2fpga_agent.system_his_fidelity import build_frozen_requirement_trace
 
@@ -407,6 +408,66 @@ def test_runner_pairing_key_uses_explicit_instance_seed_and_block(tmp_path) -> N
     assert m3_pairing == m4_pairing
 
 
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("wire_api", "responses"),
+        ("reasoning_effort", "xhigh"),
+        ("disable_response_storage", True),
+    ),
+)
+def test_pairing_and_measurement_freeze_bind_wire_configuration(
+    tmp_path, field, value
+) -> None:
+    base_path = tmp_path / "base.json"
+    configured_path = tmp_path / "configured.json"
+    _write_config(
+        base_path,
+        tmp_path / "base",
+        methods=("M4",),
+        analysis_population="excluded",
+    )
+    _write_config(
+        configured_path,
+        tmp_path / "configured",
+        methods=("M4",),
+        analysis_population="excluded",
+    )
+    base_payload = json.loads(base_path.read_text(encoding="utf-8"))
+    configured_payload = json.loads(configured_path.read_text(encoding="utf-8"))
+    if field != "wire_api":
+        base_payload["sources"]["his"]["wire_api"] = "responses"
+        configured_payload["sources"]["his"]["wire_api"] = "responses"
+        base_path.write_text(json.dumps(base_payload), encoding="utf-8")
+    configured_payload["sources"]["his"][field] = value
+    configured_path.write_text(json.dumps(configured_payload), encoding="utf-8")
+
+    base = load_runner_config(base_path)
+    configured = load_runner_config(configured_path)
+    base_sample = planned_samples(base)[0]
+    configured_sample = planned_samples(configured)[0]
+    base_context = context_from_validated_episode_pack(
+        base_sample.metadata(base)["episode_pack"]
+    )
+    configured_context = context_from_validated_episode_pack(
+        configured_sample.metadata(configured)["episode_pack"]
+    )
+
+    assert _runner_pairing_key(
+        base, base_sample, base_context
+    ).model_provenance_sha256 != _runner_pairing_key(
+        configured, configured_sample, configured_context
+    ).model_provenance_sha256
+    freeze = _measurement_freeze_manifest(
+        configured,
+        "wire-config-bound",
+        _config_fingerprint(configured),
+        [configured_sample],
+        tool_versions={},
+    )
+    assert freeze["sources"][0][field] == value
+
+
 def test_excluded_paired_block_rejects_conflicting_seed_before_dispatch(tmp_path) -> None:
     config_path = tmp_path / "runner.json"
     _write_config(
@@ -479,6 +540,69 @@ def test_strict_paired_seed_control_stops_before_run_side_effects(tmp_path) -> N
         run_batch(config, run_id="strict-seed-control")
 
     assert not (tmp_path / "runs" / "strict-seed-control").exists()
+
+
+def test_strict_seed_control_rejects_responses_with_chat_capability(
+    tmp_path, monkeypatch
+) -> None:
+    store = ArtifactStore(tmp_path / "capability-store")
+    ref = write_development_provider_seed_capability(
+        store,
+        provider_adapter="openai_compatible",
+        provider_model="fake-model",
+        gateway_base_url="https://example.invalid/v1",
+        protocol={
+            "prompt_sha256": "1" * 64,
+            "seed": 17,
+            "temperature": 0.1,
+            "max_tokens": 32,
+            "repetitions": 2,
+            "probe_implementation_sha256": "2" * 64,
+        },
+        documentation_status="deterministic_documented",
+        documentation_snapshot_sha256="a" * 64,
+        documentation_source_url_sha256="c" * 64,
+        documentation_review={
+            "review_type": "independent_review",
+            "reviewer_provenance_sha256": "3" * 64,
+        },
+        observations=[
+            ProviderSeedProbeObservation(
+                "completed", "b" * 64, "fp-a", output_size_bytes=15
+            ),
+            ProviderSeedProbeObservation(
+                "completed", "b" * 64, "fp-a", output_size_bytes=15
+            ),
+        ],
+    )
+    manifest_path = tmp_path / "seed-capability.json"
+    manifest_path.write_bytes(store.read_verified(ref))
+    config_path = tmp_path / "runner.json"
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=("M4",),
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["require_paired_confirmatory_seed_control"] = True
+    payload["sources"]["his"]["wire_api"] = "responses"
+    payload["sources"]["his"]["seed_capability_manifest"] = str(manifest_path)
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    monkeypatch.setenv("FAKE_API_KEY", "fake-key")
+
+    report = runner_preflight(
+        load_runner_config(config_path),
+        run_id="responses-seed-control",
+        validate_provider=False,
+    )
+
+    assert report["ok"] is False
+    assert any(
+        "wire_api=responses cannot use a seed-control capability" in error
+        for error in report["errors"]
+    )
+    assert not (tmp_path / "runs" / "responses-seed-control").exists()
 
 
 def test_seed_capability_snapshot_is_content_bound_without_local_path(tmp_path) -> None:

@@ -124,6 +124,25 @@ class SystemHisHStageValidationTests(unittest.TestCase):
         self.assertEqual(report["h2"]["status"], "fail")
         self.assertIn("unsupported semantic_kind", "\n".join(report["h2"]["diagnostics"]))
 
+    def test_h2_rejects_artifact_paths_the_deterministic_skeleton_cannot_emit(self) -> None:
+        def mutate(payload):
+            payload["timing"]["constraints"] = ["constraints/top.xdc"]
+            payload["artifacts"]["constraints"] = ["constraints/top.xdc"]
+            payload["artifacts"]["predicted_qor"] = "reports/qor_summary.json"
+
+        report = validate_system_his_h_stages(
+            _counter_request(),
+            _counter_project_with(mutate),
+        )
+
+        diagnostics = "\n".join(report["h2"]["diagnostics"])
+        self.assertEqual(report["h0"]["status"], "pass")
+        self.assertEqual(report["h1"]["status"], "pass")
+        self.assertEqual(report["h2"]["status"], "fail")
+        self.assertIn("artifacts.constraints must be exactly", diagnostics)
+        self.assertIn("artifacts.predicted_qor must be exactly", diagnostics)
+        self.assertEqual(report["h3"]["status"], "not_run")
+
     def test_h2_accepts_structured_scenario_with_canonical_kind(self) -> None:
         project = _counter_project_with(
             lambda payload: payload["verification"].update(

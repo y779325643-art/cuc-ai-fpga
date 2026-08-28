@@ -6,7 +6,7 @@ import pytest
 from sr2fpga_agent import cli
 from sr2fpga_agent.agent import DataGenerationAgent, _diagnose_first_failure, _labels
 from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
-from sr2fpga_agent.generation import TwoStageProjectGenerator
+from sr2fpga_agent.generation import FrozenContextHisGeneratorBridge
 from sr2fpga_agent.generation.req2his import (
     RequirementCapabilityGapError,
     RequirementClarificationRequired,
@@ -492,7 +492,9 @@ def test_cli_accepts_real_two_stage_provider_without_network(
         ]
     )
 
-    assert isinstance(captured["project_generator"], TwoStageProjectGenerator)
+    assert isinstance(
+        captured["project_generator"], FrozenContextHisGeneratorBridge
+    )
     request = captured["request"]
     assert isinstance(request, ProjectRequest)
     assert request.task_type == "alu_control_unit"

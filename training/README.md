@@ -6,8 +6,10 @@ and serving smoke assets.
 It consumes released datasets and versioned contracts. It does not import the
 Agent implementation.
 
-For the active Paper-1, this entire project is retained repository infrastructure
-outside the research scope. Paper-1 targets ACM TRETS and does not train models.
+Under the active
+[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md),
+this entire project is retained repository infrastructure outside the research
+scope. Paper-1 targets ACM TRETS and does not train models.
 
 ## Installation
 
@@ -158,6 +160,6 @@ namespace. Agent generation and verification remain owned by `agent/`.
 ## Tests
 
 ```powershell
-python -m pytest training/tests -q
-python -m pytest contracts/tests agent/tests training/tests -q
+python -m pytest training/tests -q -p no:cacheprovider
+python -m pytest contracts/tests agent/tests training/tests -q -p no:cacheprovider
 ```

@@ -21,6 +21,7 @@ from sr2fpga_agent.runner import (
     SourceConnection,
     TaskConfig,
     _calibration_breakdown,
+    _preflight_client,
     _project_generator_for_sample,
     load_runner_config,
     resolve_source_connection,
@@ -735,6 +736,78 @@ class TimeoutConfigTest(unittest.TestCase):
             )
             config = load_runner_config(path)
             self.assertEqual(config.sources["bounded"].max_tokens, 4096)
+
+    def test_load_sources_and_builder_preserve_responses_api_options(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = _write_config(
+                tmp,
+                {
+                    "gpt": {
+                        "kind": "openai_compat",
+                        "model": "gpt-5.5",
+                        "base_url": "https://api.example/v1",
+                        "api_key_env": "OPENAI_API_KEY",
+                        "generation_mode": "two_stage",
+                        "wire_api": "responses",
+                        "reasoning_effort": "xhigh",
+                        "disable_response_storage": True,
+                        "transport_attempts": 1,
+                        "max_tokens": 512,
+                    }
+                },
+            )
+            config = load_runner_config(path)
+
+        connection = config.sources["gpt"]
+        self.assertEqual(connection.wire_api, "responses")
+        self.assertEqual(connection.reasoning_effort, "xhigh")
+        self.assertTrue(connection.disable_response_storage)
+        with patch.dict(os.environ, {"OPENAI_API_KEY": "sk-test"}, clear=False):
+            generator = build_project_generator_for_connection(connection)
+        client_config = generator.his_project_generator.client.config
+        self.assertEqual(client_config.wire_api, "responses")
+        self.assertEqual(client_config.reasoning_effort, "xhigh")
+        self.assertTrue(client_config.disable_response_storage)
+        preflight_config = _preflight_client(connection, "sk-test").config
+        self.assertEqual(preflight_config.max_tokens, 512)
+        self.assertEqual(preflight_config.transport_attempts, 1)
+        self.assertEqual(preflight_config.wire_api, "responses")
+        self.assertEqual(preflight_config.reasoning_effort, "xhigh")
+        self.assertTrue(preflight_config.disable_response_storage)
+
+    def test_load_sources_rejects_invalid_responses_api_options(self) -> None:
+        invalid_options = (
+            ({"wire_api": "unknown"}, "wire_api"),
+            ({"reasoning_effort": "maximum"}, "reasoning_effort"),
+            ({"disable_response_storage": "true"}, "disable_response_storage"),
+            (
+                {
+                    "wire_api": "chat_completions",
+                    "reasoning_effort": "xhigh",
+                },
+                "reasoning_effort requires wire_api=responses",
+            ),
+            (
+                {
+                    "wire_api": "chat_completions",
+                    "disable_response_storage": True,
+                },
+                "disable_response_storage requires wire_api=responses",
+            ),
+        )
+        for overrides, expected_error in invalid_options:
+            with self.subTest(option=expected_error), tempfile.TemporaryDirectory() as tmp:
+                source = {
+                    "kind": "openai_compat",
+                    "model": "gpt-5.5",
+                    "base_url": "https://api.example/v1",
+                    "api_key_env": "OPENAI_API_KEY",
+                    "generation_mode": "two_stage",
+                    **overrides,
+                }
+                path = _write_config(tmp, {"gpt": source})
+                with self.assertRaisesRegex(SystemExit, expected_error):
+                    load_runner_config(path)
 
     def test_timeout_seconds_defaults_to_120_when_omitted(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

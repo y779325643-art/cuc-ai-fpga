@@ -1,5 +1,10 @@
 # Paper-1 v1.5 Protocol-Coherence Review
 
+Status: historical v1.5 pre-outcome protocol-coherence record. The active
+protocol and propagation review are `paper1-freeze-v1.7` and
+[`qa_report-v1.7.md`](qa_report-v1.7.md). This record has no experiment, G3,
+G4b, or official-outcome authority.
+
 > Review date: 2026-08-26
 > Scope: research-plan and experiment-contract coherence only
 > Outcome authority: none; this review contains no model, official hidden, RQ,
@@ -7,7 +12,7 @@
 
 ## Review basis
 
-The review compared the active English freeze against current contracts, code,
+The review compared the then-active English freeze against current contracts, code,
 tests, `docs/current-status.md`, the subordinate code-architecture specification,
 and the historical Paper-1 reasoning workspace. It used separate research-
 protocol, experiment-design, and code-architecture passes. The English freeze

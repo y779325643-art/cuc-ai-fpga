@@ -16,6 +16,19 @@ class SystemHisPromptTests(unittest.TestCase):
         self.assertIn("H2 canonical semantic_kind values:", prompt)
         self.assertIn("accumulator, buffer, counter, fifo", prompt)
         self.assertIn("H2 canonical data_flow.protocol values: register, valid_ready, wire", prompt)
+        self.assertIn(
+            "verification.testbench and artifacts.testbench to be exactly sim/tb_top.v",
+            prompt,
+        )
+        self.assertIn(
+            'artifacts.constraints to be exactly ["constraints/timing.sdc"]',
+            prompt,
+        )
+        self.assertIn(
+            'artifacts.predicted_qor to be exactly "reports/predicted_qor.json"',
+            prompt,
+        )
+        self.assertIn("H2 deterministic lowerer requires artifacts.constraints", prompt)
         self.assertIn("verification.scenarios entries must be canonical strings", prompt)
         self.assertIn("object is used, set kind to one canonical value", prompt)
 
@@ -31,6 +44,19 @@ class SystemHisPromptTests(unittest.TestCase):
 
         self.assertIn("H2 canonical semantic_kind values:", prompt)
         self.assertIn("H2 canonical data_flow.protocol values: register, valid_ready, wire", prompt)
+        self.assertIn(
+            "verification.testbench and artifacts.testbench to be exactly sim/tb_top.v",
+            prompt,
+        )
+        self.assertIn(
+            'artifacts.constraints to be exactly ["constraints/timing.sdc"]',
+            prompt,
+        )
+        self.assertIn(
+            'artifacts.predicted_qor to be exactly "reports/predicted_qor.json"',
+            prompt,
+        )
+        self.assertIn("H2 deterministic lowerer requires artifacts.constraints", prompt)
         self.assertIn("verification.scenarios entries must be canonical strings", prompt)
 
 

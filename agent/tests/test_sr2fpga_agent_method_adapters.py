@@ -17,6 +17,7 @@ from sr2fpga_agent.method_adapters import (
     PlanningArtifactKind,
     ProjectCandidateEmission,
     RepairController,
+    SkeletonProjectOutput,
     SharedArtifactRefs,
     StructuredDirectMethodAdapter,
 )
@@ -116,6 +117,34 @@ class _HisFacade:
         return _project("m4-skeleton")
 
 
+class _ProjectOutputRepairFacade:
+    def __init__(self, outputs) -> None:
+        self.outputs = list(outputs)
+        self.emit_calls = 0
+        self.repair_calls = 0
+        self.previous_outputs = []
+
+    def emit_skeleton_project_output(self, context, system_his):
+        self.emit_calls += 1
+        return SkeletonProjectOutput(self.outputs[0], "f" * 64)
+
+    def repair_skeleton_project_output(
+        self,
+        context,
+        system_his,
+        previous_output,
+        error,
+    ):
+        self.repair_calls += 1
+        self.previous_outputs.append((previous_output, error))
+        return SkeletonProjectOutput(self.outputs[self.repair_calls], "f" * 64)
+
+    def lower_skeleton_project_output(self, context, system_his, output):
+        if "module " in output.content:
+            raise ValueError("behavior body must not contain module declarations")
+        return _project("output-repaired")
+
+
 class _RepairFacade:
     def __init__(self) -> None:
         self.his_calls = 0
@@ -144,7 +173,14 @@ class _ValidationFacade:
 
 
 def _services(
-    tmp_path, *, direct=None, untyped=None, his=None, validation=None, repair=None
+    tmp_path,
+    *,
+    direct=None,
+    untyped=None,
+    his=None,
+    validation=None,
+    output_repair=None,
+    repair=None,
 ):
     store = ArtifactStore(tmp_path / "store")
     return store, GenerationServices(
@@ -154,6 +190,7 @@ def _services(
         untyped=untyped,
         system_his=his,
         his_validation=validation,
+        project_output_repair=output_repair,
         repair=repair,
     )
 
@@ -381,6 +418,236 @@ def test_executor_m5_repairs_his_revalidates_all_h_and_only_then_lowers(tmp_path
         PreCandidateState.H_VALIDATED,
         PreCandidateState.CANDIDATE_EMITTED,
     )
+
+
+def test_executor_repairs_rejected_his2project_output_once_with_explicit_states(
+    tmp_path,
+) -> None:
+    context = _context()
+    his = _HisFacade()
+    output_repair = _ProjectOutputRepairFacade(
+        ["module top; endmodule", "assign count = 8'd0;"]
+    )
+    validation = _ValidationFacade([_h_report(passed=True)])
+    store, services = _services(
+        tmp_path,
+        his=his,
+        validation=validation,
+        output_repair=output_repair,
+    )
+
+    outcome = EpisodeExecutor(
+        max_his_corrections=1,
+        max_project_output_repairs=1,
+        max_shared_pre_candidate_repairs=1,
+    ).emit_candidate(MethodAdapterRegistry().create("M5"), context, services)
+
+    assert outcome.final_state is PreCandidateState.CANDIDATE_EMITTED
+    assert outcome.his_corrections_used == 0
+    assert outcome.project_output_repairs_used == 1
+    assert outcome.state_trace == (
+        PreCandidateState.METHOD_PREPARED,
+        PreCandidateState.PLANNING_ARTIFACT_EMITTED,
+        PreCandidateState.H_VALIDATED,
+        PreCandidateState.PROJECT_OUTPUT_REJECTED,
+        PreCandidateState.PROJECT_OUTPUT_REPAIR_REQUESTED,
+        PreCandidateState.CANDIDATE_EMITTED,
+    )
+    assert output_repair.emit_calls == 1
+    assert output_repair.repair_calls == 1
+    assert output_repair.previous_outputs[0][0].content == "module top; endmodule"
+    events = [json.loads(store.read_verified(ref)) for ref in services.artifacts.event_refs("episode-001")]
+    rejected = next(
+        event for event in events if event["payload"]["state"] == "project_output_rejected"
+    )
+    assert rejected["payload"]["planning_artifact_sha256"] == (
+        outcome.planning_artifact.artifact_ref.sha256
+    )
+    assert rejected["payload"]["skeleton_project_sha256"] == "f" * 64
+    assert len(rejected["payload"]["invalid_output_artifact_sha256"]) == 64
+
+
+def test_executor_stops_when_his2project_output_repair_is_still_invalid(tmp_path) -> None:
+    context = _context()
+    output_repair = _ProjectOutputRepairFacade(
+        ["module first; endmodule", "module second; endmodule"]
+    )
+    _, services = _services(
+        tmp_path,
+        his=_HisFacade(),
+        validation=_ValidationFacade([_h_report(passed=True)]),
+        output_repair=output_repair,
+    )
+
+    outcome = EpisodeExecutor(
+        max_project_output_repairs=1,
+        max_shared_pre_candidate_repairs=1,
+    ).emit_candidate(MethodAdapterRegistry().create("M5"), context, services)
+
+    assert outcome.final_state is PreCandidateState.NO_COMPLETE_CANDIDATE
+    assert outcome.candidate is None
+    assert outcome.failure.stage == "his2project_output_repair"
+    assert outcome.project_output_repairs_used == 1
+    assert output_repair.repair_calls == 1
+    assert outcome.state_trace[-4:] == (
+        PreCandidateState.PROJECT_OUTPUT_REJECTED,
+        PreCandidateState.PROJECT_OUTPUT_REPAIR_REQUESTED,
+        PreCandidateState.PROJECT_OUTPUT_REJECTED,
+        PreCandidateState.NO_COMPLETE_CANDIDATE,
+    )
+
+
+def test_executor_can_use_two_shared_his2project_output_repairs(tmp_path) -> None:
+    context = _context()
+    output_repair = _ProjectOutputRepairFacade(
+        [
+            "module first; endmodule",
+            "module second; endmodule",
+            "assign count = 8'd0;",
+        ]
+    )
+    _, services = _services(
+        tmp_path,
+        his=_HisFacade(),
+        validation=_ValidationFacade([_h_report(passed=True)]),
+        output_repair=output_repair,
+    )
+
+    outcome = EpisodeExecutor(
+        max_project_output_repairs=2,
+        max_shared_pre_candidate_repairs=2,
+    ).emit_candidate(MethodAdapterRegistry().create("M5"), context, services)
+
+    assert outcome.final_state is PreCandidateState.CANDIDATE_EMITTED
+    assert outcome.project_output_repairs_used == 2
+    assert output_repair.repair_calls == 2
+    assert [item[0].content for item in output_repair.previous_outputs] == [
+        "module first; endmodule",
+        "module second; endmodule",
+    ]
+    assert outcome.state_trace[-5:] == (
+        PreCandidateState.PROJECT_OUTPUT_REJECTED,
+        PreCandidateState.PROJECT_OUTPUT_REPAIR_REQUESTED,
+        PreCandidateState.PROJECT_OUTPUT_REJECTED,
+        PreCandidateState.PROJECT_OUTPUT_REPAIR_REQUESTED,
+        PreCandidateState.CANDIDATE_EMITTED,
+    )
+
+
+def test_executor_stops_after_unchanged_his2project_repair_output(tmp_path) -> None:
+    unchanged = "module unchanged; endmodule"
+    output_repair = _ProjectOutputRepairFacade(
+        [unchanged, unchanged, "assign count = 8'd0;"]
+    )
+    store, services = _services(
+        tmp_path,
+        his=_HisFacade(),
+        validation=_ValidationFacade([_h_report(passed=True)]),
+        output_repair=output_repair,
+    )
+
+    outcome = EpisodeExecutor(
+        max_project_output_repairs=2,
+        max_shared_pre_candidate_repairs=2,
+    ).emit_candidate(MethodAdapterRegistry().create("M5"), _context(), services)
+
+    assert outcome.final_state is PreCandidateState.NO_COMPLETE_CANDIDATE
+    assert outcome.failure.stage == "his2project_output_repair"
+    assert outcome.failure.error_type == "NoProgress"
+    assert "unchanged output" in outcome.failure.message
+    assert outcome.project_output_repairs_used == 1
+    assert output_repair.repair_calls == 1
+    assert outcome.state_trace[-3:] == (
+        PreCandidateState.PROJECT_OUTPUT_REJECTED,
+        PreCandidateState.PROJECT_OUTPUT_REPAIR_REQUESTED,
+        PreCandidateState.NO_COMPLETE_CANDIDATE,
+    )
+    events = [
+        json.loads(store.read_verified(ref))
+        for ref in services.artifacts.event_refs("episode-001")
+    ]
+    terminal = next(
+        event
+        for event in events
+        if event["payload"]["state"] == "no_complete_candidate"
+    )
+    parent = terminal["payload"]["parent_output_artifact_ref"]
+    produced = terminal["payload"]["produced_output_artifact_ref"]
+    assert set(parent) == {"key", "sha256", "size_bytes", "media_type"}
+    assert set(produced) == {"key", "sha256", "size_bytes", "media_type"}
+    assert parent["key"].endswith("-attempt-0")
+    assert produced["key"].endswith("-attempt-1")
+    assert parent["key"] != produced["key"]
+    assert parent["sha256"] == produced["sha256"]
+    assert parent["size_bytes"] == produced["size_bytes"] == len(unchanged.encode())
+    assert (
+        parent["media_type"]
+        == produced["media_type"]
+        == "text/plain; charset=utf-8"
+    )
+
+
+def test_his_correction_consumes_shared_budget_before_project_output_repair(
+    tmp_path,
+) -> None:
+    context = _context()
+    repair = _RepairFacade()
+    output_repair = _ProjectOutputRepairFacade(
+        ["module top; endmodule", "assign count = 8'd0;"]
+    )
+    _, services = _services(
+        tmp_path,
+        his=_HisFacade(),
+        validation=_ValidationFacade(
+            [_h_report(passed=False, failed_stage="h0"), _h_report(passed=True)]
+        ),
+        output_repair=output_repair,
+        repair=repair,
+    )
+
+    outcome = EpisodeExecutor(
+        max_his_corrections=1,
+        max_project_output_repairs=1,
+        max_shared_pre_candidate_repairs=1,
+    ).emit_candidate(MethodAdapterRegistry().create("M5"), context, services)
+
+    assert outcome.final_state is PreCandidateState.NO_COMPLETE_CANDIDATE
+    assert outcome.his_corrections_used == 1
+    assert outcome.project_output_repairs_used == 0
+    assert outcome.failure.error_type == "RepairBudgetUnavailable"
+    assert "shared pre-candidate repair budget exhausted" in outcome.failure.message
+    assert output_repair.repair_calls == 0
+
+
+def test_shared_budget_two_allows_one_his_and_one_project_output_repair(
+    tmp_path,
+) -> None:
+    context = _context()
+    repair = _RepairFacade()
+    output_repair = _ProjectOutputRepairFacade(
+        ["module top; endmodule", "assign count = 8'd0;"]
+    )
+    _, services = _services(
+        tmp_path,
+        his=_HisFacade(),
+        validation=_ValidationFacade(
+            [_h_report(passed=False, failed_stage="h0"), _h_report(passed=True)]
+        ),
+        output_repair=output_repair,
+        repair=repair,
+    )
+
+    outcome = EpisodeExecutor(
+        max_his_corrections=1,
+        max_project_output_repairs=2,
+        max_shared_pre_candidate_repairs=2,
+    ).emit_candidate(MethodAdapterRegistry().create("M5"), context, services)
+
+    assert outcome.final_state is PreCandidateState.CANDIDATE_EMITTED
+    assert outcome.his_corrections_used == 1
+    assert outcome.project_output_repairs_used == 1
+    assert repair.his_calls == 1
+    assert output_repair.repair_calls == 1
 
 
 def test_executor_his_correction_budget_exhaustion_is_first_class(tmp_path) -> None:

@@ -16,27 +16,35 @@
 On a separate sealed audit, does the shared pre-generation boundary avoid silent
 proceed on material ambiguity and capability gaps? On evaluator-adjudicated ready
 requirements, under matched model, content-equivalent public facts, declared
-feedback privileges, and reconciled compute/tool budgets, how do the System-HIS
-representation bundle, deterministic skeleton, and bounded public repair affect
-method-neutral hidden project correctness and the correctness-cost frontier
-across M0-M5?
+feedback privileges, and reconciled compute/tool budgets, does deterministic
+materialization with its declared editable-surface policy improve method-neutral
+verified project success (`VPP-L3@1`) over free generation from the same
+System-HIS, and
+does the complete untrained System-HIS pipeline improve over Direct? The
+representation bundle is a secondary mechanism estimate; bounded public repair
+forms the separate RQ2 confirmatory line across M0-M5.
 
 ## Central thesis
 
 Prospective thesis, not a current result:
 
 > A shared requirement boundary can stop unsafe generation when critical intent
-> is unresolved. For adjudicated-ready inputs, the System-HIS representation
-> bundle can expose cross-artifact obligations, while oracle-separated public
-> repair and one-shot hidden evaluation can distinguish visible convergence from
-> verified project success. Comparing M0-M5 under matched information and budgets
-> can identify which mechanism improves correctness, where it shifts failures,
-> and at what cost.
+> is unresolved. For adjudicated-ready inputs, contract-grounded deterministic
+> materialization can increase method-neutral verified project success
+> (`VPP-L3@1`) relative to free generation from the same frozen System-HIS, and
+> the complete untrained
+> pipeline can improve over Direct. Oracle-separated public repair and one-shot
+> hidden evaluation can distinguish visible convergence from verified project
+> success. Comparing M0-M5 under matched information and budgets can identify
+> which supported mechanism improves correctness, where it shifts failures, and
+> at what cost.
 
-The thesis is weakened or falsified if System-HIS conditions do not improve the
-predeclared structural/hidden outcomes over matched direct and untyped controls,
-if repair adds no success under equal budget, or if apparent gains disappear
-after controlling information privilege, infrastructure missingness, and cost.
+The complete RQ1 thesis is unsupported unless both primary claim-activation
+rules pass. A single activated primary supports only its named materialization
+or end-to-end claim. The
+broader thesis is weakened if repair adds no success under equal budget, or if
+apparent gains disappear after controlling information privilege,
+infrastructure missingness, and cost.
 
 ## Supporting arguments
 
@@ -65,8 +73,9 @@ after controlling information privilege, infrastructure missingness, and cost.
 - Evidence: HORIZON's over-solving discussion and SR2FPGA's sealed-candidate,
   one-shot development hidden boundary.
 - Limitation: development one-shot hidden conformance exists, but positive G3
-  closure and two-axis missingness remain open; official authority belongs to
-  G4a-G6 rather than G3.
+  closure and two-axis missingness remain open. G4a prepares the protocol, G5 is
+  an excluded pilot, and only a verifier-derived G4b authorization receipt can
+  authorize G6 materialization; G7 executes the official experiment.
 
 ### Argument 3: trajectories are audit evidence, not a learned treatment
 
@@ -88,33 +97,39 @@ after controlling information privilege, infrastructure missingness, and cost.
 ### Argument 5: comparison validity depends on paired execution authority
 
 - Claim: mechanism contrasts are interpretable only when the semantic instance,
-  decoding seed, hidden commitment, initial checkpoints, execution order, and
-  shared-cost rule are frozen at paired-block level.
-- Evidence: v1.6 defines replicate/requested-seed/schedule identities and three cost views.
+  replicate ID, hidden commitment, initial checkpoints, execution order, and
+  shared-cost rule are frozen at paired-block level; requested decoding seed is
+  separate provider provenance, and `execution_schedule_seed` controls only the
+  local balanced order.
+- Evidence: the active freeze defines replicate/requested-seed/schedule
+  identities and three cost views.
 - Limitation: positive G3 acceptance and official paired-block materialization
   remain future implementation gates, not present evidence.
 
 ## Counterarguments / alternative explanations
 
 - Extra planning tokens or calls, rather than typing, may cause gains. Control
-  with M2, call the contrast a representation-bundle effect, and report all-axis
-  cost.
-- Deterministic skeleton generation may provide the benefit. Separate M3 from M4.
+  with M2, keep M3−M2 secondary, call it a representation-bundle effect, and
+  report all-axis cost.
+- Deterministic project materialization or its narrower edit surface may provide
+  the benefit. Compare M4 with M3 on the same frozen HIS and interpret the result
+  as their joint bundle unless a later orthogonal control separates them.
 - Public diagnostics may overfit visible checks. Score one immutable terminal
   candidate with an evaluator-owned hidden oracle.
 - L0 gains may only expose later semantic failures. Report hierarchical failure
   transitions and hidden semantic success.
 - Aggregate effects may be driven by easy families. Report per-family effects
-  descriptively while applying confirmatory gatekeeping once to the equal-family
-  macro estimator.
+  descriptively while applying each RQ1 primary test to the equal-family macro
+  estimator under the two-member Holm family.
 - Ambiguity cases may be recognized from authoring artifacts rather than
   semantics. Use independently authored paired clusters and visibility spies.
 
 ## Result-contingent TRETS tracks
 
-- Track A — contract and evaluation method: M0-M5 establish a defensible effect
-  of the System-HIS representation bundle, skeleton choice, or repair under the
-  frozen protocol.
+- Track A — contract and evaluation method: one or both RQ1 primary comparisons
+  and/or RQ2 establish a defensible materialization, end-to-end system, or repair
+  effect under the frozen protocol. A complete RQ1 claim requires both RQ1
+  primary claim-activation rules; M3−M2 supplies secondary representation evidence only.
 - Track B — benchmark/evaluation methodology: mechanism effects are mixed, but
   the project-level contract, verifier separation, failure taxonomy, and
   reproducible protocol are supported.

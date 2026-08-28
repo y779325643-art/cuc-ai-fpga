@@ -5,6 +5,9 @@ runtime. It uses the deterministic reference generator, runs the normal
 requirement boundary and H0-H3/L0-L4 pipeline, and reads the resulting files and
 statuses from the recorded sample artifacts.
 
+It is a local demonstration surface, not a Paper-1 method condition, official
+evaluation path, or research-evidence producer.
+
 From the repository root:
 
 ```powershell

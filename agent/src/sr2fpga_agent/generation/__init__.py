@@ -7,6 +7,7 @@ from sr2fpga_agent.generation.context_direct import (
     FrozenContextProjectRepairFacade,
 )
 from sr2fpga_agent.generation.context_his import (
+    FrozenContextHisGeneratorBridge,
     FrozenContextSystemHisCorrectionFacade,
     FrozenContextSystemHisFacade,
     FrozenContextSystemHisValidationFacade,
@@ -21,6 +22,7 @@ __all__ = [
     "DirectProjectGenerator",
     "FrozenContextDirectProjectFacade",
     "FrozenContextDirectProjectGenerator",
+    "FrozenContextHisGeneratorBridge",
     "FrozenContextProjectRepairFacade",
     "FrozenContextSystemHisCorrectionFacade",
     "FrozenContextSystemHisFacade",

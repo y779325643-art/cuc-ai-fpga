@@ -8,8 +8,8 @@
 ## 状态与权威性
 
 - 状态：**当前有效的 Paper 1 研究与实验权威规范**
-- 版本：`paper1-freeze-v1.6`
-- 生效日期：2026-08-26
+- 版本：`paper1-freeze-v1.7`
+- 生效日期：2026-08-27
 - 目标期刊：**ACM Transactions on Reconfigurable Technology and Systems（TRETS）**
 - 证据截止点：本地 `develop@bd516c110862`，以及当前工作树中的文档与证据审查结果
 - 范围：产品/问题边界、需求裁决与 ambiguity audit、研究问题、方法因素、基准总体、信息权限、指标、实验 gate、论断规则和论文退出条件
@@ -26,6 +26,8 @@ v1.4 amendment 将有边界的 target-profile adaptation 加入 RQ4。它要求�
 v1.5 amendment 将 Paper-1 最小投稿路径收束为 RQ1/RQ2 的 M0-M5 主实验；RQ0 保留为独立、强制且有边界的 safety/conformance audit；代表性 OpenXC7 L4 只作为次要物理深度证据。target-profile adaptation 降为单独冻结的可选扩展，未启用它不会阻塞核心 G4b 或 Paper-1 退出。v1.5 同时冻结 artifact-derived 的正向 G3 验收、first-class paired block/seed、共享工件与成本核算、隐藏评测 missingness，以及家族等权 macro 上无歧义的确认性检验。该 amendment 不改变既有实现或经验结果，也不授权模型、正式隐藏评测或物理 campaign。
 
 v1.6 amendment 将 repeated-measure identity、provider decoding-seed provenance 与本地 execution-order randomization 分开。G4b 必须只选择一种 `decoding_control_mode`：有文档且经审核的 provider seed control，或在冻结 provider 配置下估计期望方法效应的 `stochastic_blocked` 设计。后者不得声称方法共享同一随机实现、seed 因果效应或 bitwise replay。该修改由 development-only capability diagnostic 触发；DeepSeek 的三次相同输出不是方法结果，也不证明 deterministic seed control。G3 仍须验证 artifact-derived classifier 与 strict guard，但不要求现实外部 provider 已 eligible。本 amendment 在 G4b 和任何正式模型/隐藏结果之前生效。
+
+v1.7 amendment 在任何 G5 natural-model outcome 或正式结果打开前修改 RQ1 的确认性层级。RQ1 不再使用 fixed sequence，而由 `M4−M3` 与 `M4−M0` 构成两项主要 Holm family；`M3−M2` 仍强制报告，但降为预注册 secondary estimation contrast。`M4−M3` 解释为 deterministic materialization 与 editable-surface policy 的联合增量，不是 skeleton 文本本身的纯效应。该 amendment 不改变总体、方法、终点、信息权限、预算、RQ2 family、RQ0 audit、RQ4 分析或数据收集义务；所有已签署且合格的 M0-M5 condition 仍须完整执行并报告。
 
 本文取代此前的 Paper 1 reframe、official-evaluation 和强制
 constrained-decoding 提案。这些已被取代的文档由 Git 历史保存，不再作为
@@ -50,7 +52,7 @@ Paper 1 将研究**以契约为依据的 FPGA 工程生成、验证器隔离与�
 
 论文的工程级评测对象是通过所声明 L3 flow 的完整多文件 RTL 工程，而不是普遍可部署的 bitstream 或板级系统。核心经验问题是：
 
-> 在模型、公开需求事实、反馈权限以及总计算/工具预算均匹配的条件下，System-HIS 表示组合及其确定性 skeleton 能否优于直接生成和无类型结构化对照；契约感知的公开修复能否经受评测方拥有的一次性隐藏检查，并形成可对账的正确性—成本前沿？
+> 在模型、公开需求事实、反馈权限以及总计算/工具预算均匹配的条件下，contract-grounded deterministic materialization 能否优于消费同一 System-HIS 的自由工程生成，完整且未训练的 System-HIS pipeline 能否优于 Direct；契约感知的公开修复能否经受评测方拥有的一次性隐藏检查，并形成可对账的正确性—成本前沿？
 
 因此，论文的最低要求包括：
 
@@ -137,17 +139,17 @@ RQ0 是强制审计，但在统计和运行上与主要 RQ1/RQ2 estimand 完全�
 
 ### RQ1 — 端到端契约价值
 
-在外部需求事实和总预算相同的条件下，生成式 System-HIS 流程能否比直接生成与两阶段无类型 plan 对照取得更高的、方法中立的已验证工程成功率？其中有多少整体增益来自确定性 skeleton？
+在外部需求事实和总预算相同的条件下，生成式 System-HIS 流程能否比 Direct 取得更高的、方法中立的已验证工程成功率？在 System-HIS 路径内部，deterministic materialization/edit-surface 联合干预带来多少增量，representation bundle 又提供何种次级证据？
 
 比较与解释：
 
 - M3 对 M2 估计的是**两阶段表示组合**。它同时改变 plan schema、prompt、checker 和表示长度，因此不得描述为“仅由类型化产生”的纯因果效应。两条分支必须匹配 planner/generator 调用次数、全局预算和实际输入事实。
-- M4 对 M3：对每个 requirement/seed 对复用完全相同的冻结 generated-HIS 工件，只改变确定性 skeleton 构造。
+- M4 对 M3：对每个 semantic-instance/replicate block 复用完全相同的冻结 generated-HIS 工件，并联合改变 deterministic project materialization 与配套 editable-surface policy。没有额外正交对照时，不得把它写成 skeleton 文本、可编辑字节数或某条 lowerer rule 的纯效应。
 - M4 对 M0 是端到端系统比较，不隔离单一机制。
 
-如果契约组合条件未改善 VPP-L3，仅把失败从 H/L0 转移到隐藏 L2，或在核对有效信息和总成本后表观效应消失，则 RQ1 不受支持。
+只有两个主要 contrast 都通过各自的预声明规则，才能支持完整 RQ1；若仅一项通过，只能支持该项对应的局部论断。如果表观收益只是把失败从 H/L0 转移到隐藏 L2，或在核对有效信息和总成本后消失，则 RQ1 同样不受支持。
 
-RQ1 是确认性方法比较族。表示、skeleton 和端到端 contrast 按第 7.5 节的预声明顺序检验，不再默认降为探索性分析。
+RQ1 是两项 hypothesis 构成的主要确认性 family。`M4−M3` 与 `M4−M0` 按第 7.5 节使用 Holm 控制；`M3−M2` 是强制报告的预注册 secondary estimation contrast，不能开启、救援或替代任一主要论断。
 
 ### RQ2 — 验证器隔离与修复
 
@@ -187,7 +189,7 @@ M0-M5 使用相同的小型/开放基础模型版本、tokenizer、quantization�
 - **M0 Direct：** 将需求与共同的公开工程/接口契约直接交给一个完整工程生成器。不生成 System-HIS，在评分前不接收公开评测反馈，也不要求通过 H-stage。
 - **M1 Direct-Repair：** M0 加上全局修复预算内的公开评测器诊断/修复。它是**受 HORIZON 启发的 Direct-Repair 对照**。只有当 G3 实现 project pack、不可变且由评测器拥有的验收通道、accepted-checkpoint 历史、持久 session/state 策略和可审计仓库轨迹后，才可称为 HORIZON-like；没有原始发布协议时，绝不能称为 HORIZON 的精确复现。
 - **M2 Structured-Direct：** 模型阶段 1 从同一需求事实生成无类型结构化 plan；阶段 2 自由生成完整工程。该 plan 不含 System-HIS 类型、跨字段 checker 或确定性 skeleton。
-- **M3 HIS-Free：** 模型阶段 1 生成 System-HIS；阶段 2 通过真正的 no-skeleton generator 自由生成完整工程。进行 skeleton ablation 时，M3 与 M4 使用同一个冻结 generated-HIS 工件。
+- **M3 HIS-Free：** 模型阶段 1 生成 System-HIS；阶段 2 通过真正的 no-skeleton generator 自由生成完整工程。进行 materialization comparison 时，M3 与 M4 使用同一个冻结 generated-HIS 工件。
 - **M4 HIS-Skeleton：** 可信代码把 generated System-HIS 降低为契约 skeleton，模型只填充声明的 behavior region。它没有外层 EDA repair；任何 planner/parser/schema retry 都是显式计入预算的模型调用，不能隐藏在“第一次尝试”中。
 - **M5 HIS-Online：** M4 加上与 M1 完全相同的全局 repair/tool 预算内公开评测器诊断和外层修复。
 - **R_generic / R_HIS 修复 probe：** 将两种修复策略应用于同一个冻结失败 M4 工程，用于 RQ2 机制分析。它们是配对诊断条件，不是新的 headline generator。
@@ -203,9 +205,9 @@ method order 在 replicate block 间用独立于 provider decoding seed 的本�
 
 | 推断角色 | 冻结比较 |
 | --- | --- |
-| RQ1 fixed-sequence 确认性 | M3−M2；M4−M3；M4−M0 |
+| RQ1 primary Holm family | M4−M3；M4−M0 |
 | RQ2 Holm 确认性 family | M5−M4；R_HIS−R_generic |
-| 必须报告的次要/描述性 | M1−M0；M5−M1；per-family effect；stage transition；正确性—成本前沿 |
+| 必须报告的次要/描述性 | M3−M2；M1−M0；M5−M1；per-family effect；stage transition；正确性—成本前沿 |
 | 仅参考 | B_ref；B_template；frontier ceiling |
 
 M6U、M6F、M6T、M6TR 与 `M6F[E_traj]` 在 v1.3 下均不是 Paper-1 method condition；相关代码和 contracts 位于本协议范围之外。
@@ -423,7 +425,7 @@ mutation score 用于判定 oracle 质量，不是模型性能指标。通用 L3
 
 - 模型生成/解析失败、候选无效输出、预算耗尽，以及在冻结资源限制内由候选/工具引起的 timeout，均属于设计结果：`VPP-L3=0`，且保留在完整分母中。下游隐藏阶段可以是 `not_run`；该标签本身不重新分类为 failure。
 - provider transport outage，或候选不可变之后发生的 evaluator/runner/tool infrastructure failure，使用固定 retry 次数，并且只重放该候选。
-- 如果固定 retry 后仍无法评分，不得静默删除配对中的任何一方。将 requirement/seed 对标记为 unscorable 并报告，同时提供 complete-pair、all-unscorable-as-failure 敏感性分析，以及 worst/best bound。
+- 如果固定 retry 后仍无法评分，不得静默删除配对中的任何一方。将 semantic-instance/replicate block 标记为 unscorable 并报告，同时提供 complete-pair、all-unscorable-as-failure 敏感性分析，以及 worst/best bound。
 - 只有影响所有配对方法的共同 outage 才可推迟该 block。看到任何隐藏结果后都不得替换 requirement。
 - G4b 冻结 unresolved-infrastructure rate 和方法间不平衡阈值。超过阈值会使 campaign 无效并触发有记录的 rerun；这绝不授权事后排除。
 
@@ -437,13 +439,19 @@ mutation score 用于判定 oracle 质量，不是模型性能指标。通用 L3
 
 区间采用嵌套分层 bootstrap：在每个家族内重采样 semantic instance，同时保留所选 block 的所有 method pair、同义改写、hidden case 与 replicate。区间以四个冻结家族和固定 M0-M5 协议为条件，不是覆盖全部 FPGA 任务家族的区间。
 
-确认性 hypothesis 具有方向性，使用 one-sided familywise alpha 0.05；所有表同时报告双侧 95% CI 和两个方向的 effect。正向论断既要求拒绝预声明 threshold null，也要求双侧 95% CI 下端超过命名 minimum effect。RQ1 使用 fixed-sequence testing。gatekeeping 只控制确认性推断，不控制 data collection；每个已签署且合格的 M0-M5 condition 都必须执行并报告。
+确认性 hypothesis 具有方向性，使用 one-sided familywise alpha 0.05。RQ1 与 RQ2 是两个独立 Holm family，不在二者之间回收 alpha，因此这两个 family 各自控制 0.05 并不等于整篇论文的全局 familywise error rate 为 0.05。所有表同时报告双侧 95% CI 和两个方向的 effect。正向论断要求：Holm 拒绝预声明 threshold null、双侧 95% CI 下端严格超过命名 minimum effect，并且命名的 integrity、missingness 与 budget gate 全部通过。multiplicity 只控制确认性推断，不控制 data collection；每个已签署且合格的 M0-M5 condition 都必须执行并报告。
 
-RQ1 contract sequence 在家族等权 macro estimator 上只执行一次：M3 对 M2（two-stage representation bundle）、M4 对 M3（deterministic skeleton increment）、M4 对 M0（untrained end-to-end），指标均为 `VPP-L3@1`。
+对 RQ1，令 `Y1_ifqm` 为 family `f`、semantic instance `i`、planned replicate `q`、method `m` 的 terminal `VPP-L3@1`。对主要 contrast `c in {43,40}`，先定义 `D_ifc = mean_q(Y1_ifq,a_c-Y1_ifq,b_c)`，再定义 `Delta_fc = mean_i(D_ifc)` 与 `Delta_c=(1/4)sum_f Delta_fc`，其中 `(a_43,b_43)=(M4,M3)`、`(a_40,b_40)=(M4,M0)`。方向性 null 为 `H0_43: Delta_43 <= delta_min_materialization` 和 `H0_40: Delta_40 <= delta_min_system`。两个 cluster-respecting one-sided p-value 构成 RQ1 Holm family：报告 raw 与 adjusted p-value；若 `p_(1)<=p_(2)`，只有 `p_(1)<=0.025` 才拒绝第一项，随后只有 `p_(2)<=0.05` 才拒绝第二项。
 
-per-family effect 是强制描述性诊断，不独立开启或关闭确认性 gate。只有前一个 macro-level step 通过，后一步才具有确认性。G4a 在 G5 前冻结 `{delta_min_representation, delta_min_skeleton, delta_min_system}` 和各自科学依据；G4b 原样签署这些值并冻结准确检验实现。点估计为正并不充分。gatekeeping 停止后仍报告 macro/per-family raw effect 和 95% CI；family-level 确认性论断需要另行冻结 hierarchical multiplicity 与 power contract。
+`M4−M3` 估计 deterministic materialization/edit-surface bundle；`M4−M0` 估计未训练的端到端 system value，不隔离单一组件。对 `c in {43,40}`，令 `delta_43=delta_min_materialization`、`delta_40=delta_min_system`。当且仅当 Holm 拒绝 `H0_c` 且 `Delta_c` 的双侧 95% CI 下端严格超过 `delta_c` 时，令 `S_c=1`。当且仅当全部适用于 RQ1 的命名 integrity、leakage、information、budget、hidden-completion 与 infrastructure-missingness gate 均通过时，令 `G_RQ1=1`；当且仅当 `S_c=1` 且 `G_RQ1=1` 时，定义 `C_c=1`。每个 `C_c=1` 只能开启其对应的局部论断；完整 RQ1 要求 `C_43=C_40=1`。
 
-对每个已签署 family `f`、semantic instance `i`、replicate `q`，令 `Y_ifqm` 为方法 `m` 的 terminal `VPP-L3@A`。定义 `D_if,54 = mean_q(Y_ifq,M5-Y_ifq,M4)`、`Delta_f,54 = mean_i(D_if,54)`、`Delta_54 = (1/4) sum_f Delta_f,54`。该 intention-to-treat estimand 包含所有 signed cluster，无论 M5 是否实际 repair。M5 的唯一 repair/correction allowance 可用于 System-HIS correction 或 outer project repair，因此 M5−M4 是 online-repair bundle effect，不是任一 stage 的纯效应。
+`M3−M2` 是强制报告的预注册 secondary representation-bundle estimand：报告家族等权 macro、per-family estimate 和双侧 95% CI，默认不报告确认性 p-value；它不能救援失败的主要比较，也不能解释为 typing-alone effect。
+
+确认性 threshold test 以完整 `semantic_instance_id` 为重采样单位，整体保留其 planned replicate 与全部方法 outcome，并固定 family membership 与 equal-family weight。G4a 冻结 studentized statistic、boundary-null centering、family 内 cluster-resampling rule、interval form、resample 次数、analysis seed、tie/extreme-case rule 与 code hash；G4b 原样签署。只有独立审查证明 whole-cluster label exchangeability 时，才可把 cluster-swap test 称为 finite-sample exact；该检验只对应其声明的 sharp null，不能代替非零 minimum-effect threshold test。禁止在 replicate、requested seed、paraphrase 或 hidden case 层独立 sign flip。
+
+per-family effect 与 leave-one-family-out 是强制描述性诊断，不开启、关闭或救援 macro claim。G4a 在 G5 前冻结 `{delta_min_materialization, delta_min_system}`、各自科学依据，以及可选的 M3−M2 secondary interpretation threshold。只有正 point estimate 不充分；任何 family-level 或 confirmatory secondary claim 都需要新的结果前 hierarchical multiplicity 与 power contract。
+
+对每个已签署 family `f`、semantic instance `i`、replicate `q`，令 `YA_ifqm` 为方法 `m` 的 terminal `VPP-L3@A`。定义 `D_if,54 = mean_q(YA_ifq,M5-YA_ifq,M4)`、`Delta_f,54 = mean_i(D_if,54)`、`Delta_54 = (1/4) sum_f Delta_f,54`。该 intention-to-treat estimand 包含所有 signed cluster，无论 M5 是否实际 repair。M5 的唯一 repair/correction allowance 可用于 System-HIS correction 或 outer project repair，因此 M5−M4 是 online-repair bundle effect，不是任一 stage 的纯效应。
 
 repair-policy probe 的冻结 selector 在任何 repair branch 或 hidden outcome 打开前，每个 semantic instance 最多选一个 eligible failing M4 checkpoint。eligibility 要求 immutable candidate、命名 public failure stage、有效 repair-visible diagnosis、剩余预算，且无 infrastructure/integrity/trusted-edit violation。selector 冻结 family/failure-stage strata、tie-break seed、per-family cap `k_f` 和最小可分析数 `k_min,f`；超 cap 时按冻结 seed 采样，结果后不得 top-up/替换。令 `Z_ifr` 为 policy `r∈{R_HIS,R_generic}` 后的 terminal hidden VPP；no-patch、failed-patch、budget-exhausted branch 在选定分母中保留为零。`Delta_R` 是 selected independent cluster 上配对 `Z_HIS-Z_generic` 的家族等权 macro。任一 `k_min,f` 未满足时，该 probe 为 non-rejecting/descriptive，不能静默删除。
 
@@ -455,7 +463,7 @@ RQ0 是独立 safety/conformance audit，不进入 VPP multiplicity family。res
 
 M5 对 M1 的端到端比较以正确性—成本前沿报告。效率论断还要求先通过冻结的正确性非劣 margin 和 primary cost axis，然后才能检验成本优势。总 episode cost 包含失败；达到成功的时间在预算处截尾，并显示不成功数量。
 
-对每个确认性 contrast `c`，`delta_c` 是足以支持科学论断的最小效应，不是 power 所假设的效应。G4a 在 G5 前另行冻结 `Delta*_c > delta_c` 和至少 0.80 的 target power。excluded pilot 只能估计 paired discordance、cluster seed dependence、repair eligibility、attrition、missingness 和 runtime，不能用已观测 treatment effect 设置 `delta_c` 或 `Delta*_c`。若四家族每家 `n` 相等、seed-averaged paired difference 的 pilot cluster variance 为 `sigma^2_fc`，则 `SE(Delta_c) ~= sqrt(sum_f sigma^2_fc/(16n))`，planning approximation 为 `n_c >= (z_.975+z_(1-beta))^2 sum_f sigma^2_fc / [16(Delta*_c-delta_c)^2]`。G4b 用预声明 joint simulation 同时覆盖 RQ1 fixed sequence、RQ2 Holm、attrition/missingness 和 repair eligibility。若资源上限达不到 target power，必须在 G4b 前把相应 contrast 降为 descriptive；在 `Delta*=delta` 上计算 power 无效。任何正式结果不得进入该计算；不精确不得写成“无效应”，G4b 后不得 early stopping、扩展正式数据集或替换方法/家族。
+对每个确认性 contrast `c`，`delta_c` 是足以支持科学论断的最小效应，不是 power 所假设的效应。G4a 在 G5 前另行冻结 `Delta*_c > delta_c` 和至少 0.80 的 target power。excluded pilot 只能估计 paired discordance、cluster replicate dependence、repair eligibility、attrition、missingness 和 runtime，不能用已观测 treatment effect 设置 `delta_c` 或 `Delta*_c`。若四家族每家 `n` 相等、replicate-averaged paired difference 的 pilot cluster variance 为 `sigma^2_fc`，则 `SE(Delta_c) ~= sqrt(sum_f sigma^2_fc/(16n))`，planning approximation 为 `n_c >= (z_.975+z_(1-beta))^2 sum_f sigma^2_fc / [16(Delta*_c-delta_c)^2]`。最终 `n` 由预声明 joint simulation 确定；模拟必须覆盖 RQ1/RQ2 两个 Holm family、两项 RQ1 共享 M4 的 covariance、完整 Holm+CI 判定、attrition/missingness、repair eligibility，以及冻结的 gate-valid envelope 内所选 decoding-control mode。不得为导致论断失效的 gate failure 虚构发生概率，也不得在 statistical power 中把它当作普通负 outcome。RQ1 planning 以 `G_RQ1=1` 为条件；实际 `G_RQ1=0` 会使 RQ1 claim activation 无效。若保留完整 RQ1 论断，joint statistical power 目标是 `P(S_43=1 and S_40=1 | G_RQ1=1)>=0.80`，并同时报告两项 conditional marginal power；RQ2 每个保留的确认性 contrast 也须在其 design alternative 与适用的 gate-valid envelope 下达到至少 0.80 Holm-adjusted marginal power。资源不足时，G4b 必须在正式执行前降低相应论断，不能继承 v1.6 的规划结论。在 `Delta*=delta` 上计算 power 无效，也不得报告 observed power。任何正式结果不得进入该计算；不精确不得写成“无效应”，G4b 后不得 early stopping、扩展正式数据集或替换方法/家族。
 
 ## 8. Episode 数据与工件契约
 
@@ -545,7 +553,7 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 - 创建候选 14-family join、semantic-instance requirement、split、ordered reserve list、objective exclusion、generalization label、episode pack、evaluator commitment、analysis code 和 planning sample-size model。
 - 仅当启用可选 target-profile 扩展时，创建 candidate pair、stable pair/member ID、功能不变量、必须/允许/禁止变化、profile-compliance commitment、L3/L4 endpoint、客观排除规则和规划 pair 数量；这不是核心 G4a 验收依赖。
 - 创建与其分离的 candidate ambiguity-audit manifest，包含 base cluster、paired variant/perturbation stratum、独立裁决的 private gold commitment、critical fact、allowed default、answer object、capability profile hash、objective exclusion 和 ordered reserve list。
-- 在任何 G5 outcome 打开前冻结 RQ1/RQ2 contrast-specific MOI、严格高于各 threshold 的 design alternative、至少 0.80 的 target power、repair-probe eligibility/selector/cap/minimum，以及 RQ0 scientific threshold 和 exact interval rule。G5 只能估计 nuisance parameter 与资源需求，不能移动科学 goalpost。
+- 在任何 G5 outcome 打开前冻结 RQ1/RQ2 contrast-specific MOI、严格高于各 threshold 的 design alternative、至少 0.80 的 target power、RQ1/RQ2 Holm 实现、RQ1 完整论断的 gate-conditional joint-power rule、threshold-test/interval 实现、repair-probe eligibility/selector/cap/minimum，以及 RQ0 scientific threshold 和 exact interval rule。G5 只能估计 nuisance parameter 与资源需求，不能移动科学 goalpost。
 - 冻结正式 ready fact projection 和 Family Recipe information policy；主要留出 headline method 不获得 family-specific Recipe body。
 - pilot 前密封正式 requirement/oracle 内容；implementation work 只能看到 hash 和 readiness state。
 - 验收：reference condition 在每个候选家族上 dry-run，并产生不包含模型结果、带 checksum 的 candidate manifest。
@@ -559,7 +567,7 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 - pilot 前冻结 repair-probe selector，并设置每个行为类别 `k_c<=4`，因此 `K<=24`。R_generic 与 R_HIS 各一条 one-call branch，额外产生恰好 `2K` 个 probe branch、至多 48 个 model call，以及对应 public rerun 与 one-shot hidden evaluation；禁止结果后 top-up。
 - 核心 G5 planning ceiling 为：720 次 standalone-attributed initial call、共享规则下 432 次 unique physical initial provider request、144 次 M1/M5 repair-or-correction call，以及至多 48 次 repair-probe call；冻结 transport retry 与 public/hidden/tool invocation 另计。
 - 只有以下条件全部满足才可扩展规模：reference path 100% 可执行；每个模型 episode 即使以 `GEN_FAIL` 结束也产生可审计 outcome bundle；至少一个 model treatment 到达 L0；M1 和 M5 各有一条真实 diagnosis→patch→rerun。
-- 上述两条 transition 只证明 mechanism feasibility；RQ2 confirmatory readiness 还必须满足冻结的 probe minimum-count 与 joint-power rule。
+- 上述两条 transition 只证明 mechanism feasibility；RQ2 confirmatory readiness 还必须满足冻结的 probe minimum-count rule，以及每个保留 RQ2 contrast 的 Holm-adjusted marginal-power rule。
 - 模型质量失败保留为结果；基础设施/契约失败重新打开相应 gate。pilot requirement 永不进入正式测试。
 - hidden/private leakage、trusted edit、duplicate hidden commit、artifact/lineage/budget failure，或冻结 retry 后仍未解决的 infrastructure failure 必须立即停止并重开相应 gate；already-attempted model-quality outcome 仍保留在 ledger。
 - 仅使用 pilot 的 paired discordance、cluster dependence、attrition、hidden/public divergence 和 runtime，为最终协议确定样本量和预算。任何 adapter、prompt、evaluator-visibility、budget 或 schema 变化都会使 G4a 失效，并要求版本化 candidate-protocol revision。
@@ -569,13 +577,14 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 
 ### G4b — 最终签署的 campaign 冻结
 
-- 冻结最终 split/sample size、semantic cluster、三个 replicate ID、`decoding_control_mode`、requested-seed provenance、独立 `execution_schedule_seed`、method order、prompt、effective-information hash、base model 与 inference configuration、global budget、tool、evaluator hash/case seed、candidate selection、infrastructure retry/abort threshold、未经 pilot 改动的 RQ1/RQ2 MOI 与 design alternative、正确性非劣 margin、primary cost axis、准确 estimator/test 和 multiplicity rule。
+- 冻结最终 split/sample size、semantic cluster、三个 replicate ID、`decoding_control_mode`、requested-seed provenance、独立 `execution_schedule_seed`、method order、prompt、effective-information hash、base model 与 inference configuration、global budget、tool、evaluator hash/case seed、candidate selection、infrastructure retry/abort threshold、未经 pilot 改动的 RQ1/RQ2 MOI 与 design alternative、正确性非劣 margin、primary cost axis、完全指定的 estimator/test 和 multiplicity rule。
 - 冻结最终 ambiguity-audit cluster/perturbation balance、private commitment、default/capability profile、A_req budget、infrastructure rule、`FP_amb`/`FP_gap` interval、未经 pilot 改动的 false-block/replay threshold 与 leakage check；签署 audit outcome 不得改变 VPP population 或任何 method、prompt、Recipe、budget 和 candidate-selection rule。
-- 冻结家族等权 macro estimator、RQ1 macro fixed sequence、RQ2 Holm family（`M5-M4`、`R_HIS-R_generic`）、描述性 M5-M1、paired-block identity、seed-control eligibility、balanced order、shared artifact 和三种 cost view。
+- 冻结 RQ1 primary Holm family（`M4-M3`、`M4-M0`）、强制 secondary `M3-M2` 分析、独立 RQ2 Holm family（`M5-M4`、`R_HIS-R_generic`）、repair-transition definition、correctness non-inferiority rule 和 online model/tool/cost reporting。两个 family 各自保留 alpha，不允许 cross-family alpha recycling。
+- 冻结家族等权 macro estimator、threshold-test 与 CI 实现、Holm reducer、RQ1 gate-conditional joint/marginal-power report、描述性 M5-M1、paired-block identity、seed-control eligibility、balanced order、shared artifact 和三种 cost view。
 - 最终样本量由 excluded-pilot joint simulation 冻结；每家族 30 个 semantic instance 在此之前只是 planning target。一般地，每家族 `n` 个 instance 时，`B=12n` replicate block、`E=72n` method episode；standalone-attributed initial-stage ceiling 为 `120n`，三组共享关系下 unique physical initial request ceiling 为 `72n`，M1/M5 repair/correction ceiling 为 `24n`，probe 另加 `2K_off`。`n=30` 时分别为 360 block、2,160 episode、3,600 standalone initial、2,160 physical initial、720 repair/correction；最大 model-side total 为 standalone `4,320+2K_off`、physical `2,880+2K_off`。上游失败可能短路后续 stage，因此它们是 ceiling，不是最低调用数；public tool、hidden、EDA、token、wall-time 与 transport retry 另计。
 - 冻结 `tpa_extension_status=disabled|enabled`。`disabled` 不要求 pair artifact 并禁止后续 adaptation claim；`enabled` 才在独立 signed extension section 中冻结 pair population、axis、invariant、change policy、compliance oracle、`TPA-L4` estimator、完整 pair denominator、L3/L4 policy、cost/missingness、sample-size justification 与 confirmatory/descriptive status。未启用它不阻塞核心 G4b。
 - 要求所有四个主要留出家族具有合格且由评测器拥有的独立 oracle，并通过 M0-M5 full-pack dry-run。
-- no-outcome manifest 必须绑定 v1.6 freeze hash、positive G3 acceptance ref、G4a core benchmark/OASA manifest、G5 provenance、model/prompt/information hash、`decoding_control_mode`、replicate block、requested-seed provenance、独立 schedule seed/order、budget/tool、public/hidden commitment、missingness/abort policy、analysis code、oracle readiness 和 `tpa_extension_status`。
+- no-outcome manifest 必须绑定 v1.7 freeze hash、positive G3 acceptance ref、G4a core benchmark/OASA manifest、G5 provenance、model/prompt/information hash、`decoding_control_mode`、replicate block、requested-seed provenance、独立 schedule seed/order、budget/tool、public/hidden commitment、missingness/abort policy、analysis code、oracle readiness 和 `tpa_extension_status`。
 - `documented_seed_control` 必须绑定 independently reviewed 且 eligible 的 provider-capability profile；`stochastic_blocked` 则必须绑定完整 replicate plan、冻结 provider/model/gateway/inference config、balanced schedule、missingness policy 与禁止 deterministic/common-randomness 论断的规则。混合或未指定 mode 均无效。
 - 验收：独立 verifier 推导 registered `g4b-authorization-receipt-v1`，包含 campaign ID/freeze hash、verified prerequisite ref、signer policy、extension status、`side_effects_before_verification=0` 和 `authorized=true`。manifest 作者不能自行填写授权。任何缺失、不匹配或未签名输入都必须在 run directory、model client、candidate、public/hidden evaluator side effect 之前失败。G4b 不执行或晋升任何 development outcome；授权后修改主要 method/family/metric 必须使 campaign 失效。
 
@@ -607,7 +616,7 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 
 ## 11. 结果条件化的发表路线
 
-- **Track A — 契约/评测方法论文：** 冻结的 RQ1 和/或 RQ2 contrast 对匹配 control 显示有边界价值，hidden/public separation 与 missingness audit 通过，且相关置信区间下界超过 G4b rule。聚焦得到支持的 contract、skeleton、repair 与 evaluation contribution，不使用 learned-model 语言。
+- **Track A — 契约/评测方法论文：** 一项或两项冻结的 RQ1 primary contrast 和/或 RQ2 contrast 对匹配 control 显示有边界价值，hidden/public separation 与 missingness audit 通过，且相关置信区间下界超过 G4b rule。聚焦得到支持的 contract、materialization、system、repair 与 evaluation contribution，不使用 learned-model 语言。
 - **Track B — benchmark/评测方法论文：** 方法效应混合或不精确，但 evaluator-owned hidden protocol、requirement-boundary audit、可复现 project benchmark、failure transition 与 cost evidence 构成 TRETS 贡献；不主张方法优势。
 - **Track C — 工件或负结果：** treatment 未优于 control，或协议不足以支持计划推断。发表或保留 benchmark、cost/failure analysis 和负向证据，不主张方法优势。
 
@@ -631,6 +640,8 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 - G7 报告 signed ambiguity manifest、完整 disposition confusion matrix、false-proceed interval、clarification replay、provenance violation 与 leakage audit 后：“有边界的 requirement-boundary performance”；
 - G1 后：“闭合的 System-HIS 契约”；
 - G4b 后：“冻结的正式基准”；
+- M4−M3 主要论断规则通过后：“deterministic materialization/edit-surface benefit”；
+- M4−M0 主要论断规则通过后：“未训练的端到端 System-HIS value”；只有两项主要规则都通过，才可作完整 RQ1 论断；
 - 真实 transition 加上配对修复策略和端到端 RQ2 分析后：“修复有效性”；
 - 仅限 G8 tool/family 子集：“物理改善”；
 - G8 报告已签署 pair manifest、完整 pair 分母、不变量/compliance outcome、L3/L4 结果和成本后：“target-profile adaptation”；
@@ -644,6 +655,8 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 - 首个仓库级/全自动/tool-feedback RTL 智能体；
 - 首个 hardware IR，或称 CPPL 无类型；
 - 从 M3−M2 声称“typing alone 改善正确性”，而不是使用冻结的 System-HIS representation-bundle 解释；
+- 从 M4−M3 声称 skeleton-text-only、editable-byte-only 或 lowerer-rule-only 因果效应，而不是使用冻结的 materialization/edit-surface bundle 解释；
+- 只有一项 RQ1 primary rule 通过时声称完整 RQ1，或用 secondary M3−M2 估计救援失败的 primary rule；
 - 完整 JSON-Schema H0、完整 W1-W10 H1 或普适的 by-construction correctness；
 - 不存在的训练模型、留出集、修复或 QoR 预测结果；
 - 24/24 L4、一般性 L4、`.bit`、Vivado 或 L5 论断；
@@ -700,4 +713,4 @@ analysis_environment.json
 
 对研究问题、留出家族、主要指标、基线权限或结果依赖停止规则的变更，必须在打开正式结果前形成版本化 amendment。机械性路径修正和新增非主要诊断可以记录，而无需重新定义主要检验。
 
-下位 code-architecture specification 可以定义实现与测试，但不得在没有版本化研究 amendment 的情况下，新增超出本 v1.6 freeze 的 G3 acceptance row、official prerequisite、scientific contrast 或 information privilege。
+下位 code-architecture specification 可以定义实现与测试，但不得在没有版本化研究 amendment 的情况下，新增超出本 v1.7 freeze 的 G3 acceptance row、official prerequisite、scientific contrast 或 information privilege。

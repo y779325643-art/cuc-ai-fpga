@@ -1,4 +1,4 @@
-# SR2FPGA Current Status - 2026-08-26
+# SR2FPGA Current Status - 2026-08-28
 
 ## Current Checkout
 
@@ -18,9 +18,12 @@ It records an `APPROVED` reorganization verdict, 1,059 passing tests plus 349
 passing subtests, a 24/24 deterministic L3 smoke, and zero tracked `tmp/` paths.
 The report preserves its original feature-branch verification scope; this
 refreshed status supersedes its historical branch label for current navigation.
-The latest completed full lightweight regression on the current G3 provider
-provenance development slice reports 1,726 passing tests plus 428 passing
-subtests. The increase from the historical
+The latest completed full lightweight regression snapshot, run on 2026-08-28
+for the v1.7/v1.10 development checkpoint candidate, reports 1,756 passing tests
+plus 435 passing subtests. It validates the test-covered current working-tree
+code and contracts before the checkpoint commit; link/readback and diff checks
+cover the changed documentation separately. It is not remote CI, an official
+gate signature or a model outcome. The increase from the historical
 reorganization acceptance count reflects new Paper-1 contracts, trusted-core,
 method, OASA, and candidate-release tests; it is implementation verification,
 not a model, training, hidden-evaluation, or research outcome. This remains
@@ -46,20 +49,26 @@ The canonical Paper-1 research question, matched M0-M5 baseline ladder, held-out
 benchmark design, information privileges, metrics, and ordered experiment gates
 are frozen in
 [`2026-08-14-sr2fpga-paper1-research-program-freeze-design.md`](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md).
-Its pre-outcome v1.6 amendment, effective 2026-08-26, targets ACM Transactions on
+Its pre-outcome v1.7 amendment, effective 2026-08-27, targets ACM Transactions on
 Reconfigurable Technology and Systems（TRETS）, keeps model training outside
-Paper-1, makes RQ1/RQ2 the primary M0-M5 empirical line, retains RQ0 as a
-disjoint bounded audit, and treats representative OpenXC7 L4 as secondary depth
-evidence. It also separates `replicate_id`, provider requested-seed provenance,
-and local execution-schedule randomization, and requires G4b to freeze either
-`documented_seed_control` or `stochastic_blocked`. Target-profile adaptation is now an optional separately frozen
+Paper-1, retains RQ0 as a disjoint bounded audit, and treats representative
+OpenXC7 L4 as secondary depth evidence. RQ1 now has a two-member primary Holm
+family (`M4-M3`, `M4-M0`); `M3-M2` is a mandatory prespecified secondary
+estimation contrast. The complete RQ1 claim uses gate-conditional joint power,
+while each retained RQ2 contrast uses Holm-adjusted marginal power within its
+separate Holm family. The v1.6 decoding-control rules remain in force: they
+separate `replicate_id`, provider requested-seed provenance, and local execution-
+schedule randomization, and require G4b to freeze either
+`documented_seed_control` or `stochastic_blocked`. Target-profile adaptation
+remains an optional separately frozen
 extension, not a minimum G4b or submission gate. RQ3 and M6U/M6F/M6T/M6TR remain
-withdrawn from the Paper-1 method and result matrix.
+withdrawn from the Paper-1 method and result matrix. This amendment changes no
+implementation status or empirical result; execution remains blocked at G3.
 Existing training code and contracts remain repository infrastructure only;
 they neither block nor support Paper-1 claims.
 
 Implementation work is governed by the subordinate
-[`Paper-1 code architecture and development specification`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
+[`Paper-1 code architecture and development specification v1.10`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
 It maps the frozen protocol to modules, interfaces, state machines, artifacts,
 work packages, and acceptance tests; it neither changes the research estimand
 nor turns target architecture into current capability or results.
@@ -101,6 +110,14 @@ state have been independently verified; equality with the locally known
 - The model-backed two-stage path can repair failures at any H0-H3 stage with a
   dedicated System-HIS repairer, revalidate the repaired contract, and rebuild
   the complete project before the separate project/RTL repair path.
+- H1 additionally requires every declared top clock/reset to exist in
+  `top.ports`, and treats top/component parameter declarations as objects with
+  non-empty string names. The registered System-HIS v1.2 Schema remains
+  unchanged; malformed strings are rejected at H1 rather than normalized.
+- Deterministic skeleton generation runs a static HIS/project consistency
+  preflight before HIS2PROJECT. Canonical constraint and predicted-QoR paths are
+  deterministic-lowerer layout invariants shared by the builder, H2 and prompt,
+  rather than undeclared backend-capability fields.
 - Direct M0/M1 projects no longer require `system_his.json`: H0-H3 are recorded
   as `not_applicable`, while the same method-neutral L0-L4 project path remains
   applicable. Focused tests cover Direct common-L0/lint/synthesis execution,
@@ -347,6 +364,10 @@ These statements have important boundaries:
   consumes only frozen public context plus the
   failed H stage and public diagnostics, makes one budgeted call, and must pass
   a complete outer H0-H3 rerun before lowering. M4 cannot invoke this facade.
+  An opt-in, formally non-conformant development variant can additionally repair
+  rejected HIS2PROJECT behavior output under the same pre-candidate ceiling.
+  Raw responses are immutable text artifacts; byte-identical repair output
+  consumes its call and stops as `NoProgress` with parent/produced lineage.
   One real Runner `run_batch` test now executes an excluded, fake-provider M0-M5
   pack from the same frozen projection. When an episode pack is present, the
   Agent's downstream H validation reuses that frozen public context rather than
@@ -464,10 +485,14 @@ These statements have important boundaries:
   usage stays `provider_token_usage_unavailable` rather than being estimated.
   A registered `model-gateway-provenance-v1` artifact now separates requested
   seed, actual adapter forwarding, provider seed-control support, and provider
-  system fingerprint. OpenAI-compatible calls forward the frozen non-negative
-  seed but remain `requested_unverified` unless a separate hash-bound capability
-  artifact proves deterministic support; Anthropic-compatible calls record
-  `not_forwarded/unsupported`. Runner persists this provenance for completed and
+  system fingerprint. OpenAI-compatible Chat Completions calls forward the
+  frozen non-negative seed but remain `requested_unverified` unless a separate
+  hash-bound capability artifact proves deterministic support. OpenAI-compatible
+  Responses calls and Anthropic-compatible calls record
+  `not_forwarded/unsupported`. `wire_api`, `reasoning_effort`, response-storage
+  policy and `max_tokens` now enter the measurement freeze and paired model-
+  provenance identity; Responses cannot use seed-capability v1 to pass the
+  strict paired-confirmatory guard. Runner persists this provenance for completed and
   failed development/excluded model calls with official, pass-credit, G3, and
   G4b authority fixed false. A registered
   `development-provider-seed-capability-v1` contract and bounded probe now bind
@@ -493,6 +518,16 @@ These statements have important boundaries:
   `backend_identity_unverified`, not mislabeled output nonrepeatability.
   Complete coverage for all possible custom/provider responses and the
   G3-required three-view budget reconciliation remain open work.
+- A bounded real DeepSeek R9 diagnostic on 2026-08-28 used the opt-in
+  `m5-his2project-output-repair-dev-v1` variant and is explicitly
+  `formal_method_conformant=false`. Its corrected HIS passed generic H0-H3 and
+  emitted an L1/lint/synthesis-clean candidate, while official public L2 stayed
+  `not_run(needs_oracle)` and the separate family-specific fidelity audit failed
+  the prescribed interface/topology obligations. An unregistered evaluator-side
+  black-box replay passed, but the run remains ignored and excluded. It is not
+  promotable into official/G3/G5/VPP/RQ authority, is not formal M5 evidence,
+  and has no revision/prompt-hash authority; a controlled development archive
+  would remain a separate explicit operation.
 - Outside Paper-1, positive candidate-pool eligibility is fail-closed at both export and the new
   candidate eligibility-certificate boundary, but no signed `E_final` or `E_traj`
   release, matched M6U/M6F/M6T training campaign, checkpoint, or learned result
@@ -588,9 +623,10 @@ research freeze defines the following gate order. G1 and G2 are locally closed
 on this checkout. G1's registered compatibility envelope classifies v1.2 as canonical,
 v1.1 as legacy quarantine, Direct/Untyped HIS as method-inapplicable, and
 unknown representations as fail-closed quarantine. The 17 authoritative G1
- nodes and the current full lightweight regression (`1,726 passed`, `428
-subtests passed`) are green. This is an implementation/conformance gate, not model or
-functional-correctness evidence.
+nodes and the fresh 2026-08-28 full lightweight regression snapshot
+(`1,756 passed`, `435 subtests passed`) were green at that snapshot. This is an
+implementation/conformance gate, not model or functional-correctness evidence,
+and it does not freshly validate later working-tree edits.
 
 1. G3: replace caller-declared scenario facts with artifact-derived acceptance
    evidence. The real M1/L1 repair, M4 H0-H3 permission-denied stops and one
@@ -603,22 +639,38 @@ functional-correctness evidence.
    actual/standalone/incremental cost views, two-axis hidden closure, remaining
    L0/public-L2/L3 repair and broader hidden/infrastructure scenario binding,
    without turning development conformance into official results.
+   The immediate next slice is G3a paired-block identity/order authority:
+   register the block artifact, add first-class `replicate_id` and independent
+   `execution_schedule_seed`, bind the actual balanced order through Runner/
+   freeze/events/trajectory, and prove the schedule seed remains model-invisible.
+   Do not run another R10-style real-provider diagnostic before this checkpoint
+   and G3a closure.
 2. G4a: build the candidate VPP split/protocol and a disjoint candidate
    ambiguity-audit manifest; seal evaluator content and Recipe information
-   policy. Build target-profile pairs/compliance commitments only if the optional
-   extension is explicitly enabled.
+   policy. Freeze the RQ1 and RQ2 Holm/test/interval implementations, the RQ1
+   gate-conditional full-claim joint-power rule, each retained RQ2 contrast's
+   Holm-adjusted marginal-power rule, contrast-specific minimum effects/design
+   alternatives, and the secondary M3-M2 reporting contract before any G5
+   outcome. Build target-profile pairs/compliance commitments only if the
+   optional extension is explicitly enabled.
 3. G5: run only excluded non-official generation and ambiguity pilots; any
    method/prompt/visibility/default/profile change invalidates the affected G4a
    protocol.
 4. G4b: sign the final VPP and ambiguity sample sizes, splits, oracle
    commitments, budgets, models, analysis, effect/safety thresholds,
-   paired-block/cost and missingness rules before official runs; independently
-   verify an authorization receipt. Add pair/compliance fields only for an
-   enabled optional extension.
-5. G6 onward: materialize and run the official M0-M5 held-out experiment and
-   separate ambiguity audit, perform representative OpenXC7 confirmation, and
-   freeze TRETS paper claims. Run paired target-profile adaptation only when its
-   extension was signed before outcomes. No model training occurs in Paper-1.
+   RQ1/RQ2 Holm families, the RQ1 gate-conditional joint/marginal-power report,
+   each retained RQ2 contrast's Holm-adjusted marginal-power report, paired-
+   block/cost and missingness rules before official runs; independently verify
+   an authorization receipt. Add pair/compliance fields only for an enabled
+   optional extension.
+5. G6: materialize the signed campaign and complete no-outcome dry-run and
+   integrity checks; do not produce official outcomes.
+6. G7: execute the official M0-M5 held-out experiment and the separate signed
+   ambiguity audit.
+7. G8: perform representative OpenXC7 confirmation and run paired target-profile
+   adaptation only when that extension was signed before outcomes.
+8. G9: freeze TRETS paper claims against the signed artifacts. No model training
+   occurs anywhere in Paper-1.
 
 ## Verdict Rules
 

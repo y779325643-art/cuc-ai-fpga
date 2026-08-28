@@ -3,16 +3,24 @@ import inspect
 
 import pytest
 
+from sr2fpga_agent import cli
+from sr2fpga_agent.agent import DataGenerationAgent
 import sr2fpga_agent.generation.context_his as context_his_module
 from sr2fpga_agent.artifact_store import ArtifactStore
 from sr2fpga_agent.episode_executor import EpisodeExecutor, PreCandidateState
-from sr2fpga_agent.frozen_context import freeze_ready_requirement_context
+from sr2fpga_agent.frozen_context import (
+    build_development_episode_pack,
+    freeze_ready_requirement_context,
+)
 from sr2fpga_agent.frozen_context import frozen_project_name
 from sr2fpga_agent.generation.context_his import (
+    FrozenContextHisGeneratorBridge,
     FrozenContextSystemHisCorrectionFacade,
     FrozenContextSystemHisFacade,
     FrozenContextSystemHisValidationFacade,
 )
+from sr2fpga_agent.generation.two_stage import TwoStageProjectGenerator
+from sr2fpga_agent.his_validation import SystemHisValidationError
 from sr2fpga_agent.method_adapters import (
     GenerationServices,
     MethodAdapterRegistry,
@@ -22,7 +30,12 @@ from sr2fpga_agent.method_adapters import (
     SharedArtifactRefs,
 )
 from sr2fpga_agent.model_budget import ModelCallBudget
-from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
+from sr2fpga_agent.models import (
+    GeneratedProject,
+    PlatformProfile,
+    ProjectRequest,
+    ToolResult,
+)
 from sr2fpga_agent.parsers import parse_system_his_v12
 from sr2fpga_agent.project_contract import (
     build_composite_project_envelope,
@@ -78,14 +91,45 @@ class _Client:
         return self.response
 
 
+class _SequenceClient(_Client):
+    def __init__(self, responses: list[str]) -> None:
+        super().__init__("")
+        self.responses = responses
+
+    def stream_chat(self, messages):
+        self.calls.append(messages)
+        return self.responses[len(self.calls) - 1]
+
+
 class _FailingClient(_Client):
     def stream_chat(self, messages):
         self.calls.append(messages)
         raise RuntimeError("provider unavailable")
 
 
+class _StageClient(_Client):
+    def __init__(self, response: str, stage_clients: dict[str, _Client]) -> None:
+        super().__init__(response)
+        self.stage_clients = stage_clients
+
+    def for_stage(self, stage: str):
+        return self.stage_clients.get(stage, self)
+
+
+class _PassingCommandRunner:
+    def run(self, command, cwd, stage, timeout_seconds=30):
+        return ToolResult(stage, command, "passed", 0, "", "", 0.0)
+
+
 def _behavior_response() -> str:
     return json.dumps({"behavior_files": {}})
+
+
+def _two_stage_stub(req2his_client, project_client) -> TwoStageProjectGenerator:
+    generator = TwoStageProjectGenerator(_Client("unused"))
+    generator.system_his_generator.client = req2his_client
+    generator.his_project_generator.client = project_client
+    return generator
 
 
 def _free_project_response(project_name: str) -> str:
@@ -260,10 +304,65 @@ def test_frozen_req2his_prompt_excludes_evaluator_family_metadata() -> None:
 
     assert facade.emit_his(context)["schema_version"] == "system-his-v1.2"
     prompt = json.dumps(req_client.calls, ensure_ascii=False)
+    user_prompt = req_client.calls[0][-1]["content"]
     assert context.public_projection_sha256 in prompt
     assert "evaluator-private-name" not in prompt
     assert '"task_type"' not in prompt
     assert '"family_id"' not in prompt
+    assert "Map width facts only to top/component/instance widths" in prompt
+    assert "H1 cross-field well-formedness rules (W1-W10)" in prompt
+    for rule_id in range(1, 11):
+        assert f"- W{rule_id}:" in prompt
+    assert "Every instances[].component must match exactly one" in prompt
+    assert "data_flow.path endpoint must be literal top.<port>" in prompt
+    assert "Use the literal owner top, not top.name" in prompt
+    assert "direction must be source to sink" in prompt
+    assert "every state owner must be an exact instances[].name" in prompt
+    assert "Every clock and reset declared in top.clocks/top.resets must also appear in top.ports" in prompt
+    assert "Every instance must include owns_state as a JSON array" in prompt
+    assert "Every owns_state entry must resolve to a declared state" in prompt
+    assert (
+        "Every top.parameters and components[].parameters entry must be an object "
+        "with a non-empty name" in user_prompt
+    )
+    assert '{"name": "DATA_WIDTH", "default": 8}' in user_prompt
+    assert (
+        'A string such as "DATA_WIDTH" does not declare a parameter'
+        in user_prompt
+    )
+    assert "components[].combinational to true only when" in prompt
+    assert "A data flow with cdc=true must cross two declared clock domains" in prompt
+    assert "Every declared memory must provide valid positive depth and width" in prompt
+    assert "verification.scenarios references must resolve" in prompt
+    assert "timing.primary_clock must name a declared top clock" in prompt
+    assert "control_flow entry must include related_state and related_flows" in prompt
+    assert "control_flow.kind must be one of" in prompt
+    assert "artifacts.manifest must be exactly manifest.json" in prompt
+    assert "every component source must appear in artifacts.rtl_sources" in prompt
+    assert (
+        "verification.testbench and artifacts.testbench to be exactly sim/tb_top.v"
+        in prompt
+    )
+
+
+def test_frozen_his_skeleton_preflight_rejects_static_contract_before_project_call() -> None:
+    context, payload = _context_and_his()
+    payload["top"]["ports"] = [
+        port
+        for port in payload["top"]["ports"]
+        if port["name"] not in {"clk", "rst_n"}
+    ]
+    project_client = _Client(_behavior_response())
+    facade = FrozenContextSystemHisFacade(
+        _Client(json.dumps(payload)),
+        project_client,
+        _platform(),
+    )
+
+    with pytest.raises(ValueError, match="static deterministic skeleton is inconsistent"):
+        facade.emit_skeleton_project_output(context, payload)
+
+    assert project_client.calls == []
 
 
 def test_m4_context_native_req2his_validation_and_skeleton_lowering(tmp_path) -> None:
@@ -297,6 +396,241 @@ def test_m4_context_native_req2his_validation_and_skeleton_lowering(tmp_path) ->
     project = services.artifacts.read_project(outcome.candidate)
     assert json.loads(project.files["manifest.json"])["contract_version"] == "project-package-v1"
     assert project_package_sha256(project) == outcome.candidate.project_package_sha256
+
+
+def test_cli_m4_binds_frozen_context_executor_before_project_call(
+    tmp_path, monkeypatch
+) -> None:
+    context, payload = _context_and_his()
+    raw_req = _Client(json.dumps(payload))
+    raw_project = _Client(_behavior_response())
+    captured = {}
+
+    monkeypatch.setattr(
+        cli,
+        "build_project_generator",
+        lambda **_kwargs: _two_stage_stub(raw_req, raw_project),
+    )
+
+    def fake_run_one(self, **kwargs):
+        generator = self.project_generator
+        captured["generator"] = generator
+        captured["project"] = generator.generate(
+            kwargs["request"], kwargs["platform"]
+        )
+        captured["metadata"] = kwargs["metadata"]
+        return {"sample_dir": "unused", "pass_level": "H3"}
+
+    monkeypatch.setattr(DataGenerationAgent, "run_one", fake_run_one)
+
+    cli.main(
+        [
+            "--dataset-root",
+            str(tmp_path / "dataset"),
+            "--sample-id",
+            "cli-m4-valid",
+            "--task-type",
+            "counter",
+            "--project-name",
+            "evaluator-private-name",
+            "--requirement",
+            "Build an 8-bit synchronous counter with active-low reset.",
+            "--provider",
+            "openai_compat",
+            "--api-key-env",
+            "UNUSED_API_KEY",
+        ]
+    )
+
+    generator = captured["generator"]
+    assert isinstance(generator, FrozenContextHisGeneratorBridge)
+    assert [state.value for state in generator.last_outcome.state_trace] == [
+        "method_prepared",
+        "planning_artifact_emitted",
+        "h_validated",
+        "candidate_emitted",
+    ]
+    assert generator.last_outcome.h_report["h3"]["status"] == "pass"
+    assert len(raw_req.calls) == 1
+    assert len(raw_project.calls) == 1
+    prompt = json.dumps(raw_req.calls, ensure_ascii=False)
+    assert context.public_projection_sha256 in prompt
+    assert '"task_type"' not in prompt
+    assert '"family_id"' not in prompt
+    assert "evaluator-private-name" not in prompt
+    assert "BEHAVIOR_HOLE" not in captured["project"].files["rtl/top.v"]
+
+
+def test_cli_m4_h3_failure_stops_before_project_call(tmp_path, monkeypatch) -> None:
+    _context, payload = _context_and_his()
+    payload["intent"]["requirement_trace"]["requirement_id"] = "wrong"
+    raw_req = _Client(json.dumps(payload))
+    raw_project = _Client(_behavior_response())
+
+    monkeypatch.setattr(
+        cli,
+        "build_project_generator",
+        lambda **_kwargs: _two_stage_stub(raw_req, raw_project),
+    )
+
+    def fake_run_one(self, **kwargs):
+        return self.project_generator.generate(kwargs["request"], kwargs["platform"])
+
+    monkeypatch.setattr(DataGenerationAgent, "run_one", fake_run_one)
+
+    with pytest.raises(SystemHisValidationError):
+        cli.main(
+            [
+                "--dataset-root",
+                str(tmp_path / "dataset"),
+                "--sample-id",
+                "cli-m4-invalid",
+                "--task-type",
+                "counter",
+                "--project-name",
+                "evaluator-private-name",
+                "--requirement",
+                "Build an 8-bit synchronous counter with active-low reset.",
+                "--provider",
+                "openai_compat",
+                "--api-key-env",
+                "UNUSED_API_KEY",
+            ]
+        )
+
+    assert len(raw_req.calls) == 1
+    assert raw_project.calls == []
+
+
+def test_cli_m5_corrects_h_failure_before_project_call(tmp_path, monkeypatch) -> None:
+    _context, valid_payload = _context_and_his()
+    invalid_payload = json.loads(json.dumps(valid_payload))
+    invalid_payload["intent"]["requirement_trace"]["requirement_id"] = "wrong"
+    raw_repair = _Client(json.dumps(valid_payload))
+    raw_req = _StageClient(
+        json.dumps(invalid_payload),
+        {"system_his_repair": raw_repair},
+    )
+    raw_project = _Client(_behavior_response())
+    captured = {}
+
+    monkeypatch.setattr(
+        cli,
+        "build_project_generator",
+        lambda **_kwargs: _two_stage_stub(raw_req, raw_project),
+    )
+    monkeypatch.setattr(cli, "build_repairer", lambda **_kwargs: None)
+
+    def fake_run_one(self, **kwargs):
+        generator = self.project_generator
+        captured["generator"] = generator
+        captured["project"] = generator.generate(
+            kwargs["request"], kwargs["platform"]
+        )
+        return {"sample_dir": "unused", "pass_level": "H3"}
+
+    monkeypatch.setattr(DataGenerationAgent, "run_one", fake_run_one)
+
+    cli.main(
+        [
+            "--dataset-root",
+            str(tmp_path / "dataset"),
+            "--sample-id",
+            "cli-m5-corrected",
+            "--task-type",
+            "counter",
+            "--project-name",
+            "evaluator-private-name",
+            "--requirement",
+            "Build an 8-bit synchronous counter with active-low reset.",
+            "--provider",
+            "openai_compat",
+            "--api-key-env",
+            "UNUSED_API_KEY",
+            "--repair-provider",
+            "deepseek",
+            "--max-attempts",
+            "2",
+            "--max-model-calls",
+            "3",
+        ]
+    )
+
+    generator = captured["generator"]
+    assert isinstance(generator, FrozenContextHisGeneratorBridge)
+    assert generator.last_outcome.his_corrections_used == 1
+    assert generator.last_outcome.h_report["passed"] is True
+    assert len(raw_req.calls) == 1
+    assert len(raw_repair.calls) == 1
+    assert len(raw_project.calls) == 1
+    repair_prompt = json.dumps(raw_repair.calls, ensure_ascii=False)
+    assert "failed_h_stage: h3" in repair_prompt
+    assert '"task_type"' not in repair_prompt
+    assert '"family_id"' not in repair_prompt
+    assert "evaluator-private-name" not in repair_prompt
+    assert "BEHAVIOR_HOLE" not in captured["project"].files["rtl/top.v"]
+
+
+def test_frozen_m4_bridge_and_agent_share_h3_authority(tmp_path) -> None:
+    context, payload = _context_and_his()
+    request = ProjectRequest(
+        "counter",
+        8,
+        "evaluator-private-name",
+        "Build an 8-bit synchronous counter with active-low reset.",
+    )
+    platform = _platform()
+    boundary = evaluate_requirement_boundary(request, platform)
+    system_his = FrozenContextSystemHisFacade(
+        _Client(json.dumps(payload)),
+        _Client(_behavior_response()),
+        platform,
+    )
+    services = GenerationServices(
+        artifacts=MethodArtifactGateway(ArtifactStore(tmp_path / "method-store")),
+        episode_id="agent-m4-valid",
+        system_his=system_his,
+        his_validation=FrozenContextSystemHisValidationFacade(platform),
+    )
+    bridge = FrozenContextHisGeneratorBridge(
+        method_condition="M4",
+        context=context,
+        services=services,
+        system_his=system_his,
+    )
+    metadata = {
+        "analysis_population": "development",
+        "method_condition": "M4",
+        "requirement_boundary": boundary.to_dict(),
+        "episode_pack": build_development_episode_pack(
+            context,
+            episode_id="agent-m4-valid",
+            analysis_population="development",
+            method_condition="M4",
+            evaluator_metadata={"task_type": "counter"},
+        ).to_dict(),
+    }
+
+    result = DataGenerationAgent(
+        tmp_path / "dataset",
+        command_runner=_PassingCommandRunner(),
+        project_generator=bridge,
+    ).run_one(
+        sample_id="agent-m4-valid",
+        requirement=request.description,
+        request=request,
+        platform=platform,
+        metadata=metadata,
+    )
+
+    labels = json.loads(
+        (tmp_path / "dataset" / "agent-m4-valid" / "eval" / "labels.json").read_text(
+            encoding="utf-8"
+        )
+    )
+    assert result.get("failure_type") is None
+    assert bridge.last_outcome.h_report["h3"]["status"] == "pass"
+    assert labels["h3_status"] == "pass"
 
 
 def test_m3_free_from_his_does_not_call_skeleton_or_behavior_filler(
@@ -480,12 +814,105 @@ def test_m5_context_native_correction_reruns_all_h_before_lowering(tmp_path) -> 
         "his2project",
     ]
     repair_prompt = json.dumps(raw_repair.calls, ensure_ascii=False)
+    repair_user_prompt = raw_repair.calls[0][-1]["content"]
     assert '"failed_h_stage": "h3"' not in repair_prompt
     assert "failed_h_stage: h3" in repair_prompt
     assert '"h_report"' not in repair_prompt
     assert '"task_type"' not in repair_prompt
     assert '"family_id"' not in repair_prompt
     assert "evaluator-private-name" not in repair_prompt
+    assert "Do not create top-level fact-name shortcuts" in repair_user_prompt
+    assert "target facts to intent, artifacts, or resources" in repair_user_prompt
+    assert (
+        "Every top.parameters and components[].parameters entry must be an object "
+        "with a non-empty name" in repair_user_prompt
+    )
+    assert '{"name": "DATA_WIDTH", "default": 8}' in repair_user_prompt
+    assert (
+        'A string such as "DATA_WIDTH" does not declare a parameter'
+        in repair_user_prompt
+    )
+    assert "Every clock and reset declared in top.clocks/top.resets must also appear in top.ports" in repair_user_prompt
+    assert '"additionalProperties": false' in repair_user_prompt
+
+
+def test_excluded_m5_variant_uses_two_his2project_repairs_with_full_accounting(
+    tmp_path,
+) -> None:
+    context, payload = _context_and_his()
+    rtl_path = payload["artifacts"]["rtl_sources"][0]
+    raw_req = _Client(json.dumps(payload))
+    raw_project = _Client(
+        json.dumps(
+            {
+                "behavior_files": {
+                    rtl_path: "module top; endmodule",
+                }
+            }
+        )
+    )
+    second_invalid = json.dumps(
+        {
+            "behavior_files": {
+                rtl_path: "module retry; endmodule",
+            }
+        }
+    )
+    raw_output_repair = _SequenceClient([second_invalid, _behavior_response()])
+    budget = ModelCallBudget(max_calls=4)
+    facade = FrozenContextSystemHisFacade(
+        budget.client(raw_req, "req2his"),
+        budget.client(raw_project, "his2project"),
+        _platform(),
+        project_output_repair_client=budget.client(
+            raw_output_repair,
+            "his2project_output_repair",
+        ),
+    )
+    store = ArtifactStore(tmp_path / "store")
+    services = GenerationServices(
+        artifacts=MethodArtifactGateway(store),
+        episode_id="episode-output-repair",
+        system_his=facade,
+        his_validation=FrozenContextSystemHisValidationFacade(_platform()),
+        project_output_repair=facade,
+    )
+
+    outcome = EpisodeExecutor(
+        max_his_corrections=1,
+        max_project_output_repairs=2,
+        max_shared_pre_candidate_repairs=2,
+    ).emit_candidate(MethodAdapterRegistry().create("M5"), context, services)
+
+    assert outcome.final_state is PreCandidateState.CANDIDATE_EMITTED
+    assert outcome.his_corrections_used == 0
+    assert outcome.project_output_repairs_used == 2
+    assert [record["stage"] for record in budget.call_records] == [
+        "req2his",
+        "his2project",
+        "his2project_output_repair",
+        "his2project_output_repair",
+    ]
+    repair_prompt = json.dumps(raw_output_repair.calls, ensure_ascii=False)
+    assert "module top; endmodule" in repair_prompt
+    assert "module retry; endmodule" in repair_prompt
+    assert "Do not include module declarations" in repair_prompt
+    assert "Return behavior_files only" in repair_prompt
+    assert "evaluator-private-name" not in repair_prompt
+    events = [
+        json.loads(store.read_verified(reference))
+        for reference in services.artifacts.event_refs("episode-output-repair")
+    ]
+    assert [event["payload"]["state"] for event in events] == [
+        "method_prepared",
+        "planning_artifact_emitted",
+        "h_validated",
+        "project_output_rejected",
+        "project_output_repair_requested",
+        "project_output_rejected",
+        "project_output_repair_requested",
+        "candidate_emitted",
+    ]
 
 
 def test_m4_never_calls_context_native_his_correction(tmp_path) -> None:

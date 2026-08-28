@@ -8,11 +8,14 @@ under `reports/`, and superseded plans remain available through Git history.
 
 ## Start Here
 
+Read only the entries required by the task; when several apply, use the order
+below.
+
 | Order | Entry | Answers | Authority |
 | ---: | --- | --- | --- |
 | 1 | [Current engineering and evidence status](current-status.md) | What this checkout currently implements, verifies, lacks, and should do next | Current-state summary; mutable facts come from code, tests, and evidence |
-| 2 | [Paper-1 English canonical specification](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) | What TRETS-targeted bounded requirement audit, M0-M5 core conditions, optional target-profile extension, privileges, metrics, statistics, and gates govern the no-training experiment | Research and experiment protocol authority |
-| 3 | [Paper-1 code architecture and development specification](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) | How the frozen protocol maps to modules, interfaces, state machines, artifacts, work packages, and acceptance tests | Subordinate normative implementation design; does not change the estimand or create results |
+| 2 | [Paper-1 English canonical specification v1.7](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) | What TRETS-targeted bounded requirement audit, M0-M5 core conditions, optional target-profile extension, privileges, metrics, statistics, and gates govern the no-training experiment | Research and experiment protocol authority |
+| 3 | [Paper-1 code architecture and development specification v1.10](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) | How the frozen protocol maps to modules, interfaces, state machines, artifacts, work packages, and acceptance tests | Subordinate normative implementation design; does not change the estimand or create results |
 | 4 | [Paper-1 Chinese companion](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.zh.md) | How to read the canonical protocol in Chinese | Reading companion; English wins on conflict |
 | 5 | [System-HIS v1.2 semantic specification](specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md) | What the retained System-HIS schema, W1-W10, H0-H2, and lowering semantics mean | Narrow semantic authority; not proof of runtime conformance |
 
@@ -56,12 +59,12 @@ The root of `docs/` intentionally contains only this map and
 The [workspace README](research-program/paper1-v1/README.md) is the only entry
 point for the local bundle:
 
-- `foundation/` freezes the research canon and claim-to-evidence table at the
-  2026-08-14 design cutoff;
+- `foundation/` preserves the historical research canon and claim-to-evidence
+  table at the 2026-08-14 design cutoff;
 - `writing/` contains the active argument map, section contracts, and style
   guide;
-- `audit/` contains the design-time QA snapshot, whose old inventory/test counts
-  are historical rather than current validation; and
+- `audit/` contains the active v1.7 design-amendment QA plus historical design-
+  time QA snapshots whose old inventory/test counts are not current validation;
 - `state.json` is derived workflow metadata, not gate authority.
 
 ## Literature Packet
@@ -75,7 +78,7 @@ The HORIZON packet separates three roles:
   and provenance decisions; and
 - [`sr2fpga-positioning-2026-08-12.md`](../references/paper-readers/2606.28279v1/sr2fpga-positioning-2026-08-12.md)
   records a dated SR2FPGA interpretation. Its old method ladder and task list
-  are superseded by the current Paper-1 freeze.
+  are superseded by `paper1-freeze-v1.7`.
 
 The seven PNG files in `assets/` belong to this reader packet and are not
 standalone project evidence.
@@ -125,10 +128,9 @@ writing/gate workflow state. Neither is a runtime contract or evidence source.
 - [Dataset releases](../datasets/README.md)
 - [Runtime artifacts](../artifacts/README.md)
 
-Project ownership is `agent/` for generation/evaluation, `training/` for
-retained offline-learning infrastructure outside Paper-1, `contracts/` for stable schemas/catalogs, `datasets/` for
-immutable releases, `artifacts/` for ignored runtime output, and `reports/` for
-curated evidence. Training does not import Agent.
+Repository-wide ownership and operating rules are defined in
+[AGENTS.md](../AGENTS.md); project-local details live in the linked project
+READMEs.
 
 ## Lifecycle Rule
 

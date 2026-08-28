@@ -3,6 +3,12 @@
 This project owns FPGA project generation, validation, repair, L0-L4 tool
 orchestration, and trajectory recording.
 
+Follow the repository-wide working agreements in [`AGENTS.md`](../AGENTS.md).
+Paper-1 research semantics are governed by
+[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md).
+Use [`docs/current-status.md`](../docs/current-status.md) for mutable capability,
+verification, debt, and gate facts.
+
 Training and model fine-tuning are owned by the separate `training/` project.
 The Agent runtime intentionally has no PyTorch, Transformers, PEFT, or TRL
 dependency.
@@ -88,9 +94,10 @@ unknown system is never coerced to the nearest task family.
 This section is organized as the pipeline runs: requirement boundary and RQ0
 audit, episode pack and trusted core, method adapters (CD4), System-HIS
 validation, budget accounting, and a runnable example. Retained training-view
-export (CD8) is outside Paper-1. See the
+export (CD8) is outside Paper-1. Mutable completion status lives in
+[`docs/current-status.md`](../docs/current-status.md); see the
 [Paper-1 code-architecture spec](../docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md)
-for the authoritative CD1-CD10 status behind each part.
+for the normative module, interface, and CD1-CD10 work-package design.
 
 ### Requirement Boundary Disposition
 
@@ -224,12 +231,35 @@ A context-native M3-M5 initial System-HIS slice is also implemented.
 projection and its hash-bound platform. Only a passing HIS may reach deterministic
 skeleton lowering, where trusted code replaces the legacy manifest with a
 canonical `project-package-v1` manifest before artifact hashing. H failure stops
-before HIS2PROJECT. M3 now consumes the same materialized frozen HIS as M4 and
-directly generates a complete canonical project; spy tests prove that it never
-calls the skeleton builder or behavior filler. M5 now has a one-call
+before HIS2PROJECT. The single-sample CLI M4 path uses the same context-native
+bridge and `EpisodeExecutor` as Runner, with its planning and state-transition
+artifacts stored below the sample directory. M3 now consumes the same
+materialized frozen HIS as M4 and directly generates a complete canonical
+project; spy tests prove that it never calls the skeleton builder or behavior
+filler. M5 now has a one-call
 context-native HIS correction facade: only the failed H stage and public
 diagnostics enter its prompt, and `EpisodeExecutor` reruns all H stages before
 lowering. M4 cannot invoke it, and failed correction calls remain budgeted.
+The opt-in `--development-his2project-output-repair` CLI variant provides a
+shared pre-candidate repair ceiling of two. A HIS correction consumes one unit;
+each rejected HIS2PROJECT behavior response may consume one remaining unit.
+Every rejected response is persisted and linked through explicit
+`project_output_rejected` and `project_output_repair_requested` events. The
+variant uses at most four logical model calls, disables outer project repair,
+forces one outer attempt, and is always recorded as excluded development work
+that is ineligible for official evidence.
+Before the first HIS2PROJECT call and every behavior-output repair, the trusted
+deterministic skeleton is rebuilt, hash-checked and statically cross-checked.
+Static skeleton defects stop before the behavior model. Raw model output is
+stored as UTF-8 text; a byte-identical repair consumes its producing call and
+terminates as non-repairable `NoProgress`, with both parent and produced
+artifact refs retained in the terminal event.
+
+H1 additionally requires all declared top clocks/resets to appear in
+`top.ports`. Entries in `top.parameters` and `components[].parameters` must be
+objects with non-empty string `name` fields; malformed strings are rejected and
+never automatically normalized. The System-HIS v1.2 JSON Schema remains
+unchanged, so this is an H1 semantic erratum rather than a Schema migration.
 A context-native M5 project-repair facade excludes trusted file contents from
 the prompt, accepts only public stage diagnostics, and requires a trusted outer
 envelope whose editable composite regions are bound to actual byte ranges,
@@ -256,9 +286,9 @@ This is not an accepted G3 package. The current excluded M0-M5 Runner tasks
 require an explicit `semantic_instance_id`, non-negative `decoding_seed`, and
 `paired_block_id`; these v1.5-era values are propagated through the episode pack,
 measurement freeze, events, hidden commitment, and pairing key, and conflicting
-block bindings fail before dispatch. The active v1.6 freeze instead requires a
-separate `replicate_id`, treats requested seed only as provider provenance, and
-uses an independent `execution_schedule_seed`. Those fields and the
+block bindings fail before dispatch. The active v1.7 freeze retains the v1.6
+requirement for a separate `replicate_id`, treats requested seed only as provider
+provenance, and uses an independent `execution_schedule_seed`. Those fields and the
 `documented_seed_control|stochastic_blocked` mode are not yet implemented. The
 existing path is therefore compatibility/runtime plumbing, not a registered
 replicate-block authority or proof that a remote provider obeys the requested
@@ -282,10 +312,12 @@ raw-event trajectory/cost/selection/terminal lineage, reconciles repair calls
 against `outer_repair_attempts`, retains missingness and aggregates exactly one
 M0-M5 record. The authority now separately reduces sanitized hidden conformance:
 the scripted fixture produces six development VPP passes, while all six official
-VPP values remain `not_evaluated`. Official VPP authority, complete candidate
-benchmark/profile-pair seals, and G5 provenance
-are missing. The integration uses fake clients and a passing tool runner, not a
-provider campaign or model result.
+VPP values remain `not_evaluated`. Official authority, the candidate benchmark,
+G5 provenance, and any enabled profile-pair extension belong to later gates or
+the optional extension; they are not G3 acceptance prerequisites. Their current
+status is summarized in [`docs/current-status.md`](../docs/current-status.md).
+The integration uses fake clients and a passing tool runner, not a provider
+campaign or model result.
 
 The Agent now also registers a development-only provider seed-capability
 contract and bounded probe CLI. A capability profile binds provider adapter,
@@ -459,8 +491,12 @@ terminal seal and public commitments. Episode/full-pack reducers expose a
 separate `development_vpp_l3`. For fully reconciled excluded terminal
 projections, Runner also emits the registered episode-outcome reference after
 the reducer rebuilds raw source lineage; incomplete repair projections remain
-without a closed episode outcome. Official `vpp_l3` remains `not_evaluated` and
-G3 remains open pending official authority and complete acceptance fixtures.
+without a closed episode outcome. Official `vpp_l3` remains `not_evaluated`.
+G3 remains open because positive artifact-derived acceptance and the complete
+G3 matrix are not yet closed. G4a prepares the candidate protocol, G5 is an
+excluded pilot, a verifier-derived G4b receipt authorizes G6 materialization,
+and G7 executes official outcomes; none of those later deliverables is a G3
+acceptance prerequisite.
 
 RQ4 now has registered pilot-only target-profile pair manifest and development
 outcome contracts. The manifest binds stable pair/member/profile hashes, one
@@ -468,8 +504,9 @@ change axis or an explicit compound profile, invariant and change rules,
 compliance commitments, and fixed L3/OpenXC7-L4 endpoints. The reducer reads
 verified member cost-summary artifacts, retains both-member missingness and
 violations, sums all 13 cost axes, and independently rechecks development
-`TPA-L4`. It cannot create terminal, pass-credit, or official authority. No pair
-fixture, compliance run, L4 pair outcome, or official population exists yet.
+`TPA-L4`. It cannot create terminal, pass-credit, or official authority. The
+extension policy follows the active Paper-1 freeze; current fixture and outcome
+status lives in [`docs/current-status.md`](../docs/current-status.md).
 
 ### Example: Real Two-Stage API Invocation
 
@@ -486,6 +523,35 @@ sr2fpga-agent `
   --base-url https://your-provider.example/v1 `
   --api-key-env SR2FPGA_API_KEY
 ```
+
+For a provider that implements the Responses API, use a versioned API root and
+select the protocol explicitly. Keep credentials in an environment variable or
+ignored `.env` file; do not put them in the command or config:
+
+```powershell
+sr2fpga-agent `
+  --dataset-root artifacts/agent/candidates `
+  --sample-id request-001 `
+  --project-name counter8 `
+  --requirement "Design an 8-bit counter with active-low reset." `
+  --provider openai_compat `
+  --model gpt-5.5 `
+  --base-url https://your-provider.example/v1 `
+  --api-key-env SR2FPGA_API_KEY `
+  --wire-api responses `
+  --reasoning-effort xhigh `
+  --disable-response-storage
+```
+
+Runner `sources` accept the equivalent `wire_api: responses`,
+`reasoning_effort: xhigh`, and `disable_response_storage: true` fields. The
+Responses adapter sends `store: false`, uses `max_output_tokens`, and records a
+requested decoding seed as not forwarded because the protocol path does not
+expose a seed parameter. A provider accepting `store: false` does not by itself
+prove that the provider retains no data.
+Runner and provider configuration reject `reasoning_effort` or
+`disable_response_storage=true` with Chat Completions so the recorded privacy/
+reasoning policy cannot be silently omitted from the actual request.
 
 Tests use fake clients to verify the API-call boundary without sending a paid
 request. If no independent trusted oracle exists for an otherwise valid
@@ -626,6 +692,6 @@ source.
 ## Tests
 
 ```powershell
-python -m pytest agent/tests -q
-python -m pytest contracts/tests agent/tests -q
+python -m pytest agent/tests -q -p no:cacheprovider
+python -m pytest contracts/tests agent/tests -q -p no:cacheprovider
 ```

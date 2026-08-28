@@ -452,6 +452,133 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(content, '{"ok": true}')
         self.assertEqual(payload["max_tokens"], 4096)
 
+    def test_openai_compatible_client_uses_responses_api_configuration(self) -> None:
+        response = FakeHTTPResponse(
+            json.dumps(
+                {
+                    "output": [
+                        {
+                            "type": "message",
+                            "content": [
+                                {"type": "output_text", "text": '{"ok": true}'}
+                            ],
+                        }
+                    ],
+                    "usage": {
+                        "input_tokens": 10,
+                        "output_tokens": 4,
+                        "input_tokens_details": {"cached_tokens": 3},
+                    },
+                }
+            ).encode("utf-8")
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="gpt-5.5",
+                base_url="https://api.example/v1",
+                timeout_seconds=7,
+                max_tokens=4096,
+                transport_attempts=1,
+                seed=17,
+                wire_api="responses",
+                reasoning_effort="xhigh",
+                disable_response_storage=True,
+            )
+        )
+        messages = [
+            {"role": "system", "content": "Return strict JSON."},
+            {"role": "user", "content": "Return ok."},
+        ]
+
+        with (
+            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+        ):
+            content = client.chat(messages)
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(content, '{"ok": true}')
+        self.assertEqual(request.full_url, "https://api.example/v1/responses")
+        self.assertEqual(payload["input"], messages)
+        self.assertEqual(payload["reasoning"], {"effort": "xhigh"})
+        self.assertEqual(payload["text"], {"format": {"type": "json_object"}})
+        self.assertEqual(payload["max_output_tokens"], 4096)
+        self.assertFalse(payload["store"])
+        self.assertNotIn("messages", payload)
+        self.assertNotIn("temperature", payload)
+        self.assertNotIn("max_tokens", payload)
+        self.assertNotIn("seed", payload)
+        self.assertEqual(
+            client.consume_token_usage(),
+            {"input_tokens": 10, "output_tokens": 4, "cached_tokens": 3},
+        )
+        self.assertEqual(
+            client.consume_response_provenance()["seed_forwarding_status"],
+            "not_forwarded",
+        )
+
+    def test_openai_compatible_client_streams_responses_text_and_usage(self) -> None:
+        response = FakeStreamingHTTPResponse(
+            [
+                b'event: response.output_text.delta\n',
+                b'data: {"type":"response.output_text.delta","delta":"{\\"ok\\":"}\n',
+                b'event: response.output_text.delta\n',
+                b'data: {"type":"response.output_text.delta","delta":" true}"}\n',
+                b'event: response.completed\n',
+                b'data: {"type":"response.completed","response":{"usage":{"input_tokens":5,"output_tokens":3,"input_tokens_details":{"cached_tokens":2}}}}\n',
+            ]
+        )
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                model="gpt-5.5",
+                base_url="https://api.example/v1",
+                wire_api="responses",
+                reasoning_effort="xhigh",
+                disable_response_storage=True,
+            )
+        )
+
+        with (
+            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+        ):
+            content = client.stream_chat([{"role": "user", "content": "Return ok."}])
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data.decode("utf-8"))
+        self.assertEqual(content, '{"ok": true}')
+        self.assertEqual(request.full_url, "https://api.example/v1/responses")
+        self.assertTrue(payload["stream"])
+        self.assertEqual(
+            client.consume_token_usage(),
+            {"input_tokens": 5, "output_tokens": 3, "cached_tokens": 2},
+        )
+
+    def test_openai_compatible_config_rejects_unknown_responses_options(self) -> None:
+        with self.assertRaisesRegex(ValueError, "wire_api"):
+            OpenAICompatibleConfig(api_key="fake-key", wire_api="unknown")
+        with self.assertRaisesRegex(ValueError, "reasoning_effort"):
+            OpenAICompatibleConfig(api_key="fake-key", reasoning_effort="maximum")
+        with self.assertRaisesRegex(
+            ValueError, "reasoning_effort requires wire_api=responses"
+        ):
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                wire_api="chat_completions",
+                reasoning_effort="xhigh",
+            )
+        with self.assertRaisesRegex(
+            ValueError, "disable_response_storage requires wire_api=responses"
+        ):
+            OpenAICompatibleConfig(
+                api_key="fake-key",
+                wire_api="chat_completions",
+                disable_response_storage=True,
+            )
+
     def test_openai_compatible_client_forwards_seed_and_captures_fingerprint(self) -> None:
         response = FakeHTTPResponse(
             json.dumps(
@@ -1145,6 +1272,21 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertIn("accumulator_core ports must be clk, rst_n, sample_valid, sample, sample_ready, and sum", user_prompt)
         self.assertIn("Do not introduce sample_valid_in", user_prompt)
         self.assertIn("accumulator.sample_valid to top.sample_valid", user_prompt)
+
+    def test_system_his_v12_initial_prompt_spells_out_event_counter_ports(self) -> None:
+        request = ProjectRequest(
+            task_type="composed_event_counter",
+            width=8,
+            project_name="counter_8bit",
+            description="Generate an event counter.",
+        )
+        platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
+
+        user_prompt = _system_his_v12_messages(request, platform)[1]["content"]
+
+        self.assertIn("Required architecture for composed_event_counter", user_prompt)
+        self.assertIn("top ports must include clk, rst_n, event_valid, and count", user_prompt)
+        self.assertIn("count must match the requested width", user_prompt)
 
     def test_system_his_v12_prompt_does_not_expose_heldout_join_recipe(self) -> None:
         request = ProjectRequest(
@@ -2338,9 +2480,33 @@ class DeepSeekProviderTest(unittest.TestCase):
                 model="deepseek-v4-flash",
                 base_url="https://api.deepseek.com",
                 api_key_env="DEEPSEEK_API_KEY",
+                timeout_seconds=240,
+                transport_attempts=2,
             )
 
         self.assertIsInstance(generator, DeepSeekTwoStageProjectGenerator)
+        config = generator.system_his_generator.client.config
+        self.assertEqual(config.timeout_seconds, 240)
+        self.assertEqual(config.transport_attempts, 2)
+
+    def test_cli_builds_responses_api_generator_from_env(self) -> None:
+        with mock.patch.dict(os.environ, {"OPENAI_API_KEY": "secret-value"}):
+            from sr2fpga_agent.cli import build_project_generator
+
+            generator = build_project_generator(
+                provider="openai_compat",
+                model="gpt-5.5",
+                base_url="https://api.example/v1",
+                api_key_env="OPENAI_API_KEY",
+                wire_api="responses",
+                reasoning_effort="xhigh",
+                disable_response_storage=True,
+            )
+
+        config = generator.his_project_generator.client.config
+        self.assertEqual(config.wire_api, "responses")
+        self.assertEqual(config.reasoning_effort, "xhigh")
+        self.assertTrue(config.disable_response_storage)
 
     def test_cli_passes_requirement_into_project_request(self) -> None:
         from sr2fpga_agent import cli
@@ -2395,11 +2561,17 @@ class DeepSeekProviderTest(unittest.TestCase):
                     "deepseek",
                     "--max-attempts",
                     "2",
+                    "--timeout-seconds",
+                    "240",
+                    "--transport-attempts",
+                    "2",
                 ]
             )
 
         self.assertEqual(captured["requirement"], requirement)
         self.assertEqual(build_generator.call_args.kwargs["model"], "deepseek-v4-pro")
+        self.assertEqual(build_generator.call_args.kwargs["timeout_seconds"], 240)
+        self.assertEqual(build_generator.call_args.kwargs["transport_attempts"], 2)
         self.assertEqual(captured["request"].description, requirement)
         self.assertEqual(captured["request"].task_type, "counter")
         self.assertEqual(captured["request"].width, 8)
@@ -2414,6 +2586,121 @@ class DeepSeekProviderTest(unittest.TestCase):
         self.assertEqual(metadata["requirement_boundary"]["reason_codes"], ["ready"])
         self.assertEqual(metadata["model_call_budget"]["max_model_calls"], 2)
         self.assertEqual(metadata["model_call_budget"]["model_calls_used"], 0)
+        self.assertEqual(
+            metadata["provider_transport_policy"],
+            {
+                "policy_id": "cli-openai-compatible-transport-v1",
+                "timeout_seconds": 240,
+                "max_transport_attempts_per_logical_call": 2,
+            },
+        )
+
+    def test_cli_marks_his2project_output_repair_variant_excluded(self) -> None:
+        from sr2fpga_agent import cli
+
+        captured = {}
+
+        class FakeAgent:
+            def __init__(
+                self,
+                dataset_root,
+                project_generator=None,
+                repairer=None,
+                max_attempts=1,
+            ) -> None:
+                captured["project_generator"] = project_generator
+                captured["repairer"] = repairer
+                captured["max_attempts"] = max_attempts
+
+            def run_one(self, sample_id, requirement, request, platform, metadata=None):
+                captured["metadata"] = metadata
+                return {"sample_dir": "sample", "pass_level": "not_run"}
+
+        with (
+            mock.patch.object(cli, "DataGenerationAgent", FakeAgent),
+            mock.patch.object(
+                cli,
+                "build_project_generator",
+                return_value="fake-two-stage-generator",
+            ),
+            mock.patch.object(cli, "build_repairer", return_value=None),
+            mock.patch.object(
+                cli,
+                "_bind_cli_frozen_his_generator",
+                return_value="fake-excluded-generator",
+            ) as bind_generator,
+            mock.patch("builtins.print"),
+        ):
+            cli.main(
+                [
+                    "--dataset-root",
+                    "datasets/sr2fpga_rtl_v1",
+                    "--sample-id",
+                    "sample_output_repair",
+                    "--provider",
+                    "deepseek-his-v12",
+                    "--task-type",
+                    "counter",
+                    "--project-name",
+                    "counter8",
+                    "--requirement",
+                    "Build an 8-bit synchronous counter with active-low reset.",
+                    "--development-his2project-output-repair",
+                ]
+            )
+
+        metadata = captured["metadata"]
+        self.assertEqual(captured["project_generator"], "fake-excluded-generator")
+        self.assertIsNone(captured["repairer"])
+        self.assertEqual(captured["max_attempts"], 1)
+        self.assertEqual(metadata["analysis_population"], "excluded")
+        self.assertEqual(metadata["method_condition"], "M5")
+        self.assertEqual(metadata["model_call_budget"]["max_model_calls"], 4)
+        self.assertEqual(
+            metadata["episode_pack"]["audit_only"]["analysis_population"],
+            "excluded",
+        )
+        self.assertEqual(
+            metadata["execution_variant"],
+            {
+                "variant_id": "m5-his2project-output-repair-dev-v1",
+                "base_method_condition": "M5",
+                "formal_method_conformant": False,
+                "official_evidence_eligible": False,
+                "max_his2project_output_repairs": 2,
+                "shared_pre_candidate_repair_ceiling": 2,
+            },
+        )
+        self.assertTrue(bind_generator.call_args.kwargs["output_repair_enabled"])
+
+    def test_cli_rejects_conflicting_his2project_output_repair_options(self) -> None:
+        from sr2fpga_agent import cli
+
+        common = [
+            "--dataset-root",
+            "datasets/sr2fpga_rtl_v1",
+            "--sample-id",
+            "sample_output_repair",
+            "--provider",
+            "deepseek-his-v12",
+            "--project-name",
+            "counter8",
+            "--development-his2project-output-repair",
+        ]
+        with self.assertRaisesRegex(SystemExit, "cannot be combined"):
+            cli.main([*common, "--repair-provider", "deepseek"])
+        with self.assertRaisesRegex(SystemExit, "requires --max-attempts 1"):
+            cli.main([*common, "--max-attempts", "2"])
+        with self.assertRaisesRegex(SystemExit, "requires --max-model-calls >= 4"):
+            cli.main([*common, "--max-model-calls", "3"])
+        with self.assertRaisesRegex(SystemExit, "requires a two-stage provider"):
+            cli.main(
+                [
+                    *common[:5],
+                    "deepseek",
+                    *common[6:],
+                ]
+            )
 
     def test_cli_builds_no_repairer_by_default(self) -> None:
         from sr2fpga_agent.cli import build_repairer
@@ -2436,9 +2723,13 @@ class DeepSeekProviderTest(unittest.TestCase):
                 model="deepseek-v4-flash",
                 base_url="https://api.deepseek.com",
                 api_key_env="DEEPSEEK_API_KEY",
+                timeout_seconds=240,
+                transport_attempts=2,
             )
 
         self.assertIsInstance(repairer, DeepSeekRepairer)
+        self.assertEqual(repairer.client.config.timeout_seconds, 240)
+        self.assertEqual(repairer.client.config.transport_attempts, 2)
 
     def test_cli_rejects_non_positive_max_attempts(self) -> None:
         from sr2fpga_agent import cli
@@ -2462,6 +2753,26 @@ class DeepSeekProviderTest(unittest.TestCase):
                     "0",
                 ]
             )
+
+    def test_cli_rejects_non_positive_transport_policy_values(self) -> None:
+        from sr2fpga_agent import cli
+
+        common = [
+            "--dataset-root",
+            "datasets/sr2fpga_rtl_v1",
+            "--sample-id",
+            "sample_bad_transport_policy",
+            "--provider",
+            "deterministic",
+            "--task-type",
+            "counter",
+            "--project-name",
+            "bad_transport_policy",
+        ]
+        with self.assertRaisesRegex(SystemExit, "--timeout-seconds must be >= 1"):
+            cli.main([*common, "--timeout-seconds", "0"])
+        with self.assertRaisesRegex(SystemExit, "--transport-attempts must be >= 1"):
+            cli.main([*common, "--transport-attempts", "0"])
 
 
 class FakeChatClient:

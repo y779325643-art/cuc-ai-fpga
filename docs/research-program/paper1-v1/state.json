@@ -1,14 +1,14 @@
 {
   "project": "sr2fpga-paper1",
   "mode": "hybrid",
-  "round": 7,
+  "round": 8,
   "evidence_cutoff": "2026-08-26",
-  "status": "canonical_program_spec_v1_6_active_trets_no_training_core_rq1_rq2_execution_blocked_at_g3",
+  "status": "canonical_program_spec_v1_7_active_trets_no_training_rq1_primary_holm_rq2_holm_execution_blocked_at_g3",
   "qa_score": null,
-  "qa_status": "v1_6_decoding_control_revision_complete_no_outcome_execution",
-  "qa_report": "docs/research-program/paper1-v1/audit/qa_report-v1.6.md",
+  "qa_status": "v1_7_rq1_holm_and_claim_hierarchy_revision_complete_no_outcome_execution",
+  "qa_report": "docs/research-program/paper1-v1/audit/qa_report-v1.7.md",
   "canonical_spec": "docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md",
-  "canonical_spec_version": "paper1-freeze-v1.6",
+  "canonical_spec_version": "paper1-freeze-v1.7",
   "open_debts": [
     "positive_artifact_derived_g3_acceptance_authority",
     "first_class_semantic_instance_replicate_requested_seed_and_paired_block_runtime",
@@ -20,9 +20,10 @@
     "heldout_oracle_qualification_2_of_4",
     "frozen_split_and_episode_pack_manifests",
     "signed_ambiguity_fixtures_thresholds_and_replay",
+    "g4a_rq1_primary_holm_threshold_ci_conditional_joint_power_and_validity_gate_contract",
     "excluded_natural_g5_pilot_and_power_precision_simulation",
     "signed_g4b_verifier_receipt_and_official_m0_m5_evaluation",
     "optional_target_profile_extension_only_if_explicitly_enabled"
   ],
-  "stop_condition": "No further abstract scope expansion; next milestone is positive non-official G3 acceptance, then core G4a and excluded natural G5 before verifier-derived G4b authorization"
+  "stop_condition": "No further RQ1 hierarchy or multiplicity change after any G5 outcome; next milestone is positive non-official G3 acceptance, then core G4a and excluded natural G5 before verifier-derived G4b authorization"
 }

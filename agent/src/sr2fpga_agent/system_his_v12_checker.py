@@ -113,14 +113,20 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
 
     _validate_intent(intent, errors)
     _validate_top_clock_reset(top, errors)
+    _parameter_names(
+        top.get("parameters", []),
+        "system_his.top.parameters",
+        errors,
+    )
     _validate_timing(timing, errors)
     _validate_resources(resources, errors)
     _validate_verification(verification, errors)
     top_ports = _top_ports(top, errors)
+    _validate_top_clock_reset_ports(top, top_ports, errors)
     top_control_signals = top_ports | _top_clock_reset_names(top)
     rtl_sources = _artifact_rtl_sources(artifacts, errors)
     component_ports = _component_ports(components, set(rtl_sources), errors)
-    component_parameters = _component_parameters(components)
+    component_parameters = _component_parameters(components, errors)
     instance_components = _instance_components(instances, component_ports, component_parameters, errors)
     instance_ports = {
         instance_name: component_ports.get(component_name, set())
@@ -318,6 +324,25 @@ def _top_ports(top: dict[str, Any], errors: list[str]) -> set[str]:
     return port_names
 
 
+def _validate_top_clock_reset_ports(
+    top: dict[str, Any],
+    top_ports: set[str],
+    errors: list[str],
+) -> None:
+    for section in ("clocks", "resets"):
+        items = top.get(section, [])
+        if not isinstance(items, list):
+            continue
+        for index, item in enumerate(items):
+            if not isinstance(item, dict):
+                continue
+            name = str(item.get("name", "")).strip()
+            if name and name not in top_ports:
+                errors.append(
+                    f"system_his.top.{section}[{index}].name '{name}' must also appear in system_his.top.ports"
+                )
+
+
 def _top_clock_reset_names(top: dict[str, Any]) -> set[str]:
     names: set[str] = set()
     for section in ("clocks", "resets"):
@@ -370,20 +395,44 @@ def _component_ports(components: list[Any], rtl_sources: set[str], errors: list[
     return component_ports
 
 
-def _component_parameters(components: list[Any]) -> dict[str, set[str]]:
+def _parameter_names(value: Any, path: str, errors: list[str]) -> set[str]:
+    parameters = _list(value, path, errors)
+    names: set[str] = set()
+    for index, parameter in enumerate(parameters):
+        if not isinstance(parameter, dict):
+            errors.append(f"{path}[{index}] must be an object")
+            continue
+        if "name" not in parameter:
+            errors.append(f"{path}[{index}].name is required")
+            continue
+        raw_name = parameter["name"]
+        if not isinstance(raw_name, str):
+            errors.append(f"{path}[{index}].name must be a string")
+            continue
+        name = raw_name.strip()
+        if not name:
+            errors.append(f"{path}[{index}].name is required")
+            continue
+        names.add(name)
+    return names
+
+
+def _component_parameters(
+    components: list[Any],
+    errors: list[str],
+) -> dict[str, set[str]]:
     component_parameters: dict[str, set[str]] = {}
-    for component in components:
+    for index, component in enumerate(components):
         if not isinstance(component, dict):
             continue
         name = str(component.get("name", "")).strip()
-        parameters = component.get("parameters", [])
-        if not name or not isinstance(parameters, list):
+        if not name:
             continue
-        component_parameters[name] = {
-            str(parameter.get("name", "")).strip()
-            for parameter in parameters
-            if isinstance(parameter, dict) and str(parameter.get("name", "")).strip()
-        }
+        component_parameters[name] = _parameter_names(
+            component.get("parameters", []),
+            f"components[{index}].parameters",
+            errors,
+        )
     return component_parameters
 
 

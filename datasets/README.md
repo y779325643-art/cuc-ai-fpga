@@ -4,6 +4,10 @@ The existing directories registered in `datasets/manifest.json` are read-only
 historical evidence. Repository reorganization added metadata and checksum
 inventories without modifying their payload or export bytes.
 
+These releases are not a G4b-signed benchmark population under
+[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+and provide no official Paper-1 outcome or campaign authority.
+
 New runner output must be written to `artifacts/` first. Promotion into
 `datasets/` requires:
 

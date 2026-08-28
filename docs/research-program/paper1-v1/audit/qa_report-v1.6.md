@@ -1,7 +1,9 @@
 # Paper-1 v1.6 Decoding-Control Review
 
-Status: active pre-outcome protocol-amendment record. This is not an experiment
-result, G3 acceptance artifact, or G4b authorization.
+Status: historical v1.6 pre-outcome protocol-amendment record, retained for
+decoding-control provenance. The active propagation review is
+[`qa_report-v1.7.md`](qa_report-v1.7.md). This is not an experiment result, G3
+acceptance artifact, or G4b authorization.
 
 ## Reason for amendment
 

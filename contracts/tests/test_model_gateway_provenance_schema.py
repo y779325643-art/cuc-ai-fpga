@@ -22,7 +22,7 @@ def _payload() -> dict:
         "analysis_population": "excluded",
         "episode_id": "episode-1",
         "method_condition": "M4",
-        "call_id": 1,
+        "call_id": 0,
         "stage": "two_stage",
         "operation": "chat",
         "call_status": "completed",
@@ -44,6 +44,14 @@ def _payload() -> dict:
 
 def test_requested_unverified_seed_and_reported_fingerprint_validate() -> None:
     _validator().validate(_payload())
+
+
+def test_negative_call_id_is_rejected() -> None:
+    payload = _payload()
+    payload["call_id"] = -1
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
 
 
 def test_supported_seed_requires_hash_bound_capability_evidence() -> None:

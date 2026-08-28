@@ -5,7 +5,11 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
+from sr2fpga_agent.contract_skeleton import (
+    CANONICAL_PREDICTED_QOR_PATH,
+    CANONICAL_TIMING_CONSTRAINT_PATH,
+    build_contract_skeleton_project,
+)
 from sr2fpga_agent.frozen_context import (
     FrozenRequirementContext,
     frozen_project_name,
@@ -257,6 +261,20 @@ def _lowerability_errors(payload: dict[str, Any]) -> list[str]:
                 )
             elif scenario_name not in SUPPORTED_VERIFICATION_SCENARIOS:
                 errors.append(f"H2 lowerability: verification.scenarios[{index}] unsupported scenario '{scenario_name}'")
+    artifacts = payload.get("artifacts")
+    if isinstance(artifacts, dict):
+        constraints = _list(artifacts.get("constraints"))
+        if constraints != [CANONICAL_TIMING_CONSTRAINT_PATH]:
+            errors.append(
+                "H2 lowerability: artifacts.constraints must be exactly "
+                f"['{CANONICAL_TIMING_CONSTRAINT_PATH}']"
+            )
+        predicted_qor = str(artifacts.get("predicted_qor", "")).strip()
+        if predicted_qor != CANONICAL_PREDICTED_QOR_PATH:
+            errors.append(
+                "H2 lowerability: artifacts.predicted_qor must be exactly "
+                f"'{CANONICAL_PREDICTED_QOR_PATH}'"
+            )
     return errors
 
 

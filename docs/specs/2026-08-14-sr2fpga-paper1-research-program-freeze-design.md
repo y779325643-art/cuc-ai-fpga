@@ -6,8 +6,8 @@
 ## Status and authority
 
 - Status: **active canonical Paper-1 research and experiment specification**
-- Version: `paper1-freeze-v1.6`
-- Effective date: 2026-08-26
+- Version: `paper1-freeze-v1.7`
+- Effective date: 2026-08-27
 - Target venue: **ACM Transactions on Reconfigurable Technology and Systems
   (TRETS)**
 - Evidence cut-off: local `develop@bd516c110862`, plus the current working-tree
@@ -69,6 +69,16 @@ artifact-derived capability classifier and strict guard, but it need not wait
 for a real external provider to qualify. This amendment was accepted before
 G4b and before any official model or hidden outcome was opened.
 
+The v1.7 amendment changes the RQ1 confirmatory hierarchy before any G5 natural-
+model or official outcome was opened. It replaces the RQ1 fixed sequence with a
+two-hypothesis primary Holm family comprising M4−M3 and M4−M0. M3−M2 remains
+mandatory but becomes a prespecified secondary estimation contrast. M4−M3 is
+interpreted as the joint deterministic-materialization/edit-surface increment,
+not a skeleton-text-only effect. This amendment changes no population, method,
+endpoint, information privilege, budget, RQ2 family, RQ0 audit, RQ4 analysis, or
+data-collection obligation; every signed eligible M0-M5 condition is still
+executed and reported.
+
 This document supersedes the earlier Paper-1 reframe, official-evaluation, and
 mandatory constrained-decoding proposals. Those superseded documents are
 preserved in Git history rather than retained as parallel working-tree
@@ -111,11 +121,11 @@ through the declared L3 flow, not a generally deployable bitstream or board
 system. The central empirical question is:
 
 > Under matched model, public requirement facts, feedback privileges, and total
-> compute/tool budgets, do the System-HIS representation bundle and its
-> deterministic skeleton improve hidden project-level correctness over direct
-> and untyped structured controls; and does contract-aware public repair survive
-> an evaluator-owned one-shot hidden check under a reconciled correctness-cost
-> budget?
+> compute/tool budgets, does contract-grounded deterministic materialization
+> improve hidden project-level correctness over free generation from the same
+> System-HIS, does the complete untrained System-HIS pipeline outperform Direct,
+> and does contract-aware public repair survive an evaluator-owned one-shot
+> hidden check under a reconciled correctness-cost budget?
 
 The minimum paper therefore requires:
 
@@ -296,9 +306,10 @@ arbitrary open-world requirement understanding or project correctness.
 ### RQ1 — End-to-end contract value
 
 Does the generated System-HIS pipeline improve method-neutral verified project
-success beyond direct generation and a two-stage untyped-plan control under the
-same external requirement facts and total budget? How much of that bundled gain
-comes from the deterministic skeleton?
+success beyond direct generation under the same external requirement facts and
+total budget? Within the System-HIS path, what increment is attributable to the
+joint deterministic-materialization/edit-surface intervention, and what
+secondary evidence is associated with the representation bundle?
 
 Comparisons and interpretation:
 
@@ -307,17 +318,22 @@ Comparisons and interpretation:
   described as a pure causal estimate of “typing alone.” Both branches must match
   planner/generator call count, global budget, and effective input facts.
 - M4 versus M3 reuses the exact same frozen generated-HIS artifact for each
-  requirement/seed pair and changes only deterministic skeleton construction.
+  semantic-instance/replicate block. It jointly changes deterministic project
+  materialization and the associated editable-surface policy; without an
+  additional orthogonal control it is not a pure skeleton-text, editable-byte,
+  or lowerer-rule effect.
 - M4 versus M0 is an end-to-end system comparison and does not isolate a single
   mechanism.
 
-RQ1 is unsupported if the bundled contract conditions do not improve VPP-L3, if
-they merely move failures from H/L0 into hidden L2, or if an apparent effect
-disappears after effective information and total cost are reconciled.
+RQ1 is unsupported as a complete claim unless both primary contrasts pass their
+predeclared rules. A single passing primary contrast supports only its named
+local claim. RQ1 is also unsupported if apparent gains merely move failures from
+H/L0 into hidden L2 or disappear after effective information and total cost are
+reconciled.
 
-RQ1 is a confirmatory method family. Its representation, skeleton, and end-to-
-end contrasts are tested in the predeclared order in Section 7.5 rather than
-being demoted by default to exploratory analyses.
+RQ1 is a two-hypothesis primary confirmatory family. M4−M3 and M4−M0 use Holm
+control in Section 7.5; M3−M2 is a mandatory prespecified secondary estimation
+contrast and cannot unlock, rescue, or replace either primary claim.
 
 ### RQ2 — Verifier separation and repair
 
@@ -411,8 +427,8 @@ not yet implement this complete ladder; G3 is a hard runtime gate.
   the same requirement facts; model stage 2 freely emits the full project. The
   plan has no System-HIS types, cross-field checker, or deterministic skeleton.
 - **M3 HIS-Free:** model stage 1 emits System-HIS; model stage 2 freely emits the
-  full project through a true no-skeleton generator. For the skeleton ablation,
-  M3 and M4 consume the same frozen generated-HIS artifact.
+  full project through a true no-skeleton generator. For the materialization
+  comparison, M3 and M4 consume the same frozen generated-HIS artifact.
 - **M4 HIS-Skeleton:** trusted code lowers that generated System-HIS to the
   contract skeleton and the model fills only declared behavior regions. It has
   no outer EDA repair; any planner/parser/schema retry is an explicit budgeted
@@ -463,9 +479,9 @@ G4b freezes these three cost views and the exact reducer before outcomes.
 
 | Inferential role | Frozen comparisons |
 | --- | --- |
-| RQ1 confirmatory fixed sequence | M3−M2; M4−M3; M4−M0 |
+| RQ1 primary Holm family | M4−M3; M4−M0 |
 | RQ2 confirmatory Holm family | M5−M4; R_HIS−R_generic |
-| Mandatory secondary/descriptive | M1−M0; M5−M1; per-family effects; stage transitions; correctness-cost frontiers |
+| Mandatory secondary/descriptive | M3−M2; M1−M0; M5−M1; per-family effects; stage transitions; correctness-cost frontiers |
 | Reference only | B_ref; B_template; frontier ceiling |
 
 M6U, M6F, M6T, M6TR, and `M6F[E_traj]` are not Paper-1 method conditions under
@@ -933,9 +949,9 @@ at `S_A=3`).
   after a candidate is immutable uses the fixed retry count and replays only that
   candidate.
 - If fixed retries still cannot score the candidate, neither side of a pair may
-  be silently deleted. Mark the requirement/seed pair unscorable, report it, and
-  provide complete-pair plus all-unscorable-as-failure sensitivity analyses and
-  worst/best bounds.
+  be silently deleted. Mark the semantic-instance/replicate block unscorable,
+  report it, and provide complete-pair plus all-unscorable-as-failure sensitivity
+  analyses and worst/best bounds.
 - Only an outage shared by all paired methods may defer the block. No requirement
   may be replaced after any hidden outcome is seen.
 - G4b freezes an unresolved-infrastructure rate and between-method imbalance
@@ -977,33 +993,65 @@ four frozen families and fixed M0-M5 protocol; it is not an interval over all
 FPGA task families.
 
 Confirmatory hypotheses are directional and use one-sided familywise alpha
-0.05; every table also reports two-sided 95% confidence intervals and effects in
-both directions. A positive claim requires both rejection of the predeclared
-threshold null and the lower endpoint of the two-sided 95% interval to exceed
-the named minimum effect. RQ1 uses fixed-sequence testing. Gatekeeping controls
-confirmatory inference, not data collection: every signed eligible M0-M5
-condition is executed and reported regardless of an earlier contrast's result.
+0.05. RQ1 and RQ2 are separate Holm families; alpha is not recycled between
+them, so their separate control does not imply a paper-wide familywise error
+rate of 0.05. Every table also reports two-sided 95% confidence intervals and
+effects in both directions. A positive claim requires Holm rejection of the
+predeclared threshold null, the lower endpoint of the two-sided 95% interval to
+exceed the named minimum effect, and all named integrity, missingness, and
+budget gates to pass. Multiplicity controls inference, not data collection:
+every signed eligible M0-M5 condition is executed and reported.
 
-The RQ1 contract sequence is applied once to the equal-family macro estimator:
+For RQ1, let `Y1_ifqm` be terminal `VPP-L3@1` for family `f`, semantic instance
+`i`, planned replicate `q`, and method `m`. For each primary contrast
+`c in {43, 40}`, compute `D_ifc = mean_q(Y1_ifq,a_c - Y1_ifq,b_c)`, then
+`Delta_fc = mean_i(D_ifc)` and `Delta_c = (1/4) sum_f Delta_fc`, where
+`(a_43,b_43)=(M4,M3)` and `(a_40,b_40)=(M4,M0)`. The directional nulls are
+`H0_43: Delta_43 <= delta_min_materialization` and
+`H0_40: Delta_40 <= delta_min_system`. The two cluster-respecting one-sided
+p-values form the RQ1 Holm family at familywise alpha 0.05. Report raw and Holm-
+adjusted p-values; if ordered values are `p_(1) <= p_(2)`, reject the first only
+when `p_(1) <= 0.025`, and then reject the second only when `p_(2) <= 0.05`.
 
-1. M3 versus M2 on `VPP-L3@1` for the two-stage representation bundle;
-2. M4 versus M3 on `VPP-L3@1` for the deterministic skeleton increment; and
-3. M4 versus M0 on `VPP-L3@1` for the untrained end-to-end system.
+M4−M3 estimates the deterministic-materialization/edit-surface bundle. M4−M0
+estimates untrained end-to-end system value and does not isolate a component.
+For `c in {43,40}`, set `delta_43=delta_min_materialization` and
+`delta_40=delta_min_system`. Let `S_c=1` if and only if Holm rejects `H0_c` and
+the lower endpoint of the two-sided 95% confidence interval for `Delta_c`
+strictly exceeds `delta_c`. Let `G_RQ1=1` if and only if all named integrity,
+leakage, information, budget, hidden-completion, and infrastructure-missingness
+gates applicable to RQ1 pass, and define `C_c=1` if and only if `S_c=1` and
+`G_RQ1=1`. Each `C_c=1` may activate only its corresponding local claim; the
+complete RQ1 claim requires `C_43=C_40=1`.
 
-Per-family effects are mandatory descriptive diagnostics; they do not run four
-separate gatekeeping sequences. A later macro-level step is confirmatory only if
-the preceding macro-level step passes its predeclared rule. Before G5, G4a
-freezes the contrast-specific minimum-effect vector
-`{delta_min_representation, delta_min_skeleton, delta_min_system}` and the
-scientific rationale for each element; G4b signs those values unchanged and
-freezes the exact test implementation. A merely positive point estimate is
-insufficient. Always report raw macro and per-family effects with 95% intervals
-even when gatekeeping stops a later claim. Any later family-level confirmatory
-claim requires a new pre-outcome hierarchical multiplicity and power contract.
+M3−M2 is a mandatory prespecified secondary representation-bundle estimand.
+Report its equal-family macro and per-family estimates with two-sided 95%
+intervals, but no confirmatory p-value by default; it cannot rescue a failed
+primary comparison and cannot be interpreted as a typing-alone effect.
+
+The confirmatory threshold tests use the complete `semantic_instance_id` as the
+resampling unit, retain every planned replicate and method outcome together, and
+keep family membership and equal-family weights fixed. G4a freezes the
+studentized statistic, boundary-null centering, within-family cluster-resampling
+rule, interval form, number of resamples, analysis seed, tie/extreme-case rules,
+and code hash; G4b signs that implementation unchanged. A finite-sample exact
+cluster-swap test may be named only if an independent review establishes whole-
+cluster label exchangeability. It tests its declared sharp null and cannot
+replace the nonzero minimum-effect threshold test. Replicate-level, requested-
+seed-level, paraphrase-level, or hidden-case-level independent sign flips are
+forbidden.
+
+Per-family effects and leave-one-family-out analyses are mandatory descriptive
+diagnostics; they do not open, close, or rescue a macro claim. Before G5, G4a
+freezes `{delta_min_materialization, delta_min_system}`, the corresponding
+scientific rationales, and an optional secondary interpretation threshold for
+M3−M2. A merely positive point estimate is insufficient. Any later family-level
+or confirmatory secondary claim requires a new pre-outcome hierarchical
+multiplicity and power contract.
 
 For every signed semantic instance `i` in family `f` and replicate `q`, let
-`Y_ifqm` be terminal `VPP-L3@A` for method `m`. Define
-`D_if,54 = mean_q(Y_ifq,M5 - Y_ifq,M4)`, `Delta_f,54 = mean_i(D_if,54)`, and
+`YA_ifqm` be terminal `VPP-L3@A` for method `m`. Define
+`D_if,54 = mean_q(YA_ifq,M5 - YA_ifq,M4)`, `Delta_f,54 = mean_i(D_if,54)`, and
 `Delta_54 = (1/4) sum_f Delta_f,54`. This intention-to-treat estimand includes
 every signed cluster whether or not M5 invokes repair. Because M5 may spend its
 single repair/correction allowance on either System-HIS correction or outer
@@ -1059,16 +1107,28 @@ For every confirmatory contrast `c`, `delta_c` is the smallest effect that can
 support its scientific claim; it is not the effect assumed for power. Before
 G5, G4a separately freezes a design alternative `Delta*_c > delta_c` and target
 power `1-beta`. The excluded pilot may estimate paired discordance, cluster-
-level seed dependence, repair eligibility, attrition, and runtime, but may not
+level replicate dependence, repair eligibility, attrition, and runtime, but may not
 set `delta_c` or `Delta*_c` from an observed treatment effect. With equal `n`
-per family and pilot cluster variance `sigma^2_fc` for seed-averaged paired
+per family and pilot cluster variance `sigma^2_fc` for replicate-averaged paired
 difference `D_ifc`, the planning approximation is
 `SE(Delta_c) ~= sqrt(sum_f sigma^2_fc / (16n))` and
 `n_c >= (z_.975 + z_(1-beta))^2 sum_f sigma^2_fc /
 [16(Delta*_c-delta_c)^2]`. G4b chooses final `n` through a predeclared joint
-simulation of the RQ1 fixed sequence and RQ2 Holm family, including attrition,
-missingness, and repair eligibility. Power “at delta” is invalid because it
-leaves no separation from the claim threshold.
+simulation of the RQ1 and RQ2 Holm families, including the shared-M4 covariance,
+the complete Holm-plus-confidence-bound decision rule, attrition, missingness,
+repair eligibility, and the selected decoding-control mode within the frozen
+gate-valid envelope. Claim-invalidating gate failures are not assigned a
+speculative occurrence probability or counted as ordinary negative outcomes in
+statistical power. RQ1 planning is conditional on `G_RQ1=1`; a realized
+`G_RQ1=0` invalidates RQ1 claim activation. If the complete RQ1 claim remains
+planned, its target is joint statistical power
+`P(S_43=1 and S_40=1 | G_RQ1=1) >= 0.80`; report both conditional marginal
+powers as well. Each retained RQ2 confirmatory contrast also requires at least
+0.80 Holm-adjusted marginal power under its frozen design alternative and
+applicable gate-valid envelope. If the resource ceiling cannot meet a target, G4b
+must downgrade the affected claim before official execution rather than inherit
+the v1.6 planning conclusion. Power “at delta” is invalid because it leaves no
+separation from the claim threshold, and observed power is not reported.
 
 No official outcome informs sample-size calculation. Failure to exclude an
 effect larger than the named minimum is reported as imprecision, not “no
@@ -1290,9 +1350,12 @@ inform paired discordance, attrition, runtime, or sample-size assumptions.
   profile hashes, objective exclusions, and an ordered reserve list.
 - Before any G5 outcome, freeze the RQ1/RQ2 contrast-specific minimum effects,
   design alternatives strictly above those thresholds, target power of at least
-  0.80, repair-probe eligibility/selector/caps/minima, and the RQ0 scientific
-  acceptance thresholds/interval implementation. G5 may estimate nuisance
-  parameters and resource needs, not move these scientific goalposts.
+  0.80, RQ1/RQ2 Holm implementations, the RQ1 gate-conditional full-claim
+  joint-power rule,
+  threshold-test and interval implementations, repair-probe
+  eligibility/selector/caps/minima, and the RQ0 scientific acceptance
+  thresholds/interval implementation. G5 may estimate nuisance parameters and
+  resource needs, not move these scientific goalposts.
 - Freeze the common official ready fact projection and the Family Recipe
   information policy. Primary held-out headline methods receive no family-
   specific Recipe body.
@@ -1335,7 +1398,8 @@ inform paired discordance, attrition, runtime, or sample-size assumptions.
   least one model treatment reaches L0 so downstream measurement is informative,
   and both M1 and M5 contain a genuine diagnosis→patch→rerun transition.
 - Those two transitions establish mechanism feasibility only; confirmatory RQ2
-  readiness also requires the frozen probe minimum-count and joint-power rules.
+  readiness also requires the frozen probe minimum-count rule and the Holm-
+  adjusted marginal-power rule for each retained RQ2 contrast.
 - Model-quality failures remain results; infrastructure/contract failures reopen
   the relevant gate. Pilot requirements never enter the official test.
 - Stop immediately and reopen the relevant gate for hidden/private leakage,
@@ -1367,23 +1431,26 @@ feasibility; integrity/infrastructure failures remain gate failures.
   configuration, global budgets, tools,
   evaluator hashes/case seeds, candidate selection, infrastructure retry/abort
   thresholds, the unchanged pre-pilot RQ1/RQ2 minimum-effect vectors and design
-  alternatives, correctness non-inferiority margin, primary cost axis, exact
-  estimators/tests, and multiplicity rules.
+  alternatives, correctness non-inferiority margin, primary cost axis, fully
+  specified estimators/tests, and multiplicity rules.
 - Freeze the final ambiguity-audit clusters and perturbation balance, private
   commitments, default/capability profiles, A_req budget, infrastructure rule,
   `FP_amb`/`FP_gap` interval implementation, unchanged false-block/replay
   thresholds, and leakage checks. Sign that audit outcomes cannot alter the VPP population or
   any method, prompt, Recipe, budget, or candidate-selection rule.
-- Freeze the RQ1 sequence, the RQ2 comparison family, repair-transition
-  definition, correctness non-inferiority rule, and online model/tool/cost
-  reporting.
-- Freeze the equal-family macro estimator, RQ1 macro fixed sequence, RQ2 Holm
-  family (`M5-M4`, `R_HIS-R_generic`), descriptive M5-M1 analysis, paired-block
-  identities, seed-control eligibility, balanced order, shared artifacts, and
-  the three cost views.
+- Freeze the RQ1 primary Holm family (`M4-M3`, `M4-M0`), the mandatory secondary
+  M3-M2 analysis, the separate RQ2 Holm family (`M5-M4`,
+  `R_HIS-R_generic`), repair-transition definition, correctness non-inferiority
+  rule, and online model/tool/cost reporting. Each family retains its own alpha;
+  no cross-family alpha recycling is permitted.
+- Freeze the equal-family macro estimator, threshold-test implementation,
+  confidence-interval implementation, Holm reducer, RQ1 gate-conditional
+  joint/marginal-power report, descriptive M5-M1 analysis, paired-block
+  identities, seed-control
+  eligibility, balanced order, shared artifacts, and the three cost views.
 - Freeze the final sample size from excluded-pilot simulation; 30 semantic
   instances per family remains a planning target until then. At that target,
-  four families × 30 instances × three seeds × six methods yields 360 paired
+  four families × 30 instances × three replicates × six methods yields 360 paired
   blocks and 2,160 method-outcome episodes. More generally, with `n` instances
   per family, `B=4*3*n=12n` blocks and `E=6B=72n` episodes. The standalone
   method-attributed initial-stage ceiling is `10B=120n` calls (3,600 at `n=30`),
@@ -1406,7 +1473,7 @@ feasibility; integrity/infrastructure failures remain gate failures.
   effect or outcome.
 - Require qualified evaluator-owned independent oracles for all four primary
   held-out families and a passing M0-M5 full-pack dry-run.
-- The signed no-outcome manifest binds the v1.6 freeze hash, positive G3
+- The signed no-outcome manifest binds the v1.7 freeze hash, positive G3
   acceptance reference, G4a core benchmark/OASA manifests, G5 provenance,
   model/prompt/information hashes, `decoding_control_mode`, replicate blocks,
   requested-seed provenance, independent schedule seed/order, budgets/tools,
@@ -1483,11 +1550,12 @@ feasibility; integrity/infrastructure failures remain gate failures.
 
 ## 11. Result-contingent publication tracks
 
-- **Track A — contract/evaluation method paper:** the frozen RQ1 and/or RQ2
-  contrasts support bounded value beyond their matched controls, hidden/public
-  separation and missingness audits pass, and the relevant lower confidence
-  bounds exceed the G4b rule. Center the supported contract, skeleton, repair,
-  and evaluation contribution without learned-model language.
+- **Track A — contract/evaluation method paper:** one or both frozen RQ1 primary
+  contrasts and/or the RQ2 contrasts support bounded value beyond their matched
+  controls, hidden/public separation and missingness audits pass, and the
+  relevant lower confidence bounds exceed the G4b rule. Center the supported
+  contract, materialization, system, repair, and evaluation contribution without
+  learned-model language.
 - **Track B — benchmark/evaluation methodology paper:** method effects are mixed
   or imprecise, but the evaluator-owned hidden protocol, requirement-boundary
   audit, reproducible project benchmark, failure transitions, and cost evidence
@@ -1529,6 +1597,10 @@ Paper-1 program.
   clarification replay, provenance violations, and leakage audit;
 - “closed System-HIS contract” after G1;
 - “frozen official benchmark” after G4b;
+- “deterministic-materialization/edit-surface benefit” only when the M4−M3
+  primary claim rule passes;
+- “untrained end-to-end System-HIS value” only when the M4−M0 primary claim rule
+  passes; the complete RQ1 claim requires both primary rules;
 - “repair effectiveness” after real transitions plus the paired repair-policy
   and end-to-end RQ2 analyses;
 - “physical improvement” only for the G8 tool/family subset; and
@@ -1547,6 +1619,10 @@ Paper-1 program.
 - first hardware IR or untyped CPPL;
 - a “typing alone” correctness effect from M3−M2 rather than the frozen
   System-HIS representation-bundle interpretation;
+- a skeleton-text-only, editable-byte-only, or lowerer-rule-only causal effect
+  from M4−M3 rather than the frozen materialization/edit-surface bundle;
+- a complete RQ1 claim when only one RQ1 primary rule passes, or use of the
+  secondary M3−M2 estimate to rescue a failed primary rule;
 - full JSON-Schema H0, full W1-W10 H1, or universal by-construction correctness;
 - trained-model, training-view benefit, held-out, repair, or QoR-prediction
   results that do not exist;
@@ -1628,5 +1704,5 @@ non-primary diagnostics may be recorded without redefining the primary test.
 
 The subordinate code-architecture specification may define implementations and
 tests, but it may not add G3 acceptance rows, official prerequisites, scientific
-contrasts, or information privileges beyond this v1.6 freeze without a
+contrasts, or information privileges beyond this v1.7 freeze without a
 versioned research amendment.

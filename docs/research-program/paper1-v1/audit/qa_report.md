@@ -5,10 +5,11 @@
 > freeze; they are not current validation totals. Use
 > [current status](../../../current-status.md) for mutable facts and the
 > [English Paper-1 freeze](../../../specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
-> for the active `paper1-freeze-v1.6` protocol. This report predates v1.5;
+> for the active `paper1-freeze-v1.7` protocol. This report predates v1.5;
 > training-related QA below is historical only. See
-> [`qa_report-v1.6.md`](qa_report-v1.6.md) for the current decoding-control and
-> protocol-coherence review.
+> [`qa_report-v1.7.md`](qa_report-v1.7.md) for the current RQ1 hierarchy,
+> multiplicity, power, and propagation review; the v1.6 record remains the
+> decoding-control amendment history.
 
 ## Review scope
 

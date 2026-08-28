@@ -16,6 +16,8 @@ from sr2fpga_agent.family_recipe import (
 from sr2fpga_agent.contract_skeleton import (
     BEHAVIOR_REGION_BEGIN,
     BEHAVIOR_REGION_END,
+    CANONICAL_PREDICTED_QOR_PATH,
+    CANONICAL_TIMING_CONSTRAINT_PATH,
     build_contract_skeleton_project,
 )
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
@@ -48,6 +50,12 @@ def _h2_lowerability_prompt_guidance() -> str:
         f"H2 backend capability profile: {_BACKEND_CAPABILITIES.registry_version}.\n"
         f"H2 canonical semantic_kind values: {semantic_kinds}.\n"
         f"H2 canonical data_flow.protocol values: {protocols}.\n"
+        "H2 requires verification.testbench and artifacts.testbench to be exactly "
+        f"{_BACKEND_CAPABILITIES.canonical_testbench}.\n"
+        "H2 deterministic lowerer requires artifacts.constraints to be exactly "
+        f"[\"{CANONICAL_TIMING_CONSTRAINT_PATH}\"] and "
+        "artifacts.predicted_qor to be exactly "
+        f"\"{CANONICAL_PREDICTED_QOR_PATH}\".\n"
         "verification.scenarios entries must be canonical strings from: "
         f"{scenarios}. If an object is used, set kind to one canonical value; "
         "name may remain a human-readable label.\n"
@@ -587,6 +595,8 @@ def _system_his_v12_task_guidance(task_type: str) -> str:
             "Required architecture for composed_event_counter:\n"
             "- components: event_gate, counter_core\n"
             "- instances: event_gate, counter\n"
+            "- top ports must include clk, rst_n, event_valid, and count.\n"
+            "- count must match the requested width.\n"
             "- data_flow must use named path arrays and control_flow must reference existing state and flows."
         )
     return ""
@@ -1077,6 +1087,9 @@ The intent.requirement_trace object must start with exactly this content:
 Replace every empty fact_to_his list with one or more non-empty RFC 6901 JSON
 pointers to semantic fields outside intent.requirement_trace that preserve the
 corresponding fact value. unresolved_facts must remain empty.
+{_frozen_requirement_trace_pointer_guidance()}
+
+{_frozen_h1_well_formedness_guidance()}
 
 {_h2_lowerability_prompt_guidance()}
 
@@ -1084,6 +1097,71 @@ Return a JSON object conforming exactly to this registered schema:
 {json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True)}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def _frozen_requirement_trace_pointer_guidance() -> str:
+    return (
+        "Map width facts only to top/component/instance widths or parameters; "
+        "clock facts to top.clocks or timing; reset facts to top.resets; "
+        "interface facts to top.ports/interfaces or data_flow; acceptance facts "
+        "to verification; target facts to intent, artifacts, or resources; and "
+        "functional capabilities to components, instances, data_flow, "
+        "control_flow, state, or verification. Do not use intent.user_prompt as "
+        "semantic proof."
+    )
+
+
+def _frozen_h1_well_formedness_guidance() -> str:
+    return (
+        "H1 cross-field well-formedness rules (W1-W10) plus H1 "
+        "representation errata:\n"
+        "- W1: Every instances[].component must match exactly one unique "
+        "components[].name; component and instance names must be unique.\n"
+        "- W2: Every data_flow.path endpoint must be literal top.<port> or "
+        "<instance-name>.<component-port>. Use the literal owner top, not "
+        "top.name or the top module name, and never use a component name as an "
+        "endpoint owner.\n"
+        "- W3: When connections are present, every from/to endpoint must resolve, "
+        "endpoint and declared widths must agree, and direction must be source to "
+        "sink.\n"
+        "- W4: Use owner top for top-owned state; otherwise every state owner must "
+        "be an exact instances[].name, never a module or component name. Every "
+        "state-owning instance clock/reset and timing.primary_clock must reference "
+        "declared top clocks/resets.\n"
+        "- Every clock and reset declared in top.clocks/top.resets must also "
+        "appear in top.ports.\n"
+        "- Every instance must include owns_state as a JSON array; use [] when it "
+        "owns no state. Every owns_state entry must resolve to a declared state; "
+        "prefer <instance-name>.<state-name> for instance-owned state.\n"
+        "- Every top.parameters and components[].parameters entry must be an object "
+        "with a non-empty name. For an 8-bit DATA_WIDTH parameter, use "
+        "{\"name\": \"DATA_WIDTH\", \"default\": 8}. A string such as "
+        "\"DATA_WIDTH\" does not declare a parameter.\n"
+        "- W5: Set components[].combinational to true only when the component and "
+        "all its instances own no state and the component declares no clock/reset "
+        "port.\n"
+        "- W6: A data flow with cdc=true must cross two declared clock domains and "
+        "include a synchronizer, CDC primitive, or asynchronous FIFO instance.\n"
+        "- W7: Every declared memory must provide valid positive depth and width, "
+        "non-negative read_latency, read_type, and memory_style.\n"
+        "- W8: verification.scenarios references must resolve to declared data "
+        "flows, control rules, and top/instance signal endpoints.\n"
+        "- W9: timing.primary_clock must name a declared top clock, and every "
+        "timing.constraints path must appear in artifacts.constraints.\n"
+        "- W10: artifacts.top_module must equal top.name; artifacts.manifest must "
+        "be exactly manifest.json; artifacts.testbench must equal "
+        "verification.testbench; artifacts.constraints must equal "
+        "timing.constraints; and every component source must appear in "
+        "artifacts.rtl_sources.\n"
+        "- State names must be globally unique. FSM owners must be top or an exact "
+        "instances[].name, and FSM initial/reset/transition states must be declared.\n"
+        "- Every control_flow entry must include related_state and related_flows "
+        "as JSON arrays; use [] when no state or flow is related.\n"
+        "- control_flow.kind must be one of reset_rule, handshake_rule, "
+        "enable_rule, stall_rule, counter_update, fsm_transition, or "
+        "buffer_occupancy. Its signal, state, flow, FSM, and effect references must "
+        "resolve to declared objects."
+    )
 
 
 def _frozen_his_skeleton_messages(
@@ -1169,6 +1247,9 @@ def _frozen_system_his_correction_messages(
     """Build one public-diagnosis M5 HIS-correction prompt."""
 
     from sr2fpga_agent.frozen_context import frozen_requirement_trace_template
+    from sr2fpga_agent.system_his_schema import load_registered_system_his_schema
+
+    schema = load_registered_system_his_schema()
 
     system = (
         "You repair a System-HIS v1.2 contract. Return only the complete "
@@ -1193,9 +1274,20 @@ object. intent.requirement_trace.required_facts must remain exactly:
 {json.dumps(frozen_requirement_trace_template(context)["required_facts"], ensure_ascii=False, indent=2, sort_keys=True)}
 
 Every fact_to_his entry must contain value-preserving RFC 6901 pointers outside
-intent.requirement_trace and unresolved_facts must be empty. The caller will
-rerun H0, H1, H2, and H3 from the beginning; do not claim that validation passed.
+intent.requirement_trace and unresolved_facts must be empty.
+{_frozen_requirement_trace_pointer_guidance()}
+
+{_frozen_h1_well_formedness_guidance()}
+
+Repair the semantic value at an existing schema-valid location or update its
+fact_to_his pointer. Do not create top-level fact-name shortcuts such as
+target_platform; every top-level property must be allowed by the registered
+schema below. The caller will rerun H0, H1, H2, and H3 from the beginning; do
+not claim that validation passed.
 {_h2_lowerability_prompt_guidance()}
+
+The complete corrected object must conform exactly to this registered schema:
+{json.dumps(schema, ensure_ascii=False, indent=2, sort_keys=True)}
 """
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 

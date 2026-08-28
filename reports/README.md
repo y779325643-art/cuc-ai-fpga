@@ -10,6 +10,12 @@ Its derived human-readable view is
 Its evidence references resolve to stable artifacts under `reports/evidence/`
 or to immutable dataset metadata.
 
+Catalog labels such as `paper1_core` describe catalog intent; they do not define
+a G4b-signed benchmark population under v1.7 or create Paper-1 outcome authority.
+Use the [active freeze](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+for research semantics and [current status](../docs/current-status.md) for the
+present implementation boundary.
+
 Completed named-run reports are grouped under `evidence/phase-reports/`:
 
 - [Phase C independent-oracle qualification](evidence/phase-reports/sr2fpga-phase-c-independent-oracle-evidence-2026-07-14.md)

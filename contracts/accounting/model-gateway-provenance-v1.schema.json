@@ -20,7 +20,7 @@
     "analysis_population": {"enum": ["development", "excluded"]},
     "episode_id": {"type": "string", "minLength": 1},
     "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
-    "call_id": {"type": "integer", "minimum": 1},
+    "call_id": {"type": "integer", "minimum": 0},
     "stage": {"type": "string", "minLength": 1},
     "operation": {"type": "string", "minLength": 1},
     "call_status": {"enum": ["completed", "failed"]},

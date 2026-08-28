@@ -12,9 +12,17 @@
 
 - Use **project generation**, not “project synthesis,” for model output.
 - Use **logic synthesis** or **L3 synthesis** for Yosys.
-- Use **System-HIS representation bundle** for the M3-M2 estimand; use **typed
-  requirement/project contract** only when explaining the representation's
-  engineering role, never as a “typing alone” causal claim.
+- Use **method-neutral verified project success (`VPP-L3@1`)** for the RQ1
+  primary endpoint; hidden conformance is one required component, not the whole
+  endpoint.
+- Use **deterministic materialization/edit-surface bundle** for the primary
+  M4-M3 estimand. It is a joint intervention unless a separately frozen
+  orthogonal control isolates one component.
+- Use **untrained end-to-end System-HIS value** for the primary M4-M0 estimand;
+  do not attribute that system-level difference to one component.
+- Use **System-HIS representation bundle** for the secondary M3-M2 estimand; use
+  **typed requirement/project contract** only when explaining the
+  representation's engineering role, never as a “typing alone” causal claim.
 - Use **episode pack** for run control and information privileges.
 - Use **HORIZON-motivated Direct-Repair control** until the minimum local
   HORIZON-like semantics are implemented; reserve “reproduction” for the
@@ -27,7 +35,8 @@
   specific contracts/change policies, and pass the required L3/L4.
 - Use **replicate block** only when semantic instance, replicate ID, shared
   initial artifacts, hidden commitment, execution schedule, and cost attribution
-  all match the v1.6 rule. Treat requested decoding seed as separate provenance.
+  all match the active freeze. Treat requested decoding seed as separate
+  provenance and `execution_schedule_seed` as local order control.
 - Use `implemented`, `verified`, `target`, `hypothesis`, `not_run`,
   `infrastructure_failure`, and `design_failure` as distinct states.
 - Use `ready`, `needs_clarification`, and `capability_gap` for requirement
@@ -66,3 +75,8 @@ Write comparisons as:
 
 If any privilege differs, name it in the same sentence and do not call the
 comparison matched.
+
+For RQ1, name the exact supported scope: M4-M3 may support only the
+materialization/edit-surface claim, M4-M0 may support only the end-to-end system
+claim, and the complete RQ1 claim requires both primary claim-activation rules.
+M3-M2 remains secondary and cannot rescue either primary comparison.

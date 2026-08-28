@@ -22,7 +22,7 @@ _MISSING_SYSTEM_FINGERPRINT = object()
 
 @dataclass(frozen=True)
 class OpenAICompatibleConfig:
-    """OpenAI-compatible chat completions API configuration."""
+    """OpenAI-compatible API configuration."""
 
     api_key: str
     model: str = "deepseek-v4-pro"
@@ -32,13 +32,36 @@ class OpenAICompatibleConfig:
     transport_attempts: int = 3
     retry_backoff_seconds: float = 0.5
     seed: int | None = None
+    wire_api: str = "chat_completions"
+    reasoning_effort: str = ""
+    disable_response_storage: bool = False
 
     def __post_init__(self) -> None:
         _validate_requested_seed(self.seed)
+        if self.wire_api not in {"chat_completions", "responses"}:
+            raise ValueError("wire_api must be chat_completions or responses")
+        if self.reasoning_effort not in {
+            "",
+            "none",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+        }:
+            raise ValueError("reasoning_effort is not supported")
+        if not isinstance(self.disable_response_storage, bool):
+            raise ValueError("disable_response_storage must be a boolean")
+        if self.wire_api != "responses" and self.reasoning_effort:
+            raise ValueError("reasoning_effort requires wire_api=responses")
+        if self.wire_api != "responses" and self.disable_response_storage:
+            raise ValueError(
+                "disable_response_storage requires wire_api=responses"
+            )
 
 
 class OpenAICompatibleClient:
-    """Small stdlib HTTP client for OpenAI-compatible chat completions."""
+    """Small stdlib HTTP client for OpenAI-compatible APIs."""
 
     def __init__(self, config: OpenAICompatibleConfig) -> None:
         self.config = config
@@ -83,6 +106,17 @@ class OpenAICompatibleClient:
         else:
             fingerprint = None
             fingerprint_status = "unavailable"
+        seed_requested = self.config.seed is not None
+        seed_forwarded = seed_requested and self.config.wire_api != "responses"
+        if not seed_requested:
+            forwarding_status = "not_requested"
+            seed_control = "not_requested"
+        elif seed_forwarded:
+            forwarding_status = "forwarded"
+            seed_control = "requested_unverified"
+        else:
+            forwarding_status = "not_forwarded"
+            seed_control = "unsupported"
         return {
             "provider_adapter": "openai_compatible",
             "provider_model": self.config.model,
@@ -90,12 +124,8 @@ class OpenAICompatibleClient:
                 self.config.base_url.rstrip("/").encode("utf-8")
             ).hexdigest(),
             "requested_decoding_seed": self.config.seed,
-            "seed_forwarding_status": (
-                "forwarded" if self.config.seed is not None else "not_requested"
-            ),
-            "deterministic_seed_control": (
-                "requested_unverified" if self.config.seed is not None else "not_requested"
-            ),
+            "seed_forwarding_status": forwarding_status,
+            "deterministic_seed_control": seed_control,
             "provider_system_fingerprint": fingerprint,
             "system_fingerprint_status": fingerprint_status,
         }
@@ -111,6 +141,8 @@ class OpenAICompatibleClient:
 
         self._store_token_usage(_openai_token_usage(data))
         self._store_system_fingerprint(_provider_system_fingerprint(data))
+        if self.config.wire_api == "responses":
+            return _read_responses_text(data)
         try:
             return str(data["choices"][0]["message"]["content"])
         except (KeyError, IndexError, TypeError) as exc:
@@ -123,6 +155,15 @@ class OpenAICompatibleClient:
         self._reset_response_provenance()
         payload = self._chat_payload(messages)
         payload["stream"] = True
+        if self.config.wire_api == "responses":
+            return self._request_with_retries(
+                payload,
+                lambda response: _read_streaming_responses_content(
+                    response,
+                    self.config.timeout_seconds,
+                    usage_sink=self._store_token_usage,
+                ),
+            )
         return self._request_with_retries(
             payload,
             lambda response: _read_streaming_chat_content(
@@ -159,6 +200,19 @@ class OpenAICompatibleClient:
         self._transport_state.invalid_system_fingerprint = True
 
     def _chat_payload(self, messages: list[dict[str, str]]) -> dict[str, Any]:
+        if self.config.wire_api == "responses":
+            payload: dict[str, Any] = {
+                "model": self.config.model,
+                "input": messages,
+                "store": not self.config.disable_response_storage,
+            }
+            if _model_supports_json_response_format(self.config.model):
+                payload["text"] = {"format": {"type": "json_object"}}
+            if self.config.reasoning_effort:
+                payload["reasoning"] = {"effort": self.config.reasoning_effort}
+            if self.config.max_tokens > 0:
+                payload["max_output_tokens"] = self.config.max_tokens
+            return payload
         payload: dict[str, Any] = {
             "model": self.config.model,
             "messages": _messages_for_model(self.config.model, messages),
@@ -200,7 +254,8 @@ class OpenAICompatibleClient:
         raise RuntimeError("OpenAI-compatible API request did not run")
 
     def _request_once(self, payload: dict[str, Any], reader: Callable[[Any], Any]) -> Any:
-        url = self.config.base_url.rstrip("/") + "/chat/completions"
+        endpoint = "/responses" if self.config.wire_api == "responses" else "/chat/completions"
+        url = self.config.base_url.rstrip("/") + endpoint
         request = urllib.request.Request(
             url,
             data=json.dumps(payload).encode("utf-8"),
@@ -497,6 +552,29 @@ def _read_chat_completion_json(response: Any, timeout_seconds: int) -> Any:
     return json.loads(_read_response_body(response, timeout_seconds).decode("utf-8"))
 
 
+def _read_responses_text(data: Any) -> str:
+    if not isinstance(data, dict):
+        raise RuntimeError("OpenAI-compatible Responses API response was not an object")
+    if isinstance(data.get("output_text"), str) and data["output_text"]:
+        return data["output_text"]
+    chunks: list[str] = []
+    output = data.get("output")
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict) or not isinstance(item.get("content"), list):
+                continue
+            for part in item["content"]:
+                if (
+                    isinstance(part, dict)
+                    and part.get("type") == "output_text"
+                    and part.get("text") is not None
+                ):
+                    chunks.append(str(part["text"]))
+    if chunks:
+        return "".join(chunks)
+    raise RuntimeError("OpenAI-compatible Responses API response did not contain output text")
+
+
 def _read_response_body(response: Any, timeout_seconds: int) -> bytes:
     chunks: list[bytes] = []
     started_at = time.monotonic()
@@ -721,6 +799,59 @@ def _read_streaming_chat_content(
             if content is not None:
                 chunks.append(str(content))
         return "".join(chunks)
+    finally:
+        if usage_sink is not None:
+            usage_sink(_present_token_usage(token_usage))
+
+
+def _read_streaming_responses_content(
+    response: Any,
+    timeout_seconds: int,
+    *,
+    usage_sink: Callable[[dict[str, int | None] | None], None] | None = None,
+) -> str:
+    chunks: list[str] = []
+    completed_text = ""
+    token_usage: dict[str, int | None] = {
+        "input_tokens": None,
+        "output_tokens": None,
+        "cached_tokens": None,
+    }
+    started_at = time.monotonic()
+    try:
+        while True:
+            raw_line = _read_streaming_line(response, timeout_seconds, started_at)
+            if not raw_line:
+                break
+            line = raw_line.decode("utf-8", errors="replace").strip()
+            if not line or line.startswith(":") or not line.startswith("data:"):
+                continue
+            raw_data = line.removeprefix("data:").strip()
+            if raw_data == "[DONE]":
+                break
+            try:
+                event = json.loads(raw_data)
+            except json.JSONDecodeError as exc:
+                raise RuntimeError(
+                    "OpenAI-compatible streaming response contained invalid Responses API data"
+                ) from exc
+            if not isinstance(event, dict):
+                continue
+            event_type = str(event.get("type", ""))
+            if event_type == "response.output_text.delta":
+                chunks.append(str(event.get("delta", "")))
+            elif event_type == "response.output_text.done":
+                completed_text = str(event.get("text", ""))
+            elif event_type == "response.completed":
+                response_data = event.get("response")
+                _merge_token_usage(token_usage, _openai_token_usage(response_data))
+                break
+            elif event_type in {"error", "response.failed", "response.incomplete"}:
+                detail = event.get("error") or event.get("response") or event
+                raise RuntimeError(
+                    f"OpenAI-compatible streaming Responses API error: {detail}"
+                )
+        return "".join(chunks) or completed_text
     finally:
         if usage_sink is not None:
             usage_sink(_present_token_usage(token_usage))

@@ -1,128 +1,76 @@
 # SR2FPGA
 
-SR2FPGA is a tool-verified research system for generating multi-file FPGA RTL
-projects from system requirements. Its evaluated unit is a coherent project;
-the trajectory is its auditable execution record:
+SR2FPGA is a research repository for generating coherent multi-file FPGA
+projects from system requirements and evaluating them with tool- and
+artifact-backed evidence.
 
 ```text
 requirement
--> shared disposition: ready / needs_clarification / capability_gap
+-> ready / needs_clarification / capability_gap disposition
 -> direct / untyped-plan / System-HIS method condition
--> full project or project skeleton + generated behavior
--> condition-applicable H0-H3 and method-neutral L0-L4 verification
--> optional diagnosis / patch / rerun when repair-eligible
--> immutable terminal candidate + evaluator-owned hidden outcome (Paper-1 target)
--> reproducible episode, cost, missingness, and outcome summaries
+-> full project or skeleton + generated behavior
+-> condition-applicable H0-H3 and method-neutral L0-L4 validation
+-> optional diagnosis / patch / rerun
+-> immutable terminal candidate and evaluator-owned outcome
+-> reproducible episode, cost, missingness, and outcome records
 ```
 
-Paper-1 v1.6 targets ACM Transactions on Reconfigurable Technology and Systems
-（TRETS）and does not train models. It evaluates M0-M5 and audits requirement
-ambiguity on a separate stop-before-generation population; those dispositions
-never receive project/VPP credit. RQ4 is secondary representative OpenXC7
-physical-depth characterization; target-profile adaptation is a separately
-frozen optional extension and never implies general or cross-vendor portability.
-The current development working tree has an excluded
-fake-provider M0-M5 full-pack reconstruction and Runner-authoritative
-development/excluded attempt evaluation, `@1`/`AT_A` terminal selection, exact-
-terminal public reevaluation, an optional hash-bound evaluator-owned trusted
-public L2 harness, and one-shot hidden dispatch. Development/excluded runs can
-now publish a sanitized hidden conformance outcome and reduce a separate
-development-only VPP without changing official VPP, which remains
-`not_evaluated`. Without a configured trusted harness, public L2 remains
-`not_run(needs_oracle)`. The checkout still lacks positive artifact-derived G3
-authority, first-class semantic-instance/replicate paired-block closure,
-independent execution-schedule control, mode-aware decoding provenance, shared-cost
-and two-axis hidden-missingness reconciliation, official hidden/VPP authority,
-and the signed G4b campaign verifier; see
-[current status](docs/current-status.md).
+The active
+[`paper1-freeze-v1.7`](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+protocol targets ACM TRETS, evaluates M0-M5, and does not train models.
+Current implementation, evidence, open debt, regression counts, and active gate
+are summarized in [current status](docs/current-status.md); this README is an
+entry point, not protocol or outcome authority.
 
 ## Where To Start
 
 | If you need to know... | Read |
-|---|---|
-| What is verified right now, what is open debt, what gate is active | [`docs/current-status.md`](docs/current-status.md) |
-| The research questions, method conditions, information boundaries, metrics, gates | [Paper-1 research-program freeze](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) |
-| How the freeze maps to modules, interfaces, state machines, and work packages (CD1-CD10) | [Paper-1 code-architecture spec](docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) |
-| How to run, own, or extend a specific project | that project's own README (`agent/`, `training/`, `contracts/`, `datasets/`) |
-| Rules a coding/research agent must follow before making a change | [`AGENTS.md`](AGENTS.md) |
-| Contracts, evidence, and documentation navigation overall | [`docs/README.md`](docs/README.md) |
+| --- | --- |
+| What this checkout implements, verifies, or still lacks | [`docs/current-status.md`](docs/current-status.md) |
+| Research questions, methods, information boundaries, metrics, and gates | [Paper-1 freeze v1.7](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) |
+| Implementation architecture, interfaces, artifacts, and CD1-CD10 work packages | [Paper-1 code-architecture spec v1.10](docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) |
+| Canonical machine-readable task families, IDs, and target intent | [Task catalog v0.2](contracts/task-catalog/sr2fpga-task-catalog-v0.2.json) |
+| Research and writing support behind the canonical freeze | [Paper-1 workspace](docs/research-program/paper1-v1/README.md) |
+| How to work safely in this repository | [`AGENTS.md`](AGENTS.md) |
+| Contracts, evidence, literature, and documentation navigation | [`docs/README.md`](docs/README.md) |
+| Project-specific setup and commands | [Agent](agent/README.md), [Training](training/README.md), [Contracts](contracts/README.md), or [Datasets](datasets/README.md) |
 
 ## Repository Map
 
-- `agent/`: project generation, System-HIS validation, testbench/oracle
-  execution, L0-L4 tool orchestration, repair, and trajectory recording.
-- `training/`: retained dataset preparation, SFT/LoRA, adapter merge, and model
-  serving infrastructure outside Paper-1. Training does not import Agent.
-- `contracts/`: versioned System-HIS, trajectory, training-view, and task
-  catalog contracts shared through files rather than runtime imports.
-- `datasets/`: immutable, versioned dataset releases registered by
+- [`agent/`](agent/README.md): project generation, System-HIS validation,
+  L0-L4 orchestration, trusted evaluation, repair, and trajectory recording.
+- [`training/`](training/README.md): retained dataset preparation, SFT/LoRA,
+  merge, and serving infrastructure outside Paper-1. Training does not import
+  Agent.
+- [`contracts/`](contracts/README.md): versioned schemas, registries, and the
+  canonical task catalog shared through files rather than runtime imports.
+- [`datasets/`](datasets/README.md): immutable versioned releases registered by
   `datasets/manifest.json`.
-- `artifacts/`: ignored candidate runs, reports, prepared data, adapters, and
-  other reproducible runtime output.
-- `app/`: local deterministic UI demo for exercising the current Agent runtime
-  and inspecting recorded H0-H3/L0-L4 outcomes.
-- `outputs/`: manually produced literature reviews, manuals, presentations, and
-  other user-facing deliverables; generated previews and QA artifacts are
-  ignored.
-- `reports/`: curated, intentionally committed evidence and audit records.
-- `docs/`: current navigation, research specifications, evidence
-  interpretation, and active paper materials.
-- `references/`: source papers, source-grounded readers, hardware manuals, and
-  other background material; these do not define current protocol or results.
+- `artifacts/`: ignored runtime output for candidates, reports, prepared data,
+  adapters, and other reproducible local products.
+- [`app/`](app/README.md): local deterministic UI demo; it is not research
+  evidence or an official evaluation surface.
+- `reports/`: curated, intentionally committed evidence and named-run audits.
+- [`docs/`](docs/README.md): current navigation, research specifications,
+  evidence interpretation, and active paper materials.
+- [`references/`](references/README.md): source papers, source-grounded readers,
+  and hardware manuals; these do not define current protocol or results.
+- `outputs/`: manually produced user-facing reference material; dated artifacts
+  there are not current protocol, implementation-status, or outcome authority.
 
-See the [documentation index](docs/README.md), [current status](docs/current-status.md),
-[Paper-1 research freeze](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md),
-and [reference-material index](references/README.md).
+Projects exchange versioned files through `contracts/` and `datasets/`, not
+runtime Python imports across project boundaries.
 
-## Verification Semantics
+## Minimal Setup And Validation
 
-- `H0-H3`: condition-applicable System-HIS canonical-Schema validation,
-  well-formedness, lowerability, and requirement fidelity. They are mechanism
-  outcomes, not eligibility requirements for untyped baselines. Full W1-W10 H1
-  closure remains an explicit contract gate.
-- `L0`: project-contract consistency.
-- `L1`: Verilator lint.
-- `L2`: evaluator-trusted black-box self-checking simulation with Icarus
-  Verilog. A candidate-owned testbench is public smoke/debug only and cannot
-  award semantic L2 credit; without a trusted harness, L2 is `not_run`.
-- `L3`: the current Yosys synthesis-acceptance flow and its named cell/resource
-  statistics. The current scalable path must not be described as calibrated
-  FPGA LUT QoR until its generic-versus-`synth_xilinx` semantics are aligned.
-- `L4-open`: optional OpenXC7/nextpnr physical implementation.
-- `L4-commercial`: optional Vivado reference implementation.
-- `L5`: representative board validation; not yet a general dataset stage.
-
-Every trajectory carries an explicit L4 status. `not_run` is not a failure; it
-is reported separately with a skip reason. Missing tools and other
-infrastructure outcomes are also separated from model failures.
-
-## Install
-
-Install the two projects independently from the repository root:
+Install the lightweight development packages from the repository root:
 
 ```powershell
 python -m pip install -e "agent[dev]"
 python -m pip install -e "training[dev]"
 ```
 
-The development extras install pytest and Ruff. Run the repository's two
-Python-project lint surfaces with:
-
-```powershell
-python -m ruff check agent/src agent/tests training/src training/tests
-```
-
-The Training development install is lightweight. Install GPU-dependent extras
-only on a suitable machine:
-
-```powershell
-python -m pip install -e "training[train]"
-python -m pip install -e "training[serve]"
-```
-
-## Agent Quick Start
-
-Preview the deterministic T0-T4 smoke:
+Preview the deterministic Agent smoke without creating a run:
 
 ```powershell
 python -m sr2fpga_agent.runner `
@@ -131,58 +79,29 @@ python -m sr2fpga_agent.runner `
   --preflight
 ```
 
-Run it:
+Remove `--preflight` to execute the deterministic smoke. Generated runs are
+written beneath `artifacts/agent/`.
 
-```powershell
-python -m sr2fpga_agent.runner `
-  --config agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml `
-  --run-id local-deterministic-smoke
-```
-
-Outputs are written beneath `artifacts/agent/`. Released data under `datasets/`
-is never modified by a normal Agent run.
-
-## Training Quick Start
-
-Prepare and validate the bundled smoke fixture without loading a model:
-
-```powershell
-python -m sr2fpga_training.prepare_dataset `
-  --input training/tests/fixtures/smoke_verilog_raw.jsonl `
-  --output artifacts/training/prepared-data/smoke/chat.jsonl
-
-python -m sr2fpga_training.training_dry_run `
-  --input artifacts/training/prepared-data/smoke/chat.jsonl `
-  --max-seq-length 2048
-```
-
-REQ2FILE is a retained derived view. It retains its source episode and never
-receives standalone project pass credit.
-
-`train_lora` and `merge_lora` are legacy/manual model infrastructure outside
-Paper-1. They must not be used for the TRETS Paper-1 campaign; see
-[Training](training/README.md).
-
-## Verification Commands
+Run the full lightweight repository test surface:
 
 ```powershell
 python -m pytest contracts/tests agent/tests training/tests compatibility_tests -q -p no:cacheprovider
-python -m pytest agent/tests -q
-python -m pytest training/tests -q
 ```
 
-For detailed commands and ownership rules, read
-[Agent](agent/README.md), [Training](training/README.md),
-[Contracts](contracts/README.md), and [Datasets](datasets/README.md).
+Use the owning project README for focused tests, lint, real-provider setup,
+Training dry runs, and optional toolchain instructions. Do not install GPU-heavy
+Training extras merely to validate repository documentation or lightweight code.
 
-## Data And Secret Policy
+## Working In The Repository
 
-- Generate candidates under `artifacts/`; promote a release into `datasets/`
-  only through an explicit, versioned release operation.
-- Do not commit API keys, private provider endpoints, local absolute paths,
-  model weights, adapters, raw vendor artifacts, or `.env`.
-- Do not let generated DUT code modify trusted hidden tests, golden models,
-  protocol checkers, or board constraints.
-- Keep stable reports as evidence; use Git history for completed plans and
-  superseded designs. Update current guidance in this README, `AGENTS.md`, and
-  `docs/current-status.md`.
+- Follow [`AGENTS.md`](AGENTS.md) for task routing, minimal-change discipline,
+  Git authorization, trusted/evaluator boundaries, and validation expectations.
+- Generate normal runtime output under `artifacts/`. Promoting content into
+  `datasets/` or `reports/evidence/` is a separate controlled operation.
+- Do not infer implementation or empirical verification from a contract,
+  catalog row, specification, local smoke, or UI display alone.
+- Do not commit credentials, private endpoints, local absolute paths, model
+  weights, raw vendor artifacts, or hidden evaluator content.
+- Keep stable overview material here, mutable checkout facts in
+  `docs/current-status.md`, research semantics in the active freeze, and
+  superseded plans in Git history.

@@ -5,6 +5,10 @@
 - `legacy/` is compatibility-only and is not executed by default.
 - `local/` contains ignored machine-local overrides such as private provider runs.
 
+Here `current/` means maintained configuration, not signed G4b authority or an
+official Paper-1 campaign. Research and gate semantics come from the active
+[`paper1-freeze-v1.7`](../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md).
+
 Use `python -m sr2fpga_agent.runner --config <path>` with the full path
 to the YAML file in one of these subdirectories.
 
