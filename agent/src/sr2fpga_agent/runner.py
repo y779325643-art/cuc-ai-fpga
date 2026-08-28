@@ -6,6 +6,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import shutil
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
@@ -133,6 +134,7 @@ EPISODE_PACK_METHOD_CONDITIONS = {"M0", "M1", "M2", "M3", "M4", "M5"}
 REQ2HIS_API_KINDS = {"openai_compat", "anthropic_compat", "deepseek-his-v12"}
 DEVELOPMENT_HIDDEN_AUTHORITY_DIR = "development_hidden_authority"
 DEVELOPMENT_PUBLIC_AUTHORITY_DIR = "development_public_authority"
+_PAIRED_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
 
 
 @dataclass(frozen=True)
@@ -154,8 +156,11 @@ class TaskConfig:
     requirement_audit_manifest: str = ""
     public_l2_harness_manifest: str = ""
     semantic_instance_id: str = ""
+    replicate_id: str = ""
     decoding_seed: int | None = None
     paired_block_id: str = ""
+    execution_schedule_seed: int | None = None
+    decoding_control_mode: str = ""
 
 
 @dataclass(frozen=True)
@@ -247,8 +252,11 @@ class PlannedSample:
     requirement_audit_manifest: str = ""
     public_l2_harness_manifest: str = ""
     semantic_instance_id: str = ""
+    replicate_id: str = ""
     decoding_seed: int | None = None
     paired_block_id: str = ""
+    execution_schedule_seed: int | None = None
+    decoding_control_mode: str = ""
     pairing_identity_source: str = ""
 
     def metadata(self, config: RunnerConfig) -> dict[str, Any]:
@@ -292,8 +300,11 @@ class PlannedSample:
             "method_condition": method_condition,
             "analysis_population": self.analysis_population,
             "semantic_instance_id": self.semantic_instance_id,
+            "replicate_id": self.replicate_id,
             "decoding_seed": self.decoding_seed,
             "paired_block_id": self.paired_block_id,
+            "execution_schedule_seed": self.execution_schedule_seed,
+            "decoding_control_mode": self.decoding_control_mode,
             "pairing_identity_source": self.pairing_identity_source,
             "requirement_audit_manifest": self.requirement_audit_manifest,
             "requirement_boundary": boundary.to_dict(),
@@ -329,8 +340,11 @@ class PlannedSample:
                     "topology_id": self.topology_id,
                     "difficulty_tier": self.difficulty_tier,
                     "semantic_instance_id": self.semantic_instance_id,
+                    "replicate_id": self.replicate_id,
                     "decoding_seed": self.decoding_seed,
                     "paired_block_id": self.paired_block_id,
+                    "execution_schedule_seed": self.execution_schedule_seed,
+                    "decoding_control_mode": self.decoding_control_mode,
                     "pairing_identity_source": self.pairing_identity_source,
                 },
             ).to_dict()
@@ -602,8 +616,11 @@ def _preflight_sample_preview(sample: PlannedSample, config: RunnerConfig) -> di
         "method_condition": str(metadata["method_condition"]),
         "analysis_population": str(metadata["analysis_population"]),
         "semantic_instance_id": str(metadata["semantic_instance_id"]),
-        "decoding_seed": int(metadata["decoding_seed"]),
+        "replicate_id": str(metadata["replicate_id"]),
+        "decoding_seed": metadata["decoding_seed"],
         "paired_block_id": str(metadata["paired_block_id"]),
+        "execution_schedule_seed": metadata["execution_schedule_seed"],
+        "decoding_control_mode": str(metadata["decoding_control_mode"]),
         "pairing_identity_source": str(metadata["pairing_identity_source"]),
         "requirement_audit_manifest": str(metadata["requirement_audit_manifest"]),
         "requirement_boundary": {
@@ -2498,6 +2515,15 @@ def _l4_commercial_enabled_for_sample(config: RunnerConfig, sample: PlannedSampl
     return task_family_spec_for_alias(alias).l4_commercial_policy == "tcad_subset"
 
 
+def _load_optional_string(item: dict[str, Any], field_name: str) -> str:
+    if field_name not in item:
+        return ""
+    value = item[field_name]
+    if not isinstance(value, str):
+        raise SystemExit(f"{field_name} must be a string")
+    return value.strip()
+
+
 def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
     if "family_recipe" in item:
         raise SystemExit(
@@ -2556,16 +2582,23 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
         raise SystemExit(
             "public_l2_harness_manifest is restricted to development/excluded tasks"
         )
-    semantic_instance_id = str(item.get("semantic_instance_id", "") or "").strip()
-    paired_block_id = str(item.get("paired_block_id", "") or "").strip()
+    semantic_instance_id = _load_optional_string(item, "semantic_instance_id")
+    replicate_id = _load_optional_string(item, "replicate_id")
+    paired_block_id = _load_optional_string(item, "paired_block_id")
     decoding_seed = item.get("decoding_seed")
+    execution_schedule_seed = item.get("execution_schedule_seed")
+    decoding_control_mode = _load_optional_string(item, "decoding_control_mode")
     _validate_task_pairing_identity(
         analysis_population=analysis_population,
         method_condition=method_condition,
         count=count,
         semantic_instance_id=semantic_instance_id,
+        replicate_id=replicate_id,
         decoding_seed=decoding_seed,
+        decoding_seed_supplied="decoding_seed" in item,
         paired_block_id=paired_block_id,
+        execution_schedule_seed=execution_schedule_seed,
+        decoding_control_mode=decoding_control_mode,
     )
     return TaskConfig(
         source=str(item.get("source", raw.get("provider", "deterministic"))),
@@ -2585,8 +2618,11 @@ def _load_task_config(item: dict[str, Any], raw: dict[str, Any]) -> TaskConfig:
         requirement_audit_manifest=requirement_audit_manifest,
         public_l2_harness_manifest=public_l2_harness_manifest,
         semantic_instance_id=semantic_instance_id,
+        replicate_id=replicate_id,
         decoding_seed=decoding_seed,
         paired_block_id=paired_block_id,
+        execution_schedule_seed=execution_schedule_seed,
+        decoding_control_mode=decoding_control_mode,
     )
 
 
@@ -2721,18 +2757,28 @@ def _validate_task_pairing_identity(
     method_condition: str,
     count: int,
     semantic_instance_id: str,
+    replicate_id: str,
     decoding_seed: Any,
+    decoding_seed_supplied: bool,
     paired_block_id: str,
+    execution_schedule_seed: Any,
+    decoding_control_mode: str,
 ) -> None:
-    supplied = (
+    identity_supplied = (
         bool(semantic_instance_id),
-        decoding_seed is not None,
+        bool(replicate_id),
         bool(paired_block_id),
+        execution_schedule_seed is not None,
+        bool(decoding_control_mode),
+        decoding_seed_supplied,
     )
-    if any(supplied) and not all(supplied):
+    any_supplied = any(identity_supplied)
+    complete_identity = all(identity_supplied)
+    if any_supplied and not complete_identity:
         raise SystemExit(
             "first-class pairing identity requires semantic_instance_id, "
-            "decoding_seed, and paired_block_id together"
+            "replicate_id, paired_block_id, decoding_control_mode, and "
+            "execution_schedule_seed together"
         )
     if decoding_seed is not None and (
         not isinstance(decoding_seed, int)
@@ -2740,43 +2786,65 @@ def _validate_task_pairing_identity(
         or decoding_seed < 0
     ):
         raise SystemExit("first-class pairing identity decoding_seed must be non-negative")
+    if execution_schedule_seed is not None and (
+        not isinstance(execution_schedule_seed, int)
+        or isinstance(execution_schedule_seed, bool)
+        or execution_schedule_seed < 0
+    ):
+        raise SystemExit(
+            "first-class pairing identity execution_schedule_seed must be non-negative"
+        )
+    if decoding_control_mode not in {
+        "",
+        "documented_seed_control",
+        "stochastic_blocked",
+    }:
+        raise SystemExit(
+            "first-class pairing identity decoding_control_mode must be "
+            "documented_seed_control or stochastic_blocked"
+        )
+    if decoding_control_mode == "documented_seed_control" and decoding_seed is None:
+        raise SystemExit(
+            "first-class pairing identity documented_seed_control requires a "
+            "non-negative decoding_seed"
+        )
     for label, value in (
         ("semantic_instance_id", semantic_instance_id),
+        ("replicate_id", replicate_id),
         ("paired_block_id", paired_block_id),
     ):
-        if value and (
-            len(value) > 128
-            or not value[0].isalnum()
-            or any(not (character.isalnum() or character in "._:-") for character in value)
-        ):
+        if value and not _PAIRED_ID_RE.fullmatch(value):
             raise SystemExit(
                 f"first-class pairing identity {label} contains unsafe characters"
             )
-    if all(supplied) and count != 1:
+    if complete_identity and count != 1:
         raise SystemExit(
             "first-class pairing identity maps to exactly one planned sample; task count must be 1"
         )
     if (
         analysis_population == "excluded"
         and method_condition in EPISODE_PACK_METHOD_CONDITIONS
-        and not all(supplied)
+        and not complete_identity
     ):
         raise SystemExit(
             "excluded M0-M5 tasks require first-class pairing identity: "
-            "semantic_instance_id, decoding_seed, and paired_block_id"
+            "semantic_instance_id, replicate_id, paired_block_id, "
+            "decoding_control_mode, and execution_schedule_seed"
         )
 
 
 def _resolve_planned_pairing_identity(
     task: TaskConfig,
     requirement_sha256: str,
-) -> tuple[str, int, str, str]:
+) -> tuple[str, str, int | None, str, int | None, str, str]:
     if task.semantic_instance_id:
-        assert task.decoding_seed is not None
         return (
             task.semantic_instance_id,
+            task.replicate_id,
             task.decoding_seed,
             task.paired_block_id,
+            task.execution_schedule_seed,
+            task.decoding_control_mode,
             "explicit",
         )
     digest = hashlib.sha256(
@@ -2787,11 +2855,19 @@ def _resolve_planned_pairing_identity(
     paired_block_id = "paired-" + hashlib.sha256(
         f"{semantic_instance_id}:{seed}:{requirement_sha256}".encode("utf-8")
     ).hexdigest()[:24]
-    return semantic_instance_id, seed, paired_block_id, "development_derived"
+    return (
+        semantic_instance_id,
+        "",
+        seed,
+        paired_block_id,
+        None,
+        "",
+        "development_derived",
+    )
 
 
 def _validate_planned_pairing_blocks(samples: list[PlannedSample]) -> None:
-    blocks: dict[str, tuple[str, int, str]] = {}
+    blocks: dict[str, tuple[str, str, int | None, int | None, str, str]] = {}
     methods: set[tuple[str, str]] = set()
     for sample in samples:
         if (
@@ -2801,14 +2877,18 @@ def _validate_planned_pairing_blocks(samples: list[PlannedSample]) -> None:
             continue
         identity = (
             sample.semantic_instance_id,
-            int(sample.decoding_seed),
+            sample.replicate_id,
+            sample.decoding_seed,
+            sample.execution_schedule_seed,
+            sample.decoding_control_mode,
             sample.requirement_sha256,
         )
         existing = blocks.setdefault(sample.paired_block_id, identity)
         if existing != identity:
             raise SystemExit(
                 f"paired_block_id {sample.paired_block_id!r} is bound to conflicting "
-                "semantic instance, decoding seed, or requirement"
+                "semantic instance, replicate, decoding seed, schedule seed, "
+                "decoding mode, or requirement"
             )
         method_key = (sample.paired_block_id, sample.method_condition)
         if method_key in methods:
@@ -2832,8 +2912,15 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
             method_condition=task.method_condition,
             count=task.count,
             semantic_instance_id=task.semantic_instance_id,
+            replicate_id=task.replicate_id,
             decoding_seed=task.decoding_seed,
+            decoding_seed_supplied=(
+                task.decoding_seed is not None
+                or task.decoding_control_mode == "stochastic_blocked"
+            ),
             paired_block_id=task.paired_block_id,
+            execution_schedule_seed=task.execution_schedule_seed,
+            decoding_control_mode=task.decoding_control_mode,
         )
         if task.count > 0 and not task.widths:
             raise SystemExit("Task widths must not be empty when count is positive")
@@ -2854,8 +2941,11 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                 requirement_sha256 = hashlib.sha256(requirement.encode("utf-8")).hexdigest()
                 (
                     semantic_instance_id,
+                    replicate_id,
                     decoding_seed,
                     paired_block_id,
+                    execution_schedule_seed,
+                    decoding_control_mode,
                     pairing_identity_source,
                 ) = _resolve_planned_pairing_identity(task, requirement_sha256)
                 samples.append(
@@ -2881,8 +2971,11 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
                         requirement_audit_manifest=task.requirement_audit_manifest,
                         public_l2_harness_manifest=task.public_l2_harness_manifest,
                         semantic_instance_id=semantic_instance_id,
+                        replicate_id=replicate_id,
                         decoding_seed=decoding_seed,
                         paired_block_id=paired_block_id,
+                        execution_schedule_seed=execution_schedule_seed,
+                        decoding_control_mode=decoding_control_mode,
                         pairing_identity_source=pairing_identity_source,
                     )
                 )
@@ -3482,7 +3575,7 @@ def _runner_pairing_key(config: RunnerConfig, sample: PlannedSample, context) ->
     ).hexdigest()
     if not sample.semantic_instance_id or not sample.paired_block_id:
         raise SystemExit("Runner method dispatch requires first-class pairing identity")
-    if (
+    if sample.decoding_seed is not None and (
         not isinstance(sample.decoding_seed, int)
         or isinstance(sample.decoding_seed, bool)
         or sample.decoding_seed < 0
@@ -3492,6 +3585,7 @@ def _runner_pairing_key(config: RunnerConfig, sample: PlannedSample, context) ->
         paired_block_id=sample.paired_block_id,
         requirement_revision_id=context.revision_id,
         semantic_instance_id=sample.semantic_instance_id,
+        replicate_id=sample.replicate_id,
         decoding_seed=sample.decoding_seed,
         model_provenance_sha256=model_provenance_sha256,
     )

@@ -80,8 +80,9 @@ class PairingKey:
     paired_block_id: str
     requirement_revision_id: str
     semantic_instance_id: str
-    decoding_seed: int
+    decoding_seed: int | None
     model_provenance_sha256: str
+    replicate_id: str = ""
 
     def digest(self) -> str:
         return _sha256_json(
@@ -89,6 +90,7 @@ class PairingKey:
                 "paired_block_id": self.paired_block_id,
                 "requirement_revision_id": self.requirement_revision_id,
                 "semantic_instance_id": self.semantic_instance_id,
+                "replicate_id": self.replicate_id,
                 "decoding_seed": self.decoding_seed,
                 "model_provenance_sha256": self.model_provenance_sha256,
             }
@@ -582,11 +584,16 @@ class PairedArtifactCoordinator:
         existing = self._store.reference(key)
         if existing is None:
             emission = self._artifacts.put_project(key, factory())
-            self._store.append_event(pairing.paired_block_id, "shared_project_generated", {
-                "pairing_sha256": pairing.digest(),
-                "artifact_sha256": emission.artifact_ref.sha256,
-                "project_package_sha256": emission.project_package_sha256,
-            })
+            self._store.append_event(
+                _paired_event_stream_id(pairing.paired_block_id),
+                "shared_project_generated",
+                {
+                    "paired_block_id": pairing.paired_block_id,
+                    "pairing_sha256": pairing.digest(),
+                    "artifact_sha256": emission.artifact_ref.sha256,
+                    "project_package_sha256": emission.project_package_sha256,
+                },
+            )
             return emission
         payload = json.loads(self._store.read_verified(existing))
         project = GeneratedProject(str(payload["project_name"]), dict(payload["files"]))
@@ -603,12 +610,24 @@ class PairedArtifactCoordinator:
             emission = self._artifacts.put_planning(
                 key, PlanningArtifactKind.SYSTEM_HIS, factory()
             )
-            self._store.append_event(pairing.paired_block_id, "shared_his_generated", {
-                "pairing_sha256": pairing.digest(),
-                "artifact_sha256": emission.artifact_ref.sha256,
-            })
+            self._store.append_event(
+                _paired_event_stream_id(pairing.paired_block_id),
+                "shared_his_generated",
+                {
+                    "paired_block_id": pairing.paired_block_id,
+                    "pairing_sha256": pairing.digest(),
+                    "artifact_sha256": emission.artifact_ref.sha256,
+                },
+            )
             return emission
         return PlanningArtifactEmission(PlanningArtifactKind.SYSTEM_HIS, existing)
+
+
+def _paired_event_stream_id(paired_block_id: str) -> str:
+    digest = hashlib.sha256(
+        f"paired-event-stream-v1:{paired_block_id}".encode("utf-8")
+    ).hexdigest()
+    return f"paired-{digest}"
 
 
 def _failure(stage: str, message: str) -> MethodStageFailure:

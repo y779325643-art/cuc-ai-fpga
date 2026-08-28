@@ -387,8 +387,11 @@ class RunnerConfigTest(unittest.TestCase):
                                 "method_condition": "M0",
                                 "analysis_population": "excluded",
                                 "semantic_instance_id": "semantic-counter-public-l2-001",
+                                "replicate_id": "replicate-000",
                                 "decoding_seed": 17,
                                 "paired_block_id": "pair-counter-public-l2-001-seed-17",
+                                "decoding_control_mode": "documented_seed_control",
+                                "execution_schedule_seed": 909991,
                                 "public_l2_harness_manifest": "evaluator/harness.json",
                             }
                         ],

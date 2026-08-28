@@ -20,6 +20,7 @@ from sr2fpga_agent.method_adapters import (
     SkeletonProjectOutput,
     SharedArtifactRefs,
     StructuredDirectMethodAdapter,
+    _paired_event_stream_id,
 )
 from sr2fpga_agent.method_contract import MethodConditionId
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
@@ -195,14 +196,51 @@ def _services(
     )
 
 
-def _pairing(context) -> PairingKey:
+def _pairing(context, replicate_id: str = "replicate-000") -> PairingKey:
     return PairingKey(
         paired_block_id="pair-001",
         requirement_revision_id=context.revision_id,
         semantic_instance_id="semantic-counter-001",
         decoding_seed=17,
         model_provenance_sha256="a" * 64,
+        replicate_id=replicate_id,
     )
+
+
+def test_pairing_key_digest_binds_replicate_identity() -> None:
+    context = _context()
+
+    assert _pairing(context).digest() != _pairing(
+        context, "replicate-001"
+    ).digest()
+
+
+def test_shared_event_stream_uses_safe_id_and_retains_contract_block_id(
+    tmp_path,
+) -> None:
+    context = _context()
+    direct = _DirectFacade()
+    store, _ = _services(tmp_path, direct=direct)
+    coordinator = PairedArtifactCoordinator(store)
+    pairing = PairingKey(
+        paired_block_id="pair:counter:001",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="semantic-counter-001",
+        decoding_seed=17,
+        model_provenance_sha256="a" * 64,
+        replicate_id="replicate-000",
+    )
+
+    coordinator.materialize_initial_project(
+        pairing, lambda: direct.emit_project(context)
+    )
+
+    stream_id = _paired_event_stream_id(pairing.paired_block_id)
+    assert ":" not in stream_id
+    event_refs = store.event_refs(stream_id)
+    assert len(event_refs) == 1
+    event = json.loads(store.read_verified(event_refs[0]))
+    assert event["payload"]["paired_block_id"] == "pair:counter:001"
 
 
 def test_m0_m1_consume_one_shared_initial_project(tmp_path) -> None:

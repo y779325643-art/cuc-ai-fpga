@@ -97,11 +97,14 @@ def _write_config(
                         "method_condition": method,
                         "analysis_population": analysis_population,
                         **(
-                            {
-                                "semantic_instance_id": "semantic-counter-001",
-                                "decoding_seed": 17,
-                                "paired_block_id": "pair-counter-001-seed-17",
-                            }
+                             {
+                                 "semantic_instance_id": "semantic-counter-001",
+                                 "replicate_id": "replicate-000",
+                                 "decoding_seed": 17,
+                                 "paired_block_id": "pair-counter-001-seed-17",
+                                 "decoding_control_mode": "documented_seed_control",
+                                 "execution_schedule_seed": 909991,
+                             }
                             if analysis_population == "excluded"
                             else {}
                         ),
@@ -347,26 +350,39 @@ def test_method_contract_scopes_calls_repairs_and_excluded_pack(tmp_path) -> Non
         for item in metadata
     )
     assert {
-        (
-            item["semantic_instance_id"],
-            item["decoding_seed"],
-            item["paired_block_id"],
-            item["pairing_identity_source"],
+         (
+             item["semantic_instance_id"],
+             item["replicate_id"],
+             item["decoding_seed"],
+             item["paired_block_id"],
+             item["decoding_control_mode"],
+             item["execution_schedule_seed"],
+             item["pairing_identity_source"],
         )
         for item in metadata
     } == {
         (
-            "semantic-counter-001",
-            17,
-            "pair-counter-001-seed-17",
-            "explicit",
+             "semantic-counter-001",
+             "replicate-000",
+             17,
+             "pair-counter-001-seed-17",
+             "documented_seed_control",
+             909991,
+             "explicit",
         )
     }
 
 
 @pytest.mark.parametrize(
     "missing_field",
-    ("semantic_instance_id", "decoding_seed", "paired_block_id"),
+    (
+        "semantic_instance_id",
+        "replicate_id",
+        "decoding_seed",
+        "paired_block_id",
+        "decoding_control_mode",
+        "execution_schedule_seed",
+    ),
 )
 def test_excluded_config_requires_complete_first_class_pairing_identity(
     tmp_path, missing_field
@@ -403,6 +419,7 @@ def test_runner_pairing_key_uses_explicit_instance_seed_and_block(tmp_path) -> N
     m4_pairing = _runner_pairing_key(config, m4_sample, m4_context)
 
     assert m3_pairing.semantic_instance_id == "semantic-counter-001"
+    assert m3_pairing.replicate_id == "replicate-000"
     assert m3_pairing.decoding_seed == 17
     assert m3_pairing.paired_block_id == "pair-counter-001-seed-17"
     assert m3_pairing == m4_pairing
@@ -483,6 +500,199 @@ def test_excluded_paired_block_rejects_conflicting_seed_before_dispatch(tmp_path
 
     with pytest.raises(SystemExit, match="bound to conflicting"):
         planned_samples(config)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("replicate_id", "replicate-001"),
+        ("execution_schedule_seed", 909992),
+        ("decoding_control_mode", "stochastic_blocked"),
+    ),
+)
+def test_excluded_paired_block_rejects_conflicting_block_identity_field(
+    tmp_path, field, value
+) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=("M3", "M4"),
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["tasks"][1][field] = value
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    config = load_runner_config(config_path)
+
+    with pytest.raises(SystemExit, match="bound to conflicting"):
+        planned_samples(config)
+
+
+def test_stochastic_blocked_explicit_identity_allows_null_requested_seed(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=("M4",),
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["tasks"][0]["decoding_control_mode"] = "stochastic_blocked"
+    payload["tasks"][0]["decoding_seed"] = None
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    sample = planned_samples(load_runner_config(config_path))[0]
+
+    assert sample.decoding_seed is None
+    assert sample.replicate_id == "replicate-000"
+    assert sample.execution_schedule_seed == 909991
+    assert sample.decoding_control_mode == "stochastic_blocked"
+
+
+def test_stochastic_blocked_requires_explicit_null_requested_seed_field(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=("M4",),
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["tasks"][0]["decoding_control_mode"] = "stochastic_blocked"
+    del payload["tasks"][0]["decoding_seed"]
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="first-class pairing identity"):
+        load_runner_config(config_path)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("semantic_instance_id", 123),
+        ("replicate_id", 456),
+        ("paired_block_id", 789),
+    ),
+)
+def test_explicit_identity_ids_reject_non_string_values(tmp_path, field, value) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=("M4",),
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["tasks"][0][field] = value
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match=f"{field} must be a string"):
+        load_runner_config(config_path)
+
+
+def test_explicit_identity_ids_use_contract_ascii_vocabulary(tmp_path) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_config(
+        config_path,
+        tmp_path,
+        methods=("M4",),
+        analysis_population="excluded",
+    )
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["tasks"][0]["replicate_id"] = "replicate-零"
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(SystemExit, match="replicate_id contains unsafe characters"):
+        load_runner_config(config_path)
+
+
+def test_legacy_development_derived_identity_remains_non_g3(tmp_path) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_config(config_path, tmp_path, methods=("M4",))
+
+    sample = planned_samples(load_runner_config(config_path))[0]
+
+    assert sample.pairing_identity_source == "development_derived"
+    assert sample.replicate_id == ""
+    assert sample.execution_schedule_seed is None
+    assert sample.decoding_control_mode == ""
+
+
+def test_replicate_and_schedule_identity_never_enter_m0_m5_model_prompts(
+    tmp_path,
+) -> None:
+    direct_path = tmp_path / "direct.json"
+    _write_direct_config(direct_path, tmp_path / "direct")
+    direct_payload = json.loads(direct_path.read_text(encoding="utf-8"))
+    for task in direct_payload["tasks"]:
+        task.update(
+            {
+                "analysis_population": "excluded",
+                "semantic_instance_id": "semantic-counter-001",
+                "replicate_id": "replicate-prompt-spy-7f4c",
+                "decoding_seed": 17,
+                "paired_block_id": "pair-counter-prompt-spy",
+                "decoding_control_mode": "documented_seed_control",
+                "execution_schedule_seed": 909991,
+            }
+        )
+    direct_path.write_text(json.dumps(direct_payload), encoding="utf-8")
+
+    his_path = tmp_path / "his.json"
+    _write_config(
+        his_path,
+        tmp_path / "his",
+        methods=("M2", "M3", "M4", "M5"),
+        analysis_population="excluded",
+    )
+
+    captured_by_method = {}
+    for config in (load_runner_config(direct_path), load_runner_config(his_path)):
+        for sample in planned_samples(config):
+            metadata = sample.metadata(config)
+            context, his_response, project_response = _responses(metadata)
+            store = ArtifactStore(tmp_path / "prompt-stores" / sample.method_condition)
+            if sample.method_condition in {"M0", "M1"}:
+                clients = [_Client(project_response)]
+                base_generator = DirectProjectGenerator(clients[0])
+            else:
+                first_response = (
+                    "Use one counter module with synchronous state."
+                    if sample.method_condition == "M2"
+                    else his_response
+                )
+                second_response = (
+                    project_response
+                    if sample.method_condition in {"M2", "M3"}
+                    else json.dumps({"behavior_files": {}})
+                )
+                clients = [_Client(first_response), _Client(second_response)]
+                base_generator = _TwoStageStub(*clients)
+            generator = _bind_runner_method_generator(
+                base_generator,
+                metadata,
+                config=config,
+                sample=sample,
+                method_artifact_store=store,
+                paired_artifact_coordinator=PairedArtifactCoordinator(store),
+            )
+            generator.generate(
+                ProjectRequest("counter", 8, "private-name", context.public_text),
+                PlatformProfile("generic_verilog", "generic", "open_source"),
+            )
+            method_calls = [call for client in clients for call in client.calls]
+            assert method_calls
+            captured_by_method[sample.method_condition] = method_calls
+
+    assert set(captured_by_method) == {"M0", "M1", "M2", "M3", "M4", "M5"}
+    serialized = json.dumps(captured_by_method, ensure_ascii=False)
+    assert "replicate-prompt-spy-7f4c" not in serialized
+    assert "909991" not in serialized
 
 
 @pytest.mark.parametrize("model_budget", (None, ModelCallBudget(2)))

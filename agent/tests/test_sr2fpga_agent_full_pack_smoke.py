@@ -1252,8 +1252,11 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
                 method_condition=method,
                 analysis_population="excluded",
                 semantic_instance_id="semantic-fir-full-pack-001",
+                replicate_id="replicate-000",
                 decoding_seed=17,
                 paired_block_id="pair-fir-full-pack-001-seed-17",
+                execution_schedule_seed=909991,
+                decoding_control_mode="documented_seed_control",
                 public_l2_harness_manifest=str(harness_manifest_path),
             )
             for method in ("M0", "M1", "M2", "M3", "M4", "M5")
