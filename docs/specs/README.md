@@ -18,11 +18,11 @@ and claim rules. Paper-1 does not train models. Its active version is
 
 ## Current Code-Development Specification
 
-- [Paper-1 code architecture and development specification v1.10](2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md)
+- [Paper-1 code architecture and development specification v1.11](2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md)
 
 This subordinate specification maps the frozen research protocol to code
 modules, interfaces, state machines, artifacts, development work packages, and
-acceptance tests. Its active version is `sr2fpga-paper1-code-dev-v1.10`. It does
+acceptance tests. Its active version is `sr2fpga-paper1-code-dev-v1.11`. It does
 not modify the estimand, method privileges, gate order, or outcome rules, and it
 is not evidence that a target architecture is already implemented.
 

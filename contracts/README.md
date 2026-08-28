@@ -103,10 +103,14 @@ future signed G4b loader.
 
 `paired-block-v1` binds the semantic-instance and replicate identities, public
 projection and model-provenance digests, decoding-control commitment,
-independent schedule seed, and the complete M0-M5 execution order. It is a
-development contract needed to close G3 ordering and pairing debt; validation
-or registration alone does not accept G3 or authorize an outcome-producing
-campaign.
+independent schedule seed, and the complete M0-M5 execution order. Its pure
+builder predicts the exact immutable reference before run-directory creation;
+the excluded Runner materializes and verifies that reference, then binds it
+through audit-only episode metadata, freeze records, events, trajectory input
+hashes, and full-pack reconciliation. Partial blocks and legacy development
+samples cannot mint the artifact. It remains a development contract: validation,
+registration, or the current runtime path does not accept G3 or authorize an
+outcome-producing campaign.
 
 `project-package-v1` is the canonical schema for the candidate package's
 `manifest.json`. It declares role-based top/source/interface/build intent and
@@ -260,11 +264,16 @@ evidence-ledger or campaign result.
 
 The v2 runner/outcome reconciliation contracts validate artifact-derived
 runtime-scenario evidence and restrict `open_blockers` to a closed enum that
-still includes the live `runtime_scenario_evidence_reconciliation` blocker. The v1
-contracts remain registered as backward-compatible historical shapes and retain
-their original blocker values. Contract registration does not establish current
-G3 closure; use [`docs/current-status.md`](../docs/current-status.md) for fixture,
-acceptance, and open-debt status.
+still includes the live `runtime_scenario_evidence_reconciliation` blocker.
+Runner reconciliation v2 additionally permits an optional, all-or-none
+paired-block reference plus planned/actual method orders and a verified-order
+flag; the runtime recomputes those values from the block, JSONL completion order,
+episode packs, freeze, and every trajectory attempt. Old v2 shapes without the
+optional group remain readable by the current Schema. The v1 contracts remain
+registered as backward-compatible historical shapes and retain their original
+blocker values. Contract registration does not establish current G3 closure; use
+[`docs/current-status.md`](../docs/current-status.md) for fixture, acceptance,
+and open-debt status.
 
 ## Accounting Contracts
 

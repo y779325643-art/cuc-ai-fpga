@@ -28,7 +28,7 @@ entry point, not protocol or outcome authority.
 | --- | --- |
 | What this checkout implements, verifies, or still lacks | [`docs/current-status.md`](docs/current-status.md) |
 | Research questions, methods, information boundaries, metrics, and gates | [Paper-1 freeze v1.7](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) |
-| Implementation architecture, interfaces, artifacts, and CD1-CD10 work packages | [Paper-1 code-architecture spec v1.10](docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) |
+| Implementation architecture, interfaces, artifacts, and CD1-CD10 work packages | [Paper-1 code-architecture spec v1.11](docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) |
 | Canonical machine-readable task families, IDs, and target intent | [Task catalog v0.2](contracts/task-catalog/sr2fpga-task-catalog-v0.2.json) |
 | Research and writing support behind the canonical freeze | [Paper-1 workspace](docs/research-program/paper1-v1/README.md) |
 | How to work safely in this repository | [`AGENTS.md`](AGENTS.md) |

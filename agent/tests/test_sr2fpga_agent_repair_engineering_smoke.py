@@ -278,8 +278,11 @@ def test_runner_repair_engineering_smoke_is_budgeted_and_fail_closed(
                 method_condition="M1",
                 analysis_population="excluded",
                 semantic_instance_id=f"semantic-counter-m1-repair-{index:03d}",
+                replicate_id="replicate-000",
                 decoding_seed=17,
                 paired_block_id=f"pair-counter-m1-repair-{index:03d}-seed-17",
+                execution_schedule_seed=909991,
+                decoding_control_mode="documented_seed_control",
                 public_l2_harness_manifest=str(harness_manifest),
             )
             for index in (1, 2)
@@ -486,8 +489,11 @@ def test_runner_hidden_fail_is_terminal_one_shot_and_never_repairs(
                 method_condition="M1",
                 analysis_population="excluded",
                 semantic_instance_id="semantic-counter-m1-hidden-fail-001",
+                replicate_id="replicate-000",
                 decoding_seed=17,
                 paired_block_id="pair-counter-m1-hidden-fail-001-seed-17",
+                execution_schedule_seed=909991,
+                decoding_control_mode="documented_seed_control",
                 public_l2_harness_manifest=str(harness_manifest),
             )
         ],

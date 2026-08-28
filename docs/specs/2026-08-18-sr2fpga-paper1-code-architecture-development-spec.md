@@ -2,7 +2,7 @@
 
 ## 0. 状态、权威与适用范围
 
-- **规范版本：** `sr2fpga-paper1-code-dev-v1.10`
+- **规范版本：** `sr2fpga-paper1-code-dev-v1.11`
 - **生效日期：** 2026-08-28
 - **规范类型：** Paper-1 下位实现设计规范（implementation design spec）
 - **研究上位权威：**
@@ -51,8 +51,9 @@ provenance；本地 `execution_schedule_seed` 单独控制 balanced order。G4b 
 eligible capability profile；后者估计冻结 provider/config 下的 stochastic expected
 effect，并禁止 common-randomness、seed-effect 或 bitwise-replay 论断。G3 只需从不可变
 protocol/documentation-review/per-call observations 重算 classifier 与 strict guard 的正负
-fixtures，不等待现实 provider eligible。当前 Runner 尚未实现 `replicate_id`、schedule
-authority 或 mode-aware G4b verifier，因此本同步新增实现债，不产生 G3 closure 或结果。
+fixtures，不等待现实 provider eligible。当前 Runner 已实现 development-only replicate/
+schedule/order authority，但仍无 mode-aware G4b verifier 或现实 eligible provider；因此该
+同步与后续实现均不产生 G3 closure 或结果。
 
 v1.9 同步 `paper1-freeze-v1.7` 的结果前 RQ1 统计修订：`M4-M3` 与
 `M4-M0` 构成两项主要 Holm family，`M3-M2` 是强制报告的 secondary
@@ -86,8 +87,22 @@ model-gateway-provenance v1、model-output refs 与 measurement freezes 不原�
 `application/json` model-output refs 仍按 bytes 读取；seed-capability v1 视为 Chat
 Completions probe identity，Responses 需要未来 versioned capability contract 才可能进入
 strict paired mode；新增 freeze 字段只由 v1.10 producer 写入。M4/M5 shared immutable
-initial project、M5 `@1`/`@A` correction separation、`replicate_id` 与 schedule authority
-继续是 G3 debt，本版本不宣称关闭。
+initial project、M5 `@1`/`@A` correction separation、positive G3 reducer 与完整 scenario/
+cost closure 继续是 G3 debt，本版本不宣称关闭。
+
+v1.11 实现 G3a development paired-block identity/order authority。注册的
+`paired-block-v1` 绑定 semantic instance、replicate、public projection、共同 effective
+model/gateway identity、decoding-control provenance、独立 schedule seed 与完整 M0-M5
+Williams row，且所有 official/pass-credit/G3/G4b 位固定 false。Runner 在创建 run 目录前
+以纯函数规划确定性 payload/ref，拒绝 method order、block membership 与共同模型配置冲突；
+runtime 只在 run-scoped ArtifactStore 物化并 verified read-back，随后由 artifact order 驱动
+freeze 与串行 loop。相同 ref/ordinal 进入 episode-pack audit projection、measurement
+freeze、generation/completion events、hidden commitment 与每个 trajectory attempt 的 input
+hash；full-pack runner reconciliation v2 可选地携带成组 block/order 字段，并从 JSONL 实际
+顺序、六个 packs、freeze 与 trajectories 重算。旧 episode-pack-v1、trajectory-v2 和不含
+该可选组的 runner-reconciliation-v2 仍可由当前 reader 读取；旧 closed Schema reader
+不保证读取新增可选字段。Partial excluded block 与 `development_derived` 兼容样本不签发
+block artifact。该切片只关闭 G3a 实现债，不关闭 G3，也不构成模型或实验结果。
 
 v1.4 同步 development/excluded evaluator authority 的实现进度：每个 attempt 在
 evaluation 前进入 immutable candidate authority，public diagnosis 是 repair 的唯一
@@ -1217,7 +1232,7 @@ release shape 也不等于验签或训练授权。
 | `attempt_event` v1 | executor | recorder/analysis | 已注册 closed Schema；write-once writer/reducer 已测试，Runner/tool producers 尚未完整接入 |
 | `cost_summary` v1 | accounting reducer | analysis | 已注册且可从 closed raw events 重建；全轴 runtime producer 与 full-pack 对账未闭合 |
 | `paired_outcome` v1 | analysis reducer | paper analysis | 未注册 |
-| `paired_block` v1 | G4a/G4b pack builder | runner/accounting/analysis | 未注册；Runner task/episode/event 已有 first-class semantic-instance/seed/block identity，gateway provenance 可区分 seed forwarding 与未验证的 deterministic support，但尚无 registered block manifest、provider seed-control capability proof 或 shared-checkpoint authority |
+| `paired_block` v1 | development pure planner / future G4a-G4b pack builder | runner/accounting/analysis | 已注册并由 excluded complete-block Runner 物化；绑定 first-class semantic/replicate identity、public/model provenance、decoding mode、requested-seed provenance、独立 schedule seed 与一条合法 Williams row。Reader 重验 Schema 与 seed/order cross-field rule；ref 贯穿 audit-only pack、freeze、events、trajectory input hash 与 full-pack v2 optional reconciliation。Partial/legacy samples不签发；所有 authority 位为 false，且尚无 provider capability-to-call binding、shared-checkpoint/cost-view authority 或 G3 acceptance |
 | `g3_acceptance` v1 | development gate reducer | G4a/G4b verifier | 未注册；既有 outcome contracts 固定 non-official 且不可授予 G3 pass |
 | `target_profile_pair` v1 | optional extension pack builder | runner/evaluator | conditional；pilot v1 非 official，无 official pair loader/compliance authority |
 | `target_profile_outcome` v1 | optional extension evaluator/reducer | extension analysis | conditional；无 official `TPA-L4` producer |
@@ -1686,20 +1701,23 @@ diagnosis/valid-patch/rerun、outer-repair cost、三类 missingness、全六条
 与 zero replacement，并把无 official authority 的 official VPP 固定为 `not_evaluated`。
 可选的 development/excluded trusted public L2 与 sanitized hidden development reducer 已
 接入，scripted fixture 可得到 6/6 development VPP pass；但仍没有 positive
-`g3-acceptance-v1` authority、provider seed-control/fingerprint evidence、M0/M1 与
-M4/M5 共享初始工程的统一 authority、三种 cost view、two-axis hidden missingness，且
-required G3 scenario matrix 尚未闭合。因此现有 CD9 slices 仍不满足 accepted G3
+`g3-acceptance-v1` authority、per-call provider seed-control evidence、M0/M1 与
+M4/M5 共享初始工程的 block-level 统一 authority、三种 cost view、two-axis hidden
+missingness，且 required G3 scenario matrix 尚未闭合。因此现有 CD9 slices 仍不满足 accepted G3
 closure。official hidden/VPP producer、完整 candidate benchmark、G5 provenance 与
 enabled extension 的 profile-pair seals 是后续 G4a-G6 debt，不得作为让 G3 不可达的
 验收条件。该 fake-provider engineering smoke 不构成实验结果或 evidence-ledger 记录。
 
-**2026-08-26 paired identity slice：已实现，G3 仍未验收。** Excluded M0-M5
-Runner task 必须显式给出 `semantic_instance_id`、非负 `decoding_seed` 与
-`paired_block_id`，且一个 task 只表示一个 semantic instance。Runner 将这些字段传播到
-episode pack、preflight、measurement freeze、generation/completion event 与 pairing key；
-同一 block 若绑定不同 requirement hash、semantic instance 或 seed，或重复 method，均在
-dispatch 前 fail closed。非 excluded 兼容路径可使用显式标记为
-`development_derived` 的确定性身份，但不得进入 G3/G4b。随后注册的
+**2026-08-28 G3a paired-block identity/order slice：已实现，G3 仍未验收。**
+Complete excluded M0-M5 block 必须显式给出 `semantic_instance_id`、`replicate_id`、
+`paired_block_id`、`decoding_control_mode`、requested-seed provenance 与独立
+`execution_schedule_seed`。Pure planner 在 run-directory side effect 前验证 exact 六成员、
+共同 public projection/effective model config 与合法 Williams row，计算确定性
+`paired-block-v1` ref；runtime 物化、verified read-back 并按 artifact order 构造 freeze/
+loop。相同 ref 与 ordinal 经 audit-only episode pack、measurement freeze、events、hidden
+commitment 和每个 trajectory attempt 进入 full-pack v2 reconciliation；order/ref/freeze/
+trajectory tamper fail closed。Partial excluded 与显式标记为 `development_derived` 的兼容
+路径不签发 block artifact，也不得进入 G3/G4b。随后注册的
 `development-provider-seed-capability-v1` 与 strict pre-dispatch guard 已能阻止缺失、
 不匹配或不具资格的 provider profile 进入 paired-confirmatory execution；真实 DeepSeek
 probe 仅证明冻结请求下三次输出/fingerprint 匹配，因 provider 未文档化 deterministic
@@ -1707,8 +1725,8 @@ seed control 且 documentation review 仅为 `self_reviewed_development` 而保�
 `unverified`，OpenAI probe 则停在 authentication infrastructure error。Capability reader
 现从完整 protocol 与有序 per-call observations 重算所有 summary/eligibility，aggregate
 tamper fail closed；但逐 model-call `seed_control_evidence_ref`、capability seed 与 task
-requested seed 的 Runner 级一致性、`replicate_id` 仍未实现。当前仍无 eligible provider
-profile、registered paired-block authority 或 positive `g3-acceptance-v1`。
+requested seed 的 Runner 级一致性、eligible provider profile、shared checkpoint/
+three-view cost authority 与 positive `g3-acceptance-v1` 仍未实现。
 
 2026-08-25 的 artifact-derived repair slice 已将既有 repair engineering smoke 升级为
 explicit excluded M1 authority fixture：attempt 0 在 evaluator-owned L1 失败并产生 diagnosis；有效且只触及

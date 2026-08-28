@@ -282,25 +282,28 @@ explicitly excluded, and sets `official_outcome=false`, `rq1_evidence=false`,
 `rq2_evidence=false`, `g3_accepted=false`, and `g4b_authorized=false`. Its
 closed scenario facts reject raw hidden output and undeclared fields.
 
-This is not an accepted G3 package. The current excluded M0-M5 Runner tasks
-require an explicit `semantic_instance_id`, non-negative `decoding_seed`, and
-`paired_block_id`; these v1.5-era values are propagated through the episode pack,
-measurement freeze, events, hidden commitment, and pairing key, and conflicting
-block bindings fail before dispatch. The active v1.7 freeze retains the v1.6
-requirement for a separate `replicate_id`, treats requested seed only as provider
-provenance, and uses an independent `execution_schedule_seed`. Those fields and the
-`documented_seed_control|stochastic_blocked` mode are not yet implemented. The
-existing path is therefore compatibility/runtime plumbing, not a registered
-replicate-block authority or proof that a remote provider obeys the requested
-seed. Per-sample Runner costs are reconstructed
+This is not an accepted G3 package. Complete excluded M0-M5 Runner blocks now
+require explicit semantic-instance, replicate, block, decoding-control, requested-
+seed provenance, and independent schedule identities. Before a run directory is
+created, a pure planner verifies one common effective model/gateway configuration
+and one allowed six-method Williams row. Runtime then materializes and re-reads one
+registered `paired-block-v1` artifact, drives the serial execution order from that
+artifact, and binds the same reference through audit-only episode-pack metadata,
+measurement freeze records, generation/completion events, every trajectory
+attempt's input hashes, and full-pack runner reconciliation. Preflight predicts the
+same block reference and episode-pack hash as runtime. Partial excluded blocks and
+legacy `development_derived` samples mint no paired-block artifact. This is
+development identity/order conformance, not proof that a remote provider obeys a
+requested seed. Per-sample Runner costs are reconstructed
 from raw events and development hidden consumes the same terminal seal. A
 registered `full-pack-runner-reconciliation-v1` companion originally
 independently re-verified exactly one M0-M5 `trajectory-v2` set, every cost
 summary and axis, matching terminal seals, shared public-projection binding,
 and opaque hidden refs; wrong-method and tampered trajectories fail closed. The
 v1 contract remains registered for artifact compatibility. The current assembler
-writes `full-pack-runner-reconciliation-v2`, which retains those checks and
-records the live runtime-scenario evidence blocker. An assembler now
+writes `full-pack-runner-reconciliation-v2`, which retains those checks,
+optionally binds the verified paired-block reference plus planned/actual method
+order, and records the live runtime-scenario evidence blocker. An assembler now
 consumes the completion events from one real fake-provider, excluded M0-M5
 `run_batch` and writes both reports. For HIS methods, downstream Agent H
 validation reuses the episode pack's frozen public context rather than adding
@@ -338,8 +341,9 @@ best-effort support to deterministic control.
 
 The capability profile is not yet attached to each model call through
 `seed_control_evidence_ref`, and Runner does not yet verify that its profile
-seed equals every task's requested seed. Those end-to-end bindings, plus v1.6
-`replicate_id` and schedule authority, remain CD9 work.
+seed equals every task's requested seed. Those end-to-end capability bindings,
+shared block checkpoints, and three-view cost reconciliation remain CD9 work;
+the separate replicate/schedule/order lineage is implemented by G3a.
 
 A separate excluded M1 repair fixture now exercises one artifact-derived project
 repair path through the real Runner authority. Attempt 0 fails evaluator-owned
