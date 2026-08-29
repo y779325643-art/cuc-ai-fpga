@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import copy
 import re
+from dataclasses import replace
 from typing import Any, Callable, Mapping
 
 from sr2fpga_agent.episode_executor import EpisodeExecutor
@@ -28,6 +29,7 @@ from sr2fpga_agent.method_adapters import (
     MethodAdapterRegistry,
     PairedArtifactCoordinator,
     PairingKey,
+    PlanningArtifactEmission,
     ProjectCandidateEmission,
     SkeletonProjectOutput,
     SharedArtifactRefs,
@@ -252,6 +254,7 @@ class FrozenContextHisGeneratorBridge:
         _platform: PlatformProfile,
     ) -> GeneratedProject:
         shared = self._prepared_shared_artifacts or SharedArtifactRefs()
+        self._validate_prepared_artifacts(shared)
         if shared.system_his is not None:
             self.last_initial_planning_artifact = shared.system_his
         elif self._coordinator is not None and self._pairing is not None:
@@ -260,7 +263,7 @@ class FrozenContextHisGeneratorBridge:
                 lambda: self._system_his.emit_his(self._context),
             )
             self.last_initial_planning_artifact = shared_his
-            shared = SharedArtifactRefs(system_his=shared_his)
+            shared = _merge_shared_system_his(shared, shared_his)
 
         outcome = EpisodeExecutor(
             max_his_corrections=self._max_his_corrections,
@@ -316,6 +319,54 @@ class FrozenContextHisGeneratorBridge:
                 skeleton,
             )
         return self._services.artifacts.read_project(outcome.candidate)
+
+    def _validate_prepared_artifacts(self, shared: SharedArtifactRefs) -> None:
+        initial_project = shared.initial_project
+        system_his = shared.system_his
+        trusted_skeleton = self._prepared_trusted_skeleton
+        has_prepared = any(
+            value is not None
+            for value in (initial_project, system_his, trusted_skeleton)
+        )
+        method = self._adapter.contract.method_condition.value
+        if not has_prepared:
+            return
+        if not self._adapter.contract.emits_system_his:
+            raise ValueError(f"{method} does not accept prepared HIS artifacts")
+        if not self._adapter.contract.uses_deterministic_skeleton:
+            if initial_project is not None or trusted_skeleton is not None:
+                raise ValueError(
+                    f"{method} does not accept a prepared project or trusted skeleton"
+                )
+            return
+        if trusted_skeleton is not None and initial_project is None:
+            raise ValueError("prepared trusted skeleton requires prepared project")
+        if initial_project is None:
+            return
+        if system_his is None:
+            raise ValueError("prepared project requires prepared System-HIS")
+        if trusted_skeleton is None:
+            raise ValueError("prepared project requires prepared trusted skeleton")
+        if self._pairing is None:
+            raise ValueError("prepared project requires pairing identity")
+        prefix = f"paired/{self._pairing.digest()}"
+        expected_project_key = f"{prefix}/skeleton-initial-project"
+        expected_trusted_key = f"{prefix}/trusted-skeleton"
+        if initial_project.artifact_ref.key != expected_project_key:
+            raise ValueError("prepared project key does not match pairing checkpoint")
+        if trusted_skeleton.artifact_ref.key != expected_trusted_key:
+            raise ValueError(
+                "prepared trusted skeleton key does not match pairing checkpoint"
+            )
+        self._services.artifacts.read_project(initial_project)
+        self._services.artifacts.read_project(trusted_skeleton)
+
+
+def _merge_shared_system_his(
+    shared: SharedArtifactRefs,
+    system_his: PlanningArtifactEmission,
+) -> SharedArtifactRefs:
+    return replace(shared, system_his=system_his)
 
 
 class FrozenContextSystemHisCorrectionFacade:
