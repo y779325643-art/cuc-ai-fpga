@@ -8,7 +8,8 @@
   "required": [
     "contract_version", "evaluation_scope", "paired_block_ref", "preparation_policy_sha256",
     "manifest_status", "nodes", "block_event_refs", "block_events_sha256",
-    "official_outcome", "official_authority", "pass_credit_authority", "g3_accepted", "g4b_authorized"
+    "official_outcome", "official_authority", "pass_credit_authority", "rq1_evidence",
+    "rq2_evidence", "g3_accepted", "g4b_authorized"
   ],
   "properties": {
     "contract_version": {"const": "development-shared-checkpoint-manifest-v1"},
@@ -32,6 +33,8 @@
     "official_outcome": {"const": false},
     "official_authority": {"const": false},
     "pass_credit_authority": {"const": false},
+    "rq1_evidence": {"const": false},
+    "rq2_evidence": {"const": false},
     "g3_accepted": {"const": false},
     "g4b_authorized": {"const": false}
   },
@@ -76,6 +79,9 @@
         {"if": {"properties": {"checkpoint_id": {"const": "shared_system_his"}}, "required": ["checkpoint_id"]}, "then": {"properties": {"parent_checkpoint_ids": {"const": []}, "consumer_methods": {"const": ["M3", "M4", "M5"]}, "project_package_sha256": {"type": "null"}, "trusted_skeleton_ref": {"type": "null"}}}},
         {"if": {"properties": {"checkpoint_id": {"const": "skeleton_initial_project"}}, "required": ["checkpoint_id"]}, "then": {"properties": {"parent_checkpoint_ids": {"const": ["shared_system_his"]}, "consumer_methods": {"const": ["M4", "M5"]}, "project_package_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}, "trusted_skeleton_ref": {"oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]}}}},
         {"if": {"properties": {"checkpoint_id": {"enum": ["direct_initial_project", "skeleton_initial_project"]}, "status": {"const": "completed"}}, "required": ["checkpoint_id", "status"]}, "then": {"properties": {"project_package_sha256": {"$ref": "#/$defs/sha256"}}}},
+        {"if": {"properties": {"checkpoint_id": {"const": "direct_initial_project"}, "status": {"const": "completed"}}, "required": ["checkpoint_id", "status"]}, "then": {"properties": {"artifact_ref": {"properties": {"key": {"pattern": "/direct-initial-project$"}}, "required": ["key"]}}}},
+        {"if": {"properties": {"checkpoint_id": {"const": "shared_system_his"}, "status": {"const": "completed"}}, "required": ["checkpoint_id", "status"]}, "then": {"properties": {"artifact_ref": {"properties": {"key": {"pattern": "/system-his$"}}, "required": ["key"]}}}},
+        {"if": {"properties": {"checkpoint_id": {"const": "skeleton_initial_project"}, "status": {"const": "completed"}}, "required": ["checkpoint_id", "status"]}, "then": {"properties": {"artifact_ref": {"properties": {"key": {"pattern": "/skeleton-initial-project$"}}, "required": ["key"]}}}},
         {"if": {"properties": {"checkpoint_id": {"const": "skeleton_initial_project"}, "status": {"const": "completed"}}, "required": ["checkpoint_id", "status"]}, "then": {"properties": {"trusted_skeleton_ref": {"$ref": "#/$defs/artifact_ref"}, "artifact_ref": {"not": {"properties": {"key": {"pattern": "trusted-skeleton"}}, "required": ["key"]}}}}}
       ]
     }

@@ -104,6 +104,8 @@ def write_development_shared_checkpoint_manifest(
         "official_outcome": False,
         "official_authority": False,
         "pass_credit_authority": False,
+        "rq1_evidence": False,
+        "rq2_evidence": False,
         "g3_accepted": False,
         "g4b_authorized": False,
     }
@@ -164,6 +166,14 @@ def _validate_nodes(
         )
         for checkpoint in CheckpointId
     }
+    nodes_by_id = {node.checkpoint_id: node for node in nodes}
+    direct = nodes_by_id[CheckpointId.DIRECT_INITIAL_PROJECT]
+    skeleton = nodes_by_id[CheckpointId.SKELETON_INITIAL_PROJECT]
+    if (
+        direct.artifact_ref is not None
+        and direct.artifact_ref == skeleton.artifact_ref
+    ):
+        raise ValueError("direct and skeleton checkpoint artifacts must be distinct")
     for node in nodes:
         if node.parent_checkpoint_ids != _PARENTS[node.checkpoint_id]:
             raise ValueError("checkpoint parent graph mismatch")
@@ -175,7 +185,10 @@ def _validate_nodes(
             raise ValueError("checkpoint source event partition mismatch")
         if node.source_events_sha256 != _event_set_sha256(store, node.source_event_refs):
             raise ValueError("checkpoint source event-set digest mismatch")
-        _validate_node_artifacts(store, node, events)
+        partition_events = tuple(
+            event for event in events if event["checkpoint_id"] == node.checkpoint_id.value
+        )
+        _validate_node_artifacts(store, node, partition_events)
 
 
 def _validate_node_artifacts(
@@ -183,6 +196,24 @@ def _validate_node_artifacts(
 ) -> None:
     if node.status not in {"completed", "failed", "not_run"}:
         raise ValueError("checkpoint status is invalid")
+    terminal = [
+        event
+        for event in events
+        if event["event_kind"]
+        in {"checkpoint_materialized", "checkpoint_failed", "checkpoint_not_run"}
+    ]
+    expected_event_kind = {
+        "completed": "checkpoint_materialized",
+        "failed": "checkpoint_failed",
+        "not_run": "checkpoint_not_run",
+    }[node.status]
+    if (
+        len(terminal) != 1
+        or terminal[0]["event_kind"] != expected_event_kind
+        or terminal[0]["status"] != node.status
+        or terminal[0]["reason"] != node.reason
+    ):
+        raise ValueError("checkpoint terminal event does not match manifest node")
     if node.status != "completed":
         if node.reason is None or any(
             value is not None
@@ -198,18 +229,10 @@ def _validate_node_artifacts(
     if node.reason is not None or node.artifact_ref is None or node.content_sha256 is None:
         raise ValueError("completed checkpoint needs artifact content and no reason")
     _require_store_reference(store, node.artifact_ref, "checkpoint artifact")
+    _require_checkpoint_artifact_key(node)
     content = store.read_verified(node.artifact_ref)
     if node.content_sha256 != hashlib.sha256(content).hexdigest():
         raise ValueError("checkpoint content digest mismatch")
-    terminal = [
-        event
-        for event in events
-        if event["checkpoint_id"] == node.checkpoint_id.value
-        and event["event_kind"]
-        in {"checkpoint_materialized", "checkpoint_failed", "checkpoint_not_run"}
-    ]
-    if len(terminal) != 1 or terminal[0]["status"] != "completed":
-        raise ValueError("checkpoint terminal event does not match completed node")
     output_refs = tuple(_artifact_ref(item) for item in terminal[0]["output_artifact_refs"])
     if node.artifact_ref not in output_refs:
         raise ValueError("completed checkpoint artifact is absent from raw event")
@@ -253,6 +276,14 @@ def _verify_project_digest(content: bytes, expected: str | None, label: str) -> 
     actual = project_package_sha256(project)
     if expected is not None and expected != actual:
         raise ValueError(f"{label} package digest mismatch")
+
+
+def _require_checkpoint_artifact_key(node: CheckpointNode) -> None:
+    if node.artifact_ref is None:
+        raise ValueError("completed checkpoint needs an artifact key")
+    suffix = _CHECKPOINT_SUFFIX[node.checkpoint_id]
+    if not node.artifact_ref.key.endswith(f"/{suffix}"):
+        raise ValueError(f"checkpoint artifact key must end with /{suffix}")
 
 
 def _node_payload(node: CheckpointNode) -> dict[str, Any]:

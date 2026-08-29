@@ -42,11 +42,16 @@ def _node(checkpoint_id: str) -> dict:
         "skeleton_initial_project": ["M4", "M5"],
     }
     project = checkpoint_id != "shared_system_his"
+    artifact_key = {
+        "direct_initial_project": "checkpoints/direct-initial-project",
+        "shared_system_his": "checkpoints/system-his",
+        "skeleton_initial_project": "checkpoints/skeleton-initial-project",
+    }[checkpoint_id]
     return {
         "checkpoint_id": checkpoint_id,
         "status": "completed",
         "reason": None,
-        "artifact_ref": _ref(f"checkpoints/{checkpoint_id}"),
+        "artifact_ref": _ref(artifact_key),
         "content_sha256": HASH,
         "project_package_sha256": HASH if project else None,
         "trusted_skeleton_ref": (
@@ -78,6 +83,8 @@ def _complete_manifest() -> dict:
         "official_outcome": False,
         "official_authority": False,
         "pass_credit_authority": False,
+        "rq1_evidence": False,
+        "rq2_evidence": False,
         "g3_accepted": False,
         "g4b_authorized": False,
     }
@@ -92,13 +99,37 @@ def test_manifest_requires_exact_checkpoint_graph() -> None:
         _validator().validate(wrong)
 
 
-@pytest.mark.parametrize("field", ("official_outcome", "official_authority", "pass_credit_authority", "g3_accepted", "g4b_authorized"))
+@pytest.mark.parametrize(
+    "field",
+    (
+        "official_outcome",
+        "official_authority",
+        "pass_credit_authority",
+        "rq1_evidence",
+        "rq2_evidence",
+        "g3_accepted",
+        "g4b_authorized",
+    ),
+)
 def test_manifest_rejects_authority_escalation(field: str) -> None:
     payload = _complete_manifest()
     payload[field] = True
 
     with pytest.raises(ValidationError):
         _validator().validate(payload)
+
+
+def test_manifest_requires_checkpoint_artifact_key_suffixes() -> None:
+    direct = _complete_manifest()
+    direct["nodes"][0]["artifact_ref"]["key"] = "checkpoints/wrong"
+    his = _complete_manifest()
+    his["nodes"][1]["artifact_ref"]["key"] = "checkpoints/wrong"
+    skeleton = _complete_manifest()
+    skeleton["nodes"][2]["artifact_ref"]["key"] = "checkpoints/wrong"
+
+    for payload in (direct, his, skeleton):
+        with pytest.raises(ValidationError):
+            _validator().validate(payload)
 
 
 def test_manifest_rejects_wrong_consumers_cycle_and_missing_event_refs() -> None:
