@@ -995,6 +995,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 paired_block_ref=paired_block_ref,
                 execution_ordinal=execution_ordinal,
                 prepared_block_runtime=prepared_block_runtime,
+                block_preparation_audit=sample_block_preparation_audit,
             )
             sample_repairer = (
                 _repairer_for_sample(
@@ -3743,7 +3744,13 @@ def _project_generator_for_sample(
     paired_block_ref: ArtifactRef | None = None,
     execution_ordinal: int | None = None,
     prepared_block_runtime: PreparedBlockRuntime | None = None,
+    block_preparation_audit: Mapping[str, Any] | None = None,
 ) -> object | None:
+    validated_block_preparation_audit = _validated_block_preparation_audit(
+        metadata,
+        prepared_block_runtime,
+        block_preparation_audit,
+    )
     connection = resolve_source_connection(config, sample.source)
     cache_key = f"{sample.source}:{sample.sample_id}"
     if connection.generation_mode in {"two_stage", "oracle_his2project"}:
@@ -3799,6 +3806,7 @@ def _project_generator_for_sample(
                 artifact_store=method_artifact_store,
                 paired_block_ref=paired_block_ref,
                 execution_ordinal=execution_ordinal,
+                block_preparation_audit=validated_block_preparation_audit,
             )
             if connection.generation_mode in {"two_stage", "oracle_his2project"}
             else None
@@ -3827,6 +3835,76 @@ def _project_generator_for_sample(
         return project_generator
     base_generator = project_generator or ProjectGenerator()
     return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
+
+
+def _validated_block_preparation_audit(
+    metadata: Mapping[str, Any] | None,
+    prepared_block_runtime: PreparedBlockRuntime | None,
+    block_preparation_audit: Mapping[str, Any] | None,
+) -> dict[str, Any] | None:
+    metadata_audit = (
+        metadata.get("block_preparation_audit") if metadata is not None else None
+    )
+    for value in (metadata_audit, block_preparation_audit):
+        if value is not None and not isinstance(value, Mapping):
+            raise TypeError("block preparation audit must be a mapping or null")
+    if prepared_block_runtime is None:
+        if metadata_audit is not None or block_preparation_audit is not None:
+            raise SystemExit("block preparation audit requires a prepared runtime")
+        return None
+    if metadata_audit is None or block_preparation_audit is None:
+        raise SystemExit("prepared runtime requires block preparation audit metadata")
+    audit = dict(metadata_audit)
+    if audit != dict(block_preparation_audit):
+        raise SystemExit("block preparation audit arguments do not match metadata")
+    expected_fields = {
+        "evaluation_scope",
+        "paired_block_ref",
+        "preparation_policy_sha256",
+        "physical_initial_model_call_ceiling",
+        "exclusive_model_call_ceilings",
+        "checkpoint_manifest_ref",
+        "block_event_refs",
+        "official_outcome",
+        "official_authority",
+        "pass_credit_authority",
+        "g3_accepted",
+        "g4b_authorized",
+    }
+    if set(audit) != expected_fields:
+        raise SystemExit("block preparation audit fields do not match runtime contract")
+    prepared = prepared_block_runtime.prepared
+    expected_refs = {
+        "paired_block_ref": prepared.paired_block_ref.to_dict(),
+        "checkpoint_manifest_ref": prepared.manifest_ref.to_dict(),
+        "block_event_refs": [
+            reference.to_dict() for reference in prepared.event_refs
+        ],
+    }
+    if any(audit[field] != value for field, value in expected_refs.items()):
+        raise SystemExit("block preparation audit refs do not match prepared runtime")
+    if audit["exclusive_model_call_ceilings"] != (
+        prepared_block_runtime.exclusive_model_call_ceilings
+    ):
+        raise SystemExit("block preparation audit ceilings do not match prepared runtime")
+    if audit["evaluation_scope"] != "excluded_development_conformance_only":
+        raise SystemExit("block preparation audit scope is invalid")
+    if audit["physical_initial_model_call_ceiling"] != 3:
+        raise SystemExit("block preparation audit physical ceiling is invalid")
+    if not re.fullmatch(r"[0-9a-f]{64}", audit["preparation_policy_sha256"]):
+        raise SystemExit("block preparation audit policy hash is invalid")
+    if any(
+        audit[field] is not False
+        for field in (
+            "official_outcome",
+            "official_authority",
+            "pass_credit_authority",
+            "g3_accepted",
+            "g4b_authorized",
+        )
+    ):
+        raise SystemExit("block preparation audit cannot grant authority")
+    return audit
 
 
 def _model_client_for_sample(
@@ -4721,6 +4799,11 @@ def _generation_event_sink(
     execution_ordinal: int | None = None,
     block_preparation_audit: Mapping[str, Any] | None = None,
 ):
+    if block_preparation_audit is not None and not isinstance(
+        block_preparation_audit, Mapping
+    ):
+        raise TypeError("block preparation audit must be a mapping or null")
+
     def emit(payload: dict[str, Any]) -> None:
         enriched = {
             **payload,

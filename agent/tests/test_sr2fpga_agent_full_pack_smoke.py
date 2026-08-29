@@ -1328,6 +1328,9 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
     freeze_seen_before_provider_construction = []
 
     def build_generator(_connection, **_kwargs):
+        _kwargs["event_sink"](
+            {"event": "generation_stage_started", "stage": "req2his"}
+        )
         return generators.pop(0)
 
     def build_model_client(_config, sample, *, model_budget, stage):
@@ -1489,7 +1492,12 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         event
         for event in run_events
         if event.get("event")
-        in {"model_call_started", "model_call_finished", "model_call_failed"}
+        in {
+            "generation_stage_started",
+            "model_call_started",
+            "model_call_finished",
+            "model_call_failed",
+        }
     ]
     assert generation_events
     assert all(

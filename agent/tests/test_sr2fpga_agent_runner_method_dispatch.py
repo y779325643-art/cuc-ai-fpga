@@ -5,7 +5,8 @@ from unittest.mock import patch
 
 import pytest
 
-from sr2fpga_agent.artifact_store import ArtifactStore
+from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.block_preparation import PreparedBlockArtifacts
 from sr2fpga_agent.frozen_context import (
     context_from_validated_episode_pack,
     frozen_project_name,
@@ -33,6 +34,7 @@ from sr2fpga_agent.runner import (
     _project_generator_for_sample,
     _runner_pairing_key,
     _sample_attempt_limit,
+    PreparedBlockRuntime,
     load_runner_config,
     planned_samples,
     run_batch,
@@ -967,6 +969,167 @@ def test_runner_forwards_planned_seed_to_provider_builder(tmp_path, model_budget
         )
 
     assert observed["decoding_seed"] == 17
+
+
+def test_complete_m2_builder_events_receive_runtime_preparation_audit(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_complete_block_config(config_path, tmp_path)
+    config = load_runner_config(config_path)
+    sample = next(
+        sample for sample in planned_samples(config) if sample.method_condition == "M2"
+    )
+    paired_ref = ArtifactRef(
+        "paired-blocks/test-m2-audit",
+        "a" * 64,
+        1,
+        "application/json",
+    )
+    manifest_ref = ArtifactRef(
+        "shared-checkpoint-manifests/test-m2-audit",
+        "b" * 64,
+        2,
+        "application/json",
+    )
+    event_ref = ArtifactRef(
+        "block-preparation-events/test-m2-audit",
+        "c" * 64,
+        3,
+        "application/json",
+    )
+    exclusive = {"M0": 0, "M1": 0, "M2": 2, "M3": 1, "M4": 0, "M5": 0}
+    runtime = PreparedBlockRuntime(
+        prepared=PreparedBlockArtifacts(
+            paired_block_ref=paired_ref,
+            manifest_ref=manifest_ref,
+            direct_initial_project=None,
+            system_his=None,
+            skeleton_initial_project=None,
+            trusted_skeleton=None,
+            event_refs=(event_ref,),
+        ),
+        member_sample_ids=(sample.sample_id,),
+        exclusive_model_call_ceilings=exclusive,
+    )
+    audit = {
+        "evaluation_scope": "excluded_development_conformance_only",
+        "paired_block_ref": paired_ref.to_dict(),
+        "preparation_policy_sha256": "d" * 64,
+        "physical_initial_model_call_ceiling": 3,
+        "exclusive_model_call_ceilings": exclusive,
+        "checkpoint_manifest_ref": manifest_ref.to_dict(),
+        "block_event_refs": [event_ref.to_dict()],
+        "official_outcome": False,
+        "official_authority": False,
+        "pass_credit_authority": False,
+        "g3_accepted": False,
+        "g4b_authorized": False,
+    }
+    metadata = sample.metadata(config, paired_block_ref=paired_ref)
+    metadata["block_preparation_audit"] = audit
+    captured = {}
+
+    def build(_connection, **kwargs):
+        captured["event_sink"] = kwargs["event_sink"]
+        return object()
+
+    with (
+        patch(
+            "sr2fpga_agent.runner.build_project_generator_for_connection",
+            side_effect=build,
+        ),
+        patch(
+            "sr2fpga_agent.runner._bind_runner_method_generator",
+            side_effect=lambda generator, *_args, **_kwargs: generator,
+        ),
+    ):
+        _project_generator_for_sample(
+            {},
+            config,
+            sample,
+            tmp_path / "prepared-events.jsonl",
+            model_budget=ModelCallBudget(2),
+            metadata=metadata,
+            paired_block_ref=paired_ref,
+            execution_ordinal=4,
+            prepared_block_runtime=runtime,
+            block_preparation_audit=audit,
+        )
+
+    captured["event_sink"](
+        {"event": "generation_stage_started", "stage": "req2his"}
+    )
+    prepared_event = json.loads(
+        (tmp_path / "prepared-events.jsonl").read_text(encoding="utf-8").strip()
+    )
+    assert prepared_event["block_preparation_audit"] == audit
+    assert prepared_event["block_preparation_audit"] == metadata[
+        "block_preparation_audit"
+    ]
+
+    tampered_audit = {
+        **audit,
+        "checkpoint_manifest_ref": {
+            **manifest_ref.to_dict(),
+            "sha256": "e" * 64,
+        },
+    }
+    tampered_metadata = {
+        **metadata,
+        "block_preparation_audit": tampered_audit,
+    }
+    with pytest.raises(SystemExit, match="refs do not match prepared runtime"):
+        _project_generator_for_sample(
+            {},
+            config,
+            sample,
+            tmp_path / "tampered-events.jsonl",
+            metadata=tampered_metadata,
+            prepared_block_runtime=runtime,
+            block_preparation_audit=tampered_audit,
+        )
+
+    malformed_metadata = {**metadata, "block_preparation_audit": []}
+    with pytest.raises(TypeError, match="mapping or null"):
+        _project_generator_for_sample(
+            {},
+            config,
+            sample,
+            tmp_path / "malformed-events.jsonl",
+            metadata=malformed_metadata,
+            prepared_block_runtime=runtime,
+            block_preparation_audit=[],
+        )
+
+    captured.clear()
+    legacy_metadata = sample.metadata(config, paired_block_ref=paired_ref)
+    with (
+        patch(
+            "sr2fpga_agent.runner.build_project_generator_for_connection",
+            side_effect=build,
+        ),
+        patch(
+            "sr2fpga_agent.runner._bind_runner_method_generator",
+            side_effect=lambda generator, *_args, **_kwargs: generator,
+        ),
+    ):
+        _project_generator_for_sample(
+            {},
+            config,
+            sample,
+            tmp_path / "legacy-events.jsonl",
+            metadata=legacy_metadata,
+            paired_block_ref=paired_ref,
+            execution_ordinal=4,
+        )
+    captured["event_sink"](
+        {"event": "generation_stage_started", "stage": "req2his"}
+    )
+    legacy_event = json.loads(
+        (tmp_path / "legacy-events.jsonl").read_text(encoding="utf-8").strip()
+    )
+    assert "block_preparation_audit" not in legacy_event
 
 
 def test_strict_paired_seed_control_stops_before_run_side_effects(tmp_path) -> None:
