@@ -15,6 +15,7 @@ from sr2fpga_agent.block_cost_accounting import (
 from sr2fpga_agent.block_preparation import (
     CheckpointId,
     CheckpointNode,
+    read_development_shared_checkpoint_manifest,
     write_development_shared_checkpoint_manifest,
 )
 from sr2fpga_agent.cost_accounting import (
@@ -78,12 +79,14 @@ def _project(tag: str) -> GeneratedProject:
     )
 
 
-def _write_paired_block(store: ArtifactStore) -> ArtifactRef:
+def _write_paired_block(
+    store: ArtifactStore, *, lineage_id: str = "primary"
+) -> ArtifactRef:
     return write_development_paired_block(
         store,
-        paired_block_id="pair-cost-001",
-        semantic_instance_id="semantic-cost-001",
-        replicate_id="replicate-000",
+        paired_block_id=f"pair-cost-{lineage_id}",
+        semantic_instance_id=f"semantic-cost-{lineage_id}",
+        replicate_id=f"replicate-{lineage_id}",
         public_projection_sha256="1" * 64,
         model_provenance_sha256="2" * 64,
         decoding_control_mode="documented_seed_control",
@@ -255,15 +258,16 @@ def _write_trajectory(
     lineage_hashes: set[str],
     tamper_summary: bool = False,
     raw_lineage_mismatch: str | None = None,
+    lineage_id: str = "primary",
 ):
-    episode_id = f"episode-{method}"
-    claimed_candidate_id = f"candidate-{method}"
+    episode_id = f"episode-{lineage_id}-{method}"
+    claimed_candidate_id = f"candidate-{lineage_id}-{method}"
     raw_candidate_id = (
-        f"raw-candidate-{method}"
+        f"raw-candidate-{lineage_id}-{method}"
         if raw_lineage_mismatch == "candidate"
         else claimed_candidate_id
     )
-    output_hash = hashlib.sha256(method.encode()).hexdigest()
+    output_hash = hashlib.sha256(f"{lineage_id}:{method}".encode()).hexdigest()
     ledger = AttemptCostLedger(
         store,
         episode_id=episode_id,
@@ -296,8 +300,8 @@ def _write_trajectory(
     else:
         summary_ref = reconcile_cost_events(store, ledger.event_refs).artifact_ref
     terminal_ref = store.put_blob(
-        f"synthetic-terminals/{method}",
-        json.dumps({"method": method}).encode(),
+        f"synthetic-terminals/{lineage_id}/{method}",
+        json.dumps({"lineage_id": lineage_id, "method": method}).encode(),
         media_type="application/json",
     )
     event_ids = [
@@ -350,16 +354,17 @@ def _write_full_pack(
     paired_block_ref: ArtifactRef,
     paired_block: dict,
     trajectories: dict[str, tuple],
+    lineage_id: str = "primary",
 ) -> ArtifactRef:
     source_ref = store.put_blob(
-        "synthetic-full-pack/source",
-        b'{"synthetic":true}\n',
+        f"synthetic-full-pack/{lineage_id}/source",
+        json.dumps({"lineage_id": lineage_id, "synthetic": True}).encode(),
         media_type="application/json",
     )
     report = {
         "contract_version": "full-pack-runner-reconciliation-v2",
         "evaluation_scope": "excluded_development_conformance_only",
-        "smoke_id": "synthetic-cost-view",
+        "smoke_id": f"synthetic-cost-view-{lineage_id}",
         "analysis_population": "excluded",
         "g3_accepted": False,
         "g4b_authorized": False,
@@ -400,7 +405,7 @@ def _write_full_pack(
         },
     }
     return store.put_validated_json(
-        "synthetic-full-pack/runner-v2",
+        f"synthetic-full-pack/{lineage_id}/runner-v2",
         report,
         contract_key="full_pack_runner_reconciliation_v2",
     )
@@ -409,14 +414,16 @@ def _write_full_pack(
 def _fixture(
     tmp_path,
     *,
+    store: ArtifactStore | None = None,
+    lineage_id: str = "primary",
     failed_checkpoint: str | None = None,
     unavailable_checkpoint: str | None = None,
     unavailable_axis: str = "input_tokens",
     tampered_summary_method: str | None = None,
     raw_lineage_mismatch: str | None = None,
 ):
-    store = ArtifactStore(tmp_path / "store")
-    paired_block_ref = _write_paired_block(store)
+    store = store or ArtifactStore(tmp_path / "store")
+    paired_block_ref = _write_paired_block(store, lineage_id=lineage_id)
     paired_block = json.loads(store.read_verified(paired_block_ref))
     manifest_ref, block_event_refs, nodes = _write_checkpoint_sources(
         store,
@@ -466,6 +473,7 @@ def _fixture(
             raw_lineage_mismatch=(
                 raw_lineage_mismatch if method == "M0" else None
             ),
+            lineage_id=lineage_id,
         )
         trajectories[method] = trajectory
         sources.append(MethodCostSource(method, "completed", trajectory[0]))
@@ -475,6 +483,7 @@ def _fixture(
             paired_block_ref=paired_block_ref,
             paired_block=paired_block,
             trajectories=trajectories,
+            lineage_id=lineage_id,
         )
         if failed_checkpoint is None
         else None
@@ -575,7 +584,6 @@ def test_reducer_reconciles_actual_standalone_and_incremental_call_algebra(tmp_p
     (
         "shared_divided",
         "shared_omitted",
-        "pre_checkpoint_in_incremental",
         "m4_views_collapsed",
         "signed_delta",
     ),
@@ -603,9 +611,6 @@ def test_verified_reader_reconstructs_and_rejects_cost_algebra_tampering(
             records[method]["standalone_attributed_axes"]["logical_model_calls"][
                 "value"
             ] = records[method]["exclusive_axes"]["logical_model_calls"]["value"]
-    elif mutation == "pre_checkpoint_in_incremental":
-        treatment = contrasts["M1-M0"]["arms"][0]["axes"]["logical_model_calls"]
-        treatment["value"] += 1
     elif mutation == "m4_views_collapsed":
         after_his = contrasts["M4-M3"]["arms"][0]["axes"][
             "logical_model_calls"
@@ -623,6 +628,62 @@ def test_verified_reader_reconstructs_and_rejects_cost_algebra_tampering(
         fixture,
         tampered,
         label=mutation,
+        monkeypatch=monkeypatch,
+    )
+
+
+def test_verified_reader_rejects_direct_checkpoint_inserted_into_m1_incremental_arm(
+    tmp_path, monkeypatch
+) -> None:
+    fixture = _fixture(tmp_path)
+    result, _reference = _reconcile(fixture)
+    replay = replay_development_block_preparation(
+        fixture["store"], fixture["block_event_refs"]
+    )
+    m1_record = next(
+        record
+        for record in result["method_records"]
+        if record["method_condition"] == "M1"
+    )
+    m1_m0 = next(
+        contrast
+        for contrast in result["incremental_contrasts"]
+        if contrast["contrast_id"] == "M1-M0"
+    )
+    treatment = next(
+        arm for arm in m1_m0["arms"] if arm["method_condition"] == "M1"
+    )
+    exclusive_calls = m1_record["exclusive_axes"]["logical_model_calls"]["value"]
+    direct_calls = replay.checkpoint_axes["direct_initial_project"][
+        "logical_model_calls"
+    ]["value"]
+    incremental_calls = treatment["axes"]["logical_model_calls"]["value"]
+
+    assert exclusive_calls == 0
+    assert direct_calls == 1
+    assert incremental_calls == exclusive_calls == 0
+    known_wrong_with_direct_checkpoint = exclusive_calls + direct_calls
+    assert known_wrong_with_direct_checkpoint == 1
+
+    tampered = copy.deepcopy(result)
+    tampered_m1_m0 = next(
+        contrast
+        for contrast in tampered["incremental_contrasts"]
+        if contrast["contrast_id"] == "M1-M0"
+    )
+    tampered_treatment = next(
+        arm
+        for arm in tampered_m1_m0["arms"]
+        if arm["method_condition"] == "M1"
+    )
+    tampered_treatment["axes"]["logical_model_calls"]["value"] = (
+        known_wrong_with_direct_checkpoint
+    )
+
+    _assert_reconstruction_rejects_payload_tamper(
+        fixture,
+        tampered,
+        label="direct-checkpoint-in-m1-incremental",
         monkeypatch=monkeypatch,
     )
 
@@ -835,37 +896,49 @@ def test_reducer_rejects_missing_checkpoint_lineage_and_duplicate_method_partiti
             _reconcile(fixture, methods=methods)
 
 
-def test_reducer_rejects_full_pack_cross_lineage(tmp_path) -> None:
-    fixture = _fixture(tmp_path)
-    other = _fixture(tmp_path / "other")
-    fixture["full_pack_ref"] = other["full_pack_ref"]
-
-    with pytest.raises(PairedCostReconciliationError):
-        _reconcile(fixture)
-
-
 @pytest.mark.parametrize(
     ("lineage", "expected"),
     (
-        ("trajectory", "M0 trajectory is invalid"),
-        ("checkpoint", "checkpoint-manifest source is invalid"),
+        ("trajectory", "M0 trajectory omits checkpoint lineage"),
+        ("checkpoint", "checkpoint manifest belongs to another paired block"),
+        ("full_pack", "full-pack source belongs to another paired block"),
     ),
 )
-def test_reducer_rejects_valid_artifact_from_another_run_lineage(
+def test_reducer_rejects_readable_same_store_cross_lineage_reference(
     tmp_path, lineage: str, expected: str
 ) -> None:
-    fixture = _fixture(tmp_path / "current")
-    other = _fixture(tmp_path / "other")
+    fixture = _fixture(tmp_path, lineage_id="current")
+    other = _fixture(
+        tmp_path,
+        store=fixture["store"],
+        lineage_id="alternate",
+    )
+    alternate_trajectory_ref = other["trajectories"]["M0"][0]
+    alternate_manifest_ref = other["manifest_ref"]
+    alternate_full_pack_ref = other["full_pack_ref"]
+    assert json.loads(
+        fixture["store"].read_verified(alternate_trajectory_ref)
+    )["method_condition"] == "M0"
+    assert read_development_shared_checkpoint_manifest(
+        fixture["store"], alternate_manifest_ref
+    )["paired_block_ref"] == other["paired_block_ref"].to_dict()
+    assert alternate_full_pack_ref is not None
+    assert json.loads(
+        fixture["store"].read_verified(alternate_full_pack_ref)
+    )["paired_block_ref"] == other["paired_block_ref"].to_dict()
+
     if lineage == "trajectory":
         fixture["methods"] = [
             replace(
                 fixture["methods"][0],
-                trajectory_ref=other["trajectories"]["M0"][0],
+                trajectory_ref=alternate_trajectory_ref,
             ),
             *fixture["methods"][1:],
         ]
+    elif lineage == "checkpoint":
+        fixture["manifest_ref"] = alternate_manifest_ref
     else:
-        fixture["manifest_ref"] = other["manifest_ref"]
+        fixture["full_pack_ref"] = alternate_full_pack_ref
 
     with pytest.raises(PairedCostReconciliationError, match=expected):
         _reconcile(fixture)

@@ -14,12 +14,24 @@ from sr2fpga_agent.frozen_context import (
     context_from_validated_episode_pack,
     frozen_project_name,
 )
-from sr2fpga_agent.method_adapters import PairedArtifactCoordinator
+from sr2fpga_agent.generation.context_direct import FrozenContextProjectRepairFacade
+from sr2fpga_agent.generation.context_his import (
+    FrozenContextSystemHisCorrectionFacade,
+)
+from sr2fpga_agent.method_adapters import (
+    GenerationServices,
+    MethodAdapterRegistry,
+    MethodArtifactGateway,
+    PairedArtifactCoordinator,
+    PlanningArtifactKind,
+    RepairController,
+)
 from sr2fpga_agent.model_budget import ModelCallBudget
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
 from sr2fpga_agent.parsers import parse_system_his_v12
 from sr2fpga_agent.paired_block import build_balanced_method_orders
 from sr2fpga_agent.project_generator import ProjectGenerator
+from sr2fpga_agent.project_contract import build_composite_project_envelope
 from sr2fpga_agent.provider_seed_capability import (
     ProviderSeedProbeObservation,
     write_development_provider_seed_capability,
@@ -61,6 +73,15 @@ class _Client:
     def chat(self, messages):
         self.calls.append(messages)
         return self.response
+
+
+def _call_has_nonempty_message_content(call) -> bool:
+    return isinstance(call, list) and any(
+        isinstance(message, dict)
+        and isinstance(message.get("content"), str)
+        and bool(message["content"].strip())
+        for message in call
+    )
 
 
 class _TwoStageStub:
@@ -910,6 +931,9 @@ def test_m0_m5_prompt_spy_is_nonvacuous_and_hides_block_metadata(
         "sibling_method_outcomes": "sibling-outcomes-canary",
         "reconciliation_output": "reconciliation-output-canary",
         "hidden_commitments": "hidden-commitments-canary",
+        "execution_schedule_seed": "schedule-seed-value-canary-730001",
+        "method_order": "method-order-value-canary-M5-M1-M4-M0-M3-M2",
+        "execution_ordinal": "execution-ordinal-value-canary-4",
     }
     forbidden = (
         "pair-counter-prompt-spy",
@@ -930,6 +954,9 @@ def test_m0_m5_prompt_spy_is_nonvacuous_and_hides_block_metadata(
                 visibility_canaries["sibling_method_outcomes"],
                 visibility_canaries["reconciliation_output"],
                 visibility_canaries["hidden_commitments"],
+                visibility_canaries["execution_schedule_seed"],
+                visibility_canaries["method_order"],
+                visibility_canaries["execution_ordinal"],
             )
         ),
     )
@@ -967,16 +994,150 @@ def test_m0_m5_prompt_spy_is_nonvacuous_and_hides_block_metadata(
                 method_artifact_store=store,
                 paired_artifact_coordinator=PairedArtifactCoordinator(store),
             )
-            generator.generate(
+            platform = PlatformProfile("generic_verilog", "generic", "open_source")
+            generated_project = generator.generate(
                 ProjectRequest("counter", 8, "private-name", context.public_text),
-                PlatformProfile("generic_verilog", "generic", "open_source"),
+                platform,
             )
+            assert generator.last_outcome is not None
+            assert generator.last_outcome.candidate is not None
+            gateway = MethodArtifactGateway(store)
+            controller = RepairController()
+            if sample.method_condition == "M1":
+                repaired_files = dict(generated_project.files)
+                repaired_files["rtl/top.v"] += "\n// M1 prompt-spy repair\n"
+                repair_client = _Client(
+                    json.dumps(
+                        {
+                            "project_name": generated_project.project_name,
+                            "files": repaired_files,
+                        }
+                    )
+                )
+                repaired = controller.repair_project(
+                    MethodAdapterRegistry().create("M1"),
+                    context,
+                    generator.last_outcome.candidate,
+                    {
+                        "stage": "lint",
+                        "root_cause": "synthetic public lint failure",
+                        "affected_files": ["rtl/top.v"],
+                    },
+                    GenerationServices(
+                        artifacts=gateway,
+                        episode_id=f"{sample.sample_id}-project-repair",
+                        repair=FrozenContextProjectRepairFacade(repair_client),
+                    ),
+                )
+                assert gateway.read_project(repaired).files["rtl/top.v"].endswith(
+                    "// M1 prompt-spy repair\n"
+                )
+                clients.append(repair_client)
+            elif sample.method_condition == "M5":
+                system_his = json.loads(his_response)
+                planning = gateway.put_planning(
+                    f"prompt-repair-inputs/{sample.sample_id}/system-his",
+                    PlanningArtifactKind.SYSTEM_HIS,
+                    system_his,
+                )
+                correction_client = _Client(his_response)
+                editable_path = "rtl/top.v"
+                repairable_files = dict(generated_project.files)
+                repairable_files[editable_path] = repairable_files[
+                    editable_path
+                ].replace(
+                    "endmodule",
+                    "  // SR2FPGA_BEHAVIOR_BEGIN\n"
+                    "  // initial prompt-spy behavior\n"
+                    "  // SR2FPGA_BEHAVIOR_END\n"
+                    "endmodule",
+                    1,
+                )
+                repairable_project = type(generated_project)(
+                    generated_project.project_name, repairable_files
+                )
+                repairable_candidate = gateway.put_project(
+                    f"prompt-repair-inputs/{sample.sample_id}/m5-project",
+                    repairable_project,
+                )
+                repaired_rtl = repairable_files[editable_path].replace(
+                    "initial prompt-spy behavior",
+                    "repaired prompt-spy behavior",
+                )
+                project_repair_client = _Client(
+                    json.dumps({"rtl_files": {editable_path: repaired_rtl}})
+                )
+                trusted_event = store.append_event(
+                    sample.sample_id, "skeleton_built", {}
+                )
+                model_event = store.append_event(
+                    sample.sample_id, "behavior_generated", {}
+                )
+                trusted_event_id = json.loads(store.read_verified(trusted_event))[
+                    "event_id"
+                ]
+                model_event_id = json.loads(store.read_verified(model_event))[
+                    "event_id"
+                ]
+                envelope = build_composite_project_envelope(
+                    repairable_project,
+                    episode_id=sample.sample_id,
+                    method_condition_id="M5",
+                    snapshot_id="snapshot-prompt-spy",
+                    trusted_builder_event_id=trusted_event_id,
+                    model_generation_event_id=model_event_id,
+                    event_ref_resolver=store.has_event_id,
+                )
+                repair_facade = FrozenContextSystemHisCorrectionFacade(
+                    correction_client,
+                    platform,
+                    project_client=project_repair_client,
+                    project_envelope=envelope,
+                    event_ref_resolver=store.has_event_id,
+                )
+                repair_services = GenerationServices(
+                    artifacts=gateway,
+                    episode_id=f"{sample.sample_id}-repairs",
+                    repair=repair_facade,
+                )
+                corrected = controller.correct_his(
+                    MethodAdapterRegistry().create("M5"),
+                    context,
+                    planning,
+                    {
+                        "failed_h_stage": "h0",
+                        "diagnostics": ["synthetic public H0 failure"],
+                    },
+                    repair_services,
+                )
+                assert gateway.read_planning(corrected)["schema_version"] == (
+                    "system-his-v1.2"
+                )
+                repaired = controller.repair_project(
+                    MethodAdapterRegistry().create("M5"),
+                    context,
+                    repairable_candidate,
+                    {
+                        "stage": "lint",
+                        "diagnostics": ["synthetic public RTL failure"],
+                    },
+                    repair_services,
+                )
+                assert gateway.read_project(repaired).files[editable_path] == repaired_rtl
+                clients.extend((correction_client, project_repair_client))
             method_calls = [call for client in clients for call in client.calls]
             assert method_calls
             captured_by_method[sample.method_condition] = method_calls
 
     assert set(captured_by_method) == {"M0", "M1", "M2", "M3", "M4", "M5"}
-    assert all(captured_by_method[method] for method in captured_by_method)
+    assert all(captured_by_method.values())
+    assert all(
+        _call_has_nonempty_message_content(call)
+        for method_calls in captured_by_method.values()
+        for call in method_calls
+    )
+    assert len(captured_by_method["M1"]) == 2
+    assert len(captured_by_method["M5"]) == 4
     serialized = json.dumps(captured_by_method, ensure_ascii=False)
     assert all(canary not in serialized for canary in forbidden)
 
