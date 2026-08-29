@@ -9,14 +9,27 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Iterable, Mapping
 
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
-from sr2fpga_agent.block_cost_accounting import replay_development_block_preparation
+from sr2fpga_agent.block_cost_accounting import (
+    BlockPreparationCostLedger,
+    replay_development_block_preparation,
+)
 from sr2fpga_agent.contract_registry import ContractRegistry
-from sr2fpga_agent.models import GeneratedProject
+from sr2fpga_agent.cost_accounting import COST_AXES
+from sr2fpga_agent.frozen_context import platform_profile_sha256
+from sr2fpga_agent.models import GeneratedProject, PlatformProfile
+from sr2fpga_agent.model_budget import ModelCallBudget
 from sr2fpga_agent.paired_block import load_development_paired_block
 from sr2fpga_agent.project_contract import project_package_sha256
 
 if TYPE_CHECKING:
+    from sr2fpga_agent.frozen_context import FrozenRequirementContext
+    from sr2fpga_agent.generation.context_direct import FrozenContextDirectProjectFacade
+    from sr2fpga_agent.generation.context_his import (
+        FrozenContextSystemHisFacade,
+        FrozenContextSystemHisValidationFacade,
+    )
     from sr2fpga_agent.method_adapters import (
+        PairingKey,
         PlanningArtifactEmission,
         ProjectCandidateEmission,
     )
@@ -69,6 +82,258 @@ class PreparedBlockArtifacts:
     skeleton_initial_project: ProjectCandidateEmission | None
     trusted_skeleton: ProjectCandidateEmission | None
     event_refs: tuple[ArtifactRef, ...]
+
+
+@dataclass(frozen=True)
+class BlockPreparationFacades:
+    direct: FrozenContextDirectProjectFacade
+    system_his: FrozenContextSystemHisFacade
+    his_validation: FrozenContextSystemHisValidationFacade
+
+
+def prepare_development_paired_block(
+    store: ArtifactStore,
+    *,
+    paired_block_ref: ArtifactRef,
+    pairing: PairingKey,
+    context: FrozenRequirementContext,
+    platform: PlatformProfile,
+    facades: BlockPreparationFacades,
+    model_budget: ModelCallBudget,
+    preparation_policy_sha256: str,
+) -> PreparedBlockArtifacts:
+    """Eagerly materialize and verify the three shared block checkpoints."""
+
+    from sr2fpga_agent.method_adapters import (
+        MethodArtifactGateway,
+        PairedArtifactCoordinator,
+    )
+
+    paired_block = load_development_paired_block(store, paired_block_ref)
+    _require_store_reference(store, paired_block_ref, "paired block")
+    if platform_profile_sha256(platform) != context.platform_profile_sha256:
+        raise ValueError("PlatformProfile does not match frozen requirement context")
+    expected_pairing = {
+        "paired_block_id": pairing.paired_block_id,
+        "semantic_instance_id": pairing.semantic_instance_id,
+        "replicate_id": pairing.replicate_id,
+        "public_projection_sha256": context.public_projection_sha256,
+        "model_provenance_sha256": pairing.model_provenance_sha256,
+        "requested_decoding_seed": pairing.decoding_seed,
+    }
+    for field, value in expected_pairing.items():
+        if paired_block[field] != value:
+            raise ValueError(f"paired block {field} does not match preparation identity")
+    if pairing.requirement_revision_id != context.revision_id:
+        raise ValueError("pairing requirement revision does not match frozen context")
+    _require_sha256(preparation_policy_sha256, "preparation policy")
+    if model_budget.max_calls != 3:
+        raise ValueError("block preparation requires a three-call model budget")
+    if model_budget.calls_used != 0:
+        raise ValueError("block preparation requires an unused model budget")
+    ledger = model_budget.attempt_cost_ledger
+    if not isinstance(ledger, BlockPreparationCostLedger):
+        raise ValueError("block preparation budget must use its block cost ledger")
+    if ledger.store is not store or ledger.paired_block_ref != paired_block_ref:
+        raise ValueError("block preparation budget ledger names another store or block")
+
+    coordinator = PairedArtifactCoordinator(store)
+    artifacts = MethodArtifactGateway(store)
+    states: dict[
+        CheckpointId,
+        tuple[
+            str,
+            str | None,
+            PlanningArtifactEmission | ProjectCandidateEmission | None,
+            ProjectCandidateEmission | None,
+        ],
+    ] = {}
+
+    direct_id = CheckpointId.DIRECT_INITIAL_PROJECT
+    ledger.activate_checkpoint(direct_id.value)
+    try:
+        direct = coordinator.materialize_project_checkpoint(
+            pairing,
+            direct_id,
+            lambda: facades.direct.emit_project(context),
+        )
+    except Exception as exc:
+        reason = _preparation_failure_reason(exc)
+        ledger.record_checkpoint(
+            checkpoint_id=direct_id.value,
+            event_kind="checkpoint_failed",
+            status="failed",
+            reason=reason,
+        )
+        states[direct_id] = ("failed", reason, None, None)
+    else:
+        ledger.record_checkpoint(
+            checkpoint_id=direct_id.value,
+            event_kind="checkpoint_materialized",
+            status="completed",
+            output_refs=(direct.artifact_ref,),
+        )
+        states[direct_id] = ("completed", None, direct, None)
+
+    his_id = CheckpointId.SHARED_SYSTEM_HIS
+    ledger.activate_checkpoint(his_id.value)
+    try:
+        system_his = coordinator.materialize_system_his_checkpoint(
+            pairing,
+            lambda: facades.system_his.emit_his(context),
+        )
+        his_payload = artifacts.read_planning(system_his)
+        h_report = facades.his_validation.validate_his(context, his_payload)
+        if not isinstance(h_report, Mapping) or h_report.get("passed") is not True:
+            raise ValueError("System-HIS did not pass complete H0-H3 validation")
+    except Exception as exc:
+        reason = _preparation_failure_reason(exc)
+        ledger.record_checkpoint(
+            checkpoint_id=his_id.value,
+            event_kind="checkpoint_failed",
+            status="failed",
+            reason=reason,
+        )
+        states[his_id] = ("failed", reason, None, None)
+    else:
+        ledger.record_checkpoint(
+            checkpoint_id=his_id.value,
+            event_kind="checkpoint_materialized",
+            status="completed",
+            output_refs=(system_his.artifact_ref,),
+        )
+        states[his_id] = ("completed", None, system_his, None)
+
+    project_id = CheckpointId.SKELETON_INITIAL_PROJECT
+    ledger.activate_checkpoint(project_id.value)
+    if states[his_id][0] != "completed":
+        reason = "dependency_failed:shared_system_his"
+        ledger.record_checkpoint(
+            checkpoint_id=project_id.value,
+            event_kind="checkpoint_not_run",
+            status="not_run",
+            reason=reason,
+        )
+        states[project_id] = ("not_run", reason, None, None)
+    else:
+        try:
+            skeleton_project = coordinator.materialize_project_checkpoint(
+                pairing,
+                project_id,
+                lambda: facades.system_his.emit_skeleton_project(
+                    context, his_payload
+                ),
+            )
+            trusted_project = facades.system_his.last_skeleton_project
+            if trusted_project is None:
+                raise RuntimeError(
+                    "skeleton preparation produced no trusted skeleton evidence"
+                )
+            trusted_skeleton = artifacts.put_project(
+                f"paired/{pairing.digest()}/trusted-skeleton",
+                trusted_project,
+            )
+        except Exception as exc:
+            reason = _preparation_failure_reason(exc)
+            ledger.record_checkpoint(
+                checkpoint_id=project_id.value,
+                event_kind="checkpoint_failed",
+                status="failed",
+                reason=reason,
+            )
+            states[project_id] = ("failed", reason, None, None)
+        else:
+            ledger.record_checkpoint(
+                checkpoint_id=project_id.value,
+                event_kind="checkpoint_materialized",
+                status="completed",
+                input_refs=(system_his.artifact_ref,),
+                output_refs=(
+                    skeleton_project.artifact_ref,
+                    trusted_skeleton.artifact_ref,
+                ),
+            )
+            states[project_id] = (
+                "completed",
+                None,
+                skeleton_project,
+                trusted_skeleton,
+            )
+
+    if all(state[0] == "completed" for state in states.values()) and model_budget.calls_used != 3:
+        raise RuntimeError("complete block preparation did not consume exactly three model calls")
+    ledger.close(zero_axes=set(COST_AXES) - set(ledger.observed_axes))
+    replay = replay_development_block_preparation(store, ledger.event_refs)
+    nodes = tuple(
+        _prepared_checkpoint_node(store, checkpoint_id, states[checkpoint_id], replay)
+        for checkpoint_id in CheckpointId
+    )
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256=preparation_policy_sha256,
+        nodes=nodes,
+        block_event_refs=replay.event_refs,
+    )
+    read_development_shared_checkpoint_manifest(store, manifest_ref)
+    direct_state = states[direct_id]
+    his_state = states[his_id]
+    project_state = states[project_id]
+    return PreparedBlockArtifacts(
+        paired_block_ref=paired_block_ref,
+        manifest_ref=manifest_ref,
+        direct_initial_project=(
+            direct_state[2] if direct_state[0] == "completed" else None
+        ),
+        system_his=his_state[2] if his_state[0] == "completed" else None,
+        skeleton_initial_project=(
+            project_state[2] if project_state[0] == "completed" else None
+        ),
+        trusted_skeleton=(
+            project_state[3] if project_state[0] == "completed" else None
+        ),
+        event_refs=replay.event_refs,
+    )
+
+
+def _prepared_checkpoint_node(
+    store: ArtifactStore,
+    checkpoint_id: CheckpointId,
+    state: tuple[str, str | None, Any, Any],
+    replay: Any,
+) -> CheckpointNode:
+    status, reason, emission, trusted = state
+    partition = tuple(
+        reference
+        for reference, event in zip(replay.event_refs, replay.events, strict=True)
+        if event["checkpoint_id"] == checkpoint_id.value
+    )
+    artifact_ref = emission.artifact_ref if emission is not None else None
+    return CheckpointNode(
+        checkpoint_id=checkpoint_id,
+        status=status,
+        reason=reason,
+        artifact_ref=artifact_ref,
+        content_sha256=None if artifact_ref is None else artifact_ref.sha256,
+        project_package_sha256=(
+            emission.project_package_sha256
+            if emission is not None
+            and checkpoint_id is not CheckpointId.SHARED_SYSTEM_HIS
+            else None
+        ),
+        trusted_skeleton_ref=(
+            None if trusted is None else trusted.artifact_ref
+        ),
+        parent_checkpoint_ids=_PARENTS[checkpoint_id],
+        consumer_methods=_CONSUMERS[checkpoint_id],
+        source_event_refs=partition,
+        source_events_sha256=_event_set_sha256(store, partition),
+    )
+
+
+def _preparation_failure_reason(exc: Exception) -> str:
+    message = str(exc).strip()
+    return f"{type(exc).__name__}:{message or 'no_message'}"
 
 
 def write_development_shared_checkpoint_manifest(

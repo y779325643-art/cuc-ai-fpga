@@ -350,8 +350,10 @@ def test_m4_m5_can_consume_one_shared_skeleton_project(tmp_path) -> None:
     store, services = _services(tmp_path, his=his)
     coordinator = PairedArtifactCoordinator(store)
     shared_his = coordinator.materialize_system_his(_pairing(context), lambda: his.emit_his(context))
-    shared_project = coordinator.materialize_initial_project(
-        _pairing(context), lambda: his.emit_skeleton_project(context, {"shared": True})
+    shared_project = coordinator.materialize_project_checkpoint(
+        _pairing(context),
+        CheckpointId.SKELETON_INITIAL_PROJECT,
+        lambda: his.emit_skeleton_project(context, {"shared": True}),
     )
     shared = SharedArtifactRefs(initial_project=shared_project, system_his=shared_his)
 

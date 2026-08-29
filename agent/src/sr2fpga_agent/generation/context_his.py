@@ -28,6 +28,7 @@ from sr2fpga_agent.method_adapters import (
     MethodAdapterRegistry,
     PairedArtifactCoordinator,
     PairingKey,
+    ProjectCandidateEmission,
     SkeletonProjectOutput,
     SharedArtifactRefs,
 )
@@ -221,6 +222,8 @@ class FrozenContextHisGeneratorBridge:
         system_his: FrozenContextSystemHisFacade,
         coordinator: PairedArtifactCoordinator | None = None,
         pairing: PairingKey | None = None,
+        prepared_shared_artifacts: SharedArtifactRefs | None = None,
+        prepared_trusted_skeleton: ProjectCandidateEmission | None = None,
         max_his_corrections: int = 0,
         max_project_output_repairs: int = 0,
         max_shared_pre_candidate_repairs: int | None = None,
@@ -233,6 +236,8 @@ class FrozenContextHisGeneratorBridge:
         self._system_his = system_his
         self._coordinator = coordinator
         self._pairing = pairing
+        self._prepared_shared_artifacts = prepared_shared_artifacts
+        self._prepared_trusted_skeleton = prepared_trusted_skeleton
         self._max_his_corrections = max_his_corrections
         self._max_project_output_repairs = max_project_output_repairs
         self._max_shared_pre_candidate_repairs = max_shared_pre_candidate_repairs
@@ -246,8 +251,10 @@ class FrozenContextHisGeneratorBridge:
         _request: ProjectRequest,
         _platform: PlatformProfile,
     ) -> GeneratedProject:
-        shared = SharedArtifactRefs()
-        if self._coordinator is not None and self._pairing is not None:
+        shared = self._prepared_shared_artifacts or SharedArtifactRefs()
+        if shared.system_his is not None:
+            self.last_initial_planning_artifact = shared.system_his
+        elif self._coordinator is not None and self._pairing is not None:
             shared_his = self._coordinator.materialize_system_his(
                 self._pairing,
                 lambda: self._system_his.emit_his(self._context),
@@ -294,6 +301,10 @@ class FrozenContextHisGeneratorBridge:
                 f"{failure.stage} failed with {failure.error_type}: {failure.message}"
             )
         if self._adapter.contract.uses_deterministic_skeleton:
+            if self._prepared_trusted_skeleton is not None:
+                self._services.artifacts.read_project(self._prepared_trusted_skeleton)
+                self.last_skeleton_artifact = self._prepared_trusted_skeleton
+                return self._services.artifacts.read_project(outcome.candidate)
             skeleton = self._system_his.last_skeleton_project
             if skeleton is None:
                 raise RuntimeError(

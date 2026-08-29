@@ -27,6 +27,7 @@ from sr2fpga_agent.method_adapters import (
     MethodArtifactGateway,
     PairedArtifactCoordinator,
     PairingKey,
+    PlanningArtifactKind,
     SharedArtifactRefs,
 )
 from sr2fpga_agent.model_budget import ModelCallBudget
@@ -725,6 +726,76 @@ def test_m3_m4_consume_same_materialized_frozen_his(tmp_path) -> None:
     assert m3.planning_artifact.artifact_ref.sha256 == shared_his.artifact_ref.sha256
     assert m4.planning_artifact.artifact_ref.sha256 == shared_his.artifact_ref.sha256
     assert len(raw_req.calls) == 1
+
+
+def test_m4_m5_bridges_consume_prepared_project_and_keep_method_events_distinct(
+    tmp_path,
+) -> None:
+    context, payload = _context_and_his()
+    store = ArtifactStore(tmp_path / "store")
+    gateway = MethodArtifactGateway(store)
+    prepared_his = gateway.put_planning(
+        "prepared/system-his", PlanningArtifactKind.SYSTEM_HIS, payload
+    )
+    prepared_project = gateway.put_project(
+        "prepared/complete-project", _repairable_project(context, payload)
+    )
+    prepared_trusted = gateway.put_project(
+        "prepared/trusted-skeleton", _repairable_project(context, payload)
+    )
+    prepared = SharedArtifactRefs(
+        initial_project=prepared_project,
+        system_his=prepared_his,
+    )
+    behavior_client = _Client(_behavior_response())
+    system_his = FrozenContextSystemHisFacade(
+        _Client("must not be called"), behavior_client, _platform()
+    )
+    pairing = PairingKey(
+        paired_block_id="pair-prepared-bridge",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="counter-instance",
+        decoding_seed=7,
+        model_provenance_sha256="a" * 64,
+    )
+    coordinator = PairedArtifactCoordinator(store)
+    bridges = []
+
+    for method in ("M4", "M5"):
+        services = GenerationServices(
+            artifacts=gateway,
+            episode_id=f"prepared-{method.lower()}",
+            system_his=system_his,
+            his_validation=FrozenContextSystemHisValidationFacade(_platform()),
+        )
+        bridge = FrozenContextHisGeneratorBridge(
+            method_condition=method,
+            context=context,
+            services=services,
+            system_his=system_his,
+            coordinator=coordinator,
+            pairing=pairing,
+            prepared_shared_artifacts=prepared,
+            prepared_trusted_skeleton=prepared_trusted,
+        )
+        bridge.generate(ProjectRequest("counter", 8, "ignored", "ignored"), _platform())
+        bridges.append(bridge)
+
+    assert behavior_client.calls == []
+    assert {
+        bridge.last_outcome.candidate.artifact_ref for bridge in bridges
+    } == {prepared_project.artifact_ref}
+    assert {bridge.last_skeleton_artifact for bridge in bridges} == {prepared_trusted}
+    candidate_methods = []
+    for bridge in bridges:
+        candidate_event = next(
+            json.loads(store.read_verified(reference))
+            for reference in bridge.last_method_event_refs
+            if json.loads(store.read_verified(reference))["payload"].get("state")
+            == "candidate_emitted"
+        )
+        candidate_methods.append(candidate_event["payload"]["method_condition_id"])
+    assert candidate_methods == ["M4", "M5"]
 
 
 def test_m3_rejects_model_control_of_frozen_project_name() -> None:

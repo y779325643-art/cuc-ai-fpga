@@ -13,21 +13,27 @@ from sr2fpga_agent.block_cost_accounting import (
     replay_development_block_preparation,
 )
 from sr2fpga_agent.block_preparation import (
+    BlockPreparationFacades,
     CheckpointId,
     CheckpointNode,
+    prepare_development_paired_block,
     read_development_shared_checkpoint_manifest,
     write_development_shared_checkpoint_manifest,
 )
 from sr2fpga_agent.cost_accounting import COST_AXES
+from sr2fpga_agent.frozen_context import freeze_ready_requirement_context
 from sr2fpga_agent.method_adapters import (
     MethodArtifactGateway,
+    PairingKey,
     PlanningArtifactKind,
 )
-from sr2fpga_agent.models import GeneratedProject
+from sr2fpga_agent.model_budget import ModelCallBudget
+from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.paired_block import (
     build_balanced_method_orders,
     write_development_paired_block,
 )
+from sr2fpga_agent.requirement_boundary import evaluate_requirement_boundary
 
 
 def _project(tag: str) -> GeneratedProject:
@@ -54,19 +60,160 @@ def _project(tag: str) -> GeneratedProject:
     )
 
 
-def _write_paired_block(store: ArtifactStore) -> ArtifactRef:
+def _platform() -> PlatformProfile:
+    return PlatformProfile("generic_verilog", "generic", "open_source")
+
+
+def _context():
+    request = ProjectRequest(
+        "counter",
+        8,
+        "counter8",
+        "Build an 8-bit synchronous counter with active-low reset.",
+    )
+    return freeze_ready_requirement_context(
+        evaluate_requirement_boundary(request, _platform()), _platform()
+    )
+
+
+def _write_paired_block(store: ArtifactStore, *, public_projection_sha256="1" * 64) -> ArtifactRef:
     return write_development_paired_block(
         store,
         paired_block_id="pair-checkpoint-001",
         semantic_instance_id="semantic-checkpoint-001",
         replicate_id="replicate-000",
-        public_projection_sha256="1" * 64,
+        public_projection_sha256=public_projection_sha256,
         model_provenance_sha256="2" * 64,
         decoding_control_mode="documented_seed_control",
         requested_decoding_seed=17,
         execution_schedule_seed=991,
         method_order=build_balanced_method_orders(991)[0],
     )
+
+
+class _CountingClient:
+    def __init__(self, events: list[str], event: str) -> None:
+        self.calls = 0
+        self._events = events
+        self._event = event
+
+    def chat(self, _messages) -> str:
+        self.calls += 1
+        self._events.append(self._event)
+        return "{}"
+
+    def stream_chat(self, _messages) -> str:
+        return self.chat(_messages)
+
+
+class _PreparedDirectFacade:
+    def __init__(self, client) -> None:
+        self._client = client
+
+    def emit_project(self, _context):
+        self._client.chat([{"role": "user", "content": "direct"}])
+        return _project("direct")
+
+
+class _PreparedHisFacade:
+    def __init__(self, req2his_client, behavior_client) -> None:
+        self._req2his_client = req2his_client
+        self._behavior_client = behavior_client
+        self.last_skeleton_project = None
+
+    def emit_his(self, _context):
+        self._req2his_client.stream_chat([{"role": "user", "content": "his"}])
+        return {"schema_version": "system-his-v1.2", "intent": {"design_goal": "counter"}}
+
+    def emit_skeleton_project(self, _context, _system_his):
+        self.last_skeleton_project = _project("trusted-skeleton")
+        self._behavior_client.stream_chat([{"role": "user", "content": "behavior"}])
+        return _project("complete-skeleton-project")
+
+
+class _PreparedValidationFacade:
+    def __init__(self, events: list[str]) -> None:
+        self.calls = 0
+        self._events = events
+
+    def validate_his(self, _context, _system_his):
+        self.calls += 1
+        self._events.append("h0-h3")
+        return {
+            "passed": True,
+            **{
+                f"h{stage}": {"status": "pass", "diagnostics": []}
+                for stage in range(4)
+            },
+        }
+
+
+def test_gold_ready_preparation_materializes_three_checkpoints_once(tmp_path) -> None:
+    store = ArtifactStore(tmp_path / "store")
+    context = _context()
+    paired_ref = _write_paired_block(
+        store, public_projection_sha256=context.public_projection_sha256
+    )
+    events: list[str] = []
+    direct_client = _CountingClient(events, "direct")
+    req2his_client = _CountingClient(events, "req2his")
+    behavior_client = _CountingClient(events, "behavior")
+    ledger = BlockPreparationCostLedger(
+        store, paired_block_ref=paired_ref, failure_origin=None
+    )
+    budget = ModelCallBudget(max_calls=3, attempt_cost_ledger=ledger)
+    validation = _PreparedValidationFacade(events)
+    pairing = PairingKey(
+        paired_block_id="pair-checkpoint-001",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="semantic-checkpoint-001",
+        decoding_seed=17,
+        model_provenance_sha256="2" * 64,
+        replicate_id="replicate-000",
+    )
+
+    result = prepare_development_paired_block(
+        store,
+        paired_block_ref=paired_ref,
+        pairing=pairing,
+        context=context,
+        platform=_platform(),
+        facades=BlockPreparationFacades(
+            direct=_PreparedDirectFacade(
+                budget.client(direct_client, "block_direct_initial")
+            ),
+            system_his=_PreparedHisFacade(
+                budget.client(req2his_client, "block_req2his"),
+                budget.client(behavior_client, "block_skeleton_initial"),
+            ),
+            his_validation=validation,
+        ),
+        model_budget=budget,
+        preparation_policy_sha256="a" * 64,
+    )
+
+    assert direct_client.calls == req2his_client.calls == behavior_client.calls == 1
+    assert budget.calls_used == 3
+    assert events == ["direct", "req2his", "h0-h3", "behavior"]
+    assert validation.calls == 1
+    assert result.direct_initial_project is not None
+    assert result.system_his is not None
+    assert result.skeleton_initial_project is not None
+    assert result.trusted_skeleton is not None
+    assert result.direct_initial_project.artifact_ref.key.endswith(
+        "/direct-initial-project"
+    )
+    assert result.skeleton_initial_project.artifact_ref.key.endswith(
+        "/skeleton-initial-project"
+    )
+    assert (
+        result.direct_initial_project.artifact_ref
+        != result.skeleton_initial_project.artifact_ref
+    )
+    assert result.manifest_ref.media_type == "application/json"
+    assert read_development_shared_checkpoint_manifest(store, result.manifest_ref)[
+        "manifest_status"
+    ] == "complete"
 
 
 def _event_hash(store: ArtifactStore, refs: tuple[ArtifactRef, ...]) -> str:
