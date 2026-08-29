@@ -136,6 +136,44 @@ def test_block_preparation_event_rejects_missing_axis_and_unavailable_without_re
         _validator().validate(unavailable_without_reason)
 
 
+def test_non_close_events_require_a_checkpoint_and_matching_stage() -> None:
+    no_checkpoint = _event()
+    no_checkpoint.update(
+        {
+            "checkpoint_id": None,
+            "stage": "accounting_close",
+            "event_kind": "axis_cost",
+            "status": "completed",
+        }
+    )
+    mismatched_stage = _event()
+    mismatched_stage.update(
+        {"event_kind": "axis_cost", "status": "completed", "stage": "accounting_close"}
+    )
+
+    with pytest.raises(ValidationError):
+        _validator().validate(no_checkpoint)
+    with pytest.raises(ValidationError):
+        _validator().validate(mismatched_stage)
+
+
+def test_unavailable_axes_require_exact_null_delta_correspondence() -> None:
+    valid_unavailable = _event()
+    valid_unavailable.update({"event_kind": "axis_cost", "status": "completed"})
+    valid_unavailable["cost_delta"]["input_tokens"] = None
+    valid_unavailable["unavailable_axes"] = {"input_tokens": "provider_missing"}
+    numeric_with_reason = copy.deepcopy(valid_unavailable)
+    numeric_with_reason["cost_delta"]["input_tokens"] = 0
+    absent_with_reason = copy.deepcopy(valid_unavailable)
+    absent_with_reason["cost_delta"].pop("input_tokens")
+
+    _validator().validate(valid_unavailable)
+    with pytest.raises(ValidationError):
+        _validator().validate(numeric_with_reason)
+    with pytest.raises(ValidationError):
+        _validator().validate(absent_with_reason)
+
+
 @pytest.mark.parametrize(
     "field",
     (

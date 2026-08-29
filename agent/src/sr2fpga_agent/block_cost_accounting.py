@@ -8,7 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Protocol, runtime_checkable
 
-from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.artifact_store import ArtifactIntegrityError, ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import (
     COST_AXES,
@@ -562,6 +562,14 @@ def _verify_event_references(store: ArtifactStore, event: Mapping[str, Any]) -> 
     for field in ("input_artifact_hashes", "output_artifact_hashes"):
         if any(not isinstance(digest, str) or len(digest) != 64 for digest in event[field]):
             raise BlockPreparationCostLedgerError("event artifact hash is invalid")
+    provenance = event["model_gateway_provenance_ref"]
+    if provenance is not None:
+        try:
+            store.read_verified(_artifact_ref(provenance))
+        except (ArtifactIntegrityError, KeyError, TypeError, ValueError) as exc:
+            raise BlockPreparationCostLedgerError(
+                "model gateway provenance reference is unreadable"
+            ) from exc
 
 
 def _artifact_ref(payload: Mapping[str, Any]) -> ArtifactRef:

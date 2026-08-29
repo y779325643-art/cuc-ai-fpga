@@ -153,3 +153,58 @@ def test_replay_rejects_tampered_chain_and_close_total(tmp_path) -> None:
 
     with pytest.raises(BlockPreparationCostLedgerError, match="close totals"):
         replay_development_block_preparation(tampered_store, (first_ref, close_ref))
+
+
+def test_replay_rejects_missing_model_gateway_provenance_ref(tmp_path) -> None:
+    store = ArtifactStore(tmp_path / "store")
+    ledger = BlockPreparationCostLedger(
+        store,
+        paired_block_ref=_ref(store, "paired/d/paired-block"),
+        failure_origin=None,
+    )
+    ledger.activate_checkpoint("shared_system_his")
+    ledger.record_cost(
+        stage="block_req2his",
+        visibility_class="accounting",
+        cost_delta={"logical_model_calls": 1, "wall_time": 1.0},
+    )
+    ledger.close(zero_axes=_remaining_zero_axes(ledger))
+
+    tampered_store = ArtifactStore(tmp_path / "tampered")
+    _ref(tampered_store, "paired/d/paired-block")
+    first = json.loads(store.read_verified(ledger.event_refs[0]))
+    first["model_gateway_provenance_ref"] = {
+        "key": "provenance/missing",
+        "sha256": "f" * 64,
+        "size_bytes": 1,
+        "media_type": "application/json",
+    }
+    first_unsigned = {key: value for key, value in first.items() if key != "event_id"}
+    first["event_id"] = "block-preparation-event-" + hashlib.sha256(
+        json.dumps(first_unsigned, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    first_ref = tampered_store.put_validated_json(
+        "block-preparation-events/"
+        + ledger.paired_block_ref.sha256
+        + "/000000-"
+        + first["event_id"],
+        first,
+        contract_key="development_block_preparation_event",
+    )
+    close = json.loads(store.read_verified(ledger.event_refs[-1]))
+    close["parent_event_id"] = first["event_id"]
+    close_unsigned = {key: value for key, value in close.items() if key != "event_id"}
+    close["event_id"] = "block-preparation-event-" + hashlib.sha256(
+        json.dumps(close_unsigned, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    close_ref = tampered_store.put_validated_json(
+        "block-preparation-events/"
+        + ledger.paired_block_ref.sha256
+        + "/000001-"
+        + close["event_id"],
+        close,
+        contract_key="development_block_preparation_event",
+    )
+
+    with pytest.raises(BlockPreparationCostLedgerError, match="provenance"):
+        replay_development_block_preparation(tampered_store, (first_ref, close_ref))

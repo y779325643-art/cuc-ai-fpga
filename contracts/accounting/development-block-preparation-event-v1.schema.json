@@ -56,6 +56,7 @@
     {"if": {"properties": {"event_kind": {"const": "checkpoint_failed"}}}, "then": {"properties": {"status": {"const": "failed"}, "reason": {"type": "string", "minLength": 1}, "budget_reservation": {"type": "null"}, "cost_delta": {"$ref": "#/$defs/zero_cost_delta"}}}},
     {"if": {"properties": {"event_kind": {"const": "checkpoint_not_run"}}}, "then": {"properties": {"status": {"const": "not_run"}, "reason": {"type": "string", "minLength": 1}, "budget_reservation": {"type": "null"}, "cost_delta": {"$ref": "#/$defs/zero_cost_delta"}}}},
     {"if": {"properties": {"event_kind": {"const": "accounting_closed"}}}, "then": {"properties": {"checkpoint_id": {"type": "null"}, "parent_checkpoint_ids": {"const": []}, "stage": {"const": "accounting_close"}, "status": {"const": "closed"}, "budget_reservation": {"type": "null"}, "cost_delta": {"$ref": "#/$defs/full_cost_delta"}}}},
+    {"if": {"properties": {"event_kind": {"not": {"const": "accounting_closed"}}}}, "then": {"properties": {"checkpoint_id": {"$ref": "#/$defs/checkpoint_id"}}}},
     {"if": {"properties": {"cost_delta": {"required": ["logical_model_calls"], "properties": {"logical_model_calls": {"type": "null"}}}}}, "then": {"properties": {"unavailable_axes": {"required": ["logical_model_calls"]}}}},
     {"if": {"properties": {"cost_delta": {"required": ["input_tokens"], "properties": {"input_tokens": {"type": "null"}}}}}, "then": {"properties": {"unavailable_axes": {"required": ["input_tokens"]}}}},
     {"if": {"properties": {"cost_delta": {"required": ["output_tokens"], "properties": {"output_tokens": {"type": "null"}}}}}, "then": {"properties": {"unavailable_axes": {"required": ["output_tokens"]}}}},
@@ -69,6 +70,19 @@
     {"if": {"properties": {"cost_delta": {"required": ["wall_time"], "properties": {"wall_time": {"type": "null"}}}}}, "then": {"properties": {"unavailable_axes": {"required": ["wall_time"]}}}},
     {"if": {"properties": {"cost_delta": {"required": ["eda_time"], "properties": {"eda_time": {"type": "null"}}}}}, "then": {"properties": {"unavailable_axes": {"required": ["eda_time"]}}}},
     {"if": {"properties": {"cost_delta": {"required": ["hidden_evaluator_runtime"], "properties": {"hidden_evaluator_runtime": {"type": "null"}}}}}, "then": {"properties": {"unavailable_axes": {"required": ["hidden_evaluator_runtime"]}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["logical_model_calls"]}}}, "then": {"properties": {"cost_delta": {"required": ["logical_model_calls"], "properties": {"logical_model_calls": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["input_tokens"]}}}, "then": {"properties": {"cost_delta": {"required": ["input_tokens"], "properties": {"input_tokens": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["output_tokens"]}}}, "then": {"properties": {"cost_delta": {"required": ["output_tokens"], "properties": {"output_tokens": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["cached_tokens"]}}}, "then": {"properties": {"cost_delta": {"required": ["cached_tokens"], "properties": {"cached_tokens": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["provider_transport_attempts"]}}}, "then": {"properties": {"cost_delta": {"required": ["provider_transport_attempts"], "properties": {"provider_transport_attempts": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["planner_parser_schema_retries"]}}}, "then": {"properties": {"cost_delta": {"required": ["planner_parser_schema_retries"], "properties": {"planner_parser_schema_retries": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["outer_repair_attempts"]}}}, "then": {"properties": {"cost_delta": {"required": ["outer_repair_attempts"], "properties": {"outer_repair_attempts": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["public_tool_calls"]}}}, "then": {"properties": {"cost_delta": {"required": ["public_tool_calls"], "properties": {"public_tool_calls": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["hidden_evaluator_tool_calls"]}}}, "then": {"properties": {"cost_delta": {"required": ["hidden_evaluator_tool_calls"], "properties": {"hidden_evaluator_tool_calls": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["hidden_infrastructure_retries"]}}}, "then": {"properties": {"cost_delta": {"required": ["hidden_infrastructure_retries"], "properties": {"hidden_infrastructure_retries": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["wall_time"]}}}, "then": {"properties": {"cost_delta": {"required": ["wall_time"], "properties": {"wall_time": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["eda_time"]}}}, "then": {"properties": {"cost_delta": {"required": ["eda_time"], "properties": {"eda_time": {"type": "null"}}}}}}
+    ,{"if": {"properties": {"unavailable_axes": {"required": ["hidden_evaluator_runtime"]}}}, "then": {"properties": {"cost_delta": {"required": ["hidden_evaluator_runtime"], "properties": {"hidden_evaluator_runtime": {"type": "null"}}}}}}
   ],
   "$defs": {
     "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
