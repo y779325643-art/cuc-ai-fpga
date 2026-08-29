@@ -787,8 +787,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     events_path = run_dir / "events.jsonl"
     summary_path = run_dir / "summary.json"
     config_fingerprint = _config_fingerprint(config)
-    run_dir.mkdir(parents=True, exist_ok=True)
     existing_run = state_path.exists()
+    resumed_prepared_blocks: dict[str, PreparedBlockRuntime] | None = None
 
     if resume and existing_run:
         state = read_run_state(state_path)
@@ -797,7 +797,13 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 f"Run config fingerprint mismatch for {run_id}: "
                 f"existing {state.config_fingerprint}, current {config_fingerprint}"
             )
+        resumed_prepared_blocks = _preflight_existing_block_preparation_resume(
+            run_dir=run_dir,
+            paired_block_plans=paired_block_plans,
+            block_preparation_policies=block_preparation_policies,
+        )
     else:
+        run_dir.mkdir(parents=True, exist_ok=True)
         state = initial_run_state(run_id, config_fingerprint=config_fingerprint)
         write_run_state(state_path, state)
 
@@ -866,14 +872,17 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         freeze_manifest,
         resume=resume and existing_run,
     )
-    prepared_blocks = _prepare_complete_blocks(
-        config=config,
-        samples=samples,
-        paired_block_plans=paired_block_plans,
-        paired_block_refs=paired_block_refs,
-        store=method_artifact_store,
-        freeze_fingerprint=freeze_fingerprint,
-        require_existing=resume and existing_run,
+    prepared_blocks = (
+        resumed_prepared_blocks
+        if resumed_prepared_blocks is not None
+        else _prepare_complete_blocks(
+            config=config,
+            samples=samples,
+            paired_block_plans=paired_block_plans,
+            paired_block_refs=paired_block_refs,
+            store=method_artifact_store,
+            freeze_fingerprint=freeze_fingerprint,
+        )
     )
     block_preparation_audit = {
         paired_block_id: _prepared_block_audit_record(
@@ -4412,7 +4421,6 @@ def _prepare_complete_blocks(
     paired_block_refs: Mapping[str, ArtifactRef],
     store: ArtifactStore,
     freeze_fingerprint: str,
-    require_existing: bool = False,
 ) -> dict[str, PreparedBlockRuntime]:
     if not re.fullmatch(r"[0-9a-f]{64}", freeze_fingerprint):
         raise ValueError("block preparation requires a valid freeze fingerprint")
@@ -4462,11 +4470,6 @@ def _prepare_complete_blocks(
         if existing is not None:
             prepared_blocks[paired_block_id] = existing
             continue
-        if require_existing:
-            raise SharedCheckpointResumeError(
-                "shared checkpoint resume rejected (existing run has no G3b manifest); "
-                "use a new run ID"
-            )
         ledger = BlockPreparationCostLedger(
             store,
             paired_block_ref=paired_block_ref,
@@ -4523,6 +4526,90 @@ def _prepare_complete_blocks(
                 store, prepared.manifest_ref
             ),
         )
+    return prepared_blocks
+
+
+def _preflight_existing_block_preparation_resume(
+    *,
+    run_dir: Path,
+    paired_block_plans: Mapping[str, _PlannedPairedBlock],
+    block_preparation_policies: Mapping[str, Mapping[str, Any]],
+) -> dict[str, PreparedBlockRuntime]:
+    """Validate the original run audit before any resume materialization or write."""
+
+    if not paired_block_plans:
+        return {}
+    config_path = run_dir / "config.json"
+    try:
+        persisted_config = json.loads(config_path.read_text(encoding="utf-8"))
+        audit_only = persisted_config["audit_only"]
+        audits = audit_only["block_preparations"]
+        if not isinstance(audits, dict):
+            raise TypeError("block preparation audit must be an object")
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise _shared_checkpoint_resume_error(
+            f"existing run has no complete G3b preparation audit: {exc}"
+        ) from exc
+    expected_ids = set(paired_block_plans)
+    if set(audits) != expected_ids:
+        raise _shared_checkpoint_resume_error(
+            "existing run has a partial G3b preparation audit"
+        )
+    if set(block_preparation_policies) != expected_ids:
+        raise _shared_checkpoint_resume_error(
+            "current preparation policy set does not match the paired-block plan"
+        )
+    store_root = run_dir / "method_artifacts"
+    if not store_root.is_dir():
+        raise _shared_checkpoint_resume_error(
+            "existing run has no G3b method-artifact store"
+        )
+    store = ArtifactStore(store_root)
+    prepared_blocks: dict[str, PreparedBlockRuntime] = {}
+    for paired_block_id in sorted(expected_ids):
+        plan = paired_block_plans[paired_block_id]
+        policy = block_preparation_policies[paired_block_id]
+        raw_audit = audits[paired_block_id]
+        if not isinstance(raw_audit, dict):
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} preparation audit is not an object"
+            )
+        try:
+            recorded_manifest_ref = ArtifactRef(
+                **raw_audit["checkpoint_manifest_ref"]
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} has no exact recorded checkpoint manifest ref"
+            ) from exc
+        if raw_audit.get("paired_block_ref") != plan.artifact_ref.to_dict():
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} recorded paired-block ref does not match the plan"
+            )
+        policy_sha256 = str(policy["preparation_policy_sha256"])
+        if raw_audit.get("preparation_policy_sha256") != policy_sha256:
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} recorded preparation policy does not match"
+            )
+        runtime = _load_prepared_block_runtime(
+            store,
+            paired_block_ref=plan.artifact_ref,
+            preparation_policy_sha256=policy_sha256,
+            member_sample_ids=plan.sample_ids,
+            exclusive_model_call_ceilings=dict(
+                policy["exclusive_model_call_ceilings"]
+            ),
+            expected_manifest_ref=recorded_manifest_ref,
+        )
+        if runtime is None:
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} recorded checkpoint manifest is missing"
+            )
+        if _prepared_block_audit_record(policy, runtime) != raw_audit:
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} reconstructed preparation audit does not match"
+            )
+        prepared_blocks[paired_block_id] = runtime
     return prepared_blocks
 
 
@@ -4633,17 +4720,28 @@ def _load_prepared_block_runtime(
     preparation_policy_sha256: str,
     member_sample_ids: tuple[str, ...],
     exclusive_model_call_ceilings: dict[str, int],
+    expected_manifest_ref: ArtifactRef | None = None,
 ) -> PreparedBlockRuntime | None:
     key = (
         f"shared-checkpoint-manifests/{paired_block_ref.sha256}/"
         f"{preparation_policy_sha256}"
     )
     try:
-        manifest_ref = store.reference(key)
+        resolved_manifest_ref = store.reference(key)
     except (KeyError, OSError, TypeError, ValueError, RuntimeError) as exc:
-        raise SharedCheckpointResumeError(
-            f"shared checkpoint resume rejected ({exc}); use a new run ID"
-        ) from exc
+        raise _shared_checkpoint_resume_error(str(exc)) from exc
+    if (
+        expected_manifest_ref is not None
+        and resolved_manifest_ref != expected_manifest_ref
+    ):
+        raise _shared_checkpoint_resume_error(
+            "resolved checkpoint manifest ref differs from the original run audit"
+        )
+    manifest_ref = (
+        expected_manifest_ref
+        if expected_manifest_ref is not None
+        else resolved_manifest_ref
+    )
     if manifest_ref is None:
         return None
     try:
@@ -4673,9 +4771,7 @@ def _load_prepared_block_runtime(
     except SharedCheckpointResumeError:
         raise
     except (KeyError, OSError, TypeError, ValueError, RuntimeError) as exc:
-        raise SharedCheckpointResumeError(
-            f"shared checkpoint resume rejected ({exc}); use a new run ID"
-        ) from exc
+        raise _shared_checkpoint_resume_error(str(exc)) from exc
     prepared = PreparedBlockArtifacts(
         paired_block_ref=paired_block_ref,
         manifest_ref=manifest_ref,
@@ -4692,6 +4788,12 @@ def _load_prepared_block_runtime(
         member_sample_ids=member_sample_ids,
         exclusive_model_call_ceilings=exclusive_model_call_ceilings,
         blocked_method_checkpoints={},
+    )
+
+
+def _shared_checkpoint_resume_error(reason: str) -> SharedCheckpointResumeError:
+    return SharedCheckpointResumeError(
+        f"shared checkpoint resume rejected ({reason}); requires a new run ID"
     )
 
 

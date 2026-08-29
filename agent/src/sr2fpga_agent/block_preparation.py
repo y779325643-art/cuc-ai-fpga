@@ -467,7 +467,7 @@ def read_complete_development_shared_checkpoint_resume(
         if isinstance(exc, SharedCheckpointResumeError):
             raise
         raise SharedCheckpointResumeError(
-            f"shared checkpoint resume rejected ({exc}); use a new run ID"
+            f"shared checkpoint resume rejected ({exc}); requires a new run ID"
         ) from exc
     return manifest
 

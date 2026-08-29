@@ -1229,7 +1229,13 @@ def test_assemble_excluded_run_full_pack_from_closed_runner_events() -> None:
     assert json.loads(store.read_verified(runner_ref)) == runner
 
 
-def _run_fake_complete_full_pack(monkeypatch, *, method_order, failed_stage=None):
+def _run_fake_complete_full_pack(
+    monkeypatch,
+    *,
+    method_order,
+    failed_stage=None,
+    assemble_companions=True,
+):
     root = _new_test_root()
     clock_ticks = iter(float(tick) for tick in range(100))
     monkeypatch.setattr(
@@ -1440,7 +1446,7 @@ def _run_fake_complete_full_pack(monkeypatch, *, method_order, failed_stage=None
     completion_events = [
         event for event in run_events if event.get("event") == "sample_completed"
     ]
-    if failed_stage is not None:
+    if failed_stage is not None or not assemble_companions:
         return SimpleNamespace(
             completion_events=completion_events,
             config=config,
@@ -1452,6 +1458,7 @@ def _run_fake_complete_full_pack(monkeypatch, *, method_order, failed_stage=None
             projection=projection,
             run_dir=run_dir,
             run_events=run_events,
+            run_id="excluded-m0-m5-full-pack",
             staged_clients=staged_clients,
             store=store,
             summary=summary,
@@ -1570,6 +1577,300 @@ def _physical_provider_calls(completed):
             completed.m2_project_client,
         )
     )
+
+
+def _artifact_ref_path(store: ArtifactStore, reference: ArtifactRef) -> Path:
+    path = store.root / "refs" / Path(*reference.key.split("/"))
+    return path.with_name(path.name + ".ref.json")
+
+
+def _artifact_blob_path(store: ArtifactStore, reference: ArtifactRef) -> Path:
+    return store.root / "blobs" / reference.sha256[:2] / reference.sha256
+
+
+def _replace_artifact_key_with_payload(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    payload: dict,
+    *,
+    mutation: str,
+) -> ArtifactRef:
+    content = (
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n"
+    ).encode("utf-8")
+    alternate = store.put_blob(
+        f"resume-mutations/{mutation}",
+        content,
+        media_type=reference.media_type,
+    )
+    replacement = ArtifactRef(
+        key=reference.key,
+        sha256=alternate.sha256,
+        size_bytes=alternate.size_bytes,
+        media_type=alternate.media_type,
+    )
+    _artifact_ref_path(store, reference).write_text(
+        json.dumps(
+            replacement.to_dict(),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return replacement
+
+
+def _file_tree_snapshot(root: Path) -> dict[str, tuple[int, str]]:
+    return {
+        path.relative_to(root).as_posix(): (
+            path.stat().st_mtime_ns,
+            hashlib.sha256(path.read_bytes()).hexdigest(),
+        )
+        for path in root.rglob("*")
+        if path.is_file()
+    }
+
+
+def _write_json_file(path: Path, payload: dict) -> None:
+    path.write_text(
+        json.dumps(payload, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _overwrite_artifact_payload(
+    store: ArtifactStore, reference: ArtifactRef, payload: dict
+) -> None:
+    _artifact_blob_path(store, reference).write_text(
+        json.dumps(
+            payload,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _persisted_preparation_audit(completed):
+    config_path = completed.run_dir / "config.json"
+    run_config = json.loads(config_path.read_text(encoding="utf-8"))
+    paired_block_id, audit = next(
+        iter(run_config["audit_only"]["block_preparations"].items())
+    )
+    return config_path, run_config, paired_block_id, audit
+
+
+def _mutate_persisted_resume_factor(completed, mutation: str) -> None:
+    config_path, run_config, _paired_block_id, audit = (
+        _persisted_preparation_audit(completed)
+    )
+    manifest_ref = ArtifactRef(**audit["checkpoint_manifest_ref"])
+    manifest = json.loads(completed.store.read_verified(manifest_ref))
+    if mutation == "manifest_content":
+        _artifact_blob_path(completed.store, manifest_ref).write_bytes(b"{}\n")
+        return
+    if mutation == "checkpoint_artifact_ref":
+        direct_ref = ArtifactRef(**manifest["nodes"][0]["artifact_ref"])
+        skeleton_ref = ArtifactRef(**manifest["nodes"][2]["artifact_ref"])
+        replacement = ArtifactRef(
+            key=direct_ref.key,
+            sha256=skeleton_ref.sha256,
+            size_bytes=skeleton_ref.size_bytes,
+            media_type=skeleton_ref.media_type,
+        )
+        _artifact_ref_path(completed.store, direct_ref).write_text(
+            json.dumps(
+                replacement.to_dict(),
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        return
+    if mutation == "source_event_parent_sequence":
+        event_ref = ArtifactRef(**audit["block_event_refs"][1])
+        event = json.loads(completed.store.read_verified(event_ref))
+        event["sequence"] += 1
+        event["parent_event_id"] = "block-preparation-event-" + "0" * 64
+        _overwrite_artifact_payload(completed.store, event_ref, event)
+        return
+    if mutation == "graph_consumer":
+        manifest["nodes"][0]["consumer_methods"] = ["M0", "M2"]
+        _overwrite_artifact_payload(completed.store, manifest_ref, manifest)
+        return
+    if mutation == "policy_hash":
+        audit["preparation_policy_sha256"] = "f" * 64
+        _write_json_file(config_path, run_config)
+        return
+    if mutation == "close_total":
+        close_ref = ArtifactRef(**audit["block_event_refs"][-1])
+        close_event = json.loads(completed.store.read_verified(close_ref))
+        close_event["cost_delta"]["logical_model_calls"] += 1
+        _overwrite_artifact_payload(completed.store, close_ref, close_event)
+        return
+    if mutation == "partial_state":
+        audit.pop("checkpoint_manifest_ref")
+        _write_json_file(config_path, run_config)
+        return
+    raise AssertionError(f"unknown resume mutation: {mutation}")
+
+
+def _resume_side_effect_spies(monkeypatch):
+    from sr2fpga_agent import runner as runner_module
+
+    spies = {
+        "paired_materialization": mock.Mock(
+            wraps=runner_module._materialize_development_paired_blocks
+        ),
+        "tool_collection": mock.Mock(
+            wraps=runner_module.collect_development_tool_environment
+        ),
+        "json_write": mock.Mock(wraps=runner_module._write_json),
+    }
+    monkeypatch.setattr(
+        runner_module,
+        "_materialize_development_paired_blocks",
+        spies["paired_materialization"],
+    )
+    monkeypatch.setattr(
+        runner_module,
+        "collect_development_tool_environment",
+        spies["tool_collection"],
+    )
+    monkeypatch.setattr(runner_module, "_write_json", spies["json_write"])
+    return spies
+
+
+def test_runner_resume_rejects_valid_manifest_substitution_before_side_effects(
+    monkeypatch,
+) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+    )
+    paired_block_id, audit = next(
+        iter(completed.summary["audit_only"]["block_preparations"].items())
+    )
+    original_ref = ArtifactRef(**audit["checkpoint_manifest_ref"])
+    manifest = json.loads(completed.store.read_verified(original_ref))
+    manifest["nodes"] = list(reversed(manifest["nodes"]))
+    replacement_ref = _replace_artifact_key_with_payload(
+        completed.store,
+        original_ref,
+        manifest,
+        mutation="valid-manifest-substitution",
+    )
+    assert replacement_ref != original_ref
+    assert completed.store.reference(original_ref.key) == replacement_ref
+    calls_before = _physical_provider_calls(completed)
+    events_before = completed.events_path.read_bytes()
+    files_before = _file_tree_snapshot(completed.run_dir)
+    spies = _resume_side_effect_spies(monkeypatch)
+
+    with pytest.raises(
+        SharedCheckpointResumeError,
+        match="requires a new run ID",
+    ):
+        run_batch(completed.config, run_id=completed.run_id, resume=True)
+
+    assert paired_block_id in completed.summary["audit_only"]["block_preparations"]
+    assert _physical_provider_calls(completed) == calls_before
+    assert completed.events_path.read_bytes() == events_before
+    assert _file_tree_snapshot(completed.run_dir) == files_before
+    assert all(spy.call_count == 0 for spy in spies.values())
+
+
+def test_runner_rejects_legacy_resume_before_freeze_or_artifact_writes(
+    monkeypatch,
+) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+    )
+    config_path = completed.run_dir / "config.json"
+    run_config = json.loads(config_path.read_text(encoding="utf-8"))
+    run_config.pop("audit_only")
+    config_path.write_text(
+        json.dumps(run_config, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    freeze_path = completed.run_dir / "measurement_freeze.json"
+    measurement_freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
+    measurement_freeze.pop("block_preparation_policies")
+    measurement_freeze["freeze_fingerprint"] = freeze_fingerprint(
+        measurement_freeze
+    )
+    freeze_path.write_text(
+        json.dumps(measurement_freeze, ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    calls_before = _physical_provider_calls(completed)
+    events_before = completed.events_path.read_bytes()
+    files_before = _file_tree_snapshot(completed.run_dir)
+    spies = _resume_side_effect_spies(monkeypatch)
+
+    with pytest.raises(
+        SharedCheckpointResumeError,
+        match="requires a new run ID",
+    ):
+        run_batch(completed.config, run_id=completed.run_id, resume=True)
+
+    assert _physical_provider_calls(completed) == calls_before
+    assert completed.events_path.read_bytes() == events_before
+    assert _file_tree_snapshot(completed.run_dir) == files_before
+    assert all(spy.call_count == 0 for spy in spies.values())
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "manifest_content",
+        "checkpoint_artifact_ref",
+        "source_event_parent_sequence",
+        "graph_consumer",
+        "policy_hash",
+        "close_total",
+        "partial_state",
+    ),
+)
+def test_runner_resume_negative_matrix_rejects_before_all_side_effects(
+    monkeypatch, mutation: str
+) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+    )
+    _mutate_persisted_resume_factor(completed, mutation)
+    calls_before = _physical_provider_calls(completed)
+    events_before = completed.events_path.read_bytes()
+    files_before = _file_tree_snapshot(completed.run_dir)
+    spies = _resume_side_effect_spies(monkeypatch)
+
+    with pytest.raises(
+        SharedCheckpointResumeError,
+        match="requires a new run ID",
+    ):
+        run_batch(completed.config, run_id=completed.run_id, resume=True)
+
+    assert _physical_provider_calls(completed) == calls_before
+    assert completed.events_path.read_bytes() == events_before
+    assert _file_tree_snapshot(completed.run_dir) == files_before
+    assert all(spy.call_count == 0 for spy in spies.values())
 
 
 @pytest.mark.parametrize(
