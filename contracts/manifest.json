@@ -85,6 +85,10 @@
       "version": "full-pack-runner-reconciliation-v2",
       "path": "contracts/evaluation/full-pack-runner-reconciliation-v2.schema.json"
     },
+    "development_paired_block_cost_reconciliation": {
+      "version": "development-paired-block-cost-reconciliation-v1",
+      "path": "contracts/evaluation/development-paired-block-cost-reconciliation-v1.schema.json"
+    },
     "development_public_evaluation": {
       "version": "development-public-evaluation-v1",
       "path": "contracts/evaluation/development-public-evaluation-v1.schema.json"

@@ -1,0 +1,423 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/evaluation/development-paired-block-cost-reconciliation/v1",
+  "title": "SR2FPGA Development Paired-Block Cost Reconciliation v1",
+  "description": "Development-only three-view cost reconciliation. It grants no outcome, pass-credit, G3, or G4b authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "evaluation_scope", "reconciliation_status",
+    "incomplete_reasons", "paired_block_ref", "checkpoint_manifest_ref",
+    "block_event_refs", "source_full_pack_runner_ref", "reducer_policy_sha256",
+    "actual_block_axes", "method_records", "incremental_contrasts",
+    "source_event_partition", "reconciliation", "official_outcome",
+    "official_authority", "pass_credit_authority", "rq1_evidence",
+    "rq2_evidence", "g3_accepted", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-paired-block-cost-reconciliation-v1"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "reconciliation_status": {"enum": ["complete", "incomplete"]},
+    "incomplete_reasons": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "minLength": 1}
+    },
+    "paired_block_ref": {"$ref": "#/$defs/artifact_ref"},
+    "checkpoint_manifest_ref": {"$ref": "#/$defs/artifact_ref"},
+    "block_event_refs": {
+      "type": "array", "minItems": 1, "uniqueItems": true,
+      "items": {"$ref": "#/$defs/artifact_ref"}
+    },
+    "source_full_pack_runner_ref": {
+      "oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]
+    },
+    "reducer_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "actual_block_axes": {"$ref": "#/$defs/axis_results"},
+    "method_records": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "prefixItems": [
+        {"allOf": [{"$ref": "#/$defs/method_record"}, {"properties": {"method_condition": {"const": "M0"}}}]},
+        {"allOf": [{"$ref": "#/$defs/method_record"}, {"properties": {"method_condition": {"const": "M1"}}}]},
+        {"allOf": [{"$ref": "#/$defs/method_record"}, {"properties": {"method_condition": {"const": "M2"}}}]},
+        {"allOf": [{"$ref": "#/$defs/method_record"}, {"properties": {"method_condition": {"const": "M3"}}}]},
+        {"allOf": [{"$ref": "#/$defs/method_record"}, {"properties": {"method_condition": {"const": "M4"}}}]},
+        {"allOf": [{"$ref": "#/$defs/method_record"}, {"properties": {"method_condition": {"const": "M5"}}}]}
+      ],
+      "items": false
+    },
+    "incremental_contrasts": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "prefixItems": [
+        {"allOf": [
+          {"$ref": "#/$defs/contrast"},
+          {"properties": {
+            "contrast_id": {"const": "M1-M0"},
+            "checkpoint_id": {"const": "direct_initial_project"},
+            "treatment_method": {"const": "M1"},
+            "baseline_method": {"const": "M0"},
+            "arms": {"prefixItems": [
+              {"properties": {"role": {"const": "treatment"}, "method_condition": {"const": "M1"}}},
+              {"properties": {"role": {"const": "baseline"}, "method_condition": {"const": "M0"}}}
+            ]}
+          }}
+        ]},
+        {"allOf": [
+          {"$ref": "#/$defs/contrast"},
+          {"properties": {
+            "contrast_id": {"const": "M4-M3"},
+            "checkpoint_id": {"const": "shared_system_his"},
+            "treatment_method": {"const": "M4"},
+            "baseline_method": {"const": "M3"},
+            "arms": {"prefixItems": [
+              {"properties": {"role": {"const": "treatment"}, "method_condition": {"const": "M4"}}},
+              {"properties": {"role": {"const": "baseline"}, "method_condition": {"const": "M3"}}}
+            ]}
+          }}
+        ]},
+        {"allOf": [
+          {"$ref": "#/$defs/contrast"},
+          {"properties": {
+            "contrast_id": {"const": "M5-M4"},
+            "checkpoint_id": {"const": "skeleton_initial_project"},
+            "treatment_method": {"const": "M5"},
+            "baseline_method": {"const": "M4"},
+            "arms": {"prefixItems": [
+              {"properties": {"role": {"const": "treatment"}, "method_condition": {"const": "M5"}}},
+              {"properties": {"role": {"const": "baseline"}, "method_condition": {"const": "M4"}}}
+            ]}
+          }}
+        ]}
+      ],
+      "items": false
+    },
+    "source_event_partition": {"$ref": "#/$defs/source_event_partition"},
+    "reconciliation": {"$ref": "#/$defs/reconciliation"},
+    "official_outcome": {"const": false},
+    "official_authority": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "rq1_evidence": {"const": false},
+    "rq2_evidence": {"const": false},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"reconciliation_status": {"const": "complete"}},
+        "required": ["reconciliation_status"]
+      },
+      "then": {
+        "properties": {
+          "incomplete_reasons": {"maxItems": 0},
+          "source_full_pack_runner_ref": {"$ref": "#/$defs/artifact_ref"},
+          "method_records": {
+            "not": {
+              "contains": {
+                "properties": {"terminal_status": {"not": {"const": "completed"}}},
+                "required": ["terminal_status"]
+              }
+            }
+          },
+          "reconciliation": {
+            "properties": {"full_pack_lineage_verified": {"const": true}}
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "incomplete_reasons": {"minItems": 1},
+          "source_full_pack_runner_ref": {"type": "null"},
+          "reconciliation": {
+            "properties": {"full_pack_lineage_verified": {"const": false}}
+          }
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "method": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "checkpoint_id": {
+      "enum": ["direct_initial_project", "shared_system_his", "skeleton_initial_project"]
+    },
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "minLength": 1}
+      }
+    },
+    "axis_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "reason"],
+      "properties": {
+        "status": {"enum": ["measured", "unavailable"]},
+        "value": {"type": ["integer", "number", "null"]},
+        "reason": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "value": {"type": ["integer", "number"], "minimum": 0},
+              "reason": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {"type": "null"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "signed_axis_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "reason"],
+      "properties": {
+        "status": {"enum": ["measured", "unavailable"]},
+        "value": {"type": ["integer", "number", "null"]},
+        "reason": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "value": {"type": ["integer", "number"]},
+              "reason": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {"type": "null"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "axis_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_model_calls", "input_tokens", "output_tokens", "cached_tokens",
+        "provider_transport_attempts", "planner_parser_schema_retries",
+        "outer_repair_attempts", "public_tool_calls", "hidden_evaluator_tool_calls",
+        "hidden_infrastructure_retries", "wall_time", "eda_time",
+        "hidden_evaluator_runtime"
+      ],
+      "properties": {
+        "logical_model_calls": {"$ref": "#/$defs/axis_result"},
+        "input_tokens": {"$ref": "#/$defs/axis_result"},
+        "output_tokens": {"$ref": "#/$defs/axis_result"},
+        "cached_tokens": {"$ref": "#/$defs/axis_result"},
+        "provider_transport_attempts": {"$ref": "#/$defs/axis_result"},
+        "planner_parser_schema_retries": {"$ref": "#/$defs/axis_result"},
+        "outer_repair_attempts": {"$ref": "#/$defs/axis_result"},
+        "public_tool_calls": {"$ref": "#/$defs/axis_result"},
+        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/axis_result"},
+        "hidden_infrastructure_retries": {"$ref": "#/$defs/axis_result"},
+        "wall_time": {"$ref": "#/$defs/axis_result"},
+        "eda_time": {"$ref": "#/$defs/axis_result"},
+        "hidden_evaluator_runtime": {"$ref": "#/$defs/axis_result"}
+      }
+    },
+    "signed_axis_results": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_model_calls", "input_tokens", "output_tokens", "cached_tokens",
+        "provider_transport_attempts", "planner_parser_schema_retries",
+        "outer_repair_attempts", "public_tool_calls", "hidden_evaluator_tool_calls",
+        "hidden_infrastructure_retries", "wall_time", "eda_time",
+        "hidden_evaluator_runtime"
+      ],
+      "properties": {
+        "logical_model_calls": {"$ref": "#/$defs/signed_axis_result"},
+        "input_tokens": {"$ref": "#/$defs/signed_axis_result"},
+        "output_tokens": {"$ref": "#/$defs/signed_axis_result"},
+        "cached_tokens": {"$ref": "#/$defs/signed_axis_result"},
+        "provider_transport_attempts": {"$ref": "#/$defs/signed_axis_result"},
+        "planner_parser_schema_retries": {"$ref": "#/$defs/signed_axis_result"},
+        "outer_repair_attempts": {"$ref": "#/$defs/signed_axis_result"},
+        "public_tool_calls": {"$ref": "#/$defs/signed_axis_result"},
+        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/signed_axis_result"},
+        "hidden_infrastructure_retries": {"$ref": "#/$defs/signed_axis_result"},
+        "wall_time": {"$ref": "#/$defs/signed_axis_result"},
+        "eda_time": {"$ref": "#/$defs/signed_axis_result"},
+        "hidden_evaluator_runtime": {"$ref": "#/$defs/signed_axis_result"}
+      }
+    },
+    "method_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_condition", "terminal_status", "blocked_checkpoint_id",
+        "blocked_reason", "trajectory_ref", "cost_summary_refs",
+        "attempt_event_refs", "source_events_sha256", "exclusive_axes",
+        "standalone_attributed_axes"
+      ],
+      "properties": {
+        "method_condition": {"$ref": "#/$defs/method"},
+        "terminal_status": {
+          "enum": ["completed", "failed", "not_run", "blocked_by_shared_checkpoint"]
+        },
+        "blocked_checkpoint_id": {
+          "oneOf": [{"$ref": "#/$defs/checkpoint_id"}, {"type": "null"}]
+        },
+        "blocked_reason": {"type": ["string", "null"]},
+        "trajectory_ref": {
+          "oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]
+        },
+        "cost_summary_refs": {
+          "type": "array", "uniqueItems": true,
+          "items": {"$ref": "#/$defs/artifact_ref"}
+        },
+        "attempt_event_refs": {
+          "type": "array", "uniqueItems": true,
+          "items": {"$ref": "#/$defs/artifact_ref"}
+        },
+        "source_events_sha256": {"$ref": "#/$defs/sha256"},
+        "exclusive_axes": {"$ref": "#/$defs/axis_results"},
+        "standalone_attributed_axes": {"$ref": "#/$defs/axis_results"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"terminal_status": {"const": "blocked_by_shared_checkpoint"}},
+            "required": ["terminal_status"]
+          },
+          "then": {
+            "properties": {
+              "blocked_checkpoint_id": {"$ref": "#/$defs/checkpoint_id"},
+              "blocked_reason": {"type": "string", "minLength": 1},
+              "trajectory_ref": {"type": "null"},
+              "cost_summary_refs": {"maxItems": 0},
+              "attempt_event_refs": {"maxItems": 0}
+            }
+          },
+          "else": {
+            "properties": {
+              "blocked_checkpoint_id": {"type": "null"},
+              "blocked_reason": {"type": "null"},
+              "trajectory_ref": {"$ref": "#/$defs/artifact_ref"},
+              "cost_summary_refs": {"minItems": 1},
+              "attempt_event_refs": {"minItems": 1}
+            }
+          }
+        }
+      ]
+    },
+    "contrast_arm": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["role", "method_condition", "axes"],
+      "properties": {
+        "role": {"enum": ["treatment", "baseline"]},
+        "method_condition": {"$ref": "#/$defs/method"},
+        "axes": {"$ref": "#/$defs/axis_results"}
+      }
+    },
+    "contrast": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "contrast_id", "checkpoint_id", "treatment_method", "baseline_method",
+        "status", "reason", "arms", "signed_delta_axes"
+      ],
+      "properties": {
+        "contrast_id": {"enum": ["M1-M0", "M4-M3", "M5-M4"]},
+        "checkpoint_id": {"$ref": "#/$defs/checkpoint_id"},
+        "treatment_method": {"$ref": "#/$defs/method"},
+        "baseline_method": {"$ref": "#/$defs/method"},
+        "status": {"enum": ["measured", "unavailable"]},
+        "reason": {"type": ["string", "null"]},
+        "arms": {
+          "type": "array", "minItems": 2, "maxItems": 2,
+          "prefixItems": [
+            {"allOf": [{"$ref": "#/$defs/contrast_arm"}, {"properties": {"role": {"const": "treatment"}}}]},
+            {"allOf": [{"$ref": "#/$defs/contrast_arm"}, {"properties": {"role": {"const": "baseline"}}}]}
+          ],
+          "items": false
+        },
+        "signed_delta_axes": {"$ref": "#/$defs/signed_axis_results"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
+          "then": {"properties": {"reason": {"type": "null"}}},
+          "else": {"properties": {"reason": {"type": "string", "minLength": 1}}
+          }
+        }
+      ]
+    },
+    "method_event_ids": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["M0", "M1", "M2", "M3", "M4", "M5"],
+      "properties": {
+        "M0": {"$ref": "#/$defs/event_id_array"},
+        "M1": {"$ref": "#/$defs/event_id_array"},
+        "M2": {"$ref": "#/$defs/event_id_array"},
+        "M3": {"$ref": "#/$defs/event_id_array"},
+        "M4": {"$ref": "#/$defs/event_id_array"},
+        "M5": {"$ref": "#/$defs/event_id_array"}
+      }
+    },
+    "event_id_array": {
+      "type": "array", "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^attempt-event-[0-9a-f]{64}$"}
+    },
+    "source_event_partition": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "block_event_ids", "block_events_sha256", "method_event_ids",
+        "source_events_sha256"
+      ],
+      "properties": {
+        "block_event_ids": {
+          "type": "array", "minItems": 1, "uniqueItems": true,
+          "items": {"type": "string", "pattern": "^block-preparation-event-[0-9a-f]{64}$"}
+        },
+        "block_events_sha256": {"$ref": "#/$defs/sha256"},
+        "method_event_ids": {"$ref": "#/$defs/method_event_ids"},
+        "source_events_sha256": {"$ref": "#/$defs/sha256"}
+      }
+    },
+    "reconciliation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "method_set", "checkpoint_manifest_verified", "all_source_artifacts_verified",
+        "all_available_trajectories_verified", "source_event_partition_disjoint",
+        "all_required_axes_classified", "full_pack_lineage_verified",
+        "all_authority_fields_false"
+      ],
+      "properties": {
+        "method_set": {"const": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+        "checkpoint_manifest_verified": {"const": true},
+        "all_source_artifacts_verified": {"const": true},
+        "all_available_trajectories_verified": {"const": true},
+        "source_event_partition_disjoint": {"const": true},
+        "all_required_axes_classified": {"const": true},
+        "full_pack_lineage_verified": {"type": "boolean"},
+        "all_authority_fields_false": {"const": true}
+      }
+    }
+  }
+}

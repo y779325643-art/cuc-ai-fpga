@@ -34,6 +34,7 @@ def test_contract_manifest_declares_required_contracts() -> None:
         "full_pack_smoke_report",
         "full_pack_runner_reconciliation",
         "full_pack_runner_reconciliation_v2",
+        "development_paired_block_cost_reconciliation",
         "development_public_evaluation",
         "development_public_l2_harness",
         "development_terminal_public_outcome",
