@@ -517,6 +517,36 @@ def _contrast_arm(result: dict, contrast: str, method: str, axis: str):
     return arm["axes"][axis]["value"]
 
 
+def _assert_reconstruction_rejects_payload_tamper(
+    fixture,
+    payload: dict,
+    *,
+    label: str,
+    monkeypatch,
+) -> None:
+    store = fixture["store"]
+    tampered_ref = store.put_validated_json(
+        f"tampered-reconciliations/{label}",
+        payload,
+        contract_key="development_paired_block_cost_reconciliation",
+    )
+    original_put = store.put_validated_json
+
+    def preserve_tampered_ref(key, rebuilt, *, contract_key, registry=None):
+        if contract_key == "development_paired_block_cost_reconciliation":
+            return tampered_ref
+        return original_put(
+            key, rebuilt, contract_key=contract_key, registry=registry
+        )
+
+    monkeypatch.setattr(store, "put_validated_json", preserve_tampered_ref)
+    with pytest.raises(
+        PairedCostReconciliationError,
+        match="does not match verified sources",
+    ):
+        read_development_paired_block_cost_reconciliation(store, tampered_ref)
+
+
 def test_reducer_reconciles_actual_standalone_and_incremental_call_algebra(tmp_path) -> None:
     fixture = _fixture(tmp_path)
     result, reference = _reconcile(fixture)
@@ -538,6 +568,88 @@ def test_reducer_reconciles_actual_standalone_and_incremental_call_algebra(tmp_p
     assert read_development_paired_block_cost_reconciliation(
         fixture["store"], reference
     ) == result
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "shared_divided",
+        "shared_omitted",
+        "pre_checkpoint_in_incremental",
+        "m4_views_collapsed",
+        "signed_delta",
+    ),
+)
+def test_verified_reader_reconstructs_and_rejects_cost_algebra_tampering(
+    tmp_path, monkeypatch, mutation: str
+) -> None:
+    fixture = _fixture(tmp_path)
+    result, _reference = _reconcile(fixture)
+    tampered = copy.deepcopy(result)
+    records = {
+        record["method_condition"]: record for record in tampered["method_records"]
+    }
+    contrasts = {
+        contrast["contrast_id"]: contrast
+        for contrast in tampered["incremental_contrasts"]
+    }
+    if mutation == "shared_divided":
+        for method in ("M0", "M1"):
+            records[method]["standalone_attributed_axes"]["logical_model_calls"][
+                "value"
+            ] = 0.5
+    elif mutation == "shared_omitted":
+        for method in ("M0", "M1"):
+            records[method]["standalone_attributed_axes"]["logical_model_calls"][
+                "value"
+            ] = records[method]["exclusive_axes"]["logical_model_calls"]["value"]
+    elif mutation == "pre_checkpoint_in_incremental":
+        treatment = contrasts["M1-M0"]["arms"][0]["axes"]["logical_model_calls"]
+        treatment["value"] += 1
+    elif mutation == "m4_views_collapsed":
+        after_his = contrasts["M4-M3"]["arms"][0]["axes"][
+            "logical_model_calls"
+        ]
+        after_project = contrasts["M5-M4"]["arms"][1]["axes"][
+            "logical_model_calls"
+        ]
+        assert after_his["value"] != after_project["value"]
+        after_his["value"] = after_project["value"]
+    else:
+        signed = contrasts["M4-M3"]["signed_delta_axes"]["wall_time"]
+        signed["value"] += 1
+
+    _assert_reconstruction_rejects_payload_tamper(
+        fixture,
+        tampered,
+        label=mutation,
+        monkeypatch=monkeypatch,
+    )
+
+
+def test_verified_reader_rejects_duplicate_event_across_source_partitions(
+    tmp_path,
+) -> None:
+    fixture = _fixture(tmp_path)
+    result, _reference = _reconcile(fixture)
+    tampered = copy.deepcopy(result)
+    duplicate = tampered["source_event_partition"]["block_event_ids"][0]
+    tampered["source_event_partition"]["method_event_ids"]["M0"].append(duplicate)
+    tampered_ref = fixture["store"].put_blob(
+        "tampered-reconciliations/partition-overlap",
+        json.dumps(
+            tampered, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode(),
+        media_type="application/json",
+    )
+
+    with pytest.raises(
+        PairedCostReconciliationError,
+        match="invalid paired-block cost reconciliation",
+    ):
+        read_development_paired_block_cost_reconciliation(
+            fixture["store"], tampered_ref
+        )
 
 
 def test_reducer_is_order_invariant_and_records_an_exact_disjoint_partition(tmp_path) -> None:
@@ -729,6 +841,33 @@ def test_reducer_rejects_full_pack_cross_lineage(tmp_path) -> None:
     fixture["full_pack_ref"] = other["full_pack_ref"]
 
     with pytest.raises(PairedCostReconciliationError):
+        _reconcile(fixture)
+
+
+@pytest.mark.parametrize(
+    ("lineage", "expected"),
+    (
+        ("trajectory", "M0 trajectory is invalid"),
+        ("checkpoint", "checkpoint-manifest source is invalid"),
+    ),
+)
+def test_reducer_rejects_valid_artifact_from_another_run_lineage(
+    tmp_path, lineage: str, expected: str
+) -> None:
+    fixture = _fixture(tmp_path / "current")
+    other = _fixture(tmp_path / "other")
+    if lineage == "trajectory":
+        fixture["methods"] = [
+            replace(
+                fixture["methods"][0],
+                trajectory_ref=other["trajectories"]["M0"][0],
+            ),
+            *fixture["methods"][1:],
+        ]
+    else:
+        fixture["manifest_ref"] = other["manifest_ref"]
+
+    with pytest.raises(PairedCostReconciliationError, match=expected):
         _reconcile(fixture)
 
 

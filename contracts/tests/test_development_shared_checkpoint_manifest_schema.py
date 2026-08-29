@@ -132,17 +132,44 @@ def test_manifest_requires_checkpoint_artifact_key_suffixes() -> None:
             _validator().validate(payload)
 
 
-def test_manifest_rejects_wrong_consumers_cycle_and_missing_event_refs() -> None:
-    wrong_consumers = _complete_manifest()
-    wrong_consumers["nodes"][0]["consumer_methods"] = ["M0"]
-    cycle = _complete_manifest()
-    cycle["nodes"][0]["parent_checkpoint_ids"] = ["skeleton_initial_project"]
-    missing_events = _complete_manifest()
-    missing_events["nodes"][1]["source_event_refs"] = []
+def test_manifest_rejects_wrong_consumer_set() -> None:
+    payload = _complete_manifest()
+    payload["nodes"][0]["consumer_methods"] = ["M0"]
 
-    for payload in (wrong_consumers, cycle, missing_events):
-        with pytest.raises(ValidationError):
-            _validator().validate(payload)
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_manifest_rejects_wrong_parent_edge() -> None:
+    payload = _complete_manifest()
+    payload["nodes"][2]["parent_checkpoint_ids"] = ["direct_initial_project"]
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_manifest_rejects_missing_parent() -> None:
+    payload = _complete_manifest()
+    payload["nodes"][2]["parent_checkpoint_ids"] = []
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_manifest_rejects_graph_cycle() -> None:
+    payload = _complete_manifest()
+    payload["nodes"][0]["parent_checkpoint_ids"] = ["skeleton_initial_project"]
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_manifest_rejects_missing_node_source_events() -> None:
+    payload = _complete_manifest()
+    payload["nodes"][1]["source_event_refs"] = []
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
 
 
 def test_manifest_requires_completed_artifacts_and_keeps_incomplete_refs_null() -> None:
@@ -170,13 +197,21 @@ def test_manifest_requires_completed_artifacts_and_keeps_incomplete_refs_null() 
         _validator().validate(invalid_incomplete)
 
 
-def test_manifest_rejects_trusted_skeleton_substitution_and_unknown_fields() -> None:
+def test_manifest_rejects_trusted_skeleton_substitution() -> None:
     substituted = _complete_manifest()
     substituted["nodes"][2]["artifact_ref"] = substituted["nodes"][2]["trusted_skeleton_ref"]
+
+    with pytest.raises(ValidationError):
+        _validator().validate(substituted)
+
+
+def test_manifest_rejects_wrong_version_and_unknown_field() -> None:
+    wrong_version = _complete_manifest()
+    wrong_version["contract_version"] = "development-shared-checkpoint-manifest-v2"
     unknown = _complete_manifest()
     unknown["nodes"][0]["private_trace"] = True
 
     with pytest.raises(ValidationError):
-        _validator().validate(substituted)
+        _validator().validate(wrong_version)
     with pytest.raises(ValidationError):
         _validator().validate(unknown)

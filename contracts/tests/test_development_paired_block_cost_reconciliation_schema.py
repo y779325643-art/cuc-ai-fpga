@@ -290,3 +290,25 @@ def test_reconciliation_rejects_unknown_fields() -> None:
 
     with pytest.raises(ValidationError):
         _validator().validate(payload)
+
+
+def test_reconciliation_rejects_wrong_version() -> None:
+    payload = _complete_reconciliation()
+    payload["contract_version"] = "development-paired-block-cost-reconciliation-v2"
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_reconciliation_rejects_unknown_or_renamed_axis() -> None:
+    unknown = _complete_reconciliation()
+    unknown["actual_block_axes"]["private_runtime"] = _axes()["wall_time"]
+    renamed = _complete_reconciliation()
+    renamed["actual_block_axes"]["eda_seconds"] = renamed["actual_block_axes"].pop(
+        "eda_time"
+    )
+
+    with pytest.raises(ValidationError):
+        _validator().validate(unknown)
+    with pytest.raises(ValidationError):
+        _validator().validate(renamed)

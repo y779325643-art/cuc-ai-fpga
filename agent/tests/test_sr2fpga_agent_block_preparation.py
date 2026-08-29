@@ -7,7 +7,11 @@ from dataclasses import replace
 
 import pytest
 
-from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.artifact_store import (
+    ArtifactIntegrityError,
+    ArtifactRef,
+    ArtifactStore,
+)
 from sr2fpga_agent.block_cost_accounting import (
     BlockPreparationCostLedger,
     replay_development_block_preparation,
@@ -741,6 +745,144 @@ def test_verified_manifest_reader_rejects_tampering(tmp_path, mutation: str) -> 
     )
 
     with pytest.raises(ValueError):
+        read_development_shared_checkpoint_manifest(store, tampered_ref)
+
+
+@pytest.mark.parametrize(
+    ("node_index", "field", "expected"),
+    (
+        (0, "artifact_ref", "checkpoint artifact reference"),
+        (1, "content_sha256", "checkpoint content digest mismatch"),
+        (2, "project_package_sha256", "checkpoint project package digest mismatch"),
+    ),
+    ids=("direct-ref", "his-content", "skeleton-project-package"),
+)
+def test_verified_manifest_reader_rejects_each_checkpoint_digest_binding_tamper(
+    tmp_path, node_index: int, field: str, expected: str
+) -> None:
+    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    reference = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    tampered = json.loads(store.read_verified(reference))
+    if field == "artifact_ref":
+        tampered["nodes"][node_index][field]["sha256"] = "f" * 64
+    else:
+        tampered["nodes"][node_index][field] = "f" * 64
+    tampered_ref = store.put_blob(
+        f"tampered/checkpoint-binding-{node_index}",
+        json.dumps(
+            tampered, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode(),
+        media_type="application/json",
+    )
+
+    with pytest.raises(ValueError, match=expected):
+        read_development_shared_checkpoint_manifest(store, tampered_ref)
+
+
+def test_verified_manifest_reader_rejects_checkpoint_bytes_tamper(tmp_path) -> None:
+    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    reference = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    artifact_ref = nodes[1].artifact_ref
+    assert artifact_ref is not None
+    blob_path = store.root / "blobs" / artifact_ref.sha256[:2] / artifact_ref.sha256
+    blob_path.write_bytes(b'{"intent":"tampered"}')
+
+    with pytest.raises(ArtifactIntegrityError, match="artifact (size|sha256) mismatch"):
+        read_development_shared_checkpoint_manifest(store, reference)
+
+
+def test_verified_manifest_reader_rejects_cross_block_project_artifact(tmp_path) -> None:
+    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    reference = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    other_project = MethodArtifactGateway(store).put_project(
+        "other/direct-initial-project", _project("other-block")
+    )
+    tampered = json.loads(store.read_verified(reference))
+    tampered["nodes"][0]["artifact_ref"] = other_project.artifact_ref.to_dict()
+    tampered["nodes"][0]["content_sha256"] = other_project.artifact_ref.sha256
+    tampered["nodes"][0]["project_package_sha256"] = (
+        other_project.project_package_sha256
+    )
+    tampered_ref = store.put_blob(
+        "tampered/cross-block-project",
+        json.dumps(
+            tampered, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode(),
+        media_type="application/json",
+    )
+
+    with pytest.raises(ValueError, match="absent from raw event"):
+        read_development_shared_checkpoint_manifest(store, tampered_ref)
+
+
+def test_verified_manifest_reader_rejects_source_event_partition_swap(tmp_path) -> None:
+    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    reference = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    tampered = json.loads(store.read_verified(reference))
+    tampered["nodes"][0]["source_event_refs"] = copy.deepcopy(
+        tampered["nodes"][1]["source_event_refs"]
+    )
+    tampered["nodes"][0]["source_events_sha256"] = tampered["nodes"][1][
+        "source_events_sha256"
+    ]
+    tampered_ref = store.put_blob(
+        "tampered/source-event-partition",
+        json.dumps(
+            tampered, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode(),
+        media_type="application/json",
+    )
+
+    with pytest.raises(ValueError, match="source event partition mismatch"):
+        read_development_shared_checkpoint_manifest(store, tampered_ref)
+
+
+def test_verified_manifest_reader_rejects_block_event_set_digest_tamper(
+    tmp_path,
+) -> None:
+    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    reference = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    tampered = json.loads(store.read_verified(reference))
+    tampered["block_events_sha256"] = "f" * 64
+    tampered_ref = store.put_blob(
+        "tampered/block-event-set-digest",
+        json.dumps(
+            tampered, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode(),
+        media_type="application/json",
+    )
+
+    with pytest.raises(ValueError, match="block event-set digest mismatch"):
         read_development_shared_checkpoint_manifest(store, tampered_ref)
 
 

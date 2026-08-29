@@ -104,9 +104,15 @@ def test_block_preparation_event_is_method_neutral() -> None:
     _validator().validate(_close_event())
 
 
-def test_block_preparation_event_rejects_method_owner() -> None:
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (("method_condition", "M4"), ("execution_ordinal", 0)),
+)
+def test_block_preparation_event_rejects_method_or_ordinal_owner(
+    field: str, value: str | int
+) -> None:
     payload = _event()
-    payload["method_condition"] = "M4"
+    payload[field] = value
 
     with pytest.raises(ValidationError):
         _validator().validate(payload)

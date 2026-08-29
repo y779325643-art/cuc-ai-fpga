@@ -1,3 +1,4 @@
+import copy
 import json
 import hashlib
 from dataclasses import replace
@@ -866,7 +867,7 @@ def test_complete_block_rejects_same_id_reused_by_nonmember_before_run(
     assert not (tmp_path / "runs" / "reused-block-id").exists()
 
 
-def test_replicate_and_schedule_identity_never_enter_m0_m5_model_prompts(
+def test_m0_m5_prompt_spy_is_nonvacuous_and_hides_block_metadata(
     tmp_path,
 ) -> None:
     direct_path = tmp_path / "direct.json"
@@ -894,11 +895,53 @@ def test_replicate_and_schedule_identity_never_enter_m0_m5_model_prompts(
         analysis_population="excluded",
     )
 
+    visibility_canaries = {
+        "checkpoint_manifest_ref": {
+            "key": "checkpoint-manifest-canary-ref",
+            "sha256": "d" * 64,
+        },
+        "checkpoint_manifest_status": "checkpoint-status-canary",
+        "checkpoint_graph": "checkpoint-graph-canary",
+        "checkpoint_cost": "checkpoint-cost-canary",
+        "block_event_ids": ["block-event-canary-id"],
+        "standalone_attributed": "standalone-attributed-canary",
+        "actual_block_consumption": "actual-consumption-canary",
+        "sibling_method_status": "sibling-status-canary",
+        "sibling_method_outcomes": "sibling-outcomes-canary",
+        "reconciliation_output": "reconciliation-output-canary",
+        "hidden_commitments": "hidden-commitments-canary",
+    }
+    forbidden = (
+        "pair-counter-prompt-spy",
+        "replicate-prompt-spy-7f4c",
+        "909991",
+        *(
+            value
+            for value in (
+                visibility_canaries["checkpoint_manifest_ref"]["key"],
+                visibility_canaries["checkpoint_manifest_ref"]["sha256"],
+                visibility_canaries["checkpoint_manifest_status"],
+                visibility_canaries["checkpoint_graph"],
+                visibility_canaries["checkpoint_cost"],
+                *visibility_canaries["block_event_ids"],
+                visibility_canaries["standalone_attributed"],
+                visibility_canaries["actual_block_consumption"],
+                visibility_canaries["sibling_method_status"],
+                visibility_canaries["sibling_method_outcomes"],
+                visibility_canaries["reconciliation_output"],
+                visibility_canaries["hidden_commitments"],
+            )
+        ),
+    )
     captured_by_method = {}
     for config in (load_runner_config(direct_path), load_runner_config(his_path)):
         for sample in planned_samples(config):
             metadata = sample.metadata(config)
             context, his_response, project_response = _responses(metadata)
+            assert all(canary not in context.public_text for canary in forbidden)
+            metadata["visibility_canary_metadata"] = copy.deepcopy(
+                visibility_canaries
+            )
             store = ArtifactStore(tmp_path / "prompt-stores" / sample.method_condition)
             if sample.method_condition in {"M0", "M1"}:
                 clients = [_Client(project_response)]
@@ -933,9 +976,9 @@ def test_replicate_and_schedule_identity_never_enter_m0_m5_model_prompts(
             captured_by_method[sample.method_condition] = method_calls
 
     assert set(captured_by_method) == {"M0", "M1", "M2", "M3", "M4", "M5"}
+    assert all(captured_by_method[method] for method in captured_by_method)
     serialized = json.dumps(captured_by_method, ensure_ascii=False)
-    assert "replicate-prompt-spy-7f4c" not in serialized
-    assert "909991" not in serialized
+    assert all(canary not in serialized for canary in forbidden)
 
 
 @pytest.mark.parametrize("model_budget", (None, ModelCallBudget(2)))

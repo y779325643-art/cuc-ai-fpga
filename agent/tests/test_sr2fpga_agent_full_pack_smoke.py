@@ -2397,15 +2397,38 @@ def test_real_runner_three_view_costs_are_order_invariant(monkeypatch) -> None:
     serialized_prompts = json.dumps(all_prompt_calls, ensure_ascii=False)
     forbidden_prompt_values = (
         paired_block_id,
-        "replicate-000",
-        "909991",
+        paired_ref.sha256,
+        paired_ref.key,
+        paired_block["replicate_id"],
+        str(paired_block["execution_schedule_seed"]),
         policy["preparation_policy_sha256"],
+        manifest_ref.sha256,
+        manifest_ref.key,
+        *(reference["sha256"] for reference in preparation_audit["block_event_refs"]),
+        *first.costs["source_event_partition"]["block_event_ids"],
         "checkpoint_manifest_ref",
+        "manifest_status",
+        "parent_checkpoint_ids",
+        "consumer_methods",
+        "checkpoint_cost",
         "block_event_refs",
+        "block_event_ids",
         "exclusive_model_call_ceilings",
+        "standalone_attributed",
+        "actual_block_consumption",
+        "actual_block_axes",
         "execution_ordinal",
         "method_order",
         "sibling_method",
+        "sibling_method_status",
+        "sibling_method_outcomes",
+        "reconciliation_output",
+        "reconciliation_status",
+        "source_event_partition",
+        "hidden_commitments",
+    )
+    assert all(
+        value not in config.tasks[0].requirement for value in forbidden_prompt_values
     )
     assert all(value not in serialized_prompts for value in forbidden_prompt_values)
 

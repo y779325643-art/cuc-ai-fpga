@@ -33,6 +33,57 @@ def _remaining_zero_axes(ledger: BlockPreparationCostLedger) -> set[str]:
     return set(COST_AXES) - set(ledger.observed_axes)
 
 
+def _resign_event(event: dict) -> dict:
+    unsigned = {key: value for key, value in event.items() if key != "event_id"}
+    event["event_id"] = "block-preparation-event-" + hashlib.sha256(
+        json.dumps(
+            unsigned, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode()
+    ).hexdigest()
+    return event
+
+
+def _put_replay_event(
+    store: ArtifactStore,
+    paired_block_ref: ArtifactRef,
+    sequence: int,
+    event: dict,
+) -> ArtifactRef:
+    return store.put_blob(
+        f"block-preparation-events/{paired_block_ref.sha256}/"
+        f"{sequence:06d}-{event['event_id']}",
+        json.dumps(
+            event, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode(),
+        media_type="application/json",
+    )
+
+
+def _replay_fixture(tmp_path):
+    store = ArtifactStore(tmp_path / "store")
+    paired_block_ref = _ref(store, "paired/tamper/paired-block")
+    ledger = BlockPreparationCostLedger(
+        store, paired_block_ref=paired_block_ref, failure_origin=None
+    )
+    ledger.activate_checkpoint("shared_system_his")
+    ledger.record_cost(
+        stage="block_req2his",
+        visibility_class="accounting",
+        cost_delta={"logical_model_calls": 1, "wall_time": 1.0},
+    )
+    ledger.record_checkpoint(
+        checkpoint_id="shared_system_his",
+        event_kind="checkpoint_materialized",
+        status="completed",
+        output_refs=(_ref(store, "paired/tamper/system-his"),),
+    )
+    ledger.close(zero_axes=_remaining_zero_axes(ledger))
+    events = [
+        json.loads(store.read_verified(reference)) for reference in ledger.event_refs
+    ]
+    return store, paired_block_ref, ledger.event_refs, events
+
+
 def test_replay_counts_shared_call_once_and_excludes_close_delta(tmp_path) -> None:
     store = ArtifactStore(tmp_path / "store")
     paired_ref = _ref(store, "paired/a/paired-block")
@@ -208,3 +259,110 @@ def test_replay_rejects_missing_model_gateway_provenance_ref(tmp_path) -> None:
 
     with pytest.raises(BlockPreparationCostLedgerError, match="provenance"):
         replay_development_block_preparation(tampered_store, (first_ref, close_ref))
+
+
+def test_replay_rejects_event_id_tamper(tmp_path) -> None:
+    store, paired_block_ref, event_refs, events = _replay_fixture(tmp_path)
+    tampered = dict(events[0])
+    tampered["event_id"] = "block-preparation-event-" + "f" * 64
+    tampered_ref = _put_replay_event(store, paired_block_ref, 0, tampered)
+
+    with pytest.raises(BlockPreparationCostLedgerError, match="event ID"):
+        replay_development_block_preparation(
+            store, (tampered_ref, *event_refs[1:])
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("parent_event_id", "block-preparation-event-" + "f" * 64),
+        ("sequence", 7),
+    ),
+)
+def test_replay_rejects_parent_or_sequence_tamper(
+    tmp_path, field: str, value: str | int
+) -> None:
+    store, paired_block_ref, event_refs, events = _replay_fixture(tmp_path)
+    tampered = dict(events[1])
+    tampered[field] = value
+    _resign_event(tampered)
+    tampered_ref = _put_replay_event(store, paired_block_ref, 1, tampered)
+
+    with pytest.raises(
+        BlockPreparationCostLedgerError, match="sequence or parent chain"
+    ):
+        replay_development_block_preparation(
+            store, (event_refs[0], tampered_ref, event_refs[2])
+        )
+
+
+def test_replay_rejects_paired_block_identity_tamper(tmp_path) -> None:
+    store, paired_block_ref, event_refs, events = _replay_fixture(tmp_path)
+    other_ref = _ref(store, "paired/other/paired-block")
+    tampered = dict(events[1])
+    tampered["paired_block_ref"] = other_ref.to_dict()
+    _resign_event(tampered)
+    tampered_ref = _put_replay_event(store, paired_block_ref, 1, tampered)
+
+    with pytest.raises(BlockPreparationCostLedgerError, match="paired-block identity"):
+        replay_development_block_preparation(
+            store, (event_refs[0], tampered_ref, event_refs[2])
+        )
+
+
+def test_replay_rejects_unknown_checkpoint_id_at_contract_layer(tmp_path) -> None:
+    store, paired_block_ref, event_refs, events = _replay_fixture(tmp_path)
+    tampered = dict(events[0])
+    tampered["checkpoint_id"] = "unknown_checkpoint"
+    _resign_event(tampered)
+    tampered_ref = _put_replay_event(store, paired_block_ref, 0, tampered)
+
+    with pytest.raises(BlockPreparationCostLedgerError, match="invalid block event"):
+        replay_development_block_preparation(
+            store, (tampered_ref, *event_refs[1:])
+        )
+
+
+def test_replay_rejects_missing_close(tmp_path) -> None:
+    store, _paired_block_ref, event_refs, _events = _replay_fixture(tmp_path)
+
+    with pytest.raises(BlockPreparationCostLedgerError, match="not closed"):
+        replay_development_block_preparation(store, event_refs[:-1])
+
+
+def test_replay_rejects_duplicate_raw_event(tmp_path) -> None:
+    store, _paired_block_ref, event_refs, _events = _replay_fixture(tmp_path)
+
+    with pytest.raises(
+        BlockPreparationCostLedgerError, match="sequence or parent chain"
+    ):
+        replay_development_block_preparation(
+            store, (event_refs[0], event_refs[0], *event_refs[1:])
+        )
+
+
+def test_replay_rejects_retry_cost_reclassified_as_method_repair(tmp_path) -> None:
+    store = ArtifactStore(tmp_path / "store")
+    paired_block_ref = _ref(store, "paired/classification/paired-block")
+    ledger = BlockPreparationCostLedger(
+        store, paired_block_ref=paired_block_ref, failure_origin=None
+    )
+    ledger.activate_checkpoint("shared_system_his")
+    ledger.record_cost(
+        stage="block_req2his",
+        visibility_class="accounting",
+        cost_delta={"planner_parser_schema_retries": 1},
+    )
+    ledger.close(zero_axes=_remaining_zero_axes(ledger))
+    cost = json.loads(store.read_verified(ledger.event_refs[0]))
+    close = json.loads(store.read_verified(ledger.event_refs[1]))
+    cost["cost_delta"] = {"outer_repair_attempts": 1}
+    _resign_event(cost)
+    cost_ref = _put_replay_event(store, paired_block_ref, 0, cost)
+    close["parent_event_id"] = cost["event_id"]
+    _resign_event(close)
+    close_ref = _put_replay_event(store, paired_block_ref, 1, close)
+
+    with pytest.raises(BlockPreparationCostLedgerError, match="close totals"):
+        replay_development_block_preparation(store, (cost_ref, close_ref))
