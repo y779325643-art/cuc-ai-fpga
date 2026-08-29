@@ -4540,9 +4540,19 @@ def _preflight_existing_block_preparation_resume(
     if not paired_block_plans:
         return {}
     expected_ids = set(paired_block_plans)
+    expected_completions = {
+        paired_block_id: dict(
+            zip(
+                plan.sample_ids,
+                plan.payload["method_order"],
+                strict=True,
+            )
+        )
+        for paired_block_id, plan in paired_block_plans.items()
+    }
     event_audits = _event_recorded_block_preparation_audits(
         run_dir / "events.jsonl",
-        expected_ids,
+        expected_completions,
     )
     config_path = run_dir / "config.json"
     try:
@@ -4624,7 +4634,7 @@ def _preflight_existing_block_preparation_resume(
 
 def _event_recorded_block_preparation_audits(
     events_path: Path,
-    expected_paired_block_ids: set[str],
+    expected_completions: Mapping[str, Mapping[str, str]],
 ) -> dict[str, dict[str, Any]]:
     """Recover the original preparation audit cross-linked into run events."""
 
@@ -4639,11 +4649,24 @@ def _event_recorded_block_preparation_audits(
         raise _shared_checkpoint_resume_error(
             "existing run has no events that anchor preparation identity"
         )
+    expected_paired_block_ids = set(expected_completions)
+    sample_owners: dict[str, tuple[str, str]] = {}
+    for paired_block_id, methods_by_sample in expected_completions.items():
+        for sample_id, method_condition in methods_by_sample.items():
+            if sample_id in sample_owners:
+                raise _shared_checkpoint_resume_error(
+                    f"planned sample identity is reused: {sample_id}"
+                )
+            sample_owners[sample_id] = (paired_block_id, method_condition)
     linked: dict[str, list[dict[str, Any]]] = {
         paired_block_id: [] for paired_block_id in expected_paired_block_ids
     }
-    completed: dict[str, list[dict[str, Any]]] = {
-        paired_block_id: [] for paired_block_id in expected_paired_block_ids
+    completed: dict[str, dict[tuple[str, str], list[dict[str, Any]]]] = {
+        paired_block_id: {
+            (sample_id, method_condition): []
+            for sample_id, method_condition in methods_by_sample.items()
+        }
+        for paired_block_id, methods_by_sample in expected_completions.items()
     }
     for event in events:
         if not isinstance(event, dict):
@@ -4651,12 +4674,30 @@ def _event_recorded_block_preparation_audits(
                 "existing run event must be an object"
             )
         paired_block_id = event.get("paired_block_id")
-        if paired_block_id not in expected_paired_block_ids:
+        is_completion = event.get("event") == "sample_completed"
+        sample_id = event.get("sample_id")
+        method_condition = event.get("method_condition")
+        if is_completion:
+            owner = sample_owners.get(sample_id)
+            if owner is None:
+                if paired_block_id in expected_paired_block_ids:
+                    raise _shared_checkpoint_resume_error(
+                        f"{paired_block_id} has an extra completion: {sample_id}"
+                    )
+                continue
+            expected_block_id, expected_method = owner
+            if paired_block_id != expected_block_id:
+                raise _shared_checkpoint_resume_error(
+                    f"{sample_id} completion names the wrong paired block"
+                )
+            if method_condition != expected_method:
+                raise _shared_checkpoint_resume_error(
+                    f"{sample_id} completion names the wrong method"
+                )
+        elif paired_block_id not in expected_paired_block_ids:
             continue
         raw_audit = event.get("block_preparation_audit")
-        if event.get("event") == "sample_completed" and not isinstance(
-            raw_audit, dict
-        ):
+        if is_completion and not isinstance(raw_audit, dict):
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} completion lacks its preparation audit"
             )
@@ -4674,23 +4715,33 @@ def _event_recorded_block_preparation_audits(
                 f"{paired_block_id} event and preparation paired-block refs differ"
             )
         linked[paired_block_id].append(raw_audit)
-        if event.get("event") == "sample_completed":
-            completed[paired_block_id].append(raw_audit)
+        if is_completion:
+            completed[paired_block_id][
+                (str(sample_id), str(method_condition))
+            ].append(raw_audit)
     anchors: dict[str, dict[str, Any]] = {}
     for paired_block_id in sorted(expected_paired_block_ids):
-        records = linked[paired_block_id]
-        if not records:
-            raise _shared_checkpoint_resume_error(
-                f"{paired_block_id} has no event-recorded preparation audit"
-            )
-        anchor = records[0]
-        if any(record != anchor for record in records[1:]):
-            raise _shared_checkpoint_resume_error(
-                f"{paired_block_id} event-recorded preparation audits disagree"
-            )
-        if any(record != anchor for record in completed[paired_block_id]):
+        completion_records = completed[paired_block_id]
+        for (sample_id, method_condition), records in completion_records.items():
+            if len(records) != 1:
+                raise _shared_checkpoint_resume_error(
+                    f"{paired_block_id} requires exactly one completion for "
+                    f"{sample_id}/{method_condition}; found {len(records)}"
+                )
+        ordered_completed = [
+            completion_records[(sample_id, method_condition)][0]
+            for sample_id, method_condition in expected_completions[
+                paired_block_id
+            ].items()
+        ]
+        anchor = ordered_completed[0]
+        if any(record != anchor for record in ordered_completed[1:]):
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} completed method audits disagree"
+            )
+        if any(record != anchor for record in linked[paired_block_id]):
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} audit-bearing run events disagree"
             )
         anchors[paired_block_id] = dict(anchor)
     return anchors

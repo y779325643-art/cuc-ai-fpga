@@ -1845,6 +1845,56 @@ def test_runner_resume_rejects_coordinated_config_and_manifest_substitution(
     assert all(spy.call_count == 0 for spy in spies.values())
 
 
+@pytest.mark.parametrize(
+    "completion_mutation",
+    ("remove_all", "duplicate_one"),
+)
+def test_runner_resume_requires_exact_planned_completion_consensus(
+    monkeypatch, completion_mutation: str
+) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+    )
+    events = [
+        json.loads(line)
+        for line in completed.events_path.read_text(encoding="utf-8").splitlines()
+    ]
+    completions = [event for event in events if event.get("event") == "sample_completed"]
+    assert len(completions) == 6
+    assert any(
+        event.get("event") != "sample_completed"
+        and isinstance(event.get("block_preparation_audit"), dict)
+        for event in events
+    )
+    if completion_mutation == "remove_all":
+        events = [
+            event for event in events if event.get("event") != "sample_completed"
+        ]
+    else:
+        events.append(dict(completions[0]))
+    completed.events_path.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+    calls_before = _physical_provider_calls(completed)
+    events_before = completed.events_path.read_bytes()
+    files_before = _file_tree_snapshot(completed.run_dir)
+    spies = _resume_side_effect_spies(monkeypatch)
+
+    with pytest.raises(
+        SharedCheckpointResumeError,
+        match="requires a new run ID",
+    ):
+        run_batch(completed.config, run_id=completed.run_id, resume=True)
+
+    assert _physical_provider_calls(completed) == calls_before
+    assert completed.events_path.read_bytes() == events_before
+    assert _file_tree_snapshot(completed.run_dir) == files_before
+    assert all(spy.call_count == 0 for spy in spies.values())
+
+
 def test_runner_rejects_legacy_resume_before_freeze_or_artifact_writes(
     monkeypatch,
 ) -> None:
