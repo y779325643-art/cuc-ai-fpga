@@ -41,6 +41,10 @@ class CheckpointId(str, Enum):
     SKELETON_INITIAL_PROJECT = "skeleton_initial_project"
 
 
+class SharedCheckpointResumeError(RuntimeError):
+    """A prior shared-checkpoint state cannot be reused safely in place."""
+
+
 _CHECKPOINT_SUFFIX = {
     CheckpointId.DIRECT_INITIAL_PROJECT: "direct-initial-project",
     CheckpointId.SHARED_SYSTEM_HIS: "system-his",
@@ -415,6 +419,59 @@ def read_development_shared_checkpoint_manifest(
     return payload
 
 
+def blocked_methods_from_verified_manifest(
+    store: ArtifactStore, reference: ArtifactRef
+) -> dict[str, str]:
+    """Map each blocked method to its verified failed shared prerequisite."""
+
+    manifest = read_development_shared_checkpoint_manifest(store, reference)
+    candidates: dict[str, list[Mapping[str, Any]]] = {}
+    for node in manifest["nodes"]:
+        if node["status"] == "completed":
+            continue
+        for method in node["consumer_methods"]:
+            candidates.setdefault(method, []).append(node)
+    blocked: dict[str, str] = {}
+    for method, nodes in candidates.items():
+        failed = [node for node in nodes if node["status"] == "failed"]
+        origin = failed[0] if failed else nodes[0]
+        blocked[method] = str(origin["checkpoint_id"])
+    return blocked
+
+
+def read_complete_development_shared_checkpoint_resume(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    *,
+    paired_block_ref: ArtifactRef,
+    preparation_policy_sha256: str,
+) -> dict[str, Any]:
+    """Accept only the exact, content-verified complete preparation for reuse."""
+
+    expected_key = (
+        f"shared-checkpoint-manifests/{paired_block_ref.sha256}/"
+        f"{preparation_policy_sha256}"
+    )
+    try:
+        _require_sha256(preparation_policy_sha256, "preparation policy")
+        if reference.key != expected_key or store.reference(expected_key) != reference:
+            raise ValueError("checkpoint manifest reference does not match requested resume")
+        manifest = read_development_shared_checkpoint_manifest(store, reference)
+        if manifest["paired_block_ref"] != paired_block_ref.to_dict():
+            raise ValueError("checkpoint manifest paired block does not match requested resume")
+        if manifest["preparation_policy_sha256"] != preparation_policy_sha256:
+            raise ValueError("checkpoint manifest policy does not match requested resume")
+        if manifest["manifest_status"] != "complete":
+            raise ValueError("checkpoint manifest is incomplete")
+    except (KeyError, OSError, TypeError, ValueError, RuntimeError) as exc:
+        if isinstance(exc, SharedCheckpointResumeError):
+            raise
+        raise SharedCheckpointResumeError(
+            f"shared checkpoint resume rejected ({exc}); use a new run ID"
+        ) from exc
+    return manifest
+
+
 def _validate_nodes(
     store: ArtifactStore,
     nodes: tuple[CheckpointNode, ...],
@@ -433,6 +490,7 @@ def _validate_nodes(
     }
     nodes_by_id = {node.checkpoint_id: node for node in nodes}
     direct = nodes_by_id[CheckpointId.DIRECT_INITIAL_PROJECT]
+    system_his = nodes_by_id[CheckpointId.SHARED_SYSTEM_HIS]
     skeleton = nodes_by_id[CheckpointId.SKELETON_INITIAL_PROJECT]
     if (
         direct.artifact_ref is not None
@@ -454,6 +512,18 @@ def _validate_nodes(
             event for event in events if event["checkpoint_id"] == node.checkpoint_id.value
         )
         _validate_node_artifacts(store, node, partition_events)
+    if system_his.status != "completed":
+        if (
+            skeleton.status != "not_run"
+            or skeleton.reason != "dependency_failed:shared_system_his"
+        ):
+            raise ValueError(
+                "skeleton checkpoint must be not_run after shared_system_his failure"
+            )
+    elif skeleton.status == "not_run":
+        raise ValueError(
+            "skeleton checkpoint cannot be not_run after completed shared_system_his"
+        )
 
 
 def _validate_node_artifacts(

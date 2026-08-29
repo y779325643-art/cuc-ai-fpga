@@ -25,7 +25,10 @@ from sr2fpga_agent.block_cost_accounting import BlockPreparationCostLedger
 from sr2fpga_agent.block_preparation import (
     BlockPreparationFacades,
     PreparedBlockArtifacts,
+    SharedCheckpointResumeError,
+    blocked_methods_from_verified_manifest,
     prepare_development_paired_block,
+    read_complete_development_shared_checkpoint_resume,
     read_development_shared_checkpoint_manifest,
 )
 from sr2fpga_agent.cost_accounting import (
@@ -411,6 +414,7 @@ class PreparedBlockRuntime:
     prepared: PreparedBlockArtifacts
     member_sample_ids: tuple[str, ...]
     exclusive_model_call_ceilings: dict[str, int]
+    blocked_method_checkpoints: dict[str, str] = field(default_factory=dict)
 
 
 class _RunnerDirectMethodProjectGenerator:
@@ -869,6 +873,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         paired_block_refs=paired_block_refs,
         store=method_artifact_store,
         freeze_fingerprint=freeze_fingerprint,
+        require_existing=resume and existing_run,
     )
     block_preparation_audit = {
         paired_block_id: _prepared_block_audit_record(
@@ -923,6 +928,61 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             sample_metadata["block_preparation_audit"] = dict(
                 sample_block_preparation_audit
             )
+        method_condition = str(
+            sample_metadata.get("method_condition", "")
+        ).strip().upper()
+        blocked_checkpoint_id = (
+            prepared_block_runtime.blocked_method_checkpoints.get(method_condition)
+            if prepared_block_runtime is not None
+            else None
+        )
+        if blocked_checkpoint_id is not None:
+            manifest = read_development_shared_checkpoint_manifest(
+                method_artifact_store,
+                prepared_block_runtime.prepared.manifest_ref,
+            )
+            blocked_node = next(
+                node
+                for node in manifest["nodes"]
+                if node["checkpoint_id"] == blocked_checkpoint_id
+            )
+            state = _record_blocked_by_shared_checkpoint(
+                state,
+                sample.sample_id,
+                index + 1,
+            )
+            blocked_event = {
+                "event": "sample_blocked_by_shared_checkpoint",
+                "sample_id": sample.sample_id,
+                "source": sample.source,
+                "semantic_instance_id": sample.semantic_instance_id,
+                "decoding_seed": sample.decoding_seed,
+                "paired_block_id": sample.paired_block_id,
+                "method_condition": method_condition,
+                "terminal_status": "blocked_by_shared_checkpoint",
+                "blocked_checkpoint_id": blocked_checkpoint_id,
+                "blocked_reason": (
+                    f"{blocked_node['reason']}:{blocked_checkpoint_id}"
+                ),
+                "canonical_trajectory_ref": None,
+                "paired_block_ref": paired_block_ref.to_dict(),
+                "execution_ordinal": execution_ordinal,
+                "freeze_fingerprint": freeze_fingerprint,
+                "block_preparation_audit": dict(
+                    sample_block_preparation_audit or {}
+                ),
+            }
+            if sample.replicate_id:
+                blocked_event.update(
+                    {
+                        "replicate_id": sample.replicate_id,
+                        "execution_schedule_seed": sample.execution_schedule_seed,
+                        "decoding_control_mode": sample.decoding_control_mode,
+                    }
+                )
+            _append_event(events_path, blocked_event)
+            write_run_state(state_path, state)
+            continue
         episode_pack_ref = None
         episode_pack = sample_metadata.get("episode_pack")
         if isinstance(episode_pack, dict):
@@ -940,7 +1000,6 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             execution_ordinal=execution_ordinal,
             block_preparation_audit=sample_block_preparation_audit,
         )
-        method_condition = str(sample_metadata.get("method_condition", "")).strip().upper()
         prepared_accounting_input_hashes = (
             _prepared_runtime_accounting_input_hashes(
                 method_condition,
@@ -2026,6 +2085,30 @@ def _record_rejected(state: RunState, sample_id: str, next_index: int, failure_t
     failure_types = dict(state.failure_types)
     failure_types[failure_type] = failure_types.get(failure_type, 0) + 1
 
+    return RunState(
+        run_id=state.run_id,
+        next_index=next_index,
+        completed_samples=completed_samples,
+        buckets=buckets,
+        failure_types=failure_types,
+        exports_refreshed=state.exports_refreshed,
+        config_fingerprint=state.config_fingerprint,
+    )
+
+
+def _record_blocked_by_shared_checkpoint(
+    state: RunState, sample_id: str, next_index: int
+) -> RunState:
+    buckets = {key: list(value) for key, value in state.buckets.items()}
+    buckets.setdefault("not_run", [])
+    if sample_id not in buckets["not_run"]:
+        buckets["not_run"].append(sample_id)
+    completed_samples = list(state.completed_samples)
+    if sample_id not in completed_samples:
+        completed_samples.append(sample_id)
+    failure_types = dict(state.failure_types)
+    reason = "blocked_by_shared_checkpoint"
+    failure_types[reason] = failure_types.get(reason, 0) + 1
     return RunState(
         run_id=state.run_id,
         next_index=next_index,
@@ -4329,6 +4412,7 @@ def _prepare_complete_blocks(
     paired_block_refs: Mapping[str, ArtifactRef],
     store: ArtifactStore,
     freeze_fingerprint: str,
+    require_existing: bool = False,
 ) -> dict[str, PreparedBlockRuntime]:
     if not re.fullmatch(r"[0-9a-f]{64}", freeze_fingerprint):
         raise ValueError("block preparation requires a valid freeze fingerprint")
@@ -4378,6 +4462,11 @@ def _prepare_complete_blocks(
         if existing is not None:
             prepared_blocks[paired_block_id] = existing
             continue
+        if require_existing:
+            raise SharedCheckpointResumeError(
+                "shared checkpoint resume rejected (existing run has no G3b manifest); "
+                "use a new run ID"
+            )
         ledger = BlockPreparationCostLedger(
             store,
             paired_block_ref=paired_block_ref,
@@ -4429,6 +4518,9 @@ def _prepare_complete_blocks(
             member_sample_ids=plan.sample_ids,
             exclusive_model_call_ceilings=dict(
                 policy["exclusive_model_call_ceilings"]
+            ),
+            blocked_method_checkpoints=blocked_methods_from_verified_manifest(
+                store, prepared.manifest_ref
             ),
         )
     return prepared_blocks
@@ -4546,27 +4638,44 @@ def _load_prepared_block_runtime(
         f"shared-checkpoint-manifests/{paired_block_ref.sha256}/"
         f"{preparation_policy_sha256}"
     )
-    manifest_ref = store.reference(key)
+    try:
+        manifest_ref = store.reference(key)
+    except (KeyError, OSError, TypeError, ValueError, RuntimeError) as exc:
+        raise SharedCheckpointResumeError(
+            f"shared checkpoint resume rejected ({exc}); use a new run ID"
+        ) from exc
     if manifest_ref is None:
         return None
-    manifest = read_development_shared_checkpoint_manifest(store, manifest_ref)
-    if manifest["manifest_status"] != "complete":
-        raise RuntimeError("existing block preparation manifest is incomplete")
-    nodes = {node["checkpoint_id"]: node for node in manifest["nodes"]}
-    direct = _project_emission_from_checkpoint(store, nodes["direct_initial_project"])
-    system_his_ref = ArtifactRef(**nodes["shared_system_his"]["artifact_ref"])
-    store.read_verified(system_his_ref)
-    system_his = PlanningArtifactEmission(
-        PlanningArtifactKind.SYSTEM_HIS,
-        system_his_ref,
-    )
-    skeleton = _project_emission_from_checkpoint(
-        store, nodes["skeleton_initial_project"]
-    )
-    trusted_ref = ArtifactRef(
-        **nodes["skeleton_initial_project"]["trusted_skeleton_ref"]
-    )
-    trusted = _project_emission_from_ref(store, trusted_ref)
+    try:
+        manifest = read_complete_development_shared_checkpoint_resume(
+            store,
+            manifest_ref,
+            paired_block_ref=paired_block_ref,
+            preparation_policy_sha256=preparation_policy_sha256,
+        )
+        nodes = {node["checkpoint_id"]: node for node in manifest["nodes"]}
+        direct = _project_emission_from_checkpoint(
+            store, nodes["direct_initial_project"]
+        )
+        system_his_ref = ArtifactRef(**nodes["shared_system_his"]["artifact_ref"])
+        store.read_verified(system_his_ref)
+        system_his = PlanningArtifactEmission(
+            PlanningArtifactKind.SYSTEM_HIS,
+            system_his_ref,
+        )
+        skeleton = _project_emission_from_checkpoint(
+            store, nodes["skeleton_initial_project"]
+        )
+        trusted_ref = ArtifactRef(
+            **nodes["skeleton_initial_project"]["trusted_skeleton_ref"]
+        )
+        trusted = _project_emission_from_ref(store, trusted_ref)
+    except SharedCheckpointResumeError:
+        raise
+    except (KeyError, OSError, TypeError, ValueError, RuntimeError) as exc:
+        raise SharedCheckpointResumeError(
+            f"shared checkpoint resume rejected ({exc}); use a new run ID"
+        ) from exc
     prepared = PreparedBlockArtifacts(
         paired_block_ref=paired_block_ref,
         manifest_ref=manifest_ref,
@@ -4582,6 +4691,7 @@ def _load_prepared_block_runtime(
         prepared=prepared,
         member_sample_ids=member_sample_ids,
         exclusive_model_call_ceilings=exclusive_model_call_ceilings,
+        blocked_method_checkpoints={},
     )
 
 

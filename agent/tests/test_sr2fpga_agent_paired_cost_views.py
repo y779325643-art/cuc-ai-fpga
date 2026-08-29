@@ -99,6 +99,7 @@ def _write_checkpoint_sources(
     paired_block_ref: ArtifactRef,
     failed_checkpoint: str | None = None,
     unavailable_checkpoint: str | None = None,
+    unavailable_axis: str = "input_tokens",
 ):
     gateway = MethodArtifactGateway(store)
     direct = gateway.put_project(
@@ -134,6 +135,15 @@ def _write_checkpoint_sources(
         is_not_run = blocked_downstream
         if not is_not_run:
             unavailable = checkpoint == unavailable_checkpoint
+            cost_delta = {"logical_model_calls": 1}
+            unavailable_axes = None
+            if unavailable:
+                cost_delta[unavailable_axis] = None
+                unavailable_axes = {
+                    unavailable_axis: (
+                        f"synthetic_axis_missing:{checkpoint}:{unavailable_axis}"
+                    )
+                }
             ledger.record_cost(
                 stage={
                     "direct_initial_project": "block_direct_initial",
@@ -141,15 +151,8 @@ def _write_checkpoint_sources(
                     "skeleton_initial_project": "block_skeleton_initial",
                 }[checkpoint],
                 visibility_class="accounting",
-                cost_delta={
-                    "logical_model_calls": 1,
-                    **({"input_tokens": None} if unavailable else {}),
-                },
-                unavailable_axes=(
-                    {"input_tokens": "synthetic_token_usage_missing"}
-                    if unavailable
-                    else None
-                ),
+                cost_delta=cost_delta,
+                unavailable_axes=unavailable_axes,
             )
         if checkpoint == failed_checkpoint:
             ledger.record_checkpoint(
@@ -164,7 +167,7 @@ def _write_checkpoint_sources(
                 checkpoint_id=checkpoint,
                 event_kind="checkpoint_not_run",
                 status="not_run",
-                reason="blocked_by_shared_checkpoint",
+                reason="dependency_failed:shared_system_his",
             )
         else:
             ledger.record_checkpoint(
@@ -198,7 +201,7 @@ def _write_checkpoint_sources(
             reason = "synthetic_checkpoint_failure"
         elif failed_checkpoint == "shared_system_his" and checkpoint_id == "skeleton_initial_project":
             status = "not_run"
-            reason = "blocked_by_shared_checkpoint"
+            reason = "dependency_failed:shared_system_his"
         artifact_ref = artifacts[checkpoint_id][0] if status == "completed" else None
         nodes.append(
             CheckpointNode(
@@ -408,6 +411,7 @@ def _fixture(
     *,
     failed_checkpoint: str | None = None,
     unavailable_checkpoint: str | None = None,
+    unavailable_axis: str = "input_tokens",
     tampered_summary_method: str | None = None,
     raw_lineage_mismatch: str | None = None,
 ):
@@ -419,6 +423,7 @@ def _fixture(
         paired_block_ref=paired_block_ref,
         failed_checkpoint=failed_checkpoint,
         unavailable_checkpoint=unavailable_checkpoint,
+        unavailable_axis=unavailable_axis,
     )
     base_hashes = {
         paired_block_ref.sha256,
@@ -567,48 +572,135 @@ def test_reducer_is_order_invariant_and_records_an_exact_disjoint_partition(tmp_
     )
 
 
-def test_reducer_preserves_pre_failure_cost_and_marks_affected_contrast_unavailable(
+@pytest.mark.parametrize(
+    ("failed_checkpoint", "blocked", "affected_contrasts", "actual_calls"),
+    (
+        ("direct_initial_project", {"M0", "M1"}, {"M1-M0"}, 6),
+        (
+            "shared_system_his",
+            {"M3", "M4", "M5"},
+            {"M4-M3", "M5-M4"},
+            4,
+        ),
+        (
+            "skeleton_initial_project",
+            {"M4", "M5"},
+            {"M4-M3", "M5-M4"},
+            6,
+        ),
+    ),
+)
+def test_reducer_preserves_pre_failure_cost_and_blocks_exact_consumers(
     tmp_path,
+    failed_checkpoint: str,
+    blocked: set[str],
+    affected_contrasts: set[str],
+    actual_calls: int,
 ) -> None:
-    fixture = _fixture(tmp_path, failed_checkpoint="direct_initial_project")
+    fixture = _fixture(tmp_path, failed_checkpoint=failed_checkpoint)
     result, _ = _reconcile(fixture)
 
     assert result["reconciliation_status"] == "incomplete"
-    assert result["actual_block_axes"]["logical_model_calls"]["value"] == 6
-    assert _standalone(result, "M0", "logical_model_calls") == 1
-    assert _standalone(result, "M1", "logical_model_calls") == 1
-    contrast = result["incremental_contrasts"][0]
-    assert contrast["status"] == "unavailable"
-    assert "direct_initial_project" in contrast["reason"]
-    assert all(
-        axis["status"] == "unavailable"
-        for axis in contrast["signed_delta_axes"].values()
+    assert result["actual_block_axes"]["logical_model_calls"]["value"] == actual_calls
+    records = {
+        record["method_condition"]: record for record in result["method_records"]
+    }
+    assert {
+        method
+        for method, record in records.items()
+        if record["terminal_status"] == "blocked_by_shared_checkpoint"
+    } == blocked
+    for method in METHODS:
+        record = records[method]
+        if method in blocked:
+            assert record["blocked_checkpoint_id"] == failed_checkpoint
+            assert failed_checkpoint in record["blocked_reason"]
+            assert record["trajectory_ref"] is None
+            assert record["cost_summary_refs"] == []
+            assert record["attempt_event_refs"] == []
+            assert all(
+                axis == {"status": "measured", "value": 0, "reason": None}
+                for axis in record["exclusive_axes"].values()
+            )
+            assert record["standalone_attributed_axes"]["logical_model_calls"][
+                "value"
+            ] >= 1
+        else:
+            assert record["terminal_status"] == "completed"
+            assert record["trajectory_ref"] is not None
+    contrasts = {
+        contrast["contrast_id"]: contrast
+        for contrast in result["incremental_contrasts"]
+    }
+    assert {
+        contrast_id
+        for contrast_id, contrast in contrasts.items()
+        if contrast["status"] == "unavailable"
+    } == affected_contrasts
+    for contrast_id in affected_contrasts:
+        assert failed_checkpoint in contrasts[contrast_id]["reason"]
+        assert all(
+            axis["status"] == "unavailable"
+            for axis in contrasts[contrast_id]["signed_delta_axes"].values()
+        )
+
+
+def test_reducer_rejects_downstream_not_run_node_as_failure_origin(tmp_path) -> None:
+    fixture = _fixture(tmp_path, failed_checkpoint="shared_system_his")
+    methods = [
+        (
+            replace(source, blocked_checkpoint_id="skeleton_initial_project")
+            if source.method_condition == "M4"
+            else source
+        )
+        for source in fixture["methods"]
+    ]
+
+    with pytest.raises(PairedCostReconciliationError, match="verified failure origin"):
+        _reconcile(fixture, methods=methods)
+
+
+@pytest.mark.parametrize("unavailable_axis", COST_AXES)
+def test_reducer_propagates_each_unavailable_axis_only_through_dependent_sums(
+    tmp_path, unavailable_axis: str
+) -> None:
+    fixture = _fixture(
+        tmp_path,
+        unavailable_checkpoint="skeleton_initial_project",
+        unavailable_axis=unavailable_axis,
     )
-
-
-def test_reducer_propagates_unavailable_axes_only_through_dependent_sums(tmp_path) -> None:
-    fixture = _fixture(tmp_path, unavailable_checkpoint="skeleton_initial_project")
     result, _ = _reconcile(fixture)
 
-    assert result["actual_block_axes"]["input_tokens"]["status"] == "unavailable"
-    assert next(
+    actual = result["actual_block_axes"][unavailable_axis]
+    m4 = next(
         record
         for record in result["method_records"]
         if record["method_condition"] == "M4"
-    )["standalone_attributed_axes"]["input_tokens"]["status"] == "unavailable"
-    assert next(
+    )["standalone_attributed_axes"][unavailable_axis]
+    m3 = next(
         record
         for record in result["method_records"]
         if record["method_condition"] == "M3"
-    )["standalone_attributed_axes"]["input_tokens"] == {
-        "status": "measured",
-        "value": 0,
-        "reason": None,
-    }
+    )["standalone_attributed_axes"][unavailable_axis]
     m4_m3 = result["incremental_contrasts"][1]
-    assert m4_m3["arms"][0]["axes"]["input_tokens"]["status"] == "unavailable"
-    assert m4_m3["arms"][1]["axes"]["input_tokens"]["status"] == "measured"
-    assert m4_m3["signed_delta_axes"]["input_tokens"]["status"] == "unavailable"
+
+    assert actual["status"] == "unavailable"
+    assert f"skeleton_initial_project:{unavailable_axis}" in actual["reason"]
+    assert m4["status"] == "unavailable"
+    assert f"skeleton_initial_project:{unavailable_axis}" in m4["reason"]
+    assert m3["status"] == "measured"
+    assert m3["value"] is not None
+    assert m4_m3["arms"][0]["axes"][unavailable_axis]["status"] == (
+        "unavailable"
+    )
+    assert m4_m3["arms"][1]["axes"][unavailable_axis]["status"] == "measured"
+    signed = m4_m3["signed_delta_axes"][unavailable_axis]
+    assert signed["status"] == "unavailable"
+    assert signed["value"] is None
+    assert unavailable_axis in signed["reason"]
+    assert result["incremental_contrasts"][0]["signed_delta_axes"][
+        unavailable_axis
+    ]["status"] == "measured"
 
 
 def test_reducer_rejects_missing_checkpoint_lineage_and_duplicate_method_partitions(

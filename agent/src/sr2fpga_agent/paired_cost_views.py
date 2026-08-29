@@ -14,7 +14,10 @@ from sr2fpga_agent.artifact_store import (
     ArtifactStore,
 )
 from sr2fpga_agent.block_cost_accounting import replay_development_block_preparation
-from sr2fpga_agent.block_preparation import read_development_shared_checkpoint_manifest
+from sr2fpga_agent.block_preparation import (
+    blocked_methods_from_verified_manifest,
+    read_development_shared_checkpoint_manifest,
+)
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import COST_AXES, reconcile_cost_events
 from sr2fpga_agent.paired_block import load_development_paired_block
@@ -111,6 +114,9 @@ def reconcile_development_paired_block_costs(
         )
 
     nodes = {node["checkpoint_id"]: node for node in manifest["nodes"]}
+    blocked_methods = blocked_methods_from_verified_manifest(
+        store, checkpoint_manifest_ref
+    )
     sources = _normalize_method_sources(methods)
     required_lineage = {
         paired_block_ref.sha256,
@@ -121,7 +127,11 @@ def reconcile_development_paired_block_costs(
     episode_ids: set[str] = set()
     for method in _METHODS:
         source = sources[method]
-        _validate_method_availability(source, nodes)
+        _validate_method_availability(
+            source,
+            nodes,
+            expected_blocked_checkpoint=blocked_methods.get(method),
+        )
         if source.trajectory_ref is None:
             verified_methods[method] = _blocked_method(source)
             continue
@@ -354,7 +364,10 @@ def _normalize_method_sources(
 
 
 def _validate_method_availability(
-    source: MethodCostSource, nodes: Mapping[str, Mapping[str, Any]]
+    source: MethodCostSource,
+    nodes: Mapping[str, Mapping[str, Any]],
+    *,
+    expected_blocked_checkpoint: str | None,
 ) -> None:
     blocked = source.terminal_status == "blocked_by_shared_checkpoint"
     if blocked != (source.trajectory_ref is None):
@@ -363,6 +376,10 @@ def _validate_method_availability(
         )
     if blocked:
         checkpoint = source.blocked_checkpoint_id
+        if checkpoint != expected_blocked_checkpoint:
+            raise PairedCostReconciliationError(
+                f"{source.method_condition} does not name its verified failure origin"
+            )
         if checkpoint not in _METHOD_PREREQUISITES[source.method_condition]:
             raise PairedCostReconciliationError(
                 f"{source.method_condition} names an unrelated blocked checkpoint"
@@ -372,6 +389,10 @@ def _validate_method_availability(
                 f"{source.method_condition} is blocked by a completed checkpoint"
             )
         return
+    if expected_blocked_checkpoint is not None:
+        raise PairedCostReconciliationError(
+            f"{source.method_condition} ran despite its verified failure origin"
+        )
     if source.blocked_checkpoint_id is not None:
         raise PairedCostReconciliationError(
             f"{source.method_condition} has an unexpected blocked checkpoint"

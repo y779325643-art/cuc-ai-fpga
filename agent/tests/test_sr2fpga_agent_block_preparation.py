@@ -16,7 +16,10 @@ from sr2fpga_agent.block_preparation import (
     BlockPreparationFacades,
     CheckpointId,
     CheckpointNode,
+    SharedCheckpointResumeError,
+    blocked_methods_from_verified_manifest,
     prepare_development_paired_block,
+    read_complete_development_shared_checkpoint_resume,
     read_development_shared_checkpoint_manifest,
     write_development_shared_checkpoint_manifest,
 )
@@ -92,14 +95,23 @@ def _write_paired_block(store: ArtifactStore, *, public_projection_sha256="1" * 
 
 
 class _CountingClient:
-    def __init__(self, events: list[str], event: str) -> None:
+    def __init__(
+        self,
+        events: list[str],
+        event: str,
+        *,
+        failure: Exception | None = None,
+    ) -> None:
         self.calls = 0
         self._events = events
         self._event = event
+        self._failure = failure
 
     def chat(self, _messages) -> str:
         self.calls += 1
         self._events.append(self._event)
+        if self._failure is not None:
+            raise self._failure
         return "{}"
 
     def stream_chat(self, _messages) -> str:
@@ -214,6 +226,217 @@ def test_gold_ready_preparation_materializes_three_checkpoints_once(tmp_path) ->
     assert read_development_shared_checkpoint_manifest(store, result.manifest_ref)[
         "manifest_status"
     ] == "complete"
+
+
+@pytest.mark.parametrize(
+    ("failed_checkpoint", "blocked", "expected_calls", "expected_statuses"),
+    (
+        (
+            "direct_initial_project",
+            {"M0": "direct_initial_project", "M1": "direct_initial_project"},
+            {"direct": 1, "req2his": 1, "behavior": 1},
+            {
+                "direct_initial_project": "failed",
+                "shared_system_his": "completed",
+                "skeleton_initial_project": "completed",
+            },
+        ),
+        (
+            "shared_system_his",
+            {
+                "M3": "shared_system_his",
+                "M4": "shared_system_his",
+                "M5": "shared_system_his",
+            },
+            {"direct": 1, "req2his": 1, "behavior": 0},
+            {
+                "direct_initial_project": "completed",
+                "shared_system_his": "failed",
+                "skeleton_initial_project": "not_run",
+            },
+        ),
+        (
+            "skeleton_initial_project",
+            {
+                "M4": "skeleton_initial_project",
+                "M5": "skeleton_initial_project",
+            },
+            {"direct": 1, "req2his": 1, "behavior": 1},
+            {
+                "direct_initial_project": "completed",
+                "shared_system_his": "completed",
+                "skeleton_initial_project": "failed",
+            },
+        ),
+    ),
+)
+def test_checkpoint_failure_blocks_only_verified_manifest_consumers(
+    tmp_path,
+    failed_checkpoint: str,
+    blocked: dict[str, str],
+    expected_calls: dict[str, int],
+    expected_statuses: dict[str, str],
+) -> None:
+    store = ArtifactStore(tmp_path / "store")
+    context = _context()
+    paired_ref = _write_paired_block(
+        store, public_projection_sha256=context.public_projection_sha256
+    )
+    events: list[str] = []
+    clients = {
+        name: _CountingClient(
+            events,
+            name,
+            failure=(
+                RuntimeError(f"synthetic failure at {checkpoint}")
+                if checkpoint == failed_checkpoint
+                else None
+            ),
+        )
+        for name, checkpoint in (
+            ("direct", "direct_initial_project"),
+            ("req2his", "shared_system_his"),
+            ("behavior", "skeleton_initial_project"),
+        )
+    }
+    ledger = BlockPreparationCostLedger(
+        store, paired_block_ref=paired_ref, failure_origin=None
+    )
+    budget = ModelCallBudget(max_calls=3, attempt_cost_ledger=ledger)
+    pairing = PairingKey(
+        paired_block_id="pair-checkpoint-001",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="semantic-checkpoint-001",
+        decoding_seed=17,
+        model_provenance_sha256="2" * 64,
+        replicate_id="replicate-000",
+    )
+
+    prepared = prepare_development_paired_block(
+        store,
+        paired_block_ref=paired_ref,
+        pairing=pairing,
+        context=context,
+        platform=_platform(),
+        facades=BlockPreparationFacades(
+            direct=_PreparedDirectFacade(
+                budget.client(clients["direct"], "block_direct_initial")
+            ),
+            system_his=_PreparedHisFacade(
+                budget.client(clients["req2his"], "block_req2his"),
+                budget.client(clients["behavior"], "block_skeleton_initial"),
+            ),
+            his_validation=_PreparedValidationFacade(events),
+        ),
+        model_budget=budget,
+        preparation_policy_sha256="a" * 64,
+    )
+
+    manifest = read_development_shared_checkpoint_manifest(
+        store, prepared.manifest_ref
+    )
+    statuses = {
+        node["checkpoint_id"]: node["status"] for node in manifest["nodes"]
+    }
+    replay = replay_development_block_preparation(store, prepared.event_refs)
+
+    assert manifest["manifest_status"] == "incomplete"
+    assert statuses == expected_statuses
+    assert blocked_methods_from_verified_manifest(
+        store, prepared.manifest_ref
+    ) == blocked
+    assert {name: client.calls for name, client in clients.items()} == expected_calls
+    assert replay.actual_axes["logical_model_calls"]["value"] == sum(
+        expected_calls.values()
+    )
+    assert replay.actual_axes["logical_model_calls"]["status"] == "measured"
+    assert replay.actual_axes["input_tokens"]["status"] == "unavailable"
+
+
+def test_complete_resume_validation_is_read_only_and_identity_exact(tmp_path) -> None:
+    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    refs_before = sorted(
+        path.relative_to(store.root).as_posix()
+        for path in store.root.rglob("*.ref.json")
+    )
+
+    first = read_complete_development_shared_checkpoint_resume(
+        store,
+        manifest_ref,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+    )
+    second = read_complete_development_shared_checkpoint_resume(
+        store,
+        manifest_ref,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+    )
+
+    assert first == second
+    assert sorted(
+        path.relative_to(store.root).as_posix()
+        for path in store.root.rglob("*.ref.json")
+    ) == refs_before
+
+
+@pytest.mark.parametrize("mismatch", ("paired_block", "policy", "manifest_ref"))
+def test_complete_resume_validation_rejects_identity_mismatch(
+    tmp_path, mismatch: str
+) -> None:
+    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    expected_block = paired_block_ref
+    expected_policy = "3" * 64
+    candidate_manifest = manifest_ref
+    if mismatch == "paired_block":
+        expected_block = replace(paired_block_ref, sha256="f" * 64)
+    elif mismatch == "policy":
+        expected_policy = "f" * 64
+    else:
+        candidate_manifest = replace(manifest_ref, key="tampered/manifest-ref")
+
+    with pytest.raises(SharedCheckpointResumeError, match="new run ID"):
+        read_complete_development_shared_checkpoint_resume(
+            store,
+            candidate_manifest,
+            paired_block_ref=expected_block,
+            preparation_policy_sha256=expected_policy,
+        )
+
+
+def test_complete_resume_validation_rejects_incomplete_manifest(tmp_path) -> None:
+    store, paired_block_ref, nodes, event_refs = _incomplete_direct_fixture(
+        tmp_path, event_kind="checkpoint_failed"
+    )
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256="3" * 64,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+
+    with pytest.raises(SharedCheckpointResumeError, match="new run ID"):
+        read_complete_development_shared_checkpoint_resume(
+            store,
+            manifest_ref,
+            paired_block_ref=paired_block_ref,
+            preparation_policy_sha256="3" * 64,
+        )
 
 
 def _event_hash(store: ArtifactStore, refs: tuple[ArtifactRef, ...]) -> str:

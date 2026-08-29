@@ -18,6 +18,7 @@ from sr2fpga_agent.cost_accounting import (
     reconcile_attempt_trajectory,
     reconcile_cost_events,
 )
+from sr2fpga_agent.block_preparation import SharedCheckpointResumeError
 from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
 from sr2fpga_agent.episode_executor import EpisodeExecutor, PreCandidateState
 from sr2fpga_agent.episode_outcome import (
@@ -136,16 +137,21 @@ def _project(tag: str) -> GeneratedProject:
 
 
 class _StaticClient:
-    def __init__(self, response: str) -> None:
+    def __init__(self, response: str, *, failure: Exception | None = None) -> None:
         self.response = response
+        self.failure = failure
         self.calls: list[list[dict[str, str]]] = []
 
     def stream_chat(self, messages):
         self.calls.append(messages)
+        if self.failure is not None:
+            raise self.failure
         return self.response
 
     def chat(self, messages):
         self.calls.append(messages)
+        if self.failure is not None:
+            raise self.failure
         return self.response
 
 
@@ -1223,7 +1229,7 @@ def test_assemble_excluded_run_full_pack_from_closed_runner_events() -> None:
     assert json.loads(store.read_verified(runner_ref)) == runner
 
 
-def _run_fake_complete_full_pack(monkeypatch, *, method_order):
+def _run_fake_complete_full_pack(monkeypatch, *, method_order, failed_stage=None):
     root = _new_test_root()
     clock_ticks = iter(float(tick) for tick in range(100))
     monkeypatch.setattr(
@@ -1328,9 +1334,30 @@ def _run_fake_complete_full_pack(monkeypatch, *, method_order):
     m2_project_client = _StaticClient(free_project_response)
     generators = [True]
     staged_clients = {
-        "block_direct_initial": _StaticClient(free_project_response),
-        "block_req2his": _StaticClient(his_response),
-        "block_skeleton_initial": _StaticClient(behavior_response),
+        "block_direct_initial": _StaticClient(
+            free_project_response,
+            failure=(
+                RuntimeError("synthetic direct checkpoint failure")
+                if failed_stage == "block_direct_initial"
+                else None
+            ),
+        ),
+        "block_req2his": _StaticClient(
+            his_response,
+            failure=(
+                RuntimeError("synthetic System-HIS checkpoint failure")
+                if failed_stage == "block_req2his"
+                else None
+            ),
+        ),
+        "block_skeleton_initial": _StaticClient(
+            behavior_response,
+            failure=(
+                RuntimeError("synthetic skeleton checkpoint failure")
+                if failed_stage == "block_skeleton_initial"
+                else None
+            ),
+        ),
         "his2project": _StaticClient(free_project_response),
     }
     constructed_capabilities = []
@@ -1406,6 +1433,29 @@ def _run_fake_complete_full_pack(monkeypatch, *, method_order):
     projection = metadata[0]["episode_pack"]["public_context"][
         "public_projection_sha256"
     ]
+    run_events = [
+        json.loads(line)
+        for line in events_path.read_text(encoding="utf-8").splitlines()
+    ]
+    completion_events = [
+        event for event in run_events if event.get("event") == "sample_completed"
+    ]
+    if failed_stage is not None:
+        return SimpleNamespace(
+            completion_events=completion_events,
+            config=config,
+            constructed_capabilities=constructed_capabilities,
+            events_path=events_path,
+            m2_plan_client=m2_plan_client,
+            m2_project_client=m2_project_client,
+            method_order=method_order,
+            projection=projection,
+            run_dir=run_dir,
+            run_events=run_events,
+            staged_clients=staged_clients,
+            store=store,
+            summary=summary,
+        )
     _, scenarios = _minimal_smoke_inputs(projection)
     smoke, smoke_ref, runner, runner_ref, costs, costs_ref = (
         assemble_excluded_run_full_pack_with_cost_views(
@@ -1422,14 +1472,6 @@ def _run_fake_complete_full_pack(monkeypatch, *, method_order):
         smoke_id="actual-runner-full-pack",
         scenarios=scenarios,
     )
-    run_events = [
-        json.loads(line)
-        for line in events_path.read_text(encoding="utf-8").splitlines()
-    ]
-    completion_events = [
-        event for event in run_events if event.get("event") == "sample_completed"
-    ]
-
     return SimpleNamespace(
         completion_events=completion_events,
         config=config,
@@ -1527,6 +1569,50 @@ def _physical_provider_calls(completed):
             completed.m2_plan_client,
             completed.m2_project_client,
         )
+    )
+
+
+@pytest.mark.parametrize(
+    ("failed_stage", "blocked"),
+    (
+        ("block_direct_initial", {"M0", "M1"}),
+        ("block_req2his", {"M3", "M4", "M5"}),
+        ("block_skeleton_initial", {"M4", "M5"}),
+    ),
+)
+def test_real_runner_checkpoint_failure_blocks_only_manifest_consumers(
+    monkeypatch, failed_stage: str, blocked: set[str]
+) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        failed_stage=failed_stage,
+    )
+    completion_methods = {
+        event["method_condition"] for event in completed.completion_events
+    }
+    blocked_events = [
+        event
+        for event in completed.run_events
+        if event.get("event") == "sample_blocked_by_shared_checkpoint"
+    ]
+
+    all_methods = {"M0", "M1", "M2", "M3", "M4", "M5"}
+    assert completion_methods == all_methods - blocked
+    assert {event["method_condition"] for event in blocked_events} == blocked
+    assert all(event["canonical_trajectory_ref"] is None for event in blocked_events)
+    assert all(event["terminal_status"] == "blocked_by_shared_checkpoint" for event in blocked_events)
+    assert {event["sample_id"] for event in blocked_events}.issubset(
+        completed.summary["buckets"]["not_run"]
+    )
+    assert not any(
+        capability[0] in blocked
+        for capability in completed.constructed_capabilities
+        if capability[1] not in {
+            "block_direct_initial",
+            "block_req2his",
+            "block_skeleton_initial",
+        }
     )
 
 
@@ -2027,9 +2113,43 @@ def test_real_runner_three_view_costs_are_order_invariant(monkeypatch) -> None:
             scenarios=scenarios,
         )
 
+    provider_calls_before_resume = _physical_provider_calls(first)
+    event_bytes_before_resume = events_path.read_bytes()
+    manifest_bytes_before_resume = store.read_verified(manifest_ref)
+    ref_paths_before_resume = sorted(
+        path.relative_to(store.root).as_posix()
+        for path in store.root.rglob("*.ref.json")
+    )
+    method_starts_before_resume = sum(
+        event.get("event") == "generation_stage_started" for event in run_events
+    )
     resumed = run_batch(config, run_id="excluded-m0-m5-full-pack", resume=True)
     assert resumed["total_completed"] == 6
+    assert resumed["audit_only"]["block_preparations"][paired_block_id] == (
+        preparation_audit
+    )
+    assert _physical_provider_calls(first) == provider_calls_before_resume
+    assert events_path.read_bytes() == event_bytes_before_resume
+    assert store.read_verified(manifest_ref) == manifest_bytes_before_resume
+    assert sorted(
+        path.relative_to(store.root).as_posix()
+        for path in store.root.rglob("*.ref.json")
+    ) == ref_paths_before_resume
+    assert sum(
+        event.get("event") == "generation_stage_started"
+        for event in (
+            json.loads(line)
+            for line in events_path.read_text(encoding="utf-8").splitlines()
+        )
+    ) == method_starts_before_resume
     assert load_development_paired_block(store, paired_ref) == paired_block
+    manifest_path = store.root / "refs" / Path(*manifest_ref.key.split("/"))
+    manifest_path = manifest_path.with_name(manifest_path.name + ".ref.json")
+    manifest_path.unlink()
+    with pytest.raises(SharedCheckpointResumeError, match="new run ID"):
+        run_batch(config, run_id="excluded-m0-m5-full-pack", resume=True)
+    assert _physical_provider_calls(first) == provider_calls_before_resume
+    assert events_path.read_bytes() == event_bytes_before_resume
     public_ref = ArtifactRef(**completion_events[0]["development_public_evaluation_ref"])
     public_blob = store.root / "blobs" / public_ref.sha256[:2] / public_ref.sha256
     public_blob.write_bytes(b"{}\n")
