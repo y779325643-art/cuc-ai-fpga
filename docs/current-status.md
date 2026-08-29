@@ -322,12 +322,13 @@ These statements have important boundaries:
   declared model stages, H applicability, skeleton policy, visibility, and
   repair privileges. A provider-neutral adapter registry and closed generation
   facades now implement the M0-M5 core, including explicit M2 untyped-plan and
-  M3 free-from-HIS emissions. A paired-artifact coordinator verifies shared
-  M0/M1 project and M3/M4 HIS identities without repeated provider calls.
-  M4/M5 independently materialize byte-matched deterministic skeleton artifacts,
-  but their behavior-filled initial projects are not yet one shared immutable
-  artifact as required by the active freeze. Unauthorized repair is rejected before the
-  repair facade.
+  M3 free-from-HIS emissions. Complete excluded G3b blocks eagerly materialize
+  and verified-read the method-neutral S_D Direct project, S_H System-HIS and S_P
+  complete behavior-filled project before method execution. M0/M1 consume S_D,
+  M3/M4/M5 consume S_H as applicable, and M4/M5 consume the identical complete
+  S_P ArtifactRef. Partial, legacy and other non-G3b paths retain bounded
+  compatibility behavior and receive no G3b/G3 credit. Unauthorized repair is
+  rejected before the repair facade.
   Explicit development Runner dispatch now binds M2, M3, M4 and M5 to this
   authority. M2 performs a frozen-context untyped-plan call followed by a
   canonical free-project call without H stages or a skeleton. M5 pre-candidate
@@ -612,7 +613,7 @@ L0-L4 performance. See the
 
 ## Paper-1 Implementation Audit
 
-This is the 2026-08-26 code-facing work-package assessment. `implemented`
+This is the 2026-08-30 G3b code-facing work-package assessment. `implemented`
 means the named bounded behavior has focused tests; it does not imply an
 official gate signature or research result.
 

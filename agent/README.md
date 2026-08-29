@@ -360,9 +360,12 @@ best-effort support to deterministic control.
 
 The capability profile is not yet attached to each model call through
 `seed_control_evidence_ref`, and Runner does not yet verify that its profile
-seed equals every task's requested seed. Those end-to-end capability bindings,
-shared block checkpoints, and three-view cost reconciliation remain CD9 work;
-the separate replicate/schedule/order lineage is implemented by G3a.
+seed equals every task's requested seed. Remaining G3c/G3d work is limited here
+to those end-to-end capability bindings, M5 scenario/episode-outcome closure,
+two-axis hidden missingness, the remaining required repair probes, and a positive
+`g3-acceptance-v1` reducer and acceptance decision. G3a implements the separate
+replicate/schedule/order lineage, and G3b implements the eager shared checkpoints
+and three-view cost reconciliation; neither accepts G3.
 
 A separate excluded M1 repair fixture now exercises one artifact-derived project
 repair path through the real Runner authority. Attempt 0 fails evaluator-owned

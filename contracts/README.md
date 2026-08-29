@@ -117,10 +117,12 @@ outcome-producing campaign.
 
 Registry key `development_shared_checkpoint_manifest` resolves
 `development-shared-checkpoint-manifest-v1`. It is written by the Agent block-
-preparation coordinator and read back by the Runner, method adapters, resume
-guard, and cost reconciler. Its verified reader recomputes graph, consumer,
-artifact-content, event-partition, and false-authority invariants. A valid shape
-does not by itself prove that preparation succeeded or accept G3.
+preparation coordinator. The `block_preparation` verified reader, Runner resume
+path, and cost reducer re-read it and recompute graph, consumer, artifact-content,
+event-partition, and false-authority invariants. Runner then injects verified
+`SharedArtifactRefs`; method adapters consume those downstream artifact
+references and do not read the manifest directly. A valid shape does not by
+itself prove that preparation succeeded or accept G3.
 
 `project-package-v1` is the canonical schema for the candidate package's
 `manifest.json`. It declares role-based top/source/interface/build intent and
