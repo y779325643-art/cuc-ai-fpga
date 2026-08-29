@@ -552,6 +552,19 @@ def test_reducer_is_order_invariant_and_records_an_exact_disjoint_partition(tmp_
             "method_event_ids": partition["method_event_ids"],
         }
     )
+    assert forward["reconciliation"]["all_authority_fields_false"] is True
+    assert all(
+        forward[field] is False
+        for field in (
+            "official_outcome",
+            "official_authority",
+            "pass_credit_authority",
+            "rq1_evidence",
+            "rq2_evidence",
+            "g3_accepted",
+            "g4b_authorized",
+        )
+    )
 
 
 def test_reducer_preserves_pre_failure_cost_and_marks_affected_contrast_unavailable(

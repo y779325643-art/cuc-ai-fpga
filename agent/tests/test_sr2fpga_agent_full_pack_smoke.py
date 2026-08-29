@@ -13,6 +13,7 @@ from sr2fpga_agent.artifact_store import ArtifactIntegrityError, ArtifactRef, Ar
 from sr2fpga_agent.agent import DataGenerationAgent as RealDataGenerationAgent
 from sr2fpga_agent.cost_accounting import (
     COST_AXES,
+    DURATION_COST_AXES,
     AttemptCostLedger,
     reconcile_attempt_trajectory,
     reconcile_cost_events,
@@ -37,6 +38,7 @@ from sr2fpga_agent.full_pack_smoke import (
     FullPackRunnerArtifactRecord,
     FullPackScenarioRecord,
     assemble_excluded_run_full_pack,
+    assemble_excluded_run_full_pack_with_cost_views,
     assemble_excluded_run_full_pack_with_outcomes,
     reconcile_excluded_full_pack,
     reconcile_full_pack_runner_artifacts,
@@ -64,6 +66,9 @@ from sr2fpga_agent.paired_block import (
     build_balanced_method_orders,
     load_development_paired_block,
     write_development_paired_block,
+)
+from sr2fpga_agent.paired_cost_views import (
+    read_development_paired_block_cost_reconciliation,
 )
 from sr2fpga_agent.project_contract import build_project_envelope
 from sr2fpga_agent.project_generator import ProjectGenerator
@@ -1218,8 +1223,13 @@ def test_assemble_excluded_run_full_pack_from_closed_runner_events() -> None:
     assert json.loads(store.read_verified(runner_ref)) == runner
 
 
-def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> None:
+def _run_fake_complete_full_pack(monkeypatch, *, method_order):
     root = _new_test_root()
+    clock_ticks = iter(float(tick) for tick in range(100))
+    monkeypatch.setattr(
+        "sr2fpga_agent.model_budget.time",
+        SimpleNamespace(monotonic=lambda: next(clock_ticks)),
+    )
     harness_root = root / "trusted-public-l2"
     harness_manifest_path = harness_root / "manifest.json"
     requirement = (
@@ -1238,7 +1248,6 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         generation_mode="two_stage",
         system_his_schema_version="system-his-v1.2",
     )
-    method_order = build_balanced_method_orders(909991)[0]
     config = RunnerConfig(
         dataset_root=root / "datasets",
         export_root=root / "exports",
@@ -1317,7 +1326,7 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         "Use one registered counter module with active-low reset."
     )
     m2_project_client = _StaticClient(free_project_response)
-    generators = [_TwoStageGeneratorStub(m2_plan_client, m2_project_client)]
+    generators = [True]
     staged_clients = {
         "block_direct_initial": _StaticClient(free_project_response),
         "block_req2his": _StaticClient(his_response),
@@ -1326,17 +1335,36 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
     }
     constructed_capabilities = []
     freeze_seen_before_provider_construction = []
+    manifest_seen_before_model_method = []
+
+    def checkpoint_manifest_exists():
+        refs_root = (
+            config.run_root
+            / "excluded-m0-m5-full-pack"
+            / "method_artifacts"
+            / "refs"
+            / "shared-checkpoint-manifests"
+        )
+        return refs_root.is_dir() and any(refs_root.rglob("*.json"))
 
     def build_generator(_connection, **_kwargs):
+        manifest_seen_before_model_method.append(checkpoint_manifest_exists())
         _kwargs["event_sink"](
             {"event": "generation_stage_started", "stage": "req2his"}
         )
-        return generators.pop(0)
+        assert generators.pop(0) is True
+        model_budget = _kwargs["model_budget"]
+        return _TwoStageGeneratorStub(
+            model_budget.client(m2_plan_client, "two_stage"),
+            model_budget.client(m2_project_client, "two_stage"),
+        )
 
     def build_model_client(_config, sample, *, model_budget, stage):
         freeze_seen_before_provider_construction.append(
             (config.run_root / "excluded-m0-m5-full-pack" / "measurement_freeze.json").exists()
         )
+        if stage == "his2project":
+            manifest_seen_before_model_method.append(checkpoint_manifest_exists())
         constructed_capabilities.append((sample.method_condition, stage))
         return model_budget.client(staged_clients[stage], stage)
 
@@ -1379,14 +1407,16 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         "public_projection_sha256"
     ]
     _, scenarios = _minimal_smoke_inputs(projection)
-    (
-        smoke,
-        smoke_ref,
-        runner,
-        runner_ref,
-        outcomes,
-        outcomes_ref,
-    ) = assemble_excluded_run_full_pack_with_outcomes(
+    smoke, smoke_ref, runner, runner_ref, costs, costs_ref = (
+        assemble_excluded_run_full_pack_with_cost_views(
+            store,
+            events_path=events_path,
+            smoke_id="actual-runner-full-pack",
+            scenarios=scenarios,
+            reducer_policy_sha256="6" * 64,
+        )
+    )
+    _, _, _, _, outcomes, outcomes_ref = assemble_excluded_run_full_pack_with_outcomes(
         store,
         events_path=events_path,
         smoke_id="actual-runner-full-pack",
@@ -1399,6 +1429,242 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
     completion_events = [
         event for event in run_events if event.get("event") == "sample_completed"
     ]
+
+    return SimpleNamespace(
+        completion_events=completion_events,
+        config=config,
+        constructed_capabilities=constructed_capabilities,
+        costs=costs,
+        costs_ref=costs_ref,
+        events_path=events_path,
+        freeze_seen_before_provider_construction=freeze_seen_before_provider_construction,
+        generators=generators,
+        metadata=metadata,
+        method_order=method_order,
+        m2_plan_client=m2_plan_client,
+        m2_project_client=m2_project_client,
+        manifest_seen_before_model_method=manifest_seen_before_model_method,
+        outcomes=outcomes,
+        outcomes_ref=outcomes_ref,
+        preflight=preflight,
+        preflight_by_sample=preflight_by_sample,
+        projection=projection,
+        responses=(
+            his_response.encode("utf-8"),
+            free_project_response.encode("utf-8"),
+            behavior_response.encode("utf-8"),
+        ),
+        run_dir=run_dir,
+        run_events=run_events,
+        run_id="excluded-m0-m5-full-pack",
+        runner=runner,
+        runner_ref=runner_ref,
+        scenarios=scenarios,
+        smoke=smoke,
+        smoke_ref=smoke_ref,
+        staged_clients=staged_clients,
+        store=store,
+        summary=summary,
+        trusted_harness=trusted_harness,
+    )
+
+
+def _standalone_initial_calls(costs):
+    return {
+        record["method_condition"]: record["standalone_attributed_axes"][
+            "logical_model_calls"
+        ]["value"]
+        for record in costs["method_records"]
+    }
+
+
+def _method_keyed_views(costs):
+    return {
+        "actual_block_axes": _order_invariant_axes(costs["actual_block_axes"]),
+        "methods": {
+            record["method_condition"]: {
+                "terminal_status": record["terminal_status"],
+                "exclusive_axes": _order_invariant_axes(record["exclusive_axes"]),
+                "standalone_attributed_axes": _order_invariant_axes(
+                    record["standalone_attributed_axes"]
+                ),
+            }
+            for record in costs["method_records"]
+        },
+        "contrasts": {
+            record["contrast_id"]: {
+                "status": record["status"],
+                "reason": record["reason"],
+                "arms": {
+                    arm["method_condition"]: _order_invariant_axes(arm["axes"])
+                    for arm in record["arms"]
+                },
+                "signed_delta_axes": _order_invariant_axes(
+                    record["signed_delta_axes"]
+                ),
+            }
+            for record in costs["incremental_contrasts"]
+        },
+    }
+
+
+def _order_invariant_axes(axes):
+    return {
+        axis: (
+            {**measurement, "value": "measured_duration"}
+            if axis in DURATION_COST_AXES and measurement["status"] == "measured"
+            else measurement
+        )
+        for axis, measurement in axes.items()
+    }
+
+
+def _physical_provider_calls(completed):
+    return sum(
+        len(client.calls)
+        for client in (
+            *completed.staged_clients.values(),
+            completed.m2_plan_client,
+            completed.m2_project_client,
+        )
+    )
+
+
+def test_real_runner_three_view_costs_are_order_invariant(monkeypatch) -> None:
+    orders = build_balanced_method_orders(909991)
+    first = _run_fake_complete_full_pack(monkeypatch, method_order=orders[0])
+    second = _run_fake_complete_full_pack(monkeypatch, method_order=orders[3])
+
+    assert first.method_order != second.method_order
+    assert first.responses == second.responses
+    assert _physical_provider_calls(first) == 6
+    assert _physical_provider_calls(second) == 6
+    assert first.costs["actual_block_axes"]["logical_model_calls"]["value"] == 6
+    assert second.costs["actual_block_axes"]["logical_model_calls"]["value"] == 6
+    expected_standalone_calls = {
+        "M0": 1,
+        "M1": 1,
+        "M2": 2,
+        "M3": 2,
+        "M4": 2,
+        "M5": 2,
+    }
+    assert _standalone_initial_calls(first.costs) == expected_standalone_calls
+    assert _standalone_initial_calls(second.costs) == expected_standalone_calls
+    assert _method_keyed_views(first.costs) == _method_keyed_views(second.costs)
+
+    for completed in (first, second):
+        assert completed.manifest_seen_before_model_method
+        assert all(completed.manifest_seen_before_model_method)
+        completion_by_method = {
+            event["method_condition"]: event for event in completed.completion_events
+        }
+        audit = completed.completion_events[0]["block_preparation_audit"]
+        assert all(
+            event["block_preparation_audit"] == audit
+            for event in completed.completion_events
+        )
+        manifest = json.loads(
+            completed.store.read_verified(ArtifactRef(**audit["checkpoint_manifest_ref"]))
+        )
+        lineage_hashes = {
+            ArtifactRef(**audit["checkpoint_manifest_ref"]).sha256,
+            *(
+                ArtifactRef(**reference).sha256
+                for reference in audit["block_event_refs"]
+            ),
+        }
+        for event in completed.completion_events:
+            trajectory = json.loads(
+                completed.store.read_verified(
+                    ArtifactRef(**event["canonical_trajectory_ref"])
+                )
+            )
+            assert all(
+                lineage_hashes.issubset(attempt["input_artifact_hashes"])
+                for attempt in trajectory["attempts"]
+            )
+        skeleton_node = next(
+            node
+            for node in manifest["nodes"]
+            if node["checkpoint_id"] == "skeleton_initial_project"
+        )
+        complete_initial_ref = skeleton_node["artifact_ref"]
+        assert completion_by_method["M4"]["method_artifacts"][
+            "candidate_artifact_ref"
+        ] == complete_initial_ref
+        assert completion_by_method["M5"]["method_artifacts"][
+            "candidate_artifact_ref"
+        ] == complete_initial_ref
+        first_method_event = next(
+            event
+            for event in completed.run_events
+            if event.get("event")
+            in {
+                "generation_stage_started",
+                "model_call_started",
+                "model_call_finished",
+                "model_call_failed",
+            }
+        )
+        assert first_method_event["block_preparation_audit"][
+            "checkpoint_manifest_ref"
+        ] == audit["checkpoint_manifest_ref"]
+        block_event_ids = set(
+            completed.costs["source_event_partition"]["block_event_ids"]
+        )
+        assert all(
+            block_event_ids.isdisjoint(method_event_ids)
+            for method_event_ids in completed.costs["source_event_partition"][
+                "method_event_ids"
+            ].values()
+        )
+        assert all(
+            completed.costs[field] is False
+            for field in (
+                "official_outcome",
+                "official_authority",
+                "pass_credit_authority",
+                "rq1_evidence",
+                "rq2_evidence",
+                "g3_accepted",
+                "g4b_authorized",
+            )
+        )
+        assert completed.costs["reconciliation"]["all_authority_fields_false"] is True
+        assert json.loads(completed.store.read_verified(completed.costs_ref)) == (
+            completed.costs
+        )
+        assert read_development_paired_block_cost_reconciliation(
+            completed.store, completed.costs_ref
+        ) == completed.costs
+
+    summary = first.summary
+    generators = first.generators
+    constructed_capabilities = first.constructed_capabilities
+    freeze_seen_before_provider_construction = (
+        first.freeze_seen_before_provider_construction
+    )
+    completion_events = first.completion_events
+    store = first.store
+    config = first.config
+    run_dir = first.run_dir
+    preflight = first.preflight
+    preflight_by_sample = first.preflight_by_sample
+    smoke = first.smoke
+    smoke_ref = first.smoke_ref
+    runner = first.runner
+    runner_ref = first.runner_ref
+    outcomes = first.outcomes
+    outcomes_ref = first.outcomes_ref
+    trusted_harness = first.trusted_harness
+    staged_clients = first.staged_clients
+    m2_plan_client = first.m2_plan_client
+    m2_project_client = first.m2_project_client
+    method_order = first.method_order
+    events_path = first.events_path
+    run_events = first.run_events
+    scenarios = first.scenarios
 
     assert summary["total_completed"] == 6
     assert generators == []

@@ -23,6 +23,10 @@ from sr2fpga_agent.method_adapters import (
 from sr2fpga_agent.method_contract import MethodConditionId
 from sr2fpga_agent.measurement_freeze import freeze_fingerprint
 from sr2fpga_agent.paired_block import load_development_paired_block
+from sr2fpga_agent.paired_cost_views import (
+    MethodCostSource,
+    reconcile_development_paired_block_costs,
+)
 
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -540,6 +544,107 @@ def assemble_excluded_run_full_pack_with_outcomes(
         outcomes=outcome_records,
     )
     return smoke, smoke_ref, runner, runner_ref, outcome_report, outcome_ref
+
+
+def assemble_excluded_run_full_pack_with_cost_views(
+    store: ArtifactStore,
+    *,
+    events_path: Path,
+    smoke_id: str,
+    scenarios: Iterable[FullPackScenarioRecord],
+    reducer_policy_sha256: str,
+) -> tuple[
+    dict[str, Any],
+    ArtifactRef,
+    dict[str, Any],
+    ArtifactRef,
+    dict[str, Any],
+    ArtifactRef,
+]:
+    """Add the verified G3b cost companion to a closed complete full pack."""
+
+    smoke, smoke_ref, runner, runner_ref = assemble_excluded_run_full_pack(
+        store,
+        events_path=events_path,
+        smoke_id=smoke_id,
+        scenarios=scenarios,
+    )
+    completed = _excluded_completion_events(events_path)
+    paired_block_payload = runner.get("paired_block_ref")
+    if not isinstance(paired_block_payload, dict):
+        raise FullPackReconciliationError(
+            "G3b cost assembly requires a paired full-pack source"
+        )
+    try:
+        paired_block_ref = ArtifactRef(**paired_block_payload)
+    except TypeError as exc:
+        raise FullPackReconciliationError(
+            "G3b full-pack paired-block reference is invalid"
+        ) from exc
+
+    checkpoint_manifest_ref: ArtifactRef | None = None
+    block_event_refs: tuple[ArtifactRef, ...] | None = None
+    methods: list[MethodCostSource] = []
+    for method in _METHODS:
+        event = completed[method]
+        audit = event.get("block_preparation_audit")
+        if not isinstance(audit, dict):
+            raise FullPackReconciliationError(
+                f"{method} completion is missing block preparation audit"
+            )
+        if audit.get("paired_block_ref") != paired_block_ref.to_dict():
+            raise FullPackReconciliationError(
+                f"{method} block preparation audit belongs to another paired block"
+            )
+        manifest_payload = audit.get("checkpoint_manifest_ref")
+        event_payloads = audit.get("block_event_refs")
+        if not isinstance(manifest_payload, dict) or not isinstance(
+            event_payloads, list
+        ):
+            raise FullPackReconciliationError(
+                f"{method} block preparation lineage is incomplete"
+            )
+        try:
+            current_manifest_ref = ArtifactRef(**manifest_payload)
+            current_block_event_refs = tuple(
+                ArtifactRef(**reference) for reference in event_payloads
+            )
+        except TypeError as exc:
+            raise FullPackReconciliationError(
+                f"{method} block preparation lineage is invalid"
+            ) from exc
+        if checkpoint_manifest_ref is None:
+            checkpoint_manifest_ref = current_manifest_ref
+            block_event_refs = current_block_event_refs
+        elif (
+            current_manifest_ref != checkpoint_manifest_ref
+            or current_block_event_refs != block_event_refs
+        ):
+            raise FullPackReconciliationError(
+                "completion block preparation lineages do not match"
+            )
+        methods.append(
+            MethodCostSource(
+                method,
+                "completed",
+                _artifact_ref_from_event(event, "canonical_trajectory_ref", method),
+            )
+        )
+
+    if checkpoint_manifest_ref is None or block_event_refs is None:
+        raise FullPackReconciliationError(
+            "G3b cost assembly requires checkpoint lineage"
+        )
+    costs, costs_ref = reconcile_development_paired_block_costs(
+        store,
+        paired_block_ref=paired_block_ref,
+        checkpoint_manifest_ref=checkpoint_manifest_ref,
+        block_event_refs=block_event_refs,
+        methods=methods,
+        source_full_pack_runner_ref=runner_ref,
+        reducer_policy_sha256=reducer_policy_sha256,
+    )
+    return smoke, smoke_ref, runner, runner_ref, costs, costs_ref
 
 
 def _validated_completion_paired_block(
