@@ -622,7 +622,7 @@ def _plan_block_preparation_policy(
 ) -> dict[str, dict[str, Any]]: ...
 
 def _exclusive_model_call_ceiling(
-    config: RunnerConfig, method_condition: str
+    config: RunnerConfig, sample: PlannedSample, method_condition: str
 ) -> int: ...
 ```
 
@@ -681,15 +681,31 @@ Build preparation clients from the M0 Direct source and M4 two-stage source only
 Complete-block M0/M1/M4/M5 must short-circuit provider construction when no exclusive repair client is needed. M3 receives shared HIS plus its own project client. M2 is unchanged. M1/M5 construct only their permitted repair/correction client when their exclusive ceiling is nonzero.
 
 ```python
-def _exclusive_model_call_ceiling(config, method):
-    if method in {"M0", "M4"}:
-        return 0
-    if method in {"M1", "M5"}:
-        return max(0, config.max_attempts - 1)
-    return 2 if method == "M2" else 1
+_SHARED_INITIAL_CALL_CEILING = {
+    "M0": 1,
+    "M1": 1,
+    "M2": 0,
+    "M3": 1,
+    "M4": 2,
+    "M5": 2,
+}
+
+
+def _exclusive_model_call_ceiling(config, sample, method):
+    standalone = _sample_model_call_ceiling(sample, config, method)
+    shared = _SHARED_INITIAL_CALL_CEILING[method]
+    if standalone < shared:
+        raise SystemExit(
+            f"{method} standalone model-call ceiling {standalone} is below "
+            f"its shared prerequisite ceiling {shared}"
+        )
+    return standalone - shared
 ```
 
-The standalone ceiling remains available in metadata for analysis; the runtime `ModelCallBudget` uses the exclusive ceiling on complete G3b blocks.
+The standalone ceiling remains available in metadata for analysis; the runtime
+`ModelCallBudget` uses the exclusive ceiling on complete G3b blocks. This formula
+also preserves an explicit `max_model_calls` override instead of silently replacing
+it with method defaults.
 
 - [ ] **Step 5: Add prompt-spy and no-first-method-charge tests**
 
