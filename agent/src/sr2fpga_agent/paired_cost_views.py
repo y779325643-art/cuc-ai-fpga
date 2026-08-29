@@ -493,10 +493,69 @@ def _load_verified_method_cost(
             raise PairedCostReconciliationError(
                 f"{source.method_condition} cost summary does not match raw events"
             )
-        current_ids = [
-            json.loads(store.read_verified(event_ref))["event_id"]
-            for event_ref in attempt_refs
+        expected_summary_identity = (
+            trajectory["episode_id"],
+            source.method_condition,
+            attempt_id,
+        )
+        for summary in (declared_summary, rebuilt.payload):
+            if (
+                summary["episode_id"],
+                summary["method_condition"],
+                summary["attempt_id"],
+            ) != expected_summary_identity:
+                raise PairedCostReconciliationError(
+                    f"{source.method_condition} raw summary identity mismatch"
+                )
+        raw_events = [
+            json.loads(store.read_verified(event_ref)) for event_ref in attempt_refs
         ]
+        expected_event_identity = (
+            trajectory["episode_id"],
+            source.method_condition,
+            attempt_id,
+        )
+        if any(
+            (
+                event["episode_id"],
+                event["method_condition"],
+                event["attempt_id"],
+            )
+            != expected_event_identity
+            for event in raw_events
+        ):
+            raise PairedCostReconciliationError(
+                f"{source.method_condition} raw attempt identity mismatch"
+            )
+        if any(
+            event["candidate_id"] != attempt["candidate_id"] for event in raw_events
+        ):
+            raise PairedCostReconciliationError(
+                f"{source.method_condition} raw attempt candidate identity mismatch"
+            )
+        raw_input_hashes = sorted(
+            {
+                digest
+                for event in raw_events
+                for digest in event["input_artifact_hashes"]
+            }
+        )
+        if raw_input_hashes != attempt["input_artifact_hashes"]:
+            raise PairedCostReconciliationError(
+                f"{source.method_condition} raw input artifact hashes mismatch"
+            )
+        raw_output_hashes = sorted(
+            {
+                digest
+                for event in raw_events
+                for digest in event["output_artifact_hashes"]
+            }
+        )
+        if raw_output_hashes != attempt["output_artifact_hashes"]:
+            raise PairedCostReconciliationError(
+                f"{source.method_condition} raw output artifact hashes mismatch"
+            )
+        current_ids = [event["event_id"] for event in raw_events]
         if attempt["source_events_sha256"] != _sha256_json(current_ids):
             raise PairedCostReconciliationError(
                 f"{source.method_condition} trajectory event digest mismatch"

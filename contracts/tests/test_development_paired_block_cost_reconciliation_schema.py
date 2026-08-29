@@ -260,6 +260,18 @@ def test_incomplete_record_requires_a_named_reason_and_null_full_pack() -> None:
             _validator().validate(payload)
 
 
+def test_incomplete_record_requires_a_noncompleted_null_trajectory_method() -> None:
+    six_completed = _complete_reconciliation()
+    six_completed["reconciliation_status"] = "incomplete"
+    six_completed["incomplete_reasons"] = ["forged_incomplete_reason"]
+    six_completed["source_full_pack_runner_ref"] = None
+    six_completed["reconciliation"]["full_pack_lineage_verified"] = False
+
+    with pytest.raises(ValidationError):
+        _validator().validate(six_completed)
+    _validator().validate(_incomplete_reconciliation())
+
+
 @pytest.mark.parametrize("field", AUTHORITIES)
 def test_reconciliation_rejects_partial_or_escalated_authority_group(field: str) -> None:
     missing = _complete_reconciliation()

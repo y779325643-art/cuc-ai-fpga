@@ -251,22 +251,30 @@ def _write_trajectory(
     wall_time: float,
     lineage_hashes: set[str],
     tamper_summary: bool = False,
+    raw_lineage_mismatch: str | None = None,
 ):
     episode_id = f"episode-{method}"
+    claimed_candidate_id = f"candidate-{method}"
+    raw_candidate_id = (
+        f"raw-candidate-{method}"
+        if raw_lineage_mismatch == "candidate"
+        else claimed_candidate_id
+    )
+    output_hash = hashlib.sha256(method.encode()).hexdigest()
     ledger = AttemptCostLedger(
         store,
         episode_id=episode_id,
         attempt_id="attempt-000",
         method_condition=method,
         failure_origin=None,
-        candidate_id=f"candidate-{method}",
+        candidate_id=raw_candidate_id,
         input_artifact_hashes=lineage_hashes,
     )
     ledger.record_cost(
         stage="method_exclusive",
         visibility_class="public",
         cost_delta={"logical_model_calls": logical_calls, "wall_time": wall_time},
-        output_artifact_hashes=(hashlib.sha256(method.encode()).hexdigest(),),
+        output_artifact_hashes=(output_hash,),
     )
     ledger.close(zero_axes=set(COST_AXES) - ledger.observed_axes)
     if tamper_summary:
@@ -293,6 +301,12 @@ def _write_trajectory(
         json.loads(store.read_verified(reference))["event_id"]
         for reference in ledger.event_refs
     ]
+    claimed_input_hashes = set(lineage_hashes)
+    if raw_lineage_mismatch == "input":
+        claimed_input_hashes.add("e" * 64)
+    claimed_output_hashes = {output_hash}
+    if raw_lineage_mismatch == "output":
+        claimed_output_hashes.add("f" * 64)
     without_id = {
         "contract_version": "trajectory-v2",
         "episode_id": episode_id,
@@ -301,9 +315,9 @@ def _write_trajectory(
         "attempts": [
             {
                 "attempt_id": "attempt-000",
-                "candidate_id": f"candidate-{method}",
-                "input_artifact_hashes": sorted(lineage_hashes),
-                "output_artifact_hashes": [hashlib.sha256(method.encode()).hexdigest()],
+                "candidate_id": claimed_candidate_id,
+                "input_artifact_hashes": sorted(claimed_input_hashes),
+                "output_artifact_hashes": sorted(claimed_output_hashes),
                 "attempt_event_refs": [reference.to_dict() for reference in ledger.event_refs],
                 "cost_summary_ref": summary_ref.to_dict(),
                 "source_events_sha256": _canonical_sha256(event_ids),
@@ -395,6 +409,7 @@ def _fixture(
     failed_checkpoint: str | None = None,
     unavailable_checkpoint: str | None = None,
     tampered_summary_method: str | None = None,
+    raw_lineage_mismatch: str | None = None,
 ):
     store = ArtifactStore(tmp_path / "store")
     paired_block_ref = _write_paired_block(store)
@@ -443,6 +458,9 @@ def _fixture(
             wall_time=wall_times[method],
             lineage_hashes=hashes,
             tamper_summary=method == tampered_summary_method,
+            raw_lineage_mismatch=(
+                raw_lineage_mismatch if method == "M0" else None
+            ),
         )
         trajectories[method] = trajectory
         sources.append(MethodCostSource(method, "completed", trajectory[0]))
@@ -613,4 +631,21 @@ def test_reducer_reloads_raw_events_instead_of_trusting_summary_totals(tmp_path)
     fixture = _fixture(tmp_path, tampered_summary_method="M0")
 
     with pytest.raises(PairedCostReconciliationError):
+        _reconcile(fixture)
+
+
+@pytest.mark.parametrize(
+    ("mismatch", "expected_message"),
+    (
+        ("candidate", "raw attempt candidate identity mismatch"),
+        ("input", "raw input artifact hashes mismatch"),
+        ("output", "raw output artifact hashes mismatch"),
+    ),
+)
+def test_reducer_binds_raw_attempt_lineage_to_trajectory_claims(
+    tmp_path, mismatch: str, expected_message: str
+) -> None:
+    fixture = _fixture(tmp_path, raw_lineage_mismatch=mismatch)
+
+    with pytest.raises(PairedCostReconciliationError, match=expected_message):
         _reconcile(fixture)

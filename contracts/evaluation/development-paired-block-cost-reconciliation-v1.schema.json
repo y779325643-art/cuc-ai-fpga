@@ -132,6 +132,17 @@
         "properties": {
           "incomplete_reasons": {"minItems": 1},
           "source_full_pack_runner_ref": {"type": "null"},
+          "method_records": {
+            "contains": {
+              "type": "object",
+              "properties": {
+                "terminal_status": {"not": {"const": "completed"}},
+                "trajectory_ref": {"type": "null"}
+              },
+              "required": ["terminal_status", "trajectory_ref"]
+            },
+            "minContains": 1
+          },
           "reconciliation": {
             "properties": {"full_pack_lineage_verified": {"const": false}}
           }
