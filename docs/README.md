@@ -15,7 +15,7 @@ below.
 | ---: | --- | --- | --- |
 | 1 | [Current engineering and evidence status](current-status.md) | What this checkout currently implements, verifies, lacks, and should do next | Current-state summary; mutable facts come from code, tests, and evidence |
 | 2 | [Paper-1 English canonical specification v1.7](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) | What TRETS-targeted bounded requirement audit, M0-M5 core conditions, optional target-profile extension, privileges, metrics, statistics, and gates govern the no-training experiment | Research and experiment protocol authority |
-| 3 | [Paper-1 code architecture and development specification v1.11](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) | How the frozen protocol maps to modules, interfaces, state machines, artifacts, work packages, and acceptance tests | Subordinate normative implementation design; does not change the estimand or create results |
+| 3 | [Paper-1 code architecture and development specification v1.12](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) | How the frozen protocol maps to modules, interfaces, state machines, artifacts, work packages, and acceptance tests | Subordinate normative implementation design; does not change the estimand or create results |
 | 4 | [Paper-1 Chinese companion](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.zh.md) | How to read the canonical protocol in Chinese | Reading companion; English wins on conflict |
 | 5 | [System-HIS v1.2 semantic specification](specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md) | What the retained System-HIS schema, W1-W10, H0-H2, and lowering semantics mean | Narrow semantic authority; not proof of runtime conformance |
 

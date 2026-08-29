@@ -1,15 +1,12 @@
-# SR2FPGA Current Status - 2026-08-28
+# SR2FPGA Current Status - 2026-08-30
 
 ## Current Checkout
 
-- Branch reviewed: `develop`.
-- Reorganization baseline reviewed: `bd516c110862`
-  (`chore: finalize repository layout cleanup`).
-- When this status was refreshed, the locally known `origin/develop` ref
-  resolved to the same commit.
-- The implementation reviewed below is the current, extensively modified local
-  working tree on top of that commit. It is not a committed release, remote CI
-  result, or statement about the published branch.
+- Branch reviewed: `codex/g3b-shared-checkpoints-cost-views`.
+- G3b development baseline reviewed: `e8ea7fa0fb26`.
+- The implementation reviewed below is the local G3b branch candidate including
+  the completed code/contract/test slices and this documentation synchronization.
+  It is not a release, remote CI result, or statement about a published branch.
 - Repository reorganization is complete. No dated reorganization plan is active.
 
 The final local acceptance report is
@@ -18,11 +15,12 @@ It records an `APPROVED` reorganization verdict, 1,059 passing tests plus 349
 passing subtests, a 24/24 deterministic L3 smoke, and zero tracked `tmp/` paths.
 The report preserves its original feature-branch verification scope; this
 refreshed status supersedes its historical branch label for current navigation.
-The latest completed full lightweight regression snapshot, run on 2026-08-28
-for the v1.7/v1.11 G3a branch candidate, reports 1,815 passing tests plus 435
-passing subtests. It validates the test-covered current branch code and contracts;
-link/readback and diff checks cover the changed documentation separately. It is
-not remote CI, an official
+The latest completed full lightweight regression snapshot, completed on 2026-08-30
+for the v1.7/v1.12 G3b branch candidate with a repository-external pytest
+basetemp, reports 1,989 passing tests plus 435 passing subtests. The eight-file
+focused G3b matrix separately reports 206 passing tests. These commands validate
+the test-covered current branch code and contracts; link/readback and diff checks
+cover the changed documentation separately. This is not remote CI, an official
 gate signature or a model outcome. The increase from the historical
 reorganization acceptance count reflects new Paper-1 contracts, trusted-core,
 method, OASA, and candidate-release tests; it is implementation verification,
@@ -68,7 +66,7 @@ Existing training code and contracts remain repository infrastructure only;
 they neither block nor support Paper-1 claims.
 
 Implementation work is governed by the subordinate
-[`Paper-1 code architecture and development specification v1.11`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
+[`Paper-1 code architecture and development specification v1.12`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
 It maps the frozen protocol to modules, interfaces, state machines, artifacts,
 work packages, and acceptance tests; it neither changes the research estimand
 nor turns target architecture into current capability or results.
@@ -516,8 +514,23 @@ These statements have important boundaries:
   responses and the final analytical protocol uses 128 output tokens. Missing
   or inconsistent fingerprints are fail-closed as
   `backend_identity_unverified`, not mislabeled output nonrepeatability.
-  Complete coverage for all possible custom/provider responses and the
-  G3-required three-view budget reconciliation remain open work.
+  Complete coverage for all possible custom/provider responses remains open.
+- G3b development conformance is implemented and verified in offline fake-
+  provider fixtures; G3 is not accepted. Complete excluded blocks eagerly create
+  the method-neutral S_D Direct project, S_H System-HIS and S_P complete behavior-
+  filled project after measurement freeze and before method execution. M4/M5 use
+  the identical complete initial project. Two method orders each use six physical
+  initial calls while standalone attribution contains ten. A registered reducer
+  reconstructs actual, six standalone-attributed and three checkpoint-specific
+  incremental views across all 13 axes from raw preparation events, six method
+  trajectories and full-pack-v2 lineage. Shared preparation is counted once
+  physically and never charged to execution ordinal zero. Failure, unavailable-
+  axis, resume, visibility and tamper cases fail closed. Only exact, complete,
+  cross-linked local state resumes idempotently; partial, corrupt or legacy-in-
+  place state requires a new run ID. Legacy readers remain compatible without
+  G3b/G3 credit. These tests produced no real-model, training, official held-out,
+  evidence-promotion or paper outcome and do not establish external cryptographic
+  immutability; all official/pass-credit/RQ/G3/G4b fields remain false.
 - A bounded real DeepSeek R9 diagnostic on 2026-08-28 used the opt-in
   `m5-his2project-output-repair-dev-v1` variant and is explicitly
   `formal_method_conformant=false`. Its corrected HIS passed generic H0-H3 and
@@ -610,41 +623,36 @@ official gate signature or research result.
 | CD3 frozen context and trusted core | `partial` | Episode packs, manifest resolver, write-once store, append-only events, budget reservations, per-attempt candidate seals, registered terminal selection, terminal seal/reconstruction and one-shot primitives are consumed by development/excluded Runner authority | Legacy Recorder remains a compatibility view; no signed official pack loader, evaluator commitment loader, or official command gate exists |
 | CD4 first-class M0-M5 adapters | `partial` | Closed method contracts, provider-neutral adapters, explicit M2-M5 development Runner pre-candidate dispatch, M2 untyped-plan/no-H/no-skeleton path, M3 no-skeleton path, M5 bounded H correction, paired artifacts and executor; downstream public diagnosis now comes from the evaluator-owned development authority | M5 project repair facade ownership and remaining implicit compatibility paths are not fully unified; official method dispatch remains locked |
 | CD5 public/hidden/L4 and optional profile-adaptation separation | `partial` | Development/excluded Runner seals every attempt, uses evaluator-owned sanitized repair diagnostics, selects `@1`/`AT_A`, reruns the exact terminal, and dispatches the same seal to one-shot hidden evaluation. A registered hash-bound trusted harness can produce development-only public L2; a reducer-only hidden outcome can publish sanitized development `pass/fail/not_run`; neither grants official credit. Pilot target-profile contracts remain non-official optional-extension prototypes | No official hidden/VPP producer, two-axis hidden missingness closure, signed G4b authority, or official outcome producer. Profile-compliance/pair/`TPA-L4` authority is additionally required only if the optional extension is enabled |
-| CD6 budgets, events and reducers | `partial` | Shared logical-call ceiling; registered closed attempt/cost contracts; write-once ledgers verify hashes, sequence, lineage, close, totals and unavailable reasons. M0-M5 development/excluded attempts account evaluator-owned public tool calls, including trusted-L2 compile/sim when configured. `trajectory-v2` binds and re-verifies selection, selected/terminal public outcomes, matching harness commitments, exact terminal seal, opaque hidden ref and optional sanitized hidden outcome. Runner emits a registered episode outcome only for fully reconciled excluded terminal projections; its verified reader rebuilds source artifacts, and hidden conformance requires exactly one final non-accounting hidden event. Episode/full-pack reducers derive a separate development VPP and fail closed on tamper. The M4 H0-H3 pre-candidate-stop v2 reducer binds invalid planning, ordered state events and raw-event terminal-null cost lineage; the M5 correction reducer binds distinct initial/corrected HIS artifacts, exact correction lineage, full H rerun, corrected candidate/terminal lineage and exact three-stage model cost. Both are excluded development-only and non-official; the narrow v1 M4/H0 reader remains compatible | No authorized real L4-version snapshot has been produced on this checkout; official hidden/VPP production remains incomplete. Official full-pack VPP remains `not_evaluated` |
+| CD6 budgets, events and reducers | `partial`; G3b development accounting implemented | Shared logical-call ceiling; registered closed attempt/cost contracts; write-once ledgers verify hashes, sequence, lineage, close, totals and unavailable reasons. M0-M5 development/excluded attempts account evaluator-owned public tool calls, including trusted-L2 compile/sim when configured. G3b adds a method-neutral block-preparation ledger and verified cost companion: clean fake blocks reconcile 6 physical versus 10 standalone-attributed initial calls and all 13 actual/standalone/three incremental axes without charging shared work to ordinal zero. `trajectory-v2` continues to bind method-exclusive selection, terminal and hidden lineage. Failure, unavailable-axis, resume and cost tamper paths fail closed; legacy/partial inputs remain readable without G3b/G3 credit | No authorized real L4-version snapshot has been produced on this checkout; official hidden/VPP production and positive G3 acceptance remain incomplete. Official full-pack VPP remains `not_evaluated` |
 | CD7 OASA replay runner | `partial` | Sealed loader, Phase A/B, exactly-one replay, event interception, witness and cluster-aware reducer | No signed fixture population, frozen interval/threshold implementation or official RQ0 execution |
 | CD8 retained training release | `out of Paper-1 scope` | Eligibility certificate, v2 exporter/reader, matched E_final/E_traj candidate pools, artifacts-only unpromoted bundle, Training-side structural inspector | No Paper-1 deliverable; retain compatibility tests only |
-| CD9 G3 full-pack and G4a/G5 support | `partial`; G3a implemented, G3 not accepted | The excluded smoke consumes one real fake-provider M0-M5 `run_batch`, re-reads authoritative attempt/selection/terminal-public/hidden lineage and all cost axes. G3a adds a registered non-authoritative `paired-block-v1`: a side-effect-free planner binds exact six-sample membership, first-class semantic/replicate identity, common effective model/gateway configuration, decoding-control provenance, independent schedule seed and a nontrivial Williams row. Runtime materializes and verifies the predicted ref, then binds it through audit-only episode packs, freeze records/ordinals, generation and completion events, hidden commitment, every trajectory attempt and optional full-pack v2 order reconciliation. Preflight/runtime pack hashes match; order/ref/freeze/trajectory tamper and cross-population block-ID reuse fail closed before credit. Partial/legacy paths mint no block. Existing repair/H-stage/hidden fixtures and development-only 6/6 VPP smoke remain bounded as before, with official VPP `not_evaluated` | No positive artifact-derived `g3-acceptance-v1` authority exists. Per-call `seed_control_evidence_ref`, capability/task-seed consistency and independently reviewed positive capability fixtures remain absent; G3 itself does not require a real provider to qualify. Shared immutable M0/M1 and M4/M5 block checkpoints with actual/standalone/incremental cost views, remaining project-repair stages, broader public/hidden/infrastructure-missingness scenario reconciliation and core G4a/G5 provenance are not closed; `g3_accepted=false` |
+| CD9 G3 full-pack and G4a/G5 support | `partial`; G3a and G3b implemented, G3 not accepted | G3a's registered non-authoritative `paired-block-v1` binds the exact six-member semantic/replicate block, common effective model/gateway and decoding provenance, independent schedule seed and Williams row through freeze, events, trajectories and full-pack v2. G3b eagerly materializes and verifies S_D/S_H/S_P before method execution; M4/M5 consume the identical complete initial project. Three registered development contracts bind the method-neutral preparation chain, checkpoint DAG and artifact-derived cost companion. Two fake-provider orders preserve six physical and ten standalone-attributed initial calls, method-keyed 13-axis actual/standalone/three incremental views, visibility boundaries and fail-closed failure/missingness/resume/tamper behavior. Partial/legacy readers remain compatible without G3b/G3 credit. Existing repair/H-stage/hidden fixtures and development-only 6/6 VPP smoke remain bounded; official VPP is `not_evaluated` | No positive artifact-derived `g3-acceptance-v1` authority exists. M5 H-stage scenario/episode outcome authority, per-call capability binding, two-axis hidden missingness closure and remaining G3c/G3d repair probes are open. No real-model, training, official held-out, evidence-promotion or paper outcome was produced; `g3_accepted=false` |
 | CD10 G4b verifier and run unlock | `missing` | No authorization surface | Must add core campaign-freeze verification, prerequisite/side-effect checks, verifier-derived authorization receipt and official command gate; optional profile-pair verification applies only when enabled |
 
 ## Current Closure Priorities
 
-No dated implementation plan is retained in the working tree. The active
-research freeze defines the following gate order. G1 and G2 are locally closed
+The dated G3b design and implementation plan record completed development work;
+they do not replace the active research freeze, which defines the following gate
+order. G1 and G2 are locally closed
 on this checkout. G1's registered compatibility envelope classifies v1.2 as canonical,
 v1.1 as legacy quarantine, Direct/Untyped HIS as method-inapplicable, and
 unknown representations as fail-closed quarantine. The 17 authoritative G1
-nodes and the fresh 2026-08-28 full lightweight regression snapshot
-(`1,815 passed`, `435 subtests passed`) were green at that snapshot. This is an
+nodes and the fresh 2026-08-30 full lightweight regression snapshot
+(`1,989 passed`, `435 subtests passed`) were green at that snapshot. This is an
 implementation/conformance gate, not model or functional-correctness evidence,
 and it does not freshly validate later working-tree edits.
 
 1. G3: replace caller-declared scenario facts with artifact-derived acceptance
-   evidence. The real M1/L1 repair, M4 H0-H3 permission-denied stops and one
-   repair-capable M1 hidden-fail case and M5 H0-H3 correction are now covered;
-   add a positive `g3-acceptance-v1` reducer; retain the implemented G3a
-   `replicate_id`/independent-schedule/order lineage while adding dereferenceable
-   per-call capability evidence binding and task/profile seed consistency without
-   treating observed repeatability as proof; add M0/M1 and M4/M5 shared immutable
-   block checkpoints,
-   actual/standalone/incremental cost views, two-axis hidden closure, remaining
-   L0/public-L2/L3 repair and broader hidden/infrastructure scenario binding,
-   without turning development conformance into official results.
-   G3a paired-block identity/order authority is now implemented and tested as
-   development conformance. The immediate next code slice is G3b: materialize
-   shared prerequisites as block-level immutable checkpoints and reconcile actual
-   campaign, standalone end-to-end and post-checkpoint incremental cost views.
-   A further real-provider diagnostic would remain excluded and cannot substitute
-   for G3b-G3d or positive G3 authority.
+   evidence. Retain the implemented G3a replicate/schedule/order lineage and G3b
+   eager shared checkpoints plus actual/standalone/incremental cost views. G3c/G3d
+   must still bind dereferenceable per-call capability evidence to the task/profile
+   seed, close M5 H-stage scenario and episode-outcome authority, complete two-axis
+   hidden missingness, add the remaining required L0/public-L2/L3 and repair probes,
+   reconcile broader hidden/infrastructure scenarios, and produce a positive
+   `g3-acceptance-v1` reducer and acceptance decision. Observed repeatability is
+   not proof, and development conformance is not an official result. A further
+   real-provider diagnostic would remain excluded and cannot substitute for these
+   G3c/G3d blockers or positive G3 authority.
 2. G4a: build the candidate VPP split/protocol and a disjoint candidate
    ambiguity-audit manifest; seal evaluator content and Recipe information
    policy. Freeze the RQ1 and RQ2 Holm/test/interval implementations, the RQ1

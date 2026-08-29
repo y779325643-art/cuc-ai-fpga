@@ -166,10 +166,14 @@ The first CD4 adapter slice is also available as a provider-neutral core. A
 closed M0-M5 registry consumes only `FrozenRequirementContext` through narrow
 generation facades, represents untyped-plan and System-HIS work as explicit
 pre-candidate artifacts, and applies repair privileges before any repair
-facade call. `PairedArtifactCoordinator` materializes M0/M1 project packages,
-M3/M4 System-HIS artifacts, and M4/M5 skeleton projects once and records shared
-consumption lineage. This core is verified with fake providers. Development
-Runner uses the adapters and paired coordinator for explicit M2-M5 pre-candidate
+facade call. For a complete excluded block, `PairedArtifactCoordinator` now uses
+explicit keys for three eagerly prepared, method-neutral checkpoints after the
+measurement freeze and before method execution: the Direct initial project for
+M0/M1, shared System-HIS for M3/M4/M5, and the complete behavior-filled initial
+project for M4/M5. M4 and M5 consume the identical complete project artifact;
+partial and legacy paths retain the earlier lazy compatibility wrappers and mint
+no G3b artifact. This core is verified with fake providers. Development Runner
+uses the adapters and paired coordinator for explicit M2-M5 pre-candidate
 dispatch, then routes M0-M5 attempts through the common development/excluded
 public and terminal authority.
 M2 performs a frozen-context untyped-plan call followed by canonical free-project
@@ -321,6 +325,21 @@ the optional extension; they are not G3 acceptance prerequisites. Their current
 status is summarized in [`docs/current-status.md`](../docs/current-status.md).
 The integration uses fake clients and a passing tool runner, not a provider
 campaign or model result.
+
+The G3b development slice adds a verified three-node checkpoint manifest, a
+method-neutral preparation-event chain, and a companion reconciliation derived
+from those raw events plus the six method trajectories. In two fake-provider
+orders, clean complete blocks use six physical initial model calls while the six
+standalone-attributed rows contain ten initial calls. Actual block consumption,
+standalone-attributed end-to-end cost, and the `M1-M0`, `M4-M3`, and `M5-M4`
+post-checkpoint contrasts reconcile all 13 axes; shared preparation is counted
+once physically, is never split among consumers, and is not charged to execution
+ordinal zero. Failure, unavailable-axis, visibility, tamper, and exact-complete
+resume fixtures fail closed. A complete matching local state can resume without
+new calls or charges after cross-linked verification; partial, corrupt, or legacy
+in-place resume requires a new run ID. This is G3b development conformance only:
+`g3_accepted=false`, and no real-model, training, official held-out, evidence-
+promotion, or paper outcome was produced.
 
 The Agent now also registers a development-only provider seed-capability
 contract and bounded probe CLI. A capability profile binds provider adapter,
@@ -501,6 +520,14 @@ G3 matrix are not yet closed. G4a prepares the candidate protocol, G5 is an
 excluded pilot, a verifier-derived G4b receipt authorizes G6 materialization,
 and G7 executes official outcomes; none of those later deliverables is a G3
 acceptance prerequisite.
+
+Complete G3b blocks additionally use a separate
+`development-block-preparation-event-v1` ledger for the three shared checkpoints.
+Its verified close feeds `development-paired-block-cost-reconciliation-v1`, whose
+actual, standalone-attributed, and three checkpoint-specific incremental views
+each retain the same 13 axes and propagate unavailable sources rather than
+substituting zero. The existing per-method attempt ledger remains exclusive to
+method execution; shared checkpoint events never acquire a method owner.
 
 RQ4 now has registered pilot-only target-profile pair manifest and development
 outcome contracts. The manifest binds stable pair/member/profile hashes, one

@@ -87,6 +87,9 @@ signed OASA fixture set or official audit outcome yet.
 - `episode-pack/paired-block-v1.schema.json` — excluded-development identity
   and execution-order commitment for one semantic-instance replicate across
   M0-M5; it carries no official, pass-credit, G3, or G4b authority
+- `episode-pack/development-shared-checkpoint-manifest-v1.schema.json` — exact
+  three-node Direct/HIS/complete-project checkpoint DAG for a complete excluded
+  block; it carries no official, pass-credit, G3, or G4b authority
 - `project-package/project-package-v1.schema.json`
 - `project-envelope/project-envelope-v1.schema.json`
 - `public-evaluation-candidate/public-evaluation-candidate-v1.schema.json`
@@ -111,6 +114,13 @@ hashes, and full-pack reconciliation. Partial blocks and legacy development
 samples cannot mint the artifact. It remains a development contract: validation,
 registration, or the current runtime path does not accept G3 or authorize an
 outcome-producing campaign.
+
+Registry key `development_shared_checkpoint_manifest` resolves
+`development-shared-checkpoint-manifest-v1`. It is written by the Agent block-
+preparation coordinator and read back by the Runner, method adapters, resume
+guard, and cost reconciler. Its verified reader recomputes graph, consumer,
+artifact-content, event-partition, and false-authority invariants. A valid shape
+does not by itself prove that preparation succeeded or accept G3.
 
 `project-package-v1` is the canonical schema for the candidate package's
 `manifest.json`. It declares role-based top/source/interface/build intent and
@@ -172,6 +182,11 @@ evaluator-owned L0 diagnosis while forcing its project-envelope reference to
   evidence checks while replacing the obsolete closure blocker with
   `runtime_scenario_evidence_reconciliation`; v1 remains registered for existing
   artifacts
+- `evaluation/development-paired-block-cost-reconciliation-v1.schema.json` —
+  reducer-owned G3b companion that binds the paired block, checkpoint manifest,
+  preparation events, six method trajectories and full-pack-v2 linkage, then
+  records actual, standalone-attributed and three checkpoint-specific 13-axis
+  cost views with all official/pass-credit/RQ/G3/G4b authority fixed false
 - `evaluation/development-public-evaluation-v1.schema.json` — sanitized,
   source-hash-bound projection that takes L0-L3 stages from the verified
   terminal-public authority when present and retains Recorder repair/missingness
@@ -275,12 +290,19 @@ blocker values. Contract registration does not establish current G3 closure; use
 [`docs/current-status.md`](../docs/current-status.md) for fixture, acceptance,
 and open-debt status.
 
+Registry key `development_paired_block_cost_reconciliation` resolves
+`development-paired-block-cost-reconciliation-v1`. The Agent cost-view reducer
+writes and verifies it; analysis readers consume the verified companion rather
+than trusting stored totals. A schema-valid companion is development accounting
+data, not functional proof, G3 acceptance, or an official outcome.
+
 ## Accounting Contracts
 
 - `accounting/attempt-event-v1.schema.json`
 - `accounting/cost-summary-v1.schema.json`
 - `accounting/model-gateway-provenance-v1.schema.json`
 - `accounting/development-provider-seed-capability-v1.schema.json`
+- `accounting/development-block-preparation-event-v1.schema.json`
 
 `attempt-event-v1` binds each cost delta or reservation to one episode,
 attempt, M0-M5 condition, stage, visibility class, parent event, artifacts and
@@ -294,6 +316,14 @@ content-derived event IDs, strict parent/sequence chain, unique final close,
 raw-event totals and unavailable reasons. Missing provider usage remains
 `unavailable`, not zero. These contracts do not imply that every Runner/tool
 producer is connected or that G3 is closed.
+
+Registry key `development_block_preparation_event` resolves
+`development-block-preparation-event-v1`, the Agent block-preparation ledger's
+method-neutral raw record. Its writer closes one ordered event chain per paired
+block; replay readers recompute event identity, parent/sequence lineage,
+checkpoint partitions, all 13 cost axes and close totals. Preparation cost is
+never assigned to a method or execution ordinal, and a valid event does not grant
+pass credit or G3 authority.
 
 `model-gateway-provenance-v1` records the zero-based logical call ID, requested
 seed, adapter forwarding, provider support status, system fingerprint status,
