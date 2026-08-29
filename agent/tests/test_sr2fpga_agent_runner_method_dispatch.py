@@ -1,5 +1,6 @@
 import json
 import hashlib
+from dataclasses import replace
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -7,6 +8,7 @@ import pytest
 
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.block_preparation import PreparedBlockArtifacts
+from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
 from sr2fpga_agent.frozen_context import (
     context_from_validated_episode_pack,
     frozen_project_name,
@@ -28,9 +30,12 @@ from sr2fpga_agent.runner import (
     _config_to_jsonable,
     _exclusive_model_call_ceiling,
     _measurement_freeze_manifest,
+    _materialize_development_paired_blocks,
     _method_artifact_completion_record,
     _plan_block_preparation_policy,
     _plan_development_paired_blocks,
+    _prepare_complete_blocks,
+    _prepared_runtime_accounting_input_hashes,
     _project_generator_for_sample,
     _runner_pairing_key,
     _sample_attempt_limit,
@@ -1130,6 +1135,127 @@ def test_complete_m2_builder_events_receive_runtime_preparation_audit(
         (tmp_path / "legacy-events.jsonl").read_text(encoding="utf-8").strip()
     )
     assert "block_preparation_audit" not in legacy_event
+
+
+def test_complete_block_attempt_hashes_bind_only_method_prerequisite_checkpoints(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_complete_block_config(config_path, tmp_path)
+    config = load_runner_config(config_path)
+    samples = planned_samples(config)
+    plans = _plan_development_paired_blocks(config, samples)
+    store = ArtifactStore(tmp_path / "method-artifacts")
+    paired_refs = _materialize_development_paired_blocks(plans, store)
+    m0 = next(sample for sample in samples if sample.method_condition == "M0")
+    context, his_response, project_response = _responses(m0.metadata(config))
+    his_payload = json.loads(his_response)
+    rtl_path = his_payload["artifacts"]["rtl_sources"][0]
+    direct_payload = json.loads(project_response)
+    direct_payload["files"][rtl_path] += "\n// distinct Direct checkpoint\n"
+    skeleton = build_contract_skeleton_project(
+        ProjectRequest(
+            "counter",
+            8,
+            frozen_project_name(context),
+            context.public_text,
+        ),
+        PlatformProfile("generic_verilog", "generic", "open_source"),
+        his_payload,
+    )
+    clients = {
+        "block_direct_initial": _Client(json.dumps(direct_payload)),
+        "block_req2his": _Client(his_response),
+        "block_skeleton_initial": _Client(
+            json.dumps(
+                {
+                    "behavior_files": {
+                        path: "// distinct prepared behavior body"
+                        for path, content in skeleton.files.items()
+                        if "BEHAVIOR_HOLE" in content
+                    }
+                }
+            )
+        ),
+    }
+
+    def build_client(_config, _sample, *, model_budget, stage):
+        return model_budget.client(clients[stage], stage)
+
+    with patch(
+        "sr2fpga_agent.runner._model_client_for_sample",
+        side_effect=build_client,
+    ):
+        runtimes = _prepare_complete_blocks(
+            config=config,
+            samples=samples,
+            paired_block_plans=plans,
+            paired_block_refs=paired_refs,
+            store=store,
+            freeze_fingerprint="f" * 64,
+        )
+
+    runtime = next(iter(runtimes.values()))
+    prepared = runtime.prepared
+    assert prepared.direct_initial_project is not None
+    assert prepared.system_his is not None
+    assert prepared.skeleton_initial_project is not None
+    assert prepared.trusted_skeleton is not None
+    assert len(prepared.event_refs) == 10
+    common = {
+        prepared.manifest_ref.sha256,
+        *(reference.sha256 for reference in prepared.event_refs),
+    }
+    direct_sha256 = prepared.direct_initial_project.artifact_ref.sha256
+    his_sha256 = prepared.system_his.artifact_ref.sha256
+    project_sha256 = prepared.skeleton_initial_project.artifact_ref.sha256
+    trusted_sha256 = prepared.trusted_skeleton.artifact_ref.sha256
+    expected = {
+        "M0": common | {direct_sha256},
+        "M1": common | {direct_sha256},
+        "M2": common,
+        "M3": common | {his_sha256},
+        "M4": common | {his_sha256, project_sha256},
+        "M5": common | {his_sha256, project_sha256},
+    }
+    all_checkpoint_hashes = {
+        direct_sha256,
+        his_sha256,
+        project_sha256,
+        trusted_sha256,
+    }
+
+    for method_condition, hashes in expected.items():
+        actual = _prepared_runtime_accounting_input_hashes(
+            method_condition,
+            runtime,
+            store,
+        )
+        assert actual == hashes
+        assert actual.isdisjoint(all_checkpoint_hashes - hashes)
+
+    calls_before_failure = sum(len(client.calls) for client in clients.values())
+    missing_his = replace(
+        runtime,
+        prepared=replace(prepared, system_his=None),
+    )
+    with pytest.raises(RuntimeError, match="shared_system_his checkpoint is missing"):
+        _prepared_runtime_accounting_input_hashes("M3", missing_his, store)
+
+    foreign_direct = replace(
+        prepared.direct_initial_project,
+        artifact_ref=replace(
+            prepared.direct_initial_project.artifact_ref,
+            sha256="0" * 64,
+        ),
+    )
+    invalid_direct = replace(
+        runtime,
+        prepared=replace(prepared, direct_initial_project=foreign_direct),
+    )
+    with pytest.raises(RuntimeError, match="direct_initial_project checkpoint"):
+        _prepared_runtime_accounting_input_hashes("M0", invalid_direct, store)
+    assert sum(len(client.calls) for client in clients.values()) == calls_before_failure
 
 
 def test_strict_paired_seed_control_stops_before_run_side_effects(tmp_path) -> None:

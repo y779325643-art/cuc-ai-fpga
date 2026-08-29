@@ -941,6 +941,15 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             block_preparation_audit=sample_block_preparation_audit,
         )
         method_condition = str(sample_metadata.get("method_condition", "")).strip().upper()
+        prepared_accounting_input_hashes = (
+            _prepared_runtime_accounting_input_hashes(
+                method_condition,
+                prepared_block_runtime,
+                method_artifact_store,
+            )
+            if prepared_block_runtime is not None
+            else set()
+        )
         attempt_cost_router = (
             AttemptCostLedgerRouter()
             if method_condition in IMPLEMENTED_METHOD_CONDITIONS
@@ -1034,14 +1043,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 accounting_input_hashes.add(episode_pack_ref.sha256)
             if paired_block_ref is not None:
                 accounting_input_hashes.add(paired_block_ref.sha256)
-            if prepared_block_runtime is not None:
-                accounting_input_hashes.add(
-                    prepared_block_runtime.prepared.manifest_ref.sha256
-                )
-                accounting_input_hashes.update(
-                    reference.sha256
-                    for reference in prepared_block_runtime.prepared.event_refs
-                )
+            accounting_input_hashes.update(prepared_accounting_input_hashes)
             if trusted_public_l2_harness is not None:
                 accounting_input_hashes.update(
                     {
@@ -4456,6 +4458,80 @@ def _prepared_block_audit_record(
         "g3_accepted": False,
         "g4b_authorized": False,
     }
+
+
+def _prepared_runtime_accounting_input_hashes(
+    method_condition: str,
+    runtime: PreparedBlockRuntime,
+    store: ArtifactStore,
+) -> set[str]:
+    required_checkpoints = {
+        "M0": ("direct_initial_project",),
+        "M1": ("direct_initial_project",),
+        "M2": (),
+        "M3": ("shared_system_his",),
+        "M4": ("shared_system_his", "skeleton_initial_project"),
+        "M5": ("shared_system_his", "skeleton_initial_project"),
+    }
+    if method_condition not in required_checkpoints:
+        raise SystemExit(
+            f"No prepared checkpoint accounting is implemented for {method_condition}"
+        )
+    prepared = runtime.prepared
+    manifest = read_development_shared_checkpoint_manifest(
+        store,
+        prepared.manifest_ref,
+    )
+    if ArtifactRef(**manifest["paired_block_ref"]) != prepared.paired_block_ref:
+        raise RuntimeError("prepared runtime paired block does not match verified manifest")
+    manifest_event_refs = tuple(
+        ArtifactRef(**reference) for reference in manifest["block_event_refs"]
+    )
+    if manifest_event_refs != prepared.event_refs:
+        raise RuntimeError("prepared runtime events do not match verified manifest")
+    nodes = {node["checkpoint_id"]: node for node in manifest["nodes"]}
+    emissions = {
+        "direct_initial_project": prepared.direct_initial_project,
+        "shared_system_his": prepared.system_his,
+        "skeleton_initial_project": prepared.skeleton_initial_project,
+    }
+    artifacts = MethodArtifactGateway(store)
+    input_hashes = {
+        prepared.manifest_ref.sha256,
+        *(reference.sha256 for reference in prepared.event_refs),
+    }
+    for checkpoint_id in required_checkpoints[method_condition]:
+        emission = emissions[checkpoint_id]
+        if emission is None:
+            raise RuntimeError(f"{checkpoint_id} checkpoint is missing")
+        node = nodes[checkpoint_id]
+        manifest_ref = ArtifactRef(**node["artifact_ref"])
+        if node["status"] != "completed" or emission.artifact_ref != manifest_ref:
+            raise RuntimeError(
+                f"{checkpoint_id} checkpoint does not match verified manifest"
+            )
+        if checkpoint_id == "shared_system_his":
+            if emission.kind is not PlanningArtifactKind.SYSTEM_HIS:
+                raise RuntimeError("shared_system_his checkpoint has the wrong kind")
+            artifacts.read_planning(emission)
+        else:
+            if emission.project_package_sha256 != node["project_package_sha256"]:
+                raise RuntimeError(f"{checkpoint_id} checkpoint digest is invalid")
+            artifacts.read_project(emission)
+        input_hashes.add(emission.artifact_ref.sha256)
+    if method_condition in {"M4", "M5"}:
+        trusted = prepared.trusted_skeleton
+        if trusted is None:
+            raise RuntimeError("skeleton_initial_project trusted skeleton is missing")
+        trusted_ref = ArtifactRef(
+            **nodes["skeleton_initial_project"]["trusted_skeleton_ref"]
+        )
+        if trusted.artifact_ref != trusted_ref:
+            raise RuntimeError(
+                "skeleton_initial_project trusted skeleton does not match verified manifest"
+            )
+        artifacts.read_project(trusted)
+    return input_hashes
 
 
 def _load_prepared_block_runtime(
