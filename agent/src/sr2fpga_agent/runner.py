@@ -21,6 +21,13 @@ from sr2fpga_agent.cli import (
     build_repairer_for_connection,
 )
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.block_cost_accounting import BlockPreparationCostLedger
+from sr2fpga_agent.block_preparation import (
+    BlockPreparationFacades,
+    PreparedBlockArtifacts,
+    prepare_development_paired_block,
+    read_development_shared_checkpoint_manifest,
+)
 from sr2fpga_agent.cost_accounting import (
     AttemptCostLedger,
     AttemptCostLedgerRouter,
@@ -64,7 +71,7 @@ from sr2fpga_agent.measurement_freeze import (
     write_or_validate_freeze,
 )
 from sr2fpga_agent.local_tools import resolve_executable
-from sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.model_budget import ModelCallBudget, client_for_stage
 from sr2fpga_agent.episode_executor import EpisodeExecutor
 from sr2fpga_agent.episode_outcome import (
@@ -80,6 +87,9 @@ from sr2fpga_agent.method_adapters import (
     MethodArtifactGateway,
     PairingKey,
     PairedArtifactCoordinator,
+    PlanningArtifactEmission,
+    PlanningArtifactKind,
+    ProjectCandidateEmission,
     SharedArtifactRefs,
 )
 from sr2fpga_agent.paired_block import (
@@ -91,6 +101,7 @@ from sr2fpga_agent.paired_block import (
 )
 from sr2fpga_agent.paired_measurement import collect_paired_results
 from sr2fpga_agent.project_generator import COMPONENT_TOPOLOGIES, ProjectGenerator
+from sr2fpga_agent.project_contract import project_package_sha256
 from sr2fpga_agent.public_l2_harness import (
     PublicL2HarnessError,
     load_development_public_l2_harness,
@@ -142,6 +153,15 @@ REQ2HIS_API_KINDS = {"openai_compat", "anthropic_compat", "deepseek-his-v12"}
 DEVELOPMENT_HIDDEN_AUTHORITY_DIR = "development_hidden_authority"
 DEVELOPMENT_PUBLIC_AUTHORITY_DIR = "development_public_authority"
 _PAIRED_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$")
+_SHARED_INITIAL_CALL_CEILING = {
+    "M0": 1,
+    "M1": 1,
+    "M2": 0,
+    "M3": 1,
+    "M4": 2,
+    "M5": 2,
+}
+_BLOCK_PREPARATION_PHYSICAL_CALL_CEILING = 3
 
 
 @dataclass(frozen=True)
@@ -386,6 +406,13 @@ class _PlannedPairedBlock:
     sample_ids: tuple[str, ...]
 
 
+@dataclass(frozen=True)
+class PreparedBlockRuntime:
+    prepared: PreparedBlockArtifacts
+    member_sample_ids: tuple[str, ...]
+    exclusive_model_call_ceilings: dict[str, int]
+
+
 class _RunnerDirectMethodProjectGenerator:
     """Bridge M0/M1 through the same paired method-artifact authority."""
 
@@ -399,7 +426,8 @@ class _RunnerDirectMethodProjectGenerator:
         services: GenerationServices,
         coordinator: PairedArtifactCoordinator,
         pairing: PairingKey,
-        direct: FrozenContextDirectProjectFacade,
+        direct: FrozenContextDirectProjectFacade | None,
+        prepared_initial_project: ProjectCandidateEmission | None = None,
     ) -> None:
         self._adapter = MethodAdapterRegistry().create(method_condition)
         self._context = context
@@ -407,13 +435,25 @@ class _RunnerDirectMethodProjectGenerator:
         self._coordinator = coordinator
         self._pairing = pairing
         self._direct = direct
+        self._prepared_initial_project = prepared_initial_project
         self.last_outcome = None
 
     def generate(self, _request: ProjectRequest, _platform: PlatformProfile):
-        shared_project = self._coordinator.materialize_initial_project(
-            self._pairing,
-            lambda: self._direct.emit_project(self._context),
-        )
+        if self._prepared_initial_project is not None:
+            expected_key = f"paired/{self._pairing.digest()}/direct-initial-project"
+            if self._prepared_initial_project.artifact_ref.key != expected_key:
+                raise ValueError(
+                    "prepared Direct project key does not match pairing checkpoint"
+                )
+            self._services.artifacts.read_project(self._prepared_initial_project)
+            shared_project = self._prepared_initial_project
+        else:
+            if self._direct is None:
+                raise RuntimeError("Direct method requires an initial-project capability")
+            shared_project = self._coordinator.materialize_initial_project(
+                self._pairing,
+                lambda: self._direct.emit_project(self._context),
+            )
         outcome = EpisodeExecutor().emit_candidate(
             self._adapter,
             self._context,
@@ -569,6 +609,9 @@ def runner_preflight(
     loaded_env_keys = _load_env_file(config.env_file)
     samples = planned_samples(config)
     paired_block_plans = _plan_development_paired_blocks(config, samples)
+    block_preparation_policies = _plan_block_preparation_policy(
+        config, samples, paired_block_plans
+    )
     planned_block_refs = _paired_block_refs_by_sample(
         paired_block_plans,
         {
@@ -633,6 +676,7 @@ def runner_preflight(
         "api_keys": _api_key_diagnostics(config, loaded_env_keys),
         "provider_auth": provider_auth,
         "provider_seed_capabilities": seed_capabilities,
+        "block_preparation_policies": block_preparation_policies,
     }
 
 
@@ -723,6 +767,9 @@ def _platform_profile_for_config(config: RunnerConfig) -> PlatformProfile:
 def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = True) -> dict[str, Any]:
     samples = planned_samples(config)
     paired_block_plans = _plan_development_paired_blocks(config, samples)
+    block_preparation_policies = _plan_block_preparation_policy(
+        config, samples, paired_block_plans
+    )
     protocol_errors = _analysis_population_errors(samples)
     _, seed_capability_errors = _seed_capability_diagnostics(config, samples)
     protocol_errors.extend(seed_capability_errors)
@@ -749,8 +796,6 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     else:
         state = initial_run_state(run_id, config_fingerprint=config_fingerprint)
         write_run_state(state_path, state)
-
-    _write_json(run_dir / "config.json", _config_to_jsonable(config))
 
     method_artifact_store = ArtifactStore(run_dir / "method_artifacts")
     paired_block_refs = _materialize_development_paired_blocks(
@@ -810,11 +855,30 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         l4_tool_environment_ref=l4_tool_environment_ref.to_dict(),
         paired_block_refs=paired_block_refs_by_sample,
         paired_execution_ordinals=paired_execution_ordinals,
+        block_preparation_policies=block_preparation_policies,
     )
     freeze_fingerprint = write_or_validate_freeze(
         run_dir / "measurement_freeze.json",
         freeze_manifest,
         resume=resume and existing_run,
+    )
+    prepared_blocks = _prepare_complete_blocks(
+        config=config,
+        samples=samples,
+        paired_block_plans=paired_block_plans,
+        paired_block_refs=paired_block_refs,
+        store=method_artifact_store,
+        freeze_fingerprint=freeze_fingerprint,
+    )
+    block_preparation_audit = {
+        paired_block_id: _prepared_block_audit_record(
+            block_preparation_policies[paired_block_id], runtime
+        )
+        for paired_block_id, runtime in sorted(prepared_blocks.items())
+    }
+    _write_json(
+        run_dir / "config.json",
+        _run_config_projection(config, block_preparation_audit),
     )
     project_generators: dict[str, object | None] = {}
     repairers: dict[str, object | None] = {}
@@ -842,6 +906,10 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
 
         paired_block_ref = paired_block_refs_by_sample.get(sample.sample_id)
         execution_ordinal = paired_execution_ordinals.get(sample.sample_id)
+        prepared_block_runtime = prepared_blocks.get(sample.paired_block_id)
+        sample_block_preparation_audit = block_preparation_audit.get(
+            sample.paired_block_id
+        )
         sample_metadata = sample.metadata(
             config,
             paired_block_ref=paired_block_ref,
@@ -851,6 +919,10 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         sample_metadata["l4_tool_environment_ref"] = (
             l4_tool_environment_ref.to_dict()
         )
+        if sample_block_preparation_audit is not None:
+            sample_metadata["block_preparation_audit"] = dict(
+                sample_block_preparation_audit
+            )
         episode_pack_ref = None
         episode_pack = sample_metadata.get("episode_pack")
         if isinstance(episode_pack, dict):
@@ -866,6 +938,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             artifact_store=method_artifact_store,
             paired_block_ref=paired_block_ref,
             execution_ordinal=execution_ordinal,
+            block_preparation_audit=sample_block_preparation_audit,
         )
         method_condition = str(sample_metadata.get("method_condition", "")).strip().upper()
         attempt_cost_router = (
@@ -873,14 +946,38 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             if method_condition in IMPLEMENTED_METHOD_CONDITIONS
             else None
         )
+        standalone_model_call_ceiling = int(
+            sample_metadata["model_call_budget"]["max_model_calls"]
+        )
+        runtime_model_call_ceiling = standalone_model_call_ceiling
+        if prepared_block_runtime is not None:
+            runtime_model_call_ceiling = prepared_block_runtime.exclusive_model_call_ceilings[
+                method_condition
+            ]
+            sample_metadata["standalone_model_call_ceiling"] = (
+                standalone_model_call_ceiling
+            )
+            sample_metadata["exclusive_model_call_ceiling"] = (
+                runtime_model_call_ceiling
+            )
         model_budget = ModelCallBudget(
-            int(sample_metadata["model_call_budget"]["max_model_calls"]),
+            runtime_model_call_ceiling,
             event_sink=event_sink,
             attempt_cost_ledger_provider=(
                 attempt_cost_router.current if attempt_cost_router is not None else None
             ),
             max_parser_schema_retries=int(
                 sample_metadata["model_call_budget"]["max_parser_schema_retries"]
+            ),
+            standalone_max_calls=(
+                standalone_model_call_ceiling
+                if prepared_block_runtime is not None
+                else None
+            ),
+            budget_scope=(
+                "paired_block_exclusive"
+                if prepared_block_runtime is not None
+                else "standalone"
             ),
         )
         boundary = sample_metadata.get("requirement_boundary")
@@ -897,6 +994,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 paired_artifact_coordinator=paired_artifact_coordinator,
                 paired_block_ref=paired_block_ref,
                 execution_ordinal=execution_ordinal,
+                prepared_block_runtime=prepared_block_runtime,
             )
             sample_repairer = (
                 _repairer_for_sample(
@@ -906,6 +1004,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                     model_budget=model_budget,
                 )
                 if method_condition in {"M1", "M5"}
+                and model_budget.max_calls > 0
                 else None
             )
         else:
@@ -934,6 +1033,14 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 accounting_input_hashes.add(episode_pack_ref.sha256)
             if paired_block_ref is not None:
                 accounting_input_hashes.add(paired_block_ref.sha256)
+            if prepared_block_runtime is not None:
+                accounting_input_hashes.add(
+                    prepared_block_runtime.prepared.manifest_ref.sha256
+                )
+                accounting_input_hashes.update(
+                    reference.sha256
+                    for reference in prepared_block_runtime.prepared.event_refs
+                )
             if trusted_public_l2_harness is not None:
                 accounting_input_hashes.update(
                     {
@@ -1055,6 +1162,10 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             completion_event["paired_block_ref"] = paired_block_ref.to_dict()
             completion_event["execution_ordinal"] = execution_ordinal
             completion_event["freeze_fingerprint"] = freeze_fingerprint
+        if sample_block_preparation_audit is not None:
+            completion_event["block_preparation_audit"] = dict(
+                sample_block_preparation_audit
+            )
         if result.get("cost_summary_refs"):
             completion_event["cost_summary_refs"] = list(result["cost_summary_refs"])
         if result.get("canonical_trajectory_ref"):
@@ -1262,6 +1373,10 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
     if paired_results:
         summary["paired_results"] = paired_results
     summary["freeze_fingerprint"] = freeze_fingerprint
+    if block_preparation_audit:
+        summary["audit_only"] = {
+            "block_preparations": block_preparation_audit,
+        }
     _write_json(summary_path, summary)
     (run_dir / "baseline_report.md").write_text(
         render_markdown(str(summary["run_id"]), baseline_rows(summary), summary=summary),
@@ -1432,6 +1547,23 @@ def _config_to_jsonable(config: RunnerConfig) -> dict[str, Any]:
     return payload
 
 
+def _run_config_projection(
+    config: RunnerConfig,
+    block_preparation_audit: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any]:
+    payload = _config_to_jsonable(config)
+    if block_preparation_audit:
+        payload["audit_only"] = {
+            "block_preparations": {
+                paired_block_id: dict(record)
+                for paired_block_id, record in sorted(
+                    block_preparation_audit.items()
+                )
+            }
+        }
+    return payload
+
+
 def _config_fingerprint(config: RunnerConfig) -> str:
     payload = json.dumps(_config_to_jsonable(config), ensure_ascii=False, sort_keys=True, separators=(",", ":"))
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
@@ -1448,6 +1580,7 @@ def _measurement_freeze_manifest(
     l4_tool_environment_ref: dict[str, Any] | None = None,
     paired_block_refs: Mapping[str, ArtifactRef] | None = None,
     paired_execution_ordinals: Mapping[str, int] | None = None,
+    block_preparation_policies: Mapping[str, Mapping[str, Any]] | None = None,
 ) -> dict[str, Any]:
     source_names = sorted({sample.source for sample in samples})
     source_records = []
@@ -1484,7 +1617,7 @@ def _measurement_freeze_manifest(
         for record in source_records
     }
     timeouts["l4_open"] = config.l4_open.timeout_seconds
-    return build_measurement_freeze(
+    manifest = build_measurement_freeze(
         run_id=run_id,
         config_fingerprint=config_fingerprint,
         sample_records=sample_records,
@@ -1500,6 +1633,14 @@ def _measurement_freeze_manifest(
         tool_environment_ref=tool_environment_ref,
         l4_tool_environment_ref=l4_tool_environment_ref,
     )
+    if block_preparation_policies:
+        manifest["block_preparation_policies"] = {
+            paired_block_id: dict(policy)
+            for paired_block_id, policy in sorted(
+                block_preparation_policies.items()
+            )
+        }
+    return manifest
 
 
 def _measurement_freeze_sample_record(
@@ -3514,6 +3655,26 @@ def _sample_model_call_ceiling(
     raise SystemExit(f"No model-call allocation is implemented for {method}")
 
 
+def _exclusive_model_call_ceiling(
+    config: RunnerConfig,
+    sample: PlannedSample,
+    method_condition: str,
+) -> int:
+    standalone = _sample_model_call_ceiling(sample, config, method_condition)
+    try:
+        shared = _SHARED_INITIAL_CALL_CEILING[method_condition]
+    except KeyError as exc:
+        raise SystemExit(
+            f"No shared-prerequisite allocation is implemented for {method_condition}"
+        ) from exc
+    if standalone < shared:
+        raise SystemExit(
+            f"{method_condition} standalone model-call ceiling {standalone} is below "
+            f"its shared prerequisite ceiling {shared}"
+        )
+    return standalone - shared
+
+
 def _sample_attempt_limit(config: RunnerConfig, method_condition: str) -> int:
     if method_condition in {"M1", "M5"}:
         return max(1, config.max_attempts)
@@ -3581,6 +3742,7 @@ def _project_generator_for_sample(
     paired_artifact_coordinator: PairedArtifactCoordinator | None = None,
     paired_block_ref: ArtifactRef | None = None,
     execution_ordinal: int | None = None,
+    prepared_block_runtime: PreparedBlockRuntime | None = None,
 ) -> object | None:
     connection = resolve_source_connection(config, sample.source)
     cache_key = f"{sample.source}:{sample.sample_id}"
@@ -3589,6 +3751,46 @@ def _project_generator_for_sample(
     if metadata is not None and metadata.get("method_condition") in {"M0", "M1"}:
         cache_key = f"{sample.source}:{sample.sample_id}"
     if cache_key not in project_generators:
+        method_condition = str((metadata or {}).get("method_condition", ""))
+        if (
+            prepared_block_runtime is not None
+            and method_condition in {"M0", "M1", "M3", "M4", "M5"}
+        ):
+            exclusive_client = None
+            if method_condition == "M3":
+                if model_budget is None:
+                    raise SystemExit("prepared M3 dispatch requires an exclusive budget")
+                exclusive_client = _model_client_for_sample(
+                    config,
+                    sample,
+                    model_budget=model_budget,
+                    stage="his2project",
+                )
+            elif method_condition == "M5" and model_budget is not None:
+                if model_budget.max_calls > 0:
+                    exclusive_client = _model_client_for_sample(
+                        config,
+                        sample,
+                        model_budget=model_budget,
+                        stage="system_his_repair",
+                    )
+            project_generators[cache_key] = _bind_runner_method_generator(
+                None,
+                metadata,
+                config=config,
+                sample=sample,
+                method_artifact_store=method_artifact_store,
+                paired_artifact_coordinator=paired_artifact_coordinator,
+                prepared_block_runtime=prepared_block_runtime,
+                exclusive_model_client=exclusive_client,
+            )
+            project_generator = project_generators[cache_key]
+            if not sample.failure_injectors:
+                return project_generator
+            base_generator = project_generator or ProjectGenerator()
+            return FailureInjectingProjectGenerator(
+                base_generator, sample.failure_injectors
+            )
         event_sink = (
             _generation_event_sink(
                 events_path,
@@ -3627,6 +3829,54 @@ def _project_generator_for_sample(
     return FailureInjectingProjectGenerator(base_generator, sample.failure_injectors)
 
 
+def _model_client_for_sample(
+    config: RunnerConfig,
+    sample: PlannedSample,
+    *,
+    model_budget: ModelCallBudget,
+    stage: str,
+):
+    connection = resolve_source_connection(config, sample.source)
+    api_key = os.environ.get(connection.api_key_env)
+    if not api_key:
+        raise SystemExit(f"{connection.api_key_env} is not set")
+    if connection.kind == "anthropic_compat":
+        client = AnthropicCompatibleClient(
+            AnthropicCompatibleConfig(
+                api_key=api_key,
+                model=connection.model,
+                base_url=connection.base_url,
+                timeout_seconds=connection.timeout_seconds,
+                max_tokens=connection.max_tokens or 16384,
+                transport_attempts=connection.transport_attempts,
+                requested_seed=sample.decoding_seed,
+            )
+        )
+    elif connection.kind in {
+        "openai_compat",
+        "deepseek",
+        "deepseek-his-v12",
+        "deepseek-oracle-his-v12",
+    }:
+        client = OpenAICompatibleClient(
+            OpenAICompatibleConfig(
+                api_key=api_key,
+                model=connection.model,
+                base_url=connection.base_url,
+                timeout_seconds=connection.timeout_seconds,
+                max_tokens=connection.max_tokens,
+                transport_attempts=connection.transport_attempts,
+                seed=sample.decoding_seed,
+                wire_api=connection.wire_api,
+                reasoning_effort=connection.reasoning_effort,
+                disable_response_storage=connection.disable_response_storage,
+            )
+        )
+    else:
+        raise SystemExit(f"Unsupported source kind: {connection.kind}")
+    return model_budget.client(client, stage)
+
+
 def _bind_frozen_direct_generator(generator, metadata: dict[str, Any] | None):
     if (
         metadata is None
@@ -3651,6 +3901,8 @@ def _bind_runner_method_generator(
     sample: PlannedSample,
     method_artifact_store: ArtifactStore | None,
     paired_artifact_coordinator: PairedArtifactCoordinator | None,
+    prepared_block_runtime: PreparedBlockRuntime | None = None,
+    exclusive_model_client: Any | None = None,
 ):
     method_condition = str((metadata or {}).get("method_condition", ""))
     if method_condition not in {"M0", "M1", "M2", "M3", "M4", "M5"}:
@@ -3661,13 +3913,29 @@ def _bind_runner_method_generator(
     if not isinstance(pack, dict):
         raise SystemExit(f"{method_condition} development execution requires a validated episode_pack")
     context = context_from_validated_episode_pack(pack)
+    prepared = (
+        prepared_block_runtime.prepared
+        if prepared_block_runtime is not None
+        else None
+    )
+    if prepared_block_runtime is not None:
+        if sample.sample_id not in prepared_block_runtime.member_sample_ids:
+            raise SystemExit("prepared block does not contain the dispatched sample")
+        if prepared is None or prepared.paired_block_ref != ArtifactRef(
+            **(metadata or {})["paired_block_ref"]
+        ):
+            raise SystemExit("prepared block does not match dispatched paired block")
     if method_condition in {"M0", "M1"}:
-        direct_client = getattr(generator, "client", None)
-        if not isinstance(generator, DirectProjectGenerator) or direct_client is None:
-            raise SystemExit(
-                f"{method_condition} requires a Direct source with a model client"
-            )
-        direct = FrozenContextDirectProjectFacade(direct_client)
+        direct = None
+        if prepared is None:
+            direct_client = getattr(generator, "client", None)
+            if not isinstance(generator, DirectProjectGenerator) or direct_client is None:
+                raise SystemExit(
+                    f"{method_condition} requires a Direct source with a model client"
+                )
+            direct = FrozenContextDirectProjectFacade(direct_client)
+        elif prepared.direct_initial_project is None:
+            raise RuntimeError("prepared Direct checkpoint is unavailable")
         services = GenerationServices(
             artifacts=MethodArtifactGateway(method_artifact_store),
             episode_id=sample.sample_id,
@@ -3680,6 +3948,66 @@ def _bind_runner_method_generator(
             coordinator=paired_artifact_coordinator,
             pairing=_runner_pairing_key(config, sample, context),
             direct=direct,
+            prepared_initial_project=(
+                prepared.direct_initial_project if prepared is not None else None
+            ),
+        )
+    if prepared is not None and method_condition in {"M3", "M4", "M5"}:
+        platform = _platform_profile_for_config(config)
+        pairing = _runner_pairing_key(config, sample, context)
+        if prepared.system_his is None:
+            raise RuntimeError("prepared System-HIS checkpoint is unavailable")
+        if method_condition == "M3":
+            system_his = FrozenContextSystemHisFacade(
+                None,
+                exclusive_model_client,
+                platform,
+            )
+            shared = SharedArtifactRefs(system_his=prepared.system_his)
+            trusted_skeleton = None
+            if exclusive_model_client is None:
+                raise RuntimeError("prepared M3 requires a free-project capability")
+        else:
+            if (
+                prepared.skeleton_initial_project is None
+                or prepared.trusted_skeleton is None
+            ):
+                raise RuntimeError("prepared skeleton checkpoint is unavailable")
+            system_his = None
+            shared = SharedArtifactRefs(
+                system_his=prepared.system_his,
+                initial_project=prepared.skeleton_initial_project,
+            )
+            trusted_skeleton = prepared.trusted_skeleton
+        services = GenerationServices(
+            artifacts=MethodArtifactGateway(method_artifact_store),
+            episode_id=sample.sample_id,
+            system_his=system_his,
+            his_validation=FrozenContextSystemHisValidationFacade(platform),
+            repair=(
+                FrozenContextSystemHisCorrectionFacade(
+                    exclusive_model_client,
+                    platform,
+                )
+                if method_condition == "M5"
+                and exclusive_model_client is not None
+                else None
+            ),
+        )
+        return FrozenContextHisGeneratorBridge(
+            method_condition=method_condition,
+            context=context,
+            services=services,
+            coordinator=paired_artifact_coordinator,
+            pairing=pairing,
+            system_his=system_his,
+            prepared_shared_artifacts=shared,
+            prepared_trusted_skeleton=trusted_skeleton,
+            max_his_corrections=(
+                1
+                if method_condition == "M5" and exclusive_model_client is not None
+                else 0
+            ),
         )
     system_his_generator = getattr(generator, "system_his_generator", None)
     project_generator = getattr(generator, "his_project_generator", None)
@@ -3820,6 +4148,312 @@ def _plan_development_paired_blocks(
             sample_ids=member_ids,
         )
     return plans
+
+
+def _plan_block_preparation_policy(
+    config: RunnerConfig,
+    samples: list[PlannedSample],
+    paired_blocks: Mapping[str, _PlannedPairedBlock],
+) -> dict[str, dict[str, Any]]:
+    by_sample_id = {sample.sample_id: sample for sample in samples}
+    policies: dict[str, dict[str, Any]] = {}
+    for paired_block_id, plan in sorted(paired_blocks.items()):
+        block_samples = [by_sample_id[sample_id] for sample_id in plan.sample_ids]
+        by_method = {sample.method_condition: sample for sample in block_samples}
+        if set(by_method) != set(_SHARED_INITIAL_CALL_CEILING):
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} has no complete preparation method set"
+            )
+        direct_connection = resolve_source_connection(config, by_method["M0"].source)
+        his_connection = resolve_source_connection(config, by_method["M4"].source)
+        if direct_connection.generation_mode != "direct":
+            raise SystemExit("block preparation M0 source must use direct generation")
+        if his_connection.generation_mode != "two_stage":
+            raise SystemExit("block preparation M4 source must use two-stage generation")
+        identities = {
+            method: _runner_block_model_identity(config, sample)
+            for method, sample in by_method.items()
+        }
+        if any(identity != identities["M0"] for identity in identities.values()):
+            raise SystemExit(
+                f"paired_block_id {paired_block_id!r} uses conflicting preparation "
+                "source or model identity"
+            )
+        first = by_method["M0"]
+        pack = first.metadata(config).get("episode_pack")
+        if not isinstance(pack, dict):
+            raise SystemExit("block preparation requires a validated episode_pack")
+        context = context_from_validated_episode_pack(pack)
+        pairing = _runner_pairing_key(config, first, context)
+        if pairing.model_provenance_sha256 != plan.payload["model_provenance_sha256"]:
+            raise SystemExit("block preparation identity does not match paired-block plan")
+        prefix = f"paired/{pairing.digest()}"
+        exclusive = {
+            method: _exclusive_model_call_ceiling(config, by_method[method], method)
+            for method in _SHARED_INITIAL_CALL_CEILING
+        }
+        policy: dict[str, Any] = {
+            "policy_version": "development-block-preparation-policy-v1",
+            "evaluation_scope": "excluded_development_conformance_only",
+            "paired_block_id": paired_block_id,
+            "paired_block_ref": plan.artifact_ref.to_dict(),
+            "member_sample_ids": list(plan.sample_ids),
+            "physical_initial_model_call_ceiling": (
+                _BLOCK_PREPARATION_PHYSICAL_CALL_CEILING
+            ),
+            "exclusive_model_call_ceilings": exclusive,
+            "expected_checkpoint_graph": [
+                {
+                    "checkpoint_id": "direct_initial_project",
+                    "parent_checkpoint_ids": [],
+                    "consumer_methods": ["M0", "M1"],
+                    "planned_artifact_key": f"{prefix}/direct-initial-project",
+                },
+                {
+                    "checkpoint_id": "shared_system_his",
+                    "parent_checkpoint_ids": [],
+                    "consumer_methods": ["M3", "M4", "M5"],
+                    "planned_artifact_key": f"{prefix}/system-his",
+                },
+                {
+                    "checkpoint_id": "skeleton_initial_project",
+                    "parent_checkpoint_ids": ["shared_system_his"],
+                    "consumer_methods": ["M4", "M5"],
+                    "planned_artifact_key": f"{prefix}/skeleton-initial-project",
+                    "planned_trusted_skeleton_key": f"{prefix}/trusted-skeleton",
+                },
+            ],
+            "official_outcome": False,
+            "official_authority": False,
+            "pass_credit_authority": False,
+            "g3_accepted": False,
+            "g4b_authorized": False,
+        }
+        policy["preparation_policy_sha256"] = hashlib.sha256(
+            json.dumps(
+                policy,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+        policies[paired_block_id] = policy
+    return policies
+
+
+def _prepare_complete_blocks(
+    *,
+    config: RunnerConfig,
+    samples: list[PlannedSample],
+    paired_block_plans: Mapping[str, _PlannedPairedBlock],
+    paired_block_refs: Mapping[str, ArtifactRef],
+    store: ArtifactStore,
+    freeze_fingerprint: str,
+) -> dict[str, PreparedBlockRuntime]:
+    if not re.fullmatch(r"[0-9a-f]{64}", freeze_fingerprint):
+        raise ValueError("block preparation requires a valid freeze fingerprint")
+    policies = _plan_block_preparation_policy(config, samples, paired_block_plans)
+    by_sample_id = {sample.sample_id: sample for sample in samples}
+    prepared_blocks: dict[str, PreparedBlockRuntime] = {}
+    for paired_block_id, plan in sorted(paired_block_plans.items()):
+        paired_block_ref = paired_block_refs[paired_block_id]
+        if paired_block_ref != plan.artifact_ref:
+            raise RuntimeError("materialized paired block does not match preparation plan")
+        block_samples = [by_sample_id[sample_id] for sample_id in plan.sample_ids]
+        by_method = {sample.method_condition: sample for sample in block_samples}
+        direct_sample = by_method["M0"]
+        his_sample = by_method["M4"]
+        direct_pack = direct_sample.metadata(
+            config, paired_block_ref=paired_block_ref
+        ).get("episode_pack")
+        his_pack = his_sample.metadata(
+            config, paired_block_ref=paired_block_ref
+        ).get("episode_pack")
+        if not isinstance(direct_pack, dict) or not isinstance(his_pack, dict):
+            raise SystemExit("block preparation requires validated episode packs")
+        context = context_from_validated_episode_pack(direct_pack)
+        his_context = context_from_validated_episode_pack(his_pack)
+        if (
+            context.revision_id != his_context.revision_id
+            or context.public_projection_sha256
+            != his_context.public_projection_sha256
+        ):
+            raise SystemExit("block preparation sources use different frozen contexts")
+        pairing = _runner_pairing_key(config, direct_sample, context)
+        if pairing != _runner_pairing_key(config, his_sample, his_context):
+            raise SystemExit("block preparation sources use different effective identities")
+        policy = policies[paired_block_id]
+        if policy["paired_block_ref"] != paired_block_ref.to_dict():
+            raise RuntimeError("block preparation policy names another paired block")
+        policy_sha256 = str(policy["preparation_policy_sha256"])
+        existing = _load_prepared_block_runtime(
+            store,
+            paired_block_ref=paired_block_ref,
+            preparation_policy_sha256=policy_sha256,
+            member_sample_ids=plan.sample_ids,
+            exclusive_model_call_ceilings=dict(
+                policy["exclusive_model_call_ceilings"]
+            ),
+        )
+        if existing is not None:
+            prepared_blocks[paired_block_id] = existing
+            continue
+        ledger = BlockPreparationCostLedger(
+            store,
+            paired_block_ref=paired_block_ref,
+            failure_origin=_sample_failure_origin(direct_sample, config),
+        )
+        preparation_budget = ModelCallBudget(
+            _BLOCK_PREPARATION_PHYSICAL_CALL_CEILING,
+            attempt_cost_ledger=ledger,
+        )
+        direct_client = _model_client_for_sample(
+            config,
+            direct_sample,
+            model_budget=preparation_budget,
+            stage="block_direct_initial",
+        )
+        req2his_client = _model_client_for_sample(
+            config,
+            his_sample,
+            model_budget=preparation_budget,
+            stage="block_req2his",
+        )
+        project_client = _model_client_for_sample(
+            config,
+            his_sample,
+            model_budget=preparation_budget,
+            stage="block_skeleton_initial",
+        )
+        platform = _platform_profile_for_config(config)
+        prepared = prepare_development_paired_block(
+            store,
+            paired_block_ref=paired_block_ref,
+            pairing=pairing,
+            context=context,
+            platform=platform,
+            facades=BlockPreparationFacades(
+                direct=FrozenContextDirectProjectFacade(direct_client),
+                system_his=FrozenContextSystemHisFacade(
+                    req2his_client,
+                    project_client,
+                    platform,
+                ),
+                his_validation=FrozenContextSystemHisValidationFacade(platform),
+            ),
+            model_budget=preparation_budget,
+            preparation_policy_sha256=policy_sha256,
+        )
+        prepared_blocks[paired_block_id] = PreparedBlockRuntime(
+            prepared=prepared,
+            member_sample_ids=plan.sample_ids,
+            exclusive_model_call_ceilings=dict(
+                policy["exclusive_model_call_ceilings"]
+            ),
+        )
+    return prepared_blocks
+
+
+def _prepared_block_audit_record(
+    policy: Mapping[str, Any],
+    runtime: PreparedBlockRuntime,
+) -> dict[str, Any]:
+    return {
+        "evaluation_scope": "excluded_development_conformance_only",
+        "paired_block_ref": runtime.prepared.paired_block_ref.to_dict(),
+        "preparation_policy_sha256": policy["preparation_policy_sha256"],
+        "physical_initial_model_call_ceiling": policy[
+            "physical_initial_model_call_ceiling"
+        ],
+        "exclusive_model_call_ceilings": dict(
+            runtime.exclusive_model_call_ceilings
+        ),
+        "checkpoint_manifest_ref": runtime.prepared.manifest_ref.to_dict(),
+        "block_event_refs": [
+            reference.to_dict() for reference in runtime.prepared.event_refs
+        ],
+        "official_outcome": False,
+        "official_authority": False,
+        "pass_credit_authority": False,
+        "g3_accepted": False,
+        "g4b_authorized": False,
+    }
+
+
+def _load_prepared_block_runtime(
+    store: ArtifactStore,
+    *,
+    paired_block_ref: ArtifactRef,
+    preparation_policy_sha256: str,
+    member_sample_ids: tuple[str, ...],
+    exclusive_model_call_ceilings: dict[str, int],
+) -> PreparedBlockRuntime | None:
+    key = (
+        f"shared-checkpoint-manifests/{paired_block_ref.sha256}/"
+        f"{preparation_policy_sha256}"
+    )
+    manifest_ref = store.reference(key)
+    if manifest_ref is None:
+        return None
+    manifest = read_development_shared_checkpoint_manifest(store, manifest_ref)
+    if manifest["manifest_status"] != "complete":
+        raise RuntimeError("existing block preparation manifest is incomplete")
+    nodes = {node["checkpoint_id"]: node for node in manifest["nodes"]}
+    direct = _project_emission_from_checkpoint(store, nodes["direct_initial_project"])
+    system_his_ref = ArtifactRef(**nodes["shared_system_his"]["artifact_ref"])
+    store.read_verified(system_his_ref)
+    system_his = PlanningArtifactEmission(
+        PlanningArtifactKind.SYSTEM_HIS,
+        system_his_ref,
+    )
+    skeleton = _project_emission_from_checkpoint(
+        store, nodes["skeleton_initial_project"]
+    )
+    trusted_ref = ArtifactRef(
+        **nodes["skeleton_initial_project"]["trusted_skeleton_ref"]
+    )
+    trusted = _project_emission_from_ref(store, trusted_ref)
+    prepared = PreparedBlockArtifacts(
+        paired_block_ref=paired_block_ref,
+        manifest_ref=manifest_ref,
+        direct_initial_project=direct,
+        system_his=system_his,
+        skeleton_initial_project=skeleton,
+        trusted_skeleton=trusted,
+        event_refs=tuple(
+            ArtifactRef(**reference) for reference in manifest["block_event_refs"]
+        ),
+    )
+    return PreparedBlockRuntime(
+        prepared=prepared,
+        member_sample_ids=member_sample_ids,
+        exclusive_model_call_ceilings=exclusive_model_call_ceilings,
+    )
+
+
+def _project_emission_from_checkpoint(
+    store: ArtifactStore,
+    node: Mapping[str, Any],
+) -> ProjectCandidateEmission:
+    reference = ArtifactRef(**node["artifact_ref"])
+    emission = _project_emission_from_ref(store, reference)
+    if emission.project_package_sha256 != node["project_package_sha256"]:
+        raise ValueError("prepared checkpoint project digest mismatch")
+    return emission
+
+
+def _project_emission_from_ref(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+) -> ProjectCandidateEmission:
+    payload = json.loads(store.read_verified(reference))
+    if not isinstance(payload, dict):
+        raise ValueError("prepared project artifact must be an object")
+    project = GeneratedProject(
+        project_name=str(payload["project_name"]),
+        files=dict(payload["files"]),
+    )
+    return ProjectCandidateEmission(reference, project_package_sha256(project))
 
 
 def _materialize_development_paired_blocks(
@@ -4085,6 +4719,7 @@ def _generation_event_sink(
     artifact_store: ArtifactStore | None = None,
     paired_block_ref: ArtifactRef | None = None,
     execution_ordinal: int | None = None,
+    block_preparation_audit: Mapping[str, Any] | None = None,
 ):
     def emit(payload: dict[str, Any]) -> None:
         enriched = {
@@ -4112,6 +4747,10 @@ def _generation_event_sink(
         if paired_block_ref is not None:
             enriched["paired_block_ref"] = paired_block_ref.to_dict()
             enriched["execution_ordinal"] = execution_ordinal
+        if block_preparation_audit is not None:
+            enriched["block_preparation_audit"] = dict(
+                block_preparation_audit
+            )
         method_condition = _sample_method_condition(sample, config)
         if artifact_store is not None and method_condition in IMPLEMENTED_METHOD_CONDITIONS:
             provenance_ref = write_model_gateway_provenance(

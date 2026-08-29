@@ -20,6 +20,8 @@ class ModelCallBudget:
     attempt_cost_ledger: ModelCostLedger | None = None
     attempt_cost_ledger_provider: Callable[[], ModelCostLedger | None] | None = None
     max_parser_schema_retries: int = 0
+    standalone_max_calls: int | None = None
+    budget_scope: str = "standalone"
     calls_used: int = 0
     failed_calls: int = 0
     parser_schema_retries_used: int = 0
@@ -30,6 +32,17 @@ class ModelCallBudget:
             raise ValueError("model-call budget must be non-negative")
         if self.max_parser_schema_retries < 0:
             raise ValueError("parser/schema retry budget must be non-negative")
+        if (
+            self.standalone_max_calls is not None
+            and self.standalone_max_calls < self.max_calls
+        ):
+            raise ValueError("standalone model-call ceiling cannot be below runtime ceiling")
+        if self.budget_scope not in {"standalone", "paired_block_exclusive"}:
+            raise ValueError("unknown model-call budget scope")
+        if (self.standalone_max_calls is None) != (self.budget_scope == "standalone"):
+            raise ValueError(
+                "paired-block exclusive budgets require a standalone model-call ceiling"
+            )
         if (
             self.attempt_cost_ledger is not None
             and self.attempt_cost_ledger_provider is not None
@@ -199,7 +212,7 @@ class ModelCallBudget:
             token_accounting = "partial_or_unavailable_provider_response"
         else:
             token_accounting = "unavailable_provider_response"
-        return {
+        summary = {
             "max_model_calls": self.max_calls,
             "model_calls_used": self.calls_used,
             "model_calls_failed": self.failed_calls,
@@ -213,6 +226,10 @@ class ModelCallBudget:
             **token_totals,
             "calls": list(self.call_records),
         }
+        if self.standalone_max_calls is not None:
+            summary["standalone_max_model_calls"] = self.standalone_max_calls
+            summary["model_call_budget_scope"] = self.budget_scope
+        return summary
 
     def _emit(self, payload: dict[str, Any]) -> None:
         if self.event_sink is not None:

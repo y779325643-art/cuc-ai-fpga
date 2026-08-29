@@ -60,8 +60,8 @@ class FrozenContextSystemHisFacade:
 
     def __init__(
         self,
-        req2his_client: Any,
-        project_client: Any,
+        req2his_client: Any | None,
+        project_client: Any | None,
         platform: PlatformProfile,
         *,
         project_output_repair_client: Any | None = None,
@@ -74,6 +74,8 @@ class FrozenContextSystemHisFacade:
 
     def emit_his(self, context: FrozenRequirementContext) -> Mapping[str, Any]:
         self._check_platform(context)
+        if self._req2his_client is None:
+            raise RuntimeError("missing REQ2HIS model client")
         content = self._req2his_client.stream_chat(
             _frozen_system_his_messages(context)
         )
@@ -87,6 +89,8 @@ class FrozenContextSystemHisFacade:
         system_his: Mapping[str, Any],
     ) -> GeneratedProject:
         self._check_platform(context)
+        if self._project_client is None:
+            raise RuntimeError("missing free-project model client")
         payload = dict(system_his)
         project_name = frozen_public_project_request(context).project_name
         content = self._project_client.stream_chat(
@@ -118,6 +122,8 @@ class FrozenContextSystemHisFacade:
         context: FrozenRequirementContext,
         system_his: Mapping[str, Any],
     ) -> SkeletonProjectOutput:
+        if self._project_client is None:
+            raise RuntimeError("missing HIS2PROJECT model client")
         payload = dict(system_his)
         skeleton = self._build_skeleton(context, payload)
         _validate_static_his_skeleton(skeleton)
@@ -221,7 +227,7 @@ class FrozenContextHisGeneratorBridge:
         method_condition: str,
         context: FrozenRequirementContext,
         services: GenerationServices,
-        system_his: FrozenContextSystemHisFacade,
+        system_his: FrozenContextSystemHisFacade | None,
         coordinator: PairedArtifactCoordinator | None = None,
         pairing: PairingKey | None = None,
         prepared_shared_artifacts: SharedArtifactRefs | None = None,
@@ -258,6 +264,8 @@ class FrozenContextHisGeneratorBridge:
         if shared.system_his is not None:
             self.last_initial_planning_artifact = shared.system_his
         elif self._coordinator is not None and self._pairing is not None:
+            if self._system_his is None:
+                raise RuntimeError("missing System-HIS generation capability")
             shared_his = self._coordinator.materialize_system_his(
                 self._pairing,
                 lambda: self._system_his.emit_his(self._context),
@@ -308,6 +316,8 @@ class FrozenContextHisGeneratorBridge:
                 self._services.artifacts.read_project(self._prepared_trusted_skeleton)
                 self.last_skeleton_artifact = self._prepared_trusted_skeleton
                 return self._services.artifacts.read_project(outcome.candidate)
+            if self._system_his is None:
+                raise RuntimeError("missing HIS2PROJECT generation capability")
             skeleton = self._system_his.last_skeleton_project
             if skeleton is None:
                 raise RuntimeError(

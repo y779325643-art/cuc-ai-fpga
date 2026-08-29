@@ -52,7 +52,6 @@ from sr2fpga_agent.method_adapters import (
 )
 from sr2fpga_agent.method_contract import method_policy_sha256
 from sr2fpga_agent.measurement_freeze import freeze_fingerprint
-from sr2fpga_agent.generation.direct_project import DirectProjectGenerator
 from sr2fpga_agent.models import (
     GeneratedProject,
     PlatformProfile,
@@ -62,6 +61,7 @@ from sr2fpga_agent.models import (
 from sr2fpga_agent.parsers import parse_system_his_v12
 from sr2fpga_agent.paired_measurement import build_episode_measurement
 from sr2fpga_agent.paired_block import (
+    build_balanced_method_orders,
     load_development_paired_block,
     write_development_paired_block,
 )
@@ -1238,7 +1238,7 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         generation_mode="two_stage",
         system_his_schema_version="system-his-v1.2",
     )
-    method_order = ("M3", "M5", "M1", "M4", "M0", "M2")
+    method_order = build_balanced_method_orders(909991)[0]
     config = RunnerConfig(
         dataset_root=root / "datasets",
         export_root=root / "exports",
@@ -1262,7 +1262,7 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
                 replicate_id="replicate-000",
                 decoding_seed=17,
                 paired_block_id="pair-fir-full-pack-001-seed-17",
-                execution_schedule_seed=24,
+                execution_schedule_seed=909991,
                 decoding_control_mode="documented_seed_control",
                 public_l2_harness_manifest=str(harness_manifest_path),
             )
@@ -1313,29 +1313,29 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         newline="\n",
     )
     trusted_harness = load_development_public_l2_harness(harness_manifest_path)
-    generators = [
-        _TwoStageGeneratorStub(
-            _StaticClient(his_response),
-            _StaticClient(free_project_response),
-        ),
-        _TwoStageGeneratorStub(
-            _StaticClient(his_response),
-            _StaticClient(behavior_response),
-        ),
-        DirectProjectGenerator(_StaticClient(free_project_response)),
-        _TwoStageGeneratorStub(
-            _StaticClient(his_response),
-            _StaticClient(behavior_response),
-        ),
-        DirectProjectGenerator(_StaticClient(free_project_response)),
-        _TwoStageGeneratorStub(
-            _StaticClient("Use one registered counter module with active-low reset."),
-            _StaticClient(free_project_response),
-        ),
-    ]
+    m2_plan_client = _StaticClient(
+        "Use one registered counter module with active-low reset."
+    )
+    m2_project_client = _StaticClient(free_project_response)
+    generators = [_TwoStageGeneratorStub(m2_plan_client, m2_project_client)]
+    staged_clients = {
+        "block_direct_initial": _StaticClient(free_project_response),
+        "block_req2his": _StaticClient(his_response),
+        "block_skeleton_initial": _StaticClient(behavior_response),
+        "his2project": _StaticClient(free_project_response),
+    }
+    constructed_capabilities = []
+    freeze_seen_before_provider_construction = []
 
     def build_generator(_connection, **_kwargs):
         return generators.pop(0)
+
+    def build_model_client(_config, sample, *, model_budget, stage):
+        freeze_seen_before_provider_construction.append(
+            (config.run_root / "excluded-m0-m5-full-pack" / "measurement_freeze.json").exists()
+        )
+        constructed_capabilities.append((sample.method_condition, stage))
+        return model_budget.client(staged_clients[stage], stage)
 
     def build_agent(dataset_root, **kwargs):
         return RealDataGenerationAgent(
@@ -1347,6 +1347,10 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
     monkeypatch.setattr(
         "sr2fpga_agent.runner.build_project_generator_for_connection",
         build_generator,
+    )
+    monkeypatch.setattr(
+        "sr2fpga_agent.runner._model_client_for_sample",
+        build_model_client,
     )
     monkeypatch.setattr("sr2fpga_agent.runner.DataGenerationAgent", build_agent)
     monkeypatch.setattr(
@@ -1385,14 +1389,23 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         smoke_id="actual-runner-full-pack",
         scenarios=scenarios,
     )
-    completion_events = [
+    run_events = [
         json.loads(line)
         for line in events_path.read_text(encoding="utf-8").splitlines()
-        if json.loads(line).get("event") == "sample_completed"
+    ]
+    completion_events = [
+        event for event in run_events if event.get("event") == "sample_completed"
     ]
 
     assert summary["total_completed"] == 6
     assert generators == []
+    assert constructed_capabilities == [
+        ("M0", "block_direct_initial"),
+        ("M4", "block_req2his"),
+        ("M4", "block_skeleton_initial"),
+        ("M3", "his2project"),
+    ]
+    assert freeze_seen_before_provider_construction == [True, True, True, True]
     assert {event["method_condition"] for event in completion_events} == {
         "M0",
         "M1",
@@ -1426,14 +1439,14 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         event["method_condition"] for event in completion_events
     ]
     assert paired_block["replicate_id"] == "replicate-000"
-    assert paired_block["execution_schedule_seed"] == 24
+    assert paired_block["execution_schedule_seed"] == 909991
     assert paired_block["requested_decoding_seed"] == 17
     for event in completion_events:
         assert event["execution_ordinal"] == paired_block["method_order"].index(
             event["method_condition"]
         )
         assert event["replicate_id"] == paired_block["replicate_id"]
-        assert event["execution_schedule_seed"] == 24
+        assert event["execution_schedule_seed"] == 909991
         assert event["decoding_control_mode"] == "documented_seed_control"
         pack = json.loads(store.read_verified(ArtifactRef(**event["episode_pack_ref"])))
         assert pack["audit_only"]["paired_block_ref"] == paired_ref.to_dict()
@@ -1448,6 +1461,55 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
         json.dumps(record["paired_block_ref"], sort_keys=True)
         for record in measurement_freeze["samples"]
     } == paired_refs
+    paired_block_id = paired_block["paired_block_id"]
+    assert measurement_freeze["block_preparation_policies"] == preflight[
+        "block_preparation_policies"
+    ]
+    policy = measurement_freeze["block_preparation_policies"][paired_block_id]
+    assert policy["physical_initial_model_call_ceiling"] == 3
+    assert policy["exclusive_model_call_ceilings"] == {
+        "M0": 0,
+        "M1": 0,
+        "M2": 2,
+        "M3": 1,
+        "M4": 0,
+        "M5": 0,
+    }
+    preparation_audit = summary["audit_only"]["block_preparations"][
+        paired_block_id
+    ]
+    assert preparation_audit["preparation_policy_sha256"] == policy[
+        "preparation_policy_sha256"
+    ]
+    assert all(
+        event["block_preparation_audit"] == preparation_audit
+        for event in completion_events
+    )
+    generation_events = [
+        event
+        for event in run_events
+        if event.get("event")
+        in {"model_call_started", "model_call_finished", "model_call_failed"}
+    ]
+    assert generation_events
+    assert all(
+        event["block_preparation_audit"] == preparation_audit
+        for event in generation_events
+    )
+    run_config = json.loads((run_dir / "config.json").read_text(encoding="utf-8"))
+    assert run_config["audit_only"]["block_preparations"][paired_block_id] == (
+        preparation_audit
+    )
+    manifest_ref = ArtifactRef(**preparation_audit["checkpoint_manifest_ref"])
+    manifest = json.loads(store.read_verified(manifest_ref))
+    assert manifest["preparation_policy_sha256"] == policy[
+        "preparation_policy_sha256"
+    ]
+    preparation_event_hashes = {
+        ArtifactRef(**reference).sha256
+        for reference in preparation_audit["block_event_refs"]
+    }
+    assert preparation_event_hashes
     assert smoke["g3_accepted"] is False
     assert outcomes["summary"]["frozen_episode_count"] == 6
     assert outcomes["summary"]["retained_episode_count"] == 6
@@ -1480,7 +1542,32 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
     assert json.loads(store.read_verified(smoke_ref)) == smoke
     assert json.loads(store.read_verified(runner_ref)) == runner
     expected_harness_evidence = trusted_harness.public_evidence()
+    completion_by_method = {
+        event["method_condition"]: event for event in completion_events
+    }
+    standalone_ceilings = {"M0": 1, "M1": 1, "M2": 2, "M3": 2, "M4": 2, "M5": 2}
     for event in completion_events:
+        sample_metadata = json.loads(
+            (config.dataset_root / event["sample_id"] / "metadata.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        method = event["method_condition"]
+        assert sample_metadata["standalone_model_call_ceiling"] == (
+            standalone_ceilings[method]
+        )
+        assert sample_metadata["exclusive_model_call_ceiling"] == policy[
+            "exclusive_model_call_ceilings"
+        ][method]
+        assert sample_metadata["model_call_budget"]["max_model_calls"] == policy[
+            "exclusive_model_call_ceilings"
+        ][method]
+        assert sample_metadata["model_call_budget"][
+            "standalone_max_model_calls"
+        ] == standalone_ceilings[method]
+        assert sample_metadata["model_call_budget"]["model_call_budget_scope"] == (
+            "paired_block_exclusive"
+        )
         trajectory = json.loads(
             store.read_verified(ArtifactRef(**event["canonical_trajectory_ref"]))
         )
@@ -1518,7 +1605,46 @@ def test_real_runner_batch_assembles_excluded_m0_m5_full_pack(monkeypatch) -> No
             in trajectory["attempts"][0]["input_artifact_hashes"]
         )
         assert paired_ref.sha256 in trajectory["attempts"][0]["input_artifact_hashes"]
+        assert manifest_ref.sha256 in trajectory["attempts"][0]["input_artifact_hashes"]
+        assert preparation_event_hashes.issubset(
+            trajectory["attempts"][0]["input_artifact_hashes"]
+        )
         assert cost_summary["axes"]["public_tool_calls"]["value"] >= 8
+
+    first_method = method_order[0]
+    assert first_method == "M1"
+    first_trajectory = json.loads(
+        store.read_verified(
+            ArtifactRef(**completion_by_method[first_method]["canonical_trajectory_ref"])
+        )
+    )
+    first_cost_summary = json.loads(
+        store.read_verified(
+            ArtifactRef(**first_trajectory["attempts"][0]["cost_summary_ref"])
+        )
+    )
+    assert first_cost_summary["axes"]["logical_model_calls"]["value"] == 0
+
+    all_prompt_calls = [
+        *[call for client in staged_clients.values() for call in client.calls],
+        *m2_plan_client.calls,
+        *m2_project_client.calls,
+    ]
+    assert len(all_prompt_calls) == 6
+    serialized_prompts = json.dumps(all_prompt_calls, ensure_ascii=False)
+    forbidden_prompt_values = (
+        paired_block_id,
+        "replicate-000",
+        "909991",
+        policy["preparation_policy_sha256"],
+        "checkpoint_manifest_ref",
+        "block_event_refs",
+        "exclusive_model_call_ceilings",
+        "execution_ordinal",
+        "method_order",
+        "sibling_method",
+    )
+    assert all(value not in serialized_prompts for value in forbidden_prompt_values)
 
     reordered_dir = run_dir / "tampered-completion-order"
     reordered_dir.mkdir()

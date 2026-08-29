@@ -728,6 +728,11 @@ class RunnerConfigTest(unittest.TestCase):
                     encoding="utf-8"
                 )
             )
+            run_config = json.loads(
+                (root / "runs" / "phase_d_freeze" / "config.json").read_text(
+                    encoding="utf-8"
+                )
+            )
             tool_ref = freeze["tool_environment_ref"]
             l4_tool_ref = freeze["l4_tool_environment_ref"]
             store = ArtifactStore(root / "runs" / "phase_d_freeze" / "method_artifacts")
@@ -743,6 +748,10 @@ class RunnerConfigTest(unittest.TestCase):
         self.assertEqual(len(freeze["samples"][0]["requirement_sha256"]), 64)
         self.assertNotIn("base_url", json.dumps(freeze).lower())
         self.assertNotIn("api_key", json.dumps(freeze).lower())
+        self.assertNotIn("block_preparation_policies", freeze)
+        self.assertNotIn("audit_only", run_config)
+        self.assertNotIn("block_preparation_audit", observed["metadata"])
+        self.assertNotIn("audit_only", summary)
         self.assertEqual(observed["metadata"]["freeze_fingerprint"], freeze["freeze_fingerprint"])
         self.assertEqual(observed["metadata"]["tool_environment_ref"], tool_ref)
         self.assertEqual(

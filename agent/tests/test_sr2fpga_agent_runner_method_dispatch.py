@@ -25,8 +25,11 @@ from sr2fpga_agent.runner import (
     _bind_runner_method_generator,
     _config_fingerprint,
     _config_to_jsonable,
+    _exclusive_model_call_ceiling,
     _measurement_freeze_manifest,
     _method_artifact_completion_record,
+    _plan_block_preparation_policy,
+    _plan_development_paired_blocks,
     _project_generator_for_sample,
     _runner_pairing_key,
     _sample_attempt_limit,
@@ -154,6 +157,28 @@ def _write_direct_config(path, root) -> None:
         ),
         encoding="utf-8",
     )
+
+
+def _write_complete_block_config(path, root, *, max_model_calls=0) -> None:
+    method_order = build_balanced_method_orders(909991)[0]
+    _write_config(
+        path,
+        root,
+        methods=method_order,
+        analysis_population="excluded",
+    )
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    payload["max_model_calls"] = max_model_calls
+    payload["sources"]["direct"] = {
+        **payload["sources"]["his"],
+        "kind": "deepseek",
+        "generation_mode": "direct",
+        "system_his_schema_version": "",
+    }
+    for task in payload["tasks"]:
+        if task["method_condition"] in {"M0", "M1"}:
+            task["source"] = "direct"
+    path.write_text(json.dumps(payload), encoding="utf-8")
 
 
 def _responses(metadata):
@@ -645,6 +670,9 @@ def test_legacy_development_derived_identity_remains_non_g3(tmp_path) -> None:
     assert sample.replicate_id == ""
     assert sample.execution_schedule_seed is None
     assert sample.decoding_control_mode == ""
+    assert runner_preflight(load_runner_config(config_path))[
+        "block_preparation_policies"
+    ] == {}
 
 
 def test_complete_block_rejects_non_williams_config_order_before_run(
@@ -663,6 +691,91 @@ def test_complete_block_rejects_non_williams_config_order_before_run(
         run_batch(config, run_id="invalid-paired-order", resume=False)
 
     assert not (tmp_path / "runs" / "invalid-paired-order").exists()
+
+
+def test_preparation_policy_matches_preflight_and_measurement_freeze(tmp_path) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_complete_block_config(config_path, tmp_path)
+    config = load_runner_config(config_path)
+    samples = planned_samples(config)
+    paired_blocks = _plan_development_paired_blocks(config, samples)
+
+    policies = _plan_block_preparation_policy(config, samples, paired_blocks)
+    assert len(policies) == 1
+    policy = next(iter(policies.values()))
+    policy_body = {
+        key: value
+        for key, value in policy.items()
+        if key != "preparation_policy_sha256"
+    }
+    assert policy["preparation_policy_sha256"] == hashlib.sha256(
+        json.dumps(
+            policy_body,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    assert policy["physical_initial_model_call_ceiling"] == 3
+    assert policy["exclusive_model_call_ceilings"] == {
+        "M0": 0,
+        "M1": 0,
+        "M2": 2,
+        "M3": 1,
+        "M4": 0,
+        "M5": 0,
+    }
+    assert [
+        (node["checkpoint_id"], node["parent_checkpoint_ids"], node["consumer_methods"])
+        for node in policy["expected_checkpoint_graph"]
+    ] == [
+        ("direct_initial_project", [], ["M0", "M1"]),
+        ("shared_system_his", [], ["M3", "M4", "M5"]),
+        ("skeleton_initial_project", ["shared_system_his"], ["M4", "M5"]),
+    ]
+
+    preflight = runner_preflight(config, run_id="planned-preparation")
+    assert preflight["block_preparation_policies"] == policies
+    freeze = _measurement_freeze_manifest(
+        config,
+        "planned-preparation",
+        _config_fingerprint(config),
+        samples,
+        tool_versions={},
+        block_preparation_policies=policies,
+    )
+    assert freeze["block_preparation_policies"] == policies
+    public_contexts = [
+        sample.metadata(config)["episode_pack"]["public_context"] for sample in samples
+    ]
+    assert all(
+        "preparation" not in json.dumps(context, ensure_ascii=False).lower()
+        and "checkpoint" not in json.dumps(context, ensure_ascii=False).lower()
+        for context in public_contexts
+    )
+
+
+def test_exclusive_model_call_ceilings_preserve_override_and_fail_pre_side_effect(
+    tmp_path,
+) -> None:
+    config_path = tmp_path / "runner.json"
+    _write_complete_block_config(config_path, tmp_path, max_model_calls=4)
+    config = load_runner_config(config_path)
+    samples = planned_samples(config)
+    assert {
+        sample.method_condition: _exclusive_model_call_ceiling(
+            config, sample, sample.method_condition
+        )
+        for sample in samples
+    } == {"M0": 3, "M1": 3, "M2": 4, "M3": 3, "M4": 2, "M5": 2}
+
+    payload = json.loads(config_path.read_text(encoding="utf-8"))
+    payload["max_model_calls"] = 1
+    config_path.write_text(json.dumps(payload), encoding="utf-8")
+    underfunded = load_runner_config(config_path)
+    with pytest.raises(SystemExit, match="below its shared prerequisite ceiling"):
+        run_batch(underfunded, run_id="underfunded-preparation", resume=False)
+    assert not (tmp_path / "runs" / "underfunded-preparation").exists()
 
 
 def test_complete_block_model_config_conflict_stops_before_run_side_effects(
