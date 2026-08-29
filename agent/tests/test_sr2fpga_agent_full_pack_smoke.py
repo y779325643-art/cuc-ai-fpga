@@ -1793,6 +1793,58 @@ def test_runner_resume_rejects_valid_manifest_substitution_before_side_effects(
     assert all(spy.call_count == 0 for spy in spies.values())
 
 
+def test_runner_resume_rejects_coordinated_config_and_manifest_substitution(
+    monkeypatch,
+) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+    )
+    config_path, run_config, paired_block_id, config_audit = (
+        _persisted_preparation_audit(completed)
+    )
+    original_ref = ArtifactRef(**config_audit["checkpoint_manifest_ref"])
+    manifest = json.loads(completed.store.read_verified(original_ref))
+    manifest["nodes"] = list(reversed(manifest["nodes"]))
+    replacement_ref = _replace_artifact_key_with_payload(
+        completed.store,
+        original_ref,
+        manifest,
+        mutation="coordinated-valid-manifest-substitution",
+    )
+    config_audit["checkpoint_manifest_ref"] = replacement_ref.to_dict()
+    _write_json_file(config_path, run_config)
+    completion_audits = {
+        json.dumps(event["block_preparation_audit"], sort_keys=True)
+        for event in completed.run_events
+        if event.get("event") == "sample_completed"
+        and event.get("paired_block_id") == paired_block_id
+    }
+    assert completion_audits == {json.dumps(
+        {
+            **config_audit,
+            "checkpoint_manifest_ref": original_ref.to_dict(),
+        },
+        sort_keys=True,
+    )}
+    calls_before = _physical_provider_calls(completed)
+    events_before = completed.events_path.read_bytes()
+    files_before = _file_tree_snapshot(completed.run_dir)
+    spies = _resume_side_effect_spies(monkeypatch)
+
+    with pytest.raises(
+        SharedCheckpointResumeError,
+        match="requires a new run ID",
+    ):
+        run_batch(completed.config, run_id=completed.run_id, resume=True)
+
+    assert _physical_provider_calls(completed) == calls_before
+    assert completed.events_path.read_bytes() == events_before
+    assert _file_tree_snapshot(completed.run_dir) == files_before
+    assert all(spy.call_count == 0 for spy in spies.values())
+
+
 def test_runner_rejects_legacy_resume_before_freeze_or_artifact_writes(
     monkeypatch,
 ) -> None:

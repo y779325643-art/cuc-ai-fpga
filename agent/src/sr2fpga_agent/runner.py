@@ -4539,6 +4539,11 @@ def _preflight_existing_block_preparation_resume(
 
     if not paired_block_plans:
         return {}
+    expected_ids = set(paired_block_plans)
+    event_audits = _event_recorded_block_preparation_audits(
+        run_dir / "events.jsonl",
+        expected_ids,
+    )
     config_path = run_dir / "config.json"
     try:
         persisted_config = json.loads(config_path.read_text(encoding="utf-8"))
@@ -4550,7 +4555,6 @@ def _preflight_existing_block_preparation_resume(
         raise _shared_checkpoint_resume_error(
             f"existing run has no complete G3b preparation audit: {exc}"
         ) from exc
-    expected_ids = set(paired_block_plans)
     if set(audits) != expected_ids:
         raise _shared_checkpoint_resume_error(
             "existing run has a partial G3b preparation audit"
@@ -4574,20 +4578,25 @@ def _preflight_existing_block_preparation_resume(
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} preparation audit is not an object"
             )
+        original_audit = event_audits[paired_block_id]
+        if raw_audit != original_audit:
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} config audit differs from recorded run events"
+            )
         try:
             recorded_manifest_ref = ArtifactRef(
-                **raw_audit["checkpoint_manifest_ref"]
+                **original_audit["checkpoint_manifest_ref"]
             )
         except (KeyError, TypeError, ValueError) as exc:
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} has no exact recorded checkpoint manifest ref"
             ) from exc
-        if raw_audit.get("paired_block_ref") != plan.artifact_ref.to_dict():
+        if original_audit.get("paired_block_ref") != plan.artifact_ref.to_dict():
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} recorded paired-block ref does not match the plan"
             )
         policy_sha256 = str(policy["preparation_policy_sha256"])
-        if raw_audit.get("preparation_policy_sha256") != policy_sha256:
+        if original_audit.get("preparation_policy_sha256") != policy_sha256:
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} recorded preparation policy does not match"
             )
@@ -4605,12 +4614,86 @@ def _preflight_existing_block_preparation_resume(
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} recorded checkpoint manifest is missing"
             )
-        if _prepared_block_audit_record(policy, runtime) != raw_audit:
+        if _prepared_block_audit_record(policy, runtime) != original_audit:
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} reconstructed preparation audit does not match"
             )
         prepared_blocks[paired_block_id] = runtime
     return prepared_blocks
+
+
+def _event_recorded_block_preparation_audits(
+    events_path: Path,
+    expected_paired_block_ids: set[str],
+) -> dict[str, dict[str, Any]]:
+    """Recover the original preparation audit cross-linked into run events."""
+
+    try:
+        lines = events_path.read_text(encoding="utf-8").splitlines()
+        events = [json.loads(line) for line in lines if line.strip()]
+    except (OSError, ValueError, json.JSONDecodeError) as exc:
+        raise _shared_checkpoint_resume_error(
+            f"existing run events cannot anchor preparation identity: {exc}"
+        ) from exc
+    if not events:
+        raise _shared_checkpoint_resume_error(
+            "existing run has no events that anchor preparation identity"
+        )
+    linked: dict[str, list[dict[str, Any]]] = {
+        paired_block_id: [] for paired_block_id in expected_paired_block_ids
+    }
+    completed: dict[str, list[dict[str, Any]]] = {
+        paired_block_id: [] for paired_block_id in expected_paired_block_ids
+    }
+    for event in events:
+        if not isinstance(event, dict):
+            raise _shared_checkpoint_resume_error(
+                "existing run event must be an object"
+            )
+        paired_block_id = event.get("paired_block_id")
+        if paired_block_id not in expected_paired_block_ids:
+            continue
+        raw_audit = event.get("block_preparation_audit")
+        if event.get("event") == "sample_completed" and not isinstance(
+            raw_audit, dict
+        ):
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} completion lacks its preparation audit"
+            )
+        if raw_audit is None:
+            continue
+        if not isinstance(raw_audit, dict):
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} event preparation audit is not an object"
+            )
+        if (
+            event.get("paired_block_ref") is not None
+            and event["paired_block_ref"] != raw_audit.get("paired_block_ref")
+        ):
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} event and preparation paired-block refs differ"
+            )
+        linked[paired_block_id].append(raw_audit)
+        if event.get("event") == "sample_completed":
+            completed[paired_block_id].append(raw_audit)
+    anchors: dict[str, dict[str, Any]] = {}
+    for paired_block_id in sorted(expected_paired_block_ids):
+        records = linked[paired_block_id]
+        if not records:
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} has no event-recorded preparation audit"
+            )
+        anchor = records[0]
+        if any(record != anchor for record in records[1:]):
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} event-recorded preparation audits disagree"
+            )
+        if any(record != anchor for record in completed[paired_block_id]):
+            raise _shared_checkpoint_resume_error(
+                f"{paired_block_id} completed method audits disagree"
+            )
+        anchors[paired_block_id] = dict(anchor)
+    return anchors
 
 
 def _prepared_block_audit_record(
