@@ -9,6 +9,7 @@ from enum import Enum
 from typing import Any, Callable, Mapping, Protocol, runtime_checkable
 
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.block_preparation import CheckpointId, _CHECKPOINT_SUFFIX
 from sr2fpga_agent.frozen_context import FrozenRequirementContext
 from sr2fpga_agent.method_contract import MethodConditionId, MethodContract, method_contract
 from sr2fpga_agent.models import GeneratedProject
@@ -580,7 +581,28 @@ class PairedArtifactCoordinator:
         pairing: PairingKey,
         factory: Callable[[], GeneratedProject],
     ) -> ProjectCandidateEmission:
-        key = f"paired/{pairing.digest()}/initial-project"
+        legacy_key = f"paired/{pairing.digest()}/initial-project"
+        existing = self._store.reference(legacy_key)
+        if existing is not None:
+            payload = json.loads(self._store.read_verified(existing))
+            project = GeneratedProject(str(payload["project_name"]), dict(payload["files"]))
+            return ProjectCandidateEmission(existing, project_package_sha256(project))
+        return self.materialize_project_checkpoint(
+            pairing, CheckpointId.DIRECT_INITIAL_PROJECT, factory
+        )
+
+    def materialize_project_checkpoint(
+        self,
+        pairing: PairingKey,
+        checkpoint_id: CheckpointId,
+        factory: Callable[[], GeneratedProject],
+    ) -> ProjectCandidateEmission:
+        if checkpoint_id not in {
+            CheckpointId.DIRECT_INITIAL_PROJECT,
+            CheckpointId.SKELETON_INITIAL_PROJECT,
+        }:
+            raise ValueError("project checkpoints must materialize a project")
+        key = f"paired/{pairing.digest()}/{_CHECKPOINT_SUFFIX[checkpoint_id]}"
         existing = self._store.reference(key)
         if existing is None:
             emission = self._artifacts.put_project(key, factory())
@@ -590,6 +612,7 @@ class PairedArtifactCoordinator:
                 {
                     "paired_block_id": pairing.paired_block_id,
                     "pairing_sha256": pairing.digest(),
+                    "checkpoint_id": checkpoint_id.value,
                     "artifact_sha256": emission.artifact_ref.sha256,
                     "project_package_sha256": emission.project_package_sha256,
                 },
@@ -604,7 +627,14 @@ class PairedArtifactCoordinator:
         pairing: PairingKey,
         factory: Callable[[], Mapping[str, Any]],
     ) -> PlanningArtifactEmission:
-        key = f"paired/{pairing.digest()}/system-his"
+        return self.materialize_system_his_checkpoint(pairing, factory)
+
+    def materialize_system_his_checkpoint(
+        self,
+        pairing: PairingKey,
+        factory: Callable[[], Mapping[str, Any]],
+    ) -> PlanningArtifactEmission:
+        key = f"paired/{pairing.digest()}/{_CHECKPOINT_SUFFIX[CheckpointId.SHARED_SYSTEM_HIS]}"
         existing = self._store.reference(key)
         if existing is None:
             emission = self._artifacts.put_planning(
@@ -616,6 +646,7 @@ class PairedArtifactCoordinator:
                 {
                     "paired_block_id": pairing.paired_block_id,
                     "pairing_sha256": pairing.digest(),
+                    "checkpoint_id": CheckpointId.SHARED_SYSTEM_HIS.value,
                     "artifact_sha256": emission.artifact_ref.sha256,
                 },
             )

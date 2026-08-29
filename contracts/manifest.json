@@ -201,6 +201,10 @@
       "version": "paired-block-v1",
       "path": "contracts/episode-pack/paired-block-v1.schema.json"
     },
+    "development_shared_checkpoint_manifest": {
+      "version": "development-shared-checkpoint-manifest-v1",
+      "path": "contracts/episode-pack/development-shared-checkpoint-manifest-v1.schema.json"
+    },
     "trajectory": {
       "version": "trajectory-v1",
       "path": "contracts/trajectory/trajectory-v1.schema.json"

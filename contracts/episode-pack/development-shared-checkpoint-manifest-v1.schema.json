@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/episode-pack/development-shared-checkpoint-manifest/v1",
+  "title": "SR2FPGA Development Shared Checkpoint Manifest v1",
+  "description": "Development-only shared-checkpoint DAG evidence. It grants no outcome, pass-credit, G3, or G4b authority.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version", "evaluation_scope", "paired_block_ref", "preparation_policy_sha256",
+    "manifest_status", "nodes", "block_event_refs", "block_events_sha256",
+    "official_outcome", "official_authority", "pass_credit_authority", "g3_accepted", "g4b_authorized"
+  ],
+  "properties": {
+    "contract_version": {"const": "development-shared-checkpoint-manifest-v1"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "paired_block_ref": {"$ref": "#/$defs/artifact_ref"},
+    "preparation_policy_sha256": {"$ref": "#/$defs/sha256"},
+    "manifest_status": {"enum": ["complete", "incomplete"]},
+    "nodes": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {"$ref": "#/$defs/node"},
+      "allOf": [
+        {"contains": {"properties": {"checkpoint_id": {"const": "direct_initial_project"}}, "required": ["checkpoint_id"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"checkpoint_id": {"const": "shared_system_his"}}, "required": ["checkpoint_id"]}, "minContains": 1, "maxContains": 1},
+        {"contains": {"properties": {"checkpoint_id": {"const": "skeleton_initial_project"}}, "required": ["checkpoint_id"]}, "minContains": 1, "maxContains": 1}
+      ]
+    },
+    "block_event_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact_ref"}},
+    "block_events_sha256": {"$ref": "#/$defs/sha256"},
+    "official_outcome": {"const": false},
+    "official_authority": {"const": false},
+    "pass_credit_authority": {"const": false},
+    "g3_accepted": {"const": false},
+    "g4b_authorized": {"const": false}
+  },
+  "$defs": {
+    "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1},
+        "sha256": {"$ref": "#/$defs/sha256"},
+        "size_bytes": {"type": "integer", "minimum": 0},
+        "media_type": {"type": "string", "minLength": 1}
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "checkpoint_id", "status", "reason", "artifact_ref", "content_sha256",
+        "project_package_sha256", "trusted_skeleton_ref", "parent_checkpoint_ids",
+        "consumer_methods", "source_event_refs", "source_events_sha256"
+      ],
+      "properties": {
+        "checkpoint_id": {"enum": ["direct_initial_project", "shared_system_his", "skeleton_initial_project"]},
+        "status": {"enum": ["completed", "failed", "not_run"]},
+        "reason": {"type": ["string", "null"]},
+        "artifact_ref": {"oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]},
+        "content_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "project_package_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]},
+        "trusted_skeleton_ref": {"oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]},
+        "parent_checkpoint_ids": {"type": "array", "uniqueItems": true, "items": {"enum": ["direct_initial_project", "shared_system_his", "skeleton_initial_project"]}},
+        "consumer_methods": {"type": "array", "uniqueItems": true, "items": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]}},
+        "source_event_refs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"$ref": "#/$defs/artifact_ref"}},
+        "source_events_sha256": {"$ref": "#/$defs/sha256"}
+      },
+      "allOf": [
+        {"if": {"properties": {"status": {"const": "completed"}}, "required": ["status"]}, "then": {"properties": {"reason": {"type": "null"}, "artifact_ref": {"$ref": "#/$defs/artifact_ref"}, "content_sha256": {"$ref": "#/$defs/sha256"}}}},
+        {"if": {"properties": {"status": {"enum": ["failed", "not_run"]}}, "required": ["status"]}, "then": {"properties": {"reason": {"type": "string", "minLength": 1}, "artifact_ref": {"type": "null"}, "content_sha256": {"type": "null"}, "project_package_sha256": {"type": "null"}, "trusted_skeleton_ref": {"type": "null"}}}},
+        {"if": {"properties": {"checkpoint_id": {"const": "direct_initial_project"}}, "required": ["checkpoint_id"]}, "then": {"properties": {"parent_checkpoint_ids": {"const": []}, "consumer_methods": {"const": ["M0", "M1"]}, "project_package_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}, "trusted_skeleton_ref": {"type": "null"}}}},
+        {"if": {"properties": {"checkpoint_id": {"const": "shared_system_his"}}, "required": ["checkpoint_id"]}, "then": {"properties": {"parent_checkpoint_ids": {"const": []}, "consumer_methods": {"const": ["M3", "M4", "M5"]}, "project_package_sha256": {"type": "null"}, "trusted_skeleton_ref": {"type": "null"}}}},
+        {"if": {"properties": {"checkpoint_id": {"const": "skeleton_initial_project"}}, "required": ["checkpoint_id"]}, "then": {"properties": {"parent_checkpoint_ids": {"const": ["shared_system_his"]}, "consumer_methods": {"const": ["M4", "M5"]}, "project_package_sha256": {"oneOf": [{"$ref": "#/$defs/sha256"}, {"type": "null"}]}, "trusted_skeleton_ref": {"oneOf": [{"$ref": "#/$defs/artifact_ref"}, {"type": "null"}]}}}},
+        {"if": {"properties": {"checkpoint_id": {"enum": ["direct_initial_project", "skeleton_initial_project"]}, "status": {"const": "completed"}}, "required": ["checkpoint_id", "status"]}, "then": {"properties": {"project_package_sha256": {"$ref": "#/$defs/sha256"}}}},
+        {"if": {"properties": {"checkpoint_id": {"const": "skeleton_initial_project"}, "status": {"const": "completed"}}, "required": ["checkpoint_id", "status"]}, "then": {"properties": {"trusted_skeleton_ref": {"$ref": "#/$defs/artifact_ref"}, "artifact_ref": {"not": {"properties": {"key": {"pattern": "trusted-skeleton"}}, "required": ["key"]}}}}}
+      ]
+    }
+  }
+}

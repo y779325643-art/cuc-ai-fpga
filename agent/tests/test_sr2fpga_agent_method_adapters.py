@@ -22,6 +22,7 @@ from sr2fpga_agent.method_adapters import (
     StructuredDirectMethodAdapter,
     _paired_event_stream_id,
 )
+from sr2fpga_agent.block_preparation import CheckpointId
 from sr2fpga_agent.method_contract import MethodConditionId
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.requirement_boundary import evaluate_requirement_boundary
@@ -213,6 +214,38 @@ def test_pairing_key_digest_binds_replicate_identity() -> None:
     assert _pairing(context).digest() != _pairing(
         context, "replicate-001"
     ).digest()
+
+
+def test_direct_and_skeleton_projects_use_distinct_checkpoint_keys(tmp_path) -> None:
+    context = _context()
+    coordinator = PairedArtifactCoordinator(ArtifactStore(tmp_path / "store"))
+
+    direct = coordinator.materialize_project_checkpoint(
+        _pairing(context), CheckpointId.DIRECT_INITIAL_PROJECT, lambda: _project("direct")
+    )
+    skeleton = coordinator.materialize_project_checkpoint(
+        _pairing(context), CheckpointId.SKELETON_INITIAL_PROJECT, lambda: _project("skeleton")
+    )
+
+    assert direct.artifact_ref.key.endswith("/direct-initial-project")
+    assert skeleton.artifact_ref.key.endswith("/skeleton-initial-project")
+    assert direct.artifact_ref != skeleton.artifact_ref
+
+
+def test_legacy_initial_project_wrapper_reads_existing_lazy_key(tmp_path) -> None:
+    context = _context()
+    store = ArtifactStore(tmp_path / "store")
+    pairing = _pairing(context)
+    legacy = MethodArtifactGateway(store).put_project(
+        f"paired/{pairing.digest()}/initial-project", _project("legacy")
+    )
+    coordinator = PairedArtifactCoordinator(store)
+
+    result = coordinator.materialize_initial_project(
+        pairing, lambda: pytest.fail("legacy artifact must be reused")
+    )
+
+    assert result == legacy
 
 
 def test_shared_event_stream_uses_safe_id_and_retains_contract_block_id(

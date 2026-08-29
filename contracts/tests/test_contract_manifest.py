@@ -63,6 +63,7 @@ def test_contract_manifest_declares_required_contracts() -> None:
         "training_release_manifest",
         "episode_pack",
         "paired_block",
+        "development_shared_checkpoint_manifest",
         "trajectory",
         "trajectory_v2",
         "training_view_row_legacy",
