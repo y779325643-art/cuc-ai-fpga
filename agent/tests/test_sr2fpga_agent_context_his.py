@@ -743,7 +743,7 @@ def test_m4_m5_bridges_consume_prepared_project_and_keep_method_events_distinct(
     )
     paired_prefix = f"paired/{pairing.digest()}"
     prepared_his = gateway.put_planning(
-        "prepared/system-his", PlanningArtifactKind.SYSTEM_HIS, payload
+        f"{paired_prefix}/system-his", PlanningArtifactKind.SYSTEM_HIS, payload
     )
     prepared_project = gateway.put_project(
         f"{paired_prefix}/skeleton-initial-project",
@@ -806,8 +806,17 @@ def test_m3_prepared_his_runs_one_free_project_call_without_shared_project(
     context, payload = _context_and_his()
     store = ArtifactStore(tmp_path / "store")
     gateway = MethodArtifactGateway(store)
+    pairing = PairingKey(
+        paired_block_id="pair-prepared-m3",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="counter-instance",
+        decoding_seed=7,
+        model_provenance_sha256="a" * 64,
+    )
     prepared_his = gateway.put_planning(
-        "prepared/m3-system-his", PlanningArtifactKind.SYSTEM_HIS, payload
+        f"paired/{pairing.digest()}/system-his",
+        PlanningArtifactKind.SYSTEM_HIS,
+        payload,
     )
     req_client = _Client("must not be called")
     project_client = _Client(_free_project_response(frozen_project_name(context)))
@@ -825,6 +834,8 @@ def test_m3_prepared_his_runs_one_free_project_call_without_shared_project(
         context=context,
         services=services,
         system_his=system_his,
+        coordinator=PairedArtifactCoordinator(store),
+        pairing=pairing,
         prepared_shared_artifacts=SharedArtifactRefs(system_his=prepared_his),
     )
 
@@ -843,8 +854,15 @@ def test_skeleton_bridge_accepts_prepared_his_only_and_generates_project(
     context, payload = _context_and_his()
     store = ArtifactStore(tmp_path / "store")
     gateway = MethodArtifactGateway(store)
+    pairing = PairingKey(
+        paired_block_id=f"pair-prepared-his-only-{method.lower()}",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="counter-instance",
+        decoding_seed=7,
+        model_provenance_sha256="a" * 64,
+    )
     prepared_his = gateway.put_planning(
-        f"prepared/{method.lower()}-system-his",
+        f"paired/{pairing.digest()}/system-his",
         PlanningArtifactKind.SYSTEM_HIS,
         payload,
     )
@@ -863,6 +881,8 @@ def test_skeleton_bridge_accepts_prepared_his_only_and_generates_project(
             his_validation=FrozenContextSystemHisValidationFacade(_platform()),
         ),
         system_his=system_his,
+        coordinator=PairedArtifactCoordinator(store),
+        pairing=pairing,
         prepared_shared_artifacts=SharedArtifactRefs(system_his=prepared_his),
     )
 
@@ -872,6 +892,148 @@ def test_skeleton_bridge_accepts_prepared_his_only_and_generates_project(
     assert len(behavior_client.calls) == 1
     assert bridge.last_outcome.candidate is not None
     assert bridge.last_skeleton_artifact is not None
+
+
+def test_m3_rejects_prepared_his_from_another_pairing_before_calls(tmp_path) -> None:
+    context, payload = _context_and_his()
+    store = ArtifactStore(tmp_path / "store")
+    gateway = MethodArtifactGateway(store)
+    pairing = PairingKey(
+        paired_block_id="pair-current-m3",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="counter-instance",
+        decoding_seed=7,
+        model_provenance_sha256="a" * 64,
+    )
+    foreign_pairing = PairingKey(
+        paired_block_id="pair-foreign-m3",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="counter-instance",
+        decoding_seed=7,
+        model_provenance_sha256="a" * 64,
+    )
+    prepared_his = gateway.put_planning(
+        f"paired/{foreign_pairing.digest()}/system-his",
+        PlanningArtifactKind.SYSTEM_HIS,
+        payload,
+    )
+    req_client = _Client("must not be called")
+    project_client = _Client("must not be called")
+    system_his = FrozenContextSystemHisFacade(
+        req_client, project_client, _platform()
+    )
+    bridge = FrozenContextHisGeneratorBridge(
+        method_condition="M3",
+        context=context,
+        services=GenerationServices(
+            artifacts=gateway,
+            episode_id="foreign-m3-his",
+            system_his=system_his,
+            his_validation=FrozenContextSystemHisValidationFacade(_platform()),
+        ),
+        system_his=system_his,
+        coordinator=PairedArtifactCoordinator(store),
+        pairing=pairing,
+        prepared_shared_artifacts=SharedArtifactRefs(system_his=prepared_his),
+    )
+
+    with pytest.raises(ValueError, match="prepared System-HIS key"):
+        bridge.generate(ProjectRequest("counter", 8, "ignored", "ignored"), _platform())
+
+    assert req_client.calls == project_client.calls == []
+
+
+def test_m3_rejects_prepared_his_without_pairing_context_before_calls(tmp_path) -> None:
+    context, payload = _context_and_his()
+    store = ArtifactStore(tmp_path / "store")
+    gateway = MethodArtifactGateway(store)
+    prepared_his = gateway.put_planning(
+        "paired/unbound/system-his", PlanningArtifactKind.SYSTEM_HIS, payload
+    )
+    req_client = _Client("must not be called")
+    project_client = _Client("must not be called")
+    system_his = FrozenContextSystemHisFacade(
+        req_client, project_client, _platform()
+    )
+    bridge = FrozenContextHisGeneratorBridge(
+        method_condition="M3",
+        context=context,
+        services=GenerationServices(
+            artifacts=gateway,
+            episode_id="unbound-m3-his",
+            system_his=system_his,
+            his_validation=FrozenContextSystemHisValidationFacade(_platform()),
+        ),
+        system_his=system_his,
+        prepared_shared_artifacts=SharedArtifactRefs(system_his=prepared_his),
+    )
+
+    with pytest.raises(ValueError, match="prepared HIS artifacts require pairing identity"):
+        bridge.generate(ProjectRequest("counter", 8, "ignored", "ignored"), _platform())
+
+    assert req_client.calls == project_client.calls == []
+
+
+def test_full_prepared_set_rejects_his_from_another_pairing_before_calls(
+    tmp_path,
+) -> None:
+    context, payload = _context_and_his()
+    store = ArtifactStore(tmp_path / "store")
+    gateway = MethodArtifactGateway(store)
+    pairing = PairingKey(
+        paired_block_id="pair-current-full",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="counter-instance",
+        decoding_seed=7,
+        model_provenance_sha256="a" * 64,
+    )
+    foreign_pairing = PairingKey(
+        paired_block_id="pair-foreign-full",
+        requirement_revision_id=context.revision_id,
+        semantic_instance_id="counter-instance",
+        decoding_seed=7,
+        model_provenance_sha256="a" * 64,
+    )
+    prefix = f"paired/{pairing.digest()}"
+    prepared_his = gateway.put_planning(
+        f"paired/{foreign_pairing.digest()}/system-his",
+        PlanningArtifactKind.SYSTEM_HIS,
+        payload,
+    )
+    prepared_project = gateway.put_project(
+        f"{prefix}/skeleton-initial-project", _repairable_project(context, payload)
+    )
+    prepared_trusted = gateway.put_project(
+        f"{prefix}/trusted-skeleton", _repairable_project(context, payload)
+    )
+    req_client = _Client("must not be called")
+    behavior_client = _Client("must not be called")
+    system_his = FrozenContextSystemHisFacade(
+        req_client, behavior_client, _platform()
+    )
+    bridge = FrozenContextHisGeneratorBridge(
+        method_condition="M4",
+        context=context,
+        services=GenerationServices(
+            artifacts=gateway,
+            episode_id="foreign-full-his",
+            system_his=system_his,
+            his_validation=FrozenContextSystemHisValidationFacade(_platform()),
+        ),
+        system_his=system_his,
+        coordinator=PairedArtifactCoordinator(store),
+        pairing=pairing,
+        prepared_shared_artifacts=SharedArtifactRefs(
+            initial_project=prepared_project,
+            system_his=prepared_his,
+        ),
+        prepared_trusted_skeleton=prepared_trusted,
+    )
+
+    with pytest.raises(ValueError, match="prepared System-HIS key"):
+        bridge.generate(ProjectRequest("counter", 8, "ignored", "ignored"), _platform())
+
+    assert req_client.calls == behavior_client.calls == []
 
 
 def test_m3_rejects_full_prepared_set_before_any_model_call(tmp_path) -> None:

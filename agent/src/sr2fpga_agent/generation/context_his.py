@@ -333,6 +333,16 @@ class FrozenContextHisGeneratorBridge:
             return
         if not self._adapter.contract.emits_system_his:
             raise ValueError(f"{method} does not accept prepared HIS artifacts")
+        if self._pairing is None:
+            raise ValueError("prepared HIS artifacts require pairing identity")
+        prefix = f"paired/{self._pairing.digest()}"
+        if (
+            system_his is not None
+            and system_his.artifact_ref.key != f"{prefix}/system-his"
+        ):
+            raise ValueError(
+                "prepared System-HIS key does not match pairing checkpoint"
+            )
         if not self._adapter.contract.uses_deterministic_skeleton:
             if initial_project is not None or trusted_skeleton is not None:
                 raise ValueError(
@@ -347,9 +357,6 @@ class FrozenContextHisGeneratorBridge:
             raise ValueError("prepared project requires prepared System-HIS")
         if trusted_skeleton is None:
             raise ValueError("prepared project requires prepared trusted skeleton")
-        if self._pairing is None:
-            raise ValueError("prepared project requires pairing identity")
-        prefix = f"paired/{self._pairing.digest()}"
         expected_project_key = f"{prefix}/skeleton-initial-project"
         expected_trusted_key = f"{prefix}/trusted-skeleton"
         if initial_project.artifact_ref.key != expected_project_key:
