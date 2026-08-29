@@ -6,7 +6,7 @@ import time
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
-from sr2fpga_agent.cost_accounting import AttemptCostLedger
+from sr2fpga_agent.block_cost_accounting import ModelCostLedger
 
 
 class ModelCallBudgetExceeded(RuntimeError):
@@ -17,8 +17,8 @@ class ModelCallBudgetExceeded(RuntimeError):
 class ModelCallBudget:
     max_calls: int
     event_sink: Callable[[dict[str, Any]], None] | None = None
-    attempt_cost_ledger: AttemptCostLedger | None = None
-    attempt_cost_ledger_provider: Callable[[], AttemptCostLedger | None] | None = None
+    attempt_cost_ledger: ModelCostLedger | None = None
+    attempt_cost_ledger_provider: Callable[[], ModelCostLedger | None] | None = None
     max_parser_schema_retries: int = 0
     calls_used: int = 0
     failed_calls: int = 0
@@ -218,7 +218,7 @@ class ModelCallBudget:
         if self.event_sink is not None:
             self.event_sink(payload)
 
-    def _cost_ledger(self) -> AttemptCostLedger | None:
+    def _cost_ledger(self) -> ModelCostLedger | None:
         if self.attempt_cost_ledger_provider is not None:
             return self.attempt_cost_ledger_provider()
         return self.attempt_cost_ledger

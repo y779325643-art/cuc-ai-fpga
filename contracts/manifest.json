@@ -165,6 +165,10 @@
       "version": "cost-summary-v1",
       "path": "contracts/accounting/cost-summary-v1.schema.json"
     },
+    "development_block_preparation_event": {
+      "version": "development-block-preparation-event-v1",
+      "path": "contracts/accounting/development-block-preparation-event-v1.schema.json"
+    },
     "model_gateway_provenance": {
       "version": "model-gateway-provenance-v1",
       "path": "contracts/accounting/model-gateway-provenance-v1.schema.json"

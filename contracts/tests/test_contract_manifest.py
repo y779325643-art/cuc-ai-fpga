@@ -54,6 +54,7 @@ def test_contract_manifest_declares_required_contracts() -> None:
         "full_pack_outcome_reconciliation_v2",
         "attempt_event",
         "cost_summary",
+        "development_block_preparation_event",
         "model_gateway_provenance",
         "development_provider_seed_capability",
         "training_eligibility",
