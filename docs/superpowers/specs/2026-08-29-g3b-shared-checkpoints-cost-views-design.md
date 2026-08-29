@@ -563,4 +563,3 @@ G3b development conformance is implemented only when all of the following hold:
 9. Full repository tests and changed-file quality checks pass.
 10. Documentation states `G3b implemented, G3 not accepted` and retains G3c/G3d
     blockers.
-
