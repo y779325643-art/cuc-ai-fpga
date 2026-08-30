@@ -136,10 +136,9 @@
             "contains": {
               "type": "object",
               "properties": {
-                "terminal_status": {"not": {"const": "completed"}},
-                "trajectory_ref": {"type": "null"}
+                "terminal_status": {"not": {"const": "completed"}}
               },
-              "required": ["terminal_status", "trajectory_ref"]
+              "required": ["terminal_status"]
             },
             "minContains": 1
           },
@@ -167,13 +166,13 @@
         "media_type": {"type": "string", "minLength": 1}
       }
     },
-    "axis_result": {
+    "unsigned_count_axis_result": {
       "type": "object",
       "additionalProperties": false,
       "required": ["status", "value", "reason"],
       "properties": {
         "status": {"enum": ["measured", "unavailable"]},
-        "value": {"type": ["integer", "number", "null"]},
+        "value": {"type": ["integer", "null"]},
         "reason": {"type": ["string", "null"]}
       },
       "allOf": [
@@ -181,7 +180,7 @@
           "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
           "then": {
             "properties": {
-              "value": {"type": ["integer", "number"], "minimum": 0},
+              "value": {"type": "integer", "minimum": 0},
               "reason": {"type": "null"}
             }
           },
@@ -194,13 +193,13 @@
         }
       ]
     },
-    "signed_axis_result": {
+    "unsigned_duration_axis_result": {
       "type": "object",
       "additionalProperties": false,
       "required": ["status", "value", "reason"],
       "properties": {
         "status": {"enum": ["measured", "unavailable"]},
-        "value": {"type": ["integer", "number", "null"]},
+        "value": {"type": ["number", "null"]},
         "reason": {"type": ["string", "null"]}
       },
       "allOf": [
@@ -208,7 +207,61 @@
           "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
           "then": {
             "properties": {
-              "value": {"type": ["integer", "number"]},
+              "value": {"type": "number", "minimum": 0},
+              "reason": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {"type": "null"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "signed_count_axis_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "reason"],
+      "properties": {
+        "status": {"enum": ["measured", "unavailable"]},
+        "value": {"type": ["integer", "null"]},
+        "reason": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "value": {"type": "integer"},
+              "reason": {"type": "null"}
+            }
+          },
+          "else": {
+            "properties": {
+              "value": {"type": "null"},
+              "reason": {"type": "string", "minLength": 1}
+            }
+          }
+        }
+      ]
+    },
+    "signed_duration_axis_result": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["status", "value", "reason"],
+      "properties": {
+        "status": {"enum": ["measured", "unavailable"]},
+        "value": {"type": ["number", "null"]},
+        "reason": {"type": ["string", "null"]}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
+          "then": {
+            "properties": {
+              "value": {"type": "number"},
               "reason": {"type": "null"}
             }
           },
@@ -232,19 +285,19 @@
         "hidden_evaluator_runtime"
       ],
       "properties": {
-        "logical_model_calls": {"$ref": "#/$defs/axis_result"},
-        "input_tokens": {"$ref": "#/$defs/axis_result"},
-        "output_tokens": {"$ref": "#/$defs/axis_result"},
-        "cached_tokens": {"$ref": "#/$defs/axis_result"},
-        "provider_transport_attempts": {"$ref": "#/$defs/axis_result"},
-        "planner_parser_schema_retries": {"$ref": "#/$defs/axis_result"},
-        "outer_repair_attempts": {"$ref": "#/$defs/axis_result"},
-        "public_tool_calls": {"$ref": "#/$defs/axis_result"},
-        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/axis_result"},
-        "hidden_infrastructure_retries": {"$ref": "#/$defs/axis_result"},
-        "wall_time": {"$ref": "#/$defs/axis_result"},
-        "eda_time": {"$ref": "#/$defs/axis_result"},
-        "hidden_evaluator_runtime": {"$ref": "#/$defs/axis_result"}
+        "logical_model_calls": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "input_tokens": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "output_tokens": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "cached_tokens": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "provider_transport_attempts": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "planner_parser_schema_retries": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "outer_repair_attempts": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "public_tool_calls": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "hidden_infrastructure_retries": {"$ref": "#/$defs/unsigned_count_axis_result"},
+        "wall_time": {"$ref": "#/$defs/unsigned_duration_axis_result"},
+        "eda_time": {"$ref": "#/$defs/unsigned_duration_axis_result"},
+        "hidden_evaluator_runtime": {"$ref": "#/$defs/unsigned_duration_axis_result"}
       }
     },
     "signed_axis_results": {
@@ -258,20 +311,45 @@
         "hidden_evaluator_runtime"
       ],
       "properties": {
-        "logical_model_calls": {"$ref": "#/$defs/signed_axis_result"},
-        "input_tokens": {"$ref": "#/$defs/signed_axis_result"},
-        "output_tokens": {"$ref": "#/$defs/signed_axis_result"},
-        "cached_tokens": {"$ref": "#/$defs/signed_axis_result"},
-        "provider_transport_attempts": {"$ref": "#/$defs/signed_axis_result"},
-        "planner_parser_schema_retries": {"$ref": "#/$defs/signed_axis_result"},
-        "outer_repair_attempts": {"$ref": "#/$defs/signed_axis_result"},
-        "public_tool_calls": {"$ref": "#/$defs/signed_axis_result"},
-        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/signed_axis_result"},
-        "hidden_infrastructure_retries": {"$ref": "#/$defs/signed_axis_result"},
-        "wall_time": {"$ref": "#/$defs/signed_axis_result"},
-        "eda_time": {"$ref": "#/$defs/signed_axis_result"},
-        "hidden_evaluator_runtime": {"$ref": "#/$defs/signed_axis_result"}
+        "logical_model_calls": {"$ref": "#/$defs/signed_count_axis_result"},
+        "input_tokens": {"$ref": "#/$defs/signed_count_axis_result"},
+        "output_tokens": {"$ref": "#/$defs/signed_count_axis_result"},
+        "cached_tokens": {"$ref": "#/$defs/signed_count_axis_result"},
+        "provider_transport_attempts": {"$ref": "#/$defs/signed_count_axis_result"},
+        "planner_parser_schema_retries": {"$ref": "#/$defs/signed_count_axis_result"},
+        "outer_repair_attempts": {"$ref": "#/$defs/signed_count_axis_result"},
+        "public_tool_calls": {"$ref": "#/$defs/signed_count_axis_result"},
+        "hidden_evaluator_tool_calls": {"$ref": "#/$defs/signed_count_axis_result"},
+        "hidden_infrastructure_retries": {"$ref": "#/$defs/signed_count_axis_result"},
+        "wall_time": {"$ref": "#/$defs/signed_duration_axis_result"},
+        "eda_time": {"$ref": "#/$defs/signed_duration_axis_result"},
+        "hidden_evaluator_runtime": {"$ref": "#/$defs/signed_duration_axis_result"}
       }
+    },
+    "axis_results_with_unavailable": {
+      "type": "object",
+      "anyOf": [
+        {"properties": {"logical_model_calls": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["logical_model_calls"]},
+        {"properties": {"input_tokens": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["input_tokens"]},
+        {"properties": {"output_tokens": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["output_tokens"]},
+        {"properties": {"cached_tokens": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["cached_tokens"]},
+        {"properties": {"provider_transport_attempts": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["provider_transport_attempts"]},
+        {"properties": {"planner_parser_schema_retries": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["planner_parser_schema_retries"]},
+        {"properties": {"outer_repair_attempts": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["outer_repair_attempts"]},
+        {"properties": {"public_tool_calls": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["public_tool_calls"]},
+        {"properties": {"hidden_evaluator_tool_calls": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["hidden_evaluator_tool_calls"]},
+        {"properties": {"hidden_infrastructure_retries": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["hidden_infrastructure_retries"]},
+        {"properties": {"wall_time": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["wall_time"]},
+        {"properties": {"eda_time": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["eda_time"]},
+        {"properties": {"hidden_evaluator_runtime": {"properties": {"status": {"const": "unavailable"}}, "required": ["status"]}}, "required": ["hidden_evaluator_runtime"]}
+      ]
+    },
+    "contrast_arm_with_unavailable_axis": {
+      "type": "object",
+      "properties": {
+        "axes": {"$ref": "#/$defs/axis_results_with_unavailable"}
+      },
+      "required": ["axes"]
     },
     "method_record": {
       "type": "object",
@@ -370,8 +448,37 @@
       "allOf": [
         {
           "if": {"properties": {"status": {"const": "measured"}}, "required": ["status"]},
-          "then": {"properties": {"reason": {"type": "null"}}},
-          "else": {"properties": {"reason": {"type": "string", "minLength": 1}}
+          "then": {
+            "properties": {
+              "reason": {"type": "null"},
+              "arms": {
+                "not": {
+                  "contains": {"$ref": "#/$defs/contrast_arm_with_unavailable_axis"}
+                }
+              },
+              "signed_delta_axes": {
+                "not": {"$ref": "#/$defs/axis_results_with_unavailable"}
+              }
+            }
+          },
+          "else": {
+            "properties": {"reason": {"type": "string", "minLength": 1}},
+            "anyOf": [
+              {
+                "properties": {
+                  "arms": {
+                    "contains": {"$ref": "#/$defs/contrast_arm_with_unavailable_axis"}
+                  }
+                },
+                "required": ["arms"]
+              },
+              {
+                "properties": {
+                  "signed_delta_axes": {"$ref": "#/$defs/axis_results_with_unavailable"}
+                },
+                "required": ["signed_delta_axes"]
+              }
+            ]
           }
         }
       ]

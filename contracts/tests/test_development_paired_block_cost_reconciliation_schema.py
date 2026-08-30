@@ -28,6 +28,8 @@ AXES = (
     "eda_time",
     "hidden_evaluator_runtime",
 )
+COUNT_AXES = AXES[:-3]
+DURATION_AXES = AXES[-3:]
 METHODS = ("M0", "M1", "M2", "M3", "M4", "M5")
 CONTRASTS = (
     ("M1-M0", "direct_initial_project", "M1", "M0"),
@@ -172,6 +174,16 @@ def _incomplete_reconciliation() -> dict:
     return payload
 
 
+def _method_failed_reconciliation(status: str = "failed") -> dict:
+    payload = _complete_reconciliation()
+    payload["reconciliation_status"] = "incomplete"
+    payload["incomplete_reasons"] = [f"method_terminal_status:M2:{status}"]
+    payload["source_full_pack_runner_ref"] = None
+    payload["reconciliation"]["full_pack_lineage_verified"] = False
+    payload["method_records"][2]["terminal_status"] = status
+    return payload
+
+
 def test_complete_and_incomplete_reconciliations_are_valid() -> None:
     _validator().validate(_complete_reconciliation())
     _validator().validate(_incomplete_reconciliation())
@@ -184,6 +196,35 @@ def test_signed_delta_allows_negative_measured_value() -> None:
         "value": -0.5,
         "reason": None,
     }
+    _validator().validate(payload)
+
+
+@pytest.mark.parametrize("axis", COUNT_AXES)
+@pytest.mark.parametrize("result_kind", ("unsigned", "signed"))
+def test_count_axes_reject_fractional_values(axis: str, result_kind: str) -> None:
+    payload = _complete_reconciliation()
+    if result_kind == "unsigned":
+        target = payload["actual_block_axes"]
+    else:
+        target = payload["incremental_contrasts"][0]["signed_delta_axes"]
+    target[axis]["value"] = -0.5 if result_kind == "signed" else 0.5
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+@pytest.mark.parametrize("axis", DURATION_AXES)
+@pytest.mark.parametrize("result_kind", ("unsigned", "signed"))
+def test_duration_axes_accept_fractional_values(axis: str, result_kind: str) -> None:
+    payload = _complete_reconciliation()
+    if result_kind == "unsigned":
+        target = payload["actual_block_axes"]
+        value = 0.5
+    else:
+        target = payload["incremental_contrasts"][0]["signed_delta_axes"]
+        value = -0.5
+    target[axis]["value"] = value
+
     _validator().validate(payload)
 
 
@@ -260,7 +301,14 @@ def test_incomplete_record_requires_a_named_reason_and_null_full_pack() -> None:
             _validator().validate(payload)
 
 
-def test_incomplete_record_requires_a_noncompleted_null_trajectory_method() -> None:
+@pytest.mark.parametrize("status", ("failed", "not_run"))
+def test_incomplete_record_accepts_nonblocked_terminal_method_with_trajectory(
+    status: str,
+) -> None:
+    _validator().validate(_method_failed_reconciliation(status))
+
+
+def test_incomplete_record_requires_a_noncompleted_method() -> None:
     six_completed = _complete_reconciliation()
     six_completed["reconciliation_status"] = "incomplete"
     six_completed["incomplete_reasons"] = ["forged_incomplete_reason"]
@@ -270,6 +318,71 @@ def test_incomplete_record_requires_a_noncompleted_null_trajectory_method() -> N
     with pytest.raises(ValidationError):
         _validator().validate(six_completed)
     _validator().validate(_incomplete_reconciliation())
+
+
+@pytest.mark.parametrize("dependent_axis", ("arm", "signed_delta"))
+def test_measured_contrast_requires_every_dependent_axis_measured(
+    dependent_axis: str,
+) -> None:
+    payload = _complete_reconciliation()
+    contrast = payload["incremental_contrasts"][0]
+    target = (
+        contrast["arms"][0]["axes"]
+        if dependent_axis == "arm"
+        else contrast["signed_delta_axes"]
+    )
+    target["input_tokens"] = {
+        "status": "unavailable",
+        "value": None,
+        "reason": "provider_missing",
+    }
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_unavailable_contrast_requires_an_unavailable_dependent_axis() -> None:
+    payload = _complete_reconciliation()
+    contrast = payload["incremental_contrasts"][0]
+    contrast["status"] = "unavailable"
+    contrast["reason"] = "forged_missingness"
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_unavailable_contrast_requires_a_nonempty_reason() -> None:
+    payload = _complete_reconciliation()
+    contrast = payload["incremental_contrasts"][0]
+    contrast["status"] = "unavailable"
+    contrast["reason"] = None
+    contrast["signed_delta_axes"]["input_tokens"] = {
+        "status": "unavailable",
+        "value": None,
+        "reason": "provider_missing",
+    }
+
+    with pytest.raises(ValidationError):
+        _validator().validate(payload)
+
+
+def test_partially_unavailable_contrast_is_valid() -> None:
+    payload = _complete_reconciliation()
+    contrast = payload["incremental_contrasts"][0]
+    contrast["status"] = "unavailable"
+    contrast["reason"] = "provider_missing"
+    contrast["arms"][0]["axes"]["input_tokens"] = {
+        "status": "unavailable",
+        "value": None,
+        "reason": "provider_missing",
+    }
+    contrast["signed_delta_axes"]["input_tokens"] = {
+        "status": "unavailable",
+        "value": None,
+        "reason": "provider_missing",
+    }
+
+    _validator().validate(payload)
 
 
 @pytest.mark.parametrize("field", AUTHORITIES)

@@ -579,10 +579,38 @@ def test_reducer_reconciles_actual_standalone_and_incremental_call_algebra(tmp_p
     ) == result
 
 
+def test_reducer_reconstructs_nonblocked_failed_method_with_trajectory(
+    tmp_path,
+) -> None:
+    fixture = _fixture(tmp_path)
+    fixture["methods"] = [
+        replace(source, terminal_status="failed")
+        if source.method_condition == "M2"
+        else source
+        for source in fixture["methods"]
+    ]
+    fixture["full_pack_ref"] = None
+
+    result, reference = _reconcile(fixture)
+
+    assert result["reconciliation_status"] == "incomplete"
+    assert result["incomplete_reasons"] == ["method_terminal_status:M2:failed"]
+    record = result["method_records"][2]
+    assert record["terminal_status"] == "failed"
+    assert record["trajectory_ref"] == fixture["trajectories"]["M2"][0].to_dict()
+    assert record["cost_summary_refs"]
+    assert record["attempt_event_refs"]
+    assert record["exclusive_axes"]["logical_model_calls"]["value"] == 2
+    assert record["standalone_attributed_axes"]["logical_model_calls"]["value"] == 2
+    assert read_development_paired_block_cost_reconciliation(
+        fixture["store"], reference
+    ) == result
+
+
 @pytest.mark.parametrize(
     "mutation",
     (
-        "shared_divided",
+        "shared_redistributed",
         "shared_omitted",
         "m4_views_collapsed",
         "signed_delta",
@@ -601,11 +629,11 @@ def test_verified_reader_reconstructs_and_rejects_cost_algebra_tampering(
         contrast["contrast_id"]: contrast
         for contrast in tampered["incremental_contrasts"]
     }
-    if mutation == "shared_divided":
-        for method in ("M0", "M1"):
+    if mutation == "shared_redistributed":
+        for method, value in zip(("M0", "M1"), (0, 2), strict=True):
             records[method]["standalone_attributed_axes"]["logical_model_calls"][
                 "value"
-            ] = 0.5
+            ] = value
     elif mutation == "shared_omitted":
         for method in ("M0", "M1"):
             records[method]["standalone_attributed_axes"]["logical_model_calls"][
@@ -874,6 +902,26 @@ def test_reducer_propagates_each_unavailable_axis_only_through_dependent_sums(
     assert result["incremental_contrasts"][0]["signed_delta_axes"][
         unavailable_axis
     ]["status"] == "measured"
+
+
+def test_verified_reader_reconstructs_partially_unavailable_contrast(tmp_path) -> None:
+    fixture = _fixture(
+        tmp_path,
+        unavailable_checkpoint="skeleton_initial_project",
+        unavailable_axis="input_tokens",
+    )
+    result, reference = _reconcile(fixture)
+
+    contrast = result["incremental_contrasts"][1]
+    assert contrast["status"] == "unavailable"
+    assert any(
+        axis["status"] == "unavailable"
+        for arm in contrast["arms"]
+        for axis in arm["axes"].values()
+    )
+    assert read_development_paired_block_cost_reconciliation(
+        fixture["store"], reference
+    ) == result
 
 
 def test_reducer_rejects_missing_checkpoint_lineage_and_duplicate_method_partitions(
