@@ -118,8 +118,10 @@ outcome-producing campaign.
 Registry key `development_shared_checkpoint_manifest` resolves
 `development-shared-checkpoint-manifest-v1`. It is written by the Agent block-
 preparation coordinator. The `block_preparation` verified reader, Runner resume
-path, and cost reducer re-read it and recompute graph, consumer, artifact-content,
-event-partition, and false-authority invariants. Runner then injects verified
+path, and cost reducer start from the independently supplied fingerprint-verified
+preparation policy, then re-read the manifest and recompute paired identity,
+planned keys, graph, consumers, artifact contents, event chain/partition, close
+totals, and false-authority invariants. Runner then injects verified
 `SharedArtifactRefs`; method adapters consume those downstream artifact
 references and do not read the manifest directly. A valid shape does not by
 itself prove that preparation succeeded or accept G3.
@@ -295,8 +297,14 @@ and open-debt status.
 Registry key `development_paired_block_cost_reconciliation` resolves
 `development-paired-block-cost-reconciliation-v1`. The Agent cost-view reducer
 writes and verifies it; analysis readers consume the verified companion rather
-than trusting stored totals. A schema-valid companion is development accounting
-data, not functional proof, G3 acceptance, or an official outcome.
+than trusting stored totals. Count axes are integer-valued, duration axes are
+numeric, and unavailable inputs retain a reason instead of becoming zero.
+Ordinary failed or `not_run` methods retain valid trajectory/event/cost lineage
+in an incomplete companion. A method blocked by a shared checkpoint instead has
+a null trajectory, no method events, and closed measured-zero exclusive cost;
+its standalone-to-stop view still retains applicable prerequisite cost. A
+schema-valid companion is development accounting data, not functional proof,
+G3 acceptance, or an official outcome.
 
 ## Accounting Contracts
 
@@ -324,8 +332,9 @@ Registry key `development_block_preparation_event` resolves
 method-neutral raw record. Its writer closes one ordered event chain per paired
 block; replay readers recompute event identity, parent/sequence lineage,
 checkpoint partitions, all 13 cost axes and close totals. Preparation cost is
-never assigned to a method or execution ordinal, and a valid event does not grant
-pass credit or G3 authority.
+actual block cost, is never assigned to a method or execution ordinal, and is
+not divided among checkpoint consumers. A valid event does not grant pass
+credit or G3 authority.
 
 `model-gateway-provenance-v1` records the zero-based logical call ID, requested
 seed, adapter forwarding, provider support status, system fingerprint status,

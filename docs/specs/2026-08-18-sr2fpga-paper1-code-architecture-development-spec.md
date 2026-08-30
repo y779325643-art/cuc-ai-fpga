@@ -109,14 +109,22 @@ development contracts 分别承载 method-neutral block preparation events、三
 checkpoint manifest 与 paired-block three-view cost reconciliation。Complete excluded block
 在 measurement freeze 后、method loop 前 eager 物化 Direct initial project（S_D）、shared
 System-HIS（S_H）与从 S_H 生成的完整 behavior-filled initial project（S_P）；M4/M5 消费
-相同 S_P ArtifactRef。当前 offline fake-provider fixtures 的 clean block 为 6 次 physical
-initial calls，对应 10 次 standalone-attributed initial calls，并对 actual、standalone 与
-`M1-M0`/`M4-M3`/`M5-M4` 三个 checkpoint-specific incremental views 的全部 13 axes
-做 artifact-derived 对账。Shared preparation 保持 method-neutral，不计入 execution ordinal
-zero；failure、unavailable-axis、resume、visibility 与 tamper 路径均 fail closed。只有完全且
-交叉一致的本地状态可幂等 resume；partial/corrupt/legacy-in-place 状态必须使用新 run ID。
-这不声明外部加密不可变性，且没有产生 real-model、training、official held-out、evidence
-promotion 或 paper outcome。所有 official/pass-credit/RQ/G3/G4b 位仍固定 false；M5 H-stage
+相同 S_P ArtifactRef，只有合法 repair 才可使 terminal candidate 分化。Strict verifier 从
+独立提供且 fingerprint-verified 的 preparation policy 出发，重算 exact paired identity/key/
+graph/consumer/content/event-chain/close-total invariants。当前 offline fake-provider fixtures
+的 clean block 为 6 次 physical initial calls，对应 10 次 standalone-attributed initial calls，
+并对 actual、standalone 与 `M1-M0`/`M4-M3`/`M5-M4` 三个 checkpoint-specific
+incremental views 的全部 13 axes 做 artifact-derived 对账；count axes 保持 integer，duration
+axes 保持 numeric，unavailable value 保留 reason 而不是替换为 zero。Shared preparation
+保持 method-neutral，不计入 execution ordinal zero。普通 failed/`not_run` method 在
+incomplete companion 中保留合法 trajectory/event/cost lineage；checkpoint-blocked method
+使用 null trajectory 与 closed measured-zero exclusive cost。Clean interrupted run 可对冻结
+method-order 的全部完成前缀 `k=0..6` 幂等 resume，且不重复 preparation call/event/charge；
+inconsistent、partial-next-method、corrupt、incomplete-manifest 或 legacy-in-place 状态必须
+使用新 run ID。支持的 standalone model-call ceiling override 继续有效，malformed policy
+在 preparation side effect 前 fail closed。Visibility 与 tamper 路径也 fail closed。这不声明
+外部加密不可变性，且没有产生 real-model、training、official held-out、evidence promotion
+或 paper outcome。所有 official/pass-credit/RQ/G3/G4b 位仍固定 false；M5 H-stage
 scenario/episode authority、capability-to-call binding、two-axis hidden missingness、remaining
 repair probes 与 positive `g3-acceptance-v1` reducer 仍属于 G3c/G3d。
 
@@ -217,7 +225,7 @@ Schema、H0-H3、L0、L3、mutation score 或 trajectory 文件均只是
 
 ## 3. 当前实现快照与缺口
 
-此表是 2026-08-29 G3b development checkpoint 的实现快照，不是实验结果、正式 gate
+此表是 2026-08-30 G3b development checkpoint 的实现快照，不是实验结果、正式 gate
 签名或远端发布状态。
 
 | 能力 | 状态 | 当前实现 | 主要缺口 |
@@ -1224,7 +1232,7 @@ finalization 通过新 event/derived view 表达，不覆写历史事实；删�
 
 ### 17.1 当前已注册
 
-以 [`contracts/manifest.json`](../../contracts/manifest.json) 为唯一当前列表。2026-08-29
+以 [`contracts/manifest.json`](../../contracts/manifest.json) 为唯一当前列表。2026-08-30
 注册面包括：
 
 - System-HIS：core v1.2、backend capability、W1-W10 well-formedness 与
@@ -1878,7 +1886,7 @@ hash mismatch、未签署 invariant/change/compliance rule 或不完整 pair pop
 | M0/M1 | H0-H3=`not_applicable`；共享 `project_package_sha256` 相同，method-specific candidate ID/seal 不要求相同 |
 | M2 | 有 untyped plan；H checker/skeleton 调用=0 |
 | M3/M4 | 同一 `paired_block_id` 的 frozen HIS hash 与 hidden case seed 相同；M3 skeleton 调用=0；M4 必须调用 |
-| G3b checkpoints/cost | complete block 在 method 前 verified S_D/S_H/S_P；M4/M5 完整初始工程相同；6 physical/10 standalone initial calls；actual/standalone/三种 incremental 的 13 axes、order、failure、resume、visibility 与 tamper fail closed |
+| G3b checkpoints/cost | complete block 在 method 前 verified S_D/S_H/S_P；M4/M5 完整初始工程相同；6 physical/10 standalone initial calls；actual/standalone/三种 incremental 的 13 axes、order、failure、unavailable、visibility 与 tamper fail closed；普通 failed/`not_run` 保留 lineage，checkpoint-blocked 为 null trajectory/measured-zero exclusive cost；clean prefix `k=0..6` resume 不重复 preparation，坏状态需新 run ID；合法 ceiling override 保留，malformed policy 在 preparation side effect 前拒绝 |
 | H repair | H0/H1/H2/H3 各一失败；只改 HIS；全 H 重跑；project 重建 |
 | Project repair | L0/L1/public-L2/L3 失败；只改 allowed model files |
 | Hidden | seal 后一次；hidden fail 不 repair；二次调用/tamper 拒绝 |

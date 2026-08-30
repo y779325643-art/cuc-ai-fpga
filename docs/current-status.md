@@ -3,7 +3,7 @@
 ## Current Checkout
 
 - Branch reviewed: `codex/g3b-shared-checkpoints-cost-views`.
-- G3b development baseline reviewed: `e8ea7fa0fb26`.
+- G3b development baseline reviewed: `810240dd2910`.
 - The implementation reviewed below is the local G3b branch candidate including
   the completed code/contract/test slices and this documentation synchronization.
   It is not a release, remote CI result, or statement about a published branch.
@@ -17,8 +17,8 @@ The report preserves its original feature-branch verification scope; this
 refreshed status supersedes its historical branch label for current navigation.
 The latest completed full lightweight regression snapshot, completed on 2026-08-30
 for the v1.7/v1.12 G3b branch candidate with a repository-external pytest
-basetemp, reports 1,989 passing tests plus 435 passing subtests. The eight-file
-focused G3b matrix separately reports 206 passing tests. These commands validate
+basetemp, reports 2,055 passing tests plus 435 passing subtests. The eight-file
+focused G3b matrix separately reports 272 passing tests. These commands validate
 the test-covered current branch code and contracts; link/readback and diff checks
 cover the changed documentation separately. This is not remote CI, an official
 gate signature or a model outcome. The increase from the historical
@@ -519,19 +519,30 @@ These statements have important boundaries:
 - G3b development conformance is implemented and verified in offline fake-
   provider fixtures; G3 is not accepted. Complete excluded blocks eagerly create
   the method-neutral S_D Direct project, S_H System-HIS and S_P complete behavior-
-  filled project after measurement freeze and before method execution. M4/M5 use
-  the identical complete initial project. Two method orders each use six physical
-  initial calls while standalone attribution contains ten. A registered reducer
-  reconstructs actual, six standalone-attributed and three checkpoint-specific
-  incremental views across all 13 axes from raw preparation events, six method
-  trajectories and full-pack-v2 lineage. Shared preparation is counted once
-  physically and never charged to execution ordinal zero. Failure, unavailable-
-  axis, resume, visibility and tamper cases fail closed. Only exact, complete,
-  cross-linked local state resumes idempotently; partial, corrupt or legacy-in-
-  place state requires a new run ID. Legacy readers remain compatible without
-  G3b/G3 credit. These tests produced no real-model, training, official held-out,
-  evidence-promotion or paper outcome and do not establish external cryptographic
-  immutability; all official/pass-credit/RQ/G3/G4b fields remain false.
+  filled project after measurement freeze and before method execution, then
+  content-verify all three. M4/M5 use the identical complete initial S_P
+  ArtifactRef; their terminal candidates may diverge only through legitimate
+  repair. Strict verification is anchored to an independently supplied,
+  fingerprint-verified preparation policy and recomputes exact paired identity,
+  keys, graph, consumers, contents, event chain and close totals. Two method
+  orders each use six physical initial calls while standalone attribution
+  contains ten. A registered reducer reconstructs actual, six standalone-
+  attributed and three checkpoint-specific incremental views across all 13 axes
+  from raw preparation events, six method trajectories and full-pack-v2 lineage.
+  Count axes remain integers, duration axes remain numeric, and unavailable
+  values retain reasons rather than becoming zero. Shared preparation is counted
+  once physically and never charged to execution ordinal zero. Ordinary failed
+  or `not_run` methods preserve valid trajectory/event/cost lineage in incomplete
+  companions; checkpoint-blocked methods have null trajectories and closed
+  measured-zero exclusive cost. Clean interrupted runs resume every frozen
+  completed-method prefix `k=0..6` without repeated preparation calls, events or
+  charges. Inconsistent, partial-next-method, corrupt, incomplete-manifest or
+  legacy-in-place state requires a new run ID. Supported standalone model-call
+  ceiling overrides remain valid; malformed policies fail before preparation
+  effects. Legacy readers remain compatible without G3b/G3 credit. These tests
+  produced no real-model, training, official held-out, evidence-promotion or
+  paper outcome and do not establish external cryptographic immutability; all
+  official/pass-credit/RQ/G3/G4b fields remain false.
 - A bounded real DeepSeek R9 diagnostic on 2026-08-28 used the opt-in
   `m5-his2project-output-repair-dev-v1` variant and is explicitly
   `formal_method_conformant=false`. Its corrected HIS passed generic H0-H3 and
@@ -639,7 +650,7 @@ on this checkout. G1's registered compatibility envelope classifies v1.2 as cano
 v1.1 as legacy quarantine, Direct/Untyped HIS as method-inapplicable, and
 unknown representations as fail-closed quarantine. The 17 authoritative G1
 nodes and the fresh 2026-08-30 full lightweight regression snapshot
-(`1,989 passed`, `435 subtests passed`) were green at that snapshot. This is an
+(`2,055 passed`, `435 subtests passed`) were green at that snapshot. This is an
 implementation/conformance gate, not model or functional-correctness evidence,
 and it does not freshly validate later working-tree edits.
 

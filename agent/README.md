@@ -328,16 +328,28 @@ campaign or model result.
 
 The G3b development slice adds a verified three-node checkpoint manifest, a
 method-neutral preparation-event chain, and a companion reconciliation derived
-from those raw events plus the six method trajectories. In two fake-provider
-orders, clean complete blocks use six physical initial model calls while the six
-standalone-attributed rows contain ten initial calls. Actual block consumption,
-standalone-attributed end-to-end cost, and the `M1-M0`, `M4-M3`, and `M5-M4`
-post-checkpoint contrasts reconcile all 13 axes; shared preparation is counted
-once physically, is never split among consumers, and is not charged to execution
-ordinal zero. Failure, unavailable-axis, visibility, tamper, and exact-complete
-resume fixtures fail closed. A complete matching local state can resume without
-new calls or charges after cross-linked verification; partial, corrupt, or legacy
-in-place resume requires a new run ID. This is G3b development conformance only:
+from those raw events plus the six method trajectories. Complete excluded paired
+blocks eagerly materialize and content-verify S_D, S_H, and S_P before method
+execution; M4 and M5 receive the same complete initial S_P ArtifactRef and may
+diverge only through method-permitted repair. Strict verification starts from an
+independently supplied, fingerprint-verified preparation policy and recomputes
+the exact paired identity, keys, graph, consumers, contents, event chain, and
+close totals. In two fake-provider orders, clean complete blocks use six physical
+initial model calls while the six standalone-attributed rows contain ten initial
+calls. Actual block consumption, standalone-attributed end-to-end cost, and the
+`M1-M0`, `M4-M3`, and `M5-M4` post-checkpoint contrasts reconcile all 13 axes;
+count axes remain integers, duration axes remain numeric, and unavailable values
+retain reasons rather than becoming zero. Shared preparation is counted once
+physically, is never split among consumers, and is not charged to execution
+ordinal zero. Ordinary failed or `not_run` methods preserve their valid
+trajectory/event/cost lineage in an incomplete companion; checkpoint-blocked
+methods instead have a null trajectory and closed measured-zero exclusive cost.
+Clean interrupted runs resume every frozen completed-method prefix `k=0..6`
+without repeated preparation calls, events, or charges. Inconsistent,
+partial-next-method, corrupt, incomplete-manifest, and legacy-in-place states
+require a new run ID. Supported standalone model-call ceiling overrides remain
+valid after the shared/exclusive split, while malformed policies fail before any
+preparation effect. This is G3b development conformance only:
 `g3_accepted=false`, and no real-model, training, official held-out, evidence-
 promotion, or paper outcome was produced.
 
