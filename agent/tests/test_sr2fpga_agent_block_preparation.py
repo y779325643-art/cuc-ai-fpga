@@ -577,6 +577,7 @@ def _expected_preparation_policy(
     paired_block_ref: ArtifactRef,
     *,
     prefix: str,
+    exclusive_model_call_ceilings: dict[str, int] | None = None,
 ) -> dict:
     policy = {
         "policy_version": "development-block-preparation-policy-v1",
@@ -585,14 +586,11 @@ def _expected_preparation_policy(
         "paired_block_ref": paired_block_ref.to_dict(),
         "member_sample_ids": [f"sample-{index}" for index in range(6)],
         "physical_initial_model_call_ceiling": 3,
-        "exclusive_model_call_ceilings": {
-            "M0": 0,
-            "M1": 0,
-            "M2": 2,
-            "M3": 1,
-            "M4": 0,
-            "M5": 0,
-        },
+        "exclusive_model_call_ceilings": (
+            dict(exclusive_model_call_ceilings)
+            if exclusive_model_call_ceilings is not None
+            else {"M0": 0, "M1": 0, "M2": 2, "M3": 1, "M4": 0, "M5": 0}
+        ),
         "expected_checkpoint_graph": [
             {
                 "checkpoint_id": "direct_initial_project",
@@ -631,6 +629,22 @@ def _expected_preparation_policy(
     return policy
 
 
+def _rehash_preparation_policy(policy: dict) -> None:
+    unsigned = {
+        key: value
+        for key, value in policy.items()
+        if key != "preparation_policy_sha256"
+    }
+    policy["preparation_policy_sha256"] = hashlib.sha256(
+        json.dumps(
+            unsigned,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+
+
 def test_strict_manifest_verifier_anchors_frozen_policy_graph_and_exact_keys(
     tmp_path,
 ) -> None:
@@ -667,6 +681,112 @@ def test_strict_manifest_verifier_anchors_frozen_policy_graph_and_exact_keys(
         manifest_ref,
         expected_preparation_policy=expected_policy,
     )["manifest_status"] == "complete"
+
+
+def test_strict_manifest_verifier_accepts_independently_hashed_override_ceilings(
+    tmp_path,
+) -> None:
+    pairing = PairingKey(
+        "pair-checkpoint-001",
+        "revision-checkpoint-001",
+        "semantic-checkpoint-001",
+        17,
+        "2" * 64,
+        "replicate-000",
+    )
+    prefix = f"paired/{pairing.digest()}"
+    store, paired_block_ref, nodes, event_refs = _fixture(
+        tmp_path,
+        direct_key=f"{prefix}/direct-initial-project",
+        his_key=f"{prefix}/system-his",
+        skeleton_key=f"{prefix}/skeleton-initial-project",
+        trusted_key=f"{prefix}/trusted-skeleton",
+    )
+    expected_policy = _expected_preparation_policy(
+        paired_block_ref,
+        prefix=prefix,
+        exclusive_model_call_ceilings={
+            "M0": 3,
+            "M1": 3,
+            "M2": 4,
+            "M3": 3,
+            "M4": 2,
+            "M5": 2,
+        },
+    )
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256=expected_policy["preparation_policy_sha256"],
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+
+    assert verify_development_shared_checkpoint_manifest_against_policy(
+        store,
+        manifest_ref,
+        expected_preparation_policy=expected_policy,
+    )["manifest_status"] == "complete"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ("shape", "bool", "negative", "fractional", "missing", "extra"),
+)
+def test_strict_manifest_verifier_rejects_invalid_override_ceiling_contract(
+    tmp_path,
+    mutation: str,
+) -> None:
+    pairing = PairingKey(
+        "pair-checkpoint-001",
+        "revision-checkpoint-001",
+        "semantic-checkpoint-001",
+        17,
+        "2" * 64,
+        "replicate-000",
+    )
+    prefix = f"paired/{pairing.digest()}"
+    store, paired_block_ref, nodes, event_refs = _fixture(
+        tmp_path,
+        direct_key=f"{prefix}/direct-initial-project",
+        his_key=f"{prefix}/system-his",
+        skeleton_key=f"{prefix}/skeleton-initial-project",
+        trusted_key=f"{prefix}/trusted-skeleton",
+    )
+    valid_ceilings = {"M0": 3, "M1": 3, "M2": 4, "M3": 3, "M4": 2, "M5": 2}
+    expected_policy = _expected_preparation_policy(
+        paired_block_ref,
+        prefix=prefix,
+        exclusive_model_call_ceilings=valid_ceilings,
+    )
+    ceilings = expected_policy["exclusive_model_call_ceilings"]
+    if mutation == "shape":
+        expected_policy["exclusive_model_call_ceilings"] = list(ceilings.values())
+    elif mutation == "bool":
+        ceilings["M0"] = True
+    elif mutation == "negative":
+        ceilings["M1"] = -1
+    elif mutation == "fractional":
+        ceilings["M2"] = 4.5
+    elif mutation == "missing":
+        ceilings.pop("M5")
+    else:
+        ceilings["M6"] = 0
+    _rehash_preparation_policy(expected_policy)
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256=expected_policy["preparation_policy_sha256"],
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+
+    with pytest.raises(ValueError, match="exclusive ceilings"):
+        verify_development_shared_checkpoint_manifest_against_policy(
+            store,
+            manifest_ref,
+            expected_preparation_policy=expected_policy,
+        )
 
 
 @pytest.mark.parametrize(

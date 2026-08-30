@@ -30,6 +30,7 @@ from sr2fpga_agent.block_preparation import (
     prepare_development_paired_block,
     read_complete_development_shared_checkpoint_resume,
     read_development_shared_checkpoint_manifest,
+    validate_development_block_preparation_policy,
     verify_development_shared_checkpoint_manifest_against_policy,
 )
 from sr2fpga_agent.contract_registry import ContractRegistry
@@ -4461,6 +4462,7 @@ def _prepare_complete_blocks(
         if pairing != _runner_pairing_key(config, his_sample, his_context):
             raise SystemExit("block preparation sources use different effective identities")
         policy = policies[paired_block_id]
+        policy = validate_development_block_preparation_policy(store, policy)
         if policy["paired_block_ref"] != paired_block_ref.to_dict():
             raise RuntimeError("block preparation policy names another paired block")
         policy_sha256 = str(policy["preparation_policy_sha256"])
@@ -4857,6 +4859,15 @@ def _validated_resume_sample_records(
     if set(by_sample) != expected_ids:
         raise _shared_checkpoint_resume_error(
             "measurement freeze sample identities differ from the paired plan"
+        )
+    expected_order = tuple(
+        sample_id
+        for plan in paired_block_plans.values()
+        for sample_id in plan.sample_ids
+    )
+    if tuple(record["sample_id"] for record in selected) != expected_order:
+        raise _shared_checkpoint_resume_error(
+            "measurement freeze sample order differs from the paired plan"
         )
     for paired_block_id, plan in paired_block_plans.items():
         for ordinal, (sample_id, method_condition) in enumerate(

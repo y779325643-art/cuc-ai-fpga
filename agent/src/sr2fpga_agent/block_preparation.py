@@ -427,7 +427,7 @@ def verify_development_shared_checkpoint_manifest_against_policy(
 ) -> dict[str, Any]:
     """Verify a manifest against a trusted, independently supplied frozen policy."""
 
-    policy = _validated_expected_preparation_policy(
+    policy = validate_development_block_preparation_policy(
         store,
         expected_preparation_policy,
     )
@@ -466,10 +466,12 @@ def verify_development_shared_checkpoint_manifest_against_policy(
     return manifest
 
 
-def _validated_expected_preparation_policy(
+def validate_development_block_preparation_policy(
     store: ArtifactStore,
     expected_preparation_policy: Mapping[str, Any],
 ) -> dict[str, Any]:
+    """Validate a trusted frozen policy without causing preparation effects."""
+
     if not isinstance(expected_preparation_policy, Mapping):
         raise ValueError("expected preparation policy must be an object")
     policy = dict(expected_preparation_policy)
@@ -535,14 +537,15 @@ def _validated_expected_preparation_policy(
         raise ValueError("expected preparation policy member set is invalid")
     if policy["physical_initial_model_call_ceiling"] != 3:
         raise ValueError("expected preparation policy physical ceiling is invalid")
-    if policy["exclusive_model_call_ceilings"] != {
-        "M0": 0,
-        "M1": 0,
-        "M2": 2,
-        "M3": 1,
-        "M4": 0,
-        "M5": 0,
-    }:
+    exclusive_ceilings = policy["exclusive_model_call_ceilings"]
+    if (
+        not isinstance(exclusive_ceilings, Mapping)
+        or set(exclusive_ceilings) != {"M0", "M1", "M2", "M3", "M4", "M5"}
+        or any(
+            type(value) is not int or value < 0
+            for value in exclusive_ceilings.values()
+        )
+    ):
         raise ValueError("expected preparation policy exclusive ceilings are invalid")
 
     graph = policy["expected_checkpoint_graph"]
@@ -642,7 +645,7 @@ def read_complete_development_shared_checkpoint_resume(
     """Accept only the exact, content-verified complete preparation for reuse."""
 
     try:
-        policy = _validated_expected_preparation_policy(
+        policy = validate_development_block_preparation_policy(
             store,
             expected_preparation_policy,
         )

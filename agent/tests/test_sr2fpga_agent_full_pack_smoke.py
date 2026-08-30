@@ -1237,6 +1237,9 @@ def _run_fake_complete_full_pack(
     failed_stage=None,
     assemble_companions=True,
     interrupt_after: int | None = None,
+    max_model_calls: int = 0,
+    preparation_policy_mutator=None,
+    expected_run_error: type[Exception] | None = None,
 ):
     root = _new_test_root()
     clock_ticks = iter(float(tick) for tick in range(100))
@@ -1269,6 +1272,7 @@ def _run_fake_complete_full_pack(
         provider="his",
         repair_provider="none",
         max_attempts=1,
+        max_model_calls=max_model_calls,
         refresh_exports=False,
         sources={"direct": direct, "his": his},
         line_b_targets={"max_samples": 6},
@@ -1367,6 +1371,8 @@ def _run_fake_complete_full_pack(
             ),
         ),
         "his2project": _StaticClient(free_project_response),
+        "system_his_repair": _StaticClient(his_response),
+        "project_repair": _StaticClient(free_project_response),
     }
     constructed_capabilities = []
     freeze_seen_before_provider_construction = []
@@ -1426,6 +1432,21 @@ def _run_fake_complete_full_pack(
             "private_case": "excluded-full-pack-hidden-secret",
         },
     )
+    if preparation_policy_mutator is not None:
+        from sr2fpga_agent import runner as runner_module
+
+        original_policy_planner = runner_module._plan_block_preparation_policy
+
+        def mutate_preparation_policy(*args, **kwargs):
+            policies = original_policy_planner(*args, **kwargs)
+            preparation_policy_mutator(policies)
+            return policies
+
+        monkeypatch.setattr(
+            runner_module,
+            "_plan_block_preparation_policy",
+            mutate_preparation_policy,
+        )
 
     preflight = runner_preflight(config, validate_provider=False)
     assert [sample["method_condition"] for sample in preflight["samples"]] == list(
@@ -1435,7 +1456,15 @@ def _run_fake_complete_full_pack(
         sample["sample_id"]: sample["episode_pack"] for sample in preflight["samples"]
     }
     run_dir = config.run_root / "excluded-m0-m5-full-pack"
-    if interrupt_after is None or interrupt_after == 6:
+    if expected_run_error is not None:
+        with pytest.raises(expected_run_error):
+            run_batch(
+                config,
+                run_id="excluded-m0-m5-full-pack",
+                resume=False,
+            )
+        summary = None
+    elif interrupt_after is None or interrupt_after == 6:
         summary = run_batch(
             config,
             run_id="excluded-m0-m5-full-pack",
@@ -1852,6 +1881,103 @@ def test_cost_companion_assembly_rejects_alternate_valid_m5_initial_project(
             scenarios=scenarios,
             reducer_policy_sha256="6" * 64,
         )
+
+
+def test_real_runner_accepts_valid_model_call_override_policy(monkeypatch) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+        max_model_calls=4,
+    )
+    freeze = json.loads(
+        (completed.run_dir / "measurement_freeze.json").read_text(encoding="utf-8")
+    )
+    policy = freeze["block_preparation_policies"][
+        completed.completion_events[0]["paired_block_id"]
+    ]
+
+    assert policy["exclusive_model_call_ceilings"] == {
+        "M0": 3,
+        "M1": 3,
+        "M2": 4,
+        "M3": 3,
+        "M4": 2,
+        "M5": 2,
+    }
+    assert len(completed.completion_events) == 6
+    assert {
+        stage: len(completed.staged_clients[stage].calls)
+        for stage in (
+            "block_direct_initial",
+            "block_req2his",
+            "block_skeleton_initial",
+        )
+    } == {
+        "block_direct_initial": 1,
+        "block_req2his": 1,
+        "block_skeleton_initial": 1,
+    }
+
+
+def test_real_runner_rejects_invalid_frozen_policy_before_preparation_effects(
+    monkeypatch,
+) -> None:
+    def invalidate_policy(policies) -> None:
+        policy = next(iter(policies.values()))
+        policy["exclusive_model_call_ceilings"]["M0"] = True
+        unsigned = {
+            key: value
+            for key, value in policy.items()
+            if key != "preparation_policy_sha256"
+        }
+        policy["preparation_policy_sha256"] = hashlib.sha256(
+            json.dumps(
+                unsigned,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+
+    rejected = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+        preparation_policy_mutator=invalidate_policy,
+        expected_run_error=ValueError,
+    )
+
+    assert rejected.constructed_capabilities == []
+    assert all(len(client.calls) == 0 for client in rejected.staged_clients.values())
+    assert not rejected.events_path.exists()
+    assert not (rejected.store.root / "refs" / "block-preparation-events").exists()
+
+
+def test_runner_k0_resume_rejects_reordered_frozen_samples_before_side_effects(
+    monkeypatch,
+) -> None:
+    interrupted = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+        interrupt_after=0,
+    )
+    freeze_path = interrupted.run_dir / "measurement_freeze.json"
+    freeze = json.loads(freeze_path.read_text(encoding="utf-8"))
+    freeze["samples"] = list(reversed(freeze["samples"]))
+    freeze["freeze_fingerprint"] = freeze_fingerprint(freeze)
+    _write_json_file(freeze_path, freeze)
+    calls_before = _physical_provider_calls(interrupted)
+    files_before = _file_tree_snapshot(interrupted.run_dir)
+    spies = _resume_side_effect_spies(monkeypatch)
+
+    with pytest.raises(SharedCheckpointResumeError, match="requires a new run ID"):
+        run_batch(interrupted.config, run_id=interrupted.run_id, resume=True)
+
+    assert _physical_provider_calls(interrupted) == calls_before
+    assert _file_tree_snapshot(interrupted.run_dir) == files_before
+    assert all(spy.call_count == 0 for spy in spies.values())
 
 
 @pytest.mark.parametrize("completed_prefix_length", range(7))
