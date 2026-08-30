@@ -23,6 +23,11 @@ from sr2fpga_agent.cost_accounting import (
     AttemptCostLedger,
     reconcile_cost_events,
 )
+from sr2fpga_agent.full_pack_smoke import (
+    FullPackMethodRecord,
+    FullPackScenarioRecord,
+    reconcile_excluded_full_pack,
+)
 from sr2fpga_agent.method_adapters import MethodArtifactGateway, PlanningArtifactKind
 from sr2fpga_agent.models import GeneratedProject
 from sr2fpga_agent.paired_block import (
@@ -104,20 +109,67 @@ def _write_checkpoint_sources(
     unavailable_checkpoint: str | None = None,
     unavailable_axis: str = "input_tokens",
 ):
+    paired_block = json.loads(store.read_verified(paired_block_ref))
+    prefix = f"paired/{paired_block_ref.sha256}"
+    expected_policy = {
+        "policy_version": "development-block-preparation-policy-v1",
+        "evaluation_scope": "excluded_development_conformance_only",
+        "paired_block_id": paired_block["paired_block_id"],
+        "paired_block_ref": paired_block_ref.to_dict(),
+        "member_sample_ids": [f"sample-{index}" for index in range(6)],
+        "physical_initial_model_call_ceiling": 3,
+        "exclusive_model_call_ceilings": {
+            "M0": 0,
+            "M1": 0,
+            "M2": 2,
+            "M3": 1,
+            "M4": 0,
+            "M5": 0,
+        },
+        "expected_checkpoint_graph": [
+            {
+                "checkpoint_id": "direct_initial_project",
+                "parent_checkpoint_ids": [],
+                "consumer_methods": ["M0", "M1"],
+                "planned_artifact_key": f"{prefix}/direct-initial-project",
+            },
+            {
+                "checkpoint_id": "shared_system_his",
+                "parent_checkpoint_ids": [],
+                "consumer_methods": ["M3", "M4", "M5"],
+                "planned_artifact_key": f"{prefix}/system-his",
+            },
+            {
+                "checkpoint_id": "skeleton_initial_project",
+                "parent_checkpoint_ids": ["shared_system_his"],
+                "consumer_methods": ["M4", "M5"],
+                "planned_artifact_key": f"{prefix}/skeleton-initial-project",
+                "planned_trusted_skeleton_key": f"{prefix}/trusted-skeleton",
+            },
+        ],
+        "official_outcome": False,
+        "official_authority": False,
+        "pass_credit_authority": False,
+        "g3_accepted": False,
+        "g4b_authorized": False,
+    }
+    expected_policy["preparation_policy_sha256"] = _canonical_sha256(
+        expected_policy
+    )
     gateway = MethodArtifactGateway(store)
     direct = gateway.put_project(
-        f"paired/{paired_block_ref.sha256}/direct-initial-project", _project("direct")
+        f"{prefix}/direct-initial-project", _project("direct")
     )
     his = gateway.put_planning(
-        f"paired/{paired_block_ref.sha256}/system-his",
+        f"{prefix}/system-his",
         PlanningArtifactKind.SYSTEM_HIS,
         {"intent": "counter"},
     )
     trusted = gateway.put_project(
-        f"paired/{paired_block_ref.sha256}/trusted-skeleton", _project("trusted")
+        f"{prefix}/trusted-skeleton", _project("trusted")
     )
     skeleton = gateway.put_project(
-        f"paired/{paired_block_ref.sha256}/skeleton-initial-project",
+        f"{prefix}/skeleton-initial-project",
         _project("skeleton"),
     )
     artifacts = {
@@ -242,11 +294,16 @@ def _write_checkpoint_sources(
     manifest_ref = write_development_shared_checkpoint_manifest(
         store,
         paired_block_ref=paired_block_ref,
-        preparation_policy_sha256="3" * 64,
+        preparation_policy_sha256=expected_policy["preparation_policy_sha256"],
         nodes=nodes,
         block_event_refs=ledger.event_refs,
     )
-    return manifest_ref, ledger.event_refs, {node.checkpoint_id.value: node for node in nodes}
+    return (
+        manifest_ref,
+        ledger.event_refs,
+        {node.checkpoint_id.value: node for node in nodes},
+        expected_policy,
+    )
 
 
 def _write_trajectory(
@@ -354,12 +411,99 @@ def _write_full_pack(
     paired_block_ref: ArtifactRef,
     paired_block: dict,
     trajectories: dict[str, tuple],
+    nodes: dict[str, CheckpointNode],
     lineage_id: str = "primary",
 ) -> ArtifactRef:
-    source_ref = store.put_blob(
-        f"synthetic-full-pack/{lineage_id}/source",
-        json.dumps({"lineage_id": lineage_id, "synthetic": True}).encode(),
-        media_type="application/json",
+    gateway = MethodArtifactGateway(store)
+    direct = nodes["direct_initial_project"]
+    his = nodes["shared_system_his"]
+    skeleton = nodes["skeleton_initial_project"]
+    m2 = gateway.put_project(
+        f"synthetic-initial/{lineage_id}/M2",
+        _project(f"{lineage_id}-M2"),
+    )
+    m3 = gateway.put_project(
+        f"synthetic-initial/{lineage_id}/M3",
+        _project(f"{lineage_id}-M3"),
+    )
+    candidate_by_method = {
+        "M0": (direct.artifact_ref, direct.project_package_sha256),
+        "M1": (direct.artifact_ref, direct.project_package_sha256),
+        "M2": (m2.artifact_ref, m2.project_package_sha256),
+        "M3": (m3.artifact_ref, m3.project_package_sha256),
+        "M4": (skeleton.artifact_ref, skeleton.project_package_sha256),
+        "M5": (skeleton.artifact_ref, skeleton.project_package_sha256),
+    }
+    smoke_methods = []
+    for method in METHODS:
+        candidate_ref, package_sha256 = candidate_by_method[method]
+        smoke_methods.append(
+            FullPackMethodRecord(
+                method_condition=method,
+                analysis_population="excluded",
+                pack_sha256=hashlib.sha256(
+                    f"{lineage_id}:{method}:pack".encode()
+                ).hexdigest(),
+                public_projection_sha256=paired_block[
+                    "public_projection_sha256"
+                ],
+                candidate_artifact_key=candidate_ref.key,
+                candidate_artifact_sha256=candidate_ref.sha256,
+                project_package_sha256=package_sha256,
+                skeleton_artifact_sha256=(
+                    skeleton.trusted_skeleton_ref.sha256
+                    if method in {"M4", "M5"}
+                    else None
+                ),
+                planning_kind=(
+                    "untyped_plan"
+                    if method == "M2"
+                    else "system_his"
+                    if method in {"M3", "M4", "M5"}
+                    else None
+                ),
+                planning_artifact_sha256=(
+                    his.artifact_ref.sha256
+                    if method in {"M3", "M4", "M5"}
+                    else None
+                ),
+                h_status=(
+                    "pass" if method in {"M3", "M4", "M5"} else "not_applicable"
+                ),
+                skeleton_mode=(
+                    "none_free_full_project"
+                    if method == "M3"
+                    else "behavior_files"
+                    if method in {"M4", "M5"}
+                    else "none"
+                ),
+            )
+        )
+    projection = paired_block["public_projection_sha256"]
+    scenario_inputs = (
+        ("success", None, "passed", {"method_count": 6, "scope": "pre_candidate_emission_conformance"}),
+        ("h_repair", "M5", "passed", {"his_corrections_used": 1, "rerun_complete_h_validation": True}),
+        ("project_repair", "M1", "passed", {"repair_calls_attempted": 1, "repair_transitions": 1, "rerun_performed": True, "automatic_pass_credit": True}),
+        ("non_ready", None, "needs_clarification", {"generation_calls": 0}),
+        ("hidden_fail", "M0", "fail", {"opaque_outcome_only": True, "opaque_outcome_id": "synthetic-hidden-fail", "repair_after_hidden": False}),
+        ("infrastructure_not_run", "M0", "not_run", {"reason": "synthetic_infrastructure", "opaque_outcome_id": "synthetic-infrastructure-not-run", "replacement_episode": False}),
+    )
+    _, source_ref = reconcile_excluded_full_pack(
+        store,
+        smoke_id=f"synthetic-cost-view-{lineage_id}",
+        methods=smoke_methods,
+        scenarios=(
+            FullPackScenarioRecord(
+                scenario_id=f"{lineage_id}-{kind}",
+                scenario_kind=kind,
+                analysis_population="excluded",
+                public_projection_sha256=projection,
+                method_condition=method,
+                status=status,
+                facts=facts,
+            )
+            for kind, method, status, facts in scenario_inputs
+        ),
     )
     report = {
         "contract_version": "full-pack-runner-reconciliation-v2",
@@ -425,7 +569,7 @@ def _fixture(
     store = store or ArtifactStore(tmp_path / "store")
     paired_block_ref = _write_paired_block(store, lineage_id=lineage_id)
     paired_block = json.loads(store.read_verified(paired_block_ref))
-    manifest_ref, block_event_refs, nodes = _write_checkpoint_sources(
+    manifest_ref, block_event_refs, nodes, expected_policy = _write_checkpoint_sources(
         store,
         paired_block_ref=paired_block_ref,
         failed_checkpoint=failed_checkpoint,
@@ -483,6 +627,7 @@ def _fixture(
             paired_block_ref=paired_block_ref,
             paired_block=paired_block,
             trajectories=trajectories,
+            nodes=nodes,
             lineage_id=lineage_id,
         )
         if failed_checkpoint is None
@@ -496,6 +641,7 @@ def _fixture(
         "methods": sources,
         "full_pack_ref": full_pack_ref,
         "trajectories": trajectories,
+        "expected_preparation_policy": expected_policy,
     }
 
 
@@ -508,6 +654,7 @@ def _reconcile(fixture, *, methods=None):
         methods=fixture["methods"] if methods is None else methods,
         source_full_pack_runner_ref=fixture["full_pack_ref"],
         reducer_policy_sha256="4" * 64,
+        expected_preparation_policy=fixture["expected_preparation_policy"],
     )
 
 
@@ -553,7 +700,11 @@ def _assert_reconstruction_rejects_payload_tamper(
         PairedCostReconciliationError,
         match="does not match verified sources",
     ):
-        read_development_paired_block_cost_reconciliation(store, tampered_ref)
+        read_development_paired_block_cost_reconciliation(
+            store,
+            tampered_ref,
+            expected_preparation_policy=fixture["expected_preparation_policy"],
+        )
 
 
 def test_reducer_reconciles_actual_standalone_and_incremental_call_algebra(tmp_path) -> None:
@@ -575,8 +726,68 @@ def test_reducer_reconciles_actual_standalone_and_incremental_call_algebra(tmp_p
         "reason": None,
     }
     assert read_development_paired_block_cost_reconciliation(
-        fixture["store"], reference
+        fixture["store"],
+        reference,
+        expected_preparation_policy=fixture["expected_preparation_policy"],
     ) == result
+
+
+def test_initial_sp_proof_rejects_alternate_valid_m5_pre_repair_project(
+    tmp_path,
+) -> None:
+    fixture = _fixture(tmp_path)
+    result, _ = _reconcile(fixture)
+    store = fixture["store"]
+    runner = json.loads(store.read_verified(fixture["full_pack_ref"]))
+    original_runner_methods = copy.deepcopy(runner["method_records"])
+    smoke_ref = ArtifactRef(**runner["source_smoke_report_ref"])
+    smoke = json.loads(store.read_verified(smoke_ref))
+    alternate = MethodArtifactGateway(store).put_project(
+        "tampered-initial/M5/alternate-valid-project",
+        _project("alternate-valid-M5-initial"),
+    )
+    m5 = next(
+        record for record in smoke["method_records"] if record["method_condition"] == "M5"
+    )
+    m5["candidate_artifact_key"] = alternate.artifact_ref.key
+    m5["candidate_artifact_sha256"] = alternate.artifact_ref.sha256
+    m5["project_package_sha256"] = alternate.project_package_sha256
+    tampered_smoke_ref = store.put_validated_json(
+        "tampered-full-pack-smokes/alternate-M5-initial",
+        smoke,
+        contract_key="full_pack_smoke_report",
+    )
+    runner["source_smoke_report_ref"] = tampered_smoke_ref.to_dict()
+    assert runner["method_records"] == original_runner_methods
+    tampered_runner_ref = store.put_validated_json(
+        "tampered-full-pack-runners/alternate-M5-initial",
+        runner,
+        contract_key="full_pack_runner_reconciliation_v2",
+    )
+    fixture["full_pack_ref"] = tampered_runner_ref
+
+    with pytest.raises(
+        PairedCostReconciliationError,
+        match="M5 initial candidate",
+    ):
+        _reconcile(fixture)
+
+    tampered_cost = copy.deepcopy(result)
+    tampered_cost["source_full_pack_runner_ref"] = tampered_runner_ref.to_dict()
+    tampered_cost_ref = store.put_validated_json(
+        "tampered-paired-costs/alternate-M5-initial",
+        tampered_cost,
+        contract_key="development_paired_block_cost_reconciliation",
+    )
+    with pytest.raises(
+        PairedCostReconciliationError,
+        match="M5 initial candidate",
+    ):
+        read_development_paired_block_cost_reconciliation(
+            store,
+            tampered_cost_ref,
+            expected_preparation_policy=fixture["expected_preparation_policy"],
+        )
 
 
 def test_reducer_reconstructs_nonblocked_failed_method_with_trajectory(
@@ -603,7 +814,9 @@ def test_reducer_reconstructs_nonblocked_failed_method_with_trajectory(
     assert record["exclusive_axes"]["logical_model_calls"]["value"] == 2
     assert record["standalone_attributed_axes"]["logical_model_calls"]["value"] == 2
     assert read_development_paired_block_cost_reconciliation(
-        fixture["store"], reference
+        fixture["store"],
+        reference,
+        expected_preparation_policy=fixture["expected_preparation_policy"],
     ) == result
 
 
@@ -737,7 +950,9 @@ def test_verified_reader_rejects_duplicate_event_across_source_partitions(
         match="invalid paired-block cost reconciliation",
     ):
         read_development_paired_block_cost_reconciliation(
-            fixture["store"], tampered_ref
+            fixture["store"],
+            tampered_ref,
+            expected_preparation_policy=fixture["expected_preparation_policy"],
         )
 
 
@@ -920,7 +1135,9 @@ def test_verified_reader_reconstructs_partially_unavailable_contrast(tmp_path) -
         for axis in arm["axes"].values()
     )
     assert read_development_paired_block_cost_reconciliation(
-        fixture["store"], reference
+        fixture["store"],
+        reference,
+        expected_preparation_policy=fixture["expected_preparation_policy"],
     ) == result
 
 
@@ -946,11 +1163,11 @@ def test_reducer_rejects_missing_checkpoint_lineage_and_duplicate_method_partiti
 
 @pytest.mark.parametrize(
     ("lineage", "expected"),
-    (
-        ("trajectory", "M0 trajectory omits checkpoint lineage"),
-        ("checkpoint", "checkpoint manifest belongs to another paired block"),
-        ("full_pack", "full-pack source belongs to another paired block"),
-    ),
+        (
+            ("trajectory", "M0 trajectory omits checkpoint lineage"),
+            ("checkpoint", "checkpoint-manifest source is invalid"),
+            ("full_pack", "full-pack source belongs to another paired block"),
+        ),
 )
 def test_reducer_rejects_readable_same_store_cross_lineage_reference(
     tmp_path, lineage: str, expected: str

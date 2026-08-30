@@ -419,6 +419,200 @@ def read_development_shared_checkpoint_manifest(
     return payload
 
 
+def verify_development_shared_checkpoint_manifest_against_policy(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    *,
+    expected_preparation_policy: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Verify a manifest against a trusted, independently supplied frozen policy."""
+
+    policy = _validated_expected_preparation_policy(
+        store,
+        expected_preparation_policy,
+    )
+    manifest = read_development_shared_checkpoint_manifest(store, reference)
+    if manifest["paired_block_ref"] != policy["paired_block_ref"]:
+        raise ValueError("checkpoint manifest paired block differs from frozen policy")
+    if (
+        manifest["preparation_policy_sha256"]
+        != policy["preparation_policy_sha256"]
+    ):
+        raise ValueError("checkpoint manifest differs from frozen preparation policy")
+
+    planned_graph = policy["expected_checkpoint_graph"]
+    if [node["checkpoint_id"] for node in manifest["nodes"]] != [
+        node["checkpoint_id"] for node in planned_graph
+    ]:
+        raise ValueError("checkpoint manifest order differs from frozen graph")
+    for node, planned in zip(manifest["nodes"], planned_graph, strict=True):
+        if node["parent_checkpoint_ids"] != planned["parent_checkpoint_ids"]:
+            raise ValueError("checkpoint parents differ from frozen graph")
+        if node["consumer_methods"] != planned["consumer_methods"]:
+            raise ValueError("checkpoint consumers differ from frozen graph")
+        artifact_ref = node["artifact_ref"]
+        if artifact_ref is not None and artifact_ref["key"] != planned[
+            "planned_artifact_key"
+        ]:
+            raise ValueError("checkpoint artifact key differs from frozen policy")
+        trusted_ref = node["trusted_skeleton_ref"]
+        planned_trusted_key = planned.get("planned_trusted_skeleton_key")
+        if trusted_ref is not None and trusted_ref["key"] != planned_trusted_key:
+            raise ValueError("trusted skeleton key differs from frozen policy")
+        if trusted_ref is None and planned_trusted_key is not None and node[
+            "status"
+        ] == "completed":
+            raise ValueError("completed frozen checkpoint lacks its trusted skeleton")
+    return manifest
+
+
+def _validated_expected_preparation_policy(
+    store: ArtifactStore,
+    expected_preparation_policy: Mapping[str, Any],
+) -> dict[str, Any]:
+    if not isinstance(expected_preparation_policy, Mapping):
+        raise ValueError("expected preparation policy must be an object")
+    policy = dict(expected_preparation_policy)
+    required_fields = {
+        "policy_version",
+        "evaluation_scope",
+        "paired_block_id",
+        "paired_block_ref",
+        "member_sample_ids",
+        "physical_initial_model_call_ceiling",
+        "exclusive_model_call_ceilings",
+        "expected_checkpoint_graph",
+        "official_outcome",
+        "official_authority",
+        "pass_credit_authority",
+        "g3_accepted",
+        "g4b_authorized",
+        "preparation_policy_sha256",
+    }
+    if set(policy) != required_fields:
+        raise ValueError("expected preparation policy fields are not exact")
+    if (
+        policy["policy_version"] != "development-block-preparation-policy-v1"
+        or policy["evaluation_scope"]
+        != "excluded_development_conformance_only"
+    ):
+        raise ValueError("expected preparation policy identity is invalid")
+    if any(
+        policy[field] is not False
+        for field in (
+            "official_outcome",
+            "official_authority",
+            "pass_credit_authority",
+            "g3_accepted",
+            "g4b_authorized",
+        )
+    ):
+        raise ValueError("expected preparation policy grants forbidden authority")
+    declared_sha256 = policy["preparation_policy_sha256"]
+    _require_sha256(declared_sha256, "expected preparation policy")
+    unsigned = {
+        key: value
+        for key, value in policy.items()
+        if key != "preparation_policy_sha256"
+    }
+    if hashlib.sha256(_canonical_json(unsigned)).hexdigest() != declared_sha256:
+        raise ValueError("expected preparation policy fingerprint mismatch")
+
+    try:
+        paired_block_ref = _artifact_ref(policy["paired_block_ref"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise ValueError("expected preparation policy paired block is invalid") from exc
+    _require_store_reference(store, paired_block_ref, "frozen-policy paired block")
+    paired_block = load_development_paired_block(store, paired_block_ref)
+    if policy["paired_block_id"] != paired_block["paired_block_id"]:
+        raise ValueError("expected preparation policy paired-block ID mismatch")
+    if (
+        not isinstance(policy["member_sample_ids"], list)
+        or len(policy["member_sample_ids"]) != 6
+        or len(set(policy["member_sample_ids"])) != 6
+        or not all(isinstance(item, str) and item for item in policy["member_sample_ids"])
+    ):
+        raise ValueError("expected preparation policy member set is invalid")
+    if policy["physical_initial_model_call_ceiling"] != 3:
+        raise ValueError("expected preparation policy physical ceiling is invalid")
+    if policy["exclusive_model_call_ceilings"] != {
+        "M0": 0,
+        "M1": 0,
+        "M2": 2,
+        "M3": 1,
+        "M4": 0,
+        "M5": 0,
+    }:
+        raise ValueError("expected preparation policy exclusive ceilings are invalid")
+
+    graph = policy["expected_checkpoint_graph"]
+    if not isinstance(graph, list) or len(graph) != len(CheckpointId):
+        raise ValueError("expected preparation policy graph is invalid")
+    expected_graph = (
+        (
+            CheckpointId.DIRECT_INITIAL_PROJECT,
+            (),
+            ("M0", "M1"),
+            "direct-initial-project",
+            False,
+        ),
+        (
+            CheckpointId.SHARED_SYSTEM_HIS,
+            (),
+            ("M3", "M4", "M5"),
+            "system-his",
+            False,
+        ),
+        (
+            CheckpointId.SKELETON_INITIAL_PROJECT,
+            (CheckpointId.SHARED_SYSTEM_HIS.value,),
+            ("M4", "M5"),
+            "skeleton-initial-project",
+            True,
+        ),
+    )
+    prefixes: set[str] = set()
+    for record, (checkpoint, parents, consumers, suffix, has_trusted) in zip(
+        graph,
+        expected_graph,
+        strict=True,
+    ):
+        expected_fields = {
+            "checkpoint_id",
+            "parent_checkpoint_ids",
+            "consumer_methods",
+            "planned_artifact_key",
+            *({"planned_trusted_skeleton_key"} if has_trusted else set()),
+        }
+        if not isinstance(record, dict) or set(record) != expected_fields:
+            raise ValueError("expected preparation policy graph fields are not exact")
+        if (
+            record["checkpoint_id"] != checkpoint.value
+            or tuple(record["parent_checkpoint_ids"]) != parents
+            or tuple(record["consumer_methods"]) != consumers
+        ):
+            raise ValueError("expected preparation policy graph topology is invalid")
+        artifact_key = record["planned_artifact_key"]
+        if not isinstance(artifact_key, str) or not artifact_key.endswith(f"/{suffix}"):
+            raise ValueError("expected preparation policy artifact key is invalid")
+        prefixes.add(artifact_key[: -(len(suffix) + 1)])
+        if has_trusted:
+            trusted_key = record["planned_trusted_skeleton_key"]
+            if not isinstance(trusted_key, str) or not trusted_key.endswith(
+                "/trusted-skeleton"
+            ):
+                raise ValueError("expected preparation policy trusted key is invalid")
+            prefixes.add(trusted_key[: -len("/trusted-skeleton")])
+    if len(prefixes) != 1:
+        raise ValueError("expected preparation policy checkpoint prefixes disagree")
+    prefix = next(iter(prefixes))
+    prefix_parts = prefix.split("/")
+    if len(prefix_parts) != 2 or prefix_parts[0] != "paired":
+        raise ValueError("expected preparation policy checkpoint prefix is invalid")
+    _require_sha256(prefix_parts[1], "expected preparation policy pairing digest")
+    return policy
+
+
 def blocked_methods_from_verified_manifest(
     store: ArtifactStore, reference: ArtifactRef
 ) -> dict[str, str]:
@@ -443,20 +637,29 @@ def read_complete_development_shared_checkpoint_resume(
     store: ArtifactStore,
     reference: ArtifactRef,
     *,
-    paired_block_ref: ArtifactRef,
-    preparation_policy_sha256: str,
+    expected_preparation_policy: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Accept only the exact, content-verified complete preparation for reuse."""
 
-    expected_key = (
-        f"shared-checkpoint-manifests/{paired_block_ref.sha256}/"
-        f"{preparation_policy_sha256}"
-    )
     try:
+        policy = _validated_expected_preparation_policy(
+            store,
+            expected_preparation_policy,
+        )
+        paired_block_ref = _artifact_ref(policy["paired_block_ref"])
+        preparation_policy_sha256 = policy["preparation_policy_sha256"]
+        expected_key = (
+            f"shared-checkpoint-manifests/{paired_block_ref.sha256}/"
+            f"{preparation_policy_sha256}"
+        )
         _require_sha256(preparation_policy_sha256, "preparation policy")
         if reference.key != expected_key or store.reference(expected_key) != reference:
             raise ValueError("checkpoint manifest reference does not match requested resume")
-        manifest = read_development_shared_checkpoint_manifest(store, reference)
+        manifest = verify_development_shared_checkpoint_manifest_against_policy(
+            store,
+            reference,
+            expected_preparation_policy=policy,
+        )
         if manifest["paired_block_ref"] != paired_block_ref.to_dict():
             raise ValueError("checkpoint manifest paired block does not match requested resume")
         if manifest["preparation_policy_sha256"] != preparation_policy_sha256:

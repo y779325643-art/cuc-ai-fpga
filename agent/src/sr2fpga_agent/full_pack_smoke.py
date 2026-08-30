@@ -581,6 +581,11 @@ def assemble_excluded_run_full_pack_with_cost_views(
         raise FullPackReconciliationError(
             "G3b full-pack paired-block reference is invalid"
         ) from exc
+    expected_preparation_policy = _frozen_preparation_policy(
+        store,
+        events_path=events_path,
+        paired_block_ref=paired_block_ref,
+    )
 
     checkpoint_manifest_ref: ArtifactRef | None = None
     block_event_refs: tuple[ArtifactRef, ...] | None = None
@@ -643,8 +648,47 @@ def assemble_excluded_run_full_pack_with_cost_views(
         methods=methods,
         source_full_pack_runner_ref=runner_ref,
         reducer_policy_sha256=reducer_policy_sha256,
+        expected_preparation_policy=expected_preparation_policy,
     )
     return smoke, smoke_ref, runner, runner_ref, costs, costs_ref
+
+
+def _frozen_preparation_policy(
+    store: ArtifactStore,
+    *,
+    events_path: Path,
+    paired_block_ref: ArtifactRef,
+) -> dict[str, Any]:
+    try:
+        measurement_freeze = json.loads(
+            (events_path.parent / "measurement_freeze.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        if not isinstance(measurement_freeze, dict):
+            raise TypeError("measurement freeze must be an object")
+        fingerprint = freeze_fingerprint(measurement_freeze)
+        if measurement_freeze.get("freeze_fingerprint") != fingerprint:
+            raise ValueError("measurement freeze fingerprint mismatch")
+        paired_block = load_development_paired_block(store, paired_block_ref)
+        policies = measurement_freeze["block_preparation_policies"]
+        policy = policies[paired_block["paired_block_id"]]
+        if not isinstance(policy, dict):
+            raise TypeError("preparation policy must be an object")
+        if policy.get("paired_block_ref") != paired_block_ref.to_dict():
+            raise ValueError("preparation policy paired-block reference mismatch")
+    except (
+        ArtifactIntegrityError,
+        KeyError,
+        OSError,
+        TypeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise FullPackReconciliationError(
+            f"G3b assembly has no fingerprint-verified preparation policy: {exc}"
+        ) from exc
+    return dict(policy)
 
 
 def _validated_completion_paired_block(

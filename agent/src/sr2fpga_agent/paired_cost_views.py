@@ -16,11 +16,13 @@ from sr2fpga_agent.artifact_store import (
 from sr2fpga_agent.block_cost_accounting import replay_development_block_preparation
 from sr2fpga_agent.block_preparation import (
     blocked_methods_from_verified_manifest,
-    read_development_shared_checkpoint_manifest,
+    verify_development_shared_checkpoint_manifest_against_policy,
 )
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import COST_AXES, reconcile_cost_events
 from sr2fpga_agent.paired_block import load_development_paired_block
+from sr2fpga_agent.models import GeneratedProject
+from sr2fpga_agent.project_contract import project_package_sha256
 
 
 _METHODS = ("M0", "M1", "M2", "M3", "M4", "M5")
@@ -78,12 +80,17 @@ def reconcile_development_paired_block_costs(
     methods: Iterable[MethodCostSource],
     source_full_pack_runner_ref: ArtifactRef | None,
     reducer_policy_sha256: str,
+    expected_preparation_policy: Mapping[str, Any],
 ) -> tuple[dict[str, Any], ArtifactRef]:
     """Derive the three registered views solely from verified raw sources."""
 
     _require_sha256(reducer_policy_sha256, "reducer policy")
     paired_block = _read_paired_block(store, paired_block_ref)
-    manifest = _read_manifest(store, checkpoint_manifest_ref)
+    manifest = _read_manifest(
+        store,
+        checkpoint_manifest_ref,
+        expected_preparation_policy=expected_preparation_policy,
+    )
     if manifest["paired_block_ref"] != paired_block_ref.to_dict():
         raise PairedCostReconciliationError(
             "checkpoint manifest belongs to another paired block"
@@ -172,6 +179,7 @@ def reconcile_development_paired_block_costs(
             paired_block_ref=paired_block_ref,
             paired_block=paired_block,
             methods=verified_methods,
+            checkpoint_nodes=nodes,
         )
     elif source_full_pack_runner_ref is not None:
         raise PairedCostReconciliationError(
@@ -272,7 +280,10 @@ def reconcile_development_paired_block_costs(
 
 
 def read_development_paired_block_cost_reconciliation(
-    store: ArtifactStore, reference: ArtifactRef
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    *,
+    expected_preparation_policy: Mapping[str, Any],
 ) -> dict[str, Any]:
     """Read a companion and reproduce it from its verified raw sources."""
 
@@ -321,6 +332,7 @@ def read_development_paired_block_cost_reconciliation(
             payload["source_full_pack_runner_ref"]
         ),
         reducer_policy_sha256=payload["reducer_policy_sha256"],
+        expected_preparation_policy=expected_preparation_policy,
     )
     if rebuilt != payload or rebuilt_ref != reference:
         raise PairedCostReconciliationError(
@@ -337,10 +349,19 @@ def _read_paired_block(store: ArtifactStore, reference: ArtifactRef) -> dict[str
         raise PairedCostReconciliationError("paired-block source is invalid") from exc
 
 
-def _read_manifest(store: ArtifactStore, reference: ArtifactRef) -> dict[str, Any]:
+def _read_manifest(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    *,
+    expected_preparation_policy: Mapping[str, Any],
+) -> dict[str, Any]:
     try:
         _require_exact_reference(store, reference, "checkpoint manifest")
-        return read_development_shared_checkpoint_manifest(store, reference)
+        return verify_development_shared_checkpoint_manifest_against_policy(
+            store,
+            reference,
+            expected_preparation_policy=expected_preparation_policy,
+        )
     except (ArtifactIntegrityError, KeyError, TypeError, ValueError) as exc:
         raise PairedCostReconciliationError(
             "checkpoint-manifest source is invalid"
@@ -635,6 +656,7 @@ def _validate_full_pack_lineage(
     paired_block_ref: ArtifactRef,
     paired_block: Mapping[str, Any],
     methods: Mapping[str, _VerifiedMethodCost],
+    checkpoint_nodes: Mapping[str, Mapping[str, Any]],
 ) -> None:
     try:
         _require_exact_reference(store, reference, "full-pack reconciliation")
@@ -693,15 +715,86 @@ def _validate_full_pack_lineage(
                 f"full-pack {method} terminal reference disagrees"
             )
     try:
-        _require_exact_reference(
-            store,
-            _artifact_ref(payload["source_smoke_report_ref"]),
-            "full-pack source report",
-        )
+        smoke_ref = _artifact_ref(payload["source_smoke_report_ref"])
+        _require_exact_reference(store, smoke_ref, "full-pack source report")
+        smoke = json.loads(store.read_verified(smoke_ref))
     except (ArtifactIntegrityError, KeyError, TypeError, ValueError) as exc:
         raise PairedCostReconciliationError(
             "full-pack source report reference is invalid"
         ) from exc
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise PairedCostReconciliationError(
+            "full-pack source report is not valid JSON"
+        ) from exc
+    smoke_errors = ContractRegistry().load_schema("full_pack_smoke_report").validate(
+        smoke
+    )
+    if smoke_errors:
+        raise PairedCostReconciliationError(
+            "invalid full-pack source report: " + "; ".join(smoke_errors)
+        )
+    if (
+        smoke.get("smoke_id") != payload.get("smoke_id")
+        or smoke.get("public_projection_sha256")
+        != paired_block["public_projection_sha256"]
+    ):
+        raise PairedCostReconciliationError(
+            "full-pack smoke and runner lineage disagree"
+        )
+    smoke_by_method = {
+        item["method_condition"]: item for item in smoke["method_records"]
+    }
+    if set(smoke_by_method) != set(_METHODS):
+        raise PairedCostReconciliationError("full-pack smoke method set disagrees")
+    initial_project = checkpoint_nodes["skeleton_initial_project"]
+    if initial_project["status"] != "completed":
+        raise PairedCostReconciliationError(
+            "complete full-pack lineage has no complete initial S_P checkpoint"
+        )
+    initial_ref = _artifact_ref(initial_project["artifact_ref"])
+    initial_package_sha256 = initial_project["project_package_sha256"]
+    for method in ("M4", "M5"):
+        smoke_method = smoke_by_method[method]
+        if (
+            smoke_method["candidate_artifact_key"] != initial_ref.key
+            or smoke_method["candidate_artifact_sha256"] != initial_ref.sha256
+            or smoke_method["project_package_sha256"]
+            != initial_package_sha256
+        ):
+            raise PairedCostReconciliationError(
+                f"{method} initial candidate does not match the frozen S_P checkpoint"
+            )
+        try:
+            candidate_ref = store.reference(smoke_method["candidate_artifact_key"])
+            if (
+                candidate_ref is None
+                or candidate_ref.key != initial_ref.key
+                or candidate_ref.sha256
+                != smoke_method["candidate_artifact_sha256"]
+            ):
+                raise ValueError("candidate ArtifactRef mismatch")
+            candidate = json.loads(store.read_verified(candidate_ref))
+            project = GeneratedProject(
+                project_name=str(candidate["project_name"]),
+                files=dict(candidate["files"]),
+            )
+        except (
+            ArtifactIntegrityError,
+            KeyError,
+            TypeError,
+            UnicodeDecodeError,
+            ValueError,
+            json.JSONDecodeError,
+        ) as exc:
+            raise PairedCostReconciliationError(
+                f"{method} initial candidate artifact is invalid"
+            ) from exc
+        if project_package_sha256(project) != smoke_method[
+            "project_package_sha256"
+        ]:
+            raise PairedCostReconciliationError(
+                f"{method} initial candidate package digest is invalid"
+            )
 
 
 def _method_record(

@@ -25,6 +25,7 @@ from sr2fpga_agent.block_preparation import (
     prepare_development_paired_block,
     read_complete_development_shared_checkpoint_resume,
     read_development_shared_checkpoint_manifest,
+    verify_development_shared_checkpoint_manifest_against_policy,
     write_development_shared_checkpoint_manifest,
 )
 from sr2fpga_agent.cost_accounting import COST_AXES
@@ -358,11 +359,27 @@ def test_checkpoint_failure_blocks_only_verified_manifest_consumers(
 
 
 def test_complete_resume_validation_is_read_only_and_identity_exact(tmp_path) -> None:
-    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    pairing = PairingKey(
+        "pair-checkpoint-001",
+        "revision-checkpoint-001",
+        "semantic-checkpoint-001",
+        17,
+        "2" * 64,
+        "replicate-000",
+    )
+    prefix = f"paired/{pairing.digest()}"
+    store, paired_block_ref, nodes, event_refs = _fixture(
+        tmp_path,
+        direct_key=f"{prefix}/direct-initial-project",
+        his_key=f"{prefix}/system-his",
+        skeleton_key=f"{prefix}/skeleton-initial-project",
+        trusted_key=f"{prefix}/trusted-skeleton",
+    )
+    expected_policy = _expected_preparation_policy(paired_block_ref, prefix=prefix)
     manifest_ref = write_development_shared_checkpoint_manifest(
         store,
         paired_block_ref=paired_block_ref,
-        preparation_policy_sha256="3" * 64,
+        preparation_policy_sha256=expected_policy["preparation_policy_sha256"],
         nodes=nodes,
         block_event_refs=event_refs,
     )
@@ -374,14 +391,12 @@ def test_complete_resume_validation_is_read_only_and_identity_exact(tmp_path) ->
     first = read_complete_development_shared_checkpoint_resume(
         store,
         manifest_ref,
-        paired_block_ref=paired_block_ref,
-        preparation_policy_sha256="3" * 64,
+        expected_preparation_policy=expected_policy,
     )
     second = read_complete_development_shared_checkpoint_resume(
         store,
         manifest_ref,
-        paired_block_ref=paired_block_ref,
-        preparation_policy_sha256="3" * 64,
+        expected_preparation_policy=expected_policy,
     )
 
     assert first == second
@@ -395,21 +410,37 @@ def test_complete_resume_validation_is_read_only_and_identity_exact(tmp_path) ->
 def test_complete_resume_validation_rejects_identity_mismatch(
     tmp_path, mismatch: str
 ) -> None:
-    store, paired_block_ref, nodes, event_refs = _fixture(tmp_path)
+    pairing = PairingKey(
+        "pair-checkpoint-001",
+        "revision-checkpoint-001",
+        "semantic-checkpoint-001",
+        17,
+        "2" * 64,
+        "replicate-000",
+    )
+    prefix = f"paired/{pairing.digest()}"
+    store, paired_block_ref, nodes, event_refs = _fixture(
+        tmp_path,
+        direct_key=f"{prefix}/direct-initial-project",
+        his_key=f"{prefix}/system-his",
+        skeleton_key=f"{prefix}/skeleton-initial-project",
+        trusted_key=f"{prefix}/trusted-skeleton",
+    )
+    expected_policy = _expected_preparation_policy(paired_block_ref, prefix=prefix)
     manifest_ref = write_development_shared_checkpoint_manifest(
         store,
         paired_block_ref=paired_block_ref,
-        preparation_policy_sha256="3" * 64,
+        preparation_policy_sha256=expected_policy["preparation_policy_sha256"],
         nodes=nodes,
         block_event_refs=event_refs,
     )
-    expected_block = paired_block_ref
-    expected_policy = "3" * 64
     candidate_manifest = manifest_ref
     if mismatch == "paired_block":
-        expected_block = replace(paired_block_ref, sha256="f" * 64)
+        expected_policy["paired_block_ref"] = replace(
+            paired_block_ref, sha256="f" * 64
+        ).to_dict()
     elif mismatch == "policy":
-        expected_policy = "f" * 64
+        expected_policy["preparation_policy_sha256"] = "f" * 64
     else:
         candidate_manifest = replace(manifest_ref, key="tampered/manifest-ref")
 
@@ -417,8 +448,7 @@ def test_complete_resume_validation_rejects_identity_mismatch(
         read_complete_development_shared_checkpoint_resume(
             store,
             candidate_manifest,
-            paired_block_ref=expected_block,
-            preparation_policy_sha256=expected_policy,
+            expected_preparation_policy=expected_policy,
         )
 
 
@@ -433,13 +463,17 @@ def test_complete_resume_validation_rejects_incomplete_manifest(tmp_path) -> Non
         nodes=nodes,
         block_event_refs=event_refs,
     )
+    expected_policy = _expected_preparation_policy(
+        paired_block_ref,
+        prefix="paired/" + "a" * 64,
+    )
+    expected_policy["preparation_policy_sha256"] = "3" * 64
 
     with pytest.raises(SharedCheckpointResumeError, match="new run ID"):
         read_complete_development_shared_checkpoint_resume(
             store,
             manifest_ref,
-            paired_block_ref=paired_block_ref,
-            preparation_policy_sha256="3" * 64,
+            expected_preparation_policy=expected_policy,
         )
 
 
@@ -456,6 +490,7 @@ def _fixture(
     direct_key: str = "checkpoints/direct-initial-project",
     his_key: str = "checkpoints/system-his",
     skeleton_key: str = "checkpoints/skeleton-initial-project",
+    trusted_key: str = "checkpoints/trusted",
     reuse_direct_as_skeleton: bool = False,
 ):
     store = ArtifactStore(tmp_path / "store")
@@ -465,7 +500,7 @@ def _fixture(
     his = artifacts.put_planning(
         his_key, PlanningArtifactKind.SYSTEM_HIS, {"intent": "counter"}
     )
-    trusted = artifacts.put_project("checkpoints/trusted", _project("trusted"))
+    trusted = artifacts.put_project(trusted_key, _project("trusted"))
     skeleton = (
         direct
         if reuse_direct_as_skeleton
@@ -536,6 +571,175 @@ def _fixture(
         ),
     )
     return store, paired_block_ref, nodes, ledger.event_refs
+
+
+def _expected_preparation_policy(
+    paired_block_ref: ArtifactRef,
+    *,
+    prefix: str,
+) -> dict:
+    policy = {
+        "policy_version": "development-block-preparation-policy-v1",
+        "evaluation_scope": "excluded_development_conformance_only",
+        "paired_block_id": "pair-checkpoint-001",
+        "paired_block_ref": paired_block_ref.to_dict(),
+        "member_sample_ids": [f"sample-{index}" for index in range(6)],
+        "physical_initial_model_call_ceiling": 3,
+        "exclusive_model_call_ceilings": {
+            "M0": 0,
+            "M1": 0,
+            "M2": 2,
+            "M3": 1,
+            "M4": 0,
+            "M5": 0,
+        },
+        "expected_checkpoint_graph": [
+            {
+                "checkpoint_id": "direct_initial_project",
+                "parent_checkpoint_ids": [],
+                "consumer_methods": ["M0", "M1"],
+                "planned_artifact_key": f"{prefix}/direct-initial-project",
+            },
+            {
+                "checkpoint_id": "shared_system_his",
+                "parent_checkpoint_ids": [],
+                "consumer_methods": ["M3", "M4", "M5"],
+                "planned_artifact_key": f"{prefix}/system-his",
+            },
+            {
+                "checkpoint_id": "skeleton_initial_project",
+                "parent_checkpoint_ids": ["shared_system_his"],
+                "consumer_methods": ["M4", "M5"],
+                "planned_artifact_key": f"{prefix}/skeleton-initial-project",
+                "planned_trusted_skeleton_key": f"{prefix}/trusted-skeleton",
+            },
+        ],
+        "official_outcome": False,
+        "official_authority": False,
+        "pass_credit_authority": False,
+        "g3_accepted": False,
+        "g4b_authorized": False,
+    }
+    policy["preparation_policy_sha256"] = hashlib.sha256(
+        json.dumps(
+            policy,
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
+    return policy
+
+
+def test_strict_manifest_verifier_anchors_frozen_policy_graph_and_exact_keys(
+    tmp_path,
+) -> None:
+    pairing = PairingKey(
+        paired_block_id="pair-checkpoint-001",
+        requirement_revision_id="revision-checkpoint-001",
+        semantic_instance_id="semantic-checkpoint-001",
+        decoding_seed=17,
+        model_provenance_sha256="2" * 64,
+        replicate_id="replicate-000",
+    )
+    prefix = f"paired/{pairing.digest()}"
+    store, paired_block_ref, nodes, event_refs = _fixture(
+        tmp_path,
+        direct_key=f"{prefix}/direct-initial-project",
+        his_key=f"{prefix}/system-his",
+        skeleton_key=f"{prefix}/skeleton-initial-project",
+        trusted_key=f"{prefix}/trusted-skeleton",
+    )
+    expected_policy = _expected_preparation_policy(
+        paired_block_ref,
+        prefix=prefix,
+    )
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256=expected_policy["preparation_policy_sha256"],
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+
+    assert verify_development_shared_checkpoint_manifest_against_policy(
+        store,
+        manifest_ref,
+        expected_preparation_policy=expected_policy,
+    )["manifest_status"] == "complete"
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    ("policy_self_hash", "manifest_policy", "graph", "artifact_key", "trusted_key"),
+)
+def test_strict_manifest_verifier_rejects_one_factor_policy_and_key_tamper(
+    tmp_path,
+    mutation: str,
+) -> None:
+    pairing = PairingKey(
+        paired_block_id="pair-checkpoint-001",
+        requirement_revision_id="revision-checkpoint-001",
+        semantic_instance_id="semantic-checkpoint-001",
+        decoding_seed=17,
+        model_provenance_sha256="2" * 64,
+        replicate_id="replicate-000",
+    )
+    prefix = f"paired/{pairing.digest()}"
+    direct_key = f"{prefix}/direct-initial-project"
+    trusted_key = f"{prefix}/trusted-skeleton"
+    if mutation == "artifact_key":
+        direct_key = "arbitrary/internal/direct-initial-project"
+    if mutation == "trusted_key":
+        trusted_key = "arbitrary/internal/trusted-skeleton"
+    store, paired_block_ref, nodes, event_refs = _fixture(
+        tmp_path,
+        direct_key=direct_key,
+        his_key=f"{prefix}/system-his",
+        skeleton_key=f"{prefix}/skeleton-initial-project",
+        trusted_key=trusted_key,
+    )
+    expected_policy = _expected_preparation_policy(
+        paired_block_ref,
+        prefix=prefix,
+    )
+    manifest_policy_sha256 = expected_policy["preparation_policy_sha256"]
+    if mutation == "manifest_policy":
+        manifest_policy_sha256 = "f" * 64
+    manifest_ref = write_development_shared_checkpoint_manifest(
+        store,
+        paired_block_ref=paired_block_ref,
+        preparation_policy_sha256=manifest_policy_sha256,
+        nodes=nodes,
+        block_event_refs=event_refs,
+    )
+    if mutation == "policy_self_hash":
+        expected_policy["member_sample_ids"][0] = "tampered-sample"
+    elif mutation == "graph":
+        expected_policy["expected_checkpoint_graph"][0]["consumer_methods"] = [
+            "M0",
+            "M2",
+        ]
+        unsigned = {
+            key: value
+            for key, value in expected_policy.items()
+            if key != "preparation_policy_sha256"
+        }
+        expected_policy["preparation_policy_sha256"] = hashlib.sha256(
+            json.dumps(
+                unsigned,
+                ensure_ascii=False,
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode("utf-8")
+        ).hexdigest()
+
+    with pytest.raises(ValueError):
+        verify_development_shared_checkpoint_manifest_against_policy(
+            store,
+            manifest_ref,
+            expected_preparation_policy=expected_policy,
+        )
 
 
 def _incomplete_direct_fixture(tmp_path, *, event_kind: str | None, reason: str = "raw_failure"):

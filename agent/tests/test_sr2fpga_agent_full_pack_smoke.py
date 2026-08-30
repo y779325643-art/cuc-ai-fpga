@@ -69,6 +69,7 @@ from sr2fpga_agent.paired_block import (
     write_development_paired_block,
 )
 from sr2fpga_agent.paired_cost_views import (
+    PairedCostReconciliationError,
     read_development_paired_block_cost_reconciliation,
 )
 from sr2fpga_agent.project_contract import build_project_envelope
@@ -1235,6 +1236,7 @@ def _run_fake_complete_full_pack(
     method_order,
     failed_stage=None,
     assemble_companions=True,
+    interrupt_after: int | None = None,
 ):
     root = _new_test_root()
     clock_ticks = iter(float(tick) for tick in range(100))
@@ -1432,17 +1434,66 @@ def _run_fake_complete_full_pack(
     preflight_by_sample = {
         sample["sample_id"]: sample["episode_pack"] for sample in preflight["samples"]
     }
-    summary = run_batch(config, run_id="excluded-m0-m5-full-pack", resume=False)
     run_dir = config.run_root / "excluded-m0-m5-full-pack"
+    if interrupt_after is None or interrupt_after == 6:
+        summary = run_batch(
+            config,
+            run_id="excluded-m0-m5-full-pack",
+            resume=False,
+        )
+    else:
+        from sr2fpga_agent import runner as runner_module
+
+        class _CleanBoundaryInterrupt(RuntimeError):
+            pass
+
+        with monkeypatch.context() as interruption:
+            if interrupt_after == 0:
+                original_write_json = runner_module._write_json
+
+                def interrupt_after_config(path, payload):
+                    original_write_json(path, payload)
+                    if path.name == "config.json":
+                        raise _CleanBoundaryInterrupt
+
+                interruption.setattr(
+                    runner_module,
+                    "_write_json",
+                    interrupt_after_config,
+                )
+            else:
+                original_write_run_state = runner_module.write_run_state
+
+                def interrupt_after_state(path, state):
+                    original_write_run_state(path, state)
+                    if state.next_index == interrupt_after:
+                        raise _CleanBoundaryInterrupt
+
+                interruption.setattr(
+                    runner_module,
+                    "write_run_state",
+                    interrupt_after_state,
+                )
+            with pytest.raises(_CleanBoundaryInterrupt):
+                run_batch(
+                    config,
+                    run_id="excluded-m0-m5-full-pack",
+                    resume=False,
+                )
+        summary = None
     store = ArtifactStore(run_dir / "method_artifacts")
     events_path = run_dir / "events.jsonl"
     projection = metadata[0]["episode_pack"]["public_context"][
         "public_projection_sha256"
     ]
-    run_events = [
-        json.loads(line)
-        for line in events_path.read_text(encoding="utf-8").splitlines()
-    ]
+    run_events = (
+        [
+            json.loads(line)
+            for line in events_path.read_text(encoding="utf-8").splitlines()
+        ]
+        if events_path.exists()
+        else []
+    )
     completion_events = [
         event for event in run_events if event.get("event") == "sample_completed"
     ]
@@ -1751,6 +1802,217 @@ def _resume_side_effect_spies(monkeypatch):
     )
     monkeypatch.setattr(runner_module, "_write_json", spies["json_write"])
     return spies
+
+
+def test_cost_companion_assembly_rejects_alternate_valid_m5_initial_project(
+    monkeypatch,
+) -> None:
+    completed = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=build_balanced_method_orders(909991)[0],
+        assemble_companions=False,
+    )
+    alternate = MethodArtifactGateway(completed.store).put_project(
+        "tampered-initial/M5/alternate-valid-project",
+        _project("alternate-valid-M5-initial"),
+    )
+    events = json.loads(json.dumps(completed.run_events))
+    m5 = next(
+        event
+        for event in events
+        if event.get("event") == "sample_completed"
+        and event.get("method_condition") == "M5"
+    )
+    original_trajectory = dict(m5["canonical_trajectory_ref"])
+    method_artifacts = m5["method_artifacts"]
+    method_artifacts["candidate_artifact_ref"] = alternate.artifact_ref.to_dict()
+    method_artifacts["project_package_sha256"] = alternate.project_package_sha256
+    assert m5["canonical_trajectory_ref"] == original_trajectory
+    tampered_dir = completed.run_dir / "tampered-M5-initial"
+    tampered_dir.mkdir()
+    (tampered_dir / "measurement_freeze.json").write_text(
+        (completed.run_dir / "measurement_freeze.json").read_text(encoding="utf-8"),
+        encoding="utf-8",
+    )
+    tampered_events_path = tampered_dir / "events.jsonl"
+    tampered_events_path.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+    _, scenarios = _minimal_smoke_inputs(completed.projection)
+
+    with pytest.raises(
+        (FullPackReconciliationError, PairedCostReconciliationError),
+        match="M5 initial candidate",
+    ):
+        assemble_excluded_run_full_pack_with_cost_views(
+            completed.store,
+            events_path=tampered_events_path,
+            smoke_id="tampered-M5-initial",
+            scenarios=scenarios,
+            reducer_policy_sha256="6" * 64,
+        )
+
+
+@pytest.mark.parametrize("completed_prefix_length", range(7))
+def test_runner_resume_accepts_each_clean_completed_prefix_without_repreparation(
+    monkeypatch,
+    completed_prefix_length: int,
+) -> None:
+    method_order = build_balanced_method_orders(909991)[0]
+    interrupted = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=method_order,
+        assemble_companions=False,
+        interrupt_after=completed_prefix_length,
+    )
+    config_path, run_config, paired_block_id, preparation_audit = (
+        _persisted_preparation_audit(interrupted)
+    )
+    assert config_path.exists()
+    manifest_ref = ArtifactRef(**preparation_audit["checkpoint_manifest_ref"])
+    manifest_bytes = interrupted.store.read_verified(manifest_ref)
+    preparation_event_bytes = {
+        ArtifactRef(**payload): interrupted.store.read_verified(ArtifactRef(**payload))
+        for payload in preparation_audit["block_event_refs"]
+    }
+    events_before = (
+        interrupted.events_path.read_bytes()
+        if interrupted.events_path.exists()
+        else b""
+    )
+    provider_calls_before = _physical_provider_calls(interrupted)
+    preparation_calls_before = {
+        stage: len(interrupted.staged_clients[stage].calls)
+        for stage in (
+            "block_direct_initial",
+            "block_req2his",
+            "block_skeleton_initial",
+        )
+    }
+    exclusive_calls = {"M0": 0, "M1": 0, "M2": 2, "M3": 1, "M4": 0, "M5": 0}
+
+    resumed = run_batch(
+        interrupted.config,
+        run_id=interrupted.run_id,
+        resume=True,
+    )
+
+    expected_suffix = list(method_order[completed_prefix_length:])
+    assert resumed["total_completed"] == 6
+    assert resumed["audit_only"]["block_preparations"][paired_block_id] == (
+        preparation_audit
+    )
+    assert _physical_provider_calls(interrupted) - provider_calls_before == sum(
+        exclusive_calls[method] for method in expected_suffix
+    )
+    assert {
+        stage: len(interrupted.staged_clients[stage].calls)
+        for stage in preparation_calls_before
+    } == preparation_calls_before
+    assert interrupted.store.read_verified(manifest_ref) == manifest_bytes
+    assert {
+        reference: interrupted.store.read_verified(reference)
+        for reference in preparation_event_bytes
+    } == preparation_event_bytes
+    completed_after = [
+        event
+        for event in (
+            json.loads(line)
+            for line in interrupted.events_path.read_text(encoding="utf-8").splitlines()
+        )
+        if event.get("event") == "sample_completed"
+    ]
+    assert [event["method_condition"] for event in completed_after] == list(method_order)
+    assert len(completed_after) == 6
+    assert all(
+        event["block_preparation_audit"] == preparation_audit
+        for event in completed_after
+    )
+    if completed_prefix_length == 6:
+        assert interrupted.events_path.read_bytes() == events_before
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    (
+        "arbitrary_subset",
+        "duplicate_completion",
+        "wrong_ordinal",
+        "inconsistent_state",
+        "inconsistent_bucket",
+        "partial_next_method",
+    ),
+)
+def test_runner_resume_rejects_unclean_or_inconsistent_completed_prefix(
+    monkeypatch,
+    mutation: str,
+) -> None:
+    method_order = build_balanced_method_orders(909991)[0]
+    interrupted = _run_fake_complete_full_pack(
+        monkeypatch,
+        method_order=method_order,
+        assemble_companions=False,
+        interrupt_after=3,
+    )
+    events = [
+        json.loads(line)
+        for line in interrupted.events_path.read_text(encoding="utf-8").splitlines()
+    ]
+    completions = [event for event in events if event.get("event") == "sample_completed"]
+    assert len(completions) == 3
+    if mutation == "arbitrary_subset":
+        events.remove(completions[0])
+    elif mutation == "duplicate_completion":
+        events.append(dict(completions[-1]))
+    elif mutation == "wrong_ordinal":
+        completions[-1]["execution_ordinal"] = 5
+    elif mutation in {"inconsistent_state", "inconsistent_bucket"}:
+        state_path = interrupted.run_dir / "run_state.json"
+        state = json.loads(state_path.read_text(encoding="utf-8"))
+        if mutation == "inconsistent_state":
+            state["next_index"] = 4
+        else:
+            suffix_sample = planned_samples(interrupted.config)[3].sample_id
+            state["buckets"]["rejected"].append(suffix_sample)
+        _write_json_file(state_path, state)
+    else:
+        freeze = json.loads(
+            (interrupted.run_dir / "measurement_freeze.json").read_text(
+                encoding="utf-8"
+            )
+        )
+        next_record = freeze["samples"][3]
+        preparation_audit = completions[0]["block_preparation_audit"]
+        events.append(
+            {
+                "event": "generation_stage_started",
+                "stage": "partial_next_method",
+                "sample_id": next_record["sample_id"],
+                "method_condition": next_record["method_condition"],
+                "paired_block_id": interrupted.config.tasks[0].paired_block_id,
+                "paired_block_ref": next_record["paired_block_ref"],
+                "execution_ordinal": next_record["execution_ordinal"],
+                "freeze_fingerprint": freeze["freeze_fingerprint"],
+                "block_preparation_audit": preparation_audit,
+            }
+        )
+    interrupted.events_path.write_text(
+        "".join(json.dumps(event, sort_keys=True) + "\n" for event in events),
+        encoding="utf-8",
+    )
+    calls_before = _physical_provider_calls(interrupted)
+    events_before = interrupted.events_path.read_bytes()
+    files_before = _file_tree_snapshot(interrupted.run_dir)
+    spies = _resume_side_effect_spies(monkeypatch)
+
+    with pytest.raises(SharedCheckpointResumeError, match="requires a new run ID"):
+        run_batch(interrupted.config, run_id=interrupted.run_id, resume=True)
+
+    assert _physical_provider_calls(interrupted) == calls_before
+    assert interrupted.events_path.read_bytes() == events_before
+    assert _file_tree_snapshot(interrupted.run_dir) == files_before
+    assert all(spy.call_count == 0 for spy in spies.values())
 
 
 def test_runner_resume_rejects_valid_manifest_substitution_before_side_effects(
@@ -2125,7 +2387,15 @@ def test_real_runner_three_view_costs_are_order_invariant(monkeypatch) -> None:
             completed.costs
         )
         assert read_development_paired_block_cost_reconciliation(
-            completed.store, completed.costs_ref
+            completed.store,
+            completed.costs_ref,
+            expected_preparation_policy=json.loads(
+                (completed.run_dir / "measurement_freeze.json").read_text(
+                    encoding="utf-8"
+                )
+            )["block_preparation_policies"][
+                completed.completion_events[0]["paired_block_id"]
+            ],
         ) == completed.costs
 
     summary = first.summary

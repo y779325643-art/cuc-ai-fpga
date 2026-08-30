@@ -30,7 +30,9 @@ from sr2fpga_agent.block_preparation import (
     prepare_development_paired_block,
     read_complete_development_shared_checkpoint_resume,
     read_development_shared_checkpoint_manifest,
+    verify_development_shared_checkpoint_manifest_against_policy,
 )
+from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import (
     AttemptCostLedger,
     AttemptCostLedgerRouter,
@@ -71,6 +73,7 @@ from sr2fpga_agent.frozen_context import (
 )
 from sr2fpga_agent.measurement_freeze import (
     build_measurement_freeze,
+    freeze_fingerprint as measurement_freeze_fingerprint,
     write_or_validate_freeze,
 )
 from sr2fpga_agent.local_tools import resolve_executable
@@ -415,6 +418,7 @@ class PreparedBlockRuntime:
     member_sample_ids: tuple[str, ...]
     exclusive_model_call_ceilings: dict[str, int]
     blocked_method_checkpoints: dict[str, str] = field(default_factory=dict)
+    expected_preparation_policy: dict[str, Any] | None = None
 
 
 class _RunnerDirectMethodProjectGenerator:
@@ -799,6 +803,8 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             )
         resumed_prepared_blocks = _preflight_existing_block_preparation_resume(
             run_dir=run_dir,
+            dataset_root=config.dataset_root,
+            state=state,
             paired_block_plans=paired_block_plans,
             block_preparation_policies=block_preparation_policies,
         )
@@ -4460,8 +4466,7 @@ def _prepare_complete_blocks(
         policy_sha256 = str(policy["preparation_policy_sha256"])
         existing = _load_prepared_block_runtime(
             store,
-            paired_block_ref=paired_block_ref,
-            preparation_policy_sha256=policy_sha256,
+            expected_preparation_policy=policy,
             member_sample_ids=plan.sample_ids,
             exclusive_model_call_ceilings=dict(
                 policy["exclusive_model_call_ceilings"]
@@ -4516,6 +4521,11 @@ def _prepare_complete_blocks(
             model_budget=preparation_budget,
             preparation_policy_sha256=policy_sha256,
         )
+        verify_development_shared_checkpoint_manifest_against_policy(
+            store,
+            prepared.manifest_ref,
+            expected_preparation_policy=policy,
+        )
         prepared_blocks[paired_block_id] = PreparedBlockRuntime(
             prepared=prepared,
             member_sample_ids=plan.sample_ids,
@@ -4525,6 +4535,7 @@ def _prepare_complete_blocks(
             blocked_method_checkpoints=blocked_methods_from_verified_manifest(
                 store, prepared.manifest_ref
             ),
+            expected_preparation_policy=dict(policy),
         )
     return prepared_blocks
 
@@ -4532,6 +4543,8 @@ def _prepare_complete_blocks(
 def _preflight_existing_block_preparation_resume(
     *,
     run_dir: Path,
+    dataset_root: Path,
+    state: RunState,
     paired_block_plans: Mapping[str, _PlannedPairedBlock],
     block_preparation_policies: Mapping[str, Mapping[str, Any]],
 ) -> dict[str, PreparedBlockRuntime]:
@@ -4540,19 +4553,31 @@ def _preflight_existing_block_preparation_resume(
     if not paired_block_plans:
         return {}
     expected_ids = set(paired_block_plans)
-    expected_completions = {
-        paired_block_id: dict(
-            zip(
-                plan.sample_ids,
-                plan.payload["method_order"],
-                strict=True,
-            )
+    try:
+        frozen = json.loads(
+            (run_dir / "measurement_freeze.json").read_text(encoding="utf-8")
         )
-        for paired_block_id, plan in paired_block_plans.items()
-    }
-    event_audits = _event_recorded_block_preparation_audits(
-        run_dir / "events.jsonl",
-        expected_completions,
+        if not isinstance(frozen, dict):
+            raise TypeError("measurement freeze must be an object")
+        frozen_fingerprint = measurement_freeze_fingerprint(frozen)
+        if frozen.get("freeze_fingerprint") != frozen_fingerprint:
+            raise ValueError("measurement freeze fingerprint mismatch")
+        frozen_policies = frozen["block_preparation_policies"]
+        if not isinstance(frozen_policies, dict):
+            raise TypeError("frozen preparation policies must be an object")
+    except (KeyError, OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+        raise _shared_checkpoint_resume_error(
+            f"existing run has no fingerprint-verified G3b freeze: {exc}"
+        ) from exc
+    if frozen_policies != {
+        key: dict(value) for key, value in block_preparation_policies.items()
+    }:
+        raise _shared_checkpoint_resume_error(
+            "frozen preparation policies differ from the recomputed plan"
+        )
+    expected_records = _validated_resume_sample_records(
+        frozen,
+        paired_block_plans,
     )
     config_path = run_dir / "config.json"
     try:
@@ -4579,6 +4604,15 @@ def _preflight_existing_block_preparation_resume(
             "existing run has no G3b method-artifact store"
         )
     store = ArtifactStore(store_root)
+    event_audits = _event_recorded_block_preparation_audits(
+        run_dir / "events.jsonl",
+        expected_records=expected_records,
+        expected_audits=audits,
+        freeze_fingerprint=frozen_fingerprint,
+        state=state,
+        dataset_root=dataset_root,
+        store=store,
+    )
     prepared_blocks: dict[str, PreparedBlockRuntime] = {}
     for paired_block_id in sorted(expected_ids):
         plan = paired_block_plans[paired_block_id]
@@ -4612,8 +4646,7 @@ def _preflight_existing_block_preparation_resume(
             )
         runtime = _load_prepared_block_runtime(
             store,
-            paired_block_ref=plan.artifact_ref,
-            preparation_policy_sha256=policy_sha256,
+            expected_preparation_policy=policy,
             member_sample_ids=plan.sample_ids,
             exclusive_model_call_ceilings=dict(
                 policy["exclusive_model_call_ceilings"]
@@ -4634,68 +4667,127 @@ def _preflight_existing_block_preparation_resume(
 
 def _event_recorded_block_preparation_audits(
     events_path: Path,
-    expected_completions: Mapping[str, Mapping[str, str]],
+    *,
+    expected_records: tuple[dict[str, Any], ...],
+    expected_audits: Mapping[str, Any],
+    freeze_fingerprint: str,
+    state: RunState,
+    dataset_root: Path,
+    store: ArtifactStore,
 ) -> dict[str, dict[str, Any]]:
-    """Recover the original preparation audit cross-linked into run events."""
+    """Verify the exact clean completed prefix and its preparation anchors."""
 
     try:
-        lines = events_path.read_text(encoding="utf-8").splitlines()
+        lines = (
+            events_path.read_text(encoding="utf-8").splitlines()
+            if events_path.exists()
+            else []
+        )
         events = [json.loads(line) for line in lines if line.strip()]
     except (OSError, ValueError, json.JSONDecodeError) as exc:
         raise _shared_checkpoint_resume_error(
             f"existing run events cannot anchor preparation identity: {exc}"
         ) from exc
-    if not events:
+    owners = {record["sample_id"]: record for record in expected_records}
+    if len(owners) != len(expected_records):
+        raise _shared_checkpoint_resume_error("planned sample identity is reused")
+    completed_count = len(state.completed_samples)
+    expected_prefix = expected_records[:completed_count]
+    expected_prefix_ids = [record["sample_id"] for record in expected_prefix]
+    if state.completed_samples != expected_prefix_ids:
         raise _shared_checkpoint_resume_error(
-            "existing run has no events that anchor preparation identity"
+            "run state completed samples are not an exact frozen prefix"
         )
-    expected_paired_block_ids = set(expected_completions)
-    sample_owners: dict[str, tuple[str, str]] = {}
-    for paired_block_id, methods_by_sample in expected_completions.items():
-        for sample_id, method_condition in methods_by_sample.items():
-            if sample_id in sample_owners:
+    if state.next_index != completed_count:
+        raise _shared_checkpoint_resume_error(
+            "run state next index does not match the completed prefix"
+        )
+    if completed_count > len(expected_records):
+        raise _shared_checkpoint_resume_error("run state exceeds the frozen sample plan")
+
+    bucket_owners: dict[str, str] = {}
+    for bucket, sample_ids in state.buckets.items():
+        for sample_id in sample_ids:
+            if sample_id in bucket_owners:
                 raise _shared_checkpoint_resume_error(
-                    f"planned sample identity is reused: {sample_id}"
+                    f"run state repeats a bucket member: {sample_id}"
                 )
-            sample_owners[sample_id] = (paired_block_id, method_condition)
+            bucket_owners[sample_id] = bucket
+    if set(bucket_owners) != set(expected_prefix_ids):
+        raise _shared_checkpoint_resume_error(
+            "run state buckets do not match the completed prefix"
+        )
+    for index, record in enumerate(expected_records):
+        sample_id = record["sample_id"]
+        sample_dir = dataset_root / sample_id
+        if index < completed_count:
+            if not sample_dir.is_dir():
+                raise _shared_checkpoint_resume_error(
+                    f"completed prefix sample directory is missing: {sample_id}"
+                )
+            try:
+                expected_bucket = classify_sample_bucket(_read_labels(sample_dir))
+            except (OSError, TypeError, ValueError, json.JSONDecodeError) as exc:
+                raise _shared_checkpoint_resume_error(
+                    f"completed prefix labels are invalid for {sample_id}: {exc}"
+                ) from exc
+            if bucket_owners[sample_id] != expected_bucket:
+                raise _shared_checkpoint_resume_error(
+                    f"run state bucket disagrees for {sample_id}"
+                )
+        elif sample_dir.exists():
+            raise _shared_checkpoint_resume_error(
+                f"unfinished sample has partial directory effects: {sample_id}"
+            )
+
     linked: dict[str, list[dict[str, Any]]] = {
-        paired_block_id: [] for paired_block_id in expected_paired_block_ids
+        paired_block_id: [] for paired_block_id in expected_audits
     }
-    completed: dict[str, dict[tuple[str, str], list[dict[str, Any]]]] = {
-        paired_block_id: {
-            (sample_id, method_condition): []
-            for sample_id, method_condition in methods_by_sample.items()
-        }
-        for paired_block_id, methods_by_sample in expected_completions.items()
-    }
+    completions: list[dict[str, Any]] = []
     for event in events:
         if not isinstance(event, dict):
             raise _shared_checkpoint_resume_error(
                 "existing run event must be an object"
             )
-        paired_block_id = event.get("paired_block_id")
-        is_completion = event.get("event") == "sample_completed"
         sample_id = event.get("sample_id")
-        method_condition = event.get("method_condition")
-        if is_completion:
-            owner = sample_owners.get(sample_id)
-            if owner is None:
-                if paired_block_id in expected_paired_block_ids:
-                    raise _shared_checkpoint_resume_error(
-                        f"{paired_block_id} has an extra completion: {sample_id}"
-                    )
-                continue
-            expected_block_id, expected_method = owner
-            if paired_block_id != expected_block_id:
+        record = owners.get(sample_id)
+        if record is None:
+            if event.get("paired_block_id") in expected_audits:
                 raise _shared_checkpoint_resume_error(
-                    f"{sample_id} completion names the wrong paired block"
+                    f"paired block has an event for an unknown sample: {sample_id}"
                 )
-            if method_condition != expected_method:
-                raise _shared_checkpoint_resume_error(
-                    f"{sample_id} completion names the wrong method"
-                )
-        elif paired_block_id not in expected_paired_block_ids:
             continue
+        ordinal = int(record["execution_ordinal"])
+        if ordinal >= completed_count:
+            raise _shared_checkpoint_resume_error(
+                f"unfinished sample has partial method effects: {sample_id}"
+            )
+        paired_block_id = record["paired_block_id"]
+        is_completion = event.get("event") == "sample_completed"
+        if event.get("paired_block_id") != paired_block_id:
+            raise _shared_checkpoint_resume_error(
+                f"{sample_id} event names the wrong paired block"
+            )
+        event_method = event.get("method_condition")
+        if (
+            (is_completion or event_method is not None)
+            and event_method != record["method_condition"]
+        ):
+            raise _shared_checkpoint_resume_error(
+                f"{sample_id} event names the wrong method"
+            )
+        if event.get("execution_ordinal") != ordinal:
+            raise _shared_checkpoint_resume_error(
+                f"{sample_id} event names the wrong execution ordinal"
+            )
+        event_freeze = event.get("freeze_fingerprint")
+        if (
+            (is_completion or event_freeze is not None)
+            and event_freeze != freeze_fingerprint
+        ):
+            raise _shared_checkpoint_resume_error(
+                f"{sample_id} event names the wrong measurement freeze"
+            )
         raw_audit = event.get("block_preparation_audit")
         if is_completion and not isinstance(raw_audit, dict):
             raise _shared_checkpoint_resume_error(
@@ -4716,35 +4808,174 @@ def _event_recorded_block_preparation_audits(
             )
         linked[paired_block_id].append(raw_audit)
         if is_completion:
-            completed[paired_block_id][
-                (str(sample_id), str(method_condition))
-            ].append(raw_audit)
-    anchors: dict[str, dict[str, Any]] = {}
-    for paired_block_id in sorted(expected_paired_block_ids):
-        completion_records = completed[paired_block_id]
-        for (sample_id, method_condition), records in completion_records.items():
-            if len(records) != 1:
-                raise _shared_checkpoint_resume_error(
-                    f"{paired_block_id} requires exactly one completion for "
-                    f"{sample_id}/{method_condition}; found {len(records)}"
-                )
-        ordered_completed = [
-            completion_records[(sample_id, method_condition)][0]
-            for sample_id, method_condition in expected_completions[
-                paired_block_id
-            ].items()
-        ]
-        anchor = ordered_completed[0]
-        if any(record != anchor for record in ordered_completed[1:]):
+            completions.append(event)
+            _validate_completed_resume_event(
+                event,
+                record=record,
+                expected_audit=expected_audits[paired_block_id],
+                dataset_root=dataset_root,
+                store=store,
+            )
+    if [event["sample_id"] for event in completions] != expected_prefix_ids:
+        raise _shared_checkpoint_resume_error(
+            "completion events are not exactly the frozen completed prefix"
+        )
+    for paired_block_id, anchor in expected_audits.items():
+        if not isinstance(anchor, dict):
             raise _shared_checkpoint_resume_error(
-                f"{paired_block_id} completed method audits disagree"
+                f"{paired_block_id} config preparation audit is not an object"
             )
         if any(record != anchor for record in linked[paired_block_id]):
             raise _shared_checkpoint_resume_error(
                 f"{paired_block_id} audit-bearing run events disagree"
             )
-        anchors[paired_block_id] = dict(anchor)
-    return anchors
+    return {key: dict(value) for key, value in expected_audits.items()}
+
+
+def _validated_resume_sample_records(
+    frozen: Mapping[str, Any],
+    paired_block_plans: Mapping[str, _PlannedPairedBlock],
+) -> tuple[dict[str, Any], ...]:
+    records = frozen.get("samples")
+    if not isinstance(records, list) or not all(
+        isinstance(record, dict) for record in records
+    ):
+        raise _shared_checkpoint_resume_error(
+            "measurement freeze samples are not a valid list"
+        )
+    expected_ids = {
+        sample_id
+        for plan in paired_block_plans.values()
+        for sample_id in plan.sample_ids
+    }
+    selected = tuple(record for record in records if record.get("sample_id") in expected_ids)
+    if len(selected) != len(expected_ids) or len(records) != len(selected):
+        raise _shared_checkpoint_resume_error(
+            "resume requires exactly the frozen complete G3b sample block"
+        )
+    by_sample = {record["sample_id"]: record for record in selected}
+    if set(by_sample) != expected_ids:
+        raise _shared_checkpoint_resume_error(
+            "measurement freeze sample identities differ from the paired plan"
+        )
+    for paired_block_id, plan in paired_block_plans.items():
+        for ordinal, (sample_id, method_condition) in enumerate(
+            zip(plan.sample_ids, plan.payload["method_order"], strict=True)
+        ):
+            record = by_sample[sample_id]
+            if (
+                record.get("paired_block_id") != paired_block_id
+                or record.get("method_condition") != method_condition
+                or record.get("paired_block_ref") != plan.artifact_ref.to_dict()
+                or record.get("execution_ordinal") != ordinal
+            ):
+                raise _shared_checkpoint_resume_error(
+                    f"measurement freeze identity is inconsistent for {sample_id}"
+                )
+    return selected
+
+
+def _validate_completed_resume_event(
+    event: Mapping[str, Any],
+    *,
+    record: Mapping[str, Any],
+    expected_audit: Mapping[str, Any],
+    dataset_root: Path,
+    store: ArtifactStore,
+) -> None:
+    sample_id = str(record["sample_id"])
+    if event.get("block_preparation_audit") != expected_audit:
+        raise _shared_checkpoint_resume_error(
+            f"{sample_id} completion preparation audit disagrees"
+        )
+    try:
+        pack_ref = ArtifactRef(**event["episode_pack_ref"])
+        _require_resume_store_reference(store, pack_ref, "episode pack")
+        pack = json.loads(store.read_verified(pack_ref))
+        pack_errors = ContractRegistry().load_schema("episode_pack").validate(pack)
+        if pack_errors:
+            raise ValueError("; ".join(pack_errors))
+        audit_only = pack["audit_only"]
+        if (
+            audit_only["episode_id"] != sample_id
+            or audit_only["method_condition_id"] != record["method_condition"]
+            or audit_only["paired_block_ref"] != record["paired_block_ref"]
+        ):
+            raise ValueError("episode-pack identity mismatch")
+
+        trajectory_ref = ArtifactRef(**event["canonical_trajectory_ref"])
+        _require_resume_store_reference(store, trajectory_ref, "trajectory")
+        trajectory = json.loads(store.read_verified(trajectory_ref))
+        trajectory_errors = ContractRegistry().load_schema("trajectory_v2").validate(
+            trajectory
+        )
+        if trajectory_errors:
+            raise ValueError("; ".join(trajectory_errors))
+        if (
+            trajectory["episode_id"] != sample_id
+            or trajectory["method_condition"] != record["method_condition"]
+        ):
+            raise ValueError("trajectory identity mismatch")
+        for attempt in trajectory["attempts"]:
+            for payload in attempt["attempt_event_refs"]:
+                _require_resume_store_reference(
+                    store,
+                    ArtifactRef(**payload),
+                    "attempt event",
+                )
+            summary_ref = ArtifactRef(**attempt["cost_summary_ref"])
+            _require_resume_store_reference(store, summary_ref, "cost summary")
+        terminal_payload = trajectory.get("terminal_candidate_ref")
+        if terminal_payload is not None:
+            _require_resume_store_reference(
+                store,
+                ArtifactRef(**terminal_payload),
+                "terminal candidate",
+            )
+
+        method_artifacts = event["method_artifacts"]
+        if method_artifacts["method_condition"] != record["method_condition"]:
+            raise ValueError("method-artifact identity mismatch")
+        candidate_payload = method_artifacts.get("candidate_artifact_ref")
+        if candidate_payload is not None:
+            candidate_ref = ArtifactRef(**candidate_payload)
+            _require_resume_store_reference(store, candidate_ref, "initial candidate")
+            emission = _project_emission_from_ref(store, candidate_ref)
+            if (
+                emission.project_package_sha256
+                != method_artifacts["project_package_sha256"]
+            ):
+                raise ValueError("initial candidate package digest mismatch")
+        metadata = json.loads(
+            (dataset_root / sample_id / "metadata.json").read_text(encoding="utf-8")
+        )
+        if (
+            metadata.get("method_condition") != record["method_condition"]
+            or metadata.get("freeze_fingerprint") != event["freeze_fingerprint"]
+            or metadata.get("block_preparation_audit") != expected_audit
+        ):
+            raise ValueError("persisted sample metadata mismatch")
+    except (
+        KeyError,
+        OSError,
+        TypeError,
+        UnicodeDecodeError,
+        ValueError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise _shared_checkpoint_resume_error(
+            f"completed prefix evidence is invalid for {sample_id}: {exc}"
+        ) from exc
+
+
+def _require_resume_store_reference(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    label: str,
+) -> None:
+    if store.reference(reference.key) != reference:
+        raise ValueError(f"{label} reference does not match its immutable key")
+    store.read_verified(reference)
 
 
 def _prepared_block_audit_record(
@@ -4791,10 +5022,17 @@ def _prepared_runtime_accounting_input_hashes(
             f"No prepared checkpoint accounting is implemented for {method_condition}"
         )
     prepared = runtime.prepared
-    manifest = read_development_shared_checkpoint_manifest(
-        store,
-        prepared.manifest_ref,
-    )
+    if runtime.expected_preparation_policy is None:
+        manifest = read_development_shared_checkpoint_manifest(
+            store,
+            prepared.manifest_ref,
+        )
+    else:
+        manifest = verify_development_shared_checkpoint_manifest_against_policy(
+            store,
+            prepared.manifest_ref,
+            expected_preparation_policy=runtime.expected_preparation_policy,
+        )
     if ArtifactRef(**manifest["paired_block_ref"]) != prepared.paired_block_ref:
         raise RuntimeError("prepared runtime paired block does not match verified manifest")
     manifest_event_refs = tuple(
@@ -4850,12 +5088,15 @@ def _prepared_runtime_accounting_input_hashes(
 def _load_prepared_block_runtime(
     store: ArtifactStore,
     *,
-    paired_block_ref: ArtifactRef,
-    preparation_policy_sha256: str,
+    expected_preparation_policy: Mapping[str, Any],
     member_sample_ids: tuple[str, ...],
     exclusive_model_call_ceilings: dict[str, int],
     expected_manifest_ref: ArtifactRef | None = None,
 ) -> PreparedBlockRuntime | None:
+    paired_block_ref = ArtifactRef(**expected_preparation_policy["paired_block_ref"])
+    preparation_policy_sha256 = str(
+        expected_preparation_policy["preparation_policy_sha256"]
+    )
     key = (
         f"shared-checkpoint-manifests/{paired_block_ref.sha256}/"
         f"{preparation_policy_sha256}"
@@ -4882,8 +5123,7 @@ def _load_prepared_block_runtime(
         manifest = read_complete_development_shared_checkpoint_resume(
             store,
             manifest_ref,
-            paired_block_ref=paired_block_ref,
-            preparation_policy_sha256=preparation_policy_sha256,
+            expected_preparation_policy=expected_preparation_policy,
         )
         nodes = {node["checkpoint_id"]: node for node in manifest["nodes"]}
         direct = _project_emission_from_checkpoint(
@@ -4922,6 +5162,7 @@ def _load_prepared_block_runtime(
         member_sample_ids=member_sample_ids,
         exclusive_model_call_ceilings=exclusive_model_call_ceilings,
         blocked_method_checkpoints={},
+        expected_preparation_policy=dict(expected_preparation_policy),
     )
 
 
