@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 from pathlib import Path
+from dataclasses import replace
 
 import pytest
 
@@ -16,7 +18,9 @@ from sr2fpga_agent.public_l2_harness import (
     PublicL2HarnessError,
     TrustedPublicL2HarnessFile,
     load_development_public_l2_harness,
+    candidate_simulation_violations,
 )
+from sr2fpga_agent.local_tools import resolve_executable
 
 
 def _project() -> GeneratedProject:
@@ -78,12 +82,16 @@ class _ScriptedRunner:
     def run(self, command, cwd, stage, timeout_seconds=30):
         self.calls.append((list(command), Path(cwd), stage, timeout_seconds))
         failed = stage == self.failed_stage
+        stdout = "PRIVATE TRUSTED HARNESS LOG"
+        if stage == "public_l2_sim":
+            trusted_text = "\n".join(path.read_text(encoding="utf-8") for path in (Path(cwd) / "__sr2fpga_trusted_public_l2").rglob("*.*"))
+            stdout = "\n".join(re.findall(r"SR2FPGA_TRUSTED_COMPLETE_[0-9a-f]{32}", trusted_text)) + "\n"
         return ToolResult(
             stage=stage,
             command=list(command),
             status="failed" if failed else "passed",
             exit_code=1 if failed else 0,
-            stdout="PRIVATE TRUSTED HARNESS LOG",
+            stdout=stdout,
             stderr="",
             duration_seconds=0.01,
         )
@@ -219,3 +227,65 @@ def test_trusted_public_l2_rejects_candidate_collision_with_reserved_workspace(
     }
     assert "public_l2_reserved_path_collision" in result.diagnostic_codes
     assert runner.calls == []
+
+
+@pytest.mark.parametrize("body", [
+    "initial $finish;", "initial $stop;", "initial $finish_and_return(0);",
+    '`define EXIT $fi``nish\ninitial `EXIT;',
+    'initial $display("SR2FPGA_TRUSTED_COMPLETE_fake");',
+    "initial trusted_tb.finish_test();", "initial other_block.finish_test();",
+    '`include "sim/tb_top.v"', '`include "../../private.vh"',
+])
+def test_candidate_cannot_control_or_forge_trusted_completion(tmp_path: Path, body: str) -> None:
+    original = _input()
+    project = GeneratedProject("counter8", {**original.terminal_project.files, "rtl/top.v": f"module top;\n{body}\nendmodule\n"})
+    runner = _ScriptedRunner()
+    result = DevelopmentPublicToolEvaluator(tmp_path, command_runner=runner, trusted_public_l2_harness=_harness())(
+        replace(original, terminal_project=project), "blocked"
+    )
+    assert result.stage_outcomes["l0"]["status"] == "fail"
+    assert result.stage_outcomes["public_l2"]["status"] == "not_run"
+    assert runner.calls == []
+
+
+def test_candidate_guard_ignores_comments_and_strings_but_follows_headers() -> None:
+    files = {"rtl/top.v": '`include "rtl/params.vh"\nmodule top; /* $finish; */ parameter MSG="$finish"; endmodule',
+             "rtl/params.vh": "localparam N = $clog2(8);"}
+    assert candidate_simulation_violations(files, ["rtl/top.v"], []) == ()
+    files["rtl/params.vh"] = "initial $finish;"
+    assert candidate_simulation_violations(files, ["rtl/top.v"], [])
+    assert candidate_simulation_violations(
+        {"top.v": "module top; initial finish_test(); endmodule"}, ["top.v"],
+        ["module trusted_tb; task automatic finish_test; $finish; endtask endmodule"],
+    )
+
+
+@pytest.mark.parametrize(("statement", "expected"), [
+    ("#1; $finish;", "pass"),
+    ('#1; $fatal(1, "required check failed");', "fail"),
+    ("if (0) $finish;", "fail"),
+    ("forever #1;", "not_run"),
+])
+def test_real_tools_require_reachable_trusted_completion(tmp_path: Path, statement: str, expected: str) -> None:
+    if any(resolve_executable(tool) is None for tool in ("verilator", "iverilog", "vvp", "yosys")):
+        pytest.skip("local HDL tools unavailable")
+    content = f"module trusted_tb; top dut(); initial begin {statement} end endmodule\n"
+    harness = replace(_harness(), files=(TrustedPublicL2HarnessFile("tb.v", content, hashlib.sha256(content.encode()).hexdigest()),), timeout_seconds=1)
+    result = DevelopmentPublicToolEvaluator(tmp_path, trusted_public_l2_harness=harness)(_input(), "real-tools")
+    assert result.stage_outcomes["public_l2"]["status"] == expected
+
+
+def test_real_tools_isolate_candidate_macros_and_select_manifest_top(tmp_path: Path) -> None:
+    if any(resolve_executable(tool) is None for tool in ("verilator", "iverilog", "vvp", "yosys")):
+        pytest.skip("local HDL tools unavailable")
+    files = dict(_project().files)
+    files["rtl/top.v"] = "`define SKIP_CHECKS\nmodule top; endmodule\n"
+    files["rtl/helper.v"] = "module helper; endmodule\n"
+    manifest = json.loads(files["manifest.json"])
+    manifest["sources"].append({"path": "rtl/helper.v", "role": "rtl_source", "language": "verilog"})
+    files["manifest.json"] = json.dumps(manifest)
+    content = 'module trusted_tb; top dut(); initial begin\n`ifdef SKIP_CHECKS\n$finish;\n`else\n$fatal(1, "required check");\n`endif\nend endmodule\n'
+    harness = replace(_harness(), files=(TrustedPublicL2HarnessFile("tb.v", content, hashlib.sha256(content.encode()).hexdigest()),))
+    result = DevelopmentPublicToolEvaluator(tmp_path, trusted_public_l2_harness=harness)(replace(_input(), terminal_project=GeneratedProject("counter8", files)), "macros")
+    assert result.stage_outcomes["l1"]["status"] == "pass"
+    assert result.stage_outcomes["public_l2"]["status"] == "fail"

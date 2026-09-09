@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
@@ -167,6 +168,9 @@ class _PassingCommandRunner:
         stdout = "TEST_PASS\n" if stage == "candidate_sim_run" else ""
         if stage == "synth":
             stdout = "Number of cells: 1\n  SB_LUT4 1\n"
+        if stage == "public_l2_sim":
+            trusted_text = "\n".join(path.read_text(encoding="utf-8") for path in (Path(cwd) / "__sr2fpga_trusted_public_l2").rglob("*.*"))
+            stdout = "\n".join(re.findall(r"SR2FPGA_TRUSTED_COMPLETE_[0-9a-f]{32}", trusted_text)) + "\n"
         return ToolResult(
             stage=stage,
             command=list(command),

@@ -703,7 +703,7 @@ def _read_anthropic_streaming_text(
         while True:
             raw_line = _read_streaming_line(response, timeout_seconds, started_at)
             if not raw_line:
-                break
+                raise _TransientOpenAICompatibleError("Anthropic stream ended before message_stop")
             line = raw_line.decode("utf-8", errors="replace").strip()
             if not line or line.startswith(":") or not line.startswith("data:"):
                 continue
@@ -762,7 +762,7 @@ def _read_streaming_chat_content(
         while True:
             raw_line = _read_streaming_line(response, timeout_seconds, started_at)
             if not raw_line:
-                break
+                raise _TransientOpenAICompatibleError("Chat stream ended before [DONE]")
             if time.monotonic() - started_at > timeout_seconds:
                 raise _TransientOpenAICompatibleError(
                     "OpenAI-compatible API response read timed out"
@@ -822,13 +822,13 @@ def _read_streaming_responses_content(
         while True:
             raw_line = _read_streaming_line(response, timeout_seconds, started_at)
             if not raw_line:
-                break
+                raise _TransientOpenAICompatibleError("Responses stream ended before response.completed")
             line = raw_line.decode("utf-8", errors="replace").strip()
             if not line or line.startswith(":") or not line.startswith("data:"):
                 continue
             raw_data = line.removeprefix("data:").strip()
             if raw_data == "[DONE]":
-                break
+                raise _TransientOpenAICompatibleError("Responses stream ended before response.completed")
             try:
                 event = json.loads(raw_data)
             except json.JSONDecodeError as exc:

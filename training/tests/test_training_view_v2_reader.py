@@ -82,6 +82,16 @@ def test_prepare_dataset_consumes_canonical_v2_row(tmp_path: Path) -> None:
     assert converted["messages"][-1]["role"] == "assistant"
 
 
+@pytest.mark.parametrize("prefix", ["", "does-not-match"])
+def test_converter_rejects_duplicate_rows_before_filtering_or_overwrite(tmp_path: Path, prefix: str) -> None:
+    source, target = tmp_path / "duplicate.jsonl", tmp_path / "chat.jsonl"
+    _write_rows(source, [_row(), _row()])
+    target.write_text("existing output", encoding="utf-8")
+    with pytest.raises(ValueError, match="duplicate training view row_id"):
+        convert_jsonl(source, target, sample_id_prefix=prefix)
+    assert target.read_text(encoding="utf-8") == "existing output"
+
+
 def test_reader_rejects_hash_mismatch() -> None:
     row = _row()
     row["payload"]["prompt_messages"][0]["content"] = "tampered"

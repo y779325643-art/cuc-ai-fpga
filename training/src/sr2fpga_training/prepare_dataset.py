@@ -36,6 +36,7 @@ def convert_jsonl(
 ) -> int:
     """Convert a JSONL dataset into chat-message JSONL format."""
     rows: list[dict[str, Any]] = []
+    canonical_row_ids: set[str] = set()
     excluded_paths = exclude_file_paths or set()
     with source.open("r", encoding="utf-8") as input_file:
         for line_number, line in enumerate(input_file, start=1):
@@ -45,11 +46,22 @@ def convert_jsonl(
                 row = json.loads(line)
             except json.JSONDecodeError as exc:
                 raise DatasetFormatError(f"Invalid JSON on line {line_number}: {exc.msg}") from exc
+            if not isinstance(row, dict):
+                raise DatasetFormatError(f"Row {line_number} must be a JSON object")
+            if row.get("contract_version") == "training-view-row-v2":
+                # Validate before filtering so a corrupt canonical file cannot be
+                # made acceptable by dropping its invalid or duplicate rows.
+                messages = _row_to_messages(row, line_number)
+                if row["row_id"] in canonical_row_ids:
+                    raise DatasetFormatError(f"duplicate training view row_id: {row['row_id']}")
+                canonical_row_ids.add(row["row_id"])
+            else:
+                messages = None
             if sample_id_prefix and not str(row.get("sample_id", "")).startswith(sample_id_prefix):
                 continue
             if str(row.get("file_path", "")) in excluded_paths:
                 continue
-            rows.append({"messages": _row_to_messages(row, line_number)})
+            rows.append({"messages": messages if messages is not None else _row_to_messages(row, line_number)})
 
     target.parent.mkdir(parents=True, exist_ok=True)
     with target.open("w", encoding="utf-8") as output_file:

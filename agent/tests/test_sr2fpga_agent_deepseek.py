@@ -3,6 +3,7 @@ import hashlib
 import json
 import http.client
 import importlib
+import io
 import os
 import unittest
 import urllib.error
@@ -39,6 +40,26 @@ from sr2fpga_agent.system_his_fidelity import build_deterministic_requirement_tr
 
 
 class DeepSeekProviderTest(unittest.TestCase):
+    def test_stream_eof_requires_protocol_completion(self) -> None:
+        cases = (
+            (providers._read_streaming_chat_content, {"choices": [{"delta": {"content": "{}"}}]}, "data: [DONE]\n"),
+            (providers._read_anthropic_streaming_text, {"type": "content_block_delta", "delta": {"type": "text_delta", "text": "{}"}}, 'data: {"type":"message_stop"}\n'),
+            (providers._read_streaming_responses_content, {"type": "response.output_text.delta", "delta": "{}"}, 'data: {"type":"response.completed"}\n'),
+        )
+        for reader, event, completion in cases:
+            data = ("data: " + json.dumps(event) + "\n").encode()
+            with self.subTest(reader=reader.__name__):
+                with self.assertRaises(providers._TransientOpenAICompatibleError):
+                    reader(io.BytesIO(data), 5)
+                self.assertEqual(reader(io.BytesIO(data + completion.encode()), 5), "{}")
+
+    def test_truncated_chat_stream_retries_transport(self) -> None:
+        data = b'data: {"choices":[{"delta":{"content":"{}"}}]}\n'
+        client = OpenAICompatibleClient(OpenAICompatibleConfig(api_key="fake", model="test", transport_attempts=2, retry_backoff_seconds=0))
+        with mock.patch("urllib.request.urlopen", side_effect=[io.BytesIO(data), io.BytesIO(data + b"data: [DONE]\n")]):
+            self.assertEqual(client.stream_chat([{"role": "user", "content": "JSON"}]), "{}")
+        self.assertEqual(client.consume_transport_attempt_count(), 2)
+
     def test_split_modules_own_legacy_deepseek_exports(self) -> None:
         deepseek = importlib.import_module("sr2fpga_agent.deepseek")
         providers = importlib.import_module("sr2fpga_agent.providers")

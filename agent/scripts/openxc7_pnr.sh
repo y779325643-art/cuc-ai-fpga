@@ -115,29 +115,55 @@ mkdir -p eval
 
 python3 - "$part" "$clock_period_ns" <<'PY'
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+import re
 import sys
 
 part = sys.argv[1]
 clock_period_ns = sys.argv[2]
 manifest = json.loads(Path("manifest.json").read_text(encoding="utf-8"))
+canonical = manifest.get("contract_version") == "project-package-v1"
+if manifest.get("contract_version") not in (None, "project-package-v1"):
+    raise ValueError("unsupported project manifest version")
 sources = manifest["sources"]
-top_module = manifest.get("top_module", "top")
+top_module = manifest["top"]["module"] if canonical else manifest["top_module"]
+if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", top_module):
+    raise ValueError("unsafe top module")
+
+read_commands = []
+for item in sources:
+    source = item["path"] if canonical else item
+    path = PurePosixPath(source)
+    if (path.is_absolute() or not path.parts or ".." in path.parts
+            or any(not re.fullmatch(r"[A-Za-z0-9_.-]+", part) for part in path.parts)):
+        raise ValueError("unsafe RTL source path")
+    language = item["language"] if canonical else "systemverilog"
+    if language not in ("verilog", "systemverilog"):
+        raise ValueError(f"unsupported OpenXC7 source language: {language}")
+    flag = " -sv" if language == "systemverilog" else ""
+    read_commands.append(f"read_verilog{flag} {path.as_posix()}\n")
+if not read_commands:
+    raise ValueError("manifest has no RTL sources")
 
 with Path("eval/openxc7_yosys.ys").open("w", encoding="utf-8") as handle:
-    for source in sources:
-        handle.write(f"read_verilog -sv {source}\n")
+    handle.writelines(read_commands)
     handle.write(f"synth_xilinx -family xc7 -top {top_module}\n")
     handle.write("write_json eval/openxc7_design.json\n")
 
 clock_name = "clk"
 port_names = []
+if canonical:
+    for port in manifest["top"]["interface"]["ports"]:
+        name, width = port["name"], port["width"]
+        if not re.fullmatch(r"[A-Za-z_][A-Za-z0-9_$]*", name) or not isinstance(width, int) or width < 1:
+            raise ValueError("unsupported OpenXC7 top port")
+        port_names.extend([name] if width == 1 else [f"{name}[{index}]" for index in range(width)])
 try:
     system_his = json.loads(Path("system_his.json").read_text(encoding="utf-8"))
     clocks = system_his.get("clocks", [])
     if clocks and isinstance(clocks[0], dict) and clocks[0].get("name"):
         clock_name = str(clocks[0]["name"])
-    for port in system_his.get("top_ports", []):
+    for port in ([] if canonical else system_his.get("top_ports", [])):
         if isinstance(port, dict) and port.get("name"):
             name = str(port["name"])
             width = port.get("width", 1)

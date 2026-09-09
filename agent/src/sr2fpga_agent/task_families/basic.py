@@ -24,7 +24,7 @@ def counter_rtl(width: int) -> str:
             if (!rst_n) begin
               count <= {width}'d0;
             end else if (en) begin
-              count <= count + {{ {width - 1}'d0, 1'b1 }};
+              count <= count + {width}'d1;
             end
           end
 
@@ -83,6 +83,7 @@ def counter_testbench(width: int) -> str:
 
 
 def simple_fsm_rtl(width: int) -> str:
+    width = max(2, width)
     msb = width - 1
     return dedent(
         f"""\
@@ -115,7 +116,7 @@ def simple_fsm_rtl(width: int) -> str:
                   end
                 end
                 RUN: begin
-                  state_value <= state_value + {{ {width - 1}'d0, 1'b1 }};
+                  state_value <= state_value + {width}'d1;
                   if (state_value == {width}'d2) begin
                     state <= DONE;
                   end
@@ -139,6 +140,7 @@ def simple_fsm_rtl(width: int) -> str:
 
 
 def simple_fsm_testbench(width: int) -> str:
+    width = max(2, width)
     msb = width - 1
     return dedent(
         f"""\

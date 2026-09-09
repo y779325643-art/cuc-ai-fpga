@@ -1,21 +1,30 @@
 from __future__ import annotations
 
-import sys
-import threading
 import json
 import re
+import sys
+import threading
 from http.client import HTTPConnection
 from http.server import ThreadingHTTPServer
 from pathlib import Path
 
 import pytest
 
-
 APP_ROOT = Path(__file__).resolve().parent
 if str(APP_ROOT) not in sys.path:
     sys.path.insert(0, str(APP_ROOT))
 
-from server import DemoRequestHandler, _stage_statuses, _validate_audit_request, _validate_request, audit_requirement, infer_demo_task_type, task_registry_payload
+from server import (
+    DemoRequestHandler,
+    _stage_statuses,
+    _template_context,
+    _validate_audit_request,
+    _validate_request,
+    audit_requirement,
+    generate_demo,
+    infer_demo_task_type,
+    task_registry_payload,
+)
 
 
 @pytest.fixture
@@ -146,7 +155,7 @@ def test_task_registry_uses_public_labels_without_internal_t_numbers() -> None:
     assert labels["composed_dual_stream_join"] == "双流汇合（dual-stream join）"
     assert labels["composed_batch_rl_accelerator_shell"] == "双通道批量 Q-Learning 加速器"
     assert all("composed_" not in label for label in labels.values())
-    assert all(re.search(r"\bt(?:[1-9]|1[0-2])(?:_|\b)", label, re.I) is None for label in labels.values())
+    assert all(re.search(r"\bt(?:[1-9]|1[0-2])(?:_|\b)", label, re.IGNORECASE) is None for label in labels.values())
 
 
 def test_audit_requirement_asks_for_task_family_when_auto_inference_fails() -> None:
@@ -297,3 +306,60 @@ def test_stage_statuses_do_not_turn_capability_gap_into_l0_failure() -> None:
 
     assert stages["L0"] == {"status": "not_run", "reason": "capability_gap"}
     assert stages["L3"] == {"status": "not_run", "reason": "capability_gap"}
+
+
+@pytest.mark.parametrize(("status", "reason"), [("pass", None), ("fail", None), ("not_run", "toolchain_environment_failure"), ("timeout", "tool_timeout")])
+def test_ui_preserves_agent_tool_status(status: str, reason: str | None) -> None:
+    from sr2fpga_agent.agent import _tool_stage_outcome
+    from sr2fpga_agent.models import ToolResult
+    raw = {"pass": "passed", "fail": "failed"}.get(status, status)
+    normalized, normalized_reason = _tool_stage_outcome(ToolResult("lint", [], raw, None, "", "", 0, reason))
+    result = _stage_statuses({"l1_lint_status": normalized, "l1_lint_skip_reason": normalized_reason, "l3_synth_status": normalized, "l3_synth_skip_reason": normalized_reason, "checks": {"l0_complete": True}})
+    assert result["L1"] == {"status": status, "reason": reason}
+    assert result["L3"] == {"status": status, "reason": reason}
+
+
+def _context_payload() -> dict:
+    return {"project_name": "context_demo", "task_type": "counter", "width": 8, "requirement": "Generate a counter with enable and reset.", "engineering_context": _template_context("counter", 8)}
+
+
+@pytest.mark.parametrize(("field", "value"), [("top_module", "custom_top"), ("reset_polarity", "active_high"), ("reset_polarity", "sync_active_low"), ("interface_spec", "uart_stream"), ("io_spec", "clk, rst_n, clear, count[7:0]"), ("target_platform", "custom_board"), ("verification_intent", "formal_ready"), ("deliverables", ["RTL"])])
+def test_unsupported_context_stops_audit_and_generation(tmp_path: Path, field: str, value: object) -> None:
+    payload = _context_payload()
+    payload["engineering_context"][field] = value
+    audit = audit_requirement(payload)
+    assert audit["disposition"] == "capability_gap"
+    assert field in audit["capability_gap_ids"]
+    result = generate_demo(payload, output_root=tmp_path)
+    assert result["failure_type"] == "capability_gap"
+    assert result["files"] == []
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize("clock", ["nan", "inf", "1e308", "0", "-1"])
+def test_context_clock_must_be_finite_and_positive(clock: str) -> None:
+    payload = _context_payload()
+    payload["engineering_context"]["clock_mhz"] = clock
+    assert audit_requirement(payload)["disposition"] == "needs_clarification"
+
+
+def test_clock_context_reaches_recorded_project(tmp_path: Path) -> None:
+    payload = _context_payload()
+    payload["engineering_context"]["clock_mhz"] = "25"
+    audit = audit_requirement(payload)
+    assert audit["disposition"] == "ready"
+    result = generate_demo(payload, output_root=tmp_path)
+    files = {item["path"]: item["content"] for item in result["files"]}
+    assert json.loads(files["manifest.json"])["clock"]["frequency_hz"] == 25_000_000
+    assert "40.000" in files["constraints/timing.sdc"]
+    assert "README.md" in files
+    recorded = tmp_path / result["sample_id"]
+    assert json.loads((recorded / "metadata.json").read_text(encoding="utf-8"))["engineering_context"] == payload["engineering_context"]
+    assert (recorded / "attempts/attempt_000/generated_project/README.md").read_text(encoding="utf-8") == files["README.md"]
+
+
+@pytest.mark.parametrize("requirement", ["Generate a counter at 25 MHz.", "Generate a 16-bit counter.", "Generate a counter with active-high reset."])
+def test_conflicting_text_and_context_requires_clarification(requirement: str) -> None:
+    payload = _context_payload()
+    payload["requirement"] = requirement
+    assert audit_requirement(payload)["disposition"] == "needs_clarification"

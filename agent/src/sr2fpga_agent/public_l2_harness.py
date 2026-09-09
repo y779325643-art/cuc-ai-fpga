@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -14,6 +16,112 @@ from sr2fpga_agent.path_safety import validate_project_relative_path
 
 class PublicL2HarnessError(ValueError):
     pass
+
+
+_HDL_TOKEN = re.compile(
+    r'//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|\\[^\s]+|'
+    r'`[A-Za-z_][A-Za-z0-9_$]*|\$[A-Za-z0-9_$]*|[A-Za-z_][A-Za-z0-9_$]*|[^\s]',
+    re.DOTALL,
+)
+_PURE_SYSTEM_FUNCTIONS = frozenset({
+    "$signed", "$unsigned", "$clog2", "$bits", "$size", "$left", "$right",
+    "$low", "$high", "$increment", "$dimensions", "$unpacked_dimensions",
+    "$isunknown", "$onehot", "$onehot0", "$countones", "$countbits",
+    "$rtoi", "$itor", "$realtobits", "$bitstoreal", "$time", "$realtime", "$stime",
+})
+
+
+def _hdl_tokens(content: str):
+    return [
+        token for token in _HDL_TOKEN.finditer(content)
+        if not token.group().startswith(("//", "/*"))
+    ]
+
+
+def candidate_simulation_violations(
+    files: Mapping[str, str], sources: Sequence[str], trusted_sources: Sequence[str],
+) -> tuple[str, ...]:
+    """Keep candidate HDL out of simulator control and testbench scope.
+
+    Public L2 supports module connections through ports, local literal includes,
+    and pure system functions. Hierarchical references and side-effecting system
+    tasks require a separate evaluator policy; do not silently execute them.
+    """
+    trusted_names = set()
+    for content in trusted_sources:
+        tokens = _hdl_tokens(content)
+        for index, token in enumerate(tokens[:-1]):
+            if token.group() == "module":
+                trusted_names.add(tokens[index + 1].group().removeprefix("\\"))
+            elif token.group() in {"task", "function"}:
+                # Unqualified task calls can resolve upwards into the testbench.
+                declaration = []
+                for item in tokens[index + 1:]:
+                    if item.group() in {"(", ";"}:
+                        break
+                    declaration.append(item.group().removeprefix("\\"))
+                if declaration:
+                    trusted_names.add(declaration[-1])
+    pending = list(sources)
+    seen = set()
+    violations = set()
+    while pending:
+        path = pending.pop()
+        if path in seen:
+            continue
+        seen.add(path)
+        tokens = _hdl_tokens(files[path])
+        for index, token in enumerate(tokens):
+            value = token.group().removeprefix("\\")
+            dpi = (
+                value in {"import", "export"} and index + 1 < len(tokens)
+                and tokens[index + 1].group().startswith('"DPI')
+            )
+            if (
+                (value.startswith("$") and value not in _PURE_SYSTEM_FUNCTIONS)
+                or value in trusted_names
+                or value in {"bind", "disable", "force", "release", "defparam"}
+                or dpi
+            ):
+                violations.add("candidate_simulator_control_or_testbench_access")
+            if value == "." and index and re.fullmatch(
+                r"\\?[A-Za-z_][A-Za-z0-9_$]*", tokens[index - 1].group()
+            ):
+                violations.add("candidate_hierarchical_reference")
+            if value == "`include":
+                include = tokens[index + 1].group() if index + 1 < len(tokens) else ""
+                try:
+                    if not (include.startswith('"') and include.endswith('"')):
+                        raise ValueError("nonliteral include")
+                    included_path = validate_project_relative_path(include[1:-1])
+                    if included_path not in files:
+                        raise ValueError("external include")
+                    pending.append(included_path)
+                except ValueError:
+                    violations.add("candidate_external_or_nonliteral_include")
+    return tuple(sorted(violations))
+
+
+def instrument_trusted_completion(content: str, marker: str, paths: set[str]) -> str:
+    """Instrument trusted exit sites, preserving the testbench's control flow."""
+    edits = []
+    tokens = _hdl_tokens(content)
+    for index, token in enumerate(tokens):
+        if token.group() == "`include":
+            include = tokens[index + 1] if index + 1 < len(tokens) else None
+            if include is None or include.group()[1:-1] not in paths:
+                raise PublicL2HarnessError("trusted includes must name a bundled file literally")
+            edits.append((include.start(), include.end(), '"__sr2fpga_trusted_public_l2/' + include.group()[1:-1] + '"'))
+        if token.group() not in {"$finish", "$finish_and_return"}:
+            continue
+        end = next((item.end() for item in tokens[index + 1:] if item.group() == ";"), None)
+        if end is None:
+            raise PublicL2HarnessError("trusted completion call has no statement terminator")
+        edits.append((token.start(), token.start(), f'begin $display("{marker}"); '))
+        edits.append((end, end, " end"))
+    for start, end, replacement in sorted(edits, reverse=True):
+        content = content[:start] + replacement + content[end:]
+    return content
 
 
 @dataclass(frozen=True)

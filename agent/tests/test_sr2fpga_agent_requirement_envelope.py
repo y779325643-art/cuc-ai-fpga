@@ -7,9 +7,21 @@ from sr2fpga_agent.requirement_envelope import (
     route_requirement,
 )
 from sr2fpga_agent.models import PlatformProfile, ProjectRequest
+from sr2fpga_agent.requirement_boundary import evaluate_requirement_boundary
 
 
 class RequirementEnvelopeTests(unittest.TestCase):
+    def test_async_fifo_spellings_cannot_bypass_cdc_boundary(self) -> None:
+        for phrase in ("asynchronous FIFO", "async FIFO", "async-FIFO", "异步FIFO"):
+            with self.subTest(phrase=phrase):
+                decision = evaluate_requirement_boundary(
+                    ProjectRequest("fifo", 8, "cdc_probe", f"Generate an 8-bit {phrase} with reset."),
+                    PlatformProfile("generic_verilog", "generic", "open_source"),
+                )
+                self.assertIn("clock_domain_crossing", decision.envelope.capability_labels)
+                self.assertEqual(decision.envelope.explicit_facts["cdc_policy"], "async_fifo")
+                self.assertEqual(decision.disposition, "capability_gap")
+
     def test_clarification_answer_is_explicit_and_resolves_only_named_fact(self) -> None:
         envelope = build_requirement_envelope(
             "Build an 8-bit ADC interface.",

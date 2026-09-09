@@ -1,43 +1,23 @@
 const samples = {
   uart_fifo_loopback: {
-    projectName: "uart_fifo_demo", topModule: "uart_fifo_top", width: 8, clockMHz: 50,
-    resetPolarity: "active_low", interfaceSpec: "uart_stream",
-    ioSpec: "clk, rst_n, rx, tx, loopback_en, fifo_full, fifo_empty, error_count[7:0]",
-    targetPlatform: "generic Verilog，UART 115200 baud，生成基础约束模板",
-    verificationIntent: "self_checking_tb",
+    projectName: "uart_fifo_demo", width: 8,
     requirement: "生成一个 UART FIFO 回环 FPGA 工程。接收端将串行数据写入同步 FIFO，发送端在数据可用时读出并回传。",
   },
   fifo: {
-    projectName: "sync_fifo_demo", topModule: "sync_fifo_top", width: 8, clockMHz: 100,
-    resetPolarity: "active_low", interfaceSpec: "wr_rd_enable",
-    ioSpec: "clk, rst_n, wr_en, rd_en, din[7:0], dout[7:0], full, empty",
-    targetPlatform: "generic Verilog，生成基础 XDC/SDC 约束模板",
-    verificationIntent: "self_checking_tb",
+    projectName: "sync_fifo_demo", width: 8,
     requirement: "生成一个同步 FIFO 工程，包含读写使能、满空标志、溢出保护和下溢保护。",
   },
   counter: {
-    projectName: "counter_demo", topModule: "counter_top", width: 8, clockMHz: 100,
-    resetPolarity: "active_low", interfaceSpec: "simple_gpio",
-    ioSpec: "clk, rst_n, en, clear, count[7:0], overflow",
-    targetPlatform: "generic Verilog，生成基础约束模板",
-    verificationIntent: "self_checking_tb",
-    requirement: "生成一个同步计数器工程，支持使能、清零、溢出标志和参数化计数宽度。",
+    projectName: "counter_demo", width: 8,
+    requirement: "生成一个带使能和复位的参数化计数器工程。",
   },
   composed_event_counter: {
-    projectName: "event_counter_demo", topModule: "event_counter_top", width: 8, clockMHz: 100,
-    resetPolarity: "active_low", interfaceSpec: "valid_ready",
-    ioSpec: "clk, rst_n, event_valid, gate_en, event_ready, count[7:0], overflow",
-    targetPlatform: "generic Verilog，生成基础约束模板",
-    verificationIntent: "self_checking_tb",
-    requirement: "生成一个事件门控计数器工程：有效事件通过门控模块后驱动计数核心，并输出计数值和溢出状态。",
+    projectName: "event_counter_demo", width: 8,
+    requirement: "生成一个事件门控计数器工程：有效事件通过门控模块后驱动计数核心，并输出计数值。",
   },
   pwm_controller: {
-    projectName: "pwm_demo", topModule: "pwm_top", width: 8, clockMHz: 100,
-    resetPolarity: "active_low", interfaceSpec: "simple_gpio",
-    ioSpec: "clk, rst_n, duty[7:0], period[7:0], enable, pwm_out",
-    targetPlatform: "generic Verilog，生成基础约束模板",
-    verificationIntent: "self_checking_tb",
-    requirement: "生成一个 PWM 控制器工程，包含占空比控制、周期配置、使能控制和复位后的确定性输出。",
+    projectName: "pwm_demo", width: 8,
+    requirement: "生成一个带使能和复位的 PWM 控制器，根据占空比输入输出 PWM 信号。",
   },
 };
 
@@ -85,16 +65,21 @@ function showToast(message) {
 
 function applySample(taskType) {
   const sample = samples[taskType] || genericSample(taskType);
+  const context = taskRegistry.find((task) => task.id === taskType)?.engineering_context;
+  if (!context) {
+    showToast("任务列表尚未加载，请稍后重试");
+    return;
+  }
   elements.projectName.value = sample.projectName;
-  elements.topModule.value = sample.topModule;
   elements.width.value = sample.width;
-  elements.clockMHz.value = sample.clockMHz;
-  elements.resetPolarity.value = sample.resetPolarity;
-  elements.interfaceSpec.value = sample.interfaceSpec;
-  elements.ioSpec.value = sample.ioSpec;
-  elements.targetPlatform.value = sample.targetPlatform;
-  elements.verificationIntent.value = sample.verificationIntent;
   elements.requirement.value = sample.requirement;
+  elements.topModule.value = context.top_module;
+  elements.clockMHz.value = context.clock_mhz;
+  elements.resetPolarity.value = context.reset_polarity;
+  elements.interfaceSpec.value = context.interface_spec;
+  elements.ioSpec.value = context.io_spec;
+  elements.targetPlatform.value = context.target_platform;
+  elements.verificationIntent.value = context.verification_intent;
 }
 
 function genericSample(taskType) {
@@ -102,14 +87,7 @@ function genericSample(taskType) {
   const readable = normalized.replaceAll("_", " ");
   return {
     projectName: `${normalized}_demo`.replace(/[^A-Za-z0-9_-]/g, "_"),
-    topModule: `${normalized}_top`.replace(/[^A-Za-z0-9_]/g, "_"),
     width: 8,
-    clockMHz: 100,
-    resetPolarity: "active_low",
-    interfaceSpec: normalized.includes("uart") ? "uart_stream" : normalized.includes("stream") ? "valid_ready" : "simple_gpio",
-    ioSpec: "clk, rst_n, in_valid, in_ready, data_in[7:0], out_valid, out_ready, data_out[7:0]",
-    targetPlatform: "generic Verilog，生成基础约束模板",
-    verificationIntent: "self_checking_tb",
     requirement: `生成一个 ${readable} FPGA 工程，包含顶层集成、RTL 子模块、自检 testbench、约束模板和 README。`,
   };
 }
@@ -143,7 +121,7 @@ function requestPayload() {
     project_name: elements.projectName.value.trim(),
     task_type: mode === "free" ? "freeform" : elements.taskType.value || "auto",
     width: Number(elements.width.value),
-    requirement: compiledRequirement(),
+    requirement: elements.requirement.value.trim(),
     generation_mode: mode,
     engineering_context: engineeringContext(),
   };
@@ -169,32 +147,6 @@ function selectedDeliverables() {
     ["Constraints", document.querySelector("#deliverConstraints").checked],
     ["README", document.querySelector("#deliverReadme").checked],
   ].filter(([, enabled]) => enabled).map(([name]) => name);
-}
-
-function labelFor(select) {
-  return select.options[select.selectedIndex]?.textContent.trim() || select.value;
-}
-
-function compiledRequirement() {
-  const context = engineeringContext();
-  const goal = elements.requirement.value.trim();
-  const lines = [
-    goal,
-    "",
-    "工程生成上下文：",
-    `- 顶层模块：${context.top_module}`,
-    `- 数据通路位宽：${elements.width.value} bit`,
-    context.clock_mhz ? `- 时钟频率：${context.clock_mhz} MHz` : null,
-    `- 复位策略：${labelFor(elements.resetPolarity)}`,
-    `- 接口协议：${labelFor(elements.interfaceSpec)}`,
-    context.io_spec ? `- 端口与信号摘要：${context.io_spec}` : null,
-    context.target_platform ? `- 目标平台 / 约束：${context.target_platform}` : null,
-    `- 验证策略：${labelFor(elements.verificationIntent)}`,
-    `- 交付范围：${context.deliverables.join(", ") || "未指定"}`,
-    "",
-    "输出必须是完整 FPGA 工程，而不是单一模块。",
-  ];
-  return lines.filter((line) => line !== null && line !== undefined).join("\n");
 }
 
 function renderAmbiguityAudit(data) {
@@ -225,7 +177,7 @@ function renderAmbiguityAudit(data) {
   const items = questions.length
     ? questions
     : gaps.length
-      ? gaps.map((gap) => `当前确定性后端不支持能力：${gap}`)
+      ? data.capability_gap_messages || gaps.map((gap) => `当前确定性后端不支持能力：${gap}`)
       : ["需求边界评估为 ready，可以继续运行项目生成与验证。"];
 
   items.forEach((text) => {
@@ -518,7 +470,7 @@ elements.form.addEventListener("submit", async (event) => {
     const boundaryStop = ["capability_gap", "requirement_clarification_required"].includes(data.failure_type);
     elements.passLevel.textContent = data.failure_type === "capability_gap" ? "CAPABILITY GAP" : data.failure_type === "requirement_clarification_required" ? "NEEDS CLARIFICATION" : data.pass_level;
     elements.passLevel.className = `result-chip ${boundaryStop ? "not-run" : statusClass(data.pass_level)}`;
-    elements.artifactPath.textContent = `${data.sample_id} · ${data.artifact_path}`;
+    elements.artifactPath.textContent = data.sample_id ? `${data.sample_id} · ${data.artifact_path}` : "未生成工程";
     renderFiles(data.files);
     renderStages(data.stages);
     updateCounts(data.counts, data.files.length);

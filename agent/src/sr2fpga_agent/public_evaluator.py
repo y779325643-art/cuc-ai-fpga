@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import uuid
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping
@@ -20,6 +21,8 @@ from sr2fpga_agent.path_safety import (
 )
 from sr2fpga_agent.public_l2_harness import (
     DevelopmentTrustedPublicL2Harness,
+    candidate_simulation_violations,
+    instrument_trusted_completion,
     unavailable_public_l2_harness_evidence,
 )
 from sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
@@ -474,11 +477,20 @@ class DevelopmentPublicToolEvaluator:
             if self._trusted_public_l2_harness is not None
             else ()
         )
+        simulation_violations = (
+            candidate_simulation_violations(
+                project.files, manifest.sources,
+                [item.content for item in self._trusted_public_l2_harness.files],
+            )
+            if manifest is not None and self._trusted_public_l2_harness is not None
+            else ()
+        )
         if (
             not l0.passed
             or manifest is None
             or identifier_issues
             or reserved_path_collisions
+            or simulation_violations
         ):
             stage_outcomes["l0"] = _stage("fail", "public_l0_failed")
             if not l0.passed:
@@ -487,6 +499,7 @@ class DevelopmentPublicToolEvaluator:
                 diagnostics.append("rtl_identifier_check_failed")
             if reserved_path_collisions:
                 diagnostics.append("public_l2_reserved_path_collision")
+            diagnostics.extend(simulation_violations)
             raw["l0_errors"] = list(l0.errors)
             raw["identifier_issues"] = [str(issue) for issue in identifier_issues]
             raw["reserved_path_collisions"] = list(reserved_path_collisions)
@@ -510,7 +523,7 @@ class DevelopmentPublicToolEvaluator:
 
         sources = list(manifest.sources)
         lint = self._command_runner.run(
-            ["verilator", "--lint-only", "-Wall", *sources],
+            ["verilator", "--lint-only", "-Wall", "--top-module", manifest.top_module, *sources],
             cwd=workspace,
             stage="public_l1_lint",
         )
@@ -622,11 +635,13 @@ class DevelopmentPublicToolEvaluator:
         if harness is None:
             raise ValueError("trusted public L2 harness is unavailable")
         trusted_root = workspace / "__sr2fpga_trusted_public_l2"
+        marker = "SR2FPGA_TRUSTED_COMPLETE_" + uuid.uuid4().hex
+        harness_paths = {item.path for item in harness.files}
         trusted_paths: list[str] = []
         for item in harness.files:
             target = trusted_root / Path(*item.path.split("/"))
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_text(item.content, encoding="utf-8", newline="\n")
+            target.write_text(instrument_trusted_completion(item.content, marker, harness_paths), encoding="utf-8", newline="\n")
             trusted_paths.append(target.relative_to(workspace).as_posix())
 
         image = "__sr2fpga_public_l2.vvp"
@@ -638,6 +653,7 @@ class DevelopmentPublicToolEvaluator:
         compile_result = self._command_runner.run(
             [
                 "iverilog",
+                "-u",
                 language_flag,
                 "-s",
                 harness.testbench_top,
@@ -662,7 +678,7 @@ class DevelopmentPublicToolEvaluator:
             return None
 
         simulation = self._command_runner.run(
-            ["vvp", image],
+            ["vvp", "-N", image],
             cwd=workspace,
             stage="public_l2_sim",
             timeout_seconds=harness.timeout_seconds,
@@ -673,7 +689,7 @@ class DevelopmentPublicToolEvaluator:
             stage_outcomes["public_l2"] = _stage("not_run", infrastructure)
             diagnostics.append(infrastructure)
             return infrastructure
-        if simulation.status == "passed":
+        if simulation.status == "passed" and marker in simulation.stdout.splitlines():
             stage_outcomes["public_l2"] = _stage("pass", None)
         else:
             stage_outcomes["public_l2"] = _stage("fail", "public_l2_failed")
@@ -690,7 +706,7 @@ def _trusted_public_l2_reserved_path_collisions(
             path = validate_project_relative_path(raw_path)
         except ValueError:
             continue
-        if path == "__sr2fpga_public_l2.vvp" or path.startswith(
+        if path in {"__sr2fpga_public_l2.vvp", "__sr2fpga_trusted_public_l2"} or path.startswith(
             "__sr2fpga_trusted_public_l2/"
         ):
             collisions.append(path)

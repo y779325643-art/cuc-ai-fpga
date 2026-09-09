@@ -30,7 +30,7 @@
       }
     },
     "timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 300},
-    "pass_rule": {"const": "simulator_exit_zero"},
+    "pass_rule": {"const": "simulator_exit_zero", "description": "Exit zero after an evaluator-instrumented trusted completion site. The public evaluator rejects candidate simulator control, testbench/hierarchical access and external or nonliteral includes, isolates compilation-unit macros, and requires its per-evaluation completion marker; exit zero alone is insufficient."},
     "official_authority": {"const": false},
     "g4b_authorized": {"const": false}
   },

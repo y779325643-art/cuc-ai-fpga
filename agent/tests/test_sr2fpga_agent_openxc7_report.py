@@ -3,6 +3,8 @@ import json
 import os
 import tempfile
 import unittest
+import subprocess
+import sys
 from pathlib import Path
 from unittest import mock
 
@@ -28,6 +30,34 @@ Info: Critical path report for clock 'clk': WNS 1.25 ns
 
 
 class OpenXC7ReportTest(unittest.TestCase):
+    def test_wrapper_renders_canonical_and_legacy_manifest(self) -> None:
+        wrapper = Path("agent/scripts/openxc7_pnr.sh").read_text(encoding="utf-8")
+        code = wrapper.split('python3 - "$part" "$clock_period_ns" <<\'PY\'\n', 1)[1].split("\nPY\n", 1)[0]
+        manifests = [
+            {"contract_version": "project-package-v1", "top": {"module": "custom_top", "interface": {"ports": [{"name": "clk", "direction": "input", "width": 1}]}}, "sources": [{"path": "rtl/dut.v", "language": "verilog"}, {"path": "rtl/helper.sv", "language": "systemverilog"}]},
+            {"top_module": "custom_top", "sources": ["rtl/dut.v", "rtl/helper.sv"]},
+        ]
+        for manifest in manifests:
+            with self.subTest(manifest=manifest), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "eval").mkdir()
+                (root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
+                result = subprocess.run([sys.executable, "-c", code, "xc7z020clg400-1", "40"], cwd=root, capture_output=True, text=True, check=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                script = (root / "eval/openxc7_yosys.ys").read_text(encoding="utf-8")
+                flag = "" if manifest.get("contract_version") else " -sv"
+                self.assertIn(f"read_verilog{flag} rtl/dut.v\nread_verilog -sv rtl/helper.sv\n", script)
+                self.assertIn("-top custom_top", script)
+                self.assertIn("create_clock -period 40", (root / "eval/openxc7_clock.xdc").read_text(encoding="utf-8"))
+        for source in ("../escape.v", "rtl/a.v;exec.v", "C:/escape.v"):
+            with self.subTest(source=source), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                (root / "eval").mkdir()
+                (root / "manifest.json").write_text(json.dumps({"top_module": "top", "sources": [source]}), encoding="utf-8")
+                result = subprocess.run([sys.executable, "-c", code, "part", "10"], cwd=root, capture_output=True, text=True, check=False)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertFalse((root / "eval/openxc7_yosys.ys").exists())
+
     def test_openxc7_default_command_uses_repository_wrapper(self) -> None:
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 

@@ -31,9 +31,11 @@ _FACT_ORDER = (
     "acceptance_criteria",
 )
 
+_ASYNC_FIFO_PATTERN = r"(?:asynchronous|async)[-\s]+fifo|异步\s*fifo"
+
 _CAPABILITY_PATTERNS = (
     ("adc_interface", r"(?<![a-z0-9_])adc(?![a-z0-9_])|模数转换|采样接口"),
-    ("clock_domain_crossing", r"(?<![a-z0-9_])cdc(?![a-z0-9_])|dual[- ]clock|cross[- ]clock|双时钟|跨时钟|异步\s*fifo"),
+    ("clock_domain_crossing", r"(?<![a-z0-9_])cdc(?![a-z0-9_])|dual[- ]clock|cross[- ]clock|双时钟|跨时钟|" + _ASYNC_FIFO_PATTERN),
     ("dma", r"(?<![a-z0-9_])dma(?![a-z0-9_])|直接存储器访问"),
     ("external_memory", r"(?<![a-z0-9_])(?:ddr\d*|hbm|sdram)(?![a-z0-9_])|外部(?:存储器|内存)"),
     ("on_chip_memory", r"(?<![a-z0-9_])(?:bram|sram)(?![a-z0-9_])|block\s*ram|片上(?:存储器|内存)"),
@@ -516,7 +518,7 @@ def _extract_facts(
 def _extract_conditional_facts(text: str, facts: dict[str, tuple[Any, tuple[str, ...]]]) -> None:
     patterns = (
         ("memory_depth", r"(?:depth|深度)\s*(?:of|为|=|:|：)?\s*(\d+)|(\d+)\s*[- ]?deep"),
-        ("cdc_policy", r"two[- ]flop synchroni[sz]er|双触发器同步|asynchronous fifo|异步\s*fifo"),
+        ("cdc_policy", r"two[- ]flop synchroni[sz]er|双触发器同步|" + _ASYNC_FIFO_PATTERN),
         ("pcie_endpoint_contract", r"pci[- ]?e\s*gen\s*(\d+)\s*x\s*(\d+)"),
         ("dma_transfer_contract", r"burst\s+length\s*(?:of|=|:)?\s*(\d+)|突发长度\s*(?:为|=|:|：)?\s*(\d+)"),
         ("memory_access_contract", r"dual[- ]port|single[- ]port|双口|单口"),

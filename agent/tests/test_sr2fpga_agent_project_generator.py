@@ -24,9 +24,23 @@ from sr2fpga_agent.runner import load_runner_config, planned_samples
 from sr2fpga_agent.system_his_checker import check_project_l0
 from sr2fpga_agent.his_validation import validate_system_his_h_stages
 from sr2fpga_agent.testbench_checker import check_testbench_static_issues
+from sr2fpga_agent.local_tools import resolve_executable
+from sr2fpga_agent.tool_runner import CommandRunner
 
 
 class ProjectGeneratorTest(unittest.TestCase):
+    def test_small_width_counter_and_fsm_rtl_compile(self) -> None:
+        if resolve_executable("verilator") is None:
+            self.skipTest("Verilator unavailable")
+        for task in ("counter", "simple_fsm"):
+            for width in (1, 2, 8):
+                with self.subTest(task=task, width=width), tempfile.TemporaryDirectory() as tmp:
+                    project = ProjectGenerator().generate(ProjectRequest(task, width, "small_width"), PlatformProfile("generic_verilog", "generic", "open_source"))
+                    root = Path(tmp)
+                    (root / "top.v").write_text(project.files["rtl/top.v"], encoding="utf-8")
+                    result = CommandRunner().run(["verilator", "--lint-only", "-Wall", "--top-module", "top", "top.v"], root, "lint")
+                    self.assertEqual(result.status, "passed", result.stderr)
+
     def test_system_his_architecture_uses_catalog_generation_contract(self) -> None:
         project = ProjectGenerator().generate(
             ProjectRequest(

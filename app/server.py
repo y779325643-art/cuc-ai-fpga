@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import logging
+import math
 import re
 import sys
 import threading
@@ -11,31 +13,41 @@ import uuid
 from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, ClassVar
 from urllib.parse import urlsplit
-
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 APP_ROOT = Path(__file__).resolve().parent
 AGENT_SOURCE_ROOT = REPOSITORY_ROOT / "agent" / "src"
 DEFAULT_OUTPUT_ROOT = REPOSITORY_ROOT / "artifacts" / "agent" / "ui-demo"
+LOGGER = logging.getLogger(__name__)
 
 if str(AGENT_SOURCE_ROOT) not in sys.path:
     sys.path.insert(0, str(AGENT_SOURCE_ROOT))
 
-from sr2fpga_agent.agent import DataGenerationAgent  # noqa: E402
-from sr2fpga_agent.models import PlatformProfile, ProjectRequest  # noqa: E402
-from sr2fpga_agent.requirement_boundary import evaluate_requirement_boundary  # noqa: E402
-from sr2fpga_agent.task_families import SUPPORTED_TASK_TYPES, TASK_FAMILY_IDS  # noqa: E402
-
+from sr2fpga_agent.agent import DataGenerationAgent
+from sr2fpga_agent.models import (
+    GeneratedProject,
+    PlatformProfile,
+    ProjectRequest,
+)
+from sr2fpga_agent.project_generator import ProjectGenerator
+from sr2fpga_agent.requirement_boundary import (
+    evaluate_requirement_boundary,
+)
+from sr2fpga_agent.rtl_introspect import declared_module_ports
+from sr2fpga_agent.task_families import (
+    SUPPORTED_TASK_TYPES,
+    TASK_FAMILY_IDS,
+)
 
 PROJECT_NAME_PATTERN = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,63}$")
 TASK_INFERENCE_PATTERNS = (
-    ("uart_fifo_loopback", re.compile(r"\buart\b|串口|回环|loopback", re.I)),
-    ("composed_event_counter", re.compile(r"事件|event|门控|gated?", re.I)),
-    ("pwm_controller", re.compile(r"\bpwm\b|脉宽|占空比|duty", re.I)),
-    ("fifo", re.compile(r"\bfifo\b|队列|缓存|缓冲|先进先出", re.I)),
-    ("counter", re.compile(r"计数器|计数|counter", re.I)),
+    ("uart_fifo_loopback", re.compile(r"\buart\b|串口|回环|loopback", re.IGNORECASE)),
+    ("composed_event_counter", re.compile(r"事件|event|门控|gated?", re.IGNORECASE)),
+    ("pwm_controller", re.compile(r"\bpwm\b|脉宽|占空比|duty", re.IGNORECASE)),
+    ("fifo", re.compile(r"\bfifo\b|队列|缓存|缓冲|先进先出", re.IGNORECASE)),
+    ("counter", re.compile(r"计数器|计数|counter", re.IGNORECASE)),
 )
 ENGINEERING_CONTEXT_REQUIRED_FIELDS = (
     ("top_module", "顶层模块名称"),
@@ -57,13 +69,13 @@ TASK_LABEL_OVERRIDES = {
 def _read_json(path: Path) -> dict[str, Any]:
     payload = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
-        raise ValueError(f"Expected a JSON object: {path}")
+        raise TypeError(f"Expected a JSON object: {path}")
     return payload
 
 
 def _validate_request(payload: object) -> tuple[str, str, int, str]:
     if not isinstance(payload, dict):
-        raise ValueError("请求正文必须是 JSON 对象")
+        raise TypeError("请求正文必须是 JSON 对象")
 
     project_name = str(payload.get("project_name", "")).strip()
     if not PROJECT_NAME_PATTERN.fullmatch(project_name):
@@ -92,7 +104,7 @@ def _validate_request(payload: object) -> tuple[str, str, int, str]:
 
 def _validate_audit_request(payload: object) -> tuple[str, str, int, str]:
     if not isinstance(payload, dict):
-        raise ValueError("请求正文必须是 JSON 对象")
+        raise TypeError("请求正文必须是 JSON 对象")
 
     project_name = str(payload.get("project_name", "")).strip()
     if not PROJECT_NAME_PATTERN.fullmatch(project_name):
@@ -154,6 +166,7 @@ def task_registry_payload() -> dict[str, Any]:
             "label": _task_label(task_type, display_names),
             "family_id": TASK_FAMILY_IDS[task_type],
             "width": 8,
+            "engineering_context": _template_context(task_type, 8),
         }
         for task_type in sorted(TASK_FAMILY_IDS)
     ]
@@ -205,13 +218,84 @@ def _missing_engineering_context(payload: dict[str, Any]) -> list[str]:
             if "系统时钟频率" not in missing:
                 missing.append("系统时钟频率")
         else:
-            if clock_value <= 0 and "系统时钟频率" not in missing:
+            if (not math.isfinite(clock_value * 1_000_000) or clock_value < 0.000001) and "系统时钟频率" not in missing:
                 missing.append("系统时钟频率")
 
     deliverables = context.get("deliverables")
-    if not isinstance(deliverables, list) or not deliverables:
+    if not isinstance(deliverables, list) or not deliverables or not all(isinstance(item, str) for item in deliverables):
         missing.append("交付范围")
     return missing
+
+
+def _template_context(task_type: str, width: int) -> dict[str, Any]:
+    project = ProjectGenerator().generate(
+        ProjectRequest(task_type, width, "template_preview"),
+        PlatformProfile("generic_verilog", "generic", "open_source"),
+    )
+    manifest = json.loads(project.files["manifest.json"])
+    ports = declared_module_ports(project.files, manifest["sources"])["top"]
+    if {"wr_en", "rd_en"} <= ports.keys():
+        interface = "wr_rd_enable"
+    elif task_type.startswith("uart"):
+        interface = "uart_stream"
+    elif any(name.endswith("valid") for name in ports) and any(name.endswith("ready") for name in ports):
+        interface = "valid_ready"
+    else:
+        interface = "simple_gpio"
+    port_labels = []
+    for name, port in ports.items():
+        bits = port["width"]
+        suffix = "" if bits == 1 else f"[{bits - 1}:0]" if isinstance(bits, int) else str(bits)
+        port_labels.append(name + suffix)
+    return {
+        "top_module": "top", "clock_mhz": "100", "reset_polarity": "active_low",
+        "interface_spec": interface,
+        "io_spec": ", ".join(port_labels),
+        "target_platform": "generic Verilog", "verification_intent": "self_checking_tb",
+        "deliverables": ["RTL", "Testbench", "Constraints", "README"],
+    }
+
+
+def _demo_inputs(
+    payload: dict[str, Any], task_type: str, width: int, project_name: str, requirement: str,
+) -> tuple[ProjectRequest, PlatformProfile]:
+    context = payload.get("engineering_context", {})
+    clock_hz = round(float(context.get("clock_mhz", 100)) * 1_000_000)
+    platform = PlatformProfile(
+        str(context.get("target_platform", "generic_verilog")) if task_type == "freeform" else "generic_verilog",
+        "generic", "open_source", clock_hz=clock_hz,
+        reset_polarity=str(context.get("reset_polarity", "active_low")),
+    )
+    request = ProjectRequest(task_type, width, project_name, requirement)
+    return request, platform
+
+
+def _context_gaps(payload: dict[str, Any], task_type: str, width: int) -> list[str]:
+    context = payload.get("engineering_context")
+    if not isinstance(context, dict) or task_type not in SUPPORTED_TASK_TYPES:
+        return []
+    supported = _template_context(task_type, width)
+    gaps = []
+    for key in ("top_module", "reset_polarity", "interface_spec", "target_platform", "verification_intent", "deliverables", "io_spec"):
+        value = context.get(key)
+        expected = supported[key]
+        if key == "io_spec":
+            value = {re.sub(r"\s+", "", port) for port in str(value).split(",")}
+            expected = {re.sub(r"\s+", "", port) for port in expected.split(",")}
+        elif key == "deliverables":
+            value, expected = sorted(value), sorted(expected)
+        if value != expected:
+            gaps.append(key)
+    return gaps
+
+
+class _DemoProjectGenerator(ProjectGenerator):
+    def generate(self, request: ProjectRequest, platform: PlatformProfile) -> GeneratedProject:
+        project = super().generate(request, platform)
+        context = _template_context(request.task_type, request.width)
+        context["clock_mhz"] = platform.clock_hz / 1_000_000
+        readme = f"# {request.project_name}\n\nDeterministic reference project.\n\n" + json.dumps(context, ensure_ascii=False, indent=2) + "\n"
+        return GeneratedProject(project.project_name, {**project.files, "README.md": readme})
 
 
 def _engineering_context_clarification(
@@ -305,7 +389,7 @@ def _stage_statuses(labels: dict[str, Any]) -> dict[str, dict[str, str | None]]:
                 else (
                     "pass"
                     if checks.get("l1_lint_pass")
-                    else str(checks.get("l1_lint_status", "not_run"))
+                    else str(checks.get("l1_lint_status", labels.get("l1_lint_status", "not_run")))
                 )
             ),
             "reason": (
@@ -337,7 +421,7 @@ def _stage_statuses(labels: dict[str, Any]) -> dict[str, dict[str, str | None]]:
                 else (
                     "pass"
                     if checks.get("l3_synth_pass")
-                    else str(checks.get("l3_synth_status", "not_run"))
+                    else str(checks.get("l3_synth_status", labels.get("l3_synth_status", "not_run")))
                 )
             ),
             "reason": (
@@ -361,18 +445,19 @@ def generate_demo(payload: object, *, output_root: Path = DEFAULT_OUTPUT_ROOT) -
     """Run one deterministic sample through the real Agent and return UI-safe data."""
 
     project_name, task_type, width, requirement = _validate_request(payload)
+    audit = audit_requirement(payload)
+    if audit["disposition"] != "ready":
+        reason = audit["disposition"]
+        return {
+            "sample_id": None, "artifact_path": "", "project_name": project_name,
+            "task_type": task_type, "method_condition": "reference_deterministic",
+            "pass_level": "GEN_FAIL", "failure_type": reason, "boundary": audit["boundary"],
+            "stages": _stage_statuses({"pass_level": "GEN_FAIL", "failure_type": reason}),
+            "counts": {}, "files": [], "questions": audit["clarification_questions"],
+            "capability_gaps": audit["capability_gap_ids"],
+        }
     sample_id = f"ui-{uuid.uuid4().hex[:12]}"
-    request = ProjectRequest(
-        task_type=task_type,
-        width=width,
-        project_name=project_name,
-        description=requirement,
-    )
-    platform = PlatformProfile(
-        name="generic_verilog",
-        vendor="generic",
-        toolchain="open_source",
-    )
+    request, platform = _demo_inputs(payload, task_type, width, project_name, requirement)
     boundary = evaluate_requirement_boundary(request, platform)
     metadata = {
         "analysis_population": "development",
@@ -380,8 +465,9 @@ def generate_demo(payload: object, *, output_root: Path = DEFAULT_OUTPUT_ROOT) -
         "requirement_boundary": boundary.to_dict(),
         "model_call_budget": {"ceiling": 0, "used": 0, "remaining": 0, "calls": []},
         "ui_demo": True,
+        "engineering_context": payload.get("engineering_context"),
     }
-    result = DataGenerationAgent(output_root).run_one(
+    result = DataGenerationAgent(output_root, project_generator=_DemoProjectGenerator()).run_one(
         sample_id=sample_id,
         requirement=requirement,
         request=request,
@@ -398,7 +484,7 @@ def generate_demo(payload: object, *, output_root: Path = DEFAULT_OUTPUT_ROOT) -
 
     response: dict[str, Any] = {
         "sample_id": sample_id,
-        "artifact_path": sample_dir.relative_to(REPOSITORY_ROOT).as_posix(),
+        "artifact_path": sample_dir.relative_to(REPOSITORY_ROOT if sample_dir.is_relative_to(REPOSITORY_ROOT) else output_root).as_posix(),
         "project_name": project_name,
         "task_type": task_type,
         "method_condition": "reference_deterministic",
@@ -445,18 +531,34 @@ def audit_requirement(payload: object) -> dict[str, Any]:
                 "reason_codes": ["critical_fact_missing:task_family"],
             },
         }
-    request = ProjectRequest(
-        task_type=task_type,
-        width=width,
-        project_name=project_name,
-        description=requirement,
-    )
-    platform = PlatformProfile(
-        name="generic_verilog",
-        vendor="generic",
-        toolchain="open_source",
-    )
+    gaps = _context_gaps(payload, task_type, width)
+    if gaps:
+        reasons = [f"unsupported_engineering_context:{key}" for key in gaps]
+        supported = _template_context(task_type, width)
+        labels = {**dict(ENGINEERING_CONTEXT_REQUIRED_FIELDS), "deliverables": "交付范围"}
+        return {
+            "project_name": project_name, "task_type": task_type, "inferred_task_type": task_type,
+            "disposition": "capability_gap", "reason_codes": reasons,
+            "clarification_questions": [], "clarification_fact_ids": [], "capability_gap_ids": gaps,
+            "supported_engineering_context": supported,
+            "capability_gap_messages": [f"{labels[key]}与当前模板不一致；可使用“填入示例”恢复支持的设置。" for key in gaps],
+            "boundary": {"disposition": "capability_gap", "reason_codes": reasons, "capability_gap_ids": gaps},
+        }
+    request, platform = _demo_inputs(payload, task_type, width, project_name, requirement)
     boundary = evaluate_requirement_boundary(request, platform).to_dict()
+    if "engineering_context" in payload:
+        explicit = boundary["envelope"]["explicit_facts"]
+        conflicts = []
+        if explicit.get("data_width_bits", width) != width:
+            conflicts.append("数据位宽")
+        if explicit.get("clock_frequencies_hz", [platform.clock_hz]) != [platform.clock_hz]:
+            conflicts.append("系统时钟频率")
+        if explicit.get("reset_polarity", platform.reset_polarity) != platform.reset_polarity:
+            conflicts.append("复位策略")
+        if conflicts:
+            response = _engineering_context_clarification(project_name=project_name, task_type=task_type, missing_context=conflicts)
+            response["clarification_questions"] = [f"需求文字与工程上下文中的{field}冲突，请统一后重试。" for field in conflicts]
+            return response
     return {
         "project_name": project_name,
         "task_type": task_type,
@@ -475,7 +577,7 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
 
     output_root = DEFAULT_OUTPUT_ROOT
     generation_lock = threading.Lock()
-    public_files = {
+    public_files: ClassVar[dict[str, str]] = {
         "/": "/index.html",
         "/index.html": "/index.html",
         "/app.js": "/app.js",
@@ -485,7 +587,7 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
     def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, directory=str(APP_ROOT), **kwargs)
 
-    def do_GET(self) -> None:  # noqa: N802 - stdlib handler API
+    def do_GET(self) -> None:
         request_path = urlsplit(self.path).path
         if request_path == "/api/health":
             self._send_json(
@@ -507,7 +609,7 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
         self.path = public_path
         super().do_GET()
 
-    def do_HEAD(self) -> None:  # noqa: N802 - stdlib handler API
+    def do_HEAD(self) -> None:
         request_path = urlsplit(self.path).path
         public_path = self.public_files.get(request_path)
         if public_path is None:
@@ -516,7 +618,7 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
         self.path = public_path
         super().do_HEAD()
 
-    def do_POST(self) -> None:  # noqa: N802 - stdlib handler API
+    def do_POST(self) -> None:
         if self.path not in {"/api/generate", "/api/audit-requirement"}:
             self.send_error(HTTPStatus.NOT_FOUND)
             return
@@ -525,6 +627,9 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
             if content_length <= 0 or content_length > 128_000:
                 raise ValueError("请求正文为空或过大")
             payload = json.loads(self.rfile.read(content_length).decode("utf-8"))
+            if not isinstance(payload, dict):
+                self._send_json({"error": "请求正文必须是 JSON 对象"}, status=HTTPStatus.BAD_REQUEST)
+                return
             if self.path == "/api/audit-requirement":
                 response = audit_requirement(payload)
             else:
@@ -533,8 +638,8 @@ class DemoRequestHandler(SimpleHTTPRequestHandler):
             self._send_json(response)
         except (json.JSONDecodeError, UnicodeDecodeError, ValueError) as exc:
             self._send_json({"error": str(exc)}, status=HTTPStatus.BAD_REQUEST)
-        except Exception as exc:  # keep the local demo process alive
-            self.log_error("generation failed: %s", exc)
+        except Exception:  # keep the local demo process alive
+            LOGGER.exception("generation failed")
             self._send_json({"error": "执行失败，请检查服务端日志"}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
 
     def _send_json(self, payload: object, *, status: HTTPStatus = HTTPStatus.OK) -> None:

@@ -24,3 +24,13 @@ oracle, even if the generated project contains a candidate smoke testbench.
 
 The UART option intentionally demonstrates the current requirement-boundary
 `capability_gap` outcome. It is not reported as a generated-project failure.
+
+The demo validates engineering context against the selected deterministic
+template before generation. Clock frequency is passed into the platform and
+generated constraints. The current templates use `top`, active-low asynchronous
+reset, their declared ports, the generic Verilog target, and the complete
+RTL/testbench/constraints/README bundle. Requests for other interfaces, reset
+strategies, targets or delivery scopes stop with `capability_gap`; conflicting
+text and form facts require clarification. The sample button obtains supported
+settings from the backend registry. Submitted context is retained in sample
+metadata, and README is created before evaluation and recording.

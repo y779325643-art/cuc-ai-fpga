@@ -1882,7 +1882,7 @@ class DataGenerationAgent:
             yosys_input_error = None
 
         results["lint"] = self.command_runner.run(
-            ["verilator", "--lint-only", "-Wall", *sources],
+            ["verilator", "--lint-only", "-Wall", "--top-module", top_module, *sources],
             cwd=project_dir,
             stage="lint",
         )
@@ -2668,6 +2668,8 @@ def _labels(
     if oracle_infrastructure_error:
         pass_level = "ORACLE_ERROR"
 
+    lint_status, lint_reason = _tool_stage_outcome(tool_results.get("lint"))
+    synth_status, synth_reason = _tool_stage_outcome(tool_results.get("synth"))
     labels = {
         "pass_level": pass_level,
         "highest_official_level": pass_level,
@@ -2682,6 +2684,10 @@ def _labels(
         ),
         "l2_sim_status": l2_sim_status,
         "l2_sim_skip_reason": l2_sim_skip_reason,
+        "l1_lint_status": lint_status,
+        "l1_lint_skip_reason": lint_reason,
+        "l3_synth_status": synth_status,
+        "l3_synth_skip_reason": synth_reason,
         "l4_open_status": l4_open["status"],
         "l4_open_pass": pnr_pass,
         "l4_open_skip_reason": l4_open["skip_reason"],
@@ -2747,6 +2753,15 @@ def _labels(
         labels["generated_his_pass_level"] = "NO_CREDIT_ORACLE_FALLBACK"
         labels["generated_his_no_credit_reason"] = "oracle_fallback"
     return labels
+
+
+def _tool_stage_outcome(result: ToolResult | None) -> tuple[str, str | None]:
+    if result is None:
+        return "not_run", "not_reached"
+    if result.status == "missing_tool":
+        return "not_run", "toolchain_environment_failure"
+    status = {"passed": "pass", "failed": "fail"}.get(result.status, result.status)
+    return status, result.skip_reason or ("tool_timeout" if status == "timeout" else None)
 
 
 def _l2_sim_outcome(tool_results: dict[str, ToolResult]) -> tuple[str, str | None]:

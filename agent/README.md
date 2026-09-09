@@ -191,6 +191,15 @@ ignored. A development/excluded task may instead configure a registered,
 hash-bound evaluator-owned trusted public L2 harness; without it, public L2
 remains `not_run(needs_oracle)`.
 
+Public L2 requires an evaluator-instrumented trusted completion site as well as
+exit zero. Candidate sources and their local literal includes are checked for
+simulator-control tasks and testbench/hierarchical access before tools run;
+unsupported constructs fail closed. Icarus compilation units isolate candidate
+macros from the trusted harness. Natural simulator EOF, candidate `$finish`,
+and printed pass text cannot independently grant acceptance. This is a bounded
+development HDL policy, not an operating-system sandbox or official evaluation
+authorization. Existing v1 harness manifests remain readable.
+
 The registered `@1`/`AT_A` selector chooses the single complete candidate, the
 earliest accepted candidate, or the last complete candidate at budget
 exhaustion. Runner seals that exact choice with the selection and authoritative
