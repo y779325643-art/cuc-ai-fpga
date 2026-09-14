@@ -66,7 +66,7 @@ Existing training code and contracts remain repository infrastructure only;
 they neither block nor support Paper-1 claims.
 
 Implementation work is governed by the subordinate
-[`Paper-1 code architecture and development specification v1.12`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
+[`Paper-1 code architecture and development specification v1.13`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
 It maps the frozen protocol to modules, interfaces, state machines, artifacts,
 work packages, and acceptance tests; it neither changes the research estimand
 nor turns target architecture into current capability or results.
