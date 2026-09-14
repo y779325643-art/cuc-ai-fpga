@@ -2,7 +2,6 @@ import copy
 import hashlib
 import json
 import http.client
-import importlib
 import io
 import os
 import unittest
@@ -11,27 +10,33 @@ from pathlib import Path
 from unittest import mock
 
 from sr2fpga_agent import providers
-from sr2fpga_agent.deepseek import (
-    AnthropicCompatibleClient,
-    AnthropicCompatibleConfig,
-    DeepSeekHisProjectGenerator,
-    DeepSeekOracleHisProjectGenerator,
-    DeepSeekProjectGenerator,
-    DeepSeekRepairer,
-    DeepSeekSystemHisGenerator,
-    DeepSeekTwoStageProjectGenerator,
-    OpenAICompatibleClient,
-    OpenAICompatibleConfig,
-    _his_project_messages,
-    _system_his_v12_messages,
-    _with_his_project_retry_feedback,
-    _with_system_his_retry_feedback,
-    _project_messages,
-    _repair_messages,
+from sr2fpga_agent.generation import (
+    DirectProjectGenerator,
+    HisProjectGenerator,
+    OracleHisProjectGenerator,
+    SystemHisGenerator,
+    TwoStageProjectGenerator,
+)
+from sr2fpga_agent.parsers import (
     diff_projects,
     parse_project_files,
     parse_system_his_v12,
 )
+from sr2fpga_agent.prompts import (
+    _his_project_messages,
+    _project_messages,
+    _repair_messages,
+    _system_his_v12_messages,
+    _with_his_project_retry_feedback,
+    _with_system_his_retry_feedback,
+)
+from sr2fpga_agent.providers import (
+    AnthropicCompatibleClient,
+    AnthropicCompatibleConfig,
+    OpenAICompatibleClient,
+    OpenAICompatibleConfig,
+)
+from sr2fpga_agent.repair import ProjectRepairer
 from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
 from sr2fpga_agent.models import GeneratedProject, PlatformProfile, ProjectRequest
 from sr2fpga_agent.project_generator import ProjectGenerator
@@ -60,24 +65,6 @@ class DeepSeekProviderTest(unittest.TestCase):
             self.assertEqual(client.stream_chat([{"role": "user", "content": "JSON"}]), "{}")
         self.assertEqual(client.consume_transport_attempt_count(), 2)
 
-    def test_split_modules_own_legacy_deepseek_exports(self) -> None:
-        deepseek = importlib.import_module("sr2fpga_agent.deepseek")
-        providers = importlib.import_module("sr2fpga_agent.providers")
-        parsers = importlib.import_module("sr2fpga_agent.parsers")
-        repair = importlib.import_module("sr2fpga_agent.repair")
-        generation = importlib.import_module("sr2fpga_agent.generation")
-
-        self.assertIs(deepseek.OpenAICompatibleClient, providers.OpenAICompatibleClient)
-        self.assertIs(deepseek.AnthropicCompatibleClient, providers.AnthropicCompatibleClient)
-        self.assertIs(deepseek.parse_project_files, parsers.parse_project_files)
-        self.assertIs(deepseek.diff_projects, parsers.diff_projects)
-        self.assertIs(deepseek.DeepSeekRepairer, repair.ProjectRepairer)
-        self.assertIs(deepseek.DeepSeekProjectGenerator, generation.DirectProjectGenerator)
-        self.assertIs(deepseek.DeepSeekSystemHisGenerator, generation.SystemHisGenerator)
-        self.assertIs(deepseek.DeepSeekHisProjectGenerator, generation.HisProjectGenerator)
-        self.assertIs(deepseek.DeepSeekTwoStageProjectGenerator, generation.TwoStageProjectGenerator)
-        self.assertIs(deepseek.DeepSeekOracleHisProjectGenerator, generation.OracleHisProjectGenerator)
-
     def test_anthropic_compatible_client_uses_official_messages_headers(self) -> None:
         response = FakeHTTPResponse(
             json.dumps(
@@ -103,8 +90,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.chat(
                 [
@@ -210,9 +197,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
             mock.patch(
-                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                "sr2fpga_agent.providers.urllib.request.urlopen",
                 side_effect=[transient_error, response],
             ) as urlopen,
         ):
@@ -251,9 +238,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
             mock.patch(
-                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                "sr2fpga_agent.providers.urllib.request.urlopen",
                 side_effect=[failed, succeeded],
             ),
         ):
@@ -281,8 +268,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=ssl_context),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=ssl_context),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.chat([{"role": "user", "content": "hello"}])
 
@@ -301,8 +288,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", side_effect=TimeoutError("timed out")),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", side_effect=TimeoutError("timed out")),
         ):
             with self.assertRaisesRegex(RuntimeError, "OpenAI-compatible API request timed out"):
                 client.chat([{"role": "user", "content": "hello"}])
@@ -322,9 +309,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
-            mock.patch("sr2fpga_agent.deepseek.time.monotonic", side_effect=[0.0, 0.0, 2.0]),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response),
+            mock.patch("sr2fpga_agent.providers.time.monotonic", side_effect=[0.0, 0.0, 2.0]),
         ):
             with self.assertRaisesRegex(RuntimeError, "OpenAI-compatible API response read timed out"):
                 client.chat([{"role": "user", "content": "hello"}])
@@ -344,8 +331,8 @@ class DeepSeekProviderTest(unittest.TestCase):
             raise TimeoutError("read deadline exceeded")
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=FakeHTTPResponse(b"{}")),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=FakeHTTPResponse(b"{}")),
         ):
             with self.assertRaisesRegex(RuntimeError, "OpenAI-compatible API response read timed out"):
                 client._request_with_retries({"messages": []}, timed_out_reader)
@@ -382,9 +369,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
             mock.patch(
-                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                "sr2fpga_agent.providers.urllib.request.urlopen",
                 side_effect=[transient_error, response],
             ) as urlopen,
         ):
@@ -412,9 +399,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
             mock.patch(
-                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                "sr2fpga_agent.providers.urllib.request.urlopen",
                 side_effect=[http.client.IncompleteRead(b"partial"), response],
             ) as urlopen,
         ):
@@ -438,8 +425,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.chat([{"role": "user", "content": "hello"}])
 
@@ -463,8 +450,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.chat([{"role": "user", "content": "hello"}])
 
@@ -513,8 +500,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         ]
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.chat(messages)
 
@@ -563,8 +550,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.stream_chat([{"role": "user", "content": "Return ok."}])
 
@@ -621,9 +608,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
             mock.patch(
-                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                "sr2fpga_agent.providers.urllib.request.urlopen",
                 return_value=response,
             ) as urlopen,
         ):
@@ -686,8 +673,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.chat(
                 [
@@ -725,8 +712,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=ssl_context),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response) as urlopen,
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=ssl_context),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response) as urlopen,
         ):
             content = client.stream_chat([{"role": "user", "content": "hello"}])
 
@@ -772,8 +759,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response),
         ):
             content = client.stream_chat([{"role": "user", "content": "hello"}])
 
@@ -807,9 +794,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
             mock.patch(
-                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                "sr2fpga_agent.providers.urllib.request.urlopen",
                 side_effect=[failed, succeeded],
             ),
         ):
@@ -843,9 +830,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
             mock.patch(
-                "sr2fpga_agent.deepseek.urllib.request.urlopen",
+                "sr2fpga_agent.providers.urllib.request.urlopen",
                 side_effect=[failed, succeeded],
             ),
         ):
@@ -870,8 +857,8 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response),
         ):
             with self.assertRaisesRegex(RuntimeError, "invalid chat completion data"):
                 client.stream_chat([{"role": "user", "content": "hello"}])
@@ -894,9 +881,9 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
 
         with (
-            mock.patch("sr2fpga_agent.deepseek._default_ssl_context", return_value=object()),
-            mock.patch("sr2fpga_agent.deepseek.urllib.request.urlopen", return_value=response),
-            mock.patch("sr2fpga_agent.deepseek.select.select", return_value=([], [], [])),
+            mock.patch("sr2fpga_agent.providers._default_ssl_context", return_value=object()),
+            mock.patch("sr2fpga_agent.providers.urllib.request.urlopen", return_value=response),
+            mock.patch("sr2fpga_agent.providers.select.select", return_value=([], [], [])),
         ):
             with self.assertRaisesRegex(RuntimeError, "timed out"):
                 client.stream_chat([{"role": "user", "content": "hello"}])
@@ -1063,7 +1050,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekProjectGenerator(client=client).generate(request, platform)
+        project = DirectProjectGenerator(client=client).generate(request, platform)
 
         self.assertEqual(project.project_name, "counter_8bit")
         self.assertIn("rtl/top.v", project.files)
@@ -1109,7 +1096,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         client = FakeChatClient(json.dumps(_deterministic_system_his(request, platform)))
 
-        system_his = DeepSeekSystemHisGenerator(client).generate(request, platform)
+        system_his = SystemHisGenerator(client).generate(request, platform)
 
         self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 1)
@@ -1132,7 +1119,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         invalid["instances"][0]["component"] = "missing_component"
         client = FakeChatClient([json.dumps(invalid), json.dumps(corrected)])
 
-        system_his = DeepSeekSystemHisGenerator(client, max_attempts=2).generate(request, platform)
+        system_his = SystemHisGenerator(client, max_attempts=2).generate(request, platform)
 
         self.assertEqual(system_his["schema_version"], "system-his-v1.2")
         self.assertEqual(client.call_count, 2)
@@ -1162,7 +1149,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             [json.dumps(mismatched_system_his), json.dumps(corrected_system_his)]
         )
 
-        system_his = DeepSeekSystemHisGenerator(client, max_attempts=2).generate(request, platform)
+        system_his = SystemHisGenerator(client, max_attempts=2).generate(request, platform)
 
         self.assertEqual(system_his["top"]["name"], "top")
         self.assertEqual(client.call_count, 2)
@@ -1193,7 +1180,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         client = FakeChatClient([json.dumps(invalid), json.dumps(corrected)])
 
-        DeepSeekSystemHisGenerator(client, max_attempts=2).generate(request, platform)
+        SystemHisGenerator(client, max_attempts=2).generate(request, platform)
 
         retry_prompt = client.messages_history[1][-1]["content"]
         self.assertIn("Previous invalid System-HIS JSON", retry_prompt)
@@ -1678,7 +1665,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekHisProjectGenerator(client).generate(request, platform, system_his)
+        project = HisProjectGenerator(client).generate(request, platform, system_his)
 
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
@@ -1702,7 +1689,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         with self.assertRaisesRegex(ValueError, "HIS2PROJECT response must contain behavior_files"):
-            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+            HisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_deepseek_his_project_generator_rejects_behavior_for_structural_file(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -1716,7 +1703,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         with self.assertRaisesRegex(ValueError, "does not contain a BEHAVIOR_HOLE"):
-            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+            HisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_deepseek_his_project_generator_rejects_complete_module_behavior(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -1732,7 +1719,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         with self.assertRaisesRegex(ValueError, "must contain behavior body only"):
-            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+            HisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_deepseek_his_project_generator_retries_with_feedback_after_complete_module_behavior(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -1753,7 +1740,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekHisProjectGenerator(client, max_attempts=2).generate(request, platform, system_his)
+        project = HisProjectGenerator(client, max_attempts=2).generate(request, platform, system_his)
 
         self.assertIn("rtl/stream_join.v", project.files)
         self.assertEqual(client.stream_call_count, 2)
@@ -1780,7 +1767,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         with self.assertRaisesRegex(ValueError, "Verilog reserved keyword 'buf'"):
-            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+            HisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_deepseek_his_project_generator_retries_after_reserved_identifier_behavior(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -1801,7 +1788,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         )
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekHisProjectGenerator(client, max_attempts=2).generate(request, platform, system_his)
+        project = HisProjectGenerator(client, max_attempts=2).generate(request, platform, system_his)
 
         self.assertNotIn("reg [DATA_WIDTH-1:0] buf", project.files["rtl/skid_buffer.v"])
         self.assertEqual(client.stream_call_count, 2)
@@ -1820,7 +1807,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
         with self.assertRaisesRegex(ValueError, "is not part of the deterministic skeleton"):
-            DeepSeekHisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
+            HisProjectGenerator(client, max_attempts=1).generate(request, platform, system_his)
 
     def test_his_project_prompt_requires_behavior_only_response(self) -> None:
         request = ProjectRequest(
@@ -1875,7 +1862,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             ]
         )
 
-        project = DeepSeekTwoStageProjectGenerator(client).generate(request, platform)
+        project = TwoStageProjectGenerator(client).generate(request, platform)
 
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
@@ -1901,7 +1888,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         client = FakeChatClient(json.dumps({"behavior_files": behavior_files}))
         events = []
 
-        project = DeepSeekOracleHisProjectGenerator(client, event_sink=events.append).generate(request, platform)
+        project = OracleHisProjectGenerator(client, event_sink=events.append).generate(request, platform)
 
         self.assertEqual(project.project_name, "join_8bit")
         self.assertIn("rtl/stream_join.v", project.files)
@@ -1930,7 +1917,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             ]
         )
 
-        DeepSeekTwoStageProjectGenerator(client, event_sink=events.append).generate(request, platform)
+        TwoStageProjectGenerator(client, event_sink=events.append).generate(request, platform)
 
         self.assertEqual(
             [event["event"] for event in events],
@@ -1966,7 +1953,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             ]
         )
 
-        DeepSeekTwoStageProjectGenerator(
+        TwoStageProjectGenerator(
             client, max_attempts=2, event_sink=events.append
         ).generate(request, platform)
 
@@ -1990,7 +1977,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekProjectGenerator(client=client, max_attempts=2).generate(request, platform)
+        project = DirectProjectGenerator(client=client, max_attempts=2).generate(request, platform)
 
         self.assertIn("rtl/top.v", project.files)
         self.assertEqual(client.call_count, 2)
@@ -2005,7 +1992,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         request = ProjectRequest(task_type="uart_tx", width=8, project_name="uart_tx_8bit")
         platform = PlatformProfile(name="generic_verilog", vendor="generic", toolchain="open_source")
 
-        project = DeepSeekProjectGenerator(client=client, max_attempts=2).generate(request, platform)
+        project = DirectProjectGenerator(client=client, max_attempts=2).generate(request, platform)
 
         manifest = json.loads(project.files["manifest.json"])
         self.assertEqual(client.call_count, 1)
@@ -2065,7 +2052,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             "affected_files": ["rtl/top.v"],
         }
 
-        result = DeepSeekRepairer(client).repair(original, diagnosis)
+        result = ProjectRepairer(client).repair(original, diagnosis)
 
         self.assertIn("rst_n", result.generated_project.files["rtl/top.v"])
         self.assertIn("--- a/rtl/top.v", result.patch_diff)
@@ -2118,7 +2105,7 @@ class DeepSeekProviderTest(unittest.TestCase):
             "affected_files": ["rtl/top.v"],
         }
 
-        result = DeepSeekRepairer(client).repair(original, diagnosis)
+        result = ProjectRepairer(client).repair(original, diagnosis)
 
         self.assertEqual(result.generated_project.files["manifest.json"], original_manifest)
         self.assertIn("--- a/rtl/top.v", result.patch_diff)
@@ -2270,7 +2257,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "syntax error"}
 
         with self.assertRaisesRegex(ValueError, "Project repair system_his.json failed validation"):
-            DeepSeekRepairer(client, max_attempts=1).repair(original, diagnosis)
+            ProjectRepairer(client, max_attempts=1).repair(original, diagnosis)
 
     def test_deepseek_repairer_rejects_unrelated_v12_contract_mutation(self) -> None:
         system_his = _system_his_v12_fixture()
@@ -2286,7 +2273,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         diagnosis = {"stage": "lint", "failure_type": "syntax_error", "root_cause": "rtl/top.v syntax error"}
 
         with self.assertRaisesRegex(ValueError, "System-HIS v1.2 contract changed during RTL repair"):
-            DeepSeekRepairer(client, max_attempts=1).repair(original, diagnosis)
+            ProjectRepairer(client, max_attempts=1).repair(original, diagnosis)
 
     def test_deepseek_repairer_rejects_lint_fix_that_breaks_v12_l0_contract(self) -> None:
         original = ProjectGenerator().generate(
@@ -2310,7 +2297,7 @@ class DeepSeekProviderTest(unittest.TestCase):
         }
 
         with self.assertRaisesRegex(ValueError, "repair introduced L0 contract violations"):
-            DeepSeekRepairer(client, max_attempts=1).repair(original, diagnosis)
+            ProjectRepairer(client, max_attempts=1).repair(original, diagnosis)
 
     def test_project_prompt_requests_agent_manifest_schema(self) -> None:
         request = ProjectRequest(task_type="counter", width=8, project_name="counter_8bit")
@@ -2490,7 +2477,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 api_key_env="DEEPSEEK_API_KEY",
             )
 
-        self.assertIsInstance(generator, DeepSeekProjectGenerator)
+        self.assertIsInstance(generator, DirectProjectGenerator)
 
     def test_cli_builds_deepseek_his_v12_two_stage_generator_from_env(self) -> None:
         with mock.patch.dict(os.environ, {"DEEPSEEK_API_KEY": "secret-value"}):
@@ -2505,7 +2492,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 transport_attempts=2,
             )
 
-        self.assertIsInstance(generator, DeepSeekTwoStageProjectGenerator)
+        self.assertIsInstance(generator, TwoStageProjectGenerator)
         config = generator.system_his_generator.client.config
         self.assertEqual(config.timeout_seconds, 240)
         self.assertEqual(config.transport_attempts, 2)
@@ -2748,7 +2735,7 @@ class DeepSeekProviderTest(unittest.TestCase):
                 transport_attempts=2,
             )
 
-        self.assertIsInstance(repairer, DeepSeekRepairer)
+        self.assertIsInstance(repairer, ProjectRepairer)
         self.assertEqual(repairer.client.config.timeout_seconds, 240)
         self.assertEqual(repairer.client.config.transport_attempts, 2)
 

@@ -8,9 +8,9 @@ import re
 from dataclasses import asdict, dataclass
 from typing import Any, Callable, Mapping
 
-from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.models import GeneratedProject, canonical_json_bytes as _canonical_json
+from sr2fpga_agent.artifact_store import ArtifactIntegrityError, ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
-from sr2fpga_agent.models import GeneratedProject
 
 
 _OPAQUE_HIDDEN_OUTCOME_RE = re.compile(r"^hidden-outcome-([0-9a-f]{64})$")
@@ -27,6 +27,7 @@ class HiddenEvaluatorInput:
     private_commitment: bytes
     private_commitment_sha256: str
     tool_environment_policy_sha256: str
+    hidden_case_seed: int = 0
 
 
 @dataclass(frozen=True)
@@ -69,6 +70,7 @@ class DevelopmentHiddenEvaluationAuthority:
         public_profile_sha256: str,
         tool_environment_policy_sha256: str,
         decoding_seed: int,
+        max_infrastructure_retries: int = 0,
     ) -> OpaqueHiddenOutcomeRef:
         for label, value in (
             ("public_contract_sha256", public_contract_sha256),
@@ -78,6 +80,8 @@ class DevelopmentHiddenEvaluationAuthority:
             _require_sha256(label, value)
         if not isinstance(decoding_seed, int) or isinstance(decoding_seed, bool) or decoding_seed < 0:
             raise ValueError("decoding_seed must be a non-negative integer")
+        if isinstance(max_infrastructure_retries, bool) or not isinstance(max_infrastructure_retries, int) or max_infrastructure_retries < 0:
+            raise ValueError("infrastructure retry ceiling must be a non-negative integer")
 
         terminal_bytes = self._candidate_store.read_verified(terminal_candidate_ref)
         try:
@@ -94,29 +98,77 @@ class DevelopmentHiddenEvaluationAuthority:
             "decoding_seed": decoding_seed,
             "terminal_candidate_sha256": terminal_candidate_ref.sha256,
             "hidden_evaluator_commitment_sha256": private_commitment_ref.sha256,
+            "max_infrastructure_retries": max_infrastructure_retries,
         }
         ledger_digest = hashlib.sha256(_canonical_json(ledger_payload)).hexdigest()
+        subject_digest = hashlib.sha256(_canonical_json({
+            "episode_id": terminal["episode_id"], "method_condition": terminal["method_condition_id"],
+        })).hexdigest()
+        self._evaluator_store.consume_once(f"hidden-subject-{subject_digest}", terminal_candidate_ref.sha256)
         ledger_ref = self._evaluator_store.consume_once(
             f"hidden-{ledger_digest}",
             terminal_candidate_ref.sha256,
         )
-        evaluator_input = HiddenEvaluatorInput(
-            terminal_project=project,
-            terminal_candidate_sha256=terminal_candidate_ref.sha256,
-            public_contract_sha256=public_contract_sha256,
-            public_profile_sha256=public_profile_sha256,
-            private_commitment=private_commitment,
-            private_commitment_sha256=private_commitment_ref.sha256,
-            tool_environment_policy_sha256=tool_environment_policy_sha256,
-        )
-        try:
-            raw_outcome = dict(self._evaluator(evaluator_input))
-            execution_status = "completed"
-            infrastructure_reason = None
-        except Exception as exc:  # evaluator details stay private
-            raw_outcome = {"private_exception_type": type(exc).__name__, "private_message": str(exc)}
-            execution_status = "not_run"
-            infrastructure_reason = "evaluator_exception"
+        execution_refs = []
+        semantic_commit_ref = None
+        stream_id = f"hidden-{ledger_digest}"
+        for ordinal in range(max_infrastructure_retries + 1):
+            semantic_status = None
+            try:
+                project = self._candidate_store.read_sealed_project(terminal_candidate_ref)
+                private_commitment = self._evaluator_store.read_verified(private_commitment_ref)
+                evaluator_input = HiddenEvaluatorInput(
+                    terminal_project=project,
+                    terminal_candidate_sha256=terminal_candidate_ref.sha256,
+                    public_contract_sha256=public_contract_sha256,
+                    public_profile_sha256=public_profile_sha256,
+                    private_commitment=private_commitment,
+                    private_commitment_sha256=private_commitment_ref.sha256,
+                    tool_environment_policy_sha256=tool_environment_policy_sha256,
+                    hidden_case_seed=decoding_seed,
+                )
+                raw_outcome = dict(self._evaluator(evaluator_input))
+                if self._candidate_store.read_sealed_project(terminal_candidate_ref) != project:
+                    raise ArtifactIntegrityError("evaluator mutated the sealed input view")
+                self._evaluator_store.read_verified(private_commitment_ref)
+                result = raw_outcome.get("outcome")
+                if isinstance(result, str) and result in {"pass", "fail"}:
+                    semantic_status = result
+                    hidden_execution_status = "completed"
+                    infrastructure_reason = None
+                else:
+                    hidden_execution_status = "infrastructure_error"
+                    infrastructure_reason = "invalid_evaluator_outcome"
+            except ArtifactIntegrityError as exc:
+                raw_outcome = {"private_exception_type": type(exc).__name__, "private_message": str(exc)}
+                hidden_execution_status = "integrity_error"
+                infrastructure_reason = "artifact_integrity_error"
+            except Exception as exc:  # evaluator details stay private
+                raw_outcome = {"private_exception_type": type(exc).__name__, "private_message": str(exc)}
+                hidden_execution_status = "infrastructure_error"
+                infrastructure_reason = "evaluator_exception"
+            execution_ref = self._evaluator_store.append_event(stream_id, "hidden_execution", {
+                "ordinal": ordinal, "terminal_candidate_sha256": terminal_candidate_ref.sha256,
+                "private_commitment_sha256": private_commitment_ref.sha256,
+                "hidden_case_seed": decoding_seed,
+                "previous_execution_ref": execution_refs[-1].to_dict() if execution_refs else None,
+                "hidden_execution_status": hidden_execution_status,
+                "hidden_semantic_status": semantic_status,
+                "infrastructure_reason": infrastructure_reason,
+                "raw_evaluator_outcome": raw_outcome,
+            })
+            execution_refs.append(execution_ref)
+            if semantic_status is not None:
+                self._evaluator_store.consume_once(f"hidden-semantic-{subject_digest}", terminal_candidate_ref.sha256)
+                semantic_commit_ref = self._evaluator_store.append_event(stream_id, "hidden_semantic_committed", {
+                    "execution_ref": execution_ref.to_dict(),
+                    "terminal_candidate_sha256": terminal_candidate_ref.sha256,
+                    "hidden_semantic_status": semantic_status,
+                })
+                break
+            if hidden_execution_status == "integrity_error":
+                break
+        execution_status = "completed" if semantic_status is not None else "not_run"
         private_record = {
             "record_version": "development-hidden-outcome-v1",
             "evaluation_scope": "development_conformance_only",
@@ -128,6 +180,9 @@ class DevelopmentHiddenEvaluationAuthority:
             "execution_status": execution_status,
             "infrastructure_reason": infrastructure_reason,
             "raw_evaluator_outcome": raw_outcome,
+            "execution_event_refs": [ref.to_dict() for ref in execution_refs],
+            "semantic_commit_ref": semantic_commit_ref.to_dict() if semantic_commit_ref else None,
+            "max_infrastructure_retries": max_infrastructure_retries,
         }
         self._evaluator_store.put_blob(
             f"private-outcomes/{ledger_digest}",
@@ -250,12 +305,31 @@ class DevelopmentHiddenEvaluationAuthority:
             "outcome_id": "hidden-conformance-outcome-"
             + hashlib.sha256(_canonical_json(without_id)).hexdigest(),
         }
-        return self._candidate_store.put_validated_json(
+        reference = self._candidate_store.put_validated_json(
             f"hidden-conformance-outcomes/{ledger_digest}",
             payload,
             contract_key="development_hidden_conformance_outcome",
             registry=registry,
         )
+        if "execution_event_refs" in private_record:
+            from sr2fpga_agent.hidden_execution_state import reconcile_hidden_execution_state
+
+            reconcile_hidden_execution_state(self._candidate_store, self._evaluator_store,
+                                             legacy_outcome_ref=reference)
+        return reference
+
+
+def development_hidden_case_seed(metadata: Mapping[str, Any] | None, sample_id: str) -> int:
+    """Share the development case seed across methods in one explicit replicate."""
+    metadata = metadata or {}
+    semantic = metadata.get("semantic_instance_id")
+    replicate = metadata.get("replicate_id")
+    identity = ({"semantic_instance_id": semantic, "replicate_id": replicate}
+                if isinstance(semantic, str) and semantic and isinstance(replicate, str) and replicate
+                else {"legacy_sample_id": sample_id})
+    return int.from_bytes(hashlib.sha256(_canonical_json({
+        "domain": "excluded-development-hidden-case-seed-v1", **identity,
+    })).digest()[:8], "big")
 
 
 def _require_sha256(label: str, value: str) -> None:
@@ -305,8 +379,3 @@ def _read_json_object(
     return payload
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")

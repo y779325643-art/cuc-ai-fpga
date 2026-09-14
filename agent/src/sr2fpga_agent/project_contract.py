@@ -9,7 +9,7 @@ from typing import Any, Callable, Mapping, Sequence
 
 from jsonschema import Draft202012Validator
 
-from sr2fpga_agent.models import GeneratedProject
+from sr2fpga_agent.models import GeneratedProject, sha256_json as _sha256_json
 from sr2fpga_agent.method_contract import method_contract, method_policy_sha256
 from sr2fpga_agent.path_safety import validate_project_relative_path
 from sr2fpga_agent.repository_paths import RepositoryPaths
@@ -871,16 +871,6 @@ def _merkle_root(leaves: Sequence[tuple[str, str]]) -> str:
             for index in range(0, len(nodes), 2)
         ]
     return nodes[0].hex()
-
-
-def _sha256_json(value: Any) -> str:
-    canonical = json.dumps(
-        value,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    )
-    return _sha256_bytes(canonical.encode("utf-8"))
 
 
 def _project_package_digest(manifest_digest: str, project_merkle_root: str) -> str:

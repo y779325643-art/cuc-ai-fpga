@@ -17,7 +17,6 @@ from sr2fpga_agent.agent import DataGenerationAgent, openxc7_tool_probe_command
 from sr2fpga_agent.baseline_report import baseline_rows, render_markdown
 from sr2fpga_agent.cli import (
     build_project_generator_for_connection,
-    build_repairer,
     build_repairer_for_connection,
 )
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
@@ -37,6 +36,7 @@ from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import (
     AttemptCostLedger,
     AttemptCostLedgerRouter,
+    reconcile_attempt_trajectory,
     validate_accounting_failure_origin,
 )
 from sr2fpga_agent.providers import (
@@ -60,6 +60,7 @@ from sr2fpga_agent.generation.context_his import (
 from sr2fpga_agent.generation.context_plan import FrozenContextUntypedPlanFacade
 from sr2fpga_agent.family_recipe import select_family_recipe
 from sr2fpga_agent.model_gateway_provenance import write_model_gateway_provenance
+from sr2fpga_agent.checkpoint_stop_outcome import reconcile_checkpoint_stop_outcome
 from sr2fpga_agent.provider_seed_capability import (
     load_development_provider_seed_capability,
     require_paired_confirmatory_seed_capability,
@@ -210,6 +211,7 @@ class SourceConnection:
     max_tokens: int = 0
     wire_api: str = "chat_completions"
     reasoning_effort: str = ""
+    thinking_mode: str = ""
     disable_response_storage: bool = False
     system_his_schema_version: str = ""
     seed_capability_manifest: str = ""
@@ -953,6 +955,14 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             else None
         )
         if blocked_checkpoint_id is not None:
+            stop_pack_ref = method_artifact_store.put_validated_json(
+                f"episode-packs/{sample.sample_id}", sample_metadata["episode_pack"],
+                contract_key="episode_pack",
+            )
+            _, checkpoint_stop_ref = reconcile_checkpoint_stop_outcome(
+                method_artifact_store, episode_pack_ref=stop_pack_ref,
+                checkpoint_manifest_ref=prepared_block_runtime.prepared.manifest_ref,
+            )
             manifest = read_development_shared_checkpoint_manifest(
                 method_artifact_store,
                 prepared_block_runtime.prepared.manifest_ref,
@@ -969,6 +979,7 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             )
             blocked_event = {
                 "event": "sample_blocked_by_shared_checkpoint",
+                "development_checkpoint_stop_outcome_ref": checkpoint_stop_ref.to_dict(),
                 "sample_id": sample.sample_id,
                 "source": sample.source,
                 "semantic_instance_id": sample.semantic_instance_id,
@@ -1258,6 +1269,10 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
             completion_event["development_hidden_conformance_outcome_ref"] = dict(
                 result["development_hidden_conformance_outcome_ref"]
             )
+        if result.get("development_hidden_execution_state_ref"):
+            completion_event["development_hidden_execution_state_ref"] = dict(
+                result["development_hidden_execution_state_ref"]
+            )
         for ref_field in (
             "development_terminal_selection_ref",
             "development_selected_public_outcome_ref",
@@ -1359,11 +1374,20 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
                 completion_event[
                     "development_pre_candidate_stop_outcome_ref"
                 ] = stop_outcome_ref.to_dict()
-            if (
+            m5_correction = (
                 sample_metadata.get("analysis_population") == "excluded"
                 and method_condition == "M5"
                 and method_artifact_record.get("his_corrections_used") == 1
-            ):
+            )
+            missing_terminal_reason = None
+            if m5_correction and completion_event.get("development_episode_outcome_ref") is None:
+                missing_terminal_reason = _verified_missing_terminal_reason(
+                    method_artifact_store, result.get("canonical_trajectory_ref"), sample.sample_id
+                )
+                if missing_terminal_reason is not None:
+                    completion_event["development_his_correction_outcome_status"] = "not_evaluated"
+                    completion_event["development_his_correction_outcome_reason"] = missing_terminal_reason
+            if m5_correction and missing_terminal_reason is None:
                 required_refs = {
                     "initial_planning_artifact_ref": method_artifact_record.get(
                         "initial_planning_artifact_ref"
@@ -1435,7 +1459,9 @@ def run_batch(config: RunnerConfig, run_id: str | None = None, resume: bool = Tr
         write_run_state(state_path, state)
 
     paired_results: dict[str, Any] = {}
-    if config.repair_provider == "same_as_source":
+    if config.repair_provider == "same_as_source" and not any(
+        sample.method_condition for sample in samples
+    ):
         measured_sample_ids = [
             sample_id
             for sample_id in state.completed_samples
@@ -1675,6 +1701,7 @@ def _measurement_freeze_manifest(
                 "max_tokens": connection.max_tokens,
                 "wire_api": connection.wire_api,
                 "reasoning_effort": connection.reasoning_effort,
+                "thinking_mode": connection.thinking_mode,
                 "disable_response_storage": connection.disable_response_storage,
                 "seed_capability_ref": _seed_capability_manifest_ref(connection),
             }
@@ -2046,6 +2073,7 @@ def _preflight_client(connection: SourceConnection, api_key: str):
             transport_attempts=connection.transport_attempts,
             wire_api=connection.wire_api,
             reasoning_effort=connection.reasoning_effort,
+            thinking_mode=connection.thinking_mode,
             disable_response_storage=connection.disable_response_storage,
         )
     )
@@ -3066,6 +3094,11 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
                 f"Source {name!r}: wire_api must be chat_completions or responses"
             )
         reasoning_effort = str(item.get("reasoning_effort", ""))
+        thinking_mode = str(item.get("thinking_mode", ""))
+        if thinking_mode not in {"", "enabled", "disabled"}:
+            raise SystemExit(f"Source {name!r}: unsupported thinking_mode")
+        if thinking_mode and (kind == "anthropic_compat" or wire_api != "chat_completions" or not str(item.get("model", "")).startswith("deepseek-")):
+            raise SystemExit(f"Source {name!r}: thinking_mode requires DeepSeek chat completions")
         if reasoning_effort not in {
             "",
             "none",
@@ -3102,6 +3135,7 @@ def _load_sources(raw: dict[str, Any]) -> dict[str, SourceConnection]:
             max_tokens=int(item.get("max_tokens", 0)),
             wire_api=wire_api,
             reasoning_effort=reasoning_effort,
+            thinking_mode=thinking_mode,
             disable_response_storage=disable_response_storage,
             system_his_schema_version=system_his_schema_version,
             seed_capability_manifest=str(item.get("seed_capability_manifest", "")),
@@ -4048,6 +4082,7 @@ def _model_client_for_sample(
                 seed=sample.decoding_seed,
                 wire_api=connection.wire_api,
                 reasoning_effort=connection.reasoning_effort,
+                thinking_mode=connection.thinking_mode,
                 disable_response_storage=connection.disable_response_storage,
             )
         )
@@ -5260,6 +5295,7 @@ def _runner_block_model_identity(
         "max_tokens": connection.max_tokens,
         "wire_api": connection.wire_api,
         "reasoning_effort": connection.reasoning_effort,
+        "thinking_mode": connection.thinking_mode,
         "disable_response_storage": connection.disable_response_storage,
         "decoding_control_mode": sample.decoding_control_mode,
         "requested_decoding_seed": sample.decoding_seed,
@@ -5337,6 +5373,38 @@ def _runner_pairing_key(config: RunnerConfig, sample: PlannedSample, context) ->
         decoding_seed=sample.decoding_seed,
         model_provenance_sha256=model_provenance_sha256,
     )
+
+
+def _verified_missing_terminal_reason(
+    store: ArtifactStore, reference: Any, episode_id: str
+) -> str | None:
+    """Recognize a closed nonterminal result, never waive missing success lineage."""
+    if not isinstance(reference, dict):
+        return None
+    ref = ArtifactRef(**reference)
+    trajectory = json.loads(store.read_verified(ref))
+    errors = ContractRegistry().load_schema("trajectory_v2").validate(trajectory)
+    if errors or (trajectory.get("episode_id"), trajectory.get("method_condition")) != (episode_id, "M5"):
+        raise RuntimeError("invalid M5 correction trajectory lineage")
+    if trajectory["terminal_candidate_ref"] is not None:
+        return None
+    reasons = [reason for reason in trajectory["missing_lineage_reasons"]
+               if reason.startswith("terminal_candidate_")]
+    if len(reasons) != 1:
+        raise RuntimeError("M5 correction has no verified terminal missingness reason")
+    refs = {
+        key: ArtifactRef(**trajectory[key]) if trajectory.get(key) is not None else None
+        for key in ("development_hidden_conformance_outcome_ref", "development_terminal_selection_ref",
+                    "development_selected_public_outcome_ref", "development_terminal_public_outcome_ref")
+    }
+    rebuilt = reconcile_attempt_trajectory(
+        store, [ArtifactRef(**attempt["cost_summary_ref"]) for attempt in trajectory["attempts"]],
+        terminal_candidate_ref=None, terminal_candidate_missing_reason=reasons[0],
+        development_hidden_outcome_ref=trajectory.get("development_hidden_outcome_ref"), **refs,
+    )
+    if rebuilt.payload != trajectory or rebuilt.artifact_ref != ref:
+        raise RuntimeError("M5 correction trajectory does not rebuild from raw cost events")
+    return reasons[0]
 
 
 def _method_artifact_completion_record(
@@ -5425,17 +5493,6 @@ def _method_artifact_completion_record(
     return record
 
 
-def _repairer_for_config(config: RunnerConfig):
-    if config.repair_provider in config.sources:
-        return build_repairer_for_connection(resolve_source_connection(config, config.repair_provider))
-    return build_repairer(
-        provider=config.repair_provider,
-        model=config.model,
-        base_url=config.base_url,
-        api_key_env=config.api_key_env,
-    )
-
-
 def _repairer_for_sample(
     repairers: dict[str, object | None],
     config: RunnerConfig,
@@ -5478,6 +5535,26 @@ def _generation_event_sink(
     ):
         raise TypeError("block preparation audit must be a mapping or null")
 
+    seed_control_evidence_refs = {}
+    if artifact_store is not None:
+        repair_source = (
+            sample.source if config.repair_provider == "same_as_source"
+            else config.repair_provider
+        )
+        for role, source in (("generation", sample.source), ("repair", repair_source)):
+            if source in {"", "none", "deterministic"}:
+                continue
+            connection = resolve_source_connection(config, source)
+            if connection.seed_capability_manifest:
+                capability = load_development_provider_seed_capability(
+                    connection.seed_capability_manifest
+                )
+                seed_control_evidence_refs[role] = artifact_store.put_validated_json(
+                    f"provider-seed-capabilities/{capability['capability_profile_id']}",
+                    capability,
+                    contract_key="development_provider_seed_capability",
+                )
+
     def emit(payload: dict[str, Any]) -> None:
         enriched = {
             **payload,
@@ -5516,6 +5593,9 @@ def _generation_event_sink(
                 analysis_population=sample.analysis_population,
                 method_condition=method_condition,
                 event=enriched,
+                seed_control_evidence_ref=seed_control_evidence_refs.get(
+                    "repair" if enriched.get("stage") == "project_repair" else "generation"
+                ),
             )
             if provenance_ref is not None:
                 enriched["model_gateway_provenance_ref"] = provenance_ref.to_dict()

@@ -13,7 +13,15 @@ def test_contract_manifest_declares_required_contracts() -> None:
     manifest = load_manifest()
     assert manifest["contract_registry_version"] == "1.0"
     assert set(manifest["contracts"]) == {
-        "system_his",
+        "unparsed_system_his_output",
+        "g3_acceptance",
+        "g3_test_evidence",
+        "development_checkpoint_stop_outcome",
+        "development_hidden_execution_state",
+            "system_his",
+            "pc_decisions",
+            "pc_assembly_record",
+            "pc_assembly_execution",
         "system_his_backend_capabilities",
         "system_his_well_formedness",
         "system_his_compatibility",
@@ -49,7 +57,9 @@ def test_contract_manifest_declares_required_contracts() -> None:
         "development_target_profile_pair_outcome",
         "development_pre_candidate_stop_outcome",
             "development_pre_candidate_stop_outcome_v2",
+            "development_pre_candidate_stop_outcome_v3",
             "development_his_correction_outcome",
+            "development_his_correction_outcome_v2",
             "development_episode_outcome",
         "full_pack_outcome_reconciliation",
         "full_pack_outcome_reconciliation_v2",

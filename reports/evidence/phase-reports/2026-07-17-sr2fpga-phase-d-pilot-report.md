@@ -3,7 +3,7 @@
 > **Status: completed named-run evidence snapshot.** Commands and repository
 > paths below are preserved as historical provenance and are not current
 > operating instructions. Use [current status](../../../docs/current-status.md)
-> and the [Paper-1 specification](../../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+> and the [Paper-1 specification](../../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
 > for present gates and commands.
 
 Date: 2026-07-17

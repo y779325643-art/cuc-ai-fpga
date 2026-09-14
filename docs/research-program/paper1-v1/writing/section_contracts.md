@@ -1,5 +1,10 @@
 # Section contracts
 
+> [Terminology, 2026-09-08](../../../specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
 ## Section: Problem and motivation
 
 - Purpose: explain why project-level correctness and verifier separation remain
@@ -31,7 +36,7 @@
 
 ## Section: Method
 
-- Purpose: define shared requirement disposition, System-HIS, the method-neutral
+- Purpose: define shared requirement disposition, Project Contract, the method-neutral
   project contract, deterministic contract skeleton, episode pack, trajectory
   fields, and information boundaries.
 - Inputs: canonical contracts and implemented runtime.
@@ -42,7 +47,7 @@
   provenance rules.
 - Validation checklist: user facts, defaults, assumptions, unresolved facts,
   deterministic/model-generated/repair-visible/trusted/hidden regions are
-  distinguishable; Direct is not required to emit System-HIS.
+  distinguishable; Direct is not required to emit Project Contract.
 
 ## Section: Experimental protocol
 
@@ -52,7 +57,7 @@
   manifests.
 - Allowed claims: protocol design only until results exist.
 - Forbidden claims: cherry-picked families, post-outcome metric changes, or
-  canonical-HIS access in headline end-to-end conditions.
+  canonical-PC access in headline end-to-end conditions.
 - Required evidence: exact manifests, hashes, model/tool versions, decoding
   provenance, `replicate_id`, independent `execution_schedule_seed`, paired-block
   identities/shared checkpoints, sample counts, exclusions, artifact-derived G3

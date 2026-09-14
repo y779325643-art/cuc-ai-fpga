@@ -1,23 +1,30 @@
 # SR2FPGA Paper 1 研究计划冻结规范
 
+> 术语按 [2026-09-08 命名表](2026-09-08-sr2fpga-terminology.md) 同步：工程契约（Project Contract，PC）
+> 当前序列化为 System-HIS v1.2；输出为 FPGA 工程包（FPGA Project Package，FPP）。
+> DSC 表示设计空间契约，DP 表示单个架构设计点；内部标识和历史证据名称保留。
+
 > **说明：** 本文是英文权威版
-> `2026-08-14-sr2fpga-paper1-research-program-freeze-design.md` 的中文 companion，
+> `2026-08-14-sr2fpga-paper1-research-program-design.md` 的中文 companion，
 > 用于中文阅读与讨论。**两者不一致时，以英文版为准。** 本文保留英文版中的
 > 方法编号、指标缩写、工件名和规范性边界，不将候选方案改写为既有结果。
 
 ## 状态与权威性
 
-- 状态：**当前有效的 Paper 1 研究与实验权威规范**
+- 状态：**已解冻，按用户 2026-09-07 指示开放研究方案修订**
 - 版本：`paper1-freeze-v1.7`
+- 版本角色：保留的修订基线；尚未批准替代版本
 - 生效日期：2026-08-27
 - 目标期刊：**ACM Transactions on Reconfigurable Technology and Systems（TRETS）**
 - 证据截止点：本地 `develop@bd516c110862`，以及当前工作树中的文档与证据审查结果
 - 范围：产品/问题边界、需求裁决与 ambiguity audit、研究问题、方法因素、基准总体、信息权限、指标、实验 gate、论断规则和论文退出条件
 - 实现状态：协议设计阶段；尚未依据本冻结规范运行会产生研究结果的实验
 
-本文是**研究计划冻结规范**，不是已经签署的 campaign 冻结规范。下文的候选数据划分、规划样本量、方法定义和 gate 顺序，只有在 G4a、排除于正式实验之外的 G5 pilot 以及最终 G4b campaign manifest 完成后，才成为可执行协议。任何文件都不得把候选数据划分描述为经验结果或已经可以运行的基准。
+自 2026-09-07 起，用户已解除本文的研究计划冻结状态。研究问题、方法、范围和分析方案可以通过明确、可追溯的提案讨论和修订，v1.7 不再作为禁止修订的理由。本次仅变更冻结状态，未改动具体协议、未批准替代方案，也未授权代码实施、真实模型、G5、官方评价或 campaign。既有执行与 evaluator 权限边界继续有效。此前 QA 和 M3/M4 审计保留其 v1.7 审查范围；实质修订后须重新审查受影响结论。下文“冻结”“当前有效”等表述描述保留基线，以本状态声明为准。
 
-v1.2 amendment 在打开任何正式模型结果或隐藏结果之前完成。它增加了一个有边界的生成前 ambiguity audit，分开产品北极星与 Paper-1 estimand，并补齐共同工程契约、信息权限、预算和评测器义务。它不代表新增实现结果。
+本文保留的是**研究计划基线**，不是已经签署的 campaign 冻结规范。下文的候选数据划分、规划样本量、方法定义和 gate 顺序，只有在 G4a、排除于正式实验之外的 G5 pilot 以及最终 G4b campaign manifest 完成后，才成为可执行协议。任何文件都不得把候选数据划分描述为经验结果或已经可以运行的基准。
+
+v1.2 amendment 在打开任何正式模型结果或隐藏结果之前完成。它增加了一个有边界的生成前 ambiguity audit，分开产品北极星与 Paper-1 estimand，并补齐共同 FPP 交付约束、信息权限、预算和评测器义务。它不代表新增实现结果。
 
 v1.3 amendment 将投稿目标改为 TRETS，并从 Paper-1 中删除全部模型训练。RQ3 与 M6U/M6F/M6T/M6TR 不再属于 Paper-1 estimand、方法阶梯、gate、必需工件或论断空间。既有 training 代码和 contracts 作为仓库基础设施保留，但不执行、不发布，也不作为 Paper-1 工作或贡献。
 
@@ -52,14 +59,14 @@ Paper 1 将研究**以契约为依据的 FPGA 工程生成、验证器隔离与�
 
 论文的工程级评测对象是通过所声明 L3 flow 的完整多文件 RTL 工程，而不是普遍可部署的 bitstream 或板级系统。核心经验问题是：
 
-> 在模型、公开需求事实、反馈权限以及总计算/工具预算均匹配的条件下，contract-grounded deterministic materialization 能否优于消费同一 System-HIS 的自由工程生成，完整且未训练的 System-HIS pipeline 能否优于 Direct；契约感知的公开修复能否经受评测方拥有的一次性隐藏检查，并形成可对账的正确性—成本前沿？
+> 在模型、公开需求事实、反馈权限以及总计算/工具预算均匹配的条件下，contract-grounded deterministic materialization 能否优于消费同一 Project Contract 的自由工程生成，完整且未训练的 Project Contract pipeline 能否优于 Direct；契约感知的公开修复能否经受评测方拥有的一次性隐藏检查，并形成可对账的正确性—成本前沿？
 
 因此，论文的最低要求包括：
 
 1. 共享且版本化的 requirement-intake boundary，以及一个与 VPP 分离、衡量 silent proceed、false blocking、provenance 和 clarification 行为的 ambiguity audit；
-2. 方法中立的共同工程契约，以及独立适用且闭合的 System-HIS treatment；
+2. 方法中立的共同 FPP 交付约束，以及独立适用且闭合的 Project Contract treatment；
 3. 一个按家族留出、由评测器拥有隐藏最终评测的冻结基准；
-4. 预算匹配的直接、无类型结构化、HIS、skeleton 和修复条件；
+4. 预算匹配的直接、无类型结构化、PC、skeleton 和修复条件；
 5. 覆盖每个 M0-M5 episode 的收敛与总成本核算，包括失败、`not_run`、基础设施结果和 repair attempt；
 6. 有代表性的 OpenXC7 L4 确认，并明确与一般性 L4、Vivado、bitstream、板级和可移植性论断分开。
 
@@ -73,7 +80,7 @@ HORIZON 表明，固定的通用智能体可以依据可执行评测器演化硬
 
 因此，SR2FPGA 可辩护的差异必须是一个经过检验的组合，而不能只是宣称：
 
-- System-HIS 是类型化的需求到工程语义契约，而不是回合控制平面；
+- Project Contract 是类型化的需求到工程语义契约，而不是回合控制平面；
 - 显式隔离修复可见诊断与隐藏最终语义 oracle；
 - 用版本化 episode/trajectory 审计 attempt、repair、cost、provenance 与 missingness；
 - 证据深度从工程一致性延伸到综合和有代表性的物理子集。
@@ -92,7 +99,7 @@ estimand、方法定义或 gate 顺序。
 - `agent/` 支持确定性和模型驱动的多文件生成、两阶段 `REQ2HIS -> HIS2PROJECT`、H0-H3 结果记录、L0-L4 工具编排、修复 hook、独立 oracle、mutation qualification，以及轨迹/训练视图导出。
 - 所有当前 generation method 之前都有共同 Requirement Envelope/boundary；开发级 OASA 已有 sealed loader、Phase A/B、exactly-one replay、witness 和 cluster reducer，但没有 signed fixture population、冻结 interval 或 official campaign。
 - `training/` 支持数据集转换、dry-run、手工 LoRA/SFT、adapter 合并和不导入 Agent 的 serving；这些模型命令不是 G4b-gated 正式 M6 入口。
-- 已存在版本化的 System-HIS、project/terminal/evaluation、OASA、trajectory、candidate training-release、training-view、task catalog、dataset 和 evidence artifacts。Schema 注册不等于 release 认证或 official evaluator producer。
+- 已存在版本化的 Project Contract、project/terminal/evaluation、OASA、trajectory、candidate training-release、training-view、task catalog、dataset 和 evidence artifacts。Schema 注册不等于 release 认证或 official evaluator producer。
 
 ### 3.2 已验证证据
 
@@ -118,7 +125,7 @@ estimand、方法定义或 gate 顺序。
 以下 P0 义务必须在产生研究结果的正式 campaign 之前关闭。可变实现事实由 `docs/current-status.md` 维护。G1/G2 已在 2026-08-24 working tree 本地关闭，但都不是模型 outcome：
 
 - development OASA 已有 sealed loader、witness、one-answer replay 和 reducer；仍无 signed fixture population、冻结 interval/threshold 和 official audit execution；
-- provider-neutral M0-M5 core 已包含 M2 Structured-Direct 与 M3 HIS-Free，但 legacy Runner 还不能把同一 frozen pack 贯穿 public evaluation、terminal selection/reseal 与 official hidden dispatch；
+- provider-neutral M0-M5 core 已包含 M2 Structured-Direct 与 M3 PC-Free，但 legacy Runner 还不能把同一 frozen pack 贯穿 public evaluation、terminal selection/reseal 与 official hidden dispatch；
 - development hidden boundary 可从独立 store 一次性消费 sealed terminal candidate 并返回 opaque ref，但不生成 official outcome，也未替换 legacy Runner 的 adaptive candidate-TB/oracle path；
 - logical model call 已计数，但 provider token、transport/parser retry、tool/wall/EDA budget 和 canonical runtime trajectory reconstruction 尚未闭合为一个 matched episode budget；
 - 历史 trajectory 可能缺少显式 call/patch/rerun evidence；G4b 仍需冻结 migration/exclusion decision；
@@ -139,12 +146,12 @@ RQ0 是强制审计，但在统计和运行上与主要 RQ1/RQ2 estimand 完全�
 
 ### RQ1 — 端到端契约价值
 
-在外部需求事实和总预算相同的条件下，生成式 System-HIS 流程能否比 Direct 取得更高的、方法中立的已验证工程成功率？在 System-HIS 路径内部，deterministic materialization/edit-surface 联合干预带来多少增量，representation bundle 又提供何种次级证据？
+在外部需求事实和总预算相同的条件下，生成式 Project Contract 流程能否比 Direct 取得更高的、方法中立的已验证工程成功率？在 Project Contract 路径内部，deterministic materialization/edit-surface 联合干预带来多少增量，representation bundle 又提供何种次级证据？
 
 比较与解释：
 
 - M3 对 M2 估计的是**两阶段表示组合**。它同时改变 plan schema、prompt、checker 和表示长度，因此不得描述为“仅由类型化产生”的纯因果效应。两条分支必须匹配 planner/generator 调用次数、全局预算和实际输入事实。
-- M4 对 M3：对每个 semantic-instance/replicate block 复用完全相同的冻结 generated-HIS 工件，并联合改变 deterministic project materialization 与配套 editable-surface policy。没有额外正交对照时，不得把它写成 skeleton 文本、可编辑字节数或某条 lowerer rule 的纯效应。
+- M4 对 M3：对每个 semantic-instance/replicate block 复用完全相同的冻结 generated-PC 工件，并联合改变 deterministic project materialization 与配套 editable-surface policy。没有额外正交对照时，不得把它写成 skeleton 文本、可编辑字节数或某条 lowerer rule 的纯效应。
 - M4 对 M0 是端到端系统比较，不隔离单一机制。
 
 只有两个主要 contrast 都通过各自的预声明规则，才能支持完整 RQ1；若仅一项通过，只能支持该项对应的局部论断。如果表观收益只是把失败从 H/L0 转移到隐藏 L2，或在核对有效信息和总成本后消失，则 RQ1 同样不受支持。
@@ -156,8 +163,8 @@ RQ1 是两项 hypothesis 构成的主要确认性 family。`M4−M3` 与 `M4−M
 从冻结且匹配的初始状态出发，有边界的公开修复能否改善 terminal `VPP-L3@A`，消耗多少总成本，并且该改善能否经受一次性隐藏评测，而不是只优化公开评测器？
 
 - M5 对 M1 是**端到端系统比较**，不是孤立的修复策略效应；两者的初始生成器、工件、诊断和可编辑范围均不同。
-- M5 对 M4 衡量 HIS 流程内公开反馈修复所带来的增量成功率与成本，并作为主要确认性 online-repair bundle contrast。
-- 修复机制 probe 从同一个冻结的失败 M4 工程出发，配对比较通用修复策略与 HIS-aware 修复策略。初始状态、模型、公开工具输出、可编辑范围和全局预算完全相同；仅声明为 HIS-aware 的诊断字段不同。
+- M5 对 M4 衡量 PC 流程内公开反馈修复所带来的增量成功率与成本，并作为主要确认性 online-repair bundle contrast。
+- 修复机制 probe 从同一个冻结的失败 M4 工程出发，配对比较通用修复策略与 PC-aware 修复策略。初始状态、模型、公开工具输出、可编辑范围和全局预算完全相同；仅声明为 PC-aware 的诊断字段不同。
 - 对每个修复条件报告 `P(hidden failure | public acceptance)`。不得对隐藏评测资格不同的比率直接做减法。
 
 配对的 R_HIS−R_generic probe 是 RQ2 的第二个确认性 contrast。M1−M0 是次要 generic-repair 诊断；M5−M1 是必须报告、但只作描述性的端到端正确性—成本比较。
@@ -186,15 +193,15 @@ v1.3 TRETS amendment 撤回原工具验证训练视图问题。Paper-1 不微调
 
 M0-M5 使用相同的小型/开放基础模型版本、tokenizer、quantization、context limit、decoding family 和 episode population。当前代码尚未实现完整阶梯；G3 是强制运行时 gate。
 
-- **M0 Direct：** 将需求与共同的公开工程/接口契约直接交给一个完整工程生成器。不生成 System-HIS，在评分前不接收公开评测反馈，也不要求通过 H-stage。
+- **M0 Direct：** 将需求与共同的公开工程/接口契约直接交给一个完整工程生成器。不生成 Project Contract，在评分前不接收公开评测反馈，也不要求通过 H-stage。
 - **M1 Direct-Repair：** M0 加上全局修复预算内的公开评测器诊断/修复。它是**受 HORIZON 启发的 Direct-Repair 对照**。只有当 G3 实现 project pack、不可变且由评测器拥有的验收通道、accepted-checkpoint 历史、持久 session/state 策略和可审计仓库轨迹后，才可称为 HORIZON-like；没有原始发布协议时，绝不能称为 HORIZON 的精确复现。
-- **M2 Structured-Direct：** 模型阶段 1 从同一需求事实生成无类型结构化 plan；阶段 2 自由生成完整工程。该 plan 不含 System-HIS 类型、跨字段 checker 或确定性 skeleton。
-- **M3 HIS-Free：** 模型阶段 1 生成 System-HIS；阶段 2 通过真正的 no-skeleton generator 自由生成完整工程。进行 materialization comparison 时，M3 与 M4 使用同一个冻结 generated-HIS 工件。
-- **M4 HIS-Skeleton：** 可信代码把 generated System-HIS 降低为契约 skeleton，模型只填充声明的 behavior region。它没有外层 EDA repair；任何 planner/parser/schema retry 都是显式计入预算的模型调用，不能隐藏在“第一次尝试”中。
-- **M5 HIS-Online：** M4 加上与 M1 完全相同的全局 repair/tool 预算内公开评测器诊断和外层修复。
+- **M2 Structured-Direct：** 模型阶段 1 从同一需求事实生成无类型结构化 plan；阶段 2 自由生成完整工程。该 plan 不含 Project Contract 类型、跨字段 checker 或确定性 skeleton。
+- **M3 PC-Free：** 模型阶段 1 生成 Project Contract；阶段 2 通过真正的 no-skeleton generator 自由生成完整工程。进行 materialization comparison 时，M3 与 M4 使用同一个冻结 generated-PC 工件。
+- **M4 PC-Skeleton：** 可信代码把 generated Project Contract 降低为契约 skeleton，模型只填充声明的 behavior region。它没有外层 EDA repair；任何 planner/parser/schema retry 都是显式计入预算的模型调用，不能隐藏在“第一次尝试”中。
+- **M5 PC-Online：** M4 加上与 M1 完全相同的全局 repair/tool 预算内公开评测器诊断和外层修复。
 - **R_generic / R_HIS 修复 probe：** 将两种修复策略应用于同一个冻结失败 M4 工程，用于 RQ2 机制分析。它们是配对诊断条件，不是新的 headline generator。
 
-正式匹配执行单位是由 `(semantic_instance_id, replicate_id)` 和稳定 `paired_block_id` 标识的版本化 **replicate block**。同一 block 中，M0/M1 共用不可变的初始 Direct 工程，M3/M4 共用完全相同的 generated-HIS，M4/M5 共用不可变的初始 skeleton-derived 工程；完整 M0-M5 block 还共用公开 fact projection、模型/推理配置、tool/evaluator commitment、hidden-case seed 和全局预算策略。repair probe 使用独立 `repair_probe_block_id`，两种策略消费同一个失败 M4 checkpoint。`replicate_id` 是预先规划的重复测量身份，不从 provider 返回值推导，也不意味着方法共享同一 realized randomness。任一所需 identity 或 content hash 不同，该比较即为 unpaired，不能进入确认性推断。
+正式匹配执行单位是由 `(semantic_instance_id, replicate_id)` 和稳定 `paired_block_id` 标识的版本化 **replicate block**。同一 block 中，M0/M1 共用不可变的初始 Direct 工程，M3/M4 共用完全相同的 generated-PC，M4/M5 共用不可变的初始 skeleton-derived 工程；完整 M0-M5 block 还共用公开 fact projection、模型/推理配置、tool/evaluator commitment、hidden-case seed 和全局预算策略。repair probe 使用独立 `repair_probe_block_id`，两种策略消费同一个失败 M4 checkpoint。`replicate_id` 是预先规划的重复测量身份，不从 provider 返回值推导，也不意味着方法共享同一 realized randomness。任一所需 identity 或 content hash 不同，该比较即为 unpaired，不能进入确认性推断。
 
 G4b 必须冻结且只能冻结一种 decoding-control mode：
 
@@ -214,7 +221,7 @@ M6U、M6F、M6T、M6TR 与 `M6F[E_traj]` 在 v1.3 下均不是 Paper-1 method co
 
 **A_req — requirement-boundary audit** 不是 M6，也不是工程生成 treatment。它对每个密封审计 case 只执行一次冻结的共同 intake boundary，并在任何 M0-M5 model stage、candidate workspace 写入、repair 或 project evaluator 之前拦截。它不获得 VPP 或工程方法 credit。
 
-共同公开工程契约必须方法中立，要求 L0-L3 所需的完整 RTL source set、top/interface declaration、manifest、适用 constraint、build/tool metadata 和 trusted-edit boundary。System-HIS、H0-H3 record、generated requirement trace、candidate testbench 和 predicted QoR 都是条件适用或 advisory artifact，不得成为 M0/M1/M2 的普遍准入条件或隐藏评分权威。
+共同公开工程契约必须方法中立，要求 L0-L3 所需的完整 RTL source set、top/interface declaration、manifest、适用 constraint、build/tool metadata 和 trusted-edit boundary。Project Contract、H0-H3 record、generated requirement trace、candidate testbench 和 predicted QoR 都是条件适用或 advisory artifact，不得成为 M0/M1/M2 的普遍准入条件或隐藏评分权威。
 
 方法分配前，每个正式 VPP instance 都必须由独立评测者裁决为 `ready`，并转换成一个冻结的公开 requirement-fact projection。M0-M5 获得内容等价的 fact ID、value 与 provenance；序列化格式可以不同，但外部需求事实不能不同。正式 VPP run 只验证并复用该冻结 ready projection，不进行自适应用户澄清或改写需求。自动 intake component 只在 A_req 中接受效果审计。
 
@@ -253,7 +260,7 @@ contract/catalog/tool versions 和 hashes
 
 - `agent/src/` 中的确定性生成器或任务模板；
 - 可信 testbench、独立参考模型、mutation source、hidden vector/property 或评分脚本；
-- 留出参考工程、System-HIS 答案、轨迹、数据集或训练导出；
+- 留出参考工程、Project Contract 答案、轨迹、数据集或训练导出；
 - API key、私有 endpoint、vendor artifact 和无关仓库状态。
 
 所有方法均由评测器拥有的 harness 评分。候选方生成的 testbench 是不可信工件，绝不能作为隐藏评测权威。公开 smoke check 及其声明的诊断可以对修复器可见；隐藏的确定性、固定随机 seed 和 stress case 必须保持私有。
@@ -271,11 +278,11 @@ hidden_semantic_status = pass | fail | null
 
 `completed` 必须恰好提交一次 `pass` 或 `fail`；semantic fail 是 `VPP-L3=0` 的 design outcome，不能触发修复、替换或再次评分。`not_run(reason)` 表示没有 immutable terminal 等上游条件使隐藏评分不适用；VPP 由上游设计结果决定，不能把 `not_run` 自身称为隐藏失败。commit 前 infrastructure error 只能按冻结规则重放同一 terminal hash；耗尽后是 unscorable，不是模型失败。integrity error 触发冻结的 campaign abort/invalidation rule。semantic result 一旦 commit，任何 retry 都被禁止。
 
-规范/oracle System-HIS 只能用于明确标注的上界，或内容等价表示诊断，绝不能用于 headline 端到端比较。M2/M3 有效信息审计必须列出所有可见事实；仅匹配 token 总量不能证明信息等价。
+规范/oracle Project Contract 只能用于明确标注的上界，或内容等价表示诊断，绝不能用于 headline 端到端比较。M2/M3 有效信息审计必须列出所有可见事实；仅匹配 token 总量不能证明信息等价。
 
 Family Recipe 是版本化 generation-information privilege，不是缺失 requirement fact 的替代品。只有共同 boundary 已返回 `ready` 后才允许选择 Recipe；完整 decision 与 policy hash 仍只对评测器可见。任何主要留出 headline condition 都不接收 family-specific Recipe 正文；catalog-assisted analysis 若存在，必须预声明为独立的次要 content-equivalent information treatment，并向所有被比较方法提供等价信息。Recipe text、route decision 或 family alias 不得解决 A_req gold ambiguity，也不得进入私有 label。
 
-ambiguity-audit case 不暴露 gold status、遗漏 fact、accepted answer、私有 capability rationale 或 reference artifact。独立 visibility spy test 必须证明这些字段不会到达 model、Recipe、HIS、project、repair 或 training context。
+ambiguity-audit case 不暴露 gold status、遗漏 fact、accepted answer、私有 capability rationale 或 reference artifact。独立 visibility spy test 必须证明这些字段不会到达 model、Recipe、PC、project、repair 或 training context。
 
 `semantic_instance_id`、`replicate_id` 与 `paired_block_id` 必须是 planned sample 和 runtime 的一等字段；不得用 `family_id` 代替实例或 replicate ID。`requested_decoding_seed` 是独立 provenance 字段，不得静默硬编码，也不得用作 replicate identity。provider adapter 必须记录 requested seed、provider system fingerprint（如有）和 seed-control capability。`documented_seed_control` 模式要求冻结、可复现且经独立审核的 decoding 机制；`stochastic_blocked` 模式可以保留 unavailable/undocumented seed control，但不得把它伪装成名义 capability 或据此声称确定性。
 
@@ -287,7 +294,7 @@ campaign 分别冻结模型调用、输入/输出/缓存 token、planner/parser/
 
 A_req 使用单独冻结的 preflight call/token/wall-time 预算，不消耗 M0-M5 工程生成预算。正式 ready projection 的构造成本作为共同 benchmark overhead 报告，不得在方法间差异化计费。M0-M5 必须分别报告 inference/episode、repair、公开工具、hidden evaluator、wall-time 与 EDA cost；Paper-1 不包含训练成本或 amortized training claim。
 
-每个 repair-capable condition 只有一个冻结的模型侧 repair/correction 总调用上限。M5 的 System-HIS correction 与外层工程 repair 虽分属不同 stage，但共同消耗该上限，不能各自获得一个免费调用。provider transport retry 只有在满足冻结基础设施规则、且完全重放同一请求时才不消耗该上限。
+每个 repair-capable condition 只有一个冻结的模型侧 repair/correction 总调用上限。M5 的 Project Contract correction 与外层工程 repair 虽分属不同 stage，但共同消耗该上限，不能各自获得一个免费调用。provider transport retry 只有在满足冻结基础设施规则、且完全重放同一请求时才不消耗该上限。
 
 ## 6. 基准总体与数据划分冻结
 
@@ -380,7 +387,7 @@ perturbation strata 至少覆盖 width/depth/storage、clock/reset/CDC、protoco
 
 此处“完整工程”是 L0-L3 契约所需的冻结多文件 RTL/build package，不代表 routed hardware、bitstream、board execution 或未声明平台约束已经满足；这些论断必须有单独命名的 L4/L5 证据。
 
-H0/H1/H2/H3 仅是生成 System-HIS 的方法所具有的机制结果。对 M0/M1/M2，它们是 `not_applicable` 而非 failure；在跨方法 VPP 定义中，绝不能成为某条件独有的优势。若 HIS-stage 设计失败导致工程未生成，该方法仍通过普通生成路径得到 VPP=0。
+H0/H1/H2/H3 仅是生成 Project Contract 的方法所具有的机制结果。对 M0/M1/M2，它们是 `not_applicable` 而非 failure；在跨方法 VPP 定义中，绝不能成为某条件独有的优势。若 PC-stage 设计失败导致工程未生成，该方法仍通过普通生成路径得到 VPP=0。
 
 为公开 L2、隐藏 L2、评测器身份、edit/provenance violation、infrastructure status 和 `vpp_l3` 记录显式机器字段。绝不能从遗留 `pass_level=L3` 标签推导 VPP-L3。在每阶段一次调用规则下报告 `VPP-L3@1`，在公开修复预算下报告 `VPP-L3@A`。REQ2FILE row 绝不获得工程级通过计分。
 
@@ -451,7 +458,7 @@ mutation score 用于判定 oracle 质量，不是模型性能指标。通用 L3
 
 per-family effect 与 leave-one-family-out 是强制描述性诊断，不开启、关闭或救援 macro claim。G4a 在 G5 前冻结 `{delta_min_materialization, delta_min_system}`、各自科学依据，以及可选的 M3−M2 secondary interpretation threshold。只有正 point estimate 不充分；任何 family-level 或 confirmatory secondary claim 都需要新的结果前 hierarchical multiplicity 与 power contract。
 
-对每个已签署 family `f`、semantic instance `i`、replicate `q`，令 `YA_ifqm` 为方法 `m` 的 terminal `VPP-L3@A`。定义 `D_if,54 = mean_q(YA_ifq,M5-YA_ifq,M4)`、`Delta_f,54 = mean_i(D_if,54)`、`Delta_54 = (1/4) sum_f Delta_f,54`。该 intention-to-treat estimand 包含所有 signed cluster，无论 M5 是否实际 repair。M5 的唯一 repair/correction allowance 可用于 System-HIS correction 或 outer project repair，因此 M5−M4 是 online-repair bundle effect，不是任一 stage 的纯效应。
+对每个已签署 family `f`、semantic instance `i`、replicate `q`，令 `YA_ifqm` 为方法 `m` 的 terminal `VPP-L3@A`。定义 `D_if,54 = mean_q(YA_ifq,M5-YA_ifq,M4)`、`Delta_f,54 = mean_i(D_if,54)`、`Delta_54 = (1/4) sum_f Delta_f,54`。该 intention-to-treat estimand 包含所有 signed cluster，无论 M5 是否实际 repair。M5 的唯一 repair/correction allowance 可用于 Project Contract correction 或 outer project repair，因此 M5−M4 是 online-repair bundle effect，不是任一 stage 的纯效应。
 
 repair-policy probe 的冻结 selector 在任何 repair branch 或 hidden outcome 打开前，每个 semantic instance 最多选一个 eligible failing M4 checkpoint。eligibility 要求 immutable candidate、命名 public failure stage、有效 repair-visible diagnosis、剩余预算，且无 infrastructure/integrity/trusted-edit violation。selector 冻结 family/failure-stage strata、tie-break seed、per-family cap `k_f` 和最小可分析数 `k_min,f`；超 cap 时按冻结 seed 采样，结果后不得 top-up/替换。令 `Z_ifr` 为 policy `r∈{R_HIS,R_generic}` 后的 terminal hidden VPP；no-patch、failed-patch、budget-exhausted branch 在选定分母中保留为零。`Delta_R` 是 selected independent cluster 上配对 `Z_HIS-Z_generic` 的家族等权 macro。任一 `k_min,f` 未满足时，该 probe 为 non-rejecting/descriptive，不能静默删除。
 
@@ -506,7 +513,8 @@ G3 和 G4a 各自建立 immutable、checksummed 的本地 checkpoint manifest，
 - 已被取代的 Paper 1 提案不再留在工作树中，但可从 Git 历史恢复。
 - 验收：clean-link audit 通过，且不存在另一个被标记为当前 Paper 1 权威的文件。
 
-### G1 — System-HIS 契约闭合
+<a id="g1--system-his-契约闭合"></a>
+### G1 — Project Contract闭合
 
 **当前 gate 状态（2026-08-18）：本地关闭。** 注册的 conformance matrix、Direct
 common-L0 和完整轻量回归已通过；这不授权 pilot、official hidden 或结果论断。
@@ -515,7 +523,7 @@ G2 于 2026-08-24 本地关闭，G3-G4b 仍开放。
 - 选择并实现一种 JSON-Schema/H0 权威关系。
 - 使规范正 fixture 和正式示例通过 schema、H0、H1、H2；或者明确将不可 lower 的示例重新标注。
 - 为每条冻结规则添加负 fixture；统一 reset；定义并测试 compatibility/quarantine envelope。
-- 将方法中立共同工程契约与 optional System-HIS、H-stage、candidate-testbench 和 predicted-QoR artifact 分开。Direct 与 untyped control 必须在没有 System-HIS 时进入共同 L0，并把 H0-H3 记录为 `not_applicable`。
+- 将方法中立共同 FPP 交付约束与 optional Project Contract、H-stage、candidate-testbench 和 predicted-QoR artifact 分开。Direct 与 untyped control 必须在没有 Project Contract 时进入共同 L0，并把 H0-H3 记录为 `not_applicable`。
 - 验收：schema/checker/fixture/lowerer conformance matrix 全绿，真实 Direct→common-L0 regression 证明不存在 H-stage dependency，完整 regression 通过。
 
 ### G2 — 目录、证据与阶段语义
@@ -536,13 +544,13 @@ alias、stage semantics 和 L4 provenance 问题。这是实现/证据完整性 
 - 实现一等 M0-M5 adapter；将 `source` 与 `method_condition` 分开；添加外部 requirement/semantic-parameter loader、M2 untyped-plan 路径和 M3 真正的 no-skeleton generator。
 - 用显式、全局计入预算的 event 替代不可见内部 retry。
 - 对每个 success 与 stop outcome 持久化共同 requirement intake；记录全部 fact/provenance/default/assumption ID、route/profile hash 与 clarification 前后 lineage，而不是只保留前三个问题。
-- 增加 stop-before-generation interception、no-nearest-family test 与 visibility spy test，证明任何私有 ambiguity label/answer 都不能到达 model、Recipe、HIS、project、repair 或保留的非 Paper-1 training context。
+- 增加 stop-before-generation interception、no-nearest-family test 与 visibility spy test，证明任何私有 ambiguity label/answer 都不能到达 model、Recipe、PC、project、repair 或保留的非 Paper-1 training context。
 - 将公开评测器与由评测器拥有的隐藏 harness 分离。hidden 只在 terminal immutable candidate 上运行一次；候选 testbench 永不可信；spy test 证明没有 hidden datum 到达修复器。
 - 只有发生真实 diagnosis/patch/rerun transition 才计作修复；按成功 stage 限制 QoR；保留明确的 episode inclusion/exclusion reason。
 - 记录 pre/post state hash、artifact delta、visibility class、call、token、cached token、duration、acceptance、failure origin 和全部 cost axis；将 freeze/state/audit bundle 提升到 `tmp/` 之外。
 - 新增 additive、registered 的 `g3-acceptance-v1` authority。正向 verdict 只能从 write-once artifact/event ref、注册 contract version、checksummed test/evidence manifest 和有限 required-scenario matrix 重建；caller 声明的 scenario 名、success boolean 或 prose status 均无验收权威。既有 development outcome contract 保持固定 non-official 语义，不得改写成 G3 authority。
 - 任何 development/excluded VPP projection 都只能是 non-official conformance diagnostic。它本身不能授予 `g3-acceptance-v1`、official pass-credit authority、official VPP outcome 或 G4b authorization，也不得晋升为其中任何一种 authority。
-- G3 matrix 至少覆盖：同一 gold-ready M0-M5 replicate block；显式 `semantic_instance_id`/`replicate_id`/`paired_block_id`、requested-seed provenance 和由独立 schedule seed 控制的平衡顺序；M0/M1 共享初始工程；M3/M4 共享 HIS；M4/M5 共享初始工程；M1/M5 各一条真实 public failure→diagnosis→patch→rerun；M5 H0-H3 correction；public/hidden pass/fail；sanitized provider/public/hidden/L3 infrastructure outcome；三种 cost view 的 raw-to-summary 对账；以及 tamper、lineage、order、budget、trusted-edit 和 visibility fail-closed case。没有 candidate 的 scenario 也必须闭合为 registered outcome。
+- G3 matrix 至少覆盖：同一 gold-ready M0-M5 replicate block；显式 `semantic_instance_id`/`replicate_id`/`paired_block_id`、requested-seed provenance 和由独立 schedule seed 控制的平衡顺序；M0/M1 共享初始工程；M3/M4 共享 PC；M4/M5 共享初始工程；M1/M5 各一条真实 public failure→diagnosis→patch→rerun；M5 H0-H3 correction；public/hidden pass/fail；sanitized provider/public/hidden/L3 infrastructure outcome；三种 cost view 的 raw-to-summary 对账；以及 tamper、lineage、order、budget、trusted-edit 和 visibility fail-closed case。没有 candidate 的 scenario 也必须闭合为 registered outcome。
 - G3 还要求 reducer-derived provider-capability classifier、确定性/fake 正向 fixture、真实或合成负向 fixture 与 strict pre-dispatch guard。计数、match flag、classification、limitations、profile identity 和 eligibility 必须从冻结 protocol、documentation-review 与逐次 observation artifact 重算，不能信任提交的 summary boolean。现实外部 provider 不必在 G3 已 eligible；G3 只证明 excluded implementation conformance，真实 provider 的 mode 决策属于 G4b。
 - G3 只有在全部 matrix cell 均由 artifact 推导且通过，同时 ready/default/clarification/gap fixture 可重建 confusion matrix、non-ready downstream event 为零、无私有/隐藏泄漏时才可 pass。验收 artifact 明确固定 `official_outcome=false`、`official_authority=false`、`pass_credit_authority=false`、`g4b_authorized=false`。因此 G3 仅证明 excluded development conformance。G4a 准备 candidate benchmark 与 evaluator/oracle commitment；G5 是排除于正式实验之外的 natural-model feasibility pilot；G4b 签署并独立授权 no-outcome campaign；G6 只物化 campaign 而不产生 official outcome；G7 执行 official M0-M5 held-out L0-L3 experiment。上述后续 gate 的 deliverable 均不是 G3 的验收前提。
 
@@ -638,10 +646,10 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 
 - positive `g3-acceptance-v1` 后：“冻结 G3 scenario matrix 上的 development conformance”；这仍不允许方法效果、修复有效性或 official hidden performance 论断；
 - G7 报告 signed ambiguity manifest、完整 disposition confusion matrix、false-proceed interval、clarification replay、provenance violation 与 leakage audit 后：“有边界的 requirement-boundary performance”；
-- G1 后：“闭合的 System-HIS 契约”；
+- G1 后：“闭合的 Project Contract”；
 - G4b 后：“冻结的正式基准”；
 - M4−M3 主要论断规则通过后：“deterministic materialization/edit-surface benefit”；
-- M4−M0 主要论断规则通过后：“未训练的端到端 System-HIS value”；只有两项主要规则都通过，才可作完整 RQ1 论断；
+- M4−M0 主要论断规则通过后：“未训练的端到端 Project Contract value”；只有两项主要规则都通过，才可作完整 RQ1 论断；
 - 真实 transition 加上配对修复策略和端到端 RQ2 分析后：“修复有效性”；
 - 仅限 G8 tool/family 子集：“物理改善”；
 - G8 报告已签署 pair manifest、完整 pair 分母、不变量/compliance outcome、L3/L4 结果和成本后：“target-profile adaptation”；
@@ -654,7 +662,7 @@ G3 可以使用 deterministic/fake model client，但必须使用真实 parser�
 - 从没有生成工程、也没有执行 hidden semantic evaluation 的 A_req case 推断工程正确性；
 - 首个仓库级/全自动/tool-feedback RTL 智能体；
 - 首个 hardware IR，或称 CPPL 无类型；
-- 从 M3−M2 声称“typing alone 改善正确性”，而不是使用冻结的 System-HIS representation-bundle 解释；
+- 从 M3−M2 声称“typing alone 改善正确性”，而不是使用冻结的 Project Contract representation-bundle 解释；
 - 从 M4−M3 声称 skeleton-text-only、editable-byte-only 或 lowerer-rule-only 因果效应，而不是使用冻结的 materialization/edit-surface bundle 解释；
 - 只有一项 RQ1 primary rule 通过时声称完整 RQ1，或用 secondary M3−M2 估计救援失败的 primary rule；
 - 完整 JSON-Schema H0、完整 W1-W10 H1 或普适的 by-construction correctness；
@@ -703,7 +711,7 @@ analysis_environment.json
 
 只有启用 target-profile 扩展时，才额外要求 `target_profile_pair_manifest.json`、`target_profile_commitments.json` 和 `target_profile_outcomes.json`；未启用时不得创建空占位文件来暗示该扩展存在。
 
-候选工程保留其公开 requirement projection、适用时的 generated HIS、file、diagnosis、patch、公开工具输出、measured QoR 和 trajectory link。hidden score summary 只保留在 evaluator-owned outcome bundle 中，绝不进入 candidate workspace 或 repair-visible log。原始隐藏 oracle 内容保持受保护，并与公开 pack 材料及修复可见日志在物理上分离。
+候选工程保留其公开 requirement projection、适用时的 generated PC、file、diagnosis、patch、公开工具输出、measured QoR 和 trajectory link。hidden score summary 只保留在 evaluator-owned outcome bundle 中，绝不进入 candidate workspace 或 repair-visible log。原始隐藏 oracle 内容保持受保护，并与公开 pack 材料及修复可见日志在物理上分离。
 
 论文中的每个表都必须可由这些工件重新生成，并显示其 population、denominator、negative count、`not_run` count、infrastructure count、tool stage 和 method condition。如果启用可选扩展，每个 adaptation 表还必须显示 `profile_pair_id`、baseline/variant profiles、变化轴、不变量/compliance 状态、完整 pair 分母、cost availability、配对成本和 unavailable reason。
 

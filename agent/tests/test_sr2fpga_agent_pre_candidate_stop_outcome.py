@@ -3,6 +3,7 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
@@ -65,7 +66,10 @@ class _SequenceClient:
 
     def stream_chat(self, messages):
         self.calls.append(messages)
-        return self.responses.pop(0)
+        response = self.responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
 
     def chat(self, messages):
         return self.stream_chat(messages)
@@ -99,7 +103,7 @@ class _PassingCommandRunner:
 
 
 def test_real_runner_m5_h_correction_uses_distinct_budget_stage(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, *, invalid_project=False
 ) -> None:
     source = SourceConnection(
         name="his",
@@ -147,7 +151,7 @@ def test_real_runner_m5_h_correction_uses_distinct_budget_stage(
             _system_his_response_for_failed_stage(config, sample, None),
         ]
     )
-    project_client = _StaticClient(json.dumps({"behavior_files": {}}))
+    project_client = _StaticClient("not-json" if invalid_project else json.dumps({"behavior_files": {}}))
 
     def build_generator(_connection, **kwargs):
         budget = kwargs["model_budget"]
@@ -177,11 +181,8 @@ def test_real_runner_m5_h_correction_uses_distinct_budget_stage(
         lambda _value: {"outcome": "pass"},
     )
 
-    with pytest.raises(
-        RuntimeError,
-        match="missing artifact-derived acceptance lineage",
-    ):
-        run_batch(config, run_id="m5-h0-correction-stage", resume=False)
+    summary = run_batch(config, run_id="m5-h0-correction-stage", resume=False)
+    assert summary["total_completed"] == 1
     events = [
         json.loads(line)
         for line in (
@@ -194,12 +195,18 @@ def test_real_runner_m5_h_correction_uses_distinct_budget_stage(
         for event in events
         if event.get("event") == "model_call_finished"
     ] == ["req2his", "system_his_repair", "his2project"]
+    completion = next(event for event in events if event.get("event") == "sample_completed")
+    assert completion["pass_level"] == ("GEN_FAIL" if invalid_project else "L1")
+    assert (completion["method_artifacts"]["candidate_artifact_ref"] is None) is invalid_project
+    assert completion["development_his_correction_outcome_status"] == "not_evaluated"
+    assert "development_his_correction_outcome_ref" not in completion
 
 
 @pytest.mark.parametrize("failed_stage", ("h0", "h1", "h2", "h3"))
 def test_real_runner_m5_h_correction_acceptance_is_artifact_derived_and_fail_closed(
-    tmp_path, monkeypatch, failed_stage: str
-) -> None:
+    tmp_path, monkeypatch, failed_stage: str, initial_raw_response=None,
+    *, corrected_failed_stage=None, shared_initial=False,
+) -> tuple[ArtifactStore, ArtifactRef, dict] | None:
     source = SourceConnection(
         name="his",
         kind="openai_compat",
@@ -275,11 +282,18 @@ def test_real_runner_m5_h_correction_acceptance_is_artifact_derived_and_fail_clo
             )
         ],
     )
-    sample = planned_samples(config)[0]
+    if shared_initial:
+        config.tasks.insert(0, replace(config.tasks[0], method_condition="M3"))
+        config = replace(config, line_b_targets={"max_samples": 2})
+    sample = next(item for item in planned_samples(config) if item.method_condition == "M5")
     initial_response = _system_his_response_for_failed_stage(
         config, sample, failed_stage
     )
-    corrected_response = _system_his_response_for_failed_stage(config, sample, None)
+    if initial_raw_response is not None:
+        initial_response = initial_raw_response
+    corrected_response = _system_his_response_for_failed_stage(
+        config, sample, corrected_failed_stage
+    )
     req2his_client = _SequenceClient([initial_response, corrected_response])
     platform = PlatformProfile(
         name=config.platform,
@@ -350,12 +364,27 @@ def test_real_runner_m5_h_correction_acceptance_is_artifact_derived_and_fail_clo
         json.loads(line)
         for line in (run_dir / "events.jsonl").read_text(encoding="utf-8").splitlines()
     ]
-    completion = next(event for event in events if event.get("event") == "sample_completed")
+    completion = next(event for event in events if event.get("event") == "sample_completed" and event["sample_id"] == sample.sample_id)
     store = ArtifactStore(run_dir / "method_artifacts")
+    if corrected_failed_stage is not None:
+        assert summary["total_completed"] == 1
+        assert completion["pass_level"] == "GEN_FAIL"
+        assert completion["method_artifacts"]["his_corrections_used"] == 1
+        assert completion["method_artifacts"]["failure"]["stage"] == corrected_failed_stage
+        assert completion["method_artifacts"]["candidate_artifact_ref"] is None
+        assert "development_his_correction_outcome_ref" not in completion
+        assert len(req2his_client.calls) == 2
+        assert project_client.calls == []
+        trajectory_ref = store.reference(f"trajectories/{sample.sample_id}/M5")
+        trajectory = json.loads(store.read_verified(trajectory_ref))
+        assert trajectory["terminal_candidate_ref"] is None
+        assert trajectory["attempts"]
+        return
     outcome_ref = ArtifactRef(**completion["development_his_correction_outcome_ref"])
     outcome = read_verified_development_his_correction_outcome(store, outcome_ref)
 
-    assert summary["total_completed"] == 1
+    assert summary["total_completed"] == (2 if shared_initial else 1)
+    assert outcome["contract_version"] == f"development-his-correction-outcome-{'v2' if shared_initial else 'v1'}"
     assert outcome["h_validation"]["initial_failed_stage"] == failed_stage
     assert outcome["h_validation"]["corrected_stage_statuses"] == {
         "h0": "pass", "h1": "pass", "h2": "pass", "h3": "pass"
@@ -363,7 +392,7 @@ def test_real_runner_m5_h_correction_acceptance_is_artifact_derived_and_fail_clo
     assert outcome["initial_his_ref"] != outcome["corrected_his_ref"]
     assert outcome["correction_lineage"]["correction_count"] == 1
     assert outcome["cost"]["logical_model_stages"] == {
-        "req2his": 1, "system_his_repair": 1, "his2project": 1
+        **({} if shared_initial else {"req2his": 1}), "system_his_repair": 1, "his2project": 1
     }
     assert outcome["cost"]["project_repairs"] == 0
     assert outcome["official_outcome"] is False
@@ -503,9 +532,14 @@ def test_real_runner_m5_h_correction_acceptance_is_artifact_derived_and_fail_clo
             read_verified_development_his_correction_outcome(store, outcome_ref)
 
 
+    if shared_initial:
+        return store, outcome_ref, outcome
+
+
 @pytest.mark.parametrize("failed_stage", ("h0", "h1", "h2", "h3"))
 def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
-    tmp_path, monkeypatch, failed_stage: str
+    tmp_path, monkeypatch, failed_stage: str, *, failure_origin="synthetic_injected",
+    tamper_checks=True,
 ) -> None:
     source = SourceConnection(
         name="his",
@@ -541,7 +575,7 @@ def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
                 paired_block_id=f"pair-counter-m4-{failed_stage}-001-seed-17",
                 execution_schedule_seed=909991,
                 decoding_control_mode="documented_seed_control",
-                failure_origin="synthetic_injected",
+                failure_origin=failure_origin,
                 measurement_point="b_tool_in_loop_repair",
             )
         ],
@@ -632,9 +666,10 @@ def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
     outcome = read_verified_development_pre_candidate_stop_outcome(
         store, outcome_ref
     )
-    assert outcome["contract_version"] == (
-        "development-pre-candidate-stop-outcome-v2"
-    )
+    version = "v3" if failure_origin == "natural_llm" else "v2"
+    contract_key = f"development_pre_candidate_stop_outcome_{version}"
+    assert outcome["contract_version"] == f"development-pre-candidate-stop-outcome-{version}"
+    assert outcome["failure_origin"] == failure_origin
     assert outcome["method_condition"] == "M4"
     assert outcome["failure"]["stage"] == failed_stage
     assert outcome["h_validation"]["failed_stage"] == failed_stage
@@ -665,6 +700,9 @@ def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
     assert outcome["episode_pack_ref"]["sha256"] in attempt_inputs
     assert outcome["public_projection_sha256"] in attempt_inputs
 
+    if not tamper_checks:
+        return
+
     forged = copy.deepcopy(outcome)
     forged["method_event_refs"][2], forged["method_event_refs"][3] = (
         forged["method_event_refs"][3],
@@ -677,7 +715,7 @@ def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
     forged_ref = store.put_validated_json(
         "tampered/pre-candidate-stop-outcome",
         forged,
-        contract_key="development_pre_candidate_stop_outcome_v2",
+        contract_key=contract_key,
     )
     with pytest.raises(PreCandidateOutcomeError, match="order mismatch"):
         read_verified_development_pre_candidate_stop_outcome(store, forged_ref)
@@ -693,7 +731,7 @@ def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
     forged_digest_ref = store.put_validated_json(
         "tampered/pre-candidate-stop-outcome-report-digest",
         forged_digest,
-        contract_key="development_pre_candidate_stop_outcome_v2",
+        contract_key=contract_key,
     )
     with pytest.raises(PreCandidateOutcomeError, match="does not rebuild"):
         read_verified_development_pre_candidate_stop_outcome(
@@ -711,7 +749,7 @@ def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
     forged_platform_ref = store.put_validated_json(
         "tampered/pre-candidate-stop-outcome-platform",
         forged_platform,
-        contract_key="development_pre_candidate_stop_outcome_v2",
+        contract_key=contract_key,
     )
     with pytest.raises(PreCandidateOutcomeError, match="platform profile"):
         read_verified_development_pre_candidate_stop_outcome(
@@ -756,14 +794,14 @@ def test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
         forged_episode_ref = store.put_validated_json(
             "tampered/pre-candidate-stop-outcome-foreign-episode",
             forged_episode,
-            contract_key="development_pre_candidate_stop_outcome_v2",
+            contract_key=contract_key,
         )
         with pytest.raises(PreCandidateOutcomeError, match="trajectory identity"):
             read_verified_development_pre_candidate_stop_outcome(
                 store, forged_episode_ref
             )
 
-    if failed_stage == "h0":
+    if failed_stage == "h0" and failure_origin == "synthetic_injected":
         legacy_outcome, legacy_ref = (
             reconcile_development_pre_candidate_stop_outcome(
                 store,
@@ -862,6 +900,51 @@ def _expected_h_statuses(failed_stage: str) -> dict[str, str]:
         )
         for index, stage in enumerate(stages)
     }
+
+
+@pytest.mark.parametrize("failed_stage", ("h0", "h1", "h2", "h3"))
+def test_natural_m4_stop_preserves_origin_and_replays(tmp_path, monkeypatch, failed_stage):
+    test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
+        tmp_path, monkeypatch, failed_stage, failure_origin="natural_llm",
+        tamper_checks=False,
+    )
+
+
+@pytest.mark.parametrize("failed_stage", ("h0", "h1", "h2", "h3"))
+def test_natural_m4_stop_tampering_is_rejected(tmp_path, monkeypatch, failed_stage):
+    test_real_runner_m4_h_stage_stop_is_rebuilt_and_tamper_closed(
+        tmp_path, monkeypatch, failed_stage, failure_origin="natural_llm"
+    )
+
+
+@pytest.mark.parametrize("failed_stage", ("h0", "h1", "h2", "h3"))
+def test_runner_m5_failed_correction_retains_stop_without_success_receipt(
+    tmp_path, monkeypatch, failed_stage
+):
+    test_real_runner_m5_h_correction_acceptance_is_artifact_derived_and_fail_closed(
+        tmp_path, monkeypatch, "h1", corrected_failed_stage=failed_stage
+    )
+
+
+def test_shared_stop_costs_preserve_zero_without_relaxing_legacy(monkeypatch):
+    from sr2fpga_agent import pre_candidate_outcome as reducer
+
+    axes = {
+        name: {"status": "measured", "value": 0, "reason": None}
+        for name in (*reducer._ZERO_COST_AXES, "logical_model_calls")
+    }
+    monkeypatch.setattr(reducer, "_read_registered", lambda *args: {"axes": axes})
+    cost = reducer._reconcile_stop_costs(None, (None,), None, allow_shared=True)
+    assert cost["logical_model_calls"] == 0
+    with pytest.raises(PreCandidateOutcomeError, match="one model call"):
+        reducer._reconcile_stop_costs(None, (None,), None)
+    axes["logical_model_calls"]["value"] = 2
+    with pytest.raises(PreCandidateOutcomeError, match="one model call"):
+        reducer._reconcile_stop_costs(None, (None,), None, allow_shared=True)
+    axes["logical_model_calls"]["value"] = 0
+    axes["public_tool_calls"]["value"] = 1
+    with pytest.raises(PreCandidateOutcomeError, match="zero public_tool_calls"):
+        reducer._reconcile_stop_costs(None, (None,), None, allow_shared=True)
 
 
 def _canonical_json(payload) -> bytes:

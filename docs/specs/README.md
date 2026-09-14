@@ -1,13 +1,27 @@
 # SR2FPGA Research Specifications
 
+> [Terminology, 2026-09-08](2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
 Use the task-based routes in the [documentation map](../README.md). Read
 [current status](../current-status.md) first only when interpreting current
 implementation, verification, debt, gate status, or results.
 
+## Approved Study Design (Execution Not Authorized)
+
+- [PC field responsibility and assembly draft v1](2026-09-11-pc-field-responsibility-v1.md):
+  field authority, deterministic derivation and rejection rules; not a registered runtime contract.
+
+- [Approved PC layered-study design v1](2026-09-11-pc-layered-study-design-v1.md):
+  PC generation, frozen-PC 2×2 comparison and end-to-end evaluation. Design
+  structure approved; implementation, operational freeze and execution remain separate.
+
 ## Current Paper-1 Authority
 
-- [English canonical specification](2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
-- [Chinese reading companion](2026-08-14-sr2fpga-paper1-research-program-freeze-design.zh.md)
+- [English canonical specification](2026-08-14-sr2fpga-paper1-research-program-design.md)
+- [Chinese reading companion](2026-08-14-sr2fpga-paper1-research-program-design.zh.md)
 
 The English file governs the ACM TRETS target, research questions, M0-M5 method
 conditions, information boundaries, the disjoint requirement-ambiguity audit,
@@ -28,9 +42,11 @@ is not evidence that a target architecture is already implemented.
 
 ## Retained Narrow Semantic Authority
 
+- [DSC / DP / PC / FPP terminology ledger](2026-09-08-sr2fpga-terminology.md)
+
 - [System-HIS v1.2 freeze](2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md)
 
-This file defines the retained System-HIS semantic boundary but is not evidence
+This file defines the retained Project Contract semantic boundary but is not evidence
 of runtime conformance. Completed plans, decisions, and superseded specs were
 removed from the working tree on 2026-08-14 and remain available in Git history.
 This directory contains normative research, semantic, and code-design

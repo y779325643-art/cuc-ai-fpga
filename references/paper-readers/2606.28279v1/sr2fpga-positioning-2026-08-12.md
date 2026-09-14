@@ -2,7 +2,7 @@
 
 > **状态（2026-08-14）：冻结前的定位备忘。** 文献比较与差异分析仍可使用；
 > 方法标签、实验 gate 和论文主张以
-> [Paper-1 英文 canonical spec](../../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+> [Paper-1 英文 canonical spec](../../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
 > 为准。本文中的任务梯和待办不得作为当前执行计划。
 
 > 分析日期：2026-08-12
@@ -269,7 +269,7 @@ SR2FPGA 能否形成独立贡献，取决于三件事能否被实验证明：
 ## 10. 仓库依据
 
 - 当前能力与边界：`docs/current-status.md`
-- 当前 Paper-1 研究规范：`docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md`
+- 当前 Paper-1 研究规范：`docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md`
 - System-HIS v1.2 freeze：`docs/specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md`
 - canonical schema：`contracts/system-his/system-his-v1.2.schema.json`
 - 生成、H-stage、L0-L4、repair loop：`agent/src/sr2fpga_agent/agent.py`

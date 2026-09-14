@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
+from sr2fpga_agent.models import canonical_json_bytes as _canonical_json
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import reconcile_attempt_trajectory
@@ -825,8 +826,3 @@ def _optional_artifact_ref(payload: Any) -> ArtifactRef | None:
         raise EpisodeOutcomeError("trajectory authority reference is invalid") from exc
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")

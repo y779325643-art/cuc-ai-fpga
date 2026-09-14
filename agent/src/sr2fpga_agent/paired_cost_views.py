@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
-import hashlib
 import json
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
+from sr2fpga_agent.models import GeneratedProject, sha256_json as _sha256_json
 from sr2fpga_agent.artifact_store import (
     ArtifactConflictError,
     ArtifactIntegrityError,
     ArtifactRef,
     ArtifactStore,
+    artifact_ref_from_payload as _artifact_ref,
 )
 from sr2fpga_agent.block_cost_accounting import replay_development_block_preparation
 from sr2fpga_agent.block_preparation import (
@@ -21,7 +22,6 @@ from sr2fpga_agent.block_preparation import (
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import COST_AXES, reconcile_cost_events
 from sr2fpga_agent.paired_block import load_development_paired_block
-from sr2fpga_agent.models import GeneratedProject
 from sr2fpga_agent.project_contract import project_package_sha256
 
 
@@ -975,15 +975,6 @@ def _incomplete_reasons(
     return sorted(reasons)
 
 
-def _artifact_ref(payload: Mapping[str, Any]) -> ArtifactRef:
-    return ArtifactRef(
-        key=payload["key"],
-        sha256=payload["sha256"],
-        size_bytes=payload["size_bytes"],
-        media_type=payload["media_type"],
-    )
-
-
 def _optional_ref(payload: Mapping[str, Any] | None) -> ArtifactRef | None:
     return None if payload is None else _artifact_ref(payload)
 
@@ -1007,12 +998,3 @@ def _require_sha256(value: str, label: str) -> None:
         raise PairedCostReconciliationError(f"{label} must be SHA-256") from exc
 
 
-def _sha256_json(payload: Any) -> str:
-    return hashlib.sha256(
-        json.dumps(
-            payload,
-            ensure_ascii=False,
-            sort_keys=True,
-            separators=(",", ":"),
-        ).encode("utf-8")
-    ).hexdigest()

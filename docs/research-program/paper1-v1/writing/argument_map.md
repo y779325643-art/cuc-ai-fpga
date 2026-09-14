@@ -1,5 +1,10 @@
 # Argument map
 
+> [Terminology, 2026-09-08](../../../specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
 ## Scientific tension
 
 - General-purpose agents can iteratively edit RTL repositories and optimize
@@ -19,8 +24,8 @@ requirements, under matched model, content-equivalent public facts, declared
 feedback privileges, and reconciled compute/tool budgets, does deterministic
 materialization with its declared editable-surface policy improve method-neutral
 verified project success (`VPP-L3@1`) over free generation from the same
-System-HIS, and
-does the complete untrained System-HIS pipeline improve over Direct? The
+Project Contract, and
+does the complete untrained Project Contract pipeline improve over Direct? The
 representation bundle is a secondary mechanism estimate; bounded public repair
 forms the separate RQ2 confirmatory line across M0-M5.
 
@@ -31,7 +36,7 @@ Prospective thesis, not a current result:
 > A shared requirement boundary can stop unsafe generation when critical intent
 > is unresolved. For adjudicated-ready inputs, contract-grounded deterministic
 > materialization can increase method-neutral verified project success
-> (`VPP-L3@1`) relative to free generation from the same frozen System-HIS, and
+> (`VPP-L3@1`) relative to free generation from the same frozen Project Contract, and
 > the complete untrained
 > pipeline can improve over Direct. Oracle-separated public repair and one-shot
 > hidden evaluation can distinguish visible convergence from verified project
@@ -61,7 +66,7 @@ infrastructure missingness, and cost.
 
 - Claim: multi-file generation contains cross-artifact obligations that a
   file-local prompt/evaluator does not represent directly.
-- Evidence: System-HIS, package/envelope contracts, H0-H3, and role-based common
+- Evidence: Project Contract, package/envelope contracts, H0-H3, and role-based common
   L0 exist as bounded implementation surfaces.
 - Limitation: contract conformance does not prove functional correctness or a
   treatment effect.
@@ -112,7 +117,7 @@ infrastructure missingness, and cost.
   with M2, keep M3−M2 secondary, call it a representation-bundle effect, and
   report all-axis cost.
 - Deterministic project materialization or its narrower edit surface may provide
-  the benefit. Compare M4 with M3 on the same frozen HIS and interpret the result
+  the benefit. Compare M4 with M3 on the same frozen PC and interpret the result
   as their joint bundle unless a later orthogonal control separates them.
 - Public diagnostics may overfit visible checks. Score one immutable terminal
   candidate with an evaluator-owned hidden oracle.

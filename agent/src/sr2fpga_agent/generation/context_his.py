@@ -50,6 +50,7 @@ from sr2fpga_agent.prompts import (
     _frozen_system_his_messages,
     _with_his_project_retry_feedback,
 )
+from sr2fpga_agent.providers import ModelOutputTruncated, ModelOutputEmpty
 from sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
 from sr2fpga_agent.system_his_checker import check_his_project_consistency
 from sr2fpga_agent.project_contract import project_package_sha256, verify_project_envelope
@@ -76,12 +77,15 @@ class FrozenContextSystemHisFacade:
         self._check_platform(context)
         if self._req2his_client is None:
             raise RuntimeError("missing REQ2HIS model client")
-        content = self._req2his_client.stream_chat(
-            _frozen_system_his_messages(context)
-        )
-        return _normalize_his_project_identity(
-            context, parse_system_his_payload(content)
-        )
+        try:
+            content = self._req2his_client.stream_chat(_frozen_system_his_messages(context))
+        except (ModelOutputTruncated, ModelOutputEmpty) as exc:
+            return _unparsed_his_output(exc.content, str(exc))
+        try:
+            parsed = parse_system_his_payload(content)
+        except ValueError as exc:
+            return _unparsed_his_output(content, str(exc))
+        return _normalize_his_project_identity(context, parsed)
 
     def emit_free_project(
         self,
@@ -422,17 +426,20 @@ class FrozenContextSystemHisCorrectionFacade:
             isinstance(item, str) for item in raw_diagnostics
         ):
             raise ValueError("System-HIS correction diagnostics must be a list of strings")
-        content = self._client.stream_chat(
-            _frozen_system_his_correction_messages(
-                context,
-                dict(system_his),
-                failed_h_stage=failed_stage,
-                diagnostics=list(raw_diagnostics),
+        try:
+            content = self._client.stream_chat(
+                _frozen_system_his_correction_messages(
+                    context, dict(system_his), failed_h_stage=failed_stage,
+                    diagnostics=list(raw_diagnostics),
+                )
             )
-        )
-        return _normalize_his_project_identity(
-            context, parse_system_his_payload(content)
-        )
+        except (ModelOutputTruncated, ModelOutputEmpty) as exc:
+            return _unparsed_his_output(exc.content, str(exc))
+        try:
+            parsed = parse_system_his_payload(content)
+        except ValueError as exc:
+            return _unparsed_his_output(content, str(exc))
+        return _normalize_his_project_identity(context, parsed)
 
     def repair_project(
         self,
@@ -629,6 +636,14 @@ def _validate_static_his_skeleton(skeleton: GeneratedProject) -> None:
             "static deterministic skeleton is inconsistent: "
             + "; ".join(crosscheck.errors)
         )
+
+
+def _unparsed_his_output(content: str, error: str) -> dict[str, Any]:
+    # Retain the exact failed response as a clearly tagged provisional artifact.
+    # This is deliberately NOT a System-HIS object: unchanged H0 schema checks
+    # reject it, so only an explicitly budgeted M5 correction can proceed.
+    return {"contract_version": "unparsed-system-his-output-v1",
+            "raw_output": content, "parse_error": error}
 
 
 def _normalize_his_project_identity(

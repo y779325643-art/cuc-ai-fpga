@@ -1,13 +1,19 @@
 # SR2FPGA Paper 1 Research Program Freeze
 
-> Chinese companion: [`2026-08-14-sr2fpga-paper1-research-program-freeze-design.zh.md`](2026-08-14-sr2fpga-paper1-research-program-freeze-design.zh.md).
+> [Terminology, 2026-09-08](2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
+> Chinese companion: [`2026-08-14-sr2fpga-paper1-research-program-design.zh.md`](2026-08-14-sr2fpga-paper1-research-program-design.zh.md).
 > If the two versions disagree, this English specification is authoritative.
 
 ## Status and authority
 
-- Status: **active canonical Paper-1 research and experiment specification**
-- Version: `paper1-freeze-v1.7`
-- Effective date: 2026-08-27
+- Status: **unfrozen; open for research-program revision by user request on 2026-09-07**
+- Version: `paper1-v1.8`
+- Version role: active pre-outcome EA amendment; execution remains unauthorized
+- Effective date: 2026-09-07
 - Target venue: **ACM Transactions on Reconfigurable Technology and Systems
   (TRETS)**
 - Evidence cut-off: local `develop@bd516c110862`, plus the current working-tree
@@ -18,7 +24,18 @@
 - Implementation status: protocol design; outcome-producing experiments have not
   yet been run under this freeze
 
-This is a **research-program freeze**, not the signed campaign freeze. The
+As of 2026-09-07, the user has lifted this document's research-program freeze.
+Research questions, method design, scope and analysis plans may now be discussed
+and revised through explicit, traceable proposals; v1.7 no longer prohibits such
+revision. This status change does not itself change any substantive protocol,
+approve a replacement design, or authorize implementation, model runs, G5,
+official evaluation, or campaign execution. Existing execution and evaluator
+boundaries remain in force. Prior QA and M3/M4 audits describe their original
+v1.7 scope; affected conclusions must be re-reviewed after substantive revision.
+References below to a frozen or active v1.7 plan describe the retained baseline
+and are subject to this status notice.
+
+The retained baseline is a **research-program specification**, not the signed campaign freeze. The
 candidate split, planning sample size, method definitions, and gate order below
 become executable only after G4a, the excluded G5 pilot, and the final G4b
 campaign manifest. No file may describe the candidate split as an empirical
@@ -79,6 +96,19 @@ endpoint, information privilege, budget, RQ2 family, RQ0 audit, RQ4 analysis, or
 data-collection obligation; every signed eligible M0-M5 condition is still
 executed and reported.
 
+The v1.8 amendment authorizes a contract-preserving evolutionary architecture
+search as RQ5. It retains the M0--M5 ladder, all no-training rules, the
+public/hidden evaluator separation, and one-shot terminal evaluation. RQ5 uses
+its own `E0` equal-budget random-search and `E1` EA conditions rather than
+reviving the withdrawn M6 training line. It requires a separately versioned
+Design Point (DP) genotype under a Design-Space Contract (DSC), deterministic
+decoding to Project Contract, real public
+tool fitness, append-only search lineage, and a predeclared terminal selector.
+RL, learned QoR prediction, and general GA/RL search remain outside Paper-1.
+This amendment is a research design only: it authorizes no implementation,
+pilot, model run, hidden outcome, or official campaign before EA-G3, EA-G4a,
+EA-G5, and EA-G4b close.
+
 This document supersedes the earlier Paper-1 reframe, official-evaluation, and
 mandatory constrained-decoding proposals. Those superseded documents are
 preserved in Git history rather than retained as parallel working-tree
@@ -123,25 +153,30 @@ system. The central empirical question is:
 > Under matched model, public requirement facts, feedback privileges, and total
 > compute/tool budgets, does contract-grounded deterministic materialization
 > improve hidden project-level correctness over free generation from the same
-> System-HIS, does the complete untrained System-HIS pipeline outperform Direct,
-> and does contract-aware public repair survive an evaluator-owned one-shot
-> hidden check under a reconciled correctness-cost budget?
+> Project Contract, does the complete untrained Project Contract pipeline outperform Direct,
+> does contract-aware public repair survive an evaluator-owned one-shot hidden
+> check under a reconciled correctness-cost budget, and does contract-preserving
+> evolutionary architecture search outperform equal-budget random search without
+> receiving hidden-evaluator feedback?
 
 The minimum paper therefore requires:
 
 1. a shared, versioned requirement-intake boundary plus a disjoint ambiguity
    audit that measures silent proceed, false blocking, provenance, and
    clarification behavior without granting project-pass credit;
-2. a method-neutral common project contract and a closed, separately applicable
-   System-HIS treatment;
+2. a method-neutral common FPP delivery contract and a closed, separately applicable
+   Project Contract treatment;
 3. a frozen family-held-out benchmark with evaluator-owned hidden final
    evaluation;
-4. matched direct, untyped-structured, HIS, skeleton, and repair conditions;
+4. matched direct, untyped-structured, PC, skeleton, and repair conditions;
 5. convergence and total-cost accounting for every M0-M5 episode, including
    failures, `not_run`, infrastructure outcomes, and repair attempts, not only
    final pass rate; and
 6. representative OpenXC7 L4 confirmation, explicitly separated from general
    L4, Vivado, bitstream, board, and portability claims.
+7. a separately gated RQ5 contract-preserving architecture-search comparison
+   between equal-budget random search and EA, with public fitness only and
+   one-shot hidden final validation.
 
 A predeclared paired target-profile adaptation study may be added as an optional
 extension only through the separate freeze obligations in Sections 7.2, 7.5,
@@ -149,9 +184,9 @@ extension only through the separate freeze obligations in Sections 7.2, 7.5,
 the core M0-M5 experiment.
 
 Model training or fine-tuning, Tier-B constrained decoding, QoR prediction,
-broad Vivado closure, `.bit` generation, L5, and GA/RL architecture search are
-outside the minimum Paper-1 scope. They may be discussed as future work but may
-not delay or substitute for the M0-M5 held-out evaluation.
+broad Vivado closure, `.bit` generation, L5, and RL architecture search are
+outside Paper-1. The v1.8 `E1` EA condition is the sole authorized evolutionary
+search scope; it may not delay or substitute for the M0--M5 held-out evaluation.
 
 ## 2. Why the research line changed
 
@@ -166,7 +201,7 @@ feedback can produce over-solving.
 SR2FPGA's defensible difference is therefore a combination that must be tested,
 not asserted:
 
-- System-HIS as a typed requirement-to-project semantic contract rather than an
+- Project Contract as a typed requirement-to-project semantic contract rather than an
   episode control plane;
 - explicit separation between repair-visible diagnostics and hidden final
   semantic oracles;
@@ -202,7 +237,7 @@ development conformance outcomes alone cannot.
 - A shared, provenance-bearing Requirement Envelope and requirement boundary
   now run before every implemented generation method. Non-ready requests stop
   before model-client construction or candidate generation, and Direct methods
-  record H0-H3 as `not_applicable` rather than failing for a missing System-HIS.
+  record H0-H3 as `not_applicable` rather than failing for a missing Project Contract.
 - Registered requirement-audit case/event/replay/outcome/witness contracts and
   a development Phase A/B runner now exist, including exactly-one replay and a
   cluster-aware reducer. The signed fixture population, frozen interval and
@@ -210,7 +245,7 @@ development conformance outcomes alone cannot.
 - `training/` supports dataset conversion, dry-run validation, manual LoRA/SFT,
   adapter merge, and serving without importing Agent. Its model commands are
   infrastructure, not a formal G4b-gated M6 entry.
-- Versioned System-HIS, project/terminal/evaluation, OASA, trajectory,
+- Versioned Project Contract, project/terminal/evaluation, OASA, trajectory,
   candidate training-release, training-view, task-catalog, dataset, and evidence
   files exist. Registration does not authenticate a release or create an
   official evaluator producer.
@@ -255,7 +290,7 @@ is a model outcome.
   but no signed fixture population, frozen interval/threshold or official audit
   execution exists.
 - Provider-neutral M0-M5 core adapters now include M2 Structured-Direct and M3
-  HIS-Free, but the legacy Runner is not their end-to-end campaign authority and
+  PC-Free, but the legacy Runner is not their end-to-end campaign authority and
   cannot yet reconcile one frozen pack through public evaluation, terminal
   selection, reseal and official hidden dispatch.
 - A separate development hidden boundary consumes a sealed terminal candidate
@@ -305,9 +340,9 @@ arbitrary open-world requirement understanding or project correctness.
 
 ### RQ1 — End-to-end contract value
 
-Does the generated System-HIS pipeline improve method-neutral verified project
+Does the generated Project Contract pipeline improve method-neutral verified project
 success beyond direct generation under the same external requirement facts and
-total budget? Within the System-HIS path, what increment is attributable to the
+total budget? Within the Project Contract path, what increment is attributable to the
 joint deterministic-materialization/edit-surface intervention, and what
 secondary evidence is associated with the representation bundle?
 
@@ -317,7 +352,7 @@ Comparisons and interpretation:
   plan schema, prompt, checker, and representation length, so it must not be
   described as a pure causal estimate of “typing alone.” Both branches must match
   planner/generator call count, global budget, and effective input facts.
-- M4 versus M3 reuses the exact same frozen generated-HIS artifact for each
+- M4 versus M3 reuses the exact same frozen generated-PC artifact for each
   semantic-instance/replicate block. It jointly changes deterministic project
   materialization and the associated editable-surface policy; without an
   additional orthogonal control it is not a pure skeleton-text, editable-byte,
@@ -346,12 +381,12 @@ evaluator?
   policy effect: their initial generators, artifacts, diagnostics, and edit
   surfaces differ.
 - M5 versus M4 measures the incremental success and cost of public-feedback
-  repair inside the HIS pipeline and is the primary confirmatory online-repair
+  repair inside the PC pipeline and is the primary confirmatory online-repair
   bundle contrast.
 - The repair-mechanism probe starts from the same frozen failing M4 project and
-  pairs a generic repair policy with a HIS-aware repair policy. The initial
+  pairs a generic repair policy with a PC-aware repair policy. The initial
   state, model, public tool output, edit surface, and global budget are identical;
-  only the declared HIS-aware diagnostic fields differ.
+  only the declared PC-aware diagnostic fields differ.
 - Report `P(hidden failure | public acceptance)` for each repair condition. Do
   not subtract rates with different hidden-evaluation eligibility.
 
@@ -395,6 +430,42 @@ evaluator-owned compliance oracle. This extension is descriptive unless its own
 pre-outcome freeze defines a powered contrast and multiplicity rule. Its absence
 does not block the minimum Paper-1 campaign or submission.
 
+### RQ5 — Contract-preserving evolutionary architecture search
+
+Given the same frozen requirement facts, target profile, generated Project Contract
+seed, public evaluator, and real-tool budget, does `E1` contract-preserving
+evolutionary architecture search improve the predeclared terminal bounded
+physical-feasibility endpoint over `E0` equal-budget random architecture search,
+while the selected candidate retains one-shot hidden functional conformance?
+
+`E0` and `E1` are separate RQ5 conditions, not changes to the M0--M5 ladder and
+not a revival of the withdrawn M6 training conditions. Both consume the same
+Design-Space Contract grammar, deterministic decoder, mutation domain, candidate and
+tool budget, public fitness, terminal selector, and evaluator commitment. Their
+only factor is adaptive EA selection in `E1` versus non-adaptive uniform sampling
+in `E0`. `B_EA`, the once-decoded seed, is a descriptive reference only.
+
+Population selection may use only public contract checks and actual public tool
+outputs. Hidden cases, identifiers, scores, logs, and outcomes cannot influence
+mutation, parent selection, generation count, fitness, terminal replacement, or
+any later search decision. The hidden evaluator executes exactly once on the
+sealed terminal candidate per condition. A Design Point is a separately
+versioned compact genotype governed by the Design-Space Contract and decoded to a
+Project Contract. The PC remains serialized as System-HIS v1.2; it is not an EA genotype.
+
+RQ5 has one primary `E1−E0` hypothesis. Before G5, EA-G4a freezes its endpoint,
+minimum effect, cluster estimator, interval/test implementation, candidate/tool
+budget, public fitness, terminal selector, missingness rule, decoder and grammar
+hashes, and evaluator commitment. Public-fitness trajectories, diversity,
+invalid-decode rate, cost, resource/timing vectors, public-to-hidden divergence,
+and `B_EA` are descriptive diagnostics. RQ5 cannot claim general PPA improvement,
+hidden correctness, or portability beyond its signed endpoint and final hidden
+outcome.
+
+RQ5 adds EA-G3 development conformance, EA-G4a protocol freeze, EA-G5 excluded
+pilot, and EA-G4b authorization before EA-G7 official execution. It does not
+authorize implementation or execution at this amendment stage.
+
 ## 5. Method and baseline ladder
 
 ### 5.1 Reference conditions
@@ -415,7 +486,7 @@ not yet implement this complete ladder; G3 is a hard runtime gate.
 
 - **M0 Direct:** the requirement plus the common public project/interface
   contract goes directly to one full-project generator. It produces no
-  System-HIS, receives no public evaluator feedback before scoring, and is not
+  Project Contract, receives no public evaluator feedback before scoring, and is not
   required to pass H-stages.
 - **M1 Direct-Repair:** M0 plus public-evaluator diagnosis/repair under the
   global repair budget. It is a **HORIZON-motivated Direct-Repair control**. It
@@ -425,15 +496,15 @@ not yet implement this complete ladder; G3 is a hard runtime gate.
   exact HORIZON reproduction without the released original protocol.
 - **M2 Structured-Direct:** model stage 1 emits an untyped structured plan from
   the same requirement facts; model stage 2 freely emits the full project. The
-  plan has no System-HIS types, cross-field checker, or deterministic skeleton.
-- **M3 HIS-Free:** model stage 1 emits System-HIS; model stage 2 freely emits the
+  plan has no Project Contract types, cross-field checker, or deterministic skeleton.
+- **M3 PC-Free:** model stage 1 emits Project Contract; model stage 2 freely emits the
   full project through a true no-skeleton generator. For the materialization
-  comparison, M3 and M4 consume the same frozen generated-HIS artifact.
-- **M4 HIS-Skeleton:** trusted code lowers that generated System-HIS to the
+  comparison, M3 and M4 consume the same frozen generated-PC artifact.
+- **M4 PC-Skeleton:** trusted code lowers that generated Project Contract to the
   contract skeleton and the model fills only declared behavior regions. It has
   no outer EDA repair; any planner/parser/schema retry is an explicit budgeted
   model call, not hidden inside “first attempt.”
-- **M5 HIS-Online:** M4 plus public-evaluator diagnosis and outer repair under
+- **M5 PC-Online:** M4 plus public-evaluator diagnosis and outer repair under
   exactly the M1 global repair/tool budget.
 - **R_generic / R_HIS repair probe:** two repair policies applied to the same
   frozen failing M4 project for the mechanism analysis in RQ2. These are paired
@@ -442,7 +513,7 @@ not yet implement this complete ladder; G3 is a hard runtime gate.
 The official unit of matched execution is a versioned **replicate block** keyed
 by `(semantic_instance_id, replicate_id)` and a stable `paired_block_id`. Within a
 block, M0 and M1 consume the same immutable initial Direct project; M3 and M4
-consume the same immutable generated-HIS artifact; and M4 and M5 consume the
+consume the same immutable generated-PC artifact; and M4 and M5 consume the
 same immutable initial skeleton-derived project. The complete M0-M5 block uses
 one public fact projection, model/inference configuration, tool and evaluator
 commitments, hidden-case seed, and global budget policy. The repair-policy probe
@@ -494,7 +565,7 @@ repair, or project evaluator. It receives no VPP or project-method credit.
 
 The common public project contract is method-neutral. It requires the complete
 RTL source set, top/interface declaration, manifest, applicable constraints,
-build/tool metadata, and trusted-edit boundary needed by L0-L3. System-HIS,
+build/tool metadata, and trusted-edit boundary needed by L0-L3. Project Contract,
 H0-H3 records, generated requirement traces, candidate testbenches, and predicted
 QoR are condition-applicable or advisory artifacts; they may not be universal
 admission requirements for M0/M1/M2 or hidden scoring authorities.
@@ -556,7 +627,7 @@ The candidate workspace must not expose:
 - `agent/src/` deterministic generators or task templates;
 - trusted testbenches, independent reference models, mutation sources, hidden
   vectors/properties, or scoring scripts;
-- held-out reference projects, System-HIS answers, trajectories, datasets, or
+- held-out reference projects, Project Contract answers, trajectories, datasets, or
   retained non-Paper training exports; or
 - API keys, private endpoints, vendor artifacts, and unrelated repository state.
 
@@ -596,7 +667,7 @@ unscorable, not model failures. An integrity error invokes the frozen campaign
 abort/invalidation rule. Once a semantic result is committed, every retry is
 forbidden.
 
-A canonical/oracle System-HIS may be used only in an explicitly labeled ceiling
+A canonical/oracle Project Contract may be used only in an explicitly labeled ceiling
 or content-equivalent representation diagnostic, never in the headline end-to-
 end comparison. M2/M3 effective-information audits must list every visible fact;
 matching token totals alone does not prove information equivalence.
@@ -649,7 +720,7 @@ episode, repair, public-tool, hidden-evaluator, and EDA cost under the frozen
 accounting rule.
 
 For planning, every repair-capable condition has one frozen total model-side
-repair/correction-call ceiling. An M5 System-HIS correction and an M5 outer
+repair/correction-call ceiling. An M5 Project Contract correction and an M5 outer
 project repair are separately labeled stages but consume that shared ceiling;
 they are not two independent free calls. Provider transport retries remain
 outside this ceiling only when they satisfy the frozen infrastructure-retry
@@ -821,9 +892,9 @@ by this L0-L3 contract. It does not imply routed hardware, bitstream generation,
 board execution, or satisfaction of an unstated platform constraint. Those
 claims require the separately named L4/L5 evidence.
 
-H0/H1/H2/H3 are mechanism outcomes only for methods that emit System-HIS. They
+H0/H1/H2/H3 are mechanism outcomes only for methods that emit Project Contract. They
 are `not_applicable`, not failures, for M0/M1/M2 and are never a condition-
-specific advantage inside the cross-method VPP definition. A HIS-stage design
+specific advantage inside the cross-method VPP definition. A PC-stage design
 failure that prevents a project from being emitted still makes that method's
 VPP outcome zero through the ordinary generation path.
 
@@ -1054,7 +1125,7 @@ For every signed semantic instance `i` in family `f` and replicate `q`, let
 `D_if,54 = mean_q(YA_ifq,M5 - YA_ifq,M4)`, `Delta_f,54 = mean_i(D_if,54)`, and
 `Delta_54 = (1/4) sum_f Delta_f,54`. This intention-to-treat estimand includes
 every signed cluster whether or not M5 invokes repair. Because M5 may spend its
-single repair/correction allowance on either System-HIS correction or outer
+single repair/correction allowance on either Project Contract correction or outer
 project repair, M5−M4 estimates an online-repair **bundle**, not either stage in
 isolation.
 
@@ -1225,7 +1296,8 @@ G4b freeze. Paper-1 authorizes no training run.
 - Acceptance: clean-link audit and no competing file labeled current Paper-1
   authority.
 
-### G1 — System-HIS contract closure
+<a id="g1--system-his-contract-closure"></a>
+### G1 — Project Contract closure
 
 **Current gate status (2026-08-18): locally closed for this checkout.** The
 registered conformance matrix includes Schema, H0-H2, reset, lowerer,
@@ -1240,9 +1312,9 @@ closed on 2026-08-24; G3-G4b remain open.
   and H2, or relabel non-lowerable examples explicitly.
 - Add negative fixtures for every frozen rule; unify reset; define and test the
   compatibility/quarantine envelope.
-- Separate the method-neutral common project contract from optional System-HIS,
+- Separate the method-neutral common FPP delivery contract from optional Project Contract,
   H-stage, candidate-testbench, and predicted-QoR artifacts. Direct and untyped
-  controls must reach common L0 without System-HIS and record H0-H3 as
+  controls must reach common L0 without Project Contract and record H0-H3 as
   `not_applicable`.
 - Acceptance: schema/checker/fixture/lowerer conformance matrix is green, a real
   Direct→common-L0 regression proves no H-stage dependency, and the full
@@ -1279,7 +1351,7 @@ a model result or signed campaign artifact.
   pre/post clarification lineage rather than only the first three questions.
 - Add stop-before-generation interception, no-nearest-family tests, and a
   visibility spy test proving no private ambiguity label/answer reaches model,
-  Recipe, HIS, project, repair, or any retained non-Paper training context.
+  Recipe, PC, project, repair, or any retained non-Paper training context.
 - Split the public evaluator from an evaluator-owned hidden harness. Hidden runs
   once on the terminal immutable candidate, candidate testbenches are never
   trusted, and spy tests prove no hidden datum reaches repair.
@@ -1301,7 +1373,7 @@ a model result or signed campaign artifact.
 - The required G3 matrix covers: one gold-ready M0-M5 replicate block; explicit
   `semantic_instance_id`/`replicate_id`/`paired_block_id`, requested-seed
   provenance, and independently seeded balanced order; M0/M1 shared initial
-  project; M3/M4 shared HIS; M4/M5 shared initial project; real public failure→
+  project; M3/M4 shared PC; M4/M5 shared initial project; real public failure→
   diagnosis→patch→rerun transitions for M1 and M5; M5 H0-H3 correction paths;
   public and hidden pass/fail; sanitized provider/public/hidden/L3
   infrastructure `not_run`; raw-to-summary reconciliation for all three cost
@@ -1595,11 +1667,11 @@ Paper-1 program.
 - “bounded requirement-boundary performance” only after G7 reports the signed
   ambiguity manifest, full disposition confusion matrix, false-proceed interval,
   clarification replay, provenance violations, and leakage audit;
-- “closed System-HIS contract” after G1;
+- “closed Project Contract” after G1;
 - “frozen official benchmark” after G4b;
 - “deterministic-materialization/edit-surface benefit” only when the M4−M3
   primary claim rule passes;
-- “untrained end-to-end System-HIS value” only when the M4−M0 primary claim rule
+- “untrained end-to-end Project Contract value” only when the M4−M0 primary claim rule
   passes; the complete RQ1 claim requires both primary rules;
 - “repair effectiveness” after real transitions plus the paired repair-policy
   and end-to-end RQ2 analyses;
@@ -1618,7 +1690,7 @@ Paper-1 program.
 - first repository-level/hands-free/tool-feedback RTL agent;
 - first hardware IR or untyped CPPL;
 - a “typing alone” correctness effect from M3−M2 rather than the frozen
-  System-HIS representation-bundle interpretation;
+  Project Contract representation-bundle interpretation;
 - a skeleton-text-only, editable-byte-only, or lowerer-rule-only causal effect
   from M4−M3 rather than the frozen materialization/edit-surface bundle;
 - a complete RQ1 claim when only one RQ1 primary rule passes, or use of the
@@ -1676,7 +1748,7 @@ An activated target-profile extension additionally requires
 `target_profile_outcomes.json`. These files are not empty placeholders and are
 not required when the extension is omitted.
 
-Candidate projects retain their public requirement projection, generated HIS
+Candidate projects retain their public requirement projection, generated PC
 when applicable, files, diagnoses, patches, public tool outputs, measured QoR,
 and trajectory links. Hidden score summaries are retained only in evaluator-
 owned outcome bundles, never in candidate workspaces or repair-visible logs.

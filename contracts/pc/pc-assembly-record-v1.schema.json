@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/pc/pc-assembly-record-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "pc-assembly-record-v1"
+    },
+    "record_id": {
+      "type": "string",
+      "pattern": "^pc-assembly-[0-9a-f]{64}$"
+    },
+    "assembly_version": {
+      "const": "pc-assembler-v1"
+    },
+    "decision_version": {
+      "const": "pc-decisions-v1"
+    },
+    "scope": {
+      "const": "development_pc_interface_not_experiment"
+    },
+    "raw_response_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "context_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "platform_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "decision_schema_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "pc_schema_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "implementation_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "status": {
+      "enum": [
+        "input_parse_failed",
+        "decision_schema_failed",
+        "assembly_failed",
+        "pc_validation_failed",
+        "pc_valid",
+        "provider_failed",
+        "pc_unverified"
+      ]
+    },
+    "failure_stage": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "diagnostics": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      }
+    },
+    "pc_ref": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "validation_report_ref": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/artifact_ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "binding_sources": {
+      "type": "object",
+      "additionalProperties": {
+        "enum": [
+          "model",
+          "host_copy"
+        ]
+      }
+    },
+    "logical_model_calls": {
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "provider_failure_type": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "official_outcome": {
+      "const": false
+    },
+    "pass_credit_authority": {
+      "const": false
+    },
+    "experiment_execution_authorized": {
+      "const": false
+    },
+    "execution_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "field_sources": {
+      "type": "object",
+      "propertyNames": {
+        "type": "string",
+        "pattern": "^/"
+      },
+      "additionalProperties": {
+        "enum": [
+          "model",
+          "frozen",
+          "derived"
+        ]
+      }
+    }
+  },
+  "required": [
+    "contract_version",
+    "record_id",
+    "assembly_version",
+    "decision_version",
+    "scope",
+    "raw_response_ref",
+    "context_ref",
+    "platform_ref",
+    "decision_schema_sha256",
+    "pc_schema_sha256",
+    "implementation_sha256",
+    "status",
+    "failure_stage",
+    "diagnostics",
+    "pc_ref",
+    "validation_report_ref",
+    "binding_sources",
+    "logical_model_calls",
+    "provider_failure_type",
+    "official_outcome",
+    "pass_credit_authority",
+    "experiment_execution_authorized",
+    "execution_ref",
+    "field_sources"
+  ],
+  "$defs": {
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "key",
+        "sha256",
+        "size_bytes",
+        "media_type"
+      ]
+    }
+  }
+}

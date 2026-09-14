@@ -24,7 +24,9 @@ class FrozenContextUntypedPlanFacade:
         self._project_client = project_client
 
     def emit_plan(self, context: FrozenRequirementContext) -> Mapping[str, Any]:
-        plan_text = self._plan_client.stream_chat(
+        factory = getattr(self._plan_client, "with_output_format", None)
+        client = factory("text") if callable(factory) else self._plan_client
+        plan_text = client.stream_chat(
             _frozen_untyped_plan_messages(context)
         ).strip()
         if not plan_text:

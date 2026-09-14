@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://sr2fpga.local/contracts/pc/pc-assembly-execution-v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "contract_version",
+    "raw_response_ref",
+    "context_ref",
+    "platform_ref",
+    "logical_model_calls",
+    "provider_failure_type"
+  ],
+  "properties": {
+    "contract_version": {
+      "const": "pc-assembly-execution-v1"
+    },
+    "raw_response_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "context_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "platform_ref": {
+      "$ref": "#/$defs/artifact_ref"
+    },
+    "logical_model_calls": {
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "provider_failure_type": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 1
+        }
+      ]
+    }
+  },
+  "$defs": {
+    "artifact_ref": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "minLength": 1
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "size_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "media_type": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "required": [
+        "key",
+        "sha256",
+        "size_bytes",
+        "media_type"
+      ]
+    }
+  }
+}

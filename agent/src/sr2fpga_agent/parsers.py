@@ -8,7 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Literal
 
-from sr2fpga_agent.models import GeneratedProject
+from sr2fpga_agent.models import GeneratedProject, compact_json_text as _canonical_json
 from sr2fpga_agent.path_safety import validate_project_relative_path
 from sr2fpga_agent.project_contract import validate_project_package_manifest
 from sr2fpga_agent.rtl_introspect import (
@@ -298,10 +298,6 @@ def _validate_system_his_contract_unchanged(expected: dict[str, Any], actual: di
     for key in frozen_keys:
         if _canonical_json(expected.get(key)) != _canonical_json(actual.get(key)):
             raise ValueError(f"HIS2PROJECT changed frozen System-HIS contract section '{key}'")
-
-
-def _canonical_json(value: Any) -> str:
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
 
 
 def diff_projects(old: GeneratedProject, new: GeneratedProject) -> str:

@@ -5,7 +5,7 @@
 - **Design ID:** `sr2fpga-paper1-g3b-shared-checkpoints-cost-views-v1`
 - **Date:** 2026-08-29
 - **Research authority:**
-  [`paper1-freeze-v1.7`](../../specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+  [`paper1-freeze-v1.7`](../../specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
 - **Implementation authority:**
   [`sr2fpga-paper1-code-dev-v1.11`](../../specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md)
 - **Scope:** excluded development conformance for one complete M0-M5 replicate

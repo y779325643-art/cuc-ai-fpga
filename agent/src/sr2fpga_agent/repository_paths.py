@@ -15,10 +15,31 @@ def _has_repository_marker(candidate: Path) -> bool:
     return (candidate / REPOSITORY_MARKER).is_file()
 
 
+def file_identity(path: Path) -> tuple[str, int, int]:
+    """Return a cheap file identity that changes whenever the file is rewritten.
+
+    Repository-owned JSON contracts and catalogs are read many times per run.
+    Callers memoize parsed documents under this key so an in-place rewrite of
+    the same path still invalidates the entry.
+    """
+
+    status = os.stat(path)
+    return (str(path), status.st_mtime_ns, status.st_size)
+
+
+_ROOT_CACHE: dict[tuple[str | None, str | None], Path] = {}
+
+
 def discover_repository_root(start: str | Path | None = None) -> Path:
     """Find the repository root from an override or an explicit source path."""
 
     override = os.environ.get(REPOSITORY_ROOT_ENV)
+    cache_key = (None if start is None else str(start), override or None)
+    cached = _ROOT_CACHE.get(cache_key)
+    # Re-check the marker so a removed repository still fails instead of
+    # resolving from a stale entry; one stat replaces the upward walk.
+    if cached is not None and _has_repository_marker(cached):
+        return cached
     if override:
         candidate = Path(override).expanduser().resolve()
         if not _has_repository_marker(candidate):
@@ -26,6 +47,7 @@ def discover_repository_root(start: str | Path | None = None) -> Path:
                 f"{REPOSITORY_ROOT_ENV}={candidate} does not contain "
                 f"{REPOSITORY_MARKER.as_posix()}"
             )
+        _ROOT_CACHE[cache_key] = candidate
         return candidate
 
     candidate = Path(start).resolve() if start is not None else Path(__file__).resolve()
@@ -34,6 +56,7 @@ def discover_repository_root(start: str | Path | None = None) -> Path:
 
     for directory in (candidate, *candidate.parents):
         if _has_repository_marker(directory):
+            _ROOT_CACHE[cache_key] = directory
             return directory
 
     raise FileNotFoundError(

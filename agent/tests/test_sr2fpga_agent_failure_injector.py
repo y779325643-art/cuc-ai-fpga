@@ -1,9 +1,8 @@
 import json
 import shutil
-import subprocess
-import tempfile
 import unittest
-from pathlib import Path
+
+from rtl_sim_support import compile_and_run, lint_with_verilator
 
 from sr2fpga_agent.failure_injector import (
     FailureInjectingProjectGenerator,
@@ -636,59 +635,11 @@ def _uart_tx_project() -> GeneratedProject:
 
 
 def _run_generated_testbench(project: GeneratedProject) -> str:
-    manifest = json.loads(project.files["manifest.json"])
-    with tempfile.TemporaryDirectory() as tmp:
-        project_dir = Path(tmp)
-        for path, source in project.files.items():
-            destination = project_dir / path
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(source, encoding="utf-8")
-        compile_result = subprocess.run(
-            [
-                "iverilog",
-                "-g2012",
-                "-o",
-                "sim.out",
-                *manifest["sources"],
-                manifest["simulation"]["testbench"],
-            ],
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if compile_result.returncode != 0:
-            raise AssertionError(compile_result.stdout + compile_result.stderr)
-        run_result = subprocess.run(
-            ["vvp", "sim.out"],
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=3,
-        )
-    if run_result.returncode != 0:
-        raise AssertionError(run_result.stdout + run_result.stderr)
-    return run_result.stdout
+    return compile_and_run(project)
 
 
 def _run_verilator_lint(project: GeneratedProject) -> None:
-    manifest = json.loads(project.files["manifest.json"])
-    with tempfile.TemporaryDirectory() as tmp:
-        project_dir = Path(tmp)
-        for path, source in project.files.items():
-            destination = project_dir / path
-            destination.parent.mkdir(parents=True, exist_ok=True)
-            destination.write_text(source, encoding="utf-8")
-        result = subprocess.run(
-            ["verilator", "--lint-only", "-Wall", *manifest["sources"]],
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-    if result.returncode != 0:
-        raise AssertionError(result.stdout + result.stderr)
+    lint_with_verilator(project)
 
 
 class CountingGenerator:

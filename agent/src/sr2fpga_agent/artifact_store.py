@@ -9,8 +9,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path, PurePosixPath
 from typing import Any, Mapping
 
+from sr2fpga_agent.models import GeneratedProject, canonical_json_bytes as _canonical_json
 from sr2fpga_agent.contract_registry import ContractRegistry
-from sr2fpga_agent.models import GeneratedProject
 from sr2fpga_agent.path_safety import validate_project_relative_path
 from sr2fpga_agent.project_contract import verify_project_envelope
 
@@ -679,6 +679,17 @@ def _require_sha256(value: str, label: str) -> None:
         raise ValueError(f"{label} must be lowercase SHA-256")
 
 
+def artifact_ref_from_payload(payload: Mapping[str, Any]) -> ArtifactRef:
+    """Rebuild a reference from a serialized artifact-ref object."""
+
+    return ArtifactRef(
+        key=payload["key"],
+        sha256=payload["sha256"],
+        size_bytes=payload["size_bytes"],
+        media_type=payload["media_type"],
+    )
+
+
 def _artifact_ref_payload(reference: ArtifactRef) -> dict[str, Any]:
     return {
         "artifact_key": reference.key,
@@ -686,13 +697,6 @@ def _artifact_ref_payload(reference: ArtifactRef) -> dict[str, Any]:
         "size_bytes": reference.size_bytes,
         "media_type": reference.media_type,
     }
-
-
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")
 
 
 def _write_exclusive(path: Path, content: bytes) -> None:

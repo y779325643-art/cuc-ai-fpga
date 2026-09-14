@@ -1,11 +1,16 @@
 # SR2FPGA Agent
 
-This project owns FPGA project generation, validation, repair, L0-L4 tool
+> [Terminology, 2026-09-08](../docs/specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
+This project owns FPGA Project Package generation, validation, repair, L0-L4 tool
 orchestration, and trajectory recording.
 
 Follow the repository-wide working agreements in [`AGENTS.md`](../AGENTS.md).
 Paper-1 research semantics are governed by
-[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md).
+[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md).
 Use [`docs/current-status.md`](../docs/current-status.md) for mutable capability,
 verification, debt, and gate facts.
 
@@ -13,7 +18,29 @@ Training and model fine-tuning are owned by the separate `training/` project.
 The Agent runtime intentionally has no PyTorch, Transformers, PEFT, or TRL
 dependency.
 
+## H3 acceptance declarations
+
+H3 checks preservation of a declared acceptance obligation, not whether RTL or a
+testbench satisfies it. Map `acceptance_criteria` to a standalone
+`verification.acceptance_obligation` containing the required value. Concrete
+pass conditions and scenarios remain separate. Explicit custom criteria use
+whole-value matching (whitespace and a terminal period are normalized; case-sensitive
+units and identifiers are preserved),
+not word overlap. The default independent-evaluation obligation additionally
+accepts bounded affirmative forms with an independent/external/third-party
+evaluator, assessor, checker or verifier, a verification action, and coverage of
+every explicit functional and protocol clause. Arbitrary paraphrases are not
+claimed to be semantically proved; preserve the required declaration when unsure.
+
+Use `/intent/target_platform` for the exact platform value; `/platform/target`
+and `/artifacts/rtl_sources` are not H3 target evidence. All supplied pointers
+must be admissible, even when another pointer already preserves the value.
+
 ## Installation
+
+The opt-in [PC decision interface](../contracts/pc/README.md) provides immutable
+raw-input records, deterministic assembly, existing H0–H3 validation and an
+offline replay CLI. It does not change the legacy M0–M5 generator defaults.
 
 From the repository root:
 
@@ -76,11 +103,15 @@ The model-backed two-stage path keeps two repair scopes separate:
   only a passing contract can be lowered into a newly rebuilt full project.
 - `ProjectRepairer` retains the existing project/RTL repair path after a full
   project reaches the L0-L4 evaluation pipeline. It does not serve as the
-  System-HIS repairer.
+  Project Contract repairer.
 
-Active implementation names are provider-neutral. Former `DeepSeek*` class
-names remain compatibility aliases, while `deepseek` configuration values
-continue to identify the actual provider/source kind.
+Active implementation names are provider-neutral. The former
+`sr2fpga_agent.deepseek` re-export module has been retired; import generators
+from `sr2fpga_agent.generation`, clients from `sr2fpga_agent.providers`, and
+repairers from `sr2fpga_agent.repair`. The package root still exports
+`DeepSeekProjectGenerator` as an alias of `DirectProjectGenerator`, and
+`deepseek` configuration values continue to identify the actual
+provider/source kind.
 
 ## Request Intake Boundary And REQ2HIS
 
@@ -92,7 +123,7 @@ distinguishable. An exact catalog alias may be recorded as metadata, but an
 unknown system is never coerced to the nearest task family.
 
 This section is organized as the pipeline runs: requirement boundary and RQ0
-audit, episode pack and trusted core, method adapters (CD4), System-HIS
+audit, episode pack and trusted core, method adapters (CD4), Project Contract
 validation, budget accounting, and a runnable example. Retained training-view
 export (CD8) is outside Paper-1. Mutable completion status lives in
 [`docs/current-status.md`](../docs/current-status.md); see the
@@ -102,7 +133,7 @@ for the normative module, interface, and CD1-CD10 work-package design.
 ### Requirement Boundary Disposition
 
 CLI and Runner samples now use one deterministic, evaluator-side requirement
-boundary before selecting deterministic-reference, Direct, or System-HIS
+boundary before selecting deterministic-reference, Direct, or Project Contract
 generation. The boundary preserves fact provenance, records its envelope/route
 hashes, classifies `ready`, `needs_clarification`, or `capability_gap`, and
 stops a non-ready sample before its project generator is called.
@@ -164,12 +195,12 @@ hidden evaluator.
 
 The first CD4 adapter slice is also available as a provider-neutral core. A
 closed M0-M5 registry consumes only `FrozenRequirementContext` through narrow
-generation facades, represents untyped-plan and System-HIS work as explicit
+generation facades, represents untyped-plan and Project Contract work as explicit
 pre-candidate artifacts, and applies repair privileges before any repair
 facade call. For a complete excluded block, `PairedArtifactCoordinator` now uses
 explicit keys for three eagerly prepared, method-neutral checkpoints after the
 measurement freeze and before method execution: the Direct initial project for
-M0/M1, shared System-HIS for M3/M4/M5, and the complete behavior-filled initial
+M0/M1, shared Project Contract for M3/M4/M5, and the complete behavior-filled initial
 project for M4/M5. M4 and M5 consume the identical complete project artifact;
 partial and legacy paths retain the earlier lazy compatibility wrappers and mint
 no G3b artifact. This core is verified with fake providers. Development Runner
@@ -209,9 +240,9 @@ authority. Development pass credit comes only from the selected attempt outcome;
 all of these records remain `official_outcome=false` and do not authorize G4b.
 
 An explicit pre-candidate `EpisodeExecutor` now consumes those emissions. It
-records `method_prepared`, planning, H validation, HIS-correction request, and
+records `method_prepared`, planning, H validation, PC-correction request, and
 candidate/no-candidate transitions as append-only events. Untyped M2 planning
-bypasses H by contract; M3/M4 stop on H failure; M5 may correct HIS only within
+bypasses H by contract; M3/M4 stop on H failure; M5 may correct PC only within
 its declared transition budget, after which all H stages are rerun before any
 project lowering. Illegal post-terminal transitions are rejected. Public tool
 evaluation and terminal/hidden phases remain outside this executor slice.
@@ -237,24 +268,24 @@ gate, and a missing or invalid M0/M1 episode pack stops before the model call.
 Programmatic legacy `DirectProjectGenerator` remains available for compatibility
 but is not the Paper-1 M0/M1 dispatch path.
 
-A context-native M3-M5 initial System-HIS slice is also implemented.
+A context-native M3-M5 initial Project Contract slice is also implemented.
 `FrozenContextSystemHisFacade` sends only the validated
-`FrozenRequirementContext` and the registered System-HIS schema to REQ2HIS;
+`FrozenRequirementContext` and the registered Project Contract schema to REQ2HIS;
 `FrozenContextSystemHisValidationFacade` runs H0-H3 directly against that frozen
-projection and its hash-bound platform. Only a passing HIS may reach deterministic
+projection and its hash-bound platform. Only a passing PC may reach deterministic
 skeleton lowering, where trusted code replaces the legacy manifest with a
 canonical `project-package-v1` manifest before artifact hashing. H failure stops
 before HIS2PROJECT. The single-sample CLI M4 path uses the same context-native
 bridge and `EpisodeExecutor` as Runner, with its planning and state-transition
 artifacts stored below the sample directory. M3 now consumes the same
-materialized frozen HIS as M4 and directly generates a complete canonical
+materialized frozen PC as M4 and directly generates a complete canonical
 project; spy tests prove that it never calls the skeleton builder or behavior
 filler. M5 now has a one-call
-context-native HIS correction facade: only the failed H stage and public
+context-native PC correction facade: only the failed H stage and public
 diagnostics enter its prompt, and `EpisodeExecutor` reruns all H stages before
 lowering. M4 cannot invoke it, and failed correction calls remain budgeted.
 The opt-in `--development-his2project-output-repair` CLI variant provides a
-shared pre-candidate repair ceiling of two. A HIS correction consumes one unit;
+shared pre-candidate repair ceiling of two. A PC correction consumes one unit;
 each rejected HIS2PROJECT behavior response may consume one remaining unit.
 Every rejected response is persisted and linked through explicit
 `project_output_rejected` and `project_output_repair_requested` events. The
@@ -277,7 +308,7 @@ A context-native M5 project-repair facade excludes trusted file contents from
 the prompt, accepts only public stage diagnostics, and requires a trusted outer
 envelope whose editable composite regions are bound to actual byte ranges,
 registered method policy, and verified append-only events. Changes remain
-limited to those behavior regions; package and HIS/RTL checks run afterward.
+limited to those behavior regions; package and PC/RTL checks run afterward.
 The facade remains development-only: its invocation still has compatibility
 ownership and no signed official edit-policy commitment. Returned attempts do
 enter the common evaluator-owned public and terminal authority and fail closed
@@ -287,7 +318,7 @@ rather than falling back to family routing.
 
 `full_pack_smoke.py` now reconciles a fake-fixture M0-M5 pack built from one
 frozen public projection. It requires matched M0/M1 initial projects, matched
-M3/M4 System-HIS, separate M3/M4 candidate keys, matched M4/M5 skeleton
+M3/M4 Project Contract, separate M3/M4 candidate keys, matched M4/M5 skeleton
 projects, and explicit success-conformance, H-repair, project-repair, non-ready,
 hidden-fail, and infrastructure-`not_run` scenarios. The persisted report is
 validated at write time against registered `full-pack-smoke-report-v1`, remains
@@ -318,7 +349,7 @@ writes `full-pack-runner-reconciliation-v2`, which retains those checks,
 optionally binds the verified paired-block reference plus planned/actual method
 order, and records the live runtime-scenario evidence blocker. An assembler now
 consumes the completion events from one real fake-provider, excluded M0-M5
-`run_batch` and writes both reports. For HIS methods, downstream Agent H
+`run_batch` and writes both reports. For PC methods, downstream Agent H
 validation reuses the episode pack's frozen public context rather than adding
 evaluator-side task facts. M4/M5 completion records also carry separately
 verified deterministic-skeleton artifacts; false skeleton hashes fail closed,
@@ -379,14 +410,17 @@ or ineligible manifest stops before the run directory is created. The default
 development mode remains observational and never upgrades undocumented or
 best-effort support to deterministic control.
 
-The capability profile is not yet attached to each model call through
-`seed_control_evidence_ref`, and Runner does not yet verify that its profile
-seed equals every task's requested seed. Remaining G3c/G3d work is limited here
-to those end-to-end capability bindings, M5 scenario/episode-outcome closure,
-two-axis hidden missingness, the remaining required repair probes, and a positive
-`g3-acceptance-v1` reducer and acceptance decision. G3a implements the separate
-replicate/schedule/order lineage, and G3b implements the eager shared checkpoints
-and three-view cost reconciliation; neither accepts G3.
+Configured capability evidence is now copied into the write-once store and
+attached to provider calls through `seed_control_evidence_ref`, with separate
+generation and project-repair bindings. The verified reader checks provider,
+model and gateway identity; a supported-seed claim additionally requires eligible
+evidence, forwarded seed and a matching qualified backend fingerprint. Requested
+seed provenance remains explicit and observational calls are not silently
+upgraded to deterministic support. M5 repair/H0-H3 closure, checkpoint-stop
+outcomes and two-axis hidden execution now have artifact-backed development
+paths. Their collective acceptance is decided only by `g3-acceptance-v1`, not by
+any individual G3a/G3b companion. See the engineering acceptance command below
+and the latest artifact-backed status in `docs/current-status.md`.
 
 A separate excluded M1 repair fixture now exercises one artifact-derived project
 repair path through the real Runner authority. Attempt 0 fails evaluator-owned
@@ -402,8 +436,8 @@ retained design outcome are rebuilt from artifacts. Event-order, post-stop event
 report/platform digest, capability drift, cross-episode trajectory and blob
 tampering fail closed.
 Four real excluded M5 fixtures now cover one initial failure at each of H0, H1,
-H2 and H3. Runner records the initial HIS, the single correction request and
-parent hash, the corrected HIS, the complete H0-H3 rerun, candidate emission,
+H2 and H3. Runner records the initial PC, the single correction request and
+parent hash, the corrected PC, the complete H0-H3 rerun, candidate emission,
 terminal/public/hidden lineage and raw cost events, then writes
 `development-his-correction-outcome-v1` only after the reducer rebuilds that
 chain. The shared budget accounts exactly one `req2his`, one
@@ -416,11 +450,11 @@ hidden fail. Runner emits its registered episode outcome only after rebuilding
 public/trajectory/cost/hidden lineage; the repair spy remains unused,
 development VPP is false, and exact-ledger replay, forged pass credit, reordered
 or cross-episode lineage, and blob tamper fail closed. Other project-repair
-stages, broader hidden-fail/full-pack
-scenario authority and infrastructure-missingness remain open,
-so the current runner/outcome v2 reconciliations name
-`runtime_scenario_evidence_reconciliation` as the live blocker and G3 remains
-unaccepted. Their v1 predecessors remain registered and are not rewritten.
+stages and infrastructure-missingness are covered by the separate finite G3
+matrix. The legacy runner/outcome v2 reconciliations retain
+`runtime_scenario_evidence_reconciliation` as their contract-bound historical
+blocker; they do not decide the new G3 authority. Their v1 predecessors remain
+registered and are not rewritten.
 
 The provider and, for a Paper-1 run, the recorded `method_condition` select a
 generation method rather than a request mode:
@@ -429,13 +463,14 @@ generation method rather than a request mode:
   tasks; it is not a model-generated result and receives no learned-method
   credit;
 - the Direct project parser and evaluator accept a complete project without
-  System-HIS. M0/M1 record H0-H3 as `not_applicable` and continue through the
+  Project Contract. M0/M1 record H0-H3 as `not_applicable` and continue through the
   same method-neutral L0-L4 path; and
 - a two-stage provider performs `REQ2HIS -> HIS2PROJECT`. REQ2HIS calls the
-  configured provider's real API, then the generated System-HIS is checked and
+  configured provider's real API, then the generated Project Contract is checked and
   repaired through H0-H3 before it can be lowered.
 
-### System-HIS Validation (H0-H3) And Representation Disposition
+<a id="system-his-validation-h0-h3-and-representation-disposition"></a>
+### Project Contract Validation (H0-H3) And Representation Disposition
 
 H1 records a machine-readable W1-W10 map with per-rule
 `pass`/`fail`/`not_applicable` and diagnostics. The registered conformance
@@ -448,9 +483,10 @@ Direct/Untyped methods use `not_applicable`, and unknown representations fail
 closed into quarantine. Runner and Recorder derive the training partition from
 this contract rather than private version-string tests.
 
-### System-HIS Path Boundaries And Family Recipe
+<a id="system-his-path-boundaries-and-family-recipe"></a>
+### Project Contract Path Boundaries And Family Recipe
 
-The unified System-HIS path has these boundaries:
+The unified Project Contract path has these boundaries:
 
 - Runner tasks may provide the real user text in `requirement`; when omitted,
   the fallback remains generic and does not silently inject task-family
@@ -463,7 +499,7 @@ The unified System-HIS path has these boundaries:
 - capabilities outside the current backend profile produce an explicit
   `capability_gap` instead of being renamed to a supported family or protocol;
   this is likewise excluded from design-failure credit;
-- `intent.requirement_trace` and the values at its mapped System-HIS locations
+- `intent.requirement_trace` and the values at its mapped Project Contract locations
   are checked by the generic H3 gate; and
 - Family Recipe selection is automatic and exact-only. The selector reconciles
   exact catalog family IDs/aliases, exact runtime task names, and registered
@@ -472,11 +508,11 @@ The unified System-HIS path has these boundaries:
   that recipe; an unknown identifier, conflicting ownership, missing recipe,
   or catalog-backed held-out deny decision keeps the generic prompt.
 
-Every two-stage System-HIS selection records the resolved-family evidence,
+Every two-stage Project Contract selection records the resolved-family evidence,
 selection reason, recipe ID/version/content hash when selected, and the deny-
 policy ID/version/hash and status together with the catalog version. The
 complete decision is evaluator-side sample/preflight/freeze metadata only: it
-does not enter the REQ2HIS prompt, generated System-HIS, or HIS2PROJECT input.
+does not enter the REQ2HIS prompt, generated Project Contract, or HIS2PROJECT input.
 Only when `status=applied` does the selected recipe body enter the REQ2HIS
 prompt. Direct-project and deterministic-reference methods do not record this
 two-stage recipe decision. The current deny set protects the four candidate
@@ -539,8 +575,9 @@ separate `development_vpp_l3`. For fully reconciled excluded terminal
 projections, Runner also emits the registered episode-outcome reference after
 the reducer rebuilds raw source lineage; incomplete repair projections remain
 without a closed episode outcome. Official `vpp_l3` remains `not_evaluated`.
-G3 remains open because positive artifact-derived acceptance and the complete
-G3 matrix are not yet closed. G4a prepares the candidate protocol, G5 is an
+G3 closure requires the separate artifact-derived acceptance and complete matrix;
+the latest accepted or blocked result is recorded in `docs/current-status.md`.
+G4a prepares the candidate protocol, G5 is an
 excluded pilot, a verifier-derived G4b receipt authorizes G6 materialization,
 and G7 executes official outcomes; none of those later deliverables is a G3
 acceptance prerequisite.
@@ -623,7 +660,7 @@ Training-view export is fail-closed for positive targets. Missing or negative
 pass credit, VPP-L3, provenance, budget, or method-applicable artifact evidence
 blocks positive project views; boundary `not_run` cases remain diagnostic, and
 deterministic references are excluded from model training. A Direct project
-without System-HIS can contribute only method-neutral eligible views. These are
+without Project Contract can contribute only method-neutral eligible views. These are
 export safeguards, not Paper-1 evidence and not proof that a release, training
 run, or learned checkpoint exists.
 
@@ -689,7 +726,7 @@ conditional or advisory artifact roles, and tool/language metadata. Source
 paths are safe manifest-relative paths and need not use `rtl/top.v`.
 
 The common package requires `manifest.json` and its declared RTL sources. A
-candidate testbench, System-HIS, timing constraint, board wrapper, or predicted
+candidate testbench, Project Contract, timing constraint, board wrapper, or predicted
 QoR file is present only when declared applicable. Historical unversioned
 `top_module + sources` manifests remain a compatibility input; a new Direct
 generation cannot silently downgrade to that form, and repair preserves the
@@ -698,8 +735,8 @@ input manifest generation.
 Evaluation records two different checks:
 
 - `common_project_l0` validates the method-neutral package for every method;
-- `his_project_consistency` additionally validates HIS-to-project agreement
-  only for methods that emit System-HIS.
+- `his_project_consistency` additionally validates PC-to-project agreement
+  only for methods that emit Project Contract.
 
 A candidate testbench is an untrusted public smoke/debug artifact. Its compile
 or run result is recorded separately and cannot produce semantic L2 credit.
@@ -745,6 +782,59 @@ may be supplied through the platform path-list variable
 source.
 
 ## Tests
+
+### Provider output controls
+
+Runner source configurations support `max_tokens: 0` to omit the local API output
+limit; provider-side defaults and limits still apply. For DeepSeek Chat Completions,
+set `thinking_mode: disabled` or `enabled` explicitly; an omitted value preserves
+the provider default. M2 planning selects text output independently, while its
+project-generation call retains JSON output. Full-project prompts share the
+registered method-neutral manifest schema and serialization example.
+
+Call records retain the raw final answer, finish reason and reported reasoning
+token count under `provider_response_details` (not the reasoning text itself).
+A `length` stop is `output_truncated`, not an invisible transport retry. Unparsed
+PC responses become registered `unparsed-system-his-output-v1` provisional records:
+unchanged H0 validation rejects them, M3/M4 stop, and M5 may spend its existing one
+PC-correction allowance before complete H0-H3 revalidation. These changes grant
+no additional repair calls, pass credit, or hidden-evaluator privileges.
+
+### Excluded G3 engineering acceptance
+
+Run the finite G3 scenario matrix with deterministic/fake model and tool clients:
+
+```powershell
+python -m sr2fpga_agent.g3_acceptance --output-root artifacts/g3-acceptance/run-001
+```
+
+Use a fresh output directory for each run. The command records actual pytest
+collection and setup/call/teardown outcomes, archives checksummed implementation,
+protocol, contract and test sources, and snapshots the write-once artifact stores.
+Candidate and evaluator-private snapshots remain separate. Keep the whole bundle;
+the acceptance JSON alone is not replayable evidence.
+
+The additive `g3-acceptance-v1` reducer requires the complete fixed matrix and
+rebuilds positive execution cells from registered artifacts. It does not consume
+the caller-declared scenario booleans in legacy full-pack smoke reports. Missing
+tests, failures, skips, stale source snapshots, missing lineage, or failed artifact
+replay cannot grant acceptance. The output prints an acceptance key that can be
+rechecked against the unchanged source snapshot:
+
+```powershell
+python -m sr2fpga_agent.g3_acceptance --output-root artifacts/g3-acceptance/run-001 --verify G3_ACCEPTANCE_KEY
+```
+
+This verifies excluded implementation conformance only. It grants no official
+outcome, pass-credit authority, G4b authorization, EA gate, model campaign, or
+dataset promotion. Earlier development contracts retain their fixed authority
+fields. Shared-provider stops retain their episode intake and denominator;
+hidden execution companions distinguish infrastructure/integrity errors from
+committed semantic pass/fail and bind same-terminal retry events. Default hidden
+execution has no infrastructure retries; nonzero ceilings are explicit frozen
+development-fixture inputs, not an official campaign policy.
+
+### General regression suite
 
 ```powershell
 python -m pytest agent/tests -q -p no:cacheprovider

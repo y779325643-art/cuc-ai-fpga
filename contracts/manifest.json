@@ -1,6 +1,38 @@
 {
   "contract_registry_version": "1.0",
   "contracts": {
+    "pc_assembly_execution": {
+      "version": "pc-assembly-execution-v1",
+      "path": "contracts/pc/pc-assembly-execution-v1.schema.json"
+    },
+    "pc_decisions": {
+      "version": "pc-decisions-v1",
+      "path": "contracts/pc/pc-decisions-v1.schema.json"
+    },
+    "pc_assembly_record": {
+      "version": "pc-assembly-record-v1",
+      "path": "contracts/pc/pc-assembly-record-v1.schema.json"
+    },
+    "unparsed_system_his_output": {
+      "version": "unparsed-system-his-output-v1",
+      "path": "contracts/system-his/unparsed-system-his-output-v1.schema.json"
+    },
+    "development_hidden_execution_state": {
+      "version": "development-hidden-execution-state-v1",
+      "path": "contracts/evaluation/development-hidden-execution-state-v1.schema.json"
+    },
+    "development_checkpoint_stop_outcome": {
+      "version": "development-checkpoint-stop-outcome-v1",
+      "path": "contracts/evaluation/development-checkpoint-stop-outcome-v1.schema.json"
+    },
+    "g3_acceptance": {
+      "version": "g3-acceptance-v1",
+      "path": "contracts/evaluation/g3-acceptance-v1.schema.json"
+    },
+    "g3_test_evidence": {
+      "version": "g3-test-evidence-v1",
+      "path": "contracts/evaluation/g3-test-evidence-v1.schema.json"
+    },
     "system_his": {
       "version": "system-his-v1.2",
       "path": "contracts/system-his/system-his-v1.2.schema.json"
@@ -148,6 +180,14 @@
     "development_pre_candidate_stop_outcome_v2": {
       "version": "development-pre-candidate-stop-outcome-v2",
       "path": "contracts/evaluation/development-pre-candidate-stop-outcome-v2.schema.json"
+    },
+    "development_pre_candidate_stop_outcome_v3": {
+      "version": "development-pre-candidate-stop-outcome-v3",
+      "path": "contracts/evaluation/development-pre-candidate-stop-outcome-v3.schema.json"
+    },
+    "development_his_correction_outcome_v2": {
+      "version": "development-his-correction-outcome-v2",
+      "path": "contracts/evaluation/development-his-correction-outcome-v2.schema.json"
     },
     "development_his_correction_outcome": {
       "version": "development-his-correction-outcome-v1",

@@ -8,11 +8,20 @@ import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping, Protocol, runtime_checkable
 
-from sr2fpga_agent.artifact_store import ArtifactIntegrityError, ArtifactRef, ArtifactStore
+from sr2fpga_agent.models import compact_json_bytes as _canonical_json
+from sr2fpga_agent.artifact_store import (
+    ArtifactIntegrityError,
+    ArtifactRef,
+    ArtifactStore,
+    artifact_ref_from_payload as _artifact_ref,
+)
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import (
     COST_AXES,
-    COUNT_COST_AXES,
+    _accumulate_delta,
+    _event_id_from_ref,
+    _require_axis_value,
+    _validate_delta,
     validate_accounting_failure_origin,
 )
 
@@ -134,7 +143,7 @@ class BlockPreparationCostLedger:
         used_after: int | float,
         started_at: float | None = None,
     ) -> ArtifactRef:
-        _require_axis_value(axis, amount)
+        _require_axis_value(axis, amount, error=BlockPreparationCostLedgerError)
         return self._append_cost_event(
             stage=stage,
             visibility_class=visibility_class,
@@ -163,7 +172,7 @@ class BlockPreparationCostLedger:
         used_after: int | float,
         started_at: float | None = None,
     ) -> ArtifactRef:
-        _require_axis_value(axis, amount)
+        _require_axis_value(axis, amount, error=BlockPreparationCostLedgerError)
         return self._append_cost_event(
             stage=stage,
             visibility_class=visibility_class,
@@ -334,7 +343,7 @@ class BlockPreparationCostLedger:
         checkpoint_id = self._require_active_checkpoint()
         if stage != _CHECKPOINT_STAGES[checkpoint_id]:
             raise BlockPreparationCostLedgerError("stage does not match active checkpoint")
-        _validate_delta(cost_delta, unavailable_axes)
+        _validate_delta(cost_delta, unavailable_axes, error=BlockPreparationCostLedgerError)
         reference = self._append(
             checkpoint_id=checkpoint_id,
             stage=stage,
@@ -352,7 +361,13 @@ class BlockPreparationCostLedger:
             reason=None,
             started_at=started_at,
         )
-        _accumulate_delta(self._values, self._unavailable, cost_delta, unavailable_axes)
+        _accumulate_delta(
+            self._values,
+            self._unavailable,
+            cost_delta,
+            unavailable_axes,
+            error=BlockPreparationCostLedgerError,
+        )
         return reference
 
     def _append(
@@ -380,7 +395,12 @@ class BlockPreparationCostLedger:
         event = {
             "contract_version": "development-block-preparation-event-v1",
             "evaluation_scope": "excluded_development_conformance_only",
-            "parent_event_id": _event_id_from_ref(self.store, self._refs[-1]) if self._refs else None,
+            "parent_event_id": _event_id_from_ref(
+                self.store,
+                self._refs[-1],
+                error=BlockPreparationCostLedgerError,
+                label="previous block event",
+            ) if self._refs else None,
             "sequence": sequence,
             "paired_block_ref": self.paired_block_ref.to_dict(),
             "checkpoint_id": checkpoint_id,
@@ -486,8 +506,16 @@ def replay_development_block_preparation(
                 raise BlockPreparationCostLedgerError("accounting close must be the unique final event")
             close_event = event
             continue
-        _validate_delta(event["cost_delta"], event["unavailable_axes"])
-        _accumulate_delta(values, unavailable, event["cost_delta"], event["unavailable_axes"])
+        _validate_delta(
+            event["cost_delta"], event["unavailable_axes"], error=BlockPreparationCostLedgerError
+        )
+        _accumulate_delta(
+            values,
+            unavailable,
+            event["cost_delta"],
+            event["unavailable_axes"],
+            error=BlockPreparationCostLedgerError,
+        )
         checkpoint_id = event["checkpoint_id"]
         if checkpoint_id not in CHECKPOINT_IDS:
             raise BlockPreparationCostLedgerError("cost event has invalid checkpoint")
@@ -496,6 +524,7 @@ def replay_development_block_preparation(
             checkpoint_unavailable[checkpoint_id],
             event["cost_delta"],
             event["unavailable_axes"],
+            error=BlockPreparationCostLedgerError,
         )
     if close_event is None:
         raise BlockPreparationCostLedgerError("block cost stream is not closed")
@@ -572,76 +601,6 @@ def _verify_event_references(store: ArtifactStore, event: Mapping[str, Any]) -> 
             ) from exc
 
 
-def _artifact_ref(payload: Mapping[str, Any]) -> ArtifactRef:
-    return ArtifactRef(
-        key=payload["key"],
-        sha256=payload["sha256"],
-        size_bytes=payload["size_bytes"],
-        media_type=payload["media_type"],
-    )
-
-
-def _event_id_from_ref(store: ArtifactStore, reference: ArtifactRef) -> str:
-    payload = json.loads(store.read_verified(reference))
-    event_id = payload.get("event_id") if isinstance(payload, dict) else None
-    if not isinstance(event_id, str):
-        raise BlockPreparationCostLedgerError("previous block event has no event ID")
-    return event_id
-
-
-def _validate_delta(
-    cost_delta: Mapping[str, int | float | None], unavailable_axes: Mapping[str, str]
-) -> None:
-    if not cost_delta:
-        raise BlockPreparationCostLedgerError("cost delta must be non-empty")
-    unknown = set(cost_delta) - set(COST_AXES)
-    if unknown:
-        raise BlockPreparationCostLedgerError("unknown cost axis: " + ", ".join(sorted(unknown)))
-    null_axes = {axis for axis, value in cost_delta.items() if value is None}
-    if null_axes != set(unavailable_axes):
-        raise BlockPreparationCostLedgerError(
-            "null cost axes and unavailable reasons must match exactly"
-        )
-    for axis, value in cost_delta.items():
-        if value is None:
-            if not isinstance(unavailable_axes[axis], str) or not unavailable_axes[axis]:
-                raise BlockPreparationCostLedgerError(
-                    f"unavailable reason must be non-empty: {axis}"
-                )
-        else:
-            _require_axis_value(axis, value, allow_zero=True)
-
-
-def _require_axis_value(axis: str, value: int | float, *, allow_zero: bool = False) -> None:
-    if axis not in COST_AXES:
-        raise BlockPreparationCostLedgerError(f"unknown cost axis: {axis}")
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise BlockPreparationCostLedgerError(f"cost value must be numeric: {axis}")
-    if value < 0 or (not allow_zero and value == 0):
-        raise BlockPreparationCostLedgerError(f"cost value must be non-negative: {axis}")
-    if axis in COUNT_COST_AXES and not isinstance(value, int):
-        raise BlockPreparationCostLedgerError(f"count cost must be an integer: {axis}")
-
-
-def _accumulate_delta(
-    values: dict[str, int | float],
-    unavailable: dict[str, str],
-    cost_delta: Mapping[str, int | float | None],
-    unavailable_axes: Mapping[str, str],
-) -> None:
-    for axis, value in cost_delta.items():
-        if value is None:
-            reason = unavailable_axes[axis]
-            existing = unavailable.get(axis)
-            if existing is not None and existing != reason:
-                raise BlockPreparationCostLedgerError(
-                    f"conflicting unavailable reasons for {axis}"
-                )
-            unavailable[axis] = reason
-        elif axis not in unavailable:
-            values[axis] = values.get(axis, 0) + value
-
-
 def _sorted_hashes(values: Iterable[str]) -> tuple[str, ...]:
     hashes = tuple(sorted(set(values)))
     for digest in hashes:
@@ -654,7 +613,3 @@ def _sorted_hashes(values: Iterable[str]) -> tuple[str, ...]:
     return hashes
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )

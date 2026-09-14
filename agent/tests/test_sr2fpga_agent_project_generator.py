@@ -1,10 +1,11 @@
 import json
 import re
 import shutil
-import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+
+from rtl_sim_support import compile_and_run, run_tool
 
 from sr2fpga_agent import PlatformProfile, ProjectGenerator, ProjectRequest
 from sr2fpga_agent import project_generator as project_generator_module
@@ -1435,7 +1436,7 @@ class ProjectGeneratorTest(unittest.TestCase):
                     project_dir = Path(tmp)
                     _write_project(project_dir, project)
                     manifest = _manifest(project)
-                    compile_result = subprocess.run(
+                    compile_result = run_tool(
                         [
                             "iverilog",
                             "-g2012",
@@ -1444,10 +1445,7 @@ class ProjectGeneratorTest(unittest.TestCase):
                             *manifest["sources"],
                             manifest["simulation"]["testbench"],
                         ],
-                        cwd=project_dir,
-                        text=True,
-                        capture_output=True,
-                        check=False,
+                        project_dir,
                     )
                     self.assertEqual(
                         compile_result.returncode,
@@ -1456,13 +1454,7 @@ class ProjectGeneratorTest(unittest.TestCase):
                         f"STDOUT:\n{compile_result.stdout}\n"
                         f"STDERR:\n{compile_result.stderr}",
                     )
-                    run_result = subprocess.run(
-                        ["vvp", "sim.out"],
-                        cwd=project_dir,
-                        text=True,
-                        capture_output=True,
-                        check=False,
-                    )
+                    run_result = run_tool(["vvp", "sim.out"], project_dir)
                 self.assertEqual(
                     run_result.returncode,
                     0,
@@ -1506,7 +1498,7 @@ class ProjectGeneratorTest(unittest.TestCase):
                     project_dir = Path(tmp)
                     _write_project(project_dir, project)
                     manifest = _manifest(project)
-                    compile_result = subprocess.run(
+                    compile_result = run_tool(
                         [
                             "iverilog",
                             "-g2012",
@@ -1515,10 +1507,7 @@ class ProjectGeneratorTest(unittest.TestCase):
                             *manifest["sources"],
                             manifest["simulation"]["testbench"],
                         ],
-                        cwd=project_dir,
-                        text=True,
-                        capture_output=True,
-                        check=False,
+                        project_dir,
                     )
                     self.assertEqual(
                         compile_result.returncode,
@@ -1527,13 +1516,7 @@ class ProjectGeneratorTest(unittest.TestCase):
                         f"STDOUT:\n{compile_result.stdout}\n"
                         f"STDERR:\n{compile_result.stderr}",
                     )
-                    run_result = subprocess.run(
-                        ["vvp", "sim.out"],
-                        cwd=project_dir,
-                        text=True,
-                        capture_output=True,
-                        check=False,
-                    )
+                    run_result = run_tool(["vvp", "sim.out"], project_dir)
                 self.assertEqual(
                     run_result.returncode,
                     0,
@@ -1577,12 +1560,9 @@ class ProjectGeneratorTest(unittest.TestCase):
                     project_dir = Path(tmp)
                     _write_project(project_dir, project)
                     manifest = _manifest(project)
-                    result = subprocess.run(
+                    result = run_tool(
                         ["verilator", "--lint-only", "-Wall", *manifest["sources"]],
-                        cwd=project_dir,
-                        text=True,
-                        capture_output=True,
-                        check=False,
+                        project_dir,
                     )
                 self.assertEqual(
                     result.returncode,
@@ -1648,12 +1628,9 @@ class ProjectGeneratorTest(unittest.TestCase):
                 with tempfile.TemporaryDirectory() as tmp:
                     project_dir = Path(tmp)
                     _write_project(project_dir, project)
-                    result = subprocess.run(
+                    result = run_tool(
                         ["verilator", "--lint-only", "-Wall", *_manifest(project)["sources"]],
-                        cwd=project_dir,
-                        text=True,
-                        capture_output=True,
-                        check=False,
+                        project_dir,
                     )
                 self.assertEqual(
                     result.returncode,
@@ -2115,73 +2092,11 @@ def _predicted_resources(project) -> dict:
 
 
 def _run_generated_testbench(project) -> str:
-    manifest = _manifest(project)
-    with tempfile.TemporaryDirectory() as tmp:
-        project_dir = Path(tmp)
-        _write_project(project_dir, project)
-        compile_result = subprocess.run(
-            [
-                "iverilog",
-                "-g2012",
-                "-o",
-                "sim.out",
-                *manifest["sources"],
-                manifest["simulation"]["testbench"],
-            ],
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if compile_result.returncode != 0:
-            raise AssertionError(compile_result.stdout + compile_result.stderr)
-        run_result = subprocess.run(
-            ["vvp", "sim.out"],
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=3,
-        )
-    if run_result.returncode != 0:
-        raise AssertionError(run_result.stdout + run_result.stderr)
-    return run_result.stdout
+    return compile_and_run(project)
 
 
 def _run_project_with_testbench(project, testbench: str) -> str:
-    manifest = _manifest(project)
-    with tempfile.TemporaryDirectory() as tmp:
-        project_dir = Path(tmp)
-        _write_project(project_dir, project)
-        testbench_path = project_dir / manifest["simulation"]["testbench"]
-        testbench_path.write_text(testbench, encoding="utf-8")
-        compile_result = subprocess.run(
-            [
-                "iverilog",
-                "-g2012",
-                "-o",
-                "sim.out",
-                *manifest["sources"],
-                manifest["simulation"]["testbench"],
-            ],
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-        )
-        if compile_result.returncode != 0:
-            raise AssertionError(compile_result.stdout + compile_result.stderr)
-        run_result = subprocess.run(
-            ["vvp", "sim.out"],
-            cwd=project_dir,
-            text=True,
-            capture_output=True,
-            check=False,
-            timeout=5,
-        )
-    if run_result.returncode != 0:
-        raise AssertionError(run_result.stdout + run_result.stderr)
-    return run_result.stdout
+    return compile_and_run(project, testbench_source=testbench, timeout=5)
 
 
 def _sobel_width9_in_last_testbench() -> str:

@@ -7,6 +7,11 @@ import json
 from dataclasses import asdict
 from typing import Any, Iterable
 
+from sr2fpga_agent.models import (
+    GeneratedProject,
+    PlatformProfile,
+    canonical_json_bytes as _canonical_json,
+)
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import reconcile_cost_events
@@ -23,7 +28,6 @@ from sr2fpga_agent.his_validation import (
     validate_frozen_system_his_payload_h_stages,
 )
 from sr2fpga_agent.method_contract import method_policy_sha256
-from sr2fpga_agent.models import GeneratedProject, PlatformProfile
 from sr2fpga_agent.project_contract import project_package_sha256
 from sr2fpga_agent.requirement_boundary import capability_profile_sha256
 from sr2fpga_agent.system_his_capabilities import load_system_his_backend_capabilities
@@ -52,11 +56,18 @@ def read_verified_development_his_correction_outcome(
     registry: ContractRegistry | None = None,
 ) -> dict[str, Any]:
     contract_registry = registry or ContractRegistry()
+    raw = _read_json(store, outcome_ref, "development PC correction outcome")
+    key = {
+        "development-his-correction-outcome-v1": "development_his_correction_outcome",
+        "development-his-correction-outcome-v2": "development_his_correction_outcome_v2",
+    }.get(raw.get("contract_version"))
+    if key is None:
+        raise HisCorrectionOutcomeError("unsupported PC correction outcome version")
     payload = _read_registered(
         store,
         outcome_ref,
         contract_registry,
-        "development_his_correction_outcome",
+        key,
         "development HIS correction outcome",
     )
     without_id = {key: value for key, value in payload.items() if key != "outcome_id"}
@@ -197,13 +208,18 @@ def reconcile_development_his_correction_outcome(
         trajectory["attempts"],
         contract_registry,
     )
+    legacy = (
+        cost["logical_model_stages"] == {"req2his": 1, "system_his_repair": 1, "his2project": 1}
+        and cost["project_repairs"] == 0
+    )
+    version = "v1" if legacy else "v2"
     development_status = (
         "completed"
         if episode_outcome["development_vpp_l3_status"] == "evaluated"
         else "infrastructure_not_run"
     )
     without_id = {
-        "contract_version": "development-his-correction-outcome-v1",
+        "contract_version": f"development-his-correction-outcome-{version}",
         "evaluation_scope": "excluded_development_conformance_only",
         "episode_id": episode_id,
         "method_condition": "M5",
@@ -270,9 +286,9 @@ def reconcile_development_his_correction_outcome(
         + hashlib.sha256(_canonical_json(without_id)).hexdigest(),
     }
     ref = store.put_validated_json(
-        f"his-correction-outcomes/{episode_id}/M5",
+        f"his-correction-outcomes/{episode_id}/M5" + ("/v2" if not legacy else ""),
         payload,
-        contract_key="development_his_correction_outcome",
+        contract_key="development_his_correction_outcome" if legacy else "development_his_correction_outcome_v2",
         registry=contract_registry,
     )
     return payload, ref
@@ -346,12 +362,19 @@ def _reconcile_cost(store, refs, attempts, registry):
         for event_ref in event_refs:
             event = _read_json(store, event_ref, "attempt cost event")
             if event["event_type"] == "budget_reserved" and event["cost_delta"].get("logical_model_calls") == 1:
+                reservation = event["budget_reservation"]
+                if reservation["used_after"] > reservation["limit"]:
+                    raise HisCorrectionOutcomeError("logical model reservation exceeds its budget")
                 stages[event["stage"]] = stages.get(event["stage"], 0) + 1
-    expected = {"req2his": 1, "system_his_repair": 1, "his2project": 1}
-    if logical_calls != 3 or stages != expected:
+    allowed = {"req2his", "system_his_repair", "his2project", "project_repair"}
+    if (
+        set(stages) - allowed or logical_calls != sum(stages.values())
+        or stages.get("req2his", 0) not in {0, 1}
+        or stages.get("system_his_repair") != 1 or stages.get("his2project") != 1
+    ):
         raise HisCorrectionOutcomeError("logical model stages do not reconcile")
-    if outer_repairs != 0:
-        raise HisCorrectionOutcomeError("HIS correction fixture must not use project repair")
+    if outer_repairs != stages.get("project_repair", 0):
+        raise HisCorrectionOutcomeError("project repair calls do not reconcile with raw costs")
     return {
         "all_axes_classified": True,
         "logical_model_calls": logical_calls,
@@ -386,5 +409,3 @@ def _read_json(store, ref, label):
     return payload
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")

@@ -319,7 +319,8 @@ def _requirement_fixture() -> tuple[ProjectRequest, PlatformProfile, dict]:
         "data_flow": [{"name": "input", "protocol": "valid_ready"}],
         "verification": {
             "pass_condition": (
-                "independent evaluator verifies FIFO ordering and valid-ready behavior"
+                "independent evaluator verifies every explicit functional and protocol clause, "
+                "including FIFO ordering and valid-ready behavior"
             )
         },
     }

@@ -7,14 +7,13 @@ from unittest.mock import patch
 
 from sr2fpga_agent import runner as runner_module
 from sr2fpga_agent.cli import build_project_generator_for_connection
-from sr2fpga_agent.deepseek import (
-    AnthropicCompatibleConfig,
-    DeepSeekOracleHisProjectGenerator,
-    DeepSeekProjectGenerator,
-    DeepSeekRepairer,
-    DeepSeekTwoStageProjectGenerator,
-    OpenAICompatibleConfig,
+from sr2fpga_agent.generation import (
+    DirectProjectGenerator,
+    OracleHisProjectGenerator,
+    TwoStageProjectGenerator,
 )
+from sr2fpga_agent.providers import AnthropicCompatibleConfig, OpenAICompatibleConfig
+from sr2fpga_agent.repair import ProjectRepairer
 from sr2fpga_agent.runner import (
     PlannedSample,
     RunnerConfig,
@@ -305,7 +304,7 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
             generator = build_project_generator_for_connection(conn)
-        self.assertIsInstance(generator, DeepSeekTwoStageProjectGenerator)
+        self.assertIsInstance(generator, TwoStageProjectGenerator)
         client_config = generator.his_project_generator.client.config
         self.assertEqual(client_config.model, "claude-opus-4-8")
         self.assertEqual(client_config.base_url, "https://api.anthropic.com/v1")
@@ -319,7 +318,7 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
             generator = build_project_generator_for_connection(conn)
-        self.assertIsInstance(generator, DeepSeekTwoStageProjectGenerator)
+        self.assertIsInstance(generator, TwoStageProjectGenerator)
         client_config = generator.his_project_generator.client.config
         self.assertIsInstance(client_config, AnthropicCompatibleConfig)
         self.assertEqual(client_config.model, "claude-opus-4-8")
@@ -334,7 +333,7 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-ds"}, clear=False):
             generator = build_project_generator_for_connection(conn)
-        self.assertIsInstance(generator, DeepSeekProjectGenerator)
+        self.assertIsInstance(generator, DirectProjectGenerator)
 
     def test_deepseek_oracle_his_kind_builds_oracle_his_project_generator(self) -> None:
         conn = SourceConnection(
@@ -344,7 +343,7 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with patch.dict(os.environ, {"DEEPSEEK_API_KEY": "sk-ds"}, clear=False):
             generator = build_project_generator_for_connection(conn)
-        self.assertIsInstance(generator, DeepSeekOracleHisProjectGenerator)
+        self.assertIsInstance(generator, OracleHisProjectGenerator)
 
     def test_missing_key_raises(self) -> None:
         conn = SourceConnection(
@@ -365,7 +364,7 @@ class ConnectionBuilderTest(unittest.TestCase):
         )
         with patch.dict(os.environ, {"ANTHROPIC_API_KEY": "sk-test"}, clear=False):
             repairer = build_repairer_for_connection(conn)
-        self.assertIsInstance(repairer, DeepSeekRepairer)
+        self.assertIsInstance(repairer, ProjectRepairer)
         client_config = repairer.client.config
         self.assertIsInstance(client_config, AnthropicCompatibleConfig)
         self.assertEqual(client_config.model, "claude-opus-4-8")

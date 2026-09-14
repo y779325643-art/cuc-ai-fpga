@@ -7,11 +7,14 @@ import json
 from dataclasses import dataclass
 from typing import Mapping
 
-from .repository_paths import RepositoryPaths
+from .repository_paths import RepositoryPaths, file_identity
 from .task_families import SUPPORTED_TASK_TYPES, family_id_for_task_type
 
 
 CATALOG_PATH = RepositoryPaths.discover().task_catalog
+
+_CATALOG_CACHE: dict[tuple[str, int, int], dict] = {}
+_SPEC_CACHE: dict[tuple[str, int, int], tuple["TaskFamilySpec", ...]] = {}
 
 
 @dataclass(frozen=True)
@@ -57,10 +60,29 @@ class ExactTaskFamilyResolution:
     reason: str
 
 
+def _load_catalog() -> dict:
+    """Return the parsed task catalog, reparsing only when the file changes.
+
+    The catalog is a 150+ KB document read many times per run. Callers treat
+    the returned document as read-only.
+    """
+
+    identity = file_identity(CATALOG_PATH)
+    catalog = _CATALOG_CACHE.get(identity)
+    if catalog is None:
+        with CATALOG_PATH.open(encoding="utf-8") as handle:
+            catalog = json.load(handle)
+        _CATALOG_CACHE[identity] = catalog
+    return catalog
+
+
 def load_task_family_specs() -> tuple[TaskFamilySpec, ...]:
     """Load catalog family specs and reject aliases owned by multiple families."""
-    with CATALOG_PATH.open(encoding="utf-8") as handle:
-        catalog = json.load(handle)
+    identity = file_identity(CATALOG_PATH)
+    cached = _SPEC_CACHE.get(identity)
+    if cached is not None:
+        return cached
+    catalog = _load_catalog()
 
     specs = tuple(
         TaskFamilySpec(
@@ -84,6 +106,7 @@ def load_task_family_specs() -> tuple[TaskFamilySpec, ...]:
             if alias in alias_owners:
                 raise ValueError(f"duplicate task catalog alias: {alias}")
             alias_owners[alias] = spec.family_id
+    _SPEC_CACHE[identity] = specs
     return specs
 
 
@@ -199,8 +222,7 @@ def load_family_recipe_deny_policy() -> FamilyRecipeDenyPolicy:
     families, but callers must not report the set as a frozen campaign split.
     """
 
-    with CATALOG_PATH.open(encoding="utf-8") as handle:
-        catalog = json.load(handle)
+    catalog = _load_catalog()
 
     try:
         raw_policy = catalog["global_policies"]["family_recipe_selection"]

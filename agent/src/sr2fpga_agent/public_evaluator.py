@@ -10,10 +10,14 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
+from sr2fpga_agent.models import (
+    GeneratedProject,
+    ToolResult,
+    canonical_json_bytes as _canonical_json,
+)
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
-from sr2fpga_agent.models import GeneratedProject, ToolResult
-from sr2fpga_agent.parsers import resolve_project_manifest
+from sr2fpga_agent.parsers import check_project_package_l0, resolve_project_manifest
 from sr2fpga_agent.path_safety import (
     UnsupportedSynthesisLanguageError,
     build_yosys_script,
@@ -26,7 +30,6 @@ from sr2fpga_agent.public_l2_harness import (
     unavailable_public_l2_harness_evidence,
 )
 from sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers
-from sr2fpga_agent.system_his_checker import check_common_project_l0
 from sr2fpga_agent.tool_runner import CommandRunner
 
 
@@ -457,7 +460,7 @@ class DevelopmentPublicToolEvaluator:
             else unavailable_public_l2_harness_evidence()
         )
 
-        l0 = check_common_project_l0(project)
+        l0 = check_project_package_l0(project)
         try:
             manifest = resolve_project_manifest(project.files)
         except Exception as exc:
@@ -513,7 +516,11 @@ class DevelopmentPublicToolEvaluator:
             )
         stage_outcomes["l0"] = _stage("pass", None)
 
-        workspace = self._workspace_root / evaluation_id
+        # The authority retains the full ID; native EDA tools need short paths.
+        # Exclusive creation keeps even a digest-prefix collision fail-closed.
+        workspace = self._workspace_root / hashlib.sha256(
+            evaluation_id.encode("utf-8")
+        ).hexdigest()[:16]
         workspace.mkdir(parents=True, exist_ok=False)
         for raw_path, content in sorted(project.files.items()):
             path = validate_project_relative_path(raw_path)
@@ -713,30 +720,47 @@ def _trusted_public_l2_reserved_path_collisions(
     return tuple(sorted(collisions))
 
 
+def _read_verified_public_outcome(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    *,
+    contract_key: str,
+    id_prefix: str,
+    label: str,
+    registry: ContractRegistry | None,
+) -> dict[str, Any]:
+    """Verify one public-outcome artifact against its contract and content-derived ID."""
+
+    try:
+        payload = json.loads(store.read_verified(reference))
+    except json.JSONDecodeError as exc:
+        raise ValueError(f"{label} is not valid JSON") from exc
+    contract = (registry or ContractRegistry()).load_schema(contract_key)
+    errors = contract.validate(payload)
+    if errors:
+        raise ValueError(f"invalid {label}: " + "; ".join(errors))
+    without_id = {key: value for key, value in payload.items() if key != "outcome_id"}
+    expected = id_prefix + hashlib.sha256(_canonical_json(without_id)).hexdigest()
+    if payload["outcome_id"] != expected:
+        raise ValueError(f"{label} content-derived ID mismatch")
+    _validate_outcome_harness_binding(payload)
+    return payload
+
+
 def read_verified_development_public_outcome(
     store: ArtifactStore,
     reference: ArtifactRef,
     *,
     registry: ContractRegistry | None = None,
 ) -> dict[str, Any]:
-    try:
-        payload = json.loads(store.read_verified(reference))
-    except json.JSONDecodeError as exc:
-        raise ValueError("development public outcome is not valid JSON") from exc
-    contract = (registry or ContractRegistry()).load_schema(
-        "development_terminal_public_outcome"
+    return _read_verified_public_outcome(
+        store,
+        reference,
+        contract_key="development_terminal_public_outcome",
+        id_prefix="public-outcome-",
+        label="development public outcome",
+        registry=registry,
     )
-    errors = contract.validate(payload)
-    if errors:
-        raise ValueError("invalid development public outcome: " + "; ".join(errors))
-    without_id = {key: value for key, value in payload.items() if key != "outcome_id"}
-    expected = "public-outcome-" + hashlib.sha256(
-        _canonical_json(without_id)
-    ).hexdigest()
-    if payload["outcome_id"] != expected:
-        raise ValueError("development public outcome content-derived ID mismatch")
-    _validate_outcome_harness_binding(payload)
-    return payload
 
 
 def read_verified_development_attempt_public_outcome(
@@ -745,24 +769,14 @@ def read_verified_development_attempt_public_outcome(
     *,
     registry: ContractRegistry | None = None,
 ) -> dict[str, Any]:
-    try:
-        payload = json.loads(store.read_verified(reference))
-    except json.JSONDecodeError as exc:
-        raise ValueError("development attempt public outcome is not valid JSON") from exc
-    contract = (registry or ContractRegistry()).load_schema(
-        "development_attempt_public_outcome"
+    return _read_verified_public_outcome(
+        store,
+        reference,
+        contract_key="development_attempt_public_outcome",
+        id_prefix="public-attempt-outcome-",
+        label="development attempt public outcome",
+        registry=registry,
     )
-    errors = contract.validate(payload)
-    if errors:
-        raise ValueError("invalid development attempt public outcome: " + "; ".join(errors))
-    without_id = {key: value for key, value in payload.items() if key != "outcome_id"}
-    expected = "public-attempt-outcome-" + hashlib.sha256(
-        _canonical_json(without_id)
-    ).hexdigest()
-    if payload["outcome_id"] != expected:
-        raise ValueError("development attempt public outcome content-derived ID mismatch")
-    _validate_outcome_harness_binding(payload)
-    return payload
 
 
 def read_verified_development_authoritative_attempt_public_outcome(
@@ -771,31 +785,14 @@ def read_verified_development_authoritative_attempt_public_outcome(
     *,
     registry: ContractRegistry | None = None,
 ) -> dict[str, Any]:
-    try:
-        payload = json.loads(store.read_verified(reference))
-    except json.JSONDecodeError as exc:
-        raise ValueError(
-            "development authoritative attempt public outcome is not valid JSON"
-        ) from exc
-    contract = (registry or ContractRegistry()).load_schema(
-        "development_authoritative_attempt_public_outcome"
+    return _read_verified_public_outcome(
+        store,
+        reference,
+        contract_key="development_authoritative_attempt_public_outcome",
+        id_prefix="authoritative-public-attempt-outcome-",
+        label="development authoritative attempt public outcome",
+        registry=registry,
     )
-    errors = contract.validate(payload)
-    if errors:
-        raise ValueError(
-            "invalid development authoritative attempt public outcome: "
-            + "; ".join(errors)
-        )
-    without_id = {key: value for key, value in payload.items() if key != "outcome_id"}
-    expected = "authoritative-public-attempt-outcome-" + hashlib.sha256(
-        _canonical_json(without_id)
-    ).hexdigest()
-    if payload["outcome_id"] != expected:
-        raise ValueError(
-            "development authoritative attempt public outcome content-derived ID mismatch"
-        )
-    _validate_outcome_harness_binding(payload)
-    return payload
 
 
 def _read_terminal(store: ArtifactStore, reference: ArtifactRef) -> dict[str, Any]:
@@ -962,8 +959,3 @@ def _require_sha256(label: str, value: str) -> None:
         raise ValueError(f"{label} must be lowercase SHA-256")
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")

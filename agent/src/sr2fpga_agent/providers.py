@@ -8,17 +8,33 @@ import json
 import select
 import signal
 import ssl
-import sys
 import threading
 import time
 import urllib.error
 import urllib.request
 from contextlib import contextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any, Callable
 
 
 _MISSING_SYSTEM_FINGERPRINT = object()
+
+
+class ModelOutputTruncated(RuntimeError):
+    """A provider length stop, not a retryable transport failure."""
+    failure_category = "output_truncated"
+
+    def __init__(self, content: str) -> None:
+        self.content = content
+        super().__init__("Model output was truncated by the provider token limit (finish_reason=length)")
+
+
+class ModelOutputEmpty(RuntimeError):
+    failure_category = "empty_model_output"
+
+    def __init__(self, content: str = "") -> None:
+        self.content = content
+        super().__init__("Model returned no final answer content")
 
 @dataclass(frozen=True)
 class OpenAICompatibleConfig:
@@ -35,9 +51,19 @@ class OpenAICompatibleConfig:
     wire_api: str = "chat_completions"
     reasoning_effort: str = ""
     disable_response_storage: bool = False
+    thinking_mode: str = ""
+    response_format: str = "json_object"
 
     def __post_init__(self) -> None:
         _validate_requested_seed(self.seed)
+        if isinstance(self.max_tokens, bool) or not isinstance(self.max_tokens, int) or self.max_tokens < 0:
+            raise ValueError("max_tokens must be a non-negative integer; zero omits the local limit")
+        if self.response_format not in {"json_object", "text"}:
+            raise ValueError("response_format must be json_object or text")
+        if self.thinking_mode not in {"", "enabled", "disabled"}:
+            raise ValueError("thinking_mode must be empty, enabled, or disabled")
+        if self.thinking_mode and (not self.model.startswith("deepseek-") or self.wire_api != "chat_completions"):
+            raise ValueError("thinking_mode is supported only for DeepSeek chat completions")
         if self.wire_api not in {"chat_completions", "responses"}:
             raise ValueError("wire_api must be chat_completions or responses")
         if self.reasoning_effort not in {
@@ -66,6 +92,17 @@ class OpenAICompatibleClient:
     def __init__(self, config: OpenAICompatibleConfig) -> None:
         self.config = config
         self._transport_state = threading.local()
+
+    def with_output_format(self, response_format: str) -> "OpenAICompatibleClient":
+        return type(self)(replace(self.config, response_format=response_format))
+
+    def consume_response_details(self) -> dict[str, Any] | None:
+        details = getattr(self._transport_state, "response_details", None)
+        self._transport_state.response_details = None
+        return details
+
+    def _store_response_details(self, details: dict[str, Any]) -> None:
+        self._transport_state.response_details = details
 
     def consume_transport_attempt_count(self) -> int | None:
         """Return and clear this thread's most recent request-attempt count."""
@@ -131,6 +168,7 @@ class OpenAICompatibleClient:
         }
 
     def chat(self, messages: list[dict[str, str]]) -> str:
+        self._transport_state.response_details = None
         self._reset_token_usage()
         self._reset_response_provenance()
         payload = self._chat_payload(messages)
@@ -144,13 +182,19 @@ class OpenAICompatibleClient:
         if self.config.wire_api == "responses":
             return _read_responses_text(data)
         try:
-            return str(data["choices"][0]["message"]["content"])
+            choice = data["choices"][0]
+            content = choice["message"]["content"] or ""
         except (KeyError, IndexError, TypeError) as exc:
             raise RuntimeError(
                 "OpenAI-compatible API response did not contain choices[0].message.content"
             ) from exc
+        details = _completion_details(data, str(content))
+        self._store_response_details(details)
+        _check_final_content(str(content), details["finish_reason"])
+        return str(content)
 
     def stream_chat(self, messages: list[dict[str, str]]) -> str:
+        self._transport_state.response_details = None
         self._reset_token_usage()
         self._reset_response_provenance()
         payload = self._chat_payload(messages)
@@ -164,15 +208,19 @@ class OpenAICompatibleClient:
                     usage_sink=self._store_token_usage,
                 ),
             )
-        return self._request_with_retries(
+        result = self._request_with_retries(
             payload,
             lambda response: _read_streaming_chat_content(
                 response,
                 self.config.timeout_seconds,
                 usage_sink=self._store_token_usage,
                 fingerprint_sink=self._store_system_fingerprint,
+                response_details_sink=self._store_response_details,
             ),
         )
+        if not result.strip():
+            raise ModelOutputEmpty(result)
+        return result
 
     def _store_token_usage(self, usage: dict[str, int | None] | None) -> None:
         attempts = getattr(self._transport_state, "token_usage_attempt_count", 0)
@@ -206,7 +254,7 @@ class OpenAICompatibleClient:
                 "input": messages,
                 "store": not self.config.disable_response_storage,
             }
-            if _model_supports_json_response_format(self.config.model):
+            if self.config.response_format == "json_object" and _model_supports_json_response_format(self.config.model):
                 payload["text"] = {"format": {"type": "json_object"}}
             if self.config.reasoning_effort:
                 payload["reasoning"] = {"effort": self.config.reasoning_effort}
@@ -219,7 +267,9 @@ class OpenAICompatibleClient:
             "temperature": 0.1,
         }
         if _model_supports_json_response_format(self.config.model):
-            payload["response_format"] = {"type": "json_object"}
+            payload["response_format"] = {"type": self.config.response_format}
+        if self.config.thinking_mode:
+            payload["thinking"] = {"type": self.config.thinking_mode}
         if self.config.max_tokens > 0:
             payload["max_tokens"] = self.config.max_tokens
         if self.config.seed is not None:
@@ -468,11 +518,6 @@ class AnthropicCompatibleClient:
 
 
 def _default_ssl_context() -> ssl.SSLContext:
-    for module_name in ("sr2fpga_agent.deepseek", "sr2fpga_agent.deepseek"):
-        legacy_module = sys.modules.get(module_name)
-        legacy_factory = getattr(legacy_module, "_default_ssl_context", None)
-        if legacy_factory is not None and legacy_factory is not _default_ssl_context:
-            return legacy_factory()
     try:
         import certifi
     except ModuleNotFoundError:
@@ -504,6 +549,27 @@ def _response_read_deadline(timeout_seconds: int):
     finally:
         signal.setitimer(signal.ITIMER_REAL, 0)
         signal.signal(signal.SIGALRM, previous_handler)
+
+
+def _completion_details(data: Any, content: str) -> dict[str, Any]:
+    choices = data.get("choices", []) if isinstance(data, dict) else []
+    choice = choices[0] if choices and isinstance(choices[0], dict) else {}
+    usage = data.get("usage") if isinstance(data, dict) else None
+    token_details = usage.get("completion_tokens_details") if isinstance(usage, dict) else None
+    reason = choice.get("finish_reason")
+    return {
+        "output_text": content,
+        "finish_reason": reason if isinstance(reason, str) else None,
+        "reasoning_tokens": _nonnegative_int(token_details.get("reasoning_tokens")) if isinstance(token_details, dict) else None,
+        "response_id": data.get("id") if isinstance(data, dict) and isinstance(data.get("id"), str) else None,
+    }
+
+
+def _check_final_content(content: str, finish_reason: str | None) -> None:
+    if finish_reason == "length":
+        raise ModelOutputTruncated(content)
+    if not content.strip():
+        raise ModelOutputEmpty(content)
 
 
 def _model_supports_json_response_format(model: str) -> bool:
@@ -750,8 +816,12 @@ def _read_streaming_chat_content(
     *,
     usage_sink: Callable[[dict[str, int | None] | None], None] | None = None,
     fingerprint_sink: Callable[[str | None], None] | None = None,
+    response_details_sink: Callable[[dict[str, Any]], None] | None = None,
 ) -> str:
     chunks: list[str] = []
+    finish_reason = None
+    reasoning_tokens = None
+    response_id = None
     token_usage: dict[str, int | None] = {
         "input_tokens": None,
         "output_tokens": None,
@@ -785,6 +855,13 @@ def _read_streaming_chat_content(
                 raise RuntimeError(f"OpenAI-compatible streaming response error: {event['error']}")
             if fingerprint_sink is not None:
                 fingerprint_sink(_provider_system_fingerprint(event))
+            details = _completion_details(event, "")
+            if details["finish_reason"] is not None:
+                finish_reason = details["finish_reason"]
+            if details["reasoning_tokens"] is not None:
+                reasoning_tokens = details["reasoning_tokens"]
+            if details["response_id"] is not None:
+                response_id = details["response_id"]
             _merge_token_usage(token_usage, _openai_token_usage(event))
             choices = event.get("choices") if isinstance(event, dict) else None
             if not choices:
@@ -798,10 +875,16 @@ def _read_streaming_chat_content(
             content = delta.get("content")
             if content is not None:
                 chunks.append(str(content))
-        return "".join(chunks)
+        content = "".join(chunks)
+        if finish_reason == "length":
+            raise ModelOutputTruncated(content)
+        return content
     finally:
         if usage_sink is not None:
             usage_sink(_present_token_usage(token_usage))
+        if response_details_sink is not None:
+            response_details_sink({"output_text": "".join(chunks), "finish_reason": finish_reason,
+                                   "reasoning_tokens": reasoning_tokens, "response_id": response_id})
 
 
 def _read_streaming_responses_content(

@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from sr2fpga_agent.models import sha256_json as _sha256_json
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 
@@ -187,6 +188,15 @@ def load_development_provider_seed_capability(path: str) -> dict[str, Any]:
         raise ValueError(
             f"provider seed capability manifest is unreadable: {path}"
         ) from exc
+    _validate_capability_payload(payload)
+    return payload
+
+
+def read_verified_provider_seed_capability(
+    store: ArtifactStore, reference: ArtifactRef,
+) -> dict[str, Any]:
+    """Read immutable evidence and recompute every capability summary field."""
+    payload = json.loads(store.read_verified(reference))
     _validate_capability_payload(payload)
     return payload
 
@@ -572,13 +582,6 @@ def _classify(
         eligible = False
     limitations.append("development_only_no_campaign_authority")
     return classification, eligible, limitations
-
-
-def _sha256_json(payload: Any) -> str:
-    encoded = json.dumps(
-        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def _sha256_text(value: str) -> str:

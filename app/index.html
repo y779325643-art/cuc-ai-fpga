@@ -40,7 +40,7 @@
         <section class="workspace-grid view active" id="workspace">
           <form class="panel prompt-panel" id="generateForm">
             <div class="panel-head">
-              <div><p class="eyebrow">System-HIS driven input</p><h3>自然语言需求入口</h3></div>
+              <div><p class="eyebrow">Project Contract (PC) driven input</p><h3>自然语言需求入口</h3></div>
               <button class="icon-button" type="button" id="sampleBtn" title="恢复示例">R</button>
             </div>
 
@@ -128,7 +128,7 @@
 
           <section class="panel output-panel" aria-label="生成结果">
             <div class="panel-head">
-              <div><p class="eyebrow">真实产物</p><h3>工程文件</h3></div>
+              <div><p class="eyebrow">真实产物</p><h3>FPGA 工程包（FPP）</h3></div>
               <div class="result-meta"><span class="result-chip idle" id="passLevel">尚未运行</span><button class="icon-button" type="button" id="copyBtn" title="复制当前文件">C</button></div>
             </div>
             <div class="project-summary">
@@ -139,13 +139,13 @@
             </div>
             <div class="artifact-path" id="artifactPath">运行后将在 artifacts/agent/ui-demo/ 下生成可追溯产物</div>
             <div class="file-browser">
-              <nav class="file-list" id="fileList" aria-label="工程文件列表"><div class="empty-state">等待生成工程</div></nav>
+              <nav class="file-list" id="fileList" aria-label="FPGA 工程包（FPP）文件列表"><div class="empty-state">等待生成 FPGA 工程包（FPP）</div></nav>
               <pre class="code-block project-output"><code id="projectOutput">选择一个受支持的任务族，然后运行 demo。</code></pre>
             </div>
           </section>
 
           <section class="panel review-panel" aria-label="质量门禁">
-            <div class="panel-head"><div><p class="eyebrow">执行结果</p><h3>H / L 阶段门禁</h3></div><span class="method-tag">Deterministic HIS</span></div>
+            <div class="panel-head"><div><p class="eyebrow">执行结果</p><h3>H / L 阶段门禁</h3></div><span class="method-tag">Deterministic PC</span></div>
             <div class="stage-grid" id="stageGrid"></div>
             <p class="stage-help" id="stageHelp">状态来自本次运行的 labels.json，不使用前端模拟分数。</p>
           </section>
@@ -164,8 +164,8 @@
         <section class="view secondary-view" id="verification"><section class="panel full-panel">
           <p class="eyebrow">结果解释</p><h3>门禁不是单一“成功/失败”</h3>
           <div class="explanation-grid">
-            <div><strong>H0–H3</strong><span>本 demo 的确定性参考工程包含 System-HIS，因此执行 schema、良构、可降低性和需求忠实度检查。</span></div>
-            <div><strong>L0 / L1 / L3</strong><span>分别对应项目契约、lint 与综合；本机缺工具时不会伪造通过。</span></div>
+            <div><strong>H0–H3</strong><span>本 demo 的确定性参考工程包包含工程契约（PC），因此执行 schema、良构、可降低性和需求忠实度检查。</span></div>
+            <div><strong>L0 / L1 / L3</strong><span>分别对应工程包交付约束、lint 与综合；本机缺工具时不会伪造通过。</span></div>
             <div><strong>L2</strong><span>候选 testbench 只用于公开 smoke；没有 evaluator-trusted oracle 时为 not_run。</span></div>
             <div><strong>L4</strong><span>本 demo 不自动运行 OpenXC7/Vivado 物理实现。</span></div>
           </div>

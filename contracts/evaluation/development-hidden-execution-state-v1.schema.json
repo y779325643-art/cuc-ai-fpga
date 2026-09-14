@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SR2FPGA development hidden execution and semantic closure v1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "evaluation_scope", "outcome_id", "legacy_outcome_ref", "episode_id", "method_condition", "terminal_candidate_sha256", "hidden_execution_status", "hidden_semantic_status", "semantic_commit_count", "execution_count", "infrastructure_retry_count", "max_infrastructure_retries", "private_event_chain_sha256", "reducer_visible", "generation_visible", "repair_visible", "official_outcome", "official_authority", "pass_credit_authority", "g3_accepted", "g4b_authorized"],
+  "properties": {
+    "contract_version": {"const": "development-hidden-execution-state-v1"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "outcome_id": {"type": "string", "pattern": "^hidden-execution-[0-9a-f]{64}$"},
+    "legacy_outcome_ref": {"$ref": "#/$defs/ref"},
+    "episode_id": {"type": "string", "minLength": 1},
+    "method_condition": {"enum": ["M0", "M1", "M2", "M3", "M4", "M5"]},
+    "terminal_candidate_sha256": {"$ref": "#/$defs/sha"},
+    "hidden_execution_status": {"enum": ["completed", "infrastructure_error", "integrity_error"]},
+    "hidden_semantic_status": {"enum": ["pass", "fail", null]},
+    "semantic_commit_count": {"type": "integer", "minimum": 0, "maximum": 1},
+    "execution_count": {"type": "integer", "minimum": 1},
+    "infrastructure_retry_count": {"type": "integer", "minimum": 0},
+    "max_infrastructure_retries": {"type": "integer", "minimum": 0},
+    "private_event_chain_sha256": {"$ref": "#/$defs/sha"},
+    "reducer_visible": {"const": true}, "generation_visible": {"const": false}, "repair_visible": {"const": false},
+    "official_outcome": {"const": false}, "official_authority": {"const": false},
+    "pass_credit_authority": {"const": false}, "g3_accepted": {"const": false}, "g4b_authorized": {"const": false}
+  },
+  "allOf": [{
+    "if": {"properties": {"hidden_execution_status": {"const": "completed"}}},
+    "then": {"properties": {"hidden_semantic_status": {"enum": ["pass", "fail"]}, "semantic_commit_count": {"const": 1}}},
+    "else": {"properties": {"hidden_semantic_status": {"type": "null"}, "semantic_commit_count": {"const": 0}}}
+  }],
+  "$defs": {
+    "sha": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "ref": {
+      "type": "object", "additionalProperties": false,
+      "required": ["key", "sha256", "size_bytes", "media_type"],
+      "properties": {
+        "key": {"type": "string", "minLength": 1}, "sha256": {"$ref": "#/$defs/sha"},
+        "size_bytes": {"type": "integer", "minimum": 0}, "media_type": {"type": "string", "minLength": 1}
+      }
+    }
+  }
+}

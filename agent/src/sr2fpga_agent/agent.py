@@ -32,7 +32,7 @@ from sr2fpga_agent.log_parser import (
     parse_tool_warnings,
     parse_yosys_stats,
 )
-from sr2fpga_agent.evaluator_dispatch import DevelopmentHiddenEvaluationAuthority
+from sr2fpga_agent.evaluator_dispatch import DevelopmentHiddenEvaluationAuthority, development_hidden_case_seed
 from sr2fpga_agent.public_evaluator import (
     DevelopmentAttemptPublicEvaluationAuthority,
     DevelopmentPublicToolEvaluator,
@@ -95,14 +95,17 @@ from sr2fpga_agent.path_safety import (
     project_file_target,
     validate_sample_id,
 )
-from sr2fpga_agent.parsers import parse_system_his_payload, resolve_project_manifest
+from sr2fpga_agent.parsers import (
+    check_project_package_l0,
+    parse_system_his_payload,
+    resolve_project_manifest,
+)
 from sr2fpga_agent.repository_paths import RepositoryPaths
 from sr2fpga_agent.recorder import AttemptRecord, DatasetRecorder
 from sr2fpga_agent.requirement_envelope import CriticalAmbiguity, RequirementEnvelope
 from sr2fpga_agent.rtl_identifier_checker import check_rtl_identifiers, rtl_identifier_tool_result
 from sr2fpga_agent.system_his_checker import (
     L0CheckResult,
-    check_common_project_l0,
     check_his_project_consistency,
 )
 from sr2fpga_agent.system_his_fidelity import check_system_his_req_fidelity
@@ -293,6 +296,7 @@ class DataGenerationAgent:
         self._terminal_candidate_ref: ArtifactRef | None = None
         self._development_hidden_outcome_ref: dict[str, str] | None = None
         self._development_hidden_conformance_outcome_ref: ArtifactRef | None = None
+        self._development_hidden_execution_state_ref: ArtifactRef | None = None
         self._development_terminal_selection_ref: ArtifactRef | None = None
         self._development_selected_public_outcome_ref: ArtifactRef | None = None
         self._development_terminal_public_outcome_ref: ArtifactRef | None = None
@@ -317,6 +321,7 @@ class DataGenerationAgent:
         self._terminal_candidate_ref = None
         self._development_hidden_outcome_ref = None
         self._development_hidden_conformance_outcome_ref = None
+        self._development_hidden_execution_state_ref = None
         self._development_terminal_selection_ref = None
         self._development_selected_public_outcome_ref = None
         self._development_terminal_public_outcome_ref = None
@@ -356,6 +361,8 @@ class DataGenerationAgent:
             result["development_hidden_conformance_outcome_ref"] = (
                 self._development_hidden_conformance_outcome_ref.to_dict()
             )
+        if self._development_hidden_execution_state_ref is not None:
+            result["development_hidden_execution_state_ref"] = self._development_hidden_execution_state_ref.to_dict()
         if self._development_terminal_selection_ref is not None:
             result["development_terminal_selection_ref"] = (
                 self._development_terminal_selection_ref.to_dict()
@@ -528,7 +535,7 @@ class DataGenerationAgent:
                 development_his_validations[f"attempt-{attempt_id:03d}"] = his_validation
                 tool_results = _authoritative_public_tool_results(authoritative_outcome)
             else:
-                l0_result = check_common_project_l0(project)
+                l0_result = check_project_package_l0(project)
                 if l0_result.passed and h_stages_applicable:
                     l0_checker = "his_project_consistency"
                     l0_result = check_his_project_consistency(project)
@@ -1636,23 +1643,30 @@ class DataGenerationAgent:
                     public_contract_sha256=method_policy,
                     public_profile_sha256=requirement_projection_sha256,
                     tool_environment_policy_sha256=method_policy,
-                    decoding_seed=int.from_bytes(
-                        hashlib.sha256(sample_id.encode("utf-8")).digest()[:8],
-                        "big",
-                    ),
+                    decoding_seed=development_hidden_case_seed(metadata, sample_id),
                 )
                 self._development_hidden_conformance_outcome_ref = (
                     authority.publish_sanitized_outcome(outcome)
                 )
+                self._development_hidden_execution_state_ref = cost_store.reference(
+                    "hidden-execution-states/" + outcome.outcome_id.removeprefix("hidden-outcome-")
+                )
             except Exception:
                 self._record_hidden_evaluator_cost(hidden_started, status="failed")
                 raise
-            self._record_hidden_evaluator_cost(hidden_started, status="completed")
+            hidden_state = (
+                json.loads(cost_store.read_verified(self._development_hidden_execution_state_ref))
+                if self._development_hidden_execution_state_ref is not None else {}
+            )
+            self._record_hidden_evaluator_cost(
+                hidden_started, status="completed",
+                infrastructure_retries=hidden_state.get("infrastructure_retry_count", 0),
+            )
             return outcome.to_dict()
         except Exception:
             return None
 
-    def _record_hidden_evaluator_cost(self, started: float, *, status: str) -> None:
+    def _record_hidden_evaluator_cost(self, started: float, *, status: str, infrastructure_retries: int = 0) -> None:
         ledger = self._active_cost_ledger
         if ledger is None:
             return
@@ -1665,6 +1679,7 @@ class DataGenerationAgent:
             cost_delta={
                 "hidden_evaluator_tool_calls": 1,
                 "hidden_evaluator_runtime": duration,
+                "hidden_infrastructure_retries": infrastructure_retries,
             },
         )
 

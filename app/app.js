@@ -219,7 +219,7 @@ async function auditRequirement() {
 function showClarificationStop(audit) {
   elements.passLevel.textContent = "NEEDS CLARIFICATION";
   elements.passLevel.className = "result-chip not-run";
-  elements.artifactPath.textContent = "需求仍有关键歧义，未生成工程产物。";
+  elements.artifactPath.textContent = "需求仍有关键歧义，未生成 FPGA 工程包。";
   elements.output.textContent = [
     "需求歧义检查未通过。请先补充以下问题，再运行项目生成：",
     "",
@@ -300,7 +300,7 @@ function selectFile(file) {
 function renderFiles(files) {
   elements.fileList.innerHTML = "";
   if (!files.length) {
-    elements.fileList.innerHTML = '<div class="empty-state">本次运行没有生成工程文件</div>';
+    elements.fileList.innerHTML = '<div class="empty-state">本次运行没有生成工程包文件</div>';
     elements.output.textContent = "请查看门禁状态与错误提示。";
     activeFile = null;
     return;
@@ -345,7 +345,7 @@ function updateModeUi() {
   elements.taskType.value = free ? "auto" : elements.taskType.value || "auto";
   elements.methodCondition.value = free ? "free_requirement_handoff" : "reference_deterministic";
   elements.methodMode.textContent = free ? "自由需求交接" : "确定性参考";
-  document.querySelector("#topbarMode").textContent = free ? "自由需求" : "System-HIS 解析";
+  document.querySelector("#topbarMode").textContent = free ? "自由需求" : "PC（工程契约）解析";
   document.querySelector(".scope-note p").textContent = free
     ? "自由需求模式会复用后端需求边界评估，并输出交接包；当前不会伪造 RTL 生成、综合或仿真通过。"
     : "后端先给出 requirement boundary，再由当前确定性参考后端生成可检查工程；缺失事实不会被静默默认成 ready。";
@@ -470,7 +470,7 @@ elements.form.addEventListener("submit", async (event) => {
     const boundaryStop = ["capability_gap", "requirement_clarification_required"].includes(data.failure_type);
     elements.passLevel.textContent = data.failure_type === "capability_gap" ? "CAPABILITY GAP" : data.failure_type === "requirement_clarification_required" ? "NEEDS CLARIFICATION" : data.pass_level;
     elements.passLevel.className = `result-chip ${boundaryStop ? "not-run" : statusClass(data.pass_level)}`;
-    elements.artifactPath.textContent = data.sample_id ? `${data.sample_id} · ${data.artifact_path}` : "未生成工程";
+    elements.artifactPath.textContent = data.sample_id ? `${data.sample_id} · ${data.artifact_path}` : "未生成工程包";
     renderFiles(data.files);
     renderStages(data.stages);
     updateCounts(data.counts, data.files.length);

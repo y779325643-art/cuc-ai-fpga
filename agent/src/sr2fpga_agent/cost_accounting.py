@@ -8,6 +8,7 @@ import time
 from dataclasses import dataclass
 from typing import Any, Iterable, Mapping
 
+from sr2fpga_agent.models import compact_json_bytes as _canonical_json
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.evaluator_dispatch import (
     read_verified_development_hidden_conformance_outcome,
@@ -793,35 +794,41 @@ def reconcile_attempt_trajectory(
     return ReconciledTrajectory(payload, reference)
 
 
-def _event_id_from_ref(store: ArtifactStore, reference: ArtifactRef) -> str:
+def _event_id_from_ref(
+    store: ArtifactStore,
+    reference: ArtifactRef,
+    *,
+    error: type[ValueError] = CostAccountingError,
+    label: str = "previous attempt event",
+) -> str:
     payload = json.loads(store.read_verified(reference))
     event_id = payload.get("event_id") if isinstance(payload, dict) else None
     if not isinstance(event_id, str):
-        raise CostAccountingError("previous attempt event has no event ID")
+        raise error(f"{label} has no event ID")
     return event_id
 
 
 def _validate_delta(
     cost_delta: Mapping[str, int | float | None],
     unavailable_axes: Mapping[str, str],
+    *,
+    error: type[ValueError] = CostAccountingError,
 ) -> None:
     if not cost_delta:
-        raise CostAccountingError("cost delta must be non-empty")
+        raise error("cost delta must be non-empty")
     unknown = set(cost_delta) - set(COST_AXES)
     if unknown:
-        raise CostAccountingError("unknown cost axis: " + ", ".join(sorted(unknown)))
+        raise error("unknown cost axis: " + ", ".join(sorted(unknown)))
     null_axes = {axis for axis, value in cost_delta.items() if value is None}
     if null_axes != set(unavailable_axes):
-        raise CostAccountingError(
-            "null cost axes and unavailable reasons must match exactly"
-        )
+        raise error("null cost axes and unavailable reasons must match exactly")
     for axis, value in cost_delta.items():
         if value is None:
             reason = unavailable_axes.get(axis)
             if not isinstance(reason, str) or not reason:
-                raise CostAccountingError(f"unavailable reason must be non-empty: {axis}")
+                raise error(f"unavailable reason must be non-empty: {axis}")
             continue
-        _require_axis_value(axis, value, allow_zero=True)
+        _require_axis_value(axis, value, allow_zero=True, error=error)
 
 
 def _require_axis_value(
@@ -829,15 +836,16 @@ def _require_axis_value(
     value: int | float,
     *,
     allow_zero: bool = False,
+    error: type[ValueError] = CostAccountingError,
 ) -> None:
     if axis not in COST_AXES:
-        raise CostAccountingError(f"unknown cost axis: {axis}")
+        raise error(f"unknown cost axis: {axis}")
     if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise CostAccountingError(f"cost value must be numeric: {axis}")
+        raise error(f"cost value must be numeric: {axis}")
     if value < 0 or (not allow_zero and value == 0):
-        raise CostAccountingError(f"cost value must be non-negative: {axis}")
+        raise error(f"cost value must be non-negative: {axis}")
     if axis in COUNT_COST_AXES and not isinstance(value, int):
-        raise CostAccountingError(f"count cost must be an integer: {axis}")
+        raise error(f"count cost must be an integer: {axis}")
 
 
 def _accumulate_delta(
@@ -845,24 +853,17 @@ def _accumulate_delta(
     unavailable: dict[str, str],
     cost_delta: Mapping[str, int | float | None],
     unavailable_axes: Mapping[str, str],
+    *,
+    error: type[ValueError] = CostAccountingError,
 ) -> None:
     for axis, value in cost_delta.items():
         if value is None:
             reason = unavailable_axes[axis]
             existing = unavailable.get(axis)
             if existing is not None and existing != reason:
-                raise CostAccountingError(
-                    f"conflicting unavailable reasons for {axis}"
-                )
+                raise error(f"conflicting unavailable reasons for {axis}")
             unavailable[axis] = reason
         elif axis not in unavailable:
             values[axis] = values.get(axis, 0) + value
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return json.dumps(
-        payload,
-        ensure_ascii=False,
-        sort_keys=True,
-        separators=(",", ":"),
-    ).encode("utf-8")

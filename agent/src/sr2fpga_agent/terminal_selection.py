@@ -8,6 +8,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Iterable
 
+from sr2fpga_agent.models import canonical_json_bytes as _canonical_json
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.public_evaluator import (
@@ -199,8 +200,3 @@ def _read_candidate(
     return payload
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")

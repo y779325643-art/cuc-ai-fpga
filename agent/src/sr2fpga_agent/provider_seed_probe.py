@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 
+from sr2fpga_agent.models import sha256_json as _sha256_json
 from sr2fpga_agent.artifact_store import ArtifactStore
 from sr2fpga_agent.provider_seed_capability import (
     ProviderSeedProbeObservation,
@@ -272,13 +273,6 @@ def _categorize_probe_exception(exc: Exception) -> str:
     if isinstance(exc, (ValueError, TypeError, KeyError, json.JSONDecodeError)):
         return "response_invalid"
     return _categorize_probe_failure(str(exc))
-
-
-def _sha256_json(payload: object) -> str:
-    encoded = json.dumps(
-        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
 
 
 def _categorize_probe_failure(message: str) -> str:

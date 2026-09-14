@@ -1,7 +1,18 @@
-"""Shared data models for the SR2FPGA data generation agent."""
+"""Shared data models and canonical JSON identity rules for the SR2FPGA agent.
+
+The JSON helpers live here because artifact, event, cost and contract modules
+all need them and none of them may depend on each other. Two terminations are
+in use and both are load-bearing: ``canonical_json_bytes`` is what artifact
+blobs and content-derived event IDs are built from, and ``compact_json_bytes``
+is what cost ledgers and every ``sha256_json`` digest are built from. Choosing
+the wrong one changes stored artifact identities, so callers name the
+termination they mean rather than relying on one ambiguous "canonical" helper.
+"""
 
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -100,3 +111,27 @@ class PatchMetadata:
 
 
 JsonObject = dict[str, Any]
+
+
+def compact_json_text(value: Any) -> str:
+    """Return sorted, separator-compact JSON text with no trailing newline."""
+
+    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+def compact_json_bytes(value: Any) -> bytes:
+    """Return :func:`compact_json_text` encoded as UTF-8."""
+
+    return compact_json_text(value).encode("utf-8")
+
+
+def canonical_json_bytes(value: Any) -> bytes:
+    """Return compact JSON plus the trailing newline used by stored artifacts."""
+
+    return (compact_json_text(value) + "\n").encode("utf-8")
+
+
+def sha256_json(value: Any) -> str:
+    """Return the SHA-256 hex digest of the newline-free canonical encoding."""
+
+    return hashlib.sha256(compact_json_bytes(value)).hexdigest()

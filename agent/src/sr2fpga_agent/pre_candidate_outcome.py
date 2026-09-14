@@ -7,6 +7,7 @@ import json
 from dataclasses import asdict
 from typing import Any, Iterable
 
+from sr2fpga_agent.models import PlatformProfile, canonical_json_bytes as _canonical_json
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import reconcile_attempt_trajectory
@@ -22,7 +23,6 @@ from sr2fpga_agent.his_validation import (
     validate_frozen_system_his_payload_h_stages,
 )
 from sr2fpga_agent.method_contract import method_policy_sha256
-from sr2fpga_agent.models import PlatformProfile
 from sr2fpga_agent.requirement_boundary import capability_profile_sha256
 from sr2fpga_agent.system_his_capabilities import (
     load_system_his_backend_capabilities,
@@ -71,6 +71,9 @@ def read_verified_development_pre_candidate_stop_outcome(
         "development-pre-candidate-stop-outcome-v2": (
             "development_pre_candidate_stop_outcome_v2"
         ),
+        "development-pre-candidate-stop-outcome-v3": (
+            "development_pre_candidate_stop_outcome_v3"
+        ),
     }
     contract_key = contract_keys.get(contract_version)
     if contract_key is None:
@@ -90,7 +93,10 @@ def read_verified_development_pre_candidate_stop_outcome(
     if payload["outcome_id"] != expected_id:
         raise PreCandidateOutcomeError("pre-candidate stop outcome ID mismatch")
     platform = None
-    if contract_version == "development-pre-candidate-stop-outcome-v2":
+    if contract_version in {
+        "development-pre-candidate-stop-outcome-v2",
+        "development-pre-candidate-stop-outcome-v3",
+    }:
         try:
             platform = PlatformProfile(**payload["platform_profile"])
         except (KeyError, TypeError, ValueError) as exc:
@@ -128,7 +134,9 @@ def reconcile_development_pre_candidate_stop_outcome(
     Omitting ``platform`` retains the registered v1 M4/H0 writer for historical
     artifact compatibility. Supplying the committed platform writes v2 and
     deterministically re-runs H0-H3 from the frozen episode pack and planning
-    artifact.
+    artifact. Natural model stops use v3, preserving their origin and measured
+    local call count (zero when consuming a shared initial HIS). Historical
+    v1/v2 synthetic fixtures retain their one-call restriction.
     """
 
     contract_registry = registry or ContractRegistry()
@@ -249,7 +257,11 @@ def reconcile_development_pre_candidate_stop_outcome(
         "M4",
     ):
         raise PreCandidateOutcomeError("trajectory identity mismatch")
-    if trajectory["failure_origin"] != "synthetic_injected":
+    natural_origin = trajectory["failure_origin"] == "natural_llm"
+    if natural_origin and platform is not None:
+        contract_version = "development-pre-candidate-stop-outcome-v3"
+        contract_key = "development_pre_candidate_stop_outcome_v3"
+    elif trajectory["failure_origin"] != "synthetic_injected":
         raise PreCandidateOutcomeError(
             "pre-candidate stop fixture requires synthetic_injected origin"
         )
@@ -319,7 +331,9 @@ def reconcile_development_pre_candidate_stop_outcome(
         raise PreCandidateOutcomeError(
             "trajectory does not rebuild from raw attempt events"
         )
-    cost = _reconcile_stop_costs(store, cost_summary_refs, contract_registry)
+    cost = _reconcile_stop_costs(
+        store, cost_summary_refs, contract_registry, allow_shared=natural_origin
+    )
 
     stage_outcomes = _stage_outcomes(failure_stage)
     without_id = {
@@ -328,7 +342,7 @@ def reconcile_development_pre_candidate_stop_outcome(
         "episode_id": episode_id,
         "method_condition": "M4",
         "analysis_population": "excluded",
-        "failure_origin": "synthetic_injected",
+        "failure_origin": trajectory["failure_origin"],
         "episode_pack_ref": episode_pack_ref.to_dict(),
         "public_projection_sha256": episode_pack["public_context"][
             "public_projection_sha256"
@@ -411,7 +425,7 @@ def reconcile_development_pre_candidate_stop_outcome(
     }
     artifact_key = f"pre-candidate-stop-outcomes/{episode_id}/M4"
     if platform is not None:
-        artifact_key += "/v2"
+        artifact_key += "/v3" if natural_origin else "/v2"
     reference = store.put_validated_json(
         artifact_key,
         payload,
@@ -499,6 +513,8 @@ def _reconcile_stop_costs(
     store: ArtifactStore,
     references: tuple[ArtifactRef, ...],
     registry: ContractRegistry,
+    *,
+    allow_shared: bool = False,
 ) -> dict[str, Any]:
     if len(references) != 1:
         raise PreCandidateOutcomeError("M4 pre-candidate stop requires one cost summary")
@@ -511,7 +527,11 @@ def _reconcile_stop_costs(
     )
     axes = summary["axes"]
     logical_calls = axes["logical_model_calls"]
-    if logical_calls != {"status": "measured", "value": 1, "reason": None}:
+    allowed_calls = (0, 1) if allow_shared else (1,)
+    if not any(
+        logical_calls == {"status": "measured", "value": count, "reason": None}
+        for count in allowed_calls
+    ):
         raise PreCandidateOutcomeError("M4 H-stage fixture requires one model call")
     for axis_name in _ZERO_COST_AXES:
         if axes[axis_name] != {"status": "measured", "value": 0, "reason": None}:
@@ -523,7 +543,7 @@ def _reconcile_stop_costs(
     )
     return {
         "all_axes_classified": True,
-        "logical_model_calls": 1,
+        "logical_model_calls": logical_calls["value"],
         "zero_axes": list(_ZERO_COST_AXES),
         "unavailable_axes": unavailable_axes,
     }
@@ -613,8 +633,3 @@ def _read_json_object(
     return payload
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")

@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from typing import Any, Callable
 
 from sr2fpga_agent.block_cost_accounting import ModelCostLedger
+from sr2fpga_agent.providers import ModelOutputTruncated, ModelOutputEmpty
 
 
 class ModelCallBudgetExceeded(RuntimeError):
@@ -106,6 +107,7 @@ class ModelCallBudget:
         provider_transport_attempts: int | None = None,
         provider_token_usage: dict[str, int | None] | None = None,
         provider_response_provenance: dict[str, Any] | None = None,
+        provider_response_details: dict[str, Any] | None = None,
     ) -> None:
         token_usage = _normalized_token_usage(provider_token_usage)
         response_provenance = _normalized_response_provenance(
@@ -130,7 +132,11 @@ class ModelCallBudget:
         if error is not None:
             self.failed_calls += 1
             record["error_type"] = type(error).__name__
-            record["error"] = str(error)
+            record["error"] = "provider_call_failed"
+            if isinstance(error, (ModelOutputTruncated, ModelOutputEmpty)):
+                record["error"] = error.failure_category
+        if provider_response_details is not None:
+            record["provider_response_details"] = dict(provider_response_details)
         self.call_records.append(record)
         ledger = self._cost_ledger()
         if ledger is not None:
@@ -256,6 +262,11 @@ class BudgetedModelClient:
     def for_stage(self, stage: str) -> "BudgetedModelClient":
         return BudgetedModelClient(self._client, self._budget, stage)
 
+    def with_output_format(self, response_format: str) -> "BudgetedModelClient":
+        factory = getattr(self._client, "with_output_format", None)
+        client = factory(response_format) if callable(factory) else self._client
+        return BudgetedModelClient(client, self._budget, self._stage)
+
     def chat(self, messages: list[dict[str, str]]) -> str:
         return self._call("chat", messages)
 
@@ -280,6 +291,7 @@ class BudgetedModelClient:
                 provider_transport_attempts=self._consume_transport_attempt_count(),
                 provider_token_usage=self._consume_token_usage(),
                 provider_response_provenance=self._consume_response_provenance(),
+                provider_response_details=self._consume_response_details(),
             )
             raise
         self._budget.finish(
@@ -291,6 +303,7 @@ class BudgetedModelClient:
             provider_transport_attempts=self._consume_transport_attempt_count(),
             provider_token_usage=self._consume_token_usage(),
             provider_response_provenance=self._consume_response_provenance(),
+            provider_response_details=self._consume_response_details(),
         )
         return result
 
@@ -309,6 +322,10 @@ class BudgetedModelClient:
 
     def _consume_response_provenance(self) -> dict[str, Any] | None:
         consumer = getattr(self._client, "consume_response_provenance", None)
+        return consumer() if callable(consumer) else None
+
+    def _consume_response_details(self) -> dict[str, Any] | None:
+        consumer = getattr(self._client, "consume_response_details", None)
         return consumer() if callable(consumer) else None
 
 

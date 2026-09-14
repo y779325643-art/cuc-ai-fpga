@@ -5,7 +5,6 @@ import pytest
 
 from sr2fpga_agent.agent import DataGenerationAgent
 from sr2fpga_agent.contract_skeleton import build_contract_skeleton_project
-from sr2fpga_agent import deepseek
 from sr2fpga_agent.generation import (
     DirectProjectGenerator,
     HisProjectGenerator,
@@ -445,14 +444,10 @@ def test_generate_from_system_his_revalidates_before_lowering() -> None:
     assert exc_info.value.failed_h_stage == "h2"
 
 
-def test_provider_specific_names_are_compatibility_aliases_only() -> None:
+def test_generator_classes_use_provider_neutral_names() -> None:
     assert DirectProjectGenerator.__name__ == "DirectProjectGenerator"
     assert HisProjectGenerator.__name__ == "HisProjectGenerator"
     assert OracleHisProjectGenerator.__name__ == "OracleHisProjectGenerator"
     assert SystemHisGenerator.__name__ == "SystemHisGenerator"
     assert TwoStageProjectGenerator.__name__ == "TwoStageProjectGenerator"
     assert ProjectRepairer.__name__ == "ProjectRepairer"
-    assert deepseek.DeepSeekProjectGenerator is DirectProjectGenerator
-    assert deepseek.DeepSeekSystemHisGenerator is SystemHisGenerator
-    assert deepseek.DeepSeekTwoStageProjectGenerator is TwoStageProjectGenerator
-    assert deepseek.DeepSeekRepairer is ProjectRepairer

@@ -10,7 +10,7 @@ namespace.
   contains the source-grounded reader, extraction/translation notes, provenance
   map, figures/tables, and a dated SR2FPGA positioning memo. The memo informs
   the research argument, but the current experiment protocol remains the
-  [Paper-1 English canonical specification](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md).
+  [Paper-1 English canonical specification](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md).
 
 ## Hardware References
 

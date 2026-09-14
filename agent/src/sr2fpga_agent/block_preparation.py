@@ -8,7 +8,16 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Iterable, Mapping
 
-from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
+from sr2fpga_agent.models import (
+    GeneratedProject,
+    PlatformProfile,
+    compact_json_bytes as _canonical_json,
+)
+from sr2fpga_agent.artifact_store import (
+    ArtifactRef,
+    ArtifactStore,
+    artifact_ref_from_payload as _artifact_ref,
+)
 from sr2fpga_agent.block_cost_accounting import (
     BlockPreparationCostLedger,
     replay_development_block_preparation,
@@ -16,7 +25,6 @@ from sr2fpga_agent.block_cost_accounting import (
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.cost_accounting import COST_AXES
 from sr2fpga_agent.frozen_context import platform_profile_sha256
-from sr2fpga_agent.models import GeneratedProject, PlatformProfile
 from sr2fpga_agent.model_budget import ModelCallBudget
 from sr2fpga_agent.paired_block import load_development_paired_block
 from sr2fpga_agent.project_contract import project_package_sha256
@@ -336,8 +344,9 @@ def _prepared_checkpoint_node(
 
 
 def _preparation_failure_reason(exc: Exception) -> str:
-    message = str(exc).strip()
-    return f"{type(exc).__name__}:{message or 'no_message'}"
+    # Provider messages may contain credentials, endpoints, or prompt excerpts.
+    # Keep classification without copying the message into shared evidence.
+    return f"{type(exc).__name__}:shared_preparation_failed"
 
 
 def write_development_shared_checkpoint_manifest(
@@ -865,15 +874,6 @@ def _node_from_payload(payload: Mapping[str, Any]) -> CheckpointNode:
     )
 
 
-def _artifact_ref(payload: Mapping[str, Any]) -> ArtifactRef:
-    return ArtifactRef(
-        key=payload["key"],
-        sha256=payload["sha256"],
-        size_bytes=payload["size_bytes"],
-        media_type=payload["media_type"],
-    )
-
-
 def _event_set_sha256(store: ArtifactStore, references: Iterable[ArtifactRef]) -> str:
     ids = []
     for reference in references:
@@ -900,7 +900,3 @@ def _require_sha256(value: str, label: str) -> None:
         raise ValueError(f"{label} must be SHA-256") from exc
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode(
-        "utf-8"
-    )

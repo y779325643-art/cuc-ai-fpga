@@ -1,5 +1,10 @@
 # Style guide
 
+> [Terminology, 2026-09-08](../../../specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
 - Language: Chinese for project guidance; retain stable English identifiers,
   metric names, method labels, and file paths.
 - Target reader: expert EDA/LLM collaborators and later reviewers.
@@ -10,6 +15,13 @@
 
 ## Required terminology
 
+- Use **Design-Space Contract (DSC)** for the design space, **Design Point (DP)**
+  for one candidate, **Project Contract (PC)** for its engineering obligations,
+  and **FPGA Project Package (FPP)** for the generated package.
+- Introduce PC once as serialized by the current implementation as
+  **System-HIS v1.2**. Retain that name only for format compatibility, identifiers
+  and historical attribution. Do not rename internal `system_his` symbols.
+
 - Use **project generation**, not “project synthesis,” for model output.
 - Use **logic synthesis** or **L3 synthesis** for Yosys.
 - Use **method-neutral verified project success (`VPP-L3@1`)** for the RQ1
@@ -18,9 +30,9 @@
 - Use **deterministic materialization/edit-surface bundle** for the primary
   M4-M3 estimand. It is a joint intervention unless a separately frozen
   orthogonal control isolates one component.
-- Use **untrained end-to-end System-HIS value** for the primary M4-M0 estimand;
+- Use **untrained end-to-end Project Contract value** for the primary M4-M0 estimand;
   do not attribute that system-level difference to one component.
-- Use **System-HIS representation bundle** for the secondary M3-M2 estimand; use
+- Use **Project Contract representation bundle** for the secondary M3-M2 estimand; use
   **typed requirement/project contract** only when explaining the
   representation's engineering role, never as a “typing alone” causal claim.
 - Use **episode pack** for run control and information privileges.
@@ -28,7 +40,7 @@
   HORIZON-like semantics are implemented; reserve “reproduction” for the
   original released protocol.
 - Use **verified project pass (VPP)** only for the method-neutral frozen composite
-  metric in the canonical spec; keep H-stage outcomes conditional on HIS methods.
+  metric in the canonical spec; keep H-stage outcomes conditional on PC methods.
 - Use **Target-Profile Adaptation Pass through L4 (`TPA-L4`)** only when the
   optional extension was enabled before outcomes and for a complete signed pair
   whose members preserve declared functional invariants, satisfy profile-

@@ -247,7 +247,7 @@ Return this JSON shape:
   "verification": {{
     "testbench": "sim/tb_top.v",
     "scenarios": [],
-    "acceptance_obligation": "independent evaluator checks the requirement",
+    "acceptance_obligation": {json.dumps(requirement_envelope.requirement_trace_template()['required_facts']['acceptance_criteria']['value'], ensure_ascii=False)},
     "pass_condition": "testbench prints TEST_PASS and no TEST_FAIL"
   }},
   "artifacts": {{
@@ -381,6 +381,28 @@ def _requirement_trace_pointer_guidance() -> str:
         "to components, data_flow, timing, or verification. Map functional_capabilities to components, "
         "instances, data_flow, control_flow, state, or verification, and declared_task_type to intent.declared_task_type, intent.design_goal, "
         "components, or instances; do not use intent.user_prompt as semantic proof.\n"
+        + _requirement_trace_value_guidance()
+    )
+
+
+def _requirement_trace_value_guidance() -> str:
+    return (
+        "\nUse /intent/target_platform for the exact required target_platform value "
+        "(declare intent.target_platform first). Do not map target_platform to "
+        "/platform/target or /artifacts/rtl_sources. Schema-valid fields are not "
+        "automatically valid evidence pointers. Every supplied pointer must be "
+        "valid: do not add /state/counters/0/width to data_width_bits.\n"
+        "Copy the exact required acceptance_criteria value into a standalone "
+        "verification.acceptance_obligation string and map acceptance_criteria "
+        "to /verification/acceptance_obligation. Keep concrete pass conditions "
+        "and scenarios separately. Do not reduce the obligation to a behavior "
+        "list or assemble it from keywords across multiple fields. For the "
+        "default obligation, a supported equivalent is: 'An independent assessor "
+        "shall test every explicit functional and protocol clause.' Explicit "
+        "custom criteria must be copied verbatim, preserving case-sensitive "
+        "units and identifiers (whitespace differences and a terminal period "
+        "are accepted). H3 checks the declared obligation, "
+        "not whether a testbench actually implements it.\n"
     )
 
 
@@ -958,6 +980,36 @@ the hidden semantic authority. Do not emit system_his.json in this Direct condit
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _canonical_project_manifest_guidance(project_name: str) -> str:
+    """The same public build-format contract for all full-project generators."""
+    from sr2fpga_agent.contract_registry import ContractRegistry
+
+    schema = ContractRegistry().load_schema("project_package")
+    example = {
+        "contract_version": "project-package-v1", "project_name": project_name,
+        "top": {"module": "example_top", "source": "rtl/example_top.v", "interface": {"ports": []}},
+        "sources": [{"path": "rtl/example_top.v", "role": "rtl_source", "language": "verilog"}],
+        "artifacts": [],
+        "build": {"toolchain_id": "open_source", "language_standard": "verilog-2005"},
+    }
+    errors = schema.validate(example)
+    if errors:
+        raise ValueError("manifest prompt example does not match registered contract: " + "; ".join(errors))
+    return (
+        "manifest.json is a JSON-encoded STRING inside the outer files object. "
+        "Its decoded contents must satisfy the full public schema below. "
+        "Use top.interface.ports (not top.ports), sources entries with path/role/language "
+        "(not file), and artifact objects with path/role/applicability (not strings). "
+        "Declare RTL under sources; do not list manifest.json itself as an artifact. "
+        "This minimal example illustrates serialization only, not a hardware design. "
+        "Replace example_top, its path, and the empty ports with the ACTUAL required interface; "
+        "do not change the frozen requirement or project_name.\n"
+        + json.dumps(example, ensure_ascii=False, indent=2, sort_keys=True)
+        + "\nComplete project-package-v1 manifest schema:\n"
+        + json.dumps(schema.document, ensure_ascii=False, indent=2, sort_keys=True)
+    )
+
+
 def _frozen_direct_project_messages(
     context: "FrozenRequirementContext",
     *,
@@ -985,15 +1037,9 @@ Use project_name `{project_name}`. Return exactly:
   }}
 }}
 
-`manifest.json` must itself be JSON conforming to project-package-v1:
-- contract_version is `project-package-v1`;
-- top declares module, source, and the actual interface ports;
-- sources declares every synthesizable RTL file with role `rtl_source` and a
-  supported language;
-- artifacts contains only files actually returned;
-- build declares toolchain_id and language_standard.
+{_canonical_project_manifest_guidance(project_name)}
 
-Every returned project file must be declared by the manifest and every
+Every returned project file except manifest.json must be declared by the manifest and every
 manifest-declared file must be returned. Source paths are not fixed. Do not
 emit System-HIS. Candidate testbench, constraints, and predicted QoR are
 optional and cannot serve as hidden correctness evidence.
@@ -1053,8 +1099,10 @@ Return exactly:
   }}
 }}
 
+{_canonical_project_manifest_guidance(project_name)}
+
 manifest.json must conform to project-package-v1 and declare every returned
-file, actual top interface, RTL source, artifact role, toolchain_id, and language
+file except manifest.json itself, actual top interface, RTL source, artifact role, toolchain_id, and language
 standard. Do not emit System-HIS or BEHAVIOR_HOLE markers. Candidate testbench,
 constraints, and predicted QoR are optional and cannot serve as hidden evidence.
 """
@@ -1081,8 +1129,7 @@ def _frozen_system_his_messages(
 Generate one System-HIS v1.2 contract from this frozen public context:
 {json.dumps(public_context, ensure_ascii=False, indent=2, sort_keys=True)}
 
-The intent.requirement_trace object must start with exactly this content:
-{json.dumps(trace, ensure_ascii=False, indent=2, sort_keys=True)}
+{_frozen_pc_trace_structure_guidance(trace, schema)}
 
 Replace every empty fact_to_his list with one or more non-empty RFC 6901 JSON
 pointers to semantic fields outside intent.requirement_trace that preserve the
@@ -1099,6 +1146,35 @@ Return a JSON object conforming exactly to this registered schema:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
+def _frozen_pc_trace_structure_guidance(trace: dict[str, Any], schema: dict[str, Any]) -> str:
+    fragment = {"intent": {"requirement_trace": trace}}
+    return (
+        "PC serialization structure (System-HIS v1.2):\n"
+        "Merge the following PARTIAL object at the root of the complete PC. "
+        "The only location for requirement_trace is /intent/requirement_trace, "
+        "never /requirement_trace. Do not return this fragment alone.\n"
+        + json.dumps(fragment, ensure_ascii=False, indent=2, sort_keys=True)
+        + "\nPreserve requirement_id and required_facts exactly; fill fact_to_his "
+        "with semantic pointers and keep unresolved_facts empty. Preserve the "
+        "other required intent fields from the schema.\n"
+        "Allowed root keys: " + ", ".join(sorted(schema["properties"])) + ".\n"
+        "Required root keys: " + ", ".join(schema["required"]) + ".\n"
+        "Before returning, check that every emitted root key is allowed and "
+        "that all required root keys exist. Do not add PC/contract wrapper keys."
+    )
+
+
+def _pc_state_ownership_example() -> dict[str, Any]:
+    # Partial cross-reference example, not a task-specific candidate or oracle.
+    return {
+        "instances": [{"name": "u_state", "owns_state": ["u_state.state_q"]}],
+        "state": {
+            "registers": [{"name": "state_q", "owner": "u_state", "width": 1}],
+            "counters": [], "buffers": [], "memories": [], "fsms": [],
+        },
+    }
+
+
 def _frozen_requirement_trace_pointer_guidance() -> str:
     return (
         "Map width facts only to top/component/instance widths or parameters; "
@@ -1108,6 +1184,7 @@ def _frozen_requirement_trace_pointer_guidance() -> str:
         "functional capabilities to components, instances, data_flow, "
         "control_flow, state, or verification. Do not use intent.user_prompt as "
         "semantic proof."
+        + _requirement_trace_value_guidance()
     )
 
 
@@ -1133,6 +1210,14 @@ def _frozen_h1_well_formedness_guidance() -> str:
         "- Every instance must include owns_state as a JSON array; use [] when it "
         "owns no state. Every owns_state entry must resolve to a declared state; "
         "prefer <instance-name>.<state-name> for instance-owned state.\n"
+        "- Ownership fragment (illustrative only, NOT a complete PC and NOT an "
+        "architecture to copy; choose names and structure from the requirement):\n"
+        + json.dumps(_pc_state_ownership_example(), ensure_ascii=False, indent=2)
+        + "\nFor each reference owner.name, declare a state with exactly that "
+        "owner and name. A state owned by top does not satisfy an instance's "
+        "owner.name reference. Do not add fictitious state merely to satisfy "
+        "a reference; make the declarations and references agree with the "
+        "intended architecture.\n"
         "- Every top.parameters and components[].parameters entry must be an object "
         "with a non-empty name. For an 8-bit DATA_WIDTH parameter, use "
         "{\"name\": \"DATA_WIDTH\", \"default\": 8}. A string such as "
@@ -1226,6 +1311,8 @@ Generate a complete synthesizable project named `{project_name}`. Return:
   }}
 }}
 
+{_canonical_project_manifest_guidance(project_name)}
+
 manifest.json must conform to project-package-v1. It must declare every returned
 RTL source and actual top interface. Do not return system_his.json: trusted
 packaging code will attach the exact validated HIS after parsing. Candidate
@@ -1264,14 +1351,18 @@ Frozen public context:
 Current System-HIS candidate:
 {json.dumps(system_his, ensure_ascii=False, indent=2, sort_keys=True)}
 
+If the candidate is an unparsed-system-his-output-v1 record, raw_output is the
+original unusable model reply. Repair/reconstruct it into a complete System-HIS
+object; never return the diagnostic wrapper itself.
+
 Public validation failure:
 - failed_h_stage: {failed_h_stage}
 - diagnostics: {json.dumps(diagnostics, ensure_ascii=False, indent=2)}
 
 Correct only the contract defects identified by the public diagnostics. Preserve
 all supported requirement semantics and return the complete System-HIS v1.2
-object. intent.requirement_trace.required_facts must remain exactly:
-{json.dumps(frozen_requirement_trace_template(context)["required_facts"], ensure_ascii=False, indent=2, sort_keys=True)}
+object. The trace must retain the frozen requirement identity and facts:
+{_frozen_pc_trace_structure_guidance(frozen_requirement_trace_template(context), schema)}
 
 Every fact_to_his entry must contain value-preserving RFC 6901 pointers outside
 intent.requirement_trace and unresolved_facts must be empty.

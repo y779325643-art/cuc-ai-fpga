@@ -137,7 +137,7 @@ def check_system_his_v12(payload: dict[str, Any]) -> SystemHisV12CheckResult:
     valid_fsm_owners.discard("")
     fsm_defs = _validate_fsms(state, state_names, valid_fsm_owners, errors)
     data_flow_names = _data_flow_names(data_flow, top_ports, instance_ports, errors)
-    _validate_instance_state_ownership(instances, state_names, errors)
+    _validate_instance_state_ownership(instances, state_names, errors, state=state)
     _validate_control_flow(
         control_flow,
         state_names,
@@ -610,7 +610,19 @@ def _is_valid_endpoint(endpoint: str, top_ports: set[str], instance_ports: dict[
     return port in instance_ports.get(owner, set())
 
 
-def _validate_instance_state_ownership(instances: list[Any], state_names: set[str], errors: list[str]) -> None:
+def _validate_instance_state_ownership(
+    instances: list[Any], state_names: set[str], errors: list[str], *, state: dict[str, Any]
+) -> None:
+    owners: dict[str, set[str]] = {}
+    for group in STATE_GROUPS:
+        for item in _object_list(state.get(group)):
+            declared_name = str(item.get("name", "")).strip()
+            owner = _v12_state_owner(item)
+            aliases = {declared_name, f"{owner}.{declared_name}"}
+            if group == "fsms":
+                aliases |= {alias + ".state" for alias in tuple(aliases)}
+            for alias in aliases:
+                owners.setdefault(alias, set()).add(owner)
     for index, instance in enumerate(instances):
         if not isinstance(instance, dict):
             continue
@@ -620,6 +632,8 @@ def _validate_instance_state_ownership(instances: list[Any], state_names: set[st
             state_text = str(state_name).strip() if isinstance(state_name, str) else ""
             if state_text not in state_names:
                 errors.append(f"instance '{name}' owns missing state '{state_text}'")
+            elif owners.get(state_text) != {name}:
+                errors.append(f"instance '{name}' does not own declared state '{state_text}'")
 
 
 def _validate_control_flow(

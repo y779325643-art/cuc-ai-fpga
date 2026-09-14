@@ -10,8 +10,11 @@ FPGA projects and evaluates them with artifact-backed evidence. This file tells
 agents how to work in the repository; it does not duplicate the research plan.
 
 Research gates, evaluation authority, method definitions, and claim permissions
-follow the active
-[Paper-1 freeze](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md).
+follow the [Paper-1 specification](docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
+and its latest Status and authority notice. Read that notice before treating
+the design as frozen: a filename containing freeze does not establish current
+freeze status. Explicitly authorized research revisions may change the design;
+execution permissions remain separately governed by the project.
 Mutable implementation status follows [`docs/current-status.md`](docs/current-status.md)
 and the relevant
 [code-architecture section](docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
@@ -26,7 +29,7 @@ Before substantial work:
 3. Read additional authority only when the task needs it:
    - current capability, debt, gates, or result claims: `docs/current-status.md`;
    - research semantics, metrics, information boundaries, or official
-     evaluation: the active Paper-1 freeze;
+     evaluation: the Paper-1 specification and its latest status notice;
    - Paper-1 implementation or evaluator architecture: the relevant section of
      the code-architecture spec;
    - navigation or evidence location: [`docs/README.md`](docs/README.md).
@@ -42,7 +45,7 @@ When sources disagree about current behavior, use this order:
 1. registered contracts, current code, and reproducible tests;
 2. artifact-backed evidence in the task ledger and curated reports;
 3. `docs/current-status.md` and current project READMEs;
-4. the active research freeze and implementation specs;
+4. the research specification with its latest status notice and implementation specs;
 5. historical reports as bounded context only.
 
 A contract, catalog row, plan, or specification is not empirical verification.
@@ -61,18 +64,16 @@ runtime imports across project boundaries.
 
 ## Working Agreements
 
-- State material assumptions and a verifiable success condition. If ambiguity
-  would materially change the result or scope, surface it instead of guessing.
-- Prefer the simplest solution that satisfies the request. Add no speculative
-  feature, abstraction, configurability, or unrelated cleanup.
-- Make surgical changes. Match existing style and remove only the orphaned code
-  created by the current change.
-- For behavior changes, add or update the narrowest regression that would fail
-  before the change and pass afterward.
-- Run focused validation first, then broaden it in proportion to risk. Separate
-  assertion failures from timeout, dependency, and infrastructure failures.
-- Report what changed, what was verified, and what remains blocked. Do not turn
-  intended behavior or a local smoke into a result claim.
+Preserve the requested scope, unrelated work, and project contracts. Make the
+smallest clear change that completes the task. Resolve material uncertainty
+from available evidence and state the intended outcome.
+
+For behavior changes, reuse existing regression coverage when sufficient; add
+or update the narrowest regression only where coverage is missing. Verify the
+affected behavior and broaden checks in proportion to risk. Separate assertion
+failures from timeout, dependency, and infrastructure failures. Report actual
+verification and concrete blockers without promoting local checks into research
+outcomes.
 
 ## Autonomy, Authorization, And Git
 
@@ -109,7 +110,7 @@ second confirmation unless the target is ambiguous or consequences exceed it.
   and request direction. Never expose, weaken, or rewrite an oracle merely to
   make generated RTL pass.
 - Evaluator or oracle changes are development work, not candidate-performance
-  evidence. Their research interpretation follows the active Paper-1 freeze.
+  evidence. Their research interpretation follows the Paper-1 specification and its latest status notice.
 
 ## Evidence, Contract, And Artifact Safety
 
@@ -117,7 +118,10 @@ second confirmation unless the target is ambiguous or consequences exceed it.
   silently relabel outcome statuses or erase their reasons.
 - Schema or catalog conformance is not functional correctness. An audit verdict
   applies only to its named scope.
-- Use current counts and checkout facts only from `docs/current-status.md`.
+- Verify the current checkout using Git, and counts or validation results using
+  their artifacts or actual command output. Use `docs/current-status.md` as a
+  navigation and summary entry. Report conflicting sources with dates and scope;
+  do not overwrite historical evidence or treat an older summary as a live fact.
 - Preserve backward-compatible readers unless the task is an explicit versioned
   migration. Runtime artifacts must validate against registered schemas.
 - Generate candidate output under `artifacts/`. Promotion into `datasets/` or

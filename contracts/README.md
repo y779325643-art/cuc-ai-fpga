@@ -1,5 +1,46 @@
 # SR2FPGA Contracts
 
+> [Terminology, 2026-09-08](../docs/specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
+Natural-model M4 pre-candidate stops use
+`evaluation/development-pre-candidate-stop-outcome-v3.schema.json`, retaining
+`natural_llm` origin and measured local calls (0 for shared PC, otherwise 1).
+The reducer replays frozen H stages, method events and raw cost lineage.
+Legacy v1/v2 remain synthetic-only and require one local call. All three remain
+excluded development records without official or pass-credit authority.
+
+## G3 development closure contracts
+
+The [PC decision interface v1](pc/README.md) adds separate decision, execution-source
+and assembly-record schemas. Its model payload excludes host-owned fields; its
+assembly records never grant official experiment or pass-credit authority.
+
+M5 PC correction outcomes retain the standalone three-call v1 reader. The
+additive `development-his-correction-outcome-v2` records shared-PC local calls
+and separately costed outer project repairs, rebuilt from verified raw events.
+It does not recharge shared generation or grant additional repair budget.
+When no terminal candidate exists, Runner retains the verified trajectory and
+an explicit `not_evaluated` correction-outcome status instead of fabricating a
+success receipt. Missing or corrupt lineage still fails closed.
+
+The manifest additionally registers `g3-test-evidence-v1`, `g3-acceptance-v1`,
+`development-checkpoint-stop-outcome-v1`, and
+`development-hidden-execution-state-v1`. The first two bind executable local
+evidence to a finite acceptance matrix; the latter two close no-candidate shared
+preparation and evaluator-private execution/semantic state respectively.
+Only the additive G3 acceptance artifact can set `g3_accepted=true`, and its
+verdict must be reproduced by the Agent reducer. All four contracts keep official
+outcome, official authority, pass-credit authority, and G4b authorization false.
+Existing development outcome contracts are not promoted or redefined.
+
+`unparsed-system-his-output-v1` preserves an unusable model reply and its parse
+diagnostic as a provisional planning record. It is not a Project Contract:
+the existing H0 schema check rejects it, and only a method with an explicitly
+budgeted PC-correction privilege may attempt a new model-produced contract.
+
 This directory owns language-neutral schemas and the canonical task catalog. It
 must not contain runtime state.
 
@@ -12,12 +53,13 @@ referenced stable artifacts. Do not infer verification from catalog
 `implementation_status`.
 
 The active
-[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
 requires schema/checker/fixture conformance and known catalog semantic defects
 to close before the M0-M5 official campaign. It targets ACM TRETS and does not
 train models.
 
-## System-HIS Layer
+<a id="system-his-layer"></a>
+## Project Contract Layer
 
 - `system-his/system-his-v1.2.schema.json`
 - `system-his/system-his-backend-capabilities-v1.json`
@@ -26,7 +68,7 @@ train models.
 - `system-his/system-his-compatibility-v1.json` — the canonical,
   legacy-quarantine, method-inapplicable, and unknown-representation policy
 
-System-HIS uses three deliberately separate layers:
+Project Contract uses three deliberately separate layers:
 
 - the versioned v1.2 Schema is the provider- and task-family-neutral core
   contract;
@@ -38,9 +80,9 @@ System-HIS uses three deliberately separate layers:
   supported. Selection is automatic but accepts only exact catalog/runtime
   identifiers or registered whole-phrase triggers: unknown identifiers,
   ownership conflicts, missing recipe content, and a catalog-backed held-out
-  deny decision retain generic guidance. For a two-stage System-HIS request,
+  deny decision retain generic guidance. For a two-stage Project Contract request,
   the complete selection decision is evaluator-side sample/preflight/freeze
-  metadata and does not enter the REQ2HIS prompt, System-HIS, or HIS2PROJECT
+  metadata and does not enter the REQ2HIS prompt, Project Contract, or HIS2PROJECT
   input; only an `applied` decision contributes the recipe body to the REQ2HIS
   prompt. Direct-project and deterministic-reference methods do not record this
   decision. The catalog records the candidate deny set and its policy
@@ -88,7 +130,7 @@ signed OASA fixture set or official audit outcome yet.
   and execution-order commitment for one semantic-instance replicate across
   M0-M5; it carries no official, pass-credit, G3, or G4b authority
 - `episode-pack/development-shared-checkpoint-manifest-v1.schema.json` — exact
-  three-node Direct/HIS/complete-project checkpoint DAG for a complete excluded
+  three-node Direct/PC/complete-project checkpoint DAG for a complete excluded
   block; it carries no official, pass-credit, G3, or G4b authority
 - `project-package/project-package-v1.schema.json`
 - `project-envelope/project-envelope-v1.schema.json`
@@ -112,7 +154,7 @@ the excluded Runner materializes and verifies that reference, then binds it
 through audit-only episode metadata, freeze records, events, trajectory input
 hashes, and full-pack reconciliation. Partial blocks and legacy development
 samples cannot mint the artifact. It remains a development contract: validation,
-registration, or the current runtime path does not accept G3 or authorize an
+registration, or this paired-block path alone does not accept G3 or authorize an
 outcome-producing campaign.
 
 Registry key `development_shared_checkpoint_manifest` resolves
@@ -129,7 +171,7 @@ itself prove that preparation succeeded or accept G3.
 `project-package-v1` is the canonical schema for the candidate package's
 `manifest.json`. It declares role-based top/source/interface/build intent and
 any package-relative conditional or advisory artifacts. A valid package need
-not contain a candidate testbench, predicted QoR report, System-HIS, or timing
+not contain a candidate testbench, predicted QoR report, Project Contract, or timing
 constraint unless the episode and manifest make that artifact applicable.
 Legacy `top_module` plus string `sources` manifests may be read only through an
 explicit compatibility reader; they do not validate as canonical v1.
@@ -247,7 +289,7 @@ evaluator-owned L0 diagnosis while forcing its project-envelope reference to
   non-official/no-pass-credit boundary while v1 remains readable
 - `evaluation/development-his-correction-outcome-v1.schema.json` — excluded M5
   development-only correction acceptance; it re-reads the initial and corrected
-  HIS artifacts, exact eight-event pre-candidate prefix, correction parent/input
+  PC artifacts, exact eight-event pre-candidate prefix, correction parent/input
   hashes, corrected candidate and terminal lineage, raw attempt cost events and
   development episode outcome. It requires one complete H0-H3 rerun after one
   correction, exactly `req2his/system_his_repair/his2project`, zero project

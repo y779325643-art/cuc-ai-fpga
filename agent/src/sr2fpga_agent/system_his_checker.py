@@ -30,20 +30,14 @@ class L0CheckResult:
     warnings: list[str] = field(default_factory=list)
 
 
-def check_common_project_l0(project: GeneratedProject) -> L0CheckResult:
-    """Validate the method-neutral package through the canonical resolver."""
+def check_project_l0(project: GeneratedProject) -> L0CheckResult:
+    """Compatibility entry point for common plus System-HIS consistency checks."""
 
     # Local import breaks the legacy parser/checker import cycle while keeping
     # one canonical+legacy manifest resolver as the source of common L0 rules.
     from sr2fpga_agent.parsers import check_project_package_l0
 
-    return check_project_package_l0(project)
-
-
-def check_project_l0(project: GeneratedProject) -> L0CheckResult:
-    """Compatibility entry point for common plus System-HIS consistency checks."""
-
-    common = check_common_project_l0(project)
+    common = check_project_package_l0(project)
     consistency = check_his_project_consistency(project)
     return L0CheckResult(
         passed=common.passed and consistency.passed,

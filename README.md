@@ -1,14 +1,19 @@
 # SR2FPGA
 
+> [Terminology, 2026-09-08](docs/specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
 SR2FPGA is a research repository for generating coherent multi-file FPGA
-projects from system requirements and evaluating them with tool- and
+Project Packages from system requirements and evaluating them with tool- and
 artifact-backed evidence.
 
 ```text
 requirement
 -> ready / needs_clarification / capability_gap disposition
--> direct / untyped-plan / System-HIS method condition
--> full project or skeleton + generated behavior
+-> direct / untyped-plan / Project Contract method condition
+-> FPGA Project Package (FPP), emitted directly or from skeleton + generated behavior
 -> condition-applicable H0-H3 and method-neutral L0-L4 validation
 -> optional diagnosis / patch / rerun
 -> immutable terminal candidate and evaluator-owned outcome
@@ -16,7 +21,7 @@ requirement
 ```
 
 The active
-[`paper1-freeze-v1.7`](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+[`paper1-freeze-v1.7`](docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
 protocol targets ACM TRETS, evaluates M0-M5, and does not train models.
 Current implementation, evidence, open debt, regression counts, and active gate
 are summarized in [current status](docs/current-status.md); this README is an
@@ -27,7 +32,7 @@ entry point, not protocol or outcome authority.
 | If you need to know... | Read |
 | --- | --- |
 | What this checkout implements, verifies, or still lacks | [`docs/current-status.md`](docs/current-status.md) |
-| Research questions, methods, information boundaries, metrics, and gates | [Paper-1 freeze v1.7](docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) |
+| Research questions, methods, information boundaries, metrics, and gates | [Paper-1 freeze v1.7](docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md) |
 | Implementation architecture, interfaces, artifacts, and CD1-CD10 work packages | [Paper-1 code-architecture spec v1.12](docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) |
 | Canonical machine-readable task families, IDs, and target intent | [Task catalog v0.2](contracts/task-catalog/sr2fpga-task-catalog-v0.2.json) |
 | Research and writing support behind the canonical freeze | [Paper-1 workspace](docs/research-program/paper1-v1/README.md) |
@@ -37,7 +42,7 @@ entry point, not protocol or outcome authority.
 
 ## Repository Map
 
-- [`agent/`](agent/README.md): project generation, System-HIS validation,
+- [`agent/`](agent/README.md): project generation, Project Contract validation,
   L0-L4 orchestration, trusted evaluation, repair, and trajectory recording.
 - [`training/`](training/README.md): retained dataset preparation, SFT/LoRA,
   merge, and serving infrastructure outside Paper-1. Training does not import

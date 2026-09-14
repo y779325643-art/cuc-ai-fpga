@@ -10,6 +10,7 @@ import shutil
 from typing import Any, Mapping, Sequence
 import uuid
 
+from sr2fpga_agent.models import sha256_json as _sha256_json
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.repository_paths import RepositoryPaths
 from sr2fpga_agent.training_pool import (
@@ -451,10 +452,6 @@ def _compact_json_bytes(value: Any) -> bytes:
 
 def _write_json(path: Path, value: Any) -> None:
     path.write_bytes(_json_bytes(value))
-
-
-def _sha256_json(value: Any) -> str:
-    return _sha256_bytes(_compact_json_bytes(value))
 
 
 def _sha256_bytes(value: bytes) -> str:

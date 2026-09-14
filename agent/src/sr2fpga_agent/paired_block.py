@@ -8,6 +8,7 @@ import random
 from collections.abc import Sequence
 from typing import Any
 
+from sr2fpga_agent.models import canonical_json_bytes as _canonical_json
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.contract_registry import ContractRegistry
 
@@ -156,8 +157,3 @@ def _validate_paired_block(payload: dict[str, Any]) -> None:
         )
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")

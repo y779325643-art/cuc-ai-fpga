@@ -534,5 +534,6 @@ def test_public_tool_evaluator_ignores_candidate_testbench_and_keeps_logs_privat
     assert "PRIVATE LOG" not in json.dumps(outcome.payload)
     workspaces = list((tmp_path / "evaluator-workspaces").iterdir())
     assert len(workspaces) == 1
+    assert len(workspaces[0].name) == 16
     assert (workspaces[0] / "rtl" / "top.v").is_file()
     assert (workspaces[0] / "sim" / "tb_top.v").is_file()

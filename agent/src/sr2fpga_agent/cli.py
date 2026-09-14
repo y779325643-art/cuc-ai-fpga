@@ -441,6 +441,7 @@ def build_project_generator_for_connection(
             seed=decoding_seed,
             wire_api=getattr(connection, "wire_api", "chat_completions"),
             reasoning_effort=getattr(connection, "reasoning_effort", ""),
+            thinking_mode=getattr(connection, "thinking_mode", ""),
             disable_response_storage=getattr(
                 connection, "disable_response_storage", False
             ),
@@ -529,6 +530,7 @@ def build_repairer_for_connection(
             seed=decoding_seed,
             wire_api=getattr(connection, "wire_api", "chat_completions"),
             reasoning_effort=getattr(connection, "reasoning_effort", ""),
+            thinking_mode=getattr(connection, "thinking_mode", ""),
             disable_response_storage=getattr(
                 connection, "disable_response_storage", False
             ),

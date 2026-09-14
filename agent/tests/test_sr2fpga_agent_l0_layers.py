@@ -11,9 +11,9 @@ from sr2fpga_agent.models import (
     ToolResult,
 )
 from sr2fpga_agent.project_generator import ProjectGenerator
+from sr2fpga_agent.parsers import check_project_package_l0
 from sr2fpga_agent.system_his_checker import (
     L0CheckResult,
-    check_common_project_l0,
     check_his_project_consistency,
     check_project_l0,
 )
@@ -38,7 +38,7 @@ def _minimal_project(*, top_module: str = "design_top") -> GeneratedProject:
 def test_common_project_l0_accepts_role_based_minimal_project() -> None:
     project = _minimal_project()
 
-    result = check_common_project_l0(project)
+    result = check_project_package_l0(project)
 
     assert result.passed, result.errors
     assert "system_his.json" not in project.files
@@ -84,7 +84,7 @@ def test_common_project_l0_accepts_canonical_object_source_records() -> None:
         },
     )
 
-    result = check_common_project_l0(project)
+    result = check_project_package_l0(project)
 
     assert result.passed, result.errors
 
@@ -96,14 +96,14 @@ def test_common_project_l0_rejects_missing_manifest_source() -> None:
         files={"manifest.json": project.files["manifest.json"]},
     )
 
-    result = check_common_project_l0(project)
+    result = check_project_package_l0(project)
 
     assert not result.passed
     assert any("missing source files: src/design.v" in error for error in result.errors)
 
 
 def test_common_project_l0_rejects_undeclared_manifest_top() -> None:
-    result = check_common_project_l0(_minimal_project(top_module="missing_top"))
+    result = check_project_package_l0(_minimal_project(top_module="missing_top"))
 
     assert not result.passed
     assert "top module 'missing_top' is not declared in manifest sources" in result.errors
@@ -112,7 +112,7 @@ def test_common_project_l0_rejects_undeclared_manifest_top() -> None:
 def test_his_project_consistency_is_a_separate_applicable_check() -> None:
     project = _minimal_project()
 
-    common = check_common_project_l0(project)
+    common = check_project_package_l0(project)
     consistency = check_his_project_consistency(project)
 
     assert common.passed
@@ -205,7 +205,7 @@ def test_agent_runs_common_before_applicable_his_consistency(monkeypatch, tmp_pa
         calls.append("his_project_consistency")
         return L0CheckResult(passed=False, errors=["forced HIS mismatch"])
 
-    monkeypatch.setattr(agent_module, "check_common_project_l0", common)
+    monkeypatch.setattr(agent_module, "check_project_package_l0", common)
     monkeypatch.setattr(agent_module, "check_his_project_consistency", consistency)
     agent = DataGenerationAgent(tmp_path / "dataset", project_generator=Generator())
 
@@ -239,7 +239,7 @@ def test_agent_does_not_run_his_consistency_for_direct_method(monkeypatch, tmp_p
 
     def common(candidate):
         calls.append("common_project_l0")
-        return check_common_project_l0(candidate)
+        return check_project_package_l0(candidate)
 
     def unexpected_consistency(candidate):
         raise AssertionError("Direct methods must not run HIS consistency")
@@ -257,7 +257,7 @@ def test_agent_does_not_run_his_consistency_for_direct_method(monkeypatch, tmp_p
             )
         }
 
-    monkeypatch.setattr(agent_module, "check_common_project_l0", common)
+    monkeypatch.setattr(agent_module, "check_project_package_l0", common)
     monkeypatch.setattr(agent_module, "check_his_project_consistency", unexpected_consistency)
     monkeypatch.setattr(DataGenerationAgent, "_run_pipeline", stop_after_l0)
     agent = DataGenerationAgent(tmp_path / "dataset", project_generator=Generator())

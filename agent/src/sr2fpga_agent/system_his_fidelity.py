@@ -1009,83 +1009,42 @@ def _acceptance_criteria_present(
     expected: Any,
     resolved_values: list[tuple[Any, tuple[str, ...]]],
 ) -> bool:
-    actual_text = " ".join(
-        value
+    """Check a declared obligation, not testbench correctness or arbitrary prose.
+
+    Explicit criteria must be preserved as a whole scalar value. The default
+    obligation additionally accepts a bounded affirmative declaration grammar.
+    Never assemble a declaration from unrelated fields or use word overlap.
+    """
+    if not isinstance(expected, str) or not expected.strip():
+        return False
+    declarations = [
+        re.sub(r"\s+", " ", value.strip()).removesuffix(".")
         for resolved, _tokens in resolved_values
         for value in _scalar_values(resolved)
-        if isinstance(value, str)
+        if isinstance(value, str) and value.strip()
+    ]
+    expected_text = re.sub(r"\s+", " ", expected.strip()).removesuffix(".")
+    default = "independent evaluator must verify every explicit functional and protocol clause"
+    if expected_text.casefold() != default:
+        return expected_text in declarations
+
+    actor = r"(?:(?:an?|the) )?(?:independent|external|third-party) (?:evaluator|assessor|checker|verifier)"
+    operation = r"(?:(?:must|shall|will) )?(?:verify|verifies|check|checks|test|tests|validate|validates|assert|asserts)"
+    coverage = r"(?:all|every|each) (?:explicit|stated|specified|declared) functional and protocol (?:clauses?|requirements?)"
+    # A concrete behavior list may precede 'against <coverage>' or follow an
+    # 'including' clause. The universal obligation is mandatory in both forms.
+    declaration = (
+        actor + " " + operation + " "
+        + r"(?:[^.;:!?]+ against )?" + coverage
+        + r"(?:,? (?:including|covering|such as) [^.;:!?]+)?"
     )
-    if _semantic_marker_matches(actual_text, str(expected)):
-        return True
-
-    actual_terms = _acceptance_terms(actual_text)
-    expected_text = str(expected)
-    if expected_text == (
-        "independent evaluator must verify every explicit functional and protocol clause"
-    ):
-        required_roots = (
-            any(term.startswith("independent") for term in actual_terms),
-            any(term.startswith("evaluator") for term in actual_terms),
-            any(term.startswith(("verif", "check", "assert")) for term in actual_terms),
-        )
-        boilerplate = {
-            "independent",
-            "evaluator",
-            "verify",
-            "verifies",
-            "verification",
-            "check",
-            "checks",
-            "assert",
-            "asserts",
-            "behavior",
-            "design",
-            "every",
-            "explicit",
-            "functional",
-            "protocol",
-            "clause",
-        }
-        return all(required_roots) and bool(actual_terms.difference(boilerplate))
-
-    expected_terms = _acceptance_terms(expected_text)
-    if not expected_terms:
-        return False
-    expected_numbers = {term for term in expected_terms if term.isdigit()}
-    overlap = expected_terms.intersection(actual_terms)
-    return (
-        expected_numbers.issubset(actual_terms)
-        and len(overlap) >= max(1, (len(expected_terms) + 1) // 2)
-    )
-
-
-def _acceptance_terms(value: str) -> set[str]:
-    stop_words = {
-        "a",
-        "an",
-        "and",
-        "as",
-        "at",
-        "be",
-        "by",
-        "for",
-        "from",
-        "in",
-        "is",
-        "must",
-        "of",
-        "on",
-        "or",
-        "the",
-        "to",
-        "when",
-        "with",
-    }
-    return {
-        term
-        for term in _normalize_semantic_text(value).split("_")
-        if term and term not in stop_words
-    }
+    for text in declarations:
+        text = text.casefold()
+        if re.search(r"\b(?:not|never|skip|skips|ignore|ignores|except|only|nothing)\b", text):
+            continue
+        if re.fullmatch(declaration, text):
+            return True
+    return False
 
 
 def _semantic_marker_matches(value: str, marker: str) -> bool:

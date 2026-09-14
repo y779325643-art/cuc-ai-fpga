@@ -1244,6 +1244,9 @@ def _run_fake_complete_full_pack(
     max_model_calls: int = 0,
     preparation_policy_mutator=None,
     expected_run_error: type[Exception] | None = None,
+    public_repair_fixture=None,
+    command_runner=None,
+    hidden_evaluator=None,
 ):
     root = _new_test_root()
     clock_ticks = iter(float(tick) for tick in range(100))
@@ -1274,8 +1277,8 @@ def _run_fake_complete_full_pack(
         export_root=root / "exports",
         run_root=root / "runs",
         provider="his",
-        repair_provider="none",
-        max_attempts=1,
+        repair_provider="same_as_source" if public_repair_fixture else "none",
+        max_attempts=2 if public_repair_fixture else 1,
         max_model_calls=max_model_calls,
         refresh_exports=False,
         sources={"direct": direct, "his": his},
@@ -1290,6 +1293,7 @@ def _run_fake_complete_full_pack(
                 method_condition=method,
                 analysis_population="excluded",
                 semantic_instance_id="semantic-fir-full-pack-001",
+                failure_origin="synthetic_injected",
                 replicate_id="replicate-000",
                 decoding_seed=17,
                 paired_block_id="pair-fir-full-pack-001-seed-17",
@@ -1307,6 +1311,11 @@ def _run_fake_complete_full_pack(
         task_type="fir_filter",
         width=8,
     )
+    if public_repair_fixture is not None:
+        behavior_response = behavior_response.replace(
+            "// deterministic fake-provider behavior body",
+            "wire g3_injected_failure = g3_missing_signal;",
+        )
     harness_root.mkdir(parents=True)
     trusted_tb = (
         "module trusted_tb;\n"
@@ -1359,7 +1368,7 @@ def _run_fake_complete_full_pack(
             ),
         ),
         "block_req2his": _StaticClient(
-            his_response,
+            "{}" if failed_stage == "block_req2his_invalid" else his_response,
             failure=(
                 RuntimeError("synthetic System-HIS checkpoint failure")
                 if failed_stage == "block_req2his"
@@ -1416,7 +1425,8 @@ def _run_fake_complete_full_pack(
     def build_agent(dataset_root, **kwargs):
         return RealDataGenerationAgent(
             dataset_root,
-            command_runner=_PassingCommandRunner(),
+            command_runner=(public_repair_fixture.command_runner
+                            if public_repair_fixture else command_runner or _PassingCommandRunner()),
             **kwargs,
         )
 
@@ -1429,12 +1439,15 @@ def _run_fake_complete_full_pack(
         build_model_client,
     )
     monkeypatch.setattr("sr2fpga_agent.runner.DataGenerationAgent", build_agent)
+    if public_repair_fixture is not None:
+        monkeypatch.setattr("sr2fpga_agent.runner._repairer_for_sample",
+                            public_repair_fixture.build_repairer)
     monkeypatch.setattr(
         "sr2fpga_agent.runner._development_hidden_evaluator",
-        lambda _value: {
+        hidden_evaluator or (lambda _value: {
             "outcome": "pass",
             "private_case": "excluded-full-pack-hidden-secret",
-        },
+        }),
     )
     if preparation_policy_mutator is not None:
         from sr2fpga_agent import runner as runner_module

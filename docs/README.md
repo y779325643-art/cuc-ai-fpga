@@ -1,5 +1,10 @@
 # SR2FPGA Documentation Map
 
+> [Terminology, 2026-09-08](specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
 `docs/` is the lean current documentation workspace. It contains current
 status, normative research specifications, and the Paper-1 reasoning/writing
 workspace. Source-grounded literature packets live under `references/`,
@@ -8,16 +13,19 @@ under `reports/`, and superseded plans remain available through Git history.
 
 ## Start Here
 
+For paper-facing names, use the [DSC / DP / PC / FPP terminology ledger](specs/2026-09-08-sr2fpga-terminology.md).
+It defines naming only, not implementation or experiment authority.
+
 Read only the entries required by the task; when several apply, use the order
 below.
 
 | Order | Entry | Answers | Authority |
 | ---: | --- | --- | --- |
 | 1 | [Current engineering and evidence status](current-status.md) | What this checkout currently implements, verifies, lacks, and should do next | Current-state summary; mutable facts come from code, tests, and evidence |
-| 2 | [Paper-1 English canonical specification v1.7](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md) | What TRETS-targeted bounded requirement audit, M0-M5 core conditions, optional target-profile extension, privileges, metrics, statistics, and gates govern the no-training experiment | Research and experiment protocol authority |
+| 2 | [Paper-1 English canonical specification v1.7](specs/2026-08-14-sr2fpga-paper1-research-program-design.md) | What TRETS-targeted bounded requirement audit, M0-M5 core conditions, optional target-profile extension, privileges, metrics, statistics, and gates govern the no-training experiment | Research and experiment protocol authority |
 | 3 | [Paper-1 code architecture and development specification v1.12](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md) | How the frozen protocol maps to modules, interfaces, state machines, artifacts, work packages, and acceptance tests | Subordinate normative implementation design; does not change the estimand or create results |
-| 4 | [Paper-1 Chinese companion](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.zh.md) | How to read the canonical protocol in Chinese | Reading companion; English wins on conflict |
-| 5 | [System-HIS v1.2 semantic specification](specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md) | What the retained System-HIS schema, W1-W10, H0-H2, and lowering semantics mean | Narrow semantic authority; not proof of runtime conformance |
+| 4 | [Paper-1 Chinese companion](specs/2026-08-14-sr2fpga-paper1-research-program-design.zh.md) | How to read the canonical protocol in Chinese | Reading companion; English wins on conflict |
+| 5 | [System-HIS v1.2 semantic specification](specs/2026-06-24-sr2fpga-system-his-v1.2-freeze-design.md) | What the retained Project Contract schema, W1-W10, H0-H2, and lowering semantics mean | Narrow semantic authority; not proof of runtime conformance |
 
 There are two different north stars:
 
@@ -44,7 +52,7 @@ must be built or measured; it does not turn an intended condition into a result.
 
 | Directory | Contents | Status rule |
 | --- | --- | --- |
-| [`specs/`](specs/README.md) | Paper-1 canonical protocol, its subordinate code-development specification, Chinese companion, and retained System-HIS semantic spec | Normative specifications; no experiment results or transient task plans |
+| [`specs/`](specs/README.md) | Paper-1 canonical protocol, its subordinate code-development specification, Chinese companion, and retained Project Contract semantic spec | Normative specifications; no experiment results or transient task plans |
 | [`research-program/paper1-v1/`](research-program/paper1-v1/README.md) | Frozen foundation, claim ledger, argument/writing aids, design QA, and workflow metadata | Derived support; never overrides the English freeze or machine facts |
 
 Literature and other external source material are catalogued separately in the
@@ -103,8 +111,8 @@ mutation score qualifies an oracle rather than model performance.
 
 - [Contract registry](../contracts/manifest.json)
 - [Canonical task catalog](../contracts/task-catalog/sr2fpga-task-catalog-v0.2.json)
-- [Canonical System-HIS schema](../contracts/system-his/system-his-v1.2.schema.json)
-- [System-HIS backend capability profile](../contracts/system-his/system-his-backend-capabilities-v1.json)
+- [Canonical Project Contract schema](../contracts/system-his/system-his-v1.2.schema.json)
+- [Project Contract backend capability profile](../contracts/system-his/system-his-backend-capabilities-v1.json)
 - [Current deterministic smoke configuration](../agent/configs/current/sr2fpga_deterministic_curriculum_smoke.example.yaml)
 - [Dataset release registry](../datasets/manifest.json)
 

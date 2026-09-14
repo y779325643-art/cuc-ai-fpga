@@ -3,7 +3,7 @@
 > **状态：历史项目介绍材料。** 本文保留原始 HNAI-FPGA 构想，不代表当前
 > SR2FPGA 实现、Paper-1 方法或实验计划。当前事实见
 > [`docs/current-status.md`](../../docs/current-status.md)，研究协议以
-> [`paper1-freeze-v1.7`](../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+> [`paper1-freeze-v1.7`](../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
 > 为准。
 
 ## 面向非 DNN AI 算法的、基于分层硬件意图 IR 的自然语言到 FPGA 自动设计与约束优化框架

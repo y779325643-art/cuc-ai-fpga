@@ -73,7 +73,13 @@ def _read_json(path: Path) -> dict[str, Any]:
     return payload
 
 
-def _validate_request(payload: object) -> tuple[str, str, int, str]:
+def _validate_identity_fields(payload: object) -> tuple[dict, str, str]:
+    """Apply the project-name and requirement rules shared by both endpoints.
+
+    Both callers check these before task type and width, so keeping the split
+    here preserves which message an invalid request reports first.
+    """
+
     if not isinstance(payload, dict):
         raise TypeError("请求正文必须是 JSON 对象")
 
@@ -87,13 +93,24 @@ def _validate_request(payload: object) -> tuple[str, str, int, str]:
     if len(requirement) > 12_000:
         raise ValueError("系统级需求不能超过 12000 个字符")
 
+    return payload, project_name, requirement
+
+
+def _validate_width(payload: dict) -> int:
+    width = payload.get("width", 8)
+    if isinstance(width, bool) or not isinstance(width, int) or not 1 <= width <= 64:
+        raise ValueError("数据位宽必须是 1 到 64 之间的整数")
+    return width
+
+
+def _validate_request(payload: object) -> tuple[str, str, int, str]:
+    payload, project_name, requirement = _validate_identity_fields(payload)
+
     task_type = _resolve_task_type(payload, requirement=requirement)
     if task_type not in SUPPORTED_TASK_TYPES:
         raise ValueError(f"当前确定性后端不支持任务类型：{task_type or '(empty)'}")
 
-    width = payload.get("width", 8)
-    if isinstance(width, bool) or not isinstance(width, int) or not 1 <= width <= 64:
-        raise ValueError("数据位宽必须是 1 到 64 之间的整数")
+    width = _validate_width(payload)
 
     missing_context = _missing_engineering_context(payload)
     if missing_context:
@@ -103,19 +120,10 @@ def _validate_request(payload: object) -> tuple[str, str, int, str]:
 
 
 def _validate_audit_request(payload: object) -> tuple[str, str, int, str]:
-    if not isinstance(payload, dict):
-        raise TypeError("请求正文必须是 JSON 对象")
+    payload, project_name, requirement = _validate_identity_fields(payload)
 
-    project_name = str(payload.get("project_name", "")).strip()
-    if not PROJECT_NAME_PATTERN.fullmatch(project_name):
-        raise ValueError("项目名称需以字母开头，且只包含字母、数字、下划线或连字符")
-
+    # Reading the mode raises nothing, so it stays outside the shared rules.
     mode = str(payload.get("generation_mode", "template")).strip()
-    requirement = str(payload.get("requirement", "")).strip()
-    if not requirement:
-        raise ValueError("系统级需求不能为空")
-    if len(requirement) > 12_000:
-        raise ValueError("系统级需求不能超过 12000 个字符")
 
     task_type = (
         "freeform"
@@ -125,9 +133,7 @@ def _validate_audit_request(payload: object) -> tuple[str, str, int, str]:
     if mode != "free" and task_type not in SUPPORTED_TASK_TYPES and task_type != "unclassified":
         raise ValueError(f"当前确定性后端不支持任务类型：{task_type or '(empty)'}")
 
-    width = payload.get("width", 8)
-    if isinstance(width, bool) or not isinstance(width, int) or not 1 <= width <= 64:
-        raise ValueError("数据位宽必须是 1 到 64 之间的整数")
+    width = _validate_width(payload)
 
     return project_name, task_type, width, requirement
 

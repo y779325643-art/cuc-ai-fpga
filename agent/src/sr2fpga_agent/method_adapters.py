@@ -8,11 +8,15 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Callable, Mapping, Protocol, runtime_checkable
 
+from sr2fpga_agent.models import (
+    GeneratedProject,
+    canonical_json_bytes as _canonical_json,
+    sha256_json as _sha256_json,
+)
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.block_preparation import CheckpointId, _CHECKPOINT_SUFFIX
 from sr2fpga_agent.frozen_context import FrozenRequirementContext
 from sr2fpga_agent.method_contract import MethodConditionId, MethodContract, method_contract
-from sr2fpga_agent.models import GeneratedProject
 from sr2fpga_agent.project_contract import project_package_sha256
 
 
@@ -188,7 +192,12 @@ class MethodArtifactGateway:
         kind: PlanningArtifactKind,
         payload: Mapping[str, Any],
     ) -> PlanningArtifactEmission:
-        ref = self.__store.put_blob(key, _canonical_json(payload), media_type="application/json")
+        if payload.get("contract_version") == "unparsed-system-his-output-v1":
+            if kind is not PlanningArtifactKind.SYSTEM_HIS:
+                raise ValueError("unparsed HIS output cannot be an untyped plan")
+            ref = self.__store.put_validated_json(key, payload, contract_key="unparsed_system_his_output")
+        else:
+            ref = self.__store.put_blob(key, _canonical_json(payload), media_type="application/json")
         return PlanningArtifactEmission(kind, ref)
 
     def read_planning(self, emission: PlanningArtifactEmission) -> dict[str, Any]:
@@ -669,9 +678,3 @@ def _exception_failure(stage: str, exc: Exception) -> MethodStageFailure:
     return MethodStageFailure(stage, type(exc).__name__, str(exc))
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n").encode("utf-8")
-
-
-def _sha256_json(payload: Any) -> str:
-    return hashlib.sha256(_canonical_json(payload).rstrip(b"\n")).hexdigest()

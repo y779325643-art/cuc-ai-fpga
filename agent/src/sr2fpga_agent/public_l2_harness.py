@@ -8,8 +8,8 @@ import re
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
+from sr2fpga_agent.models import canonical_json_bytes as _canonical_json
 from sr2fpga_agent.contract_registry import ContractRegistry
 from sr2fpga_agent.path_safety import validate_project_relative_path
 
@@ -239,8 +239,3 @@ def unavailable_public_l2_harness_evidence() -> dict[str, str | None]:
     }
 
 
-def _canonical_json(payload: Any) -> bytes:
-    return (
-        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-        + "\n"
-    ).encode("utf-8")

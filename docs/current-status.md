@@ -1,6 +1,175 @@
-# SR2FPGA Current Status - 2026-08-30
+# SR2FPGA Current Status - 2026-09-11
 
-## Current Checkout
+> [Terminology, 2026-09-08](specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
+> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> DSC names the design-space contract; DP names one design point. Internal
+> identifiers and historical evidence names remain unchanged.
+
+## Approved PC Study Redesign — 2026-09-11
+
+The [field-responsibility and assembly design](specs/2026-09-11-pc-field-responsibility-v1.md)
+now distinguishes frozen facts, model decisions, deterministic derivatives and
+external evidence. It specifies owner-derived references, failure retention and
+input-stage accounting. The opt-in [PC interface](../contracts/pc/README.md) now has
+registered decision/execution/assembly schemas, a deterministic assembler, a
+single-invocation generator facade and offline replay CLI. Complete G3 passed
+**74/74 cells and 123 tests**, with independent receipt replay; SHA-256
+`f3980738080b7bc7203c82792381d6c8419efb0d1b20d1677b44806a04896e16`.
+See the [interface verification record](../artifacts/pc-interface-implementation-20260911/verification.md).
+Old Runner defaults and
+historical M0–M5 records have not been migrated.
+
+The user approved the [layered study design v1](specs/2026-09-11-pc-layered-study-design-v1.md):
+separate PC generation/recovery, a frozen-PC 2×2 generation/repair comparison,
+and an end-to-end study retaining all failures. Deterministic packaging is now
+implemented in the separate development interface under the subsequent user
+instruction to proceed. Dataset eligibility, endpoints, statistics and resource
+limits remain to be frozen. No paid model run or formal experiment was started;
+the 2×2 study runner is not yet implemented by this PC interface alone.
+
+## Bounded r5 Real-Model Check — 2026-09-11
+
+The new DeepSeek counter run completed 5/5 methods, using six additional HTTP
+requests, cumulative **28/100**. M1/M2 passed development public L0/L1/L2/L3 and
+OpenXC7. M3/M4 passed H0 but stopped at H1 on state ownership. M5 used one PC
+correction, passed H0–H3, generated an FPP, and passed public evaluation and
+OpenXC7. Its v2 correction record independently replays with two local calls
+(PC repair + FPP generation), retaining the shared initial-PC cost attribution.
+See the [r5 real-run verification record](../artifacts/deepseek-zynq7020-m1-m5-20260911-r5/verification.md).
+This is one excluded development instance, not a stable method-effectiveness
+estimate, official hidden/VPP outcome, board deployment or campaign authorization.
+
+## PC Review Fixes and G3 Snapshot — 2026-09-11
+
+All four reviewed defects are fixed and locally verified: owner-aware state
+aliases, case-preserving custom acceptance declarations, versioned M5 shared/local
+repair costs, and verified nonterminal completion without a fabricated success
+receipt. That snapshot's G3: **57/57 cells, 98 tests passed**, with independent receipt
+replay; SHA-256 `7786bb31725907309cc62f331580833175f4790c7a96f081053ee9029d7ee174`.
+Related contract regression passed 374 tests; final compatibility regression
+passed 121 tests and 70 subtests. Selections overlap. Legacy v1 correction records
+and shared-PC v2 records both replay; forged local-call totals are rejected.
+See the [four-fix verification record](../artifacts/pc-review-fixes-20260911/verification.md).
+No real model call was made (cumulative 22/100), and no historical outcome was
+rewritten. These checks do not grant real-provider, official VPP or campaign authority.
+
+## PC Generation Structure Guidance — 2026-09-11
+
+Initial and correction prompts now share an explicitly nested PC trace fragment,
+Schema-derived root-key constraints and a checker-tested state-ownership example.
+Invalid model output is still retained and rejected; no silent reparenting,
+H0/H1 relaxation or extra correction call was introduced. Focused regression:
+60 passed, with a further four-test check including the state-fragment Schema.
+See the [scoped verification record](../artifacts/pc-generation-fix-20260911/verification.md).
+No new model requests were made (cumulative 22/100). This is prompt scaffolding,
+not Schema-constrained decoding; real-model effectiveness remains unverified.
+The current review-fix G3 receipt above also includes these prompt regressions;
+earlier receipts remain bound to their original source snapshots.
+
+## Terminology Synchronization — 2026-09-10
+
+Current documentation and UI use DSC / DP / PC / FPP. Runtime identifiers,
+model prompts, serialized contracts and recorded experiments are unchanged.
+The G3 receipts below remain evidence for their original complete source
+snapshots. This terminology-only documentation/UI edit was checked separately;
+full G3 requalification after the naming edit has not been run.
+
+## Bounded r4 Real-Model Check — 2026-09-10
+
+The post-H3-fix DeepSeek counter recheck completed **5/5 samples without a batch
+interruption**, using five new requests, cumulative **22/100**. M1 passed
+development public L0/L1/L2/L3 and OpenXC7. M2 passed OpenXC7 but failed public
+Verilog-2005 compilation (`output reg` driven by a continuous assignment).
+M3/M4 failed H0 because `requirement_trace` appeared at the top level; M5 used one
+correction and then failed H1 on state ownership. None reached H3, so no real-model
+H3 effectiveness improvement is established. Source/prompt/oracle were unchanged
+during the run, and all historical outcomes remain intact.
+See the [r4 verification record](../artifacts/deepseek-zynq7020-m1-m5-20260910-r4/verification.md).
+This remains excluded development integration, not official hidden/VPP evidence.
+
+<a id="h3-declaration-revision-and-current-g3-receipt--2026-09-10"></a>
+## H3 Declaration Revision and G3 Snapshot — 2026-09-10
+
+H3 acceptance now checks complete declarations rather than keyword overlap.
+The default obligation supports bounded affirmative equivalents; explicit custom
+criteria require whole-value preservation. Generation and correction prompts
+share exact target/acceptance pointer guidance. This is declaration conformance,
+not arbitrary-language semantic equivalence or testbench/RTL correctness proof.
+
+That source snapshot's G3: **46/46 cells, 78 tests passed**, with independent receipt replay;
+SHA-256 `dd6238f432e27f6dc86768c0f34e6ae3abd94721403922505755f8f7dacb1b04`.
+The additional targeted regression passed 178 tests and 4 subtests; selections
+overlap. See the [H3 verification report](../artifacts/h3-contract-fix-20260910/verification.md).
+No H1 rule, correction budget, Schema version or historical model outcome was
+changed, and no API request was added (cumulative 17/100). Developer-only
+in-memory contrasts pass with aligned declarations/pointers and reject nonsense
+and negation; the retained original PC and M5 corrected PC still fail H1 and
+H3 respectively. Formal hidden/VPP/EA/campaign authority remains ungranted.
+
+## Runtime Follow-up Snapshot — 2026-09-10
+
+Compact public-evaluator workspaces, natural-origin M4 stop v3, and M5 failed
+correction recording were verified. That snapshot's G3: **41/41 cells, 58 tests passed**,
+with independent receipt replay, SHA-256
+`ad7d4dbf147d1b529d1ab9f8e3611de9e6cfe6cbd1efca055076849b79b49cf4`.
+See the [runtime verification report](../artifacts/provider-fix-20260910/runtime-fix-verification.md).
+
+The bounded r3 run used five additional requests, cumulative **17/100**, with no
+local output-token cap. M1/M2 passed development public evaluation and OpenXC7
+L4 (logical-only constraints). M3/M4 stopped at H1; M5 used one correction and
+stopped at H3. The original r3 M5 completion hit the subsequently fixed recording
+branch and remains preserved. After that fix, an **offline** replay matched all
+five original request digests, dispatched zero HTTP requests, retained the same
+candidate pass/failure states, and closed 5/5 sample records. This is not a new
+provider outcome, official hidden/VPP evidence, or campaign authorization.
+
+The receipts and observations below describe their original snapshots.
+
+## Provider Revision and r2 Snapshot — 2026-09-10
+
+Output controls, final-answer/termination records, shared manifest prompting and
+malformed-PC handling have passed the expanded **38/38-cell G3 matrix** and
+49 dedicated tests, with an independent replay of acceptance SHA-256
+`9598802fc321aa8535424e1e5baa07fd709dbbcda451a932052dcd9aea1d21fa`.
+See the [scoped verification record](../artifacts/provider-fix-20260910/verification.md).
+
+The subsequent excluded DeepSeek recheck omitted the local output-token limit
+and requested thinking disabled. M1/M2 reached OpenXC7 L4, but the original
+public-L2 runs encountered a long-workspace-path failure. An unchanged-input
+short-path diagnostic passed compilation and simulation. M3 failed H1, and M4's
+natural-origin stop hit a synthetic-fixture-only outcome guard, aborting before
+M5. The cumulative API count is 12/100. These remaining runtime issues are not
+hidden by the fixture-conformance verdict, and no original outcome was replaced.
+
+Official outcomes, pass-credit authority, G4b authorization and EA gates remain
+ungranted. The earlier receipt below is retained for its original source snapshot.
+
+## G3 Development Acceptance Snapshot — 2026-09-09
+
+The local `develop` working tree, starting from
+`b4f97f4949b3f7c589ee5f699b7acea8dfea2e69`, now has a positive, independently
+replayed `g3-acceptance-v1` development artifact: **32/32 required cells passed**,
+supported by **40 passing dedicated tests**. Its acceptance SHA-256 is
+`30fc915ad1385b4c44417a925a5a0586a246e199e38d9b97fc0df827d2d2411a`.
+
+The [local verification record](../artifacts/g3-closure-2026-09-09/verification.md)
+indexes the complete ignored artifact bundle, archived source snapshot and replay
+command. The lightweight regression totals **2,162 passing tests and 453 passing
+subtests**: 2,027 tests plus 448 subtests in Agent/contracts, and 135 tests plus
+5 subtests in Training/App/repository compatibility checks. The record states the
+verification scope and the final G3 source-snapshot coverage separately.
+
+This closes the v1.8 M0-M5 **excluded engineering G3** only. The acceptance keeps
+`official_outcome=false`, `official_authority=false`,
+`pass_credit_authority=false`, and `g4b_authorized=false`. No real-model campaign,
+official held-out evaluation, dataset/evidence promotion, deployment or remote
+publication was performed. EA/v1.9 and all later execution gates remain separate.
+Older G3-open statements below describe their dated implementation snapshots or
+the fixed authority limits of legacy companions, not this additive G3 verdict.
+
+## Historical Implementation Snapshot — 2026-08-30
+
+### Baseline Checkout
 
 - Branch reviewed: `codex/g3b-shared-checkpoints-cost-views`.
 - G3b development baseline reviewed: `810240dd2910`.
@@ -43,11 +212,20 @@ The projects communicate through versioned files under `contracts/` and
 
 ## Current Research Authority
 
-The canonical Paper-1 research question, matched M0-M5 baseline ladder, held-out
+Governance update (2026-09-07): the user has adopted the pre-outcome
+`paper1-v1.8` EA amendment. It remains open for research-program revision and retains v1.7's M0--M5, no-training,
+evaluator-separation, and execution boundaries while adding RQ5's separately
+gated contract-preserving EA versus equal-budget random-search comparison.
+RL, learned QoR prediction, model runs, G5, and official campaigns remain
+unauthorized. The implementation/evidence snapshot below remains dated
+2026-08-30.
+
+The canonical Paper-1 research question, matched M0-M5 baseline ladder, RQ5 EA
+extension, held-out
 benchmark design, information privileges, metrics, and ordered experiment gates
-are frozen in
-[`2026-08-14-sr2fpga-paper1-research-program-freeze-design.md`](specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md).
-Its pre-outcome v1.7 amendment, effective 2026-08-27, targets ACM Transactions on
+are recorded in the now-unfrozen revision baseline
+[`2026-08-14-sr2fpga-paper1-research-program-design.md`](specs/2026-08-14-sr2fpga-paper1-research-program-design.md).
+Its pre-outcome v1.8 amendment, effective 2026-09-07, targets ACM Transactions on
 Reconfigurable Technology and Systems（TRETS）, keeps model training outside
 Paper-1, retains RQ0 as a disjoint bounded audit, and treats representative
 OpenXC7 L4 as secondary depth evidence. RQ1 now has a two-member primary Holm
@@ -58,12 +236,30 @@ separate Holm family. The v1.6 decoding-control rules remain in force: they
 separate `replicate_id`, provider requested-seed provenance, and local execution-
 schedule randomization, and require G4b to freeze either
 `documented_seed_control` or `stochastic_blocked`. Target-profile adaptation
-remains an optional separately frozen
-extension, not a minimum G4b or submission gate. RQ3 and M6U/M6F/M6T/M6TR remain
+remains an optional separately frozen extension, not a minimum G4b or submission
+gate. RQ5 adds `E0` equal-budget random search and `E1` contract-preserving EA;
+it has independent EA-G3/EA-G4a/EA-G5/EA-G4b gates and may use only public tool
+fitness before one-shot hidden final evaluation. RQ3 and M6U/M6F/M6T/M6TR remain
 withdrawn from the Paper-1 method and result matrix. This amendment changes no
-implementation status or empirical result; execution remains blocked at G3.
+implementation status or empirical result. The updated development G3 verdict
+is recorded above; no later-gate execution is authorized.
 Existing training code and contracts remain repository infrastructure only;
 they neither block nor support Paper-1 claims.
+
+Design-direction update (2026-09-08): the user approved a candidate v1.9
+reframing in which contract-guided evolutionary DSE becomes the Paper-1 core.
+Its paper-facing artifact chain is `Design-Space Contract -> Design Point ->
+Project Contract -> FPGA Project Package`; `System-HIS v1.2` remains the current
+internal serialization name for implementation traceability.
+The candidate replaces the unsupported idea that representation alone guarantees
+functionality with a narrower contract-validity claim, adds random/covering,
+conventional-EA, black-box, direct-phenotype and feasible exhaustive references,
+and keeps final functional authority in one-shot hidden evaluation. The design is
+recorded in
+[`contract-guided-evolutionary-dse-v1.9-candidate.md`](research-program/paper1-v1/writing/contract-guided-evolutionary-dse-v1.9-candidate.md).
+It is not yet the canonical specification: its primary endpoint, aggregation,
+multiplicity, power, batch-QoR repeatability and affected-scope review remain
+open. It authorizes no implementation, model call, pilot or official outcome.
 
 Implementation work is governed by the subordinate
 [`Paper-1 code architecture and development specification v1.12`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
@@ -100,19 +296,19 @@ state have been independently verified; equality with the locally known
   project-package, project-envelope, terminal-candidate, official-hidden-
   outcome, training-qualification-outcome, trajectory, training-view, and
   task-catalog contracts exist.
-- Runtime H0 now executes the manifest-registered System-HIS Draft 2020-12
+- Runtime H0 now executes the manifest-registered Project Contract Draft 2020-12
   JSON Schema, while H2 consumes the separately registered backend capability
   profile instead of maintaining private allowlists.
 - The Agent supports the two-stage `REQ2HIS -> HIS2PROJECT` path, deterministic
   and LLM-backed multi-file project generation, and H0-H3 result recording.
 - The model-backed two-stage path can repair failures at any H0-H3 stage with a
-  dedicated System-HIS repairer, revalidate the repaired contract, and rebuild
+  dedicated Project Contract repairer, revalidate the repaired contract, and rebuild
   the complete project before the separate project/RTL repair path.
 - H1 additionally requires every declared top clock/reset to exist in
   `top.ports`, and treats top/component parameter declarations as objects with
   non-empty string names. The registered System-HIS v1.2 Schema remains
   unchanged; malformed strings are rejected at H1 rather than normalized.
-- Deterministic skeleton generation runs a static HIS/project consistency
+- Deterministic skeleton generation runs a static PC/project consistency
   preflight before HIS2PROJECT. Canonical constraint and predicted-QoR paths are
   deterministic-lowerer layout invariants shared by the builder, H2 and prompt,
   rather than undeclared backend-capability fields.
@@ -127,7 +323,7 @@ state have been independently verified; equality with the locally known
   Historical unversioned manifests remain readable only through the legacy
   compatibility path. Common L0 no longer fixes the top path at `rtl/top.v` or
   universally requires a candidate testbench, QoR prediction, or timing file;
-  the separate HIS/project consistency check runs only for HIS-emitting methods.
+  the separate PC/project consistency check runs only for PC-emitting methods.
 - A candidate-owned testbench can produce public smoke diagnostics, but it does
   not create semantic L2 credit. Without an evaluator-trusted harness, L2 stays
   `not_run` with an explicit reason while independent synthesis may still run.
@@ -139,7 +335,7 @@ state have been independently verified; equality with the locally known
   harness channel is still a G3 deliverable.
 - Request handling has no request-mode switch. Every CLI/Runner sample now
   receives the same deterministic, evaluator-side requirement boundary before
-  deterministic-reference, Direct, or System-HIS generation. It preserves the
+  deterministic-reference, Direct, or Project Contract generation. It preserves the
   Requirement Envelope and route projection, does not coerce unknown tasks to a
   nearest family, and stops `needs_clarification` or `capability_gap` before the
   project generator. The boundary decision is persisted in sample/preflight/
@@ -177,7 +373,7 @@ state have been independently verified; equality with the locally known
   not a signed or official ambiguity audit.
 - Per-sample logical model calls now share one ceiling and emit stage/status/
   duration records across generation and repair. CLI/Runner-created internal
-  generators and repairers use one internal attempt; outer project/System-HIS
+  generators and repairers use one internal attempt; outer project/Project Contract
   repair remains explicit and consumes the same ledger.
 - When no independent trusted test oracle exists, public L2 is recorded as
   `not_run` with `skip_reason=needs_oracle`; synthesis may still run, but the
@@ -209,13 +405,13 @@ These statements have important boundaries:
 - Runtime H0 executes the canonical JSON Schema. H1 now emits independently
   attributable W1-W10 `pass`/`fail`/`not_applicable` results, with a registered
   stage/applicability matrix and positive/negative rule fixtures. All 34
-  deterministic System-HIS writers have no failed W rule. Their RTL-derived
+  deterministic Project Contract writers have no failed W rule. Their RTL-derived
   declarations exercise W3 on the 27 projects with actual inter-component
   connections; the seven single-module projects remain explicitly
   `not_applicable`. W5 is exercised and passes on all 34 projects. These are
   contract-conformance results, not functional-correctness evidence.
 - Generic H3 verifies Requirement Envelope facts, trace identity, and the values
-  at resolvable fact-specific System-HIS mappings for System-HIS-emitting paths.
+  at resolvable fact-specific Project Contract mappings for Project Contract-emitting paths.
   That is stronger than the old unknown-family `not_applicable` fallback, but it
   is not proof of arbitrary open-ended requirement correctness or a substitute
   for an independent functional oracle.
@@ -223,11 +419,11 @@ These statements have important boundaries:
   exact catalog/runtime identifier or a registered whole-phrase trigger.
   Unknown names, owner conflicts, families without registered recipe content,
   and the catalog-backed candidate primary held-out deny set all use the generic
-  prompt. For a two-stage System-HIS request, the complete decision records
+  prompt. For a two-stage Project Contract request, the complete decision records
   recipe identity/version/hash or its fallback reason plus the deny-policy
   identity/version/hash/status and catalog version, but remains evaluator-side
   sample/preflight/freeze metadata: it is not inserted into the REQ2HIS prompt,
-  generated System-HIS, or HIS2PROJECT input. Only an `applied` decision adds
+  generated Project Contract, or HIS2PROJECT input. Only an `applied` decision adds
   the recipe body to the REQ2HIS prompt. Direct-project and deterministic-
   reference methods do not record this decision. Recipe content is a generation-
   information privilege, not a request mode.
@@ -322,8 +518,8 @@ These statements have important boundaries:
   declared model stages, H applicability, skeleton policy, visibility, and
   repair privileges. A provider-neutral adapter registry and closed generation
   facades now implement the M0-M5 core, including explicit M2 untyped-plan and
-  M3 free-from-HIS emissions. Complete excluded G3b blocks eagerly materialize
-  and verified-read the method-neutral S_D Direct project, S_H System-HIS and S_P
+  M3 free-from-PC emissions. Complete excluded G3b blocks eagerly materialize
+  and verified-read the method-neutral S_D Direct project, S_H Project Contract and S_P
   complete behavior-filled project before method execution. M0/M1 consume S_D,
   M3/M4/M5 consume S_H as applicable, and M4/M5 consume the identical complete
   S_P ArtifactRef. Partial, legacy and other non-G3b paths retain bounded
@@ -337,8 +533,8 @@ These statements have important boundaries:
   unified, so source/model/method decoupling is still incomplete.
 - A separate pre-candidate `EpisodeExecutor` now records legal method/planning/
   H-validation/H-correction/candidate transitions. It prevents M3/M4 H repair,
-  bounds M5 HIS correction, reruns the complete H validator after correction,
-  and cannot lower a System-HIS project until H passes. M2 bypasses H by its
+  bounds M5 PC correction, reruns the complete H validator after correction,
+  and cannot lower a Project Contract project until H passes. M2 bypasses H by its
   closed contract. The executor now owns explicit M2-M5 pre-candidate Runner
   generation, but not public evaluation, terminal selection, hidden evaluation,
   or the remaining legacy dispatch paths.
@@ -350,16 +546,16 @@ These statements have important boundaries:
   `DirectProjectGenerator` remains a compatibility API, not the Paper-1
   dispatch path. A context-native M2 facade now emits a plain untyped planning
   artifact and then a complete canonical project from only that plan plus the
-  frozen public context. Separate context-native M3-M5 initial System-HIS facades now
+  frozen public context. Separate context-native M3-M5 initial Project Contract facades now
   perform one frozen-context REQ2HIS call and complete H0-H3 validation; H
   failure prevents HIS2PROJECT. M3 directly generates a full canonical project
   without invoking skeleton or behavior-fill code, while M4/M5 lower through a
-  deterministic skeleton. Paired M3/M4 tests consume the same materialized HIS
+  deterministic skeleton. Paired M3/M4 tests consume the same materialized PC
   SHA-256 after one REQ2HIS call. Explicit M2-M5 samples now use the method
   adapters and executor; paired M3/M4 samples in one development Runner batch
   use the coordinator, produce distinct
   method-artifact references, and fail closed on unknown conditions. This does
-  not provide public/terminal/hidden campaign authority. M5 HIS correction now
+  not provide public/terminal/hidden campaign authority. M5 PC correction now
   consumes only frozen public context plus the
   failed H stage and public diagnostics, makes one budgeted call, and must pass
   a complete outer H0-H3 rerun before lowering. M4 cannot invoke this facade.
@@ -376,9 +572,9 @@ These statements have important boundaries:
   opaque development-hidden lineage. This is an engineering integration test,
   not a provider campaign or result.
   A first context-native M5 project-repair facade now exposes only manifest,
-  frozen HIS, editable RTL and public diagnostics; trusted testbench/constraint/
+  frozen PC, editable RTL and public diagnostics; trusted testbench/constraint/
   report contents are withheld, and only byte-bound composite behavior-region
-  edits survive envelope, package, edit-surface and HIS/RTL revalidation. It is
+  edits survive envelope, package, edit-surface and PC/RTL revalidation. It is
   still a development facade, not campaign authority: its M5 repair invocation
   remains on a compatibility path. Every returned attempt nevertheless enters
   the common evaluator-owned public and terminal authority; selection and
@@ -424,7 +620,7 @@ These statements have important boundaries:
   set of four excluded M5 Runner fixtures now binds initial H0-H3 failures to
   one correction, a complete H0-H3 rerun, corrected candidate/terminal lineage
   and raw-event costs. The registered correction outcome requires distinct
-  initial/corrected HIS refs, exact ordered method events, one each of
+  initial/corrected PC refs, exact ordered method events, one each of
   `req2his`/`system_his_repair`/`his2project`, zero project repair, and keeps all
   official/pass-credit/RQ/G3/G4b flags false. A separate
   repair-capable M1 Runner fixture reaches public
@@ -518,7 +714,7 @@ These statements have important boundaries:
   Complete coverage for all possible custom/provider responses remains open.
 - G3b development conformance is implemented and verified in offline fake-
   provider fixtures; G3 is not accepted. Complete excluded blocks eagerly create
-  the method-neutral S_D Direct project, S_H System-HIS and S_P complete behavior-
+  the method-neutral S_D Direct project, S_H Project Contract and S_P complete behavior-
   filled project after measurement freeze and before method execution, then
   content-verify all three. M4/M5 use the identical complete initial S_P
   ArtifactRef; their terminal candidates may diverge only through legitimate
@@ -545,7 +741,7 @@ These statements have important boundaries:
   official/pass-credit/RQ/G3/G4b fields remain false.
 - A bounded real DeepSeek R9 diagnostic on 2026-08-28 used the opt-in
   `m5-his2project-output-repair-dev-v1` variant and is explicitly
-  `formal_method_conformant=false`. Its corrected HIS passed generic H0-H3 and
+  `formal_method_conformant=false`. Its corrected PC passed generic H0-H3 and
   emitted an L1/lint/synthesis-clean candidate, while official public L2 stayed
   `not_run(needs_oracle)` and the separate family-specific fidelity audit failed
   the prescribed interface/topology obligations. An unregistered evaluator-side
@@ -630,7 +826,7 @@ official gate signature or research result.
 
 | Work package | Current state | Verified local surface | Blocking remainder |
 | --- | --- | --- | --- |
-| CD1 / G1 common project and System-HIS closure | `implemented`; G1 locally closed | Canonical project package/envelope, H0-H3 applicability, W1-W10 and deterministic-writer conformance | No remaining G1 conformance blocker; this is not functional proof |
+| CD1 / G1 common project and Project Contract closure | `implemented`; G1 locally closed | Canonical project package/envelope, H0-H3 applicability, W1-W10 and deterministic-writer conformance | No remaining G1 conformance blocker; this is not functional proof |
 | CD2 / G2 catalog, evidence and stage semantics | `implemented`; G2 locally closed | Catalog v0.2.2, corrected aliases/stages, ledger-backed evidence and L4 hash provenance | Preserve historical-artifact migration/exclusion decisions at G4b |
 | CD3 frozen context and trusted core | `partial` | Episode packs, manifest resolver, write-once store, append-only events, budget reservations, per-attempt candidate seals, registered terminal selection, terminal seal/reconstruction and one-shot primitives are consumed by development/excluded Runner authority | Legacy Recorder remains a compatibility view; no signed official pack loader, evaluator commitment loader, or official command gate exists |
 | CD4 first-class M0-M5 adapters | `partial` | Closed method contracts, provider-neutral adapters, explicit M2-M5 development Runner pre-candidate dispatch, M2 untyped-plan/no-H/no-skeleton path, M3 no-skeleton path, M5 bounded H correction, paired artifacts and executor; downstream public diagnosis now comes from the evaluator-owned development authority | M5 project repair facade ownership and remaining implicit compatibility paths are not fully unified; official method dispatch remains locked |
@@ -647,7 +843,7 @@ The dated G3b design and implementation plan record completed development work;
 they do not replace the active research freeze, which defines the following gate
 order. G1 and G2 are locally closed
 on this checkout. G1's registered compatibility envelope classifies v1.2 as canonical,
-v1.1 as legacy quarantine, Direct/Untyped HIS as method-inapplicable, and
+v1.1 as legacy quarantine, Direct/Untyped PC as method-inapplicable, and
 unknown representations as fail-closed quarantine. The 17 authoritative G1
 nodes and the fresh 2026-08-30 full lightweight regression snapshot
 (`2,055 passed`, `435 subtests passed`) were green at that snapshot. This is an

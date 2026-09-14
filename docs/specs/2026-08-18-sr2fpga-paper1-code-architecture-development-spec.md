@@ -1,12 +1,16 @@
 # SR2FPGA Paper-1 代码架构与开发规范
 
+> 术语按 [2026-09-08 命名表](2026-09-08-sr2fpga-terminology.md) 同步：工程契约（Project Contract，PC）
+> 当前序列化为 System-HIS v1.2；输出为 FPGA 工程包（FPGA Project Package，FPP）。
+> DSC 表示设计空间契约，DP 表示单个架构设计点；内部标识和历史证据名称保留。
+
 ## 0. 状态、权威与适用范围
 
 - **规范版本：** `sr2fpga-paper1-code-dev-v1.12`
 - **生效日期：** 2026-08-30
 - **规范类型：** Paper-1 下位实现设计规范（implementation design spec）
 - **研究上位权威：**
-  [`paper1-freeze-v1.7`](2026-08-14-sr2fpga-paper1-research-program-freeze-design.md)
+  [`paper1-freeze-v1.7`](2026-08-14-sr2fpga-paper1-research-program-design.md)
 - **机器格式权威：** [`contracts/manifest.json`](../../contracts/manifest.json)
   注册的版本化 contracts
 - **当前事实权威：** 当前代码、可复现测试、证据 ledger，以及
@@ -71,7 +75,7 @@ measurement freeze 与 paired model-provenance hash；Responses 不转发 seed�
 现有 development seed-capability v1 通过 strict paired-confirmatory guard；Chat
 Completions 配置若声明 Responses-only reasoning/storage 选项则在 source/client 创建时
 fail closed，不能静默忽略。Logical
-`call_id` 的 v1 Schema 下界修正为与 writer 一致的 zero-based。System-HIS H1 现在要求
+`call_id` 的 v1 Schema 下界修正为与 writer 一致的 zero-based。Project Contract H1 现在要求
 top clock/reset 也存在于 `top.ports`，并把 `top.parameters[*]` 与
 `components[*].parameters[*]` 约束为具有非空字符串 `name` 的对象；不自动把字符串
 parameter 归一化为对象，registered System-HIS v1.2 Schema 保持不变。Canonical timing-
@@ -108,7 +112,7 @@ v1.12 实现 G3b development conformance，G3 仍未验收。三个新增 regist
 development contracts 分别承载 method-neutral block preparation events、三节点 shared-
 checkpoint manifest 与 paired-block three-view cost reconciliation。Complete excluded block
 在 measurement freeze 后、method loop 前 eager 物化 Direct initial project（S_D）、shared
-System-HIS（S_H）与从 S_H 生成的完整 behavior-filled initial project（S_P）；M4/M5 消费
+Project Contract（S_H）与从 S_H 生成的完整 behavior-filled initial project（S_P）；M4/M5 消费
 相同 S_P ArtifactRef，只有合法 repair 才可使 terminal candidate 分化。Strict verifier 从
 独立提供且 fingerprint-verified 的 preparation policy 出发，重算 exact paired identity/key/
 graph/consumer/content/event-chain/close-total invariants。当前 offline fake-provider fixtures
@@ -167,7 +171,7 @@ development VPP。它仍不提供 official VPP、G3 acceptance 或 G4b authority
 ### 1.2 可信交付单元
 
 Paper-1 的最小评测单元不是单个 Verilog 文件，也不是
-System-HIS，而是：
+Project Contract，而是：
 
 ```text
 frozen requirement projection
@@ -188,7 +192,7 @@ Schema、H0-H3、L0、L3、mutation score 或 trajectory 文件均只是
 
 - 重写所有现有 `agent.py` / `runner.py`；
 - 把 deterministic generators 变成模型条件；
-- 把 Family Recipe 并入 System-HIS Core Contract；
+- 把 Family Recipe 并入 Project Contract Core Contract；
 - 用更宽松的检查让旧 artifact 获得新 pass credit；
 - 运行任何 Paper-1 模型训练，或在 G4b 前运行 official outcome；
 - 把有限 OASA 通过描述成任意开放世界需求理解；
@@ -204,9 +208,9 @@ Schema、H0-H3、L0、L3、mutation score 或 trajectory 文件均只是
    projection，不能重新 route 或改变 disposition。
 3. **显式方法。** `method_condition` 决定 adapter；`source`、provider、model
    仅是 provenance，不能反向定义研究方法。
-4. **方法适用性。** M0/M1/M2 的 H0-H3 为 `not_applicable`；System-HIS
+4. **方法适用性。** M0/M1/M2 的 H0-H3 为 `not_applicable`；Project Contract
    方法才执行 H-stage。
-5. **三层分离。** System-HIS Core Schema、Backend Capability Profile、
+5. **三层分离。** Project Contract Core Schema、Backend Capability Profile、
    Family Recipe 永远是三个独立层。
 6. **public/hidden 分离。** repair 只看 frozen public policy 允许的诊断；
    hidden evaluator 只在 terminal seal 后运行一次，永不回流。
@@ -235,15 +239,15 @@ Schema、H0-H3、L0、L3、mutation score 或 trajectory 文件均只是
 | M0 Direct | `implemented`（开发路径） | `DirectProjectGenerator`；H0-H3=`not_applicable` | 尚非 episode-driven official adapter；无 official hidden |
 | M1 Direct-Repair | `partial` | Direct + budgeted `ProjectRepairer`；每个 attempt 进入共同 development public/selection/terminal authority；可配置 trusted public L2 | 缺 official hidden/VPP 与 official budget authority |
 | M2 Structured-Direct | `partial`（开发路径） | provider-neutral adapter、frozen-context untyped plan → canonical free-project 两调用；标准 Runner 已接入且 H-stage/skeleton/repair 调用为零；attempt/terminal authority 与可选 trusted public L2 已统一 | 无 official campaign authority |
-| M3 HIS-Free | `partial` | context-native frozen REQ2HIS、H0-H3、true no-skeleton full-project facade、与 M4 shared-HIS coordinator；显式 development Runner dispatch、attempt/terminal authority、可选 trusted public L2 与 sanitized hidden reducer 已接入 | 缺 full-axis official budget 与 official authority |
-| M4 HIS-Skeleton | `partial` | context-native frozen REQ2HIS、H0-H3、trusted skeleton、behavior fill、与 M3 shared-HIS coordinator；显式 paired development Runner dispatch、attempt/terminal authority、可选 trusted public L2 与 sanitized hidden reducer 已接入 | implicit compatibility path 尚存；缺 full-axis official budget 与 official authority |
-| M5 HIS-Online | `partial` | 标准 Runner pre-candidate dispatch、context-native 单次 HIS correction、完整 H0-H3 外层重验、verified-envelope/behavior-region-only project-repair facade、共享 logical call ceiling；所有返回 attempts 进入共同 authority，可配置 trusted public L2，并归约 sanitized development hidden outcome | repair facade ownership 仍属 compatibility orchestration；缺 official authority |
+| M3 PC-Free | `partial` | context-native frozen REQ2HIS、H0-H3、true no-skeleton full-project facade、与 M4 shared-PC coordinator；显式 development Runner dispatch、attempt/terminal authority、可选 trusted public L2 与 sanitized hidden reducer 已接入 | 缺 full-axis official budget 与 official authority |
+| M4 PC-Skeleton | `partial` | context-native frozen REQ2HIS、H0-H3、trusted skeleton、behavior fill、与 M3 shared-PC coordinator；显式 paired development Runner dispatch、attempt/terminal authority、可选 trusted public L2 与 sanitized hidden reducer 已接入 | implicit compatibility path 尚存；缺 full-axis official budget 与 official authority |
+| M5 PC-Online | `partial` | 标准 Runner pre-candidate dispatch、context-native 单次 PC correction、完整 H0-H3 外层重验、verified-envelope/behavior-region-only project-repair facade、共享 logical call ceiling；所有返回 attempts 进入共同 authority，可配置 trusted public L2，并归约 sanitized development hidden outcome | repair facade ownership 仍属 compatibility orchestration；缺 official authority |
 | H0/H2 authority | `implemented` | registered Schema；registered capability profile + dry lower；34 个 deterministic writer 全部通过 H0-H2 | 仅为 G1 conformance，不是功能证明 |
 | H1/W1-W10 | `implemented`（有界） | 逐规则 `pass/fail/not_applicable`、正负 fixture、注册 conformance matrix；34 个 deterministic writer 无 fail；W3 27 pass/7 合法 N/A，W5 34 pass | 仅证明契约一致性，不是功能正确性证据 |
 | Generic value-aware H3 | `implemented`（有界） | Envelope/trace/value mapping | 不是任意 requirement correctness 或 functional proof |
 | Logical model-call ledger | `partial` | 失败调用计费，active internal attempts=1；M0-M5 Runner sample 已按真实 attempt 创建/路由/关闭 write-once `AttemptCostLedger`。Complete excluded block 另由 method-neutral preparation ledger eager 记录 S_D/S_H/S_P，verified reducer 对账 actual/standalone/三种 incremental 的全部 13 axes；fake-provider clean block 为 6 physical/10 standalone-attributed initial calls，shared cost 不进入 ordinal zero。Registered `trajectory-v2` 继续重验 method-exclusive authority、seal、cost 与 hidden lineage | G3b development conformance 已实现；仍缺 official authority、two-axis hidden closure 与可产生正式 VPP/G3 acceptance 的 reducer 输入 |
 | Public/hidden/L4 separation | `partial`（开发边界） | development/excluded Runner 在每个 immutable attempt 上调用 evaluator-owned public authority；sanitized diagnosis 是 repair 的唯一 public-tool 输入；registered `@1`/`AT_A` selection 产生 terminal seal，terminal public 与 opaque hidden 只消费该 exact seal；可选 trusted harness 产生 public L2；reducer-only hidden artifact 产生 sanitized development `pass/fail/not_run`；raw evaluator data 不越界 | 无 official process/outcome、signed G4b commitment 或 authority |
-| Common project contract | `partial` | registered package/envelope、canonical+legacy resolver、role-based common L0、独立 HIS consistency、write-once per-attempt/terminal seal 与 reconstruction API；development/excluded Runner selection 和 evaluator dispatch 已统一消费 | Legacy Recorder/release 仍为 compatibility view；official loader、commitment 和 command gate 缺失 |
+| Common project contract | `partial` | registered package/envelope、canonical+legacy resolver、role-based common L0、独立 PC consistency、write-once per-attempt/terminal seal 与 reconstruction API；development/excluded Runner selection 和 evaluator dispatch 已统一消费 | Legacy Recorder/release 仍为 compatibility view；official loader、commitment 和 command gate 缺失 |
 | Runtime trajectory/view Schema validation | `partial` | legacy Recorder view 保留；registered `trajectory-v2` 逐 attempt 验证 raw event refs、cost summary、identity/hash lineage，并重新验证 registered selection、selected authoritative outcome、terminal public、matching public-L2 harness commitments、exact seal、opaque hidden ref 与可选 sanitized hidden outcome；正常和 aborted accounting path 均写新 artifact；episode/full-pack 另行归约 development VPP | legacy view 未验证为 v1；official full-pack VPP 固定为 `not_evaluated` |
 | Retained training-view infrastructure | `partial`（非 Paper-1） | eligibility certificate、canonical v2 exporter/sidecar、matched candidate pools、unpromoted release、Training structural inspector | 不属于 Paper-1 gate；不得据此产生论文方法或结果声明 |
 | Catalog/evidence/stage semantics（G2） | `implemented`；本地关闭 | catalog v0.2.2、ledger/alias/stage/L4 provenance 回归 | 该关闭不是模型结果；历史 artifact 仍需 G4b migration/exclusion policy |
@@ -255,7 +259,7 @@ Schema、H0-H3、L0、L3、mutation score 或 trajectory 文件均只是
 **剩余 orchestration ownership 偏差：** role-based project package/envelope、
 frozen episode pack、write-once store/seal、M0-M5 adapters、M2/M3 emissions 和
 pre-candidate executor 均已形成有界、受测 core。显式 M2-M5 development pre-candidate
-dispatch 已接入 Runner：M2 是 untyped plan → free project，M3 是 no-skeleton HIS → free
+dispatch 已接入 Runner：M2 是 untyped plan → free project，M3 是 no-skeleton PC → free
 project，M4/M5 是 skeleton-fill，M5 另有一次 bounded complete-H correction。M5 project
 repair facade 与部分 implicit compatibility paths 尚未统一拥有 orchestration；但所有返回
 attempts 已进入共同 development/excluded public authority、registered selection、terminal
@@ -309,7 +313,7 @@ flowchart TD
 现有下列 primitives 可保留原位置：
 
 - `generation/` 的 Direct、REQ2HIS、HIS2PROJECT、skeleton fill；
-- `his_validation.py` 与 System-HIS checkers；
+- `his_validation.py` 与 Project Contract checkers；
 - `contract_skeleton.py`；
 - `path_safety.py`、tool wrappers 与 QoR parsers；
 - deterministic `project_generator.py`，但仅作为 reference/template。
@@ -513,13 +517,13 @@ registered ID；不得让自由字符串在运行时悄悄创造新方法、stag
 edit surface 或 budget 语义。
 
 `MethodEmission` 是 closed union：`PlanningArtifactEmission |
-ProjectCandidateEmission | MethodStageFailure`。System-HIS adapter 先显式发出
+ProjectCandidateEmission | MethodStageFailure`。Project Contract adapter 先显式发出
 planning artifact；EpisodeExecutor 负责 H validation、H correction、lowering 和
 project emission，不能把 pre-candidate H retry 隐藏在 `emit_initial()` 内。
 
 `GenerationServices` 必须是 closed allowlist，只暴露 gateway、公开 prompt/context
 refs、budget/event sink、candidate writer，以及 MethodContract 允许的
-skeleton/HIS facade。Runner、private evaluator、hidden store 或完整 artifact root
+skeleton/PC facade。Runner、private evaluator、hidden store 或完整 artifact root
 不得注入 adapter 进程。
 
 H-stage applicability、skeleton policy、repair privilege 和预算不得再由类名、
@@ -589,8 +593,8 @@ stateDiagram-v2
     PackLoaded --> IntakeEvaluated
     IntakeEvaluated --> StoppedBeforeGeneration: non-ready
     IntakeEvaluated --> MethodPrepared: ready
-    MethodPrepared --> PlanningArtifactEmitted: plan/HIS method
-    PlanningArtifactEmitted --> HValidated: System-HIS method
+    MethodPrepared --> PlanningArtifactEmitted: plan/PC method
+    PlanningArtifactEmitted --> HValidated: Project Contract method
     HValidated --> HisCorrectionRequested: H fail + allowed + @A budget
     HisCorrectionRequested --> PlanningArtifactEmitted
     HValidated --> CandidateEmitted: all H pass then lower/generate
@@ -702,24 +706,24 @@ seed-average 只作诊断。
 
 ## 10. Method adapters
 
-| 方法 | 必须实现的 stage | System-HIS | Skeleton | Public repair |
+| 方法 | 必须实现的 stage | Project Contract | Skeleton | Public repair |
 | --- | --- | --- | --- | --- |
 | M0 | full-project generation | 无 | 无 | 无 |
 | M1 | 与 M0 相同 initial + repair | 无 | 无 | project |
 | M2 | untyped plan + free full-project | 无 | 无 | 无（headline） |
 | M3 | frozen REQ2HIS + free full-project | 有 | 无 | 无（headline） |
 | M4 | 同一 frozen REQ2HIS + skeleton behavior fill | 有 | 有 | 无 outer EDA repair |
-| M5 | M4 + repair | 有 | 有 | HIS correction + project |
+| M5 | M4 + repair | 有 | 有 | PC correction + project |
 
 ### 10.1 配对约束
 
 - M1 必须复用对应 M0 的 `project_package_sha256`，再增加 repair。方法专属
   candidate ID/seal 不要求相同。
 - M3 与 M4 必须按 method-neutral `paired_block_id` 复用逐字节相同的 frozen
-  generated-HIS artifact；用 `shared_his_artifact_id` 和 SHA-256 证明。
+  generated-PC artifact；用 `shared_his_artifact_id` 和 SHA-256 证明。
 - M5 与 M4 初态相同。
 - `R_generic / R_HIS` repair probe 从同一个 frozen failing M4 candidate
-  开始，仅声明的 HIS-aware diagnosis 字段不同。
+  开始，仅声明的 PC-aware diagnosis 字段不同。
 - `source × model × method` 必须正交；任意已支持 gateway 应能运行任意已实现
   adapter。Provider-specific class 名只能留在兼容层。
 - Paired methods 必须复用相同 hidden evaluator commitment/case seed；差异只来自
@@ -727,10 +731,10 @@ seed-average 只作诊断。
 
 ### 10.2 `@1` 与 `@A`
 
-- `@1` 只执行 MethodContract 声明的 initial generation stages；outer HIS
+- `@1` 只执行 MethodContract 声明的 initial generation stages；outer PC
   correction、project repair 和内部 retry 均为 0。Initial H failure 是该方法的
   first-emission failure，不能在 `@1` 中偷偷修复。
-- `@A` 才可按 MethodContract 和冻结预算执行 HIS correction、parser/schema
+- `@A` 才可按 MethodContract 和冻结预算执行 PC correction、parser/schema
   retry 或 project repair。每类动作必须属于独立 budget axis/event type。
 - M0/M2/M3/M4 headline `@1` 不提供 outer project repair；M1/M5 的 `@1`
   仍是其 repair 之前的 first emission measurement，repair 效果只在 `@A`/final
@@ -741,7 +745,7 @@ seed-average 只作诊断。
 ### 10.3 M2 untyped plan
 
 新增 `untyped-plan-v1` 时只能验证容器可解析性和 required generic fields，
-不得引入 System-HIS semantic kinds、cross-field checker 或 deterministic
+不得引入 Project Contract semantic kinds、cross-field checker 或 deterministic
 lowerer。建议最小字段：
 
 ```text
@@ -756,7 +760,7 @@ credit。
 
 ### 10.4 M3 true no-skeleton
 
-M3 接收与 M4 相同的 System-HIS JSON，但第二 stage 直接生成完整 project。
+M3 接收与 M4 相同的 Project Contract JSON，但第二 stage 直接生成完整 project。
 实现必须提供 spy，证明未调用 `contract_skeleton.py`、deterministic task
 generator 或 behavior-region filler。
 
@@ -771,7 +775,8 @@ generator 或 behavior-region filler。
 
 Paper-1 runner、campaign freeze、统计矩阵和 TRETS 论文不得实例化这些条件。
 
-## 11. Method-neutral common project contract
+<a id="11-method-neutral-common-project-contract"></a>
+## 11. Method-neutral common FPP delivery contract
 
 ### 11.1 Role-based package
 
@@ -850,18 +855,19 @@ Envelope digest 不包含自身；实现使用排序后的 leaf records/Merkle r
 
 ```text
 common_project_l0          # 所有方法共同
-his_project_consistency    # 仅 System-HIS 方法适用
+his_project_consistency    # 仅 Project Contract 方法适用
 ```
 
-System-HIS 的额外检查不得被称为 method-neutral L0，也不得使 Direct baseline
+Project Contract 的额外检查不得被称为 method-neutral L0，也不得使 Direct baseline
 按定义失败。
 
-## 12. System-HIS、H-stage 与两层 repair
+<a id="12-system-hish-stage-与两层-repair"></a>
+## 12. Project Contract、H-stage 与两层 repair
 
 ### 12.1 三层 contract
 
 ```text
-System-HIS Core Schema
+Project Contract Core Schema
   -> 定义合法形状与通用语义
 
 Backend Capability Profile
@@ -877,7 +883,7 @@ Unsupported capability 必须返回 `capability_gap` 或 adapter requirement，�
 ### 12.2 H0-H3
 
 - H0：只执行 manifest-registered Draft 2020-12 Schema；
-- H1：System-HIS 内部完整性与 W1-W10；
+- H1：Project Contract 内部完整性与 W1-W10；
 - H2：registered capability + lowerability + dry lower；
 - H3：FrozenRequirementContext 与 trace/value mapping fidelity。
 
@@ -889,7 +895,8 @@ frozen backend profile 时返回 `capability_gap`；gold-ready episode 中模型
 unsupported kind/protocol/scenario 时是 H2 `fail` 和 design failure，绝不能回写
 成 requirement capability gap 或移出 VPP 分母。
 
-### 12.3 System-HIS repair
+<a id="123-system-his-repair"></a>
+### 12.3 Project Contract repair
 
 H0-H3 任一失败只有在 attempt profile=`@A`、MethodContract
 `allows_his_correction=true` 且 budget 可用时才能进入 `SystemHisRepairer`。
@@ -898,7 +905,7 @@ H0-H3 任一失败只有在 attempt profile=`@A`、MethodContract
 - 消耗共享 episode budget；
 - diagnosis 只含当前 failed H stage 的 public diagnostics；
 - patch scope 只允许 `system_his.json`；
-- repaired HIS 从 H0 重新跑全部适用 H stage；
+- repaired PC 从 H0 重新跑全部适用 H stage；
 - 全部 pass 后才调用 HIS2PROJECT；
 - 重新 lower/rebuild 完整项目，旧派生 RTL 不得复用；
 - failed call、invalid candidate 与 successful transition 分开记录。
@@ -1183,13 +1190,13 @@ Token 数相同不等于信息等价。
 ### 15.2 必需 spy tests
 
 1. OASA sentinel：gold、answer、witness、private capability rationale、Recipe
-   decision 不得进入 boundary prompt、HIS、project 或 repair。
+   decision 不得进入 boundary prompt、PC、project 或 repair。
 2. Hidden sentinel：hidden evaluator ID/seed/path/case/hash/output/status/score
    不得进入 candidate、diagnosis、patch、events 的 repair-visible projection 或
    任何候选或 repair 可见投影。
 
 Candidate workspace 不得暴露 deterministic generators、task templates、trusted
-TB、reference models、mutations、held-out project/HIS、datasets、API credentials
+TB、reference models、mutations、held-out project/PC、datasets、API credentials
 或无关 repository state。
 
 ## 16. Artifact store 与不可变性
@@ -1235,7 +1242,7 @@ finalization 通过新 event/derived view 表达，不覆写历史事实；删�
 以 [`contracts/manifest.json`](../../contracts/manifest.json) 为唯一当前列表。2026-08-30
 注册面包括：
 
-- System-HIS：core v1.2、backend capability、W1-W10 well-formedness 与
+- Project Contract：core v1.2、backend capability、W1-W10 well-formedness 与
   compatibility/quarantine；
 - OASA：requirement audit、ambiguity case manifest、events、clarification replay、
   outcome 与 witness；
@@ -1460,7 +1467,7 @@ leakage 与完整性；失败时零副作用。
 ### CD1 — Common project 与 G1 closure
 
 **2026-08-25 实现进度：** role-based package/envelope contracts、canonical+legacy
-resolver、common/HIS L0 分层、非固定 top path、optional candidate TB/QoR/constraint
+resolver、common/PC L0 分层、非固定 top path、optional candidate TB/QoR/constraint
 以及 Direct canonical generation policy 已实现并通过轻量回归。Candidate TB 只保留
 交付 artifact 身份，不产生正式 semantic L2 credit。CD3 的 outer-envelope-aware
 write-once per-attempt/terminal seal、selection、reconstruction 与 evaluator dispatch 已由
@@ -1490,9 +1497,9 @@ hidden evaluation 或结果声明。
 - W1-W10 每条正负 fixture；
 - Schema/H0/H1/H2/reset/lowerer/compatibility conformance matrix。
 
-验收：Direct 无 HIS、无 candidate TB、无 predicted QoR、manifest-declared
+验收：Direct 无 PC、无 candidate TB、无 predicted QoR、manifest-declared
 non-`rtl/top.v` top 时仍可通过 common L0；candidate TB 不授予 semantic pass
-credit；所有 System-HIS positive/negative fixtures 结论一致且可重算。
+credit；所有 Project Contract positive/negative fixtures 结论一致且可重算。
 
 ### CD2 — G2 catalog、evidence 与 stage semantics
 
@@ -1536,7 +1543,7 @@ seal/tamper/one-shot primitives 可独立验证。
 **2026-08-24 实现进度：partial。** closed M0-M5 contracts、provider-neutral
 adapters、M2 untyped-plan/no-H path、M3 true no-skeleton path、paired artifacts、
 repair privilege checks 与 pre-candidate `EpisodeExecutor` 已测试。显式 M0-M5
-development Runner dispatch 已覆盖各 pre-candidate 路径、共享 frozen Direct/HIS
+development Runner dispatch 已覆盖各 pre-candidate 路径、共享 frozen Direct/PC
 artifacts 并产生独立 method records。一个真实 fake-provider excluded `run_batch`
 已从同一 frozen projection 执行 M0-M5；Agent downstream H validation 复用 episode
 pack 的 frozen public context，不再由 legacy request 重建 evaluator-side task facts。
@@ -1552,7 +1559,7 @@ pre-candidate H states、capability-specific repair protocols、PairedArtifactCo
 M2 untyped plan、M3 true no-skeleton、source/model/method 解耦。
 
 验收：一个 gold-ready excluded episode 在相同 public projection 上运行 M0-M5；
-M0/M1 initial package hash 相同；M3/M4 HIS hash 相同；H/repair applicability
+M0/M1 initial package hash 相同；M3/M4 PC hash 相同；H/repair applicability
 正确；无权限 adapter 的 repair spy 调用=0。
 
 ### CD5 — Public/hidden/L4/profile-adaptation 分离
@@ -1706,7 +1713,7 @@ Paper-1 无本 CD 的新增交付或验收要求；已有测试仅用于保护�
 **2026-08-24 实现进度：partial；not accepted。** 新增 development-only
 `full_pack_smoke` reconciler 与 fake-fixture test：从同一 frozen public projection 为
 M0-M5 构建 excluded episode packs，运行 pre-candidate adapters，并核对 M0/M1 initial
-project、M3/M4 HIS、M3/M4 candidate separation 与 M4/M5 skeleton identity。附加
+project、M3/M4 PC、M3/M4 candidate separation 与 M4/M5 skeleton identity。附加
 scenarios 覆盖 H repair、project repair、non-ready、opaque hidden fail 与 evaluator
 exception `not_run`。报告强制写入 `official_outcome=false`、`rq1_evidence=false`、
 `rq2_evidence=false`、`g3_accepted=false` 和 `g4b_authorized=false`。第二个 slice
@@ -1802,9 +1809,9 @@ fail closed；所有
 official、RQ、G3 与 G4b flags 固定 false。v1 M4/H0 shape 保持可读兼容。
 
 2026-08-26 完成的 M5 correction slice 覆盖 initial H0-H3 四格。四个真实 excluded
-Runner fixture 均只允许一次 System-HIS correction，并在任何 candidate emission 前从
+Runner fixture 均只允许一次 Project Contract correction，并在任何 candidate emission 前从
 H0 重新执行到 H3。Registered `development-his-correction-outcome-v1` verified reader
-重读 initial/corrected HIS、exact pre-candidate event prefix、correction input/parent hash、
+重读 initial/corrected PC、exact pre-candidate event prefix、correction input/parent hash、
 corrected candidate、terminal/development episode outcome、trajectory、cost summary 与 raw
 attempt events；共享 budget 必须归约为 `req2his=1`、`system_his_repair=1`、
 `his2project=1`，outer project repair=0。缺失/重排/额外 correction event、H report 或
@@ -1885,9 +1892,9 @@ hash mismatch、未签署 invariant/change/compliance rule 或不完整 pair pop
 | Common project | manifest-declared non-`rtl/top.v` top；无 candidate TB/QoR 仍可 L0 |
 | M0/M1 | H0-H3=`not_applicable`；共享 `project_package_sha256` 相同，method-specific candidate ID/seal 不要求相同 |
 | M2 | 有 untyped plan；H checker/skeleton 调用=0 |
-| M3/M4 | 同一 `paired_block_id` 的 frozen HIS hash 与 hidden case seed 相同；M3 skeleton 调用=0；M4 必须调用 |
+| M3/M4 | 同一 `paired_block_id` 的 frozen PC hash 与 hidden case seed 相同；M3 skeleton 调用=0；M4 必须调用 |
 | G3b checkpoints/cost | complete block 在 method 前 verified S_D/S_H/S_P；M4/M5 完整初始工程相同；6 physical/10 standalone initial calls；actual/standalone/三种 incremental 的 13 axes、order、failure、unavailable、visibility 与 tamper fail closed；普通 failed/`not_run` 保留 lineage，checkpoint-blocked 为 null trajectory/measured-zero exclusive cost；clean prefix `k=0..6` resume 不重复 preparation，坏状态需新 run ID；合法 ceiling override 保留，malformed policy 在 preparation side effect 前拒绝 |
-| H repair | H0/H1/H2/H3 各一失败；只改 HIS；全 H 重跑；project 重建 |
+| H repair | H0/H1/H2/H3 各一失败；只改 PC；全 H 重跑；project 重建 |
 | Project repair | L0/L1/public-L2/L3 失败；只改 allowed model files |
 | Hidden | seal 后一次；hidden fail 不 repair；二次调用/tamper 拒绝 |
 | Malicious TB | 无条件 `TEST_PASS` 仍被 evaluator-owned harness 判错 |
@@ -1911,7 +1918,7 @@ integration tests 必须使用 fake clients；真实 API 只能在显式 opt-in 
 
 ## 21. 开发进度记录
 
-2026-08-18 已开始执行 **CD1 common project contract**：
+2026-08-18 已开始执行 **CD1 common FPP delivery contract**：
 
 1. 注册 `project-package-v1`；
 2. 让 manifest 声明 top/source/file roles；
@@ -1919,7 +1926,7 @@ integration tests 必须使用 fake clients；真实 API 只能在显式 opt-in 
 4. 把固定 `rtl/top.v` 改为 manifest-declared top；
 5. 分离 `common_project_l0` 与 `his_project_consistency`；
 6. 同步迁移 manifest validator、family-shape checks、prompt/repair parser callers；
-7. 增加 Direct 无 HIS/TB/QoR、非固定 top path，以及 candidate TB 不授予
+7. 增加 Direct 无 PC/TB/QoR、非固定 top path，以及 candidate TB 不授予
    common-L0/semantic pass credit 的回归；完整 malicious-TB evaluator test 留给
    CD5；
 8. 不在该切片同时重构 `agent.py` 或实现 hidden evaluator。

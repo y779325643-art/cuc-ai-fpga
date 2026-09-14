@@ -1,5 +1,9 @@
 # SR2FPGA UI demo
 
+Display terminology follows the [2026-09-08 naming table](../docs/specs/2026-09-08-sr2fpga-terminology.md):
+Project Contract (PC), 工程契约; FPGA Project Package (FPP), FPGA 工程包.
+Internal `system_his` fields and the System-HIS v1.2 serialization stay unchanged.
+
 This local demo connects the existing static interface to the current Agent
 runtime. It uses the deterministic reference generator, runs the normal
 requirement boundary and H0-H3/L0-L4 pipeline, and reads the resulting files and

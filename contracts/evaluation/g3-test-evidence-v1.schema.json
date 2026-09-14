@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SR2FPGA excluded G3 executable test evidence v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contract_version", "evaluation_scope", "collected_node_ids", "test_reports", "artifact_records", "source_fingerprints", "runtime_versions", "source_unchanged", "pytest_exit_status", "official_outcome", "official_authority", "pass_credit_authority", "g4b_authorized"],
+  "properties": {
+    "contract_version": {"const": "g3-test-evidence-v1"},
+    "evaluation_scope": {"const": "excluded_development_conformance_only"},
+    "collected_node_ids": {"type": "array", "uniqueItems": true, "items": {"type": "string", "minLength": 1}},
+    "test_reports": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "phase", "outcome", "was_xfail"],
+      "properties": {
+        "node_id": {"type": "string", "minLength": 1},
+        "phase": {"enum": ["setup", "call", "teardown"]},
+        "outcome": {"enum": ["passed", "failed", "skipped"]},
+        "was_xfail": {"type": "boolean"}
+      }
+    }},
+    "artifact_records": {"type": "array", "items": {
+      "type": "object", "additionalProperties": false,
+      "required": ["node_id", "store_id", "contract_key", "artifact_ref"],
+      "properties": {
+        "node_id": {"type": "string", "minLength": 1},
+        "store_id": {"type": "string", "pattern": "^store-[0-9]{5}$"},
+        "contract_key": {"type": "string", "minLength": 1},
+        "artifact_ref": {"$ref": "#/$defs/artifact_ref"}
+      }
+    }},
+    "source_fingerprints": {"type": "object", "minProperties": 1, "additionalProperties": {"type": "string", "pattern": "^[0-9a-f]{64}$"}},
+    "runtime_versions": {"type": "object", "additionalProperties": false, "required": ["python", "pytest", "jsonschema", "PyYAML"], "properties": {
+      "python": {"type": "string", "minLength": 1}, "pytest": {"type": "string", "minLength": 1},
+      "jsonschema": {"type": "string", "minLength": 1}, "PyYAML": {"type": "string", "minLength": 1}
+    }},
+    "source_unchanged": {"type": "boolean"},
+    "pytest_exit_status": {"type": "integer", "minimum": 0},
+    "official_outcome": {"const": false}, "official_authority": {"const": false},
+    "pass_credit_authority": {"const": false}, "g4b_authorized": {"const": false}
+  },
+  "$defs": {"artifact_ref": {
+    "type": "object", "additionalProperties": false,
+    "required": ["key", "sha256", "size_bytes", "media_type"],
+    "properties": {
+      "key": {"type": "string", "minLength": 1},
+      "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+      "size_bytes": {"type": "integer", "minimum": 0},
+      "media_type": {"type": "string", "minLength": 1}
+    }
+  }}
+}

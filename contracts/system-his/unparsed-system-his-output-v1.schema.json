@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Unparsed model System-HIS output for fail-closed H0 handling",
+  "description": "A provisional raw-response record, not a valid System-HIS contract or a pass verdict.",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "raw_output", "parse_error"],
+  "properties": {
+    "contract_version": {"const": "unparsed-system-his-output-v1"},
+    "raw_output": {"type": "string"},
+    "parse_error": {"type": "string", "minLength": 1}
+  }
+}

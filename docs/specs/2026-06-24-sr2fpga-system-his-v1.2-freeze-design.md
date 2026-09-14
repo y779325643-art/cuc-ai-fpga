@@ -1,5 +1,9 @@
 # SR2FPGA System-HIS v1.2 Freeze Design
 
+> Paper-facing name: Project Contract (PC). This retained technical specification
+> keeps the System-HIS v1.2 serialization name and identifiers for compatibility.
+> See the [2026-09-08 terminology ledger](2026-09-08-sr2fpga-terminology.md).
+
 > **Current boundary (2026-08-14):** Retained as the Tier-1 System-HIS semantic
 > design authority, but not as proof of complete runtime conformance. The JSON
 > Schema, H0/H1/H2 checker, canonical fixtures/examples, reset semantics,

@@ -7,7 +7,7 @@ It consumes released datasets and versioned contracts. It does not import the
 Agent implementation.
 
 Under the active
-[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-freeze-design.md),
+[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md),
 this entire project is retained repository infrastructure outside the research
 scope. Paper-1 targets ACM TRETS and does not train models.
 
