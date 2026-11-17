@@ -1,0 +1,4 @@
+# Project context settings. GPT-6.1 Sol documented model window: 1,050,000 tokens.
+# Keep 5% headroom for generation and tool output before automatic compaction.
+model_context_window = 1050000
+model_auto_compact_token_limit = 997500

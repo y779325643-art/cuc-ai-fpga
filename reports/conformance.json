@@ -1,0 +1,663 @@
+{
+  "scope": "local static schema/checker conformance; NOT HDL or benchmark results",
+  "python": "3.13.5",
+  "jsonschema": "4.26.0",
+  "tests_run": 70,
+  "failures": 0,
+  "errors": 0,
+  "elapsed_seconds": 4.661,
+  "cases": [
+    {
+      "case": "positive_hierarchical_parameterized_stream",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "expected_code": null,
+      "actual_codes": [],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_root_key",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_design_key",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "old_version_rejected",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "binding_tamper",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "BINDING_MISMATCH",
+      "actual_codes": [
+        "BINDING_MISMATCH"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "no_candidate_top_signature",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "BOUNDARY_AUTHORITY",
+      "actual_codes": [
+        "BOUNDARY_AUTHORITY"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "no_child_boundary_import",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "BOUNDARY_AUTHORITY",
+      "actual_codes": [
+        "BOUNDARY_AUTHORITY"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "entry_unknown",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "ENTRY_UNKNOWN",
+      "actual_codes": [
+        "ENTRY_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "module_unknown",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "MODULE_UNKNOWN",
+      "actual_codes": [
+        "MODULE_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_leaf_key",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "direction_alias_rejected",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "spelling_error_rejected",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "string_width_rejected",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "resolved_width_rejected",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "boolean_width_rejected",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "zero_width",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "TYPE_WIDTH",
+      "actual_codes": [
+        "TYPE_WIDTH"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_shape_parameter",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "PARAM_UNKNOWN",
+      "actual_codes": [
+        "PARAM_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "clog2_zero_width",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "TYPE_WIDTH",
+      "actual_codes": [
+        "TYPE_WIDTH"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "clog2_zero_operand",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "EXPR_DOMAIN",
+      "actual_codes": [
+        "EXPR_DOMAIN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "divide_zero",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "EXPR_DOMAIN",
+      "actual_codes": [
+        "EXPR_DOMAIN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "negative_dimension_intermediate",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "EXPR_RANGE",
+      "actual_codes": [
+        "EXPR_RANGE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "parameter_not_bound",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "PARAM_BINDING",
+      "actual_codes": [
+        "PARAM_BINDING"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "extra_parameter",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "PARAM_BINDING",
+      "actual_codes": [
+        "PARAM_BINDING"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "parameter_out_of_range",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "PARAM_RANGE",
+      "actual_codes": [
+        "PARAM_RANGE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "shape_range_reversed",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "PARAM_DOMAIN",
+      "actual_codes": [
+        "PARAM_DOMAIN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "missing_domain_binding",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "DOMAIN_BINDING",
+      "actual_codes": [
+        "DOMAIN_BINDING"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_parent_domain",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "DOMAIN_UNKNOWN",
+      "actual_codes": [
+        "DOMAIN_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_port_domain",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "DOMAIN_UNKNOWN",
+      "actual_codes": [
+        "DOMAIN_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "reset_polarity_mismatch",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "RESET_BINDING",
+      "actual_codes": [
+        "RESET_BINDING"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unsupported_async_profile",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "CAPABILITY_RESET",
+      "actual_codes": [
+        "CAPABILITY_RESET"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_endpoint",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "ENDPOINT_UNKNOWN",
+      "actual_codes": [
+        "ENDPOINT_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "wrong_source_direction",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "ENDPOINT_DIRECTION",
+      "actual_codes": [
+        "ENDPOINT_DIRECTION"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "stream_fanout",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "STREAM_FANOUT",
+      "actual_codes": [
+        "STREAM_FANOUT"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "duplicate_driver",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "STREAM_FANOUT",
+      "actual_codes": [
+        "STREAM_FANOUT"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "missing_link",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "UNCONNECTED_SOURCE",
+      "actual_codes": [
+        "UNCONNECTED_SOURCE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unreachable_definition",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "UNREACHABLE_MODULE",
+      "actual_codes": [
+        "UNREACHABLE_MODULE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "type_mismatch",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "NET_TYPE",
+      "actual_codes": [
+        "NET_TYPE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "state_unknown_domain",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "STATE_DOMAIN",
+      "actual_codes": [
+        "STATE_DOMAIN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "state_reset_value_overflow",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "RAW_RANGE",
+      "actual_codes": [
+        "RAW_RANGE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "state_no_clock",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "CLOCK_REQUIRED",
+      "actual_codes": [
+        "CLOCK_REQUIRED"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "combinational_state",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "COMBINATIONAL_STATE",
+      "actual_codes": [
+        "COMBINATIONAL_STATE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_fact",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "FACT_UNKNOWN",
+      "actual_codes": [
+        "FACT_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "duplicate_fact_trace",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "TRACE_DUPLICATE",
+      "actual_codes": [
+        "TRACE_DUPLICATE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "missing_trace",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "TRACE_MISSING",
+      "actual_codes": [
+        "TRACE_MISSING"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "unknown_trace_target",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "TRACE_TARGET",
+      "actual_codes": [
+        "TRACE_TARGET"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "forbidden_file_path",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "no_candidate_pass_status",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "no_implicit_protocol_name",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "positive_memory_declaration_only",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "expected_code": null,
+      "actual_codes": [],
+      "test_passed": true
+    },
+    {
+      "case": "memory_zero_depth",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "STORAGE_DEPTH",
+      "actual_codes": [
+        "STORAGE_DEPTH"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "memory_profile_read_latency",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "CAPABILITY_MEMORY",
+      "actual_codes": [
+        "CAPABILITY_MEMORY"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "memory_unknown_asset",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "ASSET_UNKNOWN",
+      "actual_codes": [
+        "ASSET_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "no_bulk_memory_reset",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "SCHEMA",
+      "actual_codes": [
+        "SCHEMA"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "positive_fifo_declaration_only",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "expected_code": null,
+      "actual_codes": [],
+      "test_passed": true
+    },
+    {
+      "case": "positive_fixed_register_only",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "expected_code": null,
+      "actual_codes": [],
+      "test_passed": true
+    },
+    {
+      "case": "fixed_fraction_over_width",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "FIXED_FRACTION",
+      "actual_codes": [
+        "FIXED_FRACTION"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "record_duplicate_field",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "FIELD_DUPLICATE",
+      "actual_codes": [
+        "FIELD_DUPLICATE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "positive_record_state_only",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "expected_code": null,
+      "actual_codes": [],
+      "test_passed": true
+    },
+    {
+      "case": "positive_timing_declaration_only",
+      "expected_status": "pass",
+      "actual_status": "pass",
+      "expected_code": null,
+      "actual_codes": [],
+      "test_passed": true
+    },
+    {
+      "case": "no_invented_assumption",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "FACT_UNKNOWN",
+      "actual_codes": [
+        "FACT_UNKNOWN"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "guarantee_is_not_assumption",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "ASSUMPTION_AUTHORITY",
+      "actual_codes": [
+        "ASSUMPTION_AUTHORITY"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "latency_reversed",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "TIMING_RANGE",
+      "actual_codes": [
+        "TIMING_RANGE"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "target_clock_names",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "TARGET_CLOCK_BINDING",
+      "actual_codes": [
+        "TARGET_CLOCK_BINDING"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "recursive_instantiation",
+      "expected_status": "fail",
+      "actual_status": "fail",
+      "expected_code": "HIERARCHY_RECURSION",
+      "actual_codes": [
+        "HIERARCHY_RECURSION"
+      ],
+      "test_passed": true
+    },
+    {
+      "case": "clockless_positive",
+      "test_passed": true
+    },
+    {
+      "case": "duplicate_raw_json_key",
+      "test_passed": true
+    },
+    {
+      "case": "dimension_arithmetic",
+      "test_passed": true
+    },
+    {
+      "case": "meta_schemas",
+      "test_passed": true
+    },
+    {
+      "case": "model_projection_excludes_bindings",
+      "test_passed": true
+    },
+    {
+      "case": "reject_nonfinite",
+      "test_passed": true
+    }
+  ]
+}
