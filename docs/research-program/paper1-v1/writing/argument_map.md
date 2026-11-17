@@ -1,7 +1,7 @@
 # Argument map
 
 > [Terminology, 2026-09-08](../../../specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
-> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> now serialized as `sr2fpga-pc-2.1`; FPGA Project Package (FPP).
 > DSC names the design-space contract; DP names one design point. Internal
 > identifiers and historical evidence names remain unchanged.
 

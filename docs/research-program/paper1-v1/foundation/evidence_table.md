@@ -1,7 +1,8 @@
 # Evidence table
 
 > Historical evidence-cutoff snapshot created under `paper1-freeze-v1.3`.
-> The active `paper1-freeze-v1.7` controls current scope; this table is not
+> The current `paper1-v2.1` research plan controls scope; this table predates it,
+> was written against `paper1-freeze-v1.7`, and is not
 > silently updated and does not override the active no-training protocol.
 
 | Claim | Evidence/source | Strength | Usable section | Risk | Status |

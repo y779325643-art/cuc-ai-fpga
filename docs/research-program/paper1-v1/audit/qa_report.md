@@ -4,7 +4,7 @@
 > inventory below describe the pre-cleanup review that produced the research
 > freeze; they are not current validation totals. Use
 > [current status](../../../current-status.md) for mutable facts and the
-> [English Paper-1 freeze](../../../specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
+> [English Paper-1 freeze](../../../specs/superseded/2026-08-14-sr2fpga-paper1-research-program-design.md)
 > for the active `paper1-freeze-v1.7` protocol. This report predates v1.5;
 > training-related QA below is historical only. See
 > [`qa_report-v1.7.md`](qa_report-v1.7.md) for the current RQ1 hierarchy,

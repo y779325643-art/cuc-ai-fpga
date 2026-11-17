@@ -4,7 +4,8 @@ This canon separates present facts from intended experiments. Its evidence
 cut-off is 2026-08-14.
 
 > Historical foundation snapshot created under `paper1-freeze-v1.3`. The active
-> `paper1-freeze-v1.7` is the current protocol authority; training facts below
+> `paper1-v2.1` is the current research plan; this canon predates it and was
+> written against `paper1-freeze-v1.7`. Training facts below
 > remain repository inventory only and this snapshot is not rewritten.
 
 ## Literature facts

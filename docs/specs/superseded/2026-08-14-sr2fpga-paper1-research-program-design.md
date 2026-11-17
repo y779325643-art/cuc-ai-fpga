@@ -1,5 +1,14 @@
 # SR2FPGA Paper 1 Research Program Freeze
 
+> **SUPERSEDED — historical baseline.** The current Paper-1 research plan is
+> [`paper1-v2.1`](2026-09-14-sr2fpga-paper1-research-plan-v2.1.zh.md), adopted
+> 2026-09-14. This `paper1-v1.8` specification is retained for traceability and
+> is no longer the execution reference. Its confirmatory families, gate sequence
+> (G0-G9, EA-G3..EA-G4b), and budget formulas are replaced; see section 16 of the
+> current plan for the clause-by-clause migration. Version labels inside this
+> file, including remaining `v1.7` references, record its own history and are
+> deliberately not rewritten.
+
 > [Terminology, 2026-09-08](2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
 > currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
 > DSC names the design-space contract; DP names one design point. Internal

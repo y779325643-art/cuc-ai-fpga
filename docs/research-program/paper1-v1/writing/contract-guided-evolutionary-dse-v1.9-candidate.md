@@ -6,7 +6,7 @@
 - Decision: user accepted the PI and hardware-architecture corrections
 - Target venue: IEEE Transactions on Computer-Aided Design of Integrated Circuits and Systems (TCAD)
 - Role: candidate Paper-1 redesign in which evolutionary DSE is the central method
-- Authority: design proposal only; the canonical Paper-1 specification remains `paper1-v1.8` until this candidate passes affected-scope review and is propagated
+- Authority: design proposal only. **Superseded framing (2026-09-15):** this candidate was written when `paper1-v1.8` was canonical. The current authority is [`paper1-v2.2`](../../../specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md), under which evolutionary DSE is an **optional extension that is disabled by default** (plan sections 1.3 and 12.2) and does not block the main paper. This document is therefore a historical candidate direction, not a pending Paper-1 redesign; see the [migration record](../../../migrations/research-plan-alignment.md)
 - Execution: no implementation, model run, QoR pilot, hidden evaluation, or official experiment is authorized by this document
 - Discussion authority: confirmed decisions, unconfirmed protocol proposals, and the next-chat continuation prompt are tracked in `v1.9-discussion-ledger-and-next-chat-handoff-2026-09-10.md`
 - Resolved review finding: `LOGIC-001` (2026-09-08); v1.8 is retained as the deterministic-generation and bounded-repair foundation, while v1.9 owns the primary DSE questions

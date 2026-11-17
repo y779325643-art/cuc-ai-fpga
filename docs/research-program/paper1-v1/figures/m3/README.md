@@ -2,6 +2,17 @@
 
 Status: IEEE/ACM-style explanatory drafts; awaiting user final approval
 
+> **Drawn against `paper1-freeze-v1.7`; superseded by the current plan.** Under
+> [`paper1-v2.2`](../../../../specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md)
+> three things these figures show are no longer current: the RQ0
+> requirement-boundary audit is an **optional extension that defaults to
+> disabled**, not an always-present stage of the framework; the `G3`/`G4b` gate
+> authority is replaced by seven work packages `WP0`-`WP6`; and the primary
+> comparisons are now `M5-M1@B4` and `M4-M3@initial` rather than the v1.7
+> RQ1/RQ2 families. The rendered SVG/PDF/PNG/TIFF files are kept as the drafts
+> that were actually produced and are **not** silently re-rendered. Re-deriving
+> them against v2.1 is a WP6 item.
+
 Backend: Python / matplotlib
 
 Final width: 182 mm (IEEE two-column width)
@@ -15,8 +26,10 @@ Primary editable format: SVG (`svg.fonttype = none`)
   evaluation without implying a method effect.
 - Archetype: schematic-led composite split across one overview and two focused
   module figures.
-- Evidence: v1.7 freeze, current method adapters, terminal selection,
-  development hidden authority, artifact/cost contracts and M2 claim registry.
+- Evidence: v1.7 freeze (the version these drafts were built against), method
+  adapters, terminal selection, development hidden authority, artifact/cost
+  contracts and M2 claim registry. This evidence list is historical; it is not a
+  statement about what v2.1 requires.
 - Statistics/source data: none; these are explanatory, not result figures.
 - Reviewer risk: do not imply G3/G4b closure, official VPP, hidden-feedback
   access, skeleton-only effect or general FPGA physical success.

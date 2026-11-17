@@ -1,13 +1,24 @@
 # G3b Shared Checkpoints And Three-View Cost Design
 
+> **Historical — superseded design record (marked 2026-09-15).** This design was
+> written under `paper1-freeze-v1.7` and delivered; its implementation lives in
+> `agent/src/sr2fpga_agent/block_preparation.py` and
+> `block_cost_accounting.py`. The `G3b` gate it targets no longer exists:
+> [`paper1-v2.2`](../../specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md)
+> replaced the gate sequence with work packages WP0-WP6. Retained for
+> traceability of the shipped design. It is **not** a current instruction, and
+> its three-node checkpoint model still needs mapping to the plan's three
+> checkpoint *kinds* — see the
+> [migration record](../../migrations/research-plan-alignment.md) (TB-05).
+
 ## 0. Status And Authority
 
 - **Design ID:** `sr2fpga-paper1-g3b-shared-checkpoints-cost-views-v1`
 - **Date:** 2026-08-29
-- **Research authority:**
-  [`paper1-freeze-v1.7`](../../specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
+- **Research authority (historical, superseded):**
+  [`paper1-freeze-v1.7`](../../specs/superseded/2026-08-14-sr2fpga-paper1-research-program-design.md)
 - **Implementation authority:**
-  [`sr2fpga-paper1-code-dev-v1.11`](../../specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md)
+  [`sr2fpga-paper1-code-dev-v1.11`](../../specs/superseded/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md)
 - **Scope:** excluded development conformance for one complete M0-M5 replicate
   block and its negative preparation fixtures
 - **Out of scope:** paid or real-provider runs, G5, official evaluation, dataset

@@ -39,11 +39,17 @@ H0–H3 是 PC 相关检查，分别检查格式、内部一致性、可降低�
 PC 不应被改称 circuit IR、executable semantics 或功能证明。
 论文首次涉及实现格式时使用：
 
-> Project Contract (PC), serialized by the current implementation as System-HIS v1.2.
+> Project Contract (PC), serialized as `sr2fpga-pc-2.1`.
+
+> **格式更新（2026-09-15）：** 本表写作时 PC 的序列化格式是 System-HIS v1.2。
+> `paper1-v2.2` 采纳后，当前格式为 `sr2fpga-pc-2.1`，见
+> [PC 2.1 设计](PC-2.1-AI-stream-contract-design.zh.md)。System-HIS v1.2 保留
+> 为历史产物的格式身份，仍在 `contracts/manifest.json` 中注册，但新运行入口
+> 不得使用。下节的内部名称保留规则继续适用于历史标识符。
 
 ## 保持兼容的内部名称
 
-- 保留 `System-HIS v1.2` 作为现有序列化格式名称，不创造 `PC v1.2` 新版本。
+- 保留 `System-HIS v1.2` 作为**历史**序列化格式名称，不创造 `PC v1.2` 新版本。
 - 保留 `system_his`、`system-his-v1.2`、`schema_version`、`REQ2HIS`、
   `HIS2PROJECT` 及既有 Python/API/CLI/Schema 标识、路径和 JSON 字段。
 - FPP 的现有 manifest 格式仍为 `project-package-v1`。方法中立的工程包交付
@@ -55,5 +61,9 @@ PC 不应被改称 circuit IR、executable semantics 或功能证明。
 - Vault 源笔记保持原样。现行仓库文档引用本表；稿件之间不进行双向覆盖。
 
 当前研究与执行状态仍以 [current-status](../current-status.md)、
-[Paper-1 规范](2026-08-14-sr2fpga-paper1-research-program-design.md)
-及其最新状态声明为准。DSC/DP 叙事不能静默改变现有 RQ、M0–M5 或实验门。
+[Paper-1 研究计划 `paper1-v2.2`](2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md)
+及其状态声明为准。DSC/DP 叙事不能静默改变现有 RQ、M0–M5 或研究计划的工作包。
+
+> 本表只统一名称。上文“实验门”指本表写作时的 G0–G9 序列；`paper1-v2.2`
+> 已用 WP0–WP6 工作包替代该序列，见
+> [迁移记录](../migrations/research-plan-alignment.md)。

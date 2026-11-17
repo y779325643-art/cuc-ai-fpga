@@ -1,5 +1,11 @@
 # SR2FPGA Paper 1 研究计划冻结规范
 
+> **已被取代 — 历史文档。** 当前 Paper-1 研究计划是
+> [`paper1-v2.1`](2026-09-14-sr2fpga-paper1-research-plan-v2.1.zh.md)（2026-09-14 采纳）。
+> 本文是 `paper1-v1.8` 英文规范的中文伴随版，保留供追溯，不再是执行引用。
+> 其标题的 `paper1-freeze-v1.7` 版本标识记录本文自身的历史状态，按现行计划
+> §0.2 的规定不作修正。
+
 > 术语按 [2026-09-08 命名表](2026-09-08-sr2fpga-terminology.md) 同步：工程契约（Project Contract，PC）
 > 当前序列化为 System-HIS v1.2；输出为 FPGA 工程包（FPGA Project Package，FPP）。
 > DSC 表示设计空间契约，DP 表示单个架构设计点；内部标识和历史证据名称保留。

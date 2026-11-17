@@ -10,7 +10,11 @@
 - **生效日期：** 2026-08-30
 - **规范类型：** Paper-1 下位实现设计规范（implementation design spec）
 - **研究上位权威：**
-  [`paper1-freeze-v1.7`](2026-08-14-sr2fpga-paper1-research-program-design.md)
+  [`paper1-v2.1`](2026-09-14-sr2fpga-paper1-research-plan-v2.1.zh.md)（2026-09-14 采纳）
+- **⚠ 尚未按上位权威同步：** 本规范仍按 `paper1-v1.8`
+  ([历史基线](2026-08-14-sr2fpga-paper1-research-program-design.md))
+  的方法族、G0-G9 gate 序列与预算公式编写，与现行计划的 B4 预算、两假设
+  Holm 族和 WP0-WP6 工作包不一致。两者冲突时以研究计划为准；对齐工作属 WP0
 - **机器格式权威：** [`contracts/manifest.json`](../../contracts/manifest.json)
   注册的版本化 contracts
 - **当前事实权威：** 当前代码、可复现测试、证据 ledger，以及

@@ -1,11 +1,17 @@
 # Paper-1 Canonical Citation Registry
 
-Status: active citation registry for canonical `paper1-v1.8` and candidate `paper1-v1.9`
+Status: active citation registry. Its canonical-version labels below are
+**historical**: it was written for `paper1-v1.8` and candidate `paper1-v1.9`.
+The current research authority is
+[`paper1-v2.2`](../../../specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md),
+adopted 2026-09-15. Citation routing still applies; any claim-permission
+statement inherited from v1.8 must be re-read against v2.2. See the
+[migration record](../../../migrations/research-plan-alignment.md).
 
-Updated: 2026-09-10
+Updated: 2026-09-10; scope notice added 2026-09-15
 
-Authority: citation routing only; this registry does not override the freeze,
-current code, contracts, or artifact-backed outcomes.
+Authority: citation routing only; this registry does not override the current
+research plan, current code, contracts, or artifact-backed outcomes.
 
 ## Contract
 
@@ -44,8 +50,7 @@ keys.
 
 ## Claim-ready works
 
-All paths below are relative to
-`D:\Obsidian Vault\博士开题\硬件代码生成\SR2FPGA-TCAD\01_literature`.
+All paths below are relative to `SR2FPGA-TCAD/01_literature` in the local research vault.
 The evidence-ID column names the stable prefix/range in the evidence card; the
 card controls the exact permitted wording.
 

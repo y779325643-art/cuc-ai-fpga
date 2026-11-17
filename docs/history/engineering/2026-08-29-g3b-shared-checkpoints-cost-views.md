@@ -1,6 +1,16 @@
 # G3b Shared Checkpoints And Three-View Cost Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **COMPLETED AND HISTORICAL — do not execute (marked 2026-09-15).** This plan
+> was carried out; the code it describes exists in
+> `agent/src/sr2fpga_agent/block_preparation.py` and `block_cost_accounting.py`.
+> The `G3b` gate it belongs to was retired by
+> [`paper1-v2.2`](../../specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md),
+> which replaced the gate sequence with work packages WP0-WP6. The
+> agentic-worker directive below is **void**; the unchecked boxes are a
+> historical snapshot, not outstanding work. Current work is tracked in the
+> [migration record](../../migrations/research-plan-alignment.md).
+
+> **For agentic workers (VOID — see notice above):** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement development-only eager shared checkpoints and artifact-derived actual, standalone-attributed, and checkpoint-specific incremental cost views for one complete excluded M0-M5 paired block.
 
@@ -8,7 +18,7 @@
 
 **Tech Stack:** Python 3.11+ frozen dataclasses and Protocols, JSON Schema Draft 2020-12, ArtifactStore, ModelCallBudget, existing attempt/cost/trajectory readers, pytest, Ruff.
 
-**Spec:** `docs/superpowers/specs/2026-08-29-g3b-shared-checkpoints-cost-views-design.md`
+**Spec:** `docs/history/engineering/2026-08-29-g3b-shared-checkpoints-cost-views-design.md`
 
 ## Global Constraints
 
@@ -968,7 +978,7 @@ git commit -m "test: add G3b adversarial matrix"
 - Modify: `docs/README.md`
 - Modify: `docs/specs/README.md`
 - Modify: `docs/current-status.md`
-- Modify: `docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md`
+- Modify: `docs/specs/superseded/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md`
 
 **Interfaces:**
 - Produces code-development status `sr2fpga-paper1-code-dev-v1.12` only if every G3b completion criterion in the approved design is verified.
@@ -1004,9 +1014,9 @@ python -m pytest `
 Use a repository-external basetemp so repository-discovery tests do not find the parent checkout:
 
 ```powershell
-$env:PYTHONPATH='D:\Project\cuc-ai-fpga\artifacts\worktrees\codex-g3b-shared-checkpoints-cost-views\agent\src'
+$env:PYTHONPATH = (Resolve-Path 'agent/src').Path
 python -m pytest contracts/tests agent/tests training/tests compatibility_tests -q `
-  --basetemp 'C:\Users\Aowen Yang\.codex\visualizations\2026\08\26\01a03c7b-544f-7750-bf9f-2efd17234550\pytest-basetemp-g3b-final' `
+  --basetemp (Join-Path ([IO.Path]::GetTempPath()) 'pytest-basetemp-g3b-final') `
   -p no:cacheprovider
 ```
 
@@ -1031,7 +1041,7 @@ The code/protocol reviewer verifies checkpoint identity, method-neutral cost own
 - [ ] **Step 6: Commit Task 9**
 
 ```powershell
-git add -- README.md agent/README.md contracts/README.md docs/README.md docs/specs/README.md docs/current-status.md docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md
+git add -- README.md agent/README.md contracts/README.md docs/README.md docs/specs/README.md docs/current-status.md docs/specs/superseded/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md
 git commit -m "chore: finalize G3b development checkpoint"
 ```
 

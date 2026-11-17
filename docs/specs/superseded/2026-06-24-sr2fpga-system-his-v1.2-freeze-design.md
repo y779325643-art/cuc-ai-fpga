@@ -4,6 +4,15 @@
 > keeps the System-HIS v1.2 serialization name and identifiers for compatibility.
 > See the [2026-09-08 terminology ledger](2026-09-08-sr2fpga-terminology.md).
 
+> **Replacement candidate exists (2026-09-14).** The
+> [Project Contract 2.0 clean-slate design](PC-2.0-clean-slate-design.zh.md)
+> proposes a breaking successor, `sr2fpga-pc-2.0`, that is explicitly
+> incompatible with v1.2 and provides no conversion layer. It is a design
+> candidate: not adopted, not registered in `contracts/manifest.json`, and
+> consumed by no runtime path. **This v1.2 specification remains the current
+> Project Contract serialization** until that candidate is accepted and
+> implemented.
+
 > **Current boundary (2026-08-14):** Retained as the Tier-1 System-HIS semantic
 > design authority, but not as proof of complete runtime conformance. The JSON
 > Schema, H0/H1/H2 checker, canonical fixtures/examples, reset semantics,

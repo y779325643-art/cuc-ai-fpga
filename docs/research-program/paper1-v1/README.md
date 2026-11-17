@@ -1,18 +1,25 @@
 # Paper-1 Research Program Workspace
 
 > [Terminology, 2026-09-08](../../specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
-> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> now serialized as `sr2fpga-pc-2.1`; FPGA Project Package (FPP).
 > DSC names the design-space contract; DP names one design point. Internal
 > identifiers and historical evidence names remain unchanged.
 
-This directory contains the reasoning and writing workspace behind the
-canonical Paper-1 specification. It supports the specification; it does not
-override current code, machine evidence, `current-status.md`, or the English
-freeze.
+This directory is a **historical** reasoning and writing workspace for earlier
+Paper-1 designs. Current authority is the Chinese
+[paper1-v2.2 plan](../../specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md),
+not an English freeze. Resume development from the
+[migration record](../../migrations/research-plan-alignment.md).
+
+`state.json` is now an explicit historical-workspace pointer. Its complete prior
+bytes are preserved in [the state archive](history/state-before-v2.2-migration.json).
+All tables and writing aids below describe their original scope; old next actions,
+QA scores, gate decisions and candidate methods do not authorize or guide the new
+core without reassessment.
 
 ## Workspace Map
 
-The [PC layered-study design v1](../../specs/2026-09-11-pc-layered-study-design-v1.md)
+The [PC layered-study design v1](../../specs/superseded/2026-09-11-pc-layered-study-design-v1.md)
 records the user-approved separation of PC generation, frozen-PC 2×2 conditions,
 and end-to-end evaluation. It does not relabel historical M3–M5 or authorize execution.
 
@@ -21,60 +28,53 @@ and end-to-end evaluation. It does not relabel historical M3–M5 or authorize e
 | [`foundation/research_canon.md`](foundation/research_canon.md) | Frozen literature, repository facts, terminology, and forbidden claims | Design-time foundation snapshot |
 | [`foundation/evidence_table.md`](foundation/evidence_table.md) | Claim-to-evidence strength and risk ledger | Design-time claim snapshot |
 | [`foundation/g3-provider-seed-capability-probe.md`](foundation/g3-provider-seed-capability-probe.md) | Bounded provider seed-control qualification protocol and 2026-08-26 development diagnostics | Non-official G3 input; no campaign or pass authority |
-| [`writing/argument_map.md`](writing/argument_map.md) | Scientific tension, central question, and conditional argument chain | Active writing aid |
-| [`writing/section_contracts.md`](writing/section_contracts.md) | Allowed claims and evidence obligations by manuscript section | Active writing aid |
-| [`writing/rq5-contract-preserving-ea-design-v1.8.md`](writing/rq5-contract-preserving-ea-design-v1.8.md) | Earlier RQ5 EA conditions and pre-outcome gates | Historical v1.8 design record; no implementation authority |
-| [`writing/contract-guided-evolutionary-dse-v1.9-candidate.md`](writing/contract-guided-evolutionary-dse-v1.9-candidate.md) | Hardware-code-generation harness, provenance-typed requirement completion, and EA-core redesign | User-approved candidate direction; `LOGIC-001`, `METH-001`, and `EVID-001` resolved, experiment-protocol review remains open |
-| [`writing/v1.9-discussion-ledger-and-next-chat-handoff-2026-09-10.md`](writing/v1.9-discussion-ledger-and-next-chat-handoff-2026-09-10.md) | Consolidated confirmed decisions, discussion-only proposals, open blockers, and copy-paste continuation prompt | Active handoff authority for the v1.9 design discussion; does not override canonical v1.8 |
-| [`writing/style_guide.md`](writing/style_guide.md) | Terminology and result-language rules | Active writing aid |
-| [`audit/v1.9-related-work-feature-audit-2026-09-10.md`](audit/v1.9-related-work-feature-audit-2026-09-10.md) | Full-text feature matrix for twelve closest LLM/RTL/FPGA-DSE works plus traditional-DSE anchors | Active v1.9 novelty and baseline audit; no experiment authority |
+| [`writing/argument_map.md`](writing/argument_map.md) | Scientific tension, central question, and conditional argument chain | Historical writing aid |
+| [`writing/section_contracts.md`](writing/section_contracts.md) | Allowed claims and evidence obligations by manuscript section | Historical writing aid |
+| [`writing/rq5-contract-preserving-ea-design-v1.8.md`](writing/rq5-contract-preserving-ea-design-v1.8.md) | The v1.8 RQ5 EA conditions, `E0`/`E1` definitions, and pre-outcome gates | Working record for what is now the **optional, disabled-by-default** EA extension in v2.1 section 12.2. No implementation authority |
+| [`writing/contract-guided-evolutionary-dse-v1.9-candidate.md`](writing/contract-guided-evolutionary-dse-v1.9-candidate.md) | Hardware-code-generation harness, provenance-typed requirement completion, and EA-core redesign | Superseded as a direction: v2.1 keeps EA as an optional extension rather than the Paper-1 core. Its D1-D32 decision ledger remains the record of why |
+| [`writing/v1.9-discussion-ledger-and-next-chat-handoff-2026-09-10.md`](writing/v1.9-discussion-ledger-and-next-chat-handoff-2026-09-10.md) | Consolidated `D1`-`D32` decisions, discussion-only proposals, and open blockers | Historical decision ledger for the v1.9 discussion; overrides nothing in v2.1 |
+| [`writing/style_guide.md`](writing/style_guide.md) | Terminology and result-language rules | Historical writing aid |
+| [`audit/v1.9-related-work-feature-audit-2026-09-10.md`](audit/v1.9-related-work-feature-audit-2026-09-10.md) | Full-text feature matrix for twelve closest LLM/RTL/FPGA-DSE works plus traditional-DSE anchors | Historical v1.9 novelty and baseline audit; no experiment authority |
 | [`audit/qa_report.md`](audit/qa_report.md) | Review that produced the 2026-08-14 program design | Historical design-QA snapshot |
-| [`audit/qa_report-v1.7.md`](audit/qa_report-v1.7.md) | 2026-08-27 RQ1 hierarchy, multiplicity, power, and propagation review | Active v1.7 design-QA record; no outcome evidence |
+| [`audit/qa_report-v1.7.md`](audit/qa_report-v1.7.md) | 2026-08-27 RQ1 hierarchy, multiplicity, power, and propagation review | Historical v1.7 design-QA record. Its RQ1/RQ2 Holm families were replaced by the single two-hypothesis family in v2.1; no outcome evidence |
 | [`audit/qa_report-v1.6.md`](audit/qa_report-v1.6.md) | 2026-08-26 decoding-control and provider-capability revision ledger | Historical v1.6 amendment record |
 | [`audit/qa_report-v1.5.md`](audit/qa_report-v1.5.md) | Earlier 2026-08-26 protocol-coherence review | Historical v1.5 design-QA snapshot |
-| [`state.json`](state.json) | Research-writing workflow and gate metadata | Derived metadata, not authority |
+| [`state.json`](state.json) | Research-writing workflow metadata, the v2.1 adoption record, and the PC 2.0 candidate record | Derived metadata, not authority |
 
 ## Scope
 
 - Project: SR2FPGA Paper 1 research program
-- Mode: hybrid (reconcile an existing research program, then compose a new canonical specification)
+- Mode: hybrid (reconcile an existing research program, then compose a new canonical specification). That composition produced `paper1-v2.1`, which now lives in `docs/specs/` rather than here
 - Text type: research specification and experiment contract
 - Target reader: project owner, implementation agents, EDA/LLM researchers, and later manuscript reviewers
 - Language: Chinese-first with stable English technical terms
 - Deliverable scope: repository-wide documentation audit, research canon, evidence table, argument map, manuscript/experiment section contracts, and one canonical Paper-1 spec
-- Revision baseline: `paper1-v1.8`, adopted by user request on 2026-09-07 and kept open for further research-program revision. It adds RQ5 contract-preserving EA versus equal-budget random search while retaining M0--M5 and all execution gates.
+- Current research plan: `paper1-v2.1`, adopted 2026-09-15. It keeps M0--M5, makes `M5-M1@B4` and `M4-M3@initial` the two primary comparisons in one Holm family, replaces G0-G9 with seven work packages, and moves the requirement audit and EA search to optional extensions that default to disabled. Adoption granted no implementation or experiment authorization. The earlier `paper1-v1.8` revision baseline is superseded.
 - Evidence cut-off: implementation/evidence review on 2026-08-26; v1.7 is a pre-outcome protocol amendment dated 2026-08-27, while the `foundation/` evidence snapshot remains dated 2026-08-14
 - Repository baseline: local `develop` at `bd516c110862`; the locally known `origin/develop` ref matched, without implying remote CI, review, or merge verification
 - Archive after confirmation: no automatic archive, deletion, release, commit, or push
 
 ## Authority boundary
 
-The 2026-09-07 v1.8 EA amendment in the English specification governs the
-current status. It adds a research-design-only RQ5 and requires EA-G3 through
-EA-G4b before official execution. Previous v1.7 QA and M3/M4 audits retain
-their original scope and require affected-scope review. The amendment does not
-authorize implementation, model runs, G5, or official campaigns.
+[`paper1-v2.2`](../../specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md),
+adopted 2026-09-14, is the current research plan and defines the Paper-1
+research question and experimental protocol. It is a plan of record, not a
+freeze, and authorizes no implementation, model run, pilot, or official
+campaign.
 
-The canonical Paper-1 research question and experimental protocol are defined by
-[`2026-08-14-sr2fpga-paper1-research-program-design.md`](../../specs/2026-08-14-sr2fpga-paper1-research-program-design.md).
-This foundation bundle records why that spec is defensible. It does not override:
+This workspace records why earlier design choices were defensible. It does not override:
 
 - machine contracts registered by [`contracts/manifest.json`](../../../contracts/manifest.json);
 - current runtime behavior and tests;
 - artifact-backed evidence in the task ledger and committed reports; or
 - the System-HIS v1.2 schema semantics that remain valid after contract harmonization.
 
-The canonical spec retains the v1.6 separation of replicate identity, provider
-requested-seed provenance, and local schedule randomization, with a G4b choice
-between documented seed control and stochastic blocked execution. Its 2026-08-27
-v1.7 amendment makes `M4-M3` and `M4-M0` the two-member primary RQ1 Holm family
-and makes `M3-M2` a mandatory secondary estimation contrast. It keeps RQ3/M6
-and all model training outside Paper-1, retains the separate RQ2 Holm family,
-defines positive artifact-derived G3 acceptance and paired-block execution, and
-makes target-profile adaptation an optional separately frozen extension. The
-2026-08-14 foundation files, the original QA snapshot, and the v1.5/v1.6 QA
-records remain historical; their implementation facts and prior inferential
-orders are not rewritten and do not override v1.8.
+**Everything in this directory predates v2.1.** The foundation snapshot, QA
+reports, argument map, section contracts, and style guide were written against
+`paper1-freeze-v1.7` or `paper1-v1.8`. Their version labels are historical
+records and are deliberately not rewritten; their scope re-review against the
+current plan is a WP0 item. The superseded `paper1-v1.8` specification remains
+available as the [historical baseline](../../specs/superseded/2026-08-14-sr2fpga-paper1-research-program-design.md).
 
 When these sources disagree, the disagreement is a blocking research debt, not a
 license to select the most convenient interpretation.

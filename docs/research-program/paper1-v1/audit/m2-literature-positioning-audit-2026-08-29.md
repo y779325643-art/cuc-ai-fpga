@@ -14,12 +14,12 @@
 
 当前研究语义按以下顺序裁决：
 
-1. `docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md`
+1. `docs/specs/superseded/2026-08-14-sr2fpga-paper1-research-program-design.md`
    中的 `paper1-freeze-v1.7`；
 2. `docs/current-status.md`、当前代码、注册合同和可复现实验；
 3. `docs/research-program/paper1-v1/README.md`、`state.json`、
    `foundation/`、`writing/` 与当前审计记录；
-4. `D:\Obsidian Vault\博士开题\硬件代码生成` 中的文献、TCAD/TRETS
+4. 本地 Obsidian 研究库中 `博士开题/硬件代码生成` 下 中的文献、TCAD/TRETS
    工作区与日志材料。
 
 Obsidian 材料是研究与写作输入，不覆盖当前仓库权威。历史 TCAD、

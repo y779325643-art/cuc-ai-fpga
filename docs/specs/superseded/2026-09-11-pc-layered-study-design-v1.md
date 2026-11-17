@@ -14,7 +14,14 @@
 
 术语采用 [DSC / DP / PC / FPP 命名表](2026-09-08-sr2fpga-terminology.md)。
 当前实现与执行权限仍参见 [当前状态](../current-status.md) 和
-[Paper-1 规范](2026-08-14-sr2fpga-paper1-research-program-design.md) 的最新状态声明。
+[Paper-1 研究计划 `paper1-v2.1`](2026-09-14-sr2fpga-paper1-research-plan-v2.1.zh.md)
+的状态声明。
+
+> **范围提示（2026-09-15 迁移）：** 本文写于 `paper1-v1.8` 之下。`paper1-v2.1`
+> 已将主要比较改为 `M5−M1@B4` 与 `M4−M3@initial`，将预算公平改为 B4 总调用
+> 而非等修复次数，并以 WP0–WP6 替代旧实验门。本文的 A/B/A-R/B-R 子实验标签
+> 与 PC 接口责任划分仍然适用，但其实验协议部分须按新计划重读；差异见
+> [迁移记录](../migrations/research-plan-alignment.md)。
 
 ## 目标与三个不同问题
 
