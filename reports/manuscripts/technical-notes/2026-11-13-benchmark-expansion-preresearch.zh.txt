@@ -1,0 +1,40 @@
+Benchmark 扩展预研留存记录
+日期：2026-11-13
+状态：archived_preresearch / parked_by_user
+
+用途与执行边界
+本侧线程关于公开 benchmark 扩展的选题、资格检查与工具接入成果，统一作为后续可能扩展的预研储备。当前不纳入正式实验总体，不启动 A/C/B 模型对照；继续资格检查、改造任务或调用模型，等待新的明确指令。此前报告中的优先级及“下一步”属于历史建议。主线程配置、实验范围、调度与已有模型结果保持原样。
+
+留存入口（以下路径均相对仓库根目录）
+1. artifacts/paper1-ai/structure-stress-selection-20261113-01/selection.txt
+   新增 8 个任务的公开来源、选题理由及预期机制职责。
+2. artifacts/paper1-ai/structure-stress-qualification-20261113-01/report.txt
+   8 个任务的完整资格报告；summary.json、integrity.json 和 tasks/ 保存逐题证据。
+3. artifacts/paper1-ai/realbench-qualification-20261113-01/report.txt
+   RealBench 六模块检查；包括原生仿真、负控制、官方评分脚本回放、延迟诊断与工具环境记录。
+4. artifacts/paper1-ai/realbench-system-qualification-20261113-01/report.txt
+   RealBench 四个系统级任务检查；public-input-index.json 为公开规格入口，reference-boundary-audit.json 为参考依赖审计，attempt-index.json 为完整运行索引。
+5. artifacts/paper1-ai/benchmark-expansion-preresearch-20261113-01/status.json
+   本次留存决定与执行状态；retained-files.sha256.json 为文件、大小及 SHA-256 清单；verification.json 为归档核验结果。
+
+已经完成、可复用的成果
+新增 8 任务：52 个原始文件保留，33 次资格/诊断尝试。16 位 CPU 的源与网表各通过 16017/16017 采样；比较器技术链通过但需公开两拍约定；异步 FIFO 与 AXI4-Lite 寄存器保留原生网表时序问题；串行 TX/RX、AXIS Joiner、Wishbone→AHB 存在关键负控制漏检；Ethernet 帧长存在公开规格/测试冲突。
+
+RealBench 六模块：固定官方提交 9bc9a6ac058b3a3acb09b9e7623526737bbf8312，95 个官方原件、9 份解密规格，15 次原生构建/仿真。六个参考控制通过，六个定向错误均被原比较计数检出。FIFO TX 外层评分脚本忽略 errors 格式；Data serial host 总计遗漏 CRC 差异，最终须同时读取各输出计数；两个 serial_host 对 #1 延迟敏感；RX filler 原文括号与状态图条件不一致。
+
+RealBench 系统级：同一固定提交，366 个官方原件、63 份解密规格，15 次原生尝试。AES-128 加密、AES-128 解密、SD 控制器分别覆盖 4、5、14 个待生成模块；独立参考副本分别通过 288/288、126/126、23932/23932 采样，所选子模块错误均被捕获。去掉 DUT 内 #1 赋值延迟后分别有 268、102、1422 个不匹配，保留为原生时序兼容性问题。
+
+E203 官方系统清单列出 39 个模块，漏了公开存在的 e203_cpu；补齐依赖的 40 模块诊断通过 2022/2022，取指 PC 错误被检出。但共享 SRAM 控制器间接调用 ref_e203_clkgate，不能据此判定 DUT 与参考实现已隔离。官方 exporter 还漏附该系统的全局定义/config 文档。此任务保留为需明确派生定义和库隔离的扩展候选。
+
+证据口径
+上述三批资格检查模型调用均为 0。参考控制与故障注入用于验证评测链路，不是模型生成成绩，也不证明骨架方法已有收益。不同 benchmark 的采样数与 testcase 数不合并成统一成功率；AES 加/解密以及 RealBench 部件存在 IP 家族关系，不按相互独立领域扩大计数。综合、原生仿真、形式证明与 FPGA 物理指标分别记账；RealBench 本次未运行 JasperGold 或 FPGA PPA。
+
+历史成果保留用途
+既有骨架微型实验及主线程模型结果继续保留其原始任务身份和实验口径；本侧线程资格结果可用于后续选题、工具接入、失败归因和评测预算估计。模块级检查可作为系统级扩展的部件验证基础，不能直接转写成系统生成成功率。
+
+后续重启入口（待新指令）
+先选定扩展范围及其论证职责，再核验此清单及上游版本。逐题处理公开时序缺口、负控制覆盖和参考依赖，保留原任务与任何派生版本的独立身份。冻结所有组共同的公开输入、候选 Verilog 规则和评测版本后，才能按单独确定的预算启动 A/C/B。
+可复用的机制规划：H1 结构输出负担；H2 骨架表达对接口/翻译错误的影响；H3 机械装配对结构保护的影响；H4 总 token、推理消耗及耗时变化。它们仍是待检验假设。
+
+保存方式
+原始规格、加密文件、测试台、参考实现、候选控制、适配差异、脚本和运行日志原位保留。本记录及各目录新增的 PRERESEARCH_STATUS.json 表明当前用途；原始结果文件不重写。哈希清单覆盖可复用证据文件；可重建工具安装目录、缓存及本机原生构建目录另行列明，不代表被删除。工具版本与安装脚本保留，恢复时按已记录环境重建。原始运行目录属于本地 artifacts；本记录不是远端备份或公开发布声明。
