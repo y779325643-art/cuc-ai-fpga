@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-repair-proposal-v1",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "pc21-repair-proposal-v1"
+    }
+  },
+  "required": [
+    "contract_version"
+  ],
+  "oneOf": [
+    {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "pc21-repair-proposal-v1"
+        },
+        "action": {
+          "const": "replace_project"
+        },
+        "files": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "contract_version",
+        "action",
+        "files"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "pc21-repair-proposal-v1"
+        },
+        "action": {
+          "const": "replace_project_files"
+        },
+        "base_candidate_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "files": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "remove_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 0,
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "contract_version",
+        "action",
+        "base_candidate_sha256",
+        "files",
+        "remove_paths"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "pc21-repair-proposal-v1"
+        },
+        "action": {
+          "const": "replace_design"
+        },
+        "design": {
+          "$ref": "urn:sr2fpga:pc-design:2.1"
+        }
+      },
+      "required": [
+        "contract_version",
+        "action",
+        "design"
+      ],
+      "additionalProperties": false
+    },
+    {
+      "type": "object",
+      "properties": {
+        "contract_version": {
+          "const": "pc21-repair-proposal-v1"
+        },
+        "action": {
+          "const": "replace_behavior_units"
+        },
+        "base_candidate_sha256": {
+          "anyOf": [
+            {
+              "type": "string",
+              "pattern": "^[0-9a-f]{64}$"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "build_plan_sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        },
+        "units": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "body": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "body"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "contract_version",
+        "action",
+        "base_candidate_sha256",
+        "build_plan_sha256",
+        "units"
+      ],
+      "additionalProperties": false
+    }
+  ]
+}

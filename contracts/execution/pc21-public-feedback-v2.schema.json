@@ -1,0 +1,437 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-public-feedback-v2",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "contract_version": {
+      "const": "pc21-public-feedback-v2"
+    },
+    "feedback_revision": {
+      "const": "pc21-public-feedback-v2"
+    },
+    "accepted": {
+      "type": "boolean"
+    },
+    "stages": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "l0": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        },
+        "l1": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        },
+        "l2": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        },
+        "l3": {
+          "enum": [
+            "pass",
+            "fail",
+            "not_run"
+          ]
+        }
+      },
+      "required": [
+        "l0",
+        "l1",
+        "l2",
+        "l3"
+      ]
+    },
+    "diagnostic_codes": {
+      "type": "array",
+      "maxItems": 32,
+      "items": {
+        "enum": [
+          "candidate_boundary",
+          "l0_invalid",
+          "abi_mismatch",
+          "parser_rejected",
+          "compile_rejected",
+          "functional_mismatch",
+          "synthesis_rejected",
+          "tool_unavailable",
+          "tool_timeout",
+          "tool_crash",
+          "tool_protocol_error",
+          "isolation_unavailable",
+          "trusted_context_changed"
+        ]
+      }
+    },
+    "isolation_qualified": {
+      "type": "boolean"
+    },
+    "diagnostics": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "stage": {
+            "enum": [
+              "parser",
+              "compile",
+              "functional"
+            ]
+          },
+          "category": {
+            "enum": [
+              "syntax_error",
+              "unsupported_parameter_array",
+              "undeclared_signal",
+              "port_connection",
+              "parser_failure",
+              "compile_failure",
+              "output_mismatch",
+              "stalled_output_changed",
+              "stalled_input_changed",
+              "reset_output_valid",
+              "transaction_overlap",
+              "completion_bound",
+              "cache_backpressure",
+              "input_beat_count",
+              "unexpected_output",
+              "trace_invalid",
+              "completion_incomplete",
+              "functional_mismatch"
+            ]
+          },
+          "hint": {
+            "type": "string",
+            "maxLength": 180
+          },
+          "candidate_file": {
+            "type": "string",
+            "maxLength": 240,
+            "pattern": "^rtl/[A-Za-z0-9_-][A-Za-z0-9_./-]*\\.(v|sv)$",
+            "not": {
+              "pattern": "(^|/)\\.{1,2}(/|$)"
+            }
+          },
+          "line": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 1000000
+          },
+          "stream": {
+            "enum": [
+              "q",
+              "k",
+              "v"
+            ]
+          }
+        },
+        "required": [
+          "stage",
+          "category",
+          "hint"
+        ],
+        "dependentRequired": {
+          "candidate_file": [
+            "line"
+          ],
+          "line": [
+            "candidate_file"
+          ]
+        },
+        "allOf": [
+          {
+            "oneOf": [
+              {
+                "properties": {
+                  "category": {
+                    "const": "syntax_error"
+                  },
+                  "hint": {
+                    "const": "Check HDL syntax at the candidate source location."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "unsupported_parameter_array"
+                  },
+                  "hint": {
+                    "const": "Replace unpacked parameter/localparam arrays with supported constant expressions or case selections."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "undeclared_signal"
+                  },
+                  "hint": {
+                    "const": "Declare candidate signals explicitly and check their scope."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "port_connection"
+                  },
+                  "hint": {
+                    "const": "Check candidate module port names, directions and connection widths."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "parser_failure"
+                  },
+                  "hint": {
+                    "const": "Check the candidate RTL against the declared HDL tool subset."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "compile_failure"
+                  },
+                  "hint": {
+                    "const": "Check candidate RTL syntax and compatibility with the declared simulator."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "output_mismatch"
+                  },
+                  "hint": {
+                    "const": "Check public arithmetic, tensor order, output masks and transaction ordering."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "stalled_output_changed"
+                  },
+                  "hint": {
+                    "const": "Hold output valid and payload stable until the ready/valid transfer completes."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "stalled_input_changed"
+                  },
+                  "hint": {
+                    "const": "Check input ready/valid handling and stalled-token stability."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "reset_output_valid"
+                  },
+                  "hint": {
+                    "const": "Clear output-valid state at the reset behavior required by the public task."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "transaction_overlap"
+                  },
+                  "hint": {
+                    "const": "Keep invocation boundaries and pending outputs consistent with the public task."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "completion_bound"
+                  },
+                  "hint": {
+                    "const": "Ensure the public operation completes within its declared cycle bound."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "cache_backpressure"
+                  },
+                  "hint": {
+                    "const": "Apply the public cache-capacity backpressure rule to every input stream."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "input_beat_count"
+                  },
+                  "hint": {
+                    "const": "Check the public number and ordering of input tensor beats."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "unexpected_output"
+                  },
+                  "hint": {
+                    "const": "Emit outputs only when the corresponding public transaction is available."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "trace_invalid"
+                  },
+                  "hint": {
+                    "const": "Check that candidate outputs remain defined and satisfy the public signal widths."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "completion_incomplete"
+                  },
+                  "hint": {
+                    "const": "Check completion, final handshakes and reset cancellation against the public task."
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "category": {
+                    "const": "functional_mismatch"
+                  },
+                  "hint": {
+                    "const": "Check candidate behavior against the public arithmetic and ready/valid requirements."
+                  }
+                }
+              }
+            ]
+          },
+          {
+            "if": {
+              "properties": {
+                "stage": {
+                  "const": "functional"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "category": {
+                  "enum": [
+                    "output_mismatch",
+                    "stalled_output_changed",
+                    "stalled_input_changed",
+                    "reset_output_valid",
+                    "transaction_overlap",
+                    "completion_bound",
+                    "cache_backpressure",
+                    "input_beat_count",
+                    "unexpected_output",
+                    "trace_invalid",
+                    "completion_incomplete",
+                    "functional_mismatch"
+                  ]
+                }
+              },
+              "not": {
+                "required": [
+                  "candidate_file"
+                ]
+              }
+            },
+            "else": {
+              "properties": {
+                "category": {
+                  "enum": [
+                    "syntax_error",
+                    "unsupported_parameter_array",
+                    "undeclared_signal",
+                    "port_connection",
+                    "parser_failure",
+                    "compile_failure"
+                  ]
+                }
+              },
+              "not": {
+                "required": [
+                  "stream"
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "category": {
+                  "const": "parser_failure"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "stage": {
+                  "const": "parser"
+                }
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "category": {
+                  "const": "compile_failure"
+                }
+              }
+            },
+            "then": {
+              "properties": {
+                "stage": {
+                  "const": "compile"
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
+  },
+  "required": [
+    "contract_version",
+    "feedback_revision",
+    "accepted",
+    "stages",
+    "diagnostic_codes",
+    "isolation_qualified",
+    "diagnostics"
+  ]
+}

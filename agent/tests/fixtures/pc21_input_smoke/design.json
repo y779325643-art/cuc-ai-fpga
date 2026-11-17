@@ -1,0 +1,10 @@
+{
+  "entry": "Top",
+  "modules": {
+    "Top": {
+      "signature": {"source": "requirement_boundary"},
+      "implementation": {"kind": "structural", "instances": {}, "nets": {}}
+    }
+  },
+  "requirement_map": []
+}

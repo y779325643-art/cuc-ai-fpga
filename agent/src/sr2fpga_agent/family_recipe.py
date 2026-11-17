@@ -3,7 +3,8 @@
 The selector never asks a model to classify a request and never chooses a
 nearest family.  It accepts only registered identifiers or whole-phrase
 triggers, reconciles them with the catalog/runtime ownership tables, and
-fails closed on ambiguity or the candidate Paper-1 held-out deny policy.
+fails closed on ambiguity or the historical development deny policy.
+This selector is retained for legacy development; PC2.1 core inputs do not call it.
 """
 
 from __future__ import annotations

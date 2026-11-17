@@ -10,6 +10,7 @@ requires-python = ">=3.11"
 dependencies = [
   "certifi>=2024.8.30",
   "jsonschema>=4.23",
+  "referencing",
   "PyYAML>=6.0.2"
 ]
 

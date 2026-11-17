@@ -1,0 +1,100 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-analysis-policy-v1",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "pc21-analysis-policy-v1"
+    },
+    "deltas": {
+      "type": "object",
+      "properties": {
+        "system": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "build": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "system",
+        "build"
+      ],
+      "additionalProperties": false
+    },
+    "target_effects": {
+      "type": "object",
+      "properties": {
+        "system": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "build": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      },
+      "required": [
+        "system",
+        "build"
+      ],
+      "additionalProperties": false
+    },
+    "alpha": {
+      "const": 0.05
+    },
+    "max_missing_fraction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "max_missing_difference": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
+    "bootstrap_resamples": {
+      "type": "integer",
+      "minimum": 99,
+      "maximum": 1000000
+    },
+    "seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9223372036854775807
+    },
+    "min_clusters_per_family": {
+      "type": "integer",
+      "minimum": 2
+    },
+    "min_discordant_clusters": {
+      "type": "integer",
+      "minimum": 2
+    },
+    "max_degenerate_fraction": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 0.99
+    }
+  },
+  "required": [
+    "contract_version",
+    "deltas",
+    "target_effects",
+    "alpha",
+    "max_missing_fraction",
+    "max_missing_difference",
+    "bootstrap_resamples",
+    "seed",
+    "min_clusters_per_family",
+    "min_discordant_clusters",
+    "max_degenerate_fraction"
+  ],
+  "additionalProperties": false
+}

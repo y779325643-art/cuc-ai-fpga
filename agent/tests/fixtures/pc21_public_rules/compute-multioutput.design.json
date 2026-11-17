@@ -1,0 +1,57 @@
+{
+  "entry": "Work",
+  "modules": {
+    "Work": {
+      "signature": {
+        "source": "requirement_boundary"
+      },
+      "implementation": {
+        "kind": "behavioral",
+        "execution": "clocked",
+        "intent": "Demonstrate one main relation covering one input and both outputs; implementation is intentionally absent.",
+        "tensor_rules": {
+          "operation": {
+            "kind": "compute",
+            "fact": "Relation",
+            "inputs": [
+              "sample"
+            ],
+            "outputs": [
+              "result_a",
+              "result_b"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "requirement_map": [
+    {
+      "fact": "Frame",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "Work"
+        }
+      ]
+    },
+    {
+      "fact": "Reset",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "Work"
+        }
+      ]
+    },
+    {
+      "fact": "Relation",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "Work"
+        }
+      ]
+    }
+  ]
+}

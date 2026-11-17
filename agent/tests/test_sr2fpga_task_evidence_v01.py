@@ -644,8 +644,8 @@ def test_loads_immutable_evidence_types(tmp_path):
 def test_repository_ledger_covers_all_catalog_families():
     entries = load_task_family_evidence()
 
-    assert len(entries) == 71
-    assert len({entry.family_id for entry in entries}) == 71
+    assert len(entries) == 77
+    assert len({entry.family_id for entry in entries}) == 77
 
 
 def test_implemented_evidence_matches_current_generator_owners():
@@ -793,8 +793,8 @@ def test_renderer_separates_target_implementation_and_evidence():
     assert "## Current Implementation Matrix" in markdown
     assert "## Ledger-Declared Verification Claims" in markdown
     assert "not an audit of local artifacts" in markdown
-    assert "Implemented families | 31 / 71" in markdown
-    assert "Paper 1 core implemented | 14 / 14" in markdown
+    assert "Implemented families | 31 / 77" in markdown
+    assert "Paper 1 core implemented | 0 / 3" in markdown
     assert "OpenXC7 L4 pass | 2" in markdown
     assert "## Alias/Sample Evidence" in markdown
     assert "t11_batch_rl_accelerator_shell | verified" in markdown
@@ -924,21 +924,23 @@ def test_docs_index_links_catalog_and_evidence_separately():
     assert "describes intended policy" in normalized_text
     assert "records executable and verification facts" in normalized_text
     assert "derived human-readable view" in normalized_text
-    assert "current deterministic smoke configuration" in normalized_text
+    assert "legacy development deterministic smoke configuration" in normalized_text
 
 
 def test_current_status_names_the_paper1_core_denominator():
     text = (REPO_ROOT / "docs" / "current-status.md").read_text(encoding="utf-8")
 
     assert (
-        "| Paper 1 core implemented | 14/14 (denominator: v0.2 catalog "
+        "| Paper 1 core implemented | 0/3 (denominator: current catalog "
         "`recommended_sets.paper1_core`) |" in text
     )
-    assert "| Paper 1 core executable / L3 | 14/14 |" in text
-    assert "| Paper 1 core mutation-qualified | 14/14 |" in text
+    assert "| Paper 1 core executable / L3 | 0/3 |" in text
+    assert "| Paper 1 core mutation-qualified | 0/3 |" in text
     assert "| Mutation-qualified families | 21 |" in text
     assert "| Independent Python oracle qualified | 9 |" in text
     assert "`recommended_sets.paper1_core`" in text
+    assert "`recommended_sets.legacy_paper1_core`" in text
+    assert "| Historical core mutation-qualified | 14/14 |" in text
 
 
 def test_local_artifact_audit_is_explicit(tmp_path):
@@ -1470,11 +1472,24 @@ def test_phase_c_promotes_exactly_nine_independent_python_reference_families():
         assert any(reference.endswith("/oracle_mutations") for reference in entry.evidence_refs)
 
 
-def test_all_catalog_paper1_core_families_are_mutation_qualified():
+def test_historical_core_mutation_qualification_does_not_transfer():
     catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
     entries = {entry.family_id: entry for entry in load_task_family_evidence()}
 
-    for family_id in catalog["recommended_sets"]["paper1_core"]:
+    for family_id in catalog["recommended_sets"]["legacy_paper1_core"]:
         evidence = entries[family_id].mutation_evidence
         assert evidence.status == "qualified"
         assert evidence.score == 1.0
+
+
+def test_current_ai_population_has_no_inherited_evidence():
+    catalog = json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
+    entries = {entry.family_id: entry for entry in load_task_family_evidence()}
+    assert len(catalog["recommended_sets"]["paper1_core"]) == 3
+    for family_id in catalog["recommended_sets"]["paper1_core"]:
+        entry = entries[family_id]
+        assert entry.generator_status == "not_implemented"
+        assert entry.highest_verified_level == "not_run"
+        assert entry.mutation_evidence.status == "not_run"
+        assert entry.independent_oracle_evidence.status == "not_run"
+        assert entry.evidence_refs == ()

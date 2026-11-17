@@ -1,4 +1,13 @@
-"""Closed Paper-1 method vocabulary; adapters are introduced in CD4."""
+"""Closed Paper-1 method vocabulary for M0-M5.
+
+`budget_allocation_id` names a policy registered in
+:mod:`sr2fpga_agent.budget_allocation`, which implements the `paper1-v2.1`
+section 6.4 B4 ceilings. The ids carry the `b4` marker because v2.1 replaced the
+v1.7/v1.8 matched-repair-count budget; the earlier `paper1-at1-v1` /
+`paper1-two-stage-v1` / `paper1-online-repair-v1` labels belong to that
+superseded policy. Changing them changes `method_policy_sha256`, which is the
+intended method-version break: prior pass records are not carried over.
+"""
 
 from __future__ import annotations
 
@@ -109,7 +118,7 @@ METHOD_CONTRACTS = {
         False,
         COMMON_PUBLIC_FIELDS,
         "direct-project-v1",
-        "paper1-at1-v1",
+        "paper1-b4-initial-only-v1",
     ),
     MethodConditionId.M1: MethodContract(
         MethodConditionId.M1,
@@ -123,7 +132,7 @@ METHOD_CONTRACTS = {
         True,
         COMMON_PUBLIC_FIELDS,
         "direct-project-repair-v1",
-        "paper1-online-repair-v1",
+        "paper1-b4-repair-v1",
     ),
     MethodConditionId.M2: MethodContract(
         MethodConditionId.M2,
@@ -137,7 +146,7 @@ METHOD_CONTRACTS = {
         False,
         COMMON_PUBLIC_FIELDS,
         "free-project-v1",
-        "paper1-two-stage-v1",
+        "paper1-b4-two-stage-v1",
     ),
     MethodConditionId.M3: MethodContract(
         MethodConditionId.M3,
@@ -151,7 +160,7 @@ METHOD_CONTRACTS = {
         False,
         COMMON_PUBLIC_FIELDS,
         "free-project-v1",
-        "paper1-two-stage-v1",
+        "paper1-b4-two-stage-v1",
     ),
     MethodConditionId.M4: MethodContract(
         MethodConditionId.M4,
@@ -165,7 +174,7 @@ METHOD_CONTRACTS = {
         False,
         COMMON_PUBLIC_FIELDS,
         "skeleton-behavior-v1",
-        "paper1-two-stage-v1",
+        "paper1-b4-two-stage-v1",
     ),
     MethodConditionId.M5: MethodContract(
         MethodConditionId.M5,
@@ -184,7 +193,7 @@ METHOD_CONTRACTS = {
         True,
         COMMON_PUBLIC_FIELDS,
         "skeleton-behavior-repair-v1",
-        "paper1-online-repair-v1",
+        "paper1-b4-repair-v1",
     ),
 }
 

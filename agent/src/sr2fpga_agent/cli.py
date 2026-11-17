@@ -39,7 +39,9 @@ from sr2fpga_agent.model_budget import ModelCallBudget, client_for_stage
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Generate one SR2FPGA RTL dataset sample.")
+    parser = argparse.ArgumentParser(description="Generate one legacy development SR2FPGA RTL sample; not the Paper-1 v2.2 runtime.")
+    parser.add_argument("--research-plan-version", help="Unsupported on this legacy development entry point")
+    parser.add_argument("--pc-format", help="Unsupported on this legacy development entry point")
     parser.add_argument("--dataset-root", required=True, type=Path)
     parser.add_argument("--sample-id", required=True)
     parser.add_argument("--task-type")
@@ -86,6 +88,12 @@ def main(argv: list[str] | None = None) -> None:
         help="Per-sample global model-call ceiling; 0 derives the method-matched ceiling",
     )
     args = parser.parse_args(argv)
+
+    if args.research_plan_version is not None or args.pc_format is not None:
+        raise SystemExit(
+            "This is a legacy development entry point; it cannot bind research_plan_version "
+            "or pc_format. Use the PC 2.1 development entry point for the current research baseline."
+        )
 
     if args.max_attempts < 1:
         raise SystemExit("--max-attempts must be >= 1")

@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-analysis-manifest-v1",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "pc21-analysis-manifest-v1"
+    },
+    "research_plan_version": {
+      "const": "paper1-v2.3"
+    },
+    "population_id": {
+      "const": "llm_inference_subsystems_v1"
+    },
+    "analysis_population": {
+      "enum": [
+        "development",
+        "excluded",
+        "pilot",
+        "formal_test"
+      ]
+    },
+    "slots": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "slot_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "family_id": {
+            "enum": [
+              "llm_quantized_qkv_projection",
+              "llm_kv_cache_decode_attention",
+              "llm_gated_ffn"
+            ]
+          },
+          "design_cluster_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "dependency_group_id": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "semantic_instance_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "replicate_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "method_condition": {
+            "enum": [
+              "M0",
+              "M1",
+              "M2",
+              "M3",
+              "M4",
+              "M5"
+            ]
+          },
+          "endpoint": {
+            "enum": [
+              "initial",
+              "B4"
+            ]
+          },
+          "task_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "suite_sha256": {
+            "type": "string",
+            "pattern": "^[0-9a-f]{64}$"
+          },
+          "configuration_weight": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          }
+        },
+        "required": [
+          "slot_id",
+          "family_id",
+          "design_cluster_id",
+          "semantic_instance_id",
+          "replicate_id",
+          "method_condition",
+          "endpoint",
+          "task_sha256",
+          "suite_sha256"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "manifest_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": [
+    "contract_version",
+    "research_plan_version",
+    "population_id",
+    "analysis_population",
+    "slots"
+  ],
+  "additionalProperties": false
+}

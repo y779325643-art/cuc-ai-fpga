@@ -1,8 +1,25 @@
-# PC decision interface v1
+# Project Contract formats and legacy decision interface
+
+## Choose a format
+
+| Entry | Role |
+| --- | --- |
+| [PC 2.1 schemas](2.1/) and [development command guide](../../agent/src/sr2fpga_agent/pc/README.md) | Registered format, typed development public sources, listed static semantic checks, deterministic RTL structure and parser-protected behavior composition; functional correctness requires execution |
+| [PC 2.0](2.0/README.md) | Superseded, unregistered design candidate retained as a drafting reference |
+| [System-HIS v1.2](../system-his/) and decision interface below | Retained legacy formats and development tools for historical artifacts |
+
+## Legacy PC decision interface v1
 
 This opt-in development interface implements the
-[field responsibility design](../../docs/specs/2026-09-11-pc-field-responsibility-v1.md).
+[field responsibility design](../../docs/specs/superseded/2026-09-11-pc-field-responsibility-v1.md).
 It does not replace System-HIS v1.2 or relabel historical M0–M5 data.
+
+These are the **registered** PC interface contracts and they operate on the
+legacy System-HIS v1.2 serialization. The separate
+[PC 2.0 design candidate](../../docs/specs/superseded/PC-2.0-clean-slate-design.zh.md) in
+`contracts/pc/2.0/` was superseded by PC 2.1. PC 2.0 was not adopted or registered
+in `manifest.json`. The PC 2.1 input command does not read older formats;
+the legacy commands below do not assemble PC 2.1 inputs.
 
 ## Contracts
 

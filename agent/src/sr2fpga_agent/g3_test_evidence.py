@@ -1,8 +1,14 @@
-"""Trusted local pytest recorder for excluded G3 engineering evidence.
+"""Trusted local pytest recorder for excluded development engineering evidence.
 
 The recorder observes actual collection and setup/call/teardown reports. It does
 not accept caller-provided scenario verdicts. Artifact stores are snapshotted
 before negative tests deliberately corrupt their original fixtures.
+
+`G3` here is a retained identifier from the superseded `paper1-v1.7`/`v1.8` gate
+sequence, kept because it is frozen into registered schemas and recorded
+evidence. `paper1-v2.1` replaced that sequence with work packages WP0-WP6; read
+the prefix as a name, not as a claim about the current work-package sequence.
+The fingerprint binds the current research plan, not the superseded one.
 """
 
 from __future__ import annotations
@@ -30,8 +36,8 @@ def source_fingerprint(root: Path) -> dict[str, str]:
                          if Path(name).suffix in {".py", ".json"})
     files.extend(root / path for path in (
         "AGENTS.md", "agent/README.md", "contracts/README.md", "agent/pyproject.toml", "pytest.ini",
-        "docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md",
-        "docs/specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md",
+        "docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md",
+        "docs/specs/2026-09-15-sr2fpga-paper1-code-architecture-development-spec-v2.1.zh.md",
     ))
     return {path.relative_to(root).as_posix(): hashlib.sha256(path.read_bytes()).hexdigest()
             for path in sorted(files)}

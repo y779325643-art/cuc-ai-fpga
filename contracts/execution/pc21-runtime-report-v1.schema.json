@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-runtime-report-v1",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "pc21-runtime-report-v1"
+    },
+    "analysis_population": {
+      "const": "development"
+    },
+    "official": {
+      "const": false
+    },
+    "claim_authorized": {
+      "const": false
+    },
+    "natural_model_dispatches": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "source_classes": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "synthetic_fixture",
+          "natural_model"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "blocks": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "identity": {
+            "type": "object"
+          },
+          "budget": {
+            "type": "object"
+          },
+          "terminals": {
+            "type": "object"
+          }
+        },
+        "required": [
+          "identity",
+          "budget",
+          "terminals"
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "terminal_barrier": {
+      "type": [
+        "object",
+        "null"
+      ]
+    },
+    "terminal_evaluation": {
+      "enum": [
+        "completed",
+        "not_run"
+      ]
+    }
+  },
+  "required": [
+    "contract_version",
+    "analysis_population",
+    "official",
+    "claim_authorized",
+    "natural_model_dispatches",
+    "source_classes",
+    "blocks",
+    "terminal_barrier",
+    "terminal_evaluation"
+  ],
+  "additionalProperties": false
+}

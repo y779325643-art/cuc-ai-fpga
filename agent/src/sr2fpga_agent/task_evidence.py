@@ -587,6 +587,10 @@ def render_task_evidence_markdown(
         "Generated from the task catalog and evidence ledger. Target intent, "
         "current implementation, and ledger-declared verification claims are reported separately.",
         "",
+        "Paper 1 core uses the catalog's current research population. Aggregate "
+        "tool/oracle counts below include historical families; they do not transfer "
+        "qualification to the current AI population.",
+        "",
         "## Summary",
         "",
         "| Measure | Value |",

@@ -602,9 +602,13 @@ class ArtifactStore:
         )
 
     def _ref_path(self, key: str) -> Path:
-        parts = list(PurePosixPath(key).parts)
+        parts = list(PurePosixPath(_safe_key(key)).parts)
         parts[-1] += ".ref.json"
-        return self.root / "refs" / Path(*parts)
+        root = (self.root / "refs").resolve()
+        target = (root / Path(*parts)).resolve()
+        if not target.is_relative_to(root):
+            raise ValueError("artifact reference escapes its store")
+        return target
 
 
 class EpisodeBudgetLedger:
@@ -669,7 +673,13 @@ def _safe_key(value: str) -> str:
 
 
 def _safe_segment(value: str) -> str:
-    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._:-]*", value):
+    if (not isinstance(value, str)
+            or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", value)
+            or value.endswith(".")):
+        raise ValueError(f"unsafe artifact identifier: {value!r}")
+    device = value.split(".", 1)[0].casefold()
+    if device in {"con", "prn", "aux", "nul", *[f"com{i}" for i in range(1, 10)],
+                  *[f"lpt{i}" for i in range(1, 10)]}:
         raise ValueError(f"unsafe artifact identifier: {value!r}")
     return value
 

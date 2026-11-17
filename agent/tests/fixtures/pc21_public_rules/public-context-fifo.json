@@ -1,0 +1,133 @@
+{
+  "contract_version": "development-public-context-v2",
+  "analysis_population": "development",
+  "requirement_id": "public-rules-fifo",
+  "revision_id": "v1",
+  "public_text": "Task-independent declaration tutorial for fifo. Static admission is the only intended check; no RTL implementation or functional qualification is supplied.",
+  "boundary": {
+    "rtl_top": "PublicRulesQueue",
+    "parameter_values": {},
+    "signature": {
+      "parameters": {},
+      "domains": {
+        "clock_domain": {
+          "clock": "rising",
+          "reset": {
+            "kind": "sync",
+            "polarity": "active_low"
+          }
+        }
+      },
+      "ports": {
+        "ingress": {
+          "kind": "stream",
+          "direction": "input",
+          "protocol": "ready_valid_v1",
+          "domain": "clock_domain",
+          "payload": {
+            "kind": "tensor_beat",
+            "contract": "Packet"
+          }
+        },
+        "egress": {
+          "kind": "stream",
+          "direction": "output",
+          "protocol": "ready_valid_v1",
+          "domain": "clock_domain",
+          "payload": {
+            "kind": "tensor_beat",
+            "contract": "Packet"
+          }
+        }
+      },
+      "tensor_contracts": {
+        "Packet": {
+          "shape": [
+            {
+              "axis": "N",
+              "extent": 1
+            },
+            {
+              "axis": "C",
+              "extent": 3
+            }
+          ],
+          "element": {
+            "kind": "sint",
+            "width": 8
+          },
+          "quantization": {
+            "kind": "integer"
+          },
+          "layout": {
+            "order": [
+              "N",
+              "C"
+            ],
+            "lane_axis": "C",
+            "lanes": 2,
+            "tail": "zero_pad_mask"
+          },
+          "sequence": {
+            "kind": "dense",
+            "frame_fact": "Frame",
+            "reset_fact": "Reset"
+          }
+        }
+      }
+    },
+    "abi": {
+      "domains": {
+        "clock_domain": {
+          "clock": "clk",
+          "reset": "rst_n"
+        }
+      },
+      "ports": {
+        "ingress": {
+          "payload": "ingress_data",
+          "valid": "ingress_valid",
+          "ready": "ingress_ready"
+        },
+        "egress": {
+          "payload": "egress_data",
+          "valid": "egress_valid",
+          "ready": "egress_ready"
+        }
+      }
+    }
+  },
+  "fact_records": [
+    {
+      "fact_id": "Frame",
+      "value": "One invocation is one ordered three-element frame.",
+      "role": "guarantee",
+      "required_mapping": true,
+      "provenance": "user_explicit",
+      "source_ids": [
+        "public-rules-example"
+      ]
+    },
+    {
+      "fact_id": "Reset",
+      "value": "A synchronous active-low reset cancels the unfinished invocation.",
+      "role": "guarantee",
+      "required_mapping": true,
+      "provenance": "user_explicit",
+      "source_ids": [
+        "public-rules-example"
+      ]
+    },
+    {
+      "fact_id": "Relation",
+      "value": "Preserve the input tensor-beat encoding and invocation identity; one FIFO entry is one complete beat.",
+      "role": "guarantee",
+      "required_mapping": true,
+      "provenance": "user_explicit",
+      "source_ids": [
+        "public-rules-example"
+      ]
+    }
+  ],
+  "public_assets": []
+}

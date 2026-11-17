@@ -1,0 +1,87 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:development-public-boundary:1",
+  "title": "Development public boundary: shape validation only",
+  "description": "A development wrapper for the proposed public-context-v2 boundary. It establishes neither task readiness nor cross-field/RTL correctness.",
+  "type": "object",
+  "properties": {
+    "contract_version": {"const": "development-public-boundary-v1"},
+    "validation_scope": {"const": "boundary_shape_only"},
+    "boundary": {"$ref": "#/$defs/boundary"}
+  },
+  "required": ["contract_version", "validation_scope", "boundary"],
+  "additionalProperties": false,
+  "$defs": {
+    "rtl_identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_$]*$",
+      "description": "Simple HDL identifier shape only; reserved words and backend naming limits require semantic validation."
+    },
+    "optional_pin": {
+      "oneOf": [{"$ref": "#/$defs/rtl_identifier"}, {"type": "null"}]
+    },
+    "domain_pins": {
+      "type": "object",
+      "properties": {
+        "clock": {"$ref": "#/$defs/optional_pin"},
+        "reset": {"$ref": "#/$defs/optional_pin"}
+      },
+      "required": ["clock", "reset"],
+      "additionalProperties": false
+    },
+    "port_pins": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {"signal": {"$ref": "#/$defs/rtl_identifier"}},
+          "required": ["signal"],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "payload": {"$ref": "#/$defs/rtl_identifier"},
+            "valid": {"$ref": "#/$defs/rtl_identifier"},
+            "ready": {"$ref": "#/$defs/rtl_identifier"}
+          },
+          "required": ["payload", "valid", "ready"],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "abi": {
+      "type": "object",
+      "properties": {
+        "domains": {
+          "type": "object",
+          "propertyNames": {"$ref": "urn:sr2fpga:pc:2.1#/$defs/identifier"},
+          "additionalProperties": {"$ref": "#/$defs/domain_pins"}
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {"$ref": "urn:sr2fpga:pc:2.1#/$defs/identifier"},
+          "additionalProperties": {"$ref": "#/$defs/port_pins"}
+        }
+      },
+      "required": ["domains", "ports"],
+      "additionalProperties": false
+    },
+    "boundary": {
+      "type": "object",
+      "properties": {
+        "rtl_top": {"$ref": "#/$defs/rtl_identifier"},
+        "signature": {"$ref": "urn:sr2fpga:pc:2.1#/$defs/signature_fields"},
+        "parameter_values": {
+          "type": "object",
+          "propertyNames": {"$ref": "urn:sr2fpga:pc:2.1#/$defs/identifier"},
+          "additionalProperties": {
+            "type": "integer", "minimum": 0, "maximum": 9007199254740991
+          }
+        },
+        "abi": {"$ref": "#/$defs/abi"}
+      },
+      "required": ["rtl_top", "signature", "parameter_values", "abi"],
+      "additionalProperties": false
+    }
+  }
+}

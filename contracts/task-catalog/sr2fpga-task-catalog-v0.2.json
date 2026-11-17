@@ -1,15 +1,14 @@
 {
   "$schema": "https://sr2fpga.local/schemas/sr2fpga-task-catalog-v0.2.schema.json",
   "catalog_schema_version": "sr2fpga-task-catalog-v0.2",
-  "catalog_version": "0.2.2",
+  "catalog_version": "0.4.0",
   "intended_path": "contracts/task-catalog/sr2fpga-task-catalog-v0.2.json",
-  "generated_at_utc": "2026-08-18T09:21:03Z",
-  "purpose": "Executable task-family catalog for SR2FPGA Codex implementation, benchmark planning, Line A/Line B selection, oracle readiness, skeleton strategy, and L0-L5 target policy.",
+  "generated_at_utc": "2026-10-28T10:39:04Z",
+  "purpose": "Task-family identities and historical regression metadata; current Paper-1 population follows the LLM case amendment paper1-v2.3. Membership is not qualification.",
   "source_notes": [
-    "Aligned with current SR2FPGA code report: deterministic generator, System-HIS v1.2 checker, contract skeleton, L0-L3 tool loop, optional OpenXC7 L4, recorder/training views.",
-    "Aligned with SR2FPGA research spec: T0-T4 compressed curriculum, System-HIS v1.2, L0-L5 evaluation, L4 representative-subset policy, black-box testbench oracle discipline.",
-    "ArchXBench informs design-complexity pressure but its Level 0-6 is orthogonal to SR2FPGA T0-T4 and L0-L5.",
-    "The family-recipe deny set mirrors the active Paper-1 candidate G4a primary held-out list and is explicitly not a signed G4b campaign split."
+    "User-authorized 2026-10-28 LLM case replacement: paper1-v2.3; fixed development controls do not establish formal family qualification.",
+    "Current research population: paper1-v2.2 sections 2, 6, 7 and 21. Three AI identities are future/unqualified; no formal split is declared.",
+    "Existing System-HIS, curriculum, Line A/B and G4a fields describe retained historical development paths only. They are not PC2.1 task contracts or current experiment instructions."
   ],
   "naming": {
     "module_difficulty": {
@@ -69,13 +68,15 @@
       "optimization_accelerator",
       "host_facing_accelerator",
       "cdc_structural",
-      "soc_shell"
+      "soc_shell",
+      "not_applicable"
     ],
     "skeleton_level": [
       "S1_structure_skeleton",
       "S2_protocol_skeleton",
       "S3_architecture_skeleton",
-      "fixed_shell"
+      "fixed_shell",
+      "not_applicable"
     ],
     "oracle_kind": [
       "reference_model",
@@ -132,7 +133,8 @@
       "flagship",
       "external_anchor",
       "fixed_infrastructure",
-      "future"
+      "future",
+      "development_regression"
     ],
     "implementation_status": [
       "implemented_current",
@@ -184,56 +186,17 @@
     },
     "family_recipe_selection": {
       "policy_id": "sr2fpga-family-recipe-deny",
-      "policy_version": "1.0.0",
-      "status": "candidate_g4a_not_signed",
-      "deny_recommended_set": "paper1_candidate_primary_family_heldout",
-      "deny_reason": "candidate_primary_family_heldout"
+      "policy_version": "2.0.0",
+      "status": "historical_development_only",
+      "deny_recommended_set": "legacy_candidate_primary_family_heldout",
+      "deny_reason": "historical_family_recipe_restriction"
     }
   },
   "recommended_sets": {
     "paper1_core": [
-      "sync_fifo",
-      "uart_fifo_loopback",
-      "valid_ready_stream_accumulator",
-      "stream_fork_join",
-      "single_dual_port_ram",
-      "mac_array",
-      "fir_filter",
-      "matrix_vector_mac",
-      "matched_filter",
-      "peak_detector",
-      "sobel_threshold",
-      "pattern_matcher",
-      "p_stream_trigger_filter",
-      "qtable_update_core"
-    ],
-    "paper1_candidate_primary_family_heldout": [
-      "uart_fifo_loopback",
-      "stream_fork_join",
-      "matched_filter",
-      "sobel_threshold"
-    ],
-    "paper1_complex_eval": [
-      "p_vision_defect_core",
-      "p_simple_cnn_pipeline",
-      "p_ga_accelerator",
-      "p_pong_game",
-      "p_rl_qlearning_accel"
-    ],
-    "l4_representative_subset": [
-      "fir_filter",
-      "matrix_vector_mac",
-      "matched_filter",
-      "sobel_threshold",
-      "p_stream_trigger_filter",
-      "conv2d_core",
-      "qtable_update_core",
-      "p_rl_qlearning_accel"
-    ],
-    "l5_min_candidates": [
-      "p_led_breath_button",
-      "p_pong_game",
-      "p_rl_qlearning_accel"
+      "llm_quantized_qkv_projection",
+      "llm_kv_cache_decode_attention",
+      "llm_gated_ffn"
     ],
     "paper2_bridge": [
       "ga_fitness_eval",
@@ -251,6 +214,55 @@
       "p_sensor_fusion_obstacle",
       "memory_interrupt_controller",
       "soc_top_wrapper"
+    ],
+    "legacy_paper1_core": [
+      "sync_fifo",
+      "uart_fifo_loopback",
+      "valid_ready_stream_accumulator",
+      "stream_fork_join",
+      "single_dual_port_ram",
+      "mac_array",
+      "fir_filter",
+      "matrix_vector_mac",
+      "matched_filter",
+      "peak_detector",
+      "sobel_threshold",
+      "pattern_matcher",
+      "p_stream_trigger_filter",
+      "qtable_update_core"
+    ],
+    "legacy_candidate_primary_family_heldout": [
+      "uart_fifo_loopback",
+      "stream_fork_join",
+      "matched_filter",
+      "sobel_threshold"
+    ],
+    "legacy_paper1_complex_eval": [
+      "p_vision_defect_core",
+      "p_simple_cnn_pipeline",
+      "p_ga_accelerator",
+      "p_pong_game",
+      "p_rl_qlearning_accel"
+    ],
+    "legacy_l4_representative_subset": [
+      "fir_filter",
+      "matrix_vector_mac",
+      "matched_filter",
+      "sobel_threshold",
+      "p_stream_trigger_filter",
+      "conv2d_core",
+      "qtable_update_core",
+      "p_rl_qlearning_accel"
+    ],
+    "legacy_l5_min_candidates": [
+      "p_led_breath_button",
+      "p_pong_game",
+      "p_rl_qlearning_accel"
+    ],
+    "legacy_quantized_ai_core_v2_2": [
+      "ai_dw_pw_block",
+      "ai_quantized_residual_block",
+      "ai_tiled_gemm_pipeline"
     ]
   },
   "task_families": [
@@ -747,7 +759,7 @@
         "wrong_baud_tick"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -893,7 +905,7 @@
         "fifo_order_swap"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -967,7 +979,7 @@
         "same_cycle_push_pop_bug"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1104,7 +1116,7 @@
         "wrong_address_width"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1362,7 +1374,7 @@
         "drop_transaction"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1433,7 +1445,7 @@
         "wrong_accumulation"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1507,7 +1519,7 @@
         "missing_backpressure"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1586,7 +1598,7 @@
         "wrong_operand_order"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1666,7 +1678,7 @@
         "missing_stall"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1747,7 +1759,7 @@
         "off_by_one_latency"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -1817,7 +1829,7 @@
         "missing_cs_framing"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -2052,7 +2064,7 @@
         "ignore_subsequent_reset"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -2131,7 +2143,7 @@
         "missing_stall"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -2158,7 +2170,9 @@
       "sr2fpga_tier": "T3",
       "system_his_profile": "streaming_datapath",
       "skeleton_level": "S2_protocol_skeleton",
-      "core_modules": ["peak_detector_core"],
+      "core_modules": [
+        "peak_detector_core"
+      ],
       "oracle_kind": [
         "python_signal_golden"
       ],
@@ -2203,7 +2217,7 @@
         "wrong_tie_break"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -2214,7 +2228,9 @@
         "s5_real_ip_external_only": false
       },
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["peak_detector"],
+      "current_generator_aliases": [
+        "peak_detector"
+      ],
       "notes": [],
       "risks": []
     },
@@ -2275,7 +2291,7 @@
         "missing_stall"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -2286,7 +2302,9 @@
         "s5_real_ip_external_only": false
       },
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["pattern_matcher"],
+      "current_generator_aliases": [
+        "pattern_matcher"
+      ],
       "notes": [],
       "risks": []
     },
@@ -2624,7 +2642,7 @@
         "false_collision"
       ],
       "mutation_score_threshold": 0.9,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -3801,7 +3819,7 @@
         "fifo_drop_byte"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -3938,7 +3956,7 @@
         "wrong_read_latency"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -4019,7 +4037,7 @@
         "missing_stall"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -4171,7 +4189,7 @@
         "history_updates_while_stalled"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -4182,7 +4200,9 @@
         "s5_real_ip_external_only": false
       },
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["pulse_radar_signal"],
+      "current_generator_aliases": [
+        "pulse_radar_signal"
+      ],
       "notes": [],
       "risks": []
     },
@@ -4266,7 +4286,9 @@
         "s5_real_ip_external_only": false
       },
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["vision_defect_core"],
+      "current_generator_aliases": [
+        "vision_defect_core"
+      ],
       "notes": [
         "Bounded frame contract emits thresholded edge pixels and reports frame defect status with the first thresholded coordinate."
       ],
@@ -4485,7 +4507,7 @@
         "drop_transaction"
       ],
       "mutation_score_threshold": 0.85,
-      "benchmark_role": "paper1_core",
+      "benchmark_role": "development_regression",
       "allowed_in_line_a": true,
       "allowed_in_line_b": true,
       "split_policy": {
@@ -4496,7 +4518,9 @@
         "s5_real_ip_external_only": false
       },
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["stream_trigger_filter"],
+      "current_generator_aliases": [
+        "stream_trigger_filter"
+      ],
       "notes": [],
       "risks": []
     },
@@ -4894,22 +4918,40 @@
       "sr2fpga_tier": "T1",
       "system_his_profile": "simple_control",
       "skeleton_level": "S2_protocol_skeleton",
-      "core_modules": ["opcode_decode", "alu_core", "status_register"],
-      "oracle_kind": ["reference_model"],
+      "core_modules": [
+        "opcode_decode",
+        "alu_core",
+        "status_register"
+      ],
+      "oracle_kind": [
+        "reference_model"
+      ],
       "oracle_readiness": "ready",
-      "architecture_obligations": ["opcode_decode", "status_flag_update"],
-      "coverage_targets": ["reset_sequence", "boundary_values", "opcode_coverage"],
+      "architecture_obligations": [
+        "opcode_decode",
+        "status_flag_update"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "boundary_values",
+        "opcode_coverage"
+      ],
       "target_l_level": {
         "official": "L3",
         "l4_open_policy": "none",
         "l4_commercial_policy": "none",
         "l5_policy": "none"
       },
-      "mutation_suite": ["wrong_opcode_decode", "missing_status_flag"],
+      "mutation_suite": [
+        "wrong_opcode_decode",
+        "missing_status_flag"
+      ],
       "mutation_score_threshold": 0.85,
       "benchmark_role": "smoke",
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["alu_control_unit"],
+      "current_generator_aliases": [
+        "alu_control_unit"
+      ],
       "notes": [],
       "risks": []
     },
@@ -4923,22 +4965,40 @@
       "sr2fpga_tier": "T2",
       "system_his_profile": "streaming_datapath",
       "skeleton_level": "S2_protocol_skeleton",
-      "core_modules": ["crc8_update", "frame_control"],
-      "oracle_kind": ["transaction_scoreboard", "protocol_checker"],
+      "core_modules": [
+        "crc8_update",
+        "frame_control"
+      ],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "protocol_checker"
+      ],
       "oracle_readiness": "ready",
-      "architecture_obligations": ["crc_update", "frame_boundary_handling"],
-      "coverage_targets": ["reset_sequence", "frame_start_end", "random_stalls"],
+      "architecture_obligations": [
+        "crc_update",
+        "frame_boundary_handling"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "frame_start_end",
+        "random_stalls"
+      ],
       "target_l_level": {
         "official": "L3",
         "l4_open_policy": "optional",
         "l4_commercial_policy": "none",
         "l5_policy": "none"
       },
-      "mutation_suite": ["wrong_crc_polynomial", "missing_frame_reset"],
+      "mutation_suite": [
+        "wrong_crc_polynomial",
+        "missing_frame_reset"
+      ],
       "mutation_score_threshold": 0.85,
       "benchmark_role": "eval_subset",
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["crc_stream_checker"],
+      "current_generator_aliases": [
+        "crc_stream_checker"
+      ],
       "notes": [],
       "risks": []
     },
@@ -4952,22 +5012,39 @@
       "sr2fpga_tier": "T1",
       "system_his_profile": "simple_control",
       "skeleton_level": "S2_protocol_skeleton",
-      "core_modules": ["event_gate", "counter_core"],
-      "oracle_kind": ["reference_model"],
+      "core_modules": [
+        "event_gate",
+        "counter_core"
+      ],
+      "oracle_kind": [
+        "reference_model"
+      ],
       "oracle_readiness": "ready",
-      "architecture_obligations": ["event_gating", "counter_enable"],
-      "coverage_targets": ["reset_sequence", "event_pulses", "boundary_values"],
+      "architecture_obligations": [
+        "event_gating",
+        "counter_enable"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "event_pulses",
+        "boundary_values"
+      ],
       "target_l_level": {
         "official": "L3",
         "l4_open_policy": "none",
         "l4_commercial_policy": "none",
         "l5_policy": "none"
       },
-      "mutation_suite": ["bypass_event_gate", "wrong_counter_enable"],
+      "mutation_suite": [
+        "bypass_event_gate",
+        "wrong_counter_enable"
+      ],
       "mutation_score_threshold": 0.75,
       "benchmark_role": "smoke",
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["t1_event_counter"],
+      "current_generator_aliases": [
+        "t1_event_counter"
+      ],
       "notes": [],
       "risks": []
     },
@@ -4981,22 +5058,41 @@
       "sr2fpga_tier": "T3",
       "system_his_profile": "host_facing_accelerator",
       "skeleton_level": "S3_architecture_skeleton",
-      "core_modules": ["host_sample_stage", "replay_store", "sample_read_stage"],
-      "oracle_kind": ["transaction_scoreboard", "host_signature"],
+      "core_modules": [
+        "host_sample_stage",
+        "replay_store",
+        "sample_read_stage"
+      ],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "host_signature"
+      ],
       "oracle_readiness": "ready",
-      "architecture_obligations": ["replay_store_ordering", "occupancy_reporting"],
-      "coverage_targets": ["reset_sequence", "host_transactions", "output_stall"],
+      "architecture_obligations": [
+        "replay_store_ordering",
+        "occupancy_reporting"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "host_transactions",
+        "output_stall"
+      ],
       "target_l_level": {
         "official": "L3",
         "l4_open_policy": "representative_subset",
         "l4_commercial_policy": "none",
         "l5_policy": "none"
       },
-      "mutation_suite": ["wrong_replay_order", "missing_occupancy_update"],
+      "mutation_suite": [
+        "wrong_replay_order",
+        "missing_occupancy_update"
+      ],
       "mutation_score_threshold": 0.9,
       "benchmark_role": "advanced_eval",
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["t8_replay_sample_shell"],
+      "current_generator_aliases": [
+        "t8_replay_sample_shell"
+      ],
       "notes": [],
       "risks": []
     },
@@ -5010,22 +5106,41 @@
       "sr2fpga_tier": "T4",
       "system_his_profile": "soc_shell",
       "skeleton_level": "S3_architecture_skeleton",
-      "core_modules": ["axi_lite_write_ctrl", "axi_lite_read_ctrl", "irq_status"],
-      "oracle_kind": ["protocol_checker", "host_signature"],
+      "core_modules": [
+        "axi_lite_write_ctrl",
+        "axi_lite_read_ctrl",
+        "irq_status"
+      ],
+      "oracle_kind": [
+        "protocol_checker",
+        "host_signature"
+      ],
       "oracle_readiness": "ready",
-      "architecture_obligations": ["host_register_protocol", "interrupt_status"],
-      "coverage_targets": ["reset_sequence", "register_map_access", "back_to_back_commands"],
+      "architecture_obligations": [
+        "host_register_protocol",
+        "interrupt_status"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "register_map_access",
+        "back_to_back_commands"
+      ],
       "target_l_level": {
         "official": "L3",
         "l4_open_policy": "required_for_flagship",
         "l4_commercial_policy": "tcad_subset",
         "l5_policy": "l5_min_candidate"
       },
-      "mutation_suite": ["wrong_register_offset", "missing_interrupt_clear"],
+      "mutation_suite": [
+        "wrong_register_offset",
+        "missing_interrupt_clear"
+      ],
       "mutation_score_threshold": 0.9,
       "benchmark_role": "flagship_candidate",
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["t9_host_protocol_shell"],
+      "current_generator_aliases": [
+        "t9_host_protocol_shell"
+      ],
       "notes": [],
       "risks": []
     },
@@ -5039,24 +5154,369 @@
       "sr2fpga_tier": "T4",
       "system_his_profile": "host_facing_accelerator",
       "skeleton_level": "S3_architecture_skeleton",
-      "core_modules": ["replay_request_arbiter", "replay_memory_bank", "sample_packet_stage"],
-      "oracle_kind": ["transaction_scoreboard", "host_signature"],
+      "core_modules": [
+        "replay_request_arbiter",
+        "replay_memory_bank",
+        "sample_packet_stage"
+      ],
+      "oracle_kind": [
+        "transaction_scoreboard",
+        "host_signature"
+      ],
       "oracle_readiness": "ready",
-      "architecture_obligations": ["read_write_arbitration", "sample_packet_ordering"],
-      "coverage_targets": ["reset_sequence", "arbitration_conflicts", "back_to_back_commands"],
+      "architecture_obligations": [
+        "read_write_arbitration",
+        "sample_packet_ordering"
+      ],
+      "coverage_targets": [
+        "reset_sequence",
+        "arbitration_conflicts",
+        "back_to_back_commands"
+      ],
       "target_l_level": {
         "official": "L3",
         "l4_open_policy": "required_for_flagship",
         "l4_commercial_policy": "tcad_subset",
         "l5_policy": "l5_min_candidate"
       },
-      "mutation_suite": ["wrong_arbiter_priority", "dropped_sample_packet"],
+      "mutation_suite": [
+        "wrong_arbiter_priority",
+        "dropped_sample_packet"
+      ],
       "mutation_score_threshold": 0.9,
       "benchmark_role": "flagship_candidate",
       "implementation_status": "implemented_current",
-      "current_generator_aliases": ["t12_replay_arbiter_shell"],
+      "current_generator_aliases": [
+        "t12_replay_arbiter_shell"
+      ],
       "notes": [],
       "risks": []
+    },
+    {
+      "family_id": "ai_dw_pw_block",
+      "display_name": "量化 Depthwise→Pointwise 子系统",
+      "task_kind": "project_family",
+      "category": "numeric_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "not_applicable",
+      "skeleton_level": "not_applicable",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "future",
+      "architecture_obligations": [],
+      "coverage_targets": [],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": [],
+      "mutation_score_threshold": null,
+      "benchmark_role": "development_regression",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "research_plan_version": "paper1-v2.2",
+      "pc_format": "sr2fpga-pc-2.1",
+      "qualification_status": "not_ready",
+      "notes": [
+        "A fixed DW/PW development task, independent integer oracle and reference tools exist outside the legacy catalog runner; formal family qualification is incomplete.",
+        "Tier/difficulty are navigation metadata, not a frozen complexity or topology requirement. No runtime alias, split or mutation threshold is assigned.",
+        "Retained v2.2 identity after the paper1-v2.3 LLM population replacement; excluded from current primary statistics."
+      ],
+      "risks": [
+        "Fixed development evidence does not qualify the family or transfer to the LLM population."
+      ]
+    },
+    {
+      "family_id": "ai_quantized_residual_block",
+      "display_name": "量化残差计算块",
+      "task_kind": "project_family",
+      "category": "numeric_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "not_applicable",
+      "skeleton_level": "not_applicable",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "future",
+      "architecture_obligations": [],
+      "coverage_targets": [],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": [],
+      "mutation_score_threshold": null,
+      "benchmark_role": "development_regression",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "research_plan_version": "paper1-v2.2",
+      "pc_format": "sr2fpga-pc-2.1",
+      "qualification_status": "not_ready",
+      "notes": [
+        "Identity only, from research plan section 6.3. Complete task card, numerical profile, assets, independent oracle, mutation qualification and tools remain unimplemented.",
+        "Tier/difficulty are navigation metadata, not a frozen complexity or topology requirement. No runtime alias, split or mutation threshold is assigned.",
+        "Retained v2.2 identity after the paper1-v2.3 LLM population replacement; excluded from current primary statistics."
+      ],
+      "risks": [
+        "No PC2.1 executable task or independent oracle exists."
+      ]
+    },
+    {
+      "family_id": "ai_tiled_gemm_pipeline",
+      "display_name": "分块 GEMM 加速子系统",
+      "task_kind": "project_family",
+      "category": "numeric_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "not_applicable",
+      "skeleton_level": "not_applicable",
+      "core_modules": [],
+      "oracle_kind": [
+        "reference_model",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "future",
+      "architecture_obligations": [],
+      "coverage_targets": [],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": [],
+      "mutation_score_threshold": null,
+      "benchmark_role": "development_regression",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "implementation_status": "future",
+      "current_generator_aliases": [],
+      "research_plan_version": "paper1-v2.2",
+      "pc_format": "sr2fpga-pc-2.1",
+      "qualification_status": "not_ready",
+      "notes": [
+        "Identity only, from research plan section 6.4. Complete task card, numerical profile, assets, independent oracle, mutation qualification and tools remain unimplemented.",
+        "Tier/difficulty are navigation metadata, not a frozen complexity or topology requirement. No runtime alias, split or mutation threshold is assigned.",
+        "Retained v2.2 identity after the paper1-v2.3 LLM population replacement; excluded from current primary statistics."
+      ],
+      "risks": [
+        "No PC2.1 executable task or independent oracle exists."
+      ]
+    },
+    {
+      "family_id": "llm_quantized_qkv_projection",
+      "display_name": "LLM quantized QKV projection",
+      "task_kind": "project_family",
+      "category": "numeric_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "not_applicable",
+      "skeleton_level": "not_applicable",
+      "core_modules": [
+        "input_broadcast",
+        "query_projection",
+        "key_projection",
+        "value_projection"
+      ],
+      "oracle_kind": [
+        "reference_model",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "partial",
+      "architecture_obligations": [
+        "head_major_packing",
+        "independent_qkv_backpressure",
+        "signed_requantization",
+        "tail_masks",
+        "reset_cancellation"
+      ],
+      "coverage_targets": [
+        "head_major_packing",
+        "independent_qkv_backpressure",
+        "signed_requantization",
+        "tail_masks",
+        "reset_cancellation"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": [],
+      "mutation_score_threshold": null,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "implementation_status": "partial",
+      "current_generator_aliases": [],
+      "research_plan_version": "paper1-v2.3",
+      "pc_format": "sr2fpga-pc-2.1",
+      "qualification_status": "not_ready",
+      "notes": [
+        "Fixed T2/Din5/Hq4/Hkv2/D3 INT8 development control with public synthetic weights, separate Q/K/V streams and an independent integer oracle.",
+        "Development CLI: python -m sr2fpga_agent.tasks.llm. No legacy generator alias, official split or mutation threshold is assigned."
+      ],
+      "risks": [
+        "Synthetic fixed profile, not production LLM quality/performance evidence.",
+        "Formal cluster population, mutation qualification, hidden split and physical evaluation remain open."
+      ]
+    },
+    {
+      "family_id": "llm_kv_cache_decode_attention",
+      "display_name": "LLM KV cache decode attention",
+      "task_kind": "project_family",
+      "category": "memory_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "not_applicable",
+      "skeleton_level": "not_applicable",
+      "core_modules": [
+        "cached_decode_attention"
+      ],
+      "oracle_kind": [
+        "reference_model",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "partial",
+      "architecture_obligations": [
+        "persistent_kv_append",
+        "grouped_query_head_mapping",
+        "stable_exp_lut",
+        "cache_capacity_backpressure",
+        "reset_invalidation"
+      ],
+      "coverage_targets": [
+        "persistent_kv_append",
+        "grouped_query_head_mapping",
+        "stable_exp_lut",
+        "cache_capacity_backpressure",
+        "reset_invalidation"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": [],
+      "mutation_score_threshold": null,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "implementation_status": "partial",
+      "current_generator_aliases": [],
+      "research_plan_version": "paper1-v2.3",
+      "pc_format": "sr2fpga-pc-2.1",
+      "qualification_status": "not_ready",
+      "notes": [
+        "Fixed Hq4/Hkv2/D3/Tmax4 development control: real persistent KV cache, rational score scaling, public exp LUT and exact integer normalized AV.",
+        "Development CLI: python -m sr2fpga_agent.tasks.llm. No legacy generator alias, official split or mutation threshold is assigned."
+      ],
+      "risks": [
+        "Synthetic fixed profile, not production LLM quality/performance evidence.",
+        "Formal cluster population, mutation qualification, hidden split and physical evaluation remain open."
+      ]
+    },
+    {
+      "family_id": "llm_gated_ffn",
+      "display_name": "LLM gated feed forward network",
+      "task_kind": "project_family",
+      "category": "numeric_datapath",
+      "module_difficulty": null,
+      "project_difficulty": "P3",
+      "sr2fpga_tier": "T3",
+      "system_his_profile": "not_applicable",
+      "skeleton_level": "not_applicable",
+      "core_modules": [
+        "input_fork",
+        "gate_up_projection",
+        "silu_gate_down_residual"
+      ],
+      "oracle_kind": [
+        "reference_model",
+        "transaction_scoreboard"
+      ],
+      "oracle_readiness": "partial",
+      "architecture_obligations": [
+        "paired_gate_up",
+        "frozen_silu_lut",
+        "elementwise_gating",
+        "down_projection",
+        "residual_alignment"
+      ],
+      "coverage_targets": [
+        "paired_gate_up",
+        "frozen_silu_lut",
+        "elementwise_gating",
+        "down_projection",
+        "residual_alignment"
+      ],
+      "target_l_level": {
+        "official": "L3",
+        "l4_open_policy": "representative_subset",
+        "l4_commercial_policy": "none",
+        "l5_policy": "none"
+      },
+      "mutation_suite": [],
+      "mutation_score_threshold": null,
+      "benchmark_role": "paper1_core",
+      "allowed_in_line_a": false,
+      "allowed_in_line_b": false,
+      "implementation_status": "partial",
+      "current_generator_aliases": [],
+      "research_plan_version": "paper1-v2.3",
+      "pc_format": "sr2fpga-pc-2.1",
+      "qualification_status": "not_ready",
+      "notes": [
+        "Fixed T2/Din5/Dff7 INT8 development control with public synthetic weights, frozen SiLU LUT, down projection and same-input residual; normalization is outside the boundary.",
+        "Development CLI: python -m sr2fpga_agent.tasks.llm. No legacy generator alias, official split or mutation threshold is assigned."
+      ],
+      "risks": [
+        "Synthetic fixed profile, not production LLM quality/performance evidence.",
+        "Formal cluster population, mutation qualification, hidden split and physical evaluation remain open."
+      ]
     }
-  ]
+  ],
+  "historical_research_metadata": {
+    "research_plan_version": "paper1-v1.8",
+    "global_policy_keys": [
+      "line_a",
+      "line_b",
+      "testbench_oracle_gate",
+      "l4_policy",
+      "family_recipe_selection"
+    ],
+    "meaning": "Preserved historical development policies; new Paper-1 does not inherit their thresholds, splits or physical selections."
+  },
+  "current_research": {
+    "research_plan_version": "paper1-v2.3",
+    "pc_format": "sr2fpga-pc-2.1",
+    "population_id": "llm_inference_subsystems_v1",
+    "primary_recommended_set": "paper1_core",
+    "status": "development_unqualified",
+    "family_recipes_enabled": false,
+    "formal_split_status": "not_defined",
+    "independent_unit": "design_cluster_id"
+  }
 }

@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-project-proposal-v1",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "pc21-project-proposal-v1"
+    },
+    "files": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "contract_version",
+    "files"
+  ],
+  "additionalProperties": false
+}

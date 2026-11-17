@@ -27,11 +27,14 @@ class TaskFamilySpec:
     skeleton_level: str
     oracle_kind: tuple[str, ...]
     mutation_suite: tuple[str, ...]
-    mutation_score_threshold: float
+    mutation_score_threshold: float | None
     benchmark_role: str
     l4_open_policy: str
     l4_commercial_policy: str
     current_generator_aliases: tuple[str, ...]
+    implementation_status: str
+    oracle_readiness: str
+    pc_format: str | None
 
 
 @dataclass(frozen=True)
@@ -92,11 +95,15 @@ def load_task_family_specs() -> tuple[TaskFamilySpec, ...]:
             skeleton_level=family["skeleton_level"],
             oracle_kind=tuple(family["oracle_kind"]),
             mutation_suite=tuple(family["mutation_suite"]),
-            mutation_score_threshold=float(family["mutation_score_threshold"]),
+            mutation_score_threshold=(float(family["mutation_score_threshold"])
+                                      if family["mutation_score_threshold"] is not None else None),
             benchmark_role=family["benchmark_role"],
             l4_open_policy=family["target_l_level"]["l4_open_policy"],
             l4_commercial_policy=family["target_l_level"]["l4_commercial_policy"],
             current_generator_aliases=tuple(family.get("current_generator_aliases", [])),
+            implementation_status=family["implementation_status"],
+            oracle_readiness=family["oracle_readiness"],
+            pc_format=family.get("pc_format"),
         )
         for family in catalog["task_families"]
     )
@@ -124,6 +131,33 @@ def task_family_spec_for_family_id(family_id: str) -> TaskFamilySpec:
         if spec.family_id == family_id:
             return spec
     raise KeyError(f"unknown task catalog family_id: {family_id}")
+
+
+def current_research_family_specs() -> tuple[TaskFamilySpec, ...]:
+    """Resolve the explicit current population, without claiming readiness.
+
+    No fallback to legacy sets: an absent/malformed population is a configuration
+    defect, never permission to run the old benchmark under a new plan label.
+    """
+    catalog = _load_catalog()
+    try:
+        population = catalog["current_research"]
+        if (population["research_plan_version"] != "paper1-v2.3"
+                or population["pc_format"] != "sr2fpga-pc-2.1"
+                or population["population_id"] != "llm_inference_subsystems_v1"
+                or population["primary_recommended_set"] != "paper1_core"):
+            raise ValueError("unsupported current research identity")
+        family_ids = catalog["recommended_sets"][population["primary_recommended_set"]]
+        if (not isinstance(family_ids, list) or not family_ids
+                or any(not isinstance(fid, str) for fid in family_ids)
+                or len(family_ids) != len(set(family_ids))):
+            raise ValueError("invalid current research family set")
+        specs = tuple(task_family_spec_for_family_id(fid) for fid in family_ids)
+        if any(spec.pc_format != population["pc_format"] for spec in specs):
+            raise ValueError("current research family format mismatch")
+        return specs
+    except (KeyError, TypeError) as error:
+        raise ValueError("current research population is incomplete") from error
 
 
 def load_exact_task_family_aliases() -> dict[str, str]:
@@ -215,11 +249,10 @@ def resolve_exact_task_family(
 
 
 def load_family_recipe_deny_policy() -> FamilyRecipeDenyPolicy:
-    """Load the candidate Paper-1 held-out recipe deny policy fail-closed.
+    """Load the historical development recipe restriction fail-closed.
 
-    The registered set is deliberately labelled as a candidate G4a boundary,
-    not a signed G4b split. Recipe selection may conservatively deny these
-    families, but callers must not report the set as a frozen campaign split.
+    This retained restriction protects old development paths. It is not the
+    paper1-v2.3 population or a formal split. New core recipes are disabled.
     """
 
     catalog = _load_catalog()

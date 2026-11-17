@@ -1,0 +1,76 @@
+{
+  "entry": "Queue",
+  "modules": {
+    "Queue": {
+      "signature": {
+        "source": "requirement_boundary"
+      },
+      "implementation": {
+        "kind": "behavioral",
+        "execution": "clocked",
+        "intent": "Declaration-only complete-beat FIFO boundary; no implementation is supplied.",
+        "states": {
+          "queue": {
+            "kind": "fifo",
+            "domain": "clock_domain",
+            "element_type": {
+              "kind": "tensor_beat",
+              "contract": "Packet"
+            },
+            "depth": 2,
+            "read_mode": "registered",
+            "full_exchange": "allow_push_with_pop",
+            "empty_exchange": "store_only",
+            "reset_contents": "invalidate"
+          }
+        },
+        "tensor_rules": {
+          "transfer": {
+            "kind": "identity",
+            "fact": "Relation",
+            "input": "ingress",
+            "output": "egress"
+          }
+        },
+        "buffer_rules": {
+          "storage": {
+            "fact": "Relation",
+            "state": "queue",
+            "input": "ingress",
+            "output": "egress",
+            "capacity_unit": "beats"
+          }
+        }
+      }
+    }
+  },
+  "requirement_map": [
+    {
+      "fact": "Frame",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "Queue"
+        }
+      ]
+    },
+    {
+      "fact": "Reset",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "Queue"
+        }
+      ]
+    },
+    {
+      "fact": "Relation",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "Queue"
+        }
+      ]
+    }
+  ]
+}

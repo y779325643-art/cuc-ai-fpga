@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-cluster-analysis-v1",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "pc21-cluster-analysis-v1"
+    },
+    "analysis_scope": {
+      "const": "offline_development_analysis"
+    },
+    "official": {
+      "const": false
+    },
+    "claim_authorized": {
+      "const": false
+    },
+    "model_calls": {
+      "const": 0
+    },
+    "dataset": {
+      "type": "object"
+    },
+    "policy": {
+      "$ref": "urn:sr2fpga:pc21-analysis-policy-v1"
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "weighting": {
+      "type": "string",
+      "minLength": 1
+    },
+    "resampling_unit": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependency_policy": {
+      "type": "string",
+      "minLength": 1
+    },
+    "confidence_interval_scope": {
+      "type": "string",
+      "minLength": 1
+    },
+    "missingness_primary": {
+      "type": "string",
+      "minLength": 1
+    },
+    "method_rate_bounds": {
+      "type": "object"
+    },
+    "contrasts": {
+      "type": "array",
+      "items": {
+        "type": "object"
+      },
+      "minItems": 2,
+      "maxItems": 2
+    },
+    "joint_eligible_numerical_rejection": {
+      "type": [
+        "boolean",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "contract_version",
+    "analysis_scope",
+    "official",
+    "claim_authorized",
+    "model_calls",
+    "dataset",
+    "policy",
+    "policy_sha256",
+    "weighting",
+    "resampling_unit",
+    "dependency_policy",
+    "confidence_interval_scope",
+    "missingness_primary",
+    "method_rate_bounds",
+    "contrasts",
+    "joint_eligible_numerical_rejection"
+  ],
+  "additionalProperties": false
+}

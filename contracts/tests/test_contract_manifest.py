@@ -13,6 +13,21 @@ def test_contract_manifest_declares_required_contracts() -> None:
     manifest = load_manifest()
     assert manifest["contract_registry_version"] == "1.0"
     assert set(manifest["contracts"]) == {
+        "pc21_public_feedback_v2",
+        "pc21_project_proposal",
+        "pc21_model_replay",
+        "pc21_runtime_report",
+        "pc21_repair_proposal",
+        "pc21_runtime_config",
+        "pc21_analysis_manifest",
+        "pc21_analysis_results",
+        "pc21_analysis_policy",
+        "pc21_cluster_analysis",
+        "development_public_context_v2",
+        "pc21_development_capability",
+        "pc21_development_target",
+        "pc21_behavior_bundle",
+        "development_public_boundary",
         "unparsed_system_his_output",
         "g3_acceptance",
         "g3_test_evidence",
@@ -22,6 +37,11 @@ def test_contract_manifest_declares_required_contracts() -> None:
             "pc_decisions",
             "pc_assembly_record",
             "pc_assembly_execution",
+            # PC 2.1 is the active Project Contract serialization under
+            # `paper1-v2.2`. System-HIS v1.2 stays registered so existing
+            # artifacts remain readable; new runtime paths must not use it.
+            "project_contract_2_1",
+            "design_proposal_2_1",
         "system_his_backend_capabilities",
         "system_his_well_formedness",
         "system_his_compatibility",

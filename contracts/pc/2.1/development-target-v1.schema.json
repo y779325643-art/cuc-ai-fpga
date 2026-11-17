@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-development-target:1",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "target_id", "language", "synthesis_scope", "clock_period_ns", "tool_timeout_seconds", "max_simulation_cycles"],
+  "properties": {
+    "contract_version": {"const": "pc21-development-target-v1"},
+    "target_id": {"type": "string", "minLength": 1},
+    "language": {"const": "systemverilog"},
+    "synthesis_scope": {"const": "generic_yosys"},
+    "clock_period_ns": {"type": "integer", "minimum": 2},
+    "tool_timeout_seconds": {"type": "integer", "minimum": 1, "maximum": 300},
+    "max_simulation_cycles": {"type": "integer", "minimum": 1, "maximum": 1000000}
+  }
+}

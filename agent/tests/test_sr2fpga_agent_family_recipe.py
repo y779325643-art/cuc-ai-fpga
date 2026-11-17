@@ -54,7 +54,7 @@ def test_candidate_heldout_t4_recipe_is_denied() -> None:
     assert decision.status == "not_applied"
     assert decision.family_id == "stream_fork_join"
     assert decision.recipe_id == "sr2fpga-family-recipe:composed_dual_stream_join"
-    assert decision.reason == "candidate_primary_family_heldout"
+    assert decision.reason == "historical_family_recipe_restriction"
     assert recipe_task_type(decision) is None
 
 
@@ -71,7 +71,7 @@ def test_heldout_natural_phrase_does_not_leak_family_or_policy_into_prompt() -> 
 
     assert decision.status == "not_applied"
     assert decision.family_id == "stream_fork_join"
-    assert decision.reason == "candidate_primary_family_heldout"
+    assert decision.reason == "historical_family_recipe_restriction"
     assert '"strategy": "capability_composition"' in prompt
     assert "Required architecture for composed_dual_stream_join" not in prompt
     assert decision.recipe_id not in prompt
@@ -169,8 +169,8 @@ def test_decision_hash_and_policy_metadata_are_json_safe() -> None:
     }
     assert re.fullmatch(r"[0-9a-f]{64}", str(first["sha256"]))
     assert re.fullmatch(r"[0-9a-f]{64}", str(first["policy_sha256"]))
-    assert first["policy_status"] == "candidate_g4a_not_signed"
-    assert first["catalog_version"] == "0.2.2"
+    assert first["policy_status"] == "historical_development_only"
+    assert first["catalog_version"] == "0.4.0"
     assert json.loads(json.dumps(first, sort_keys=True)) == first
 
 

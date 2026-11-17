@@ -21,6 +21,12 @@ from sr2fpga_agent.cli import (
 )
 from sr2fpga_agent.artifact_store import ArtifactRef, ArtifactStore
 from sr2fpga_agent.block_cost_accounting import BlockPreparationCostLedger
+from sr2fpga_agent.budget_allocation import (
+    BUDGET_POLICY_ID,
+    BudgetAllocationError,
+    assert_b4_conformant,
+    budget_allocation,
+)
 from sr2fpga_agent.block_preparation import (
     BlockPreparationFacades,
     PreparedBlockArtifacts,
@@ -170,6 +176,8 @@ _SHARED_INITIAL_CALL_CEILING = {
     "M5": 2,
 }
 _BLOCK_PREPARATION_PHYSICAL_CALL_CEILING = 3
+#: `paper1-v2.1` section 6.4 B4, and the superseded v1.7/v1.8 attempt formula.
+_SUPPORTED_BUDGET_POLICIES = frozenset({BUDGET_POLICY_ID, "legacy-attempts-v1"})
 
 
 @dataclass(frozen=True)
@@ -248,6 +256,11 @@ class RunnerConfig:
     line_b_targets: dict[str, float | int]
     tasks: list[TaskConfig]
     max_model_calls: int = 0
+    #: ``"paper1-b4-v1"`` takes per-method ceilings from the registered B4
+    #: allocation (plan section 6.4). ``"legacy-attempts-v1"`` keeps the
+    #: superseded v1.7/v1.8 formula that derives ceilings from ``max_attempts``
+    #: and can give M1 and M5 different totals.
+    budget_policy: str = "legacy-attempts-v1"
     model: str = "deepseek-v4-pro"
     base_url: str = "https://api.deepseek.com"
     api_key_env: str = "DEEPSEEK_API_KEY"
@@ -523,6 +536,13 @@ class RunState:
 
 def load_runner_config(path: Path) -> RunnerConfig:
     raw = _load_mapping(path)
+    unsupported_bindings = sorted({"research_plan_version", "pc_format"}.intersection(raw))
+    if unsupported_bindings:
+        raise SystemExit(
+            "This is a legacy development runner; it cannot bind research_plan_version "
+            "or pc_format. Use the PC 2.1 development entry point for the current "
+            "research baseline. Unsupported fields: " + ", ".join(unsupported_bindings)
+        )
     if "request_mode" in raw:
         raise SystemExit(
             "request_mode has been removed; all requests now use the unified open-world path"
@@ -555,6 +575,7 @@ def load_runner_config(path: Path) -> RunnerConfig:
         line_b_targets=dict(raw.get("line_b_targets", {})),
         tasks=[_load_task_config(item, raw) for item in raw.get("tasks", [])],
         max_model_calls=int(raw.get("max_model_calls", 0)),
+        budget_policy=str(raw.get("budget_policy", "legacy-attempts-v1")),
         model=str(raw.get("model", "deepseek-v4-pro")),
         base_url=str(raw.get("base_url", "https://api.deepseek.com")),
         api_key_env=str(raw.get("api_key_env", "DEEPSEEK_API_KEY")),
@@ -583,7 +604,7 @@ def load_runner_config(path: Path) -> RunnerConfig:
 
 
 def main(argv: list[str] | None = None) -> None:
-    parser = argparse.ArgumentParser(description="Run an autonomous SR2FPGA trajectory batch.")
+    parser = argparse.ArgumentParser(description="Run a legacy development SR2FPGA trajectory batch; not the Paper-1 v2.2 runtime.")
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--run-id", default="")
     parser.add_argument("--no-resume", action="store_true")
@@ -3329,6 +3350,11 @@ def planned_samples(config: RunnerConfig) -> list[PlannedSample]:
         raise SystemExit("max_attempts must be >= 1")
     if config.max_model_calls < 0:
         raise SystemExit("max_model_calls must be >= 0")
+    if config.budget_policy not in _SUPPORTED_BUDGET_POLICIES:
+        raise SystemExit(
+            f"unknown budget_policy {config.budget_policy!r}; expected one of "
+            + ", ".join(sorted(_SUPPORTED_BUDGET_POLICIES))
+        )
     samples: list[PlannedSample] = []
     sequence = 1
     for task in config.tasks:
@@ -3775,9 +3801,30 @@ def _sample_model_call_ceiling(
     config: RunnerConfig,
     method_condition: str | None = None,
 ) -> int:
+    method = method_condition or _sample_method_condition(sample, config)
+    if config.budget_policy == BUDGET_POLICY_ID:
+        if method == "reference_deterministic":
+            return 0
+        if method == "oracle_his_ceiling":
+            return 1
+        try:
+            allocation = budget_allocation(method)
+        except BudgetAllocationError as exc:
+            raise SystemExit(
+                f"No registered {BUDGET_POLICY_ID} allocation for {method}"
+            ) from exc
+        ceiling = allocation.standalone_max_model_calls
+        if config.max_model_calls > 0 and config.max_model_calls != ceiling:
+            raise SystemExit(
+                f"max_model_calls={config.max_model_calls} contradicts the "
+                f"{BUDGET_POLICY_ID} allocation {ceiling} for {method}; B4 fairness "
+                "requires the registered ceiling, so remove the override or drop "
+                "budget_policy"
+            )
+        assert_b4_conformant(method, ceiling)
+        return ceiling
     if config.max_model_calls > 0:
         return config.max_model_calls
-    method = method_condition or _sample_method_condition(sample, config)
     if method == "reference_deterministic":
         return 0
     if method in {"M0", "oracle_his_ceiling"}:

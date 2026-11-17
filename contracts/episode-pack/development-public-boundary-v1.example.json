@@ -1,0 +1,31 @@
+{
+  "contract_version": "development-public-boundary-v1",
+  "validation_scope": "boundary_shape_only",
+  "boundary": {
+    "rtl_top": "StreamBlock",
+    "signature": {
+      "parameters": {"W": {"minimum": 1, "maximum": 32}},
+      "domains": {
+        "d": {"clock": "rising", "reset": {"kind": "sync", "polarity": "active_low"}}
+      },
+      "ports": {
+        "rx": {
+          "kind": "stream", "direction": "input", "protocol": "ready_valid_v1",
+          "payload": {"kind": "uint", "width": {"param": "W"}}, "domain": "d"
+        },
+        "tx": {
+          "kind": "stream", "direction": "output", "protocol": "ready_valid_v1",
+          "payload": {"kind": "uint", "width": {"param": "W"}}, "domain": "d"
+        }
+      }
+    },
+    "parameter_values": {"W": 8},
+    "abi": {
+      "domains": {"d": {"clock": "clk", "reset": "rst_n"}},
+      "ports": {
+        "rx": {"payload": "in_data", "valid": "in_valid", "ready": "in_ready"},
+        "tx": {"payload": "out_data", "valid": "out_valid", "ready": "out_ready"}
+      }
+    }
+  }
+}

@@ -59,12 +59,12 @@ def test_catalog_declares_its_canonical_repository_path() -> None:
     )
 
 
-def test_candidate_primary_family_heldout_set_matches_active_freeze_candidates() -> None:
+def test_historical_heldout_set_is_retained_for_regression() -> None:
     catalog = load_catalog()
-    candidate_ids = catalog["recommended_sets"]["paper1_candidate_primary_family_heldout"]
+    candidate_ids = catalog["recommended_sets"]["legacy_candidate_primary_family_heldout"]
     canonical_ids = {family["family_id"] for family in catalog["task_families"]}
 
-    assert catalog["catalog_version"] == "0.2.2"
+    assert catalog["catalog_version"] == "0.4.0"
     assert candidate_ids == [
         "uart_fifo_loopback",
         "stream_fork_join",
@@ -73,17 +73,17 @@ def test_candidate_primary_family_heldout_set_matches_active_freeze_candidates()
     ]
     assert len(candidate_ids) == len(set(candidate_ids))
     assert set(candidate_ids) <= canonical_ids
-    assert set(candidate_ids) < set(catalog["recommended_sets"]["paper1_core"])
+    assert set(candidate_ids) < set(catalog["recommended_sets"]["legacy_paper1_core"])
 
 
-def test_family_recipe_policy_labels_candidate_set_as_not_signed_g4b() -> None:
+def test_family_recipe_policy_is_explicitly_historical() -> None:
     catalog = load_catalog()
     policy = catalog["global_policies"]["family_recipe_selection"]
 
     assert policy == {
         "policy_id": "sr2fpga-family-recipe-deny",
-        "policy_version": "1.0.0",
-        "status": "candidate_g4a_not_signed",
-        "deny_recommended_set": "paper1_candidate_primary_family_heldout",
-        "deny_reason": "candidate_primary_family_heldout",
+        "policy_version": "2.0.0",
+        "status": "historical_development_only",
+        "deny_recommended_set": "legacy_candidate_primary_family_heldout",
+        "deny_reason": "historical_family_recipe_restriction",
     }

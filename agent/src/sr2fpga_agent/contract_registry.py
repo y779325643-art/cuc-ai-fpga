@@ -8,14 +8,23 @@ from pathlib import Path, PurePosixPath
 from typing import Any
 
 from jsonschema import Draft202012Validator
+from referencing import Registry, Resource
 
 from sr2fpga_agent.repository_paths import RepositoryPaths, file_identity
 
 
 _MANIFEST_CACHE: dict[tuple[str, int, int], dict[str, Any]] = {}
 _SCHEMA_CACHE: dict[tuple[str, int, int], dict[str, Any]] = {}
-_VALIDATOR_CACHE: dict[tuple[str, int, int], Draft202012Validator] = {}
+_VALIDATOR_CACHE: dict[tuple[tuple[str, int, int], ...], Draft202012Validator] = {}
 _RESOLVED_CACHE: dict[str, Path] = {}
+
+# Only repository-owned, registered dependencies may resolve external $ref URIs.
+_SCHEMA_DEPENDENCIES = {
+    "development_public_boundary": ("project_contract_2_1",),
+    "development_public_context_v2": ("development_public_boundary", "project_contract_2_1"),
+    "pc21_repair_proposal": ("design_proposal_2_1",),
+    "pc21_cluster_analysis": ("pc21_analysis_policy",),
+}
 
 
 @dataclass(frozen=True)
@@ -24,9 +33,10 @@ class RegisteredContract:
     version: str
     path: Path
     document: dict[str, Any]
+    dependencies: tuple["RegisteredContract", ...] = ()
 
     def validate(self, payload: Any) -> tuple[str, ...]:
-        validator = _cached_validator(self.path, self.document)
+        validator = _cached_validator(self.path, self.document, self.dependencies)
         errors = sorted(
             validator.iter_errors(payload),
             key=lambda error: (
@@ -67,6 +77,9 @@ class ContractRegistry:
         document = _cached_schema(path)
         version_field = {
             "system_his": "schema_version",
+            # PC 2.1 carries the active serialization identity in the same
+            # model-visible field the runtime checks.
+            "project_contract_2_1": "schema_version",
             "requirement_audit": "audit_version",
         }.get(key, "contract_version")
         declared = (
@@ -77,12 +90,20 @@ class ContractRegistry:
         if key == "pc_decisions":
             # The decision body has no model-writable version field.
             declared = document.get("x-contract-version")
+        elif key == "design_proposal_2_1":
+            # The model-authored design projection is a `$ref` wrapper with no
+            # writable version field; `$id` is the only identity it declares.
+            declared = document.get("$id")
         if declared != version:
             raise ValueError(
                 f"registered contract {key!r} version {version!r} does not "
                 f"match schema const {declared!r}"
             )
-        return RegisteredContract(key, version, path, document)
+        dependencies = tuple(
+            self.load_schema(dependency)
+            for dependency in _SCHEMA_DEPENDENCIES.get(key, ())
+        )
+        return RegisteredContract(key, version, path, document, dependencies)
 
 
 def _resolved(path: Path) -> Path:
@@ -119,13 +140,23 @@ def _cached_schema(path: Path) -> dict[str, Any]:
     return document
 
 
-def _cached_validator(path: Path, document: dict[str, Any]) -> Draft202012Validator:
+def _cached_validator(
+    path: Path,
+    document: dict[str, Any],
+    dependencies: tuple[RegisteredContract, ...] = (),
+) -> Draft202012Validator:
     """Reuse one validator per contract file state; iter_errors does not mutate it."""
 
-    identity = file_identity(path)
+    identity = (file_identity(path), *(file_identity(dep.path) for dep in dependencies))
     validator = _VALIDATOR_CACHE.get(identity)
     if validator is None:
-        validator = Draft202012Validator(document)
+        # Registry's default retriever refuses unknown resources; no network
+        # fallback. The version/path checks above apply to every dependency.
+        resources = Registry().with_resources(
+            (dep.document["$id"], Resource.from_contents(dep.document))
+            for dep in dependencies
+        )
+        validator = Draft202012Validator(document, registry=resources)
         _VALIDATOR_CACHE[identity] = validator
     return validator
 

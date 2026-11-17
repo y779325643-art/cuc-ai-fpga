@@ -1,0 +1,9 @@
+{
+  "contract_version": "pc21-development-target-v1",
+  "target_id": "public-rules-declarations-only",
+  "language": "systemverilog",
+  "synthesis_scope": "generic_yosys",
+  "clock_period_ns": 10,
+  "tool_timeout_seconds": 10,
+  "max_simulation_cycles": 64
+}

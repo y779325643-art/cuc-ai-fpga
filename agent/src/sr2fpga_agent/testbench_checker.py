@@ -48,8 +48,8 @@ def build_oracle_strength(
     }
 
 
-def oracle_strength_threshold(task_type: str) -> float:
-    """Return the Line A mutation-score threshold for a supported task family."""
+def oracle_strength_threshold(task_type: str) -> float | None:
+    """Return the legacy threshold, or None when the family has none defined."""
     try:
         family = task_family_spec_for_family_id(family_id_for_task_type(task_type))
     except KeyError:
@@ -62,7 +62,8 @@ def oracle_strength_threshold(task_type: str) -> float:
 
 def oracle_strength_ready(task_type: str, mutation_score: float) -> bool:
     """Determine whether an oracle meets its task family's Line A threshold."""
-    return mutation_score >= oracle_strength_threshold(task_type)
+    threshold = oracle_strength_threshold(task_type)
+    return threshold is not None and mutation_score >= threshold
 
 
 def _mutation_outcome(status: str | bool | None) -> str | None:

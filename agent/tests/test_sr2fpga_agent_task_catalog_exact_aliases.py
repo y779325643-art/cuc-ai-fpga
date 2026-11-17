@@ -25,12 +25,12 @@ class ExactTaskFamilyAliasTests(unittest.TestCase):
 
         self.assertIsInstance(policy, FamilyRecipeDenyPolicy)
         self.assertEqual(policy.policy_id, "sr2fpga-family-recipe-deny")
-        self.assertEqual(policy.policy_version, "1.0.0")
-        self.assertEqual(policy.catalog_version, "0.2.2")
-        self.assertEqual(policy.status, "candidate_g4a_not_signed")
+        self.assertEqual(policy.policy_version, "2.0.0")
+        self.assertEqual(policy.catalog_version, "0.4.0")
+        self.assertEqual(policy.status, "historical_development_only")
         self.assertEqual(
             policy.recommended_set,
-            "paper1_candidate_primary_family_heldout",
+            "legacy_candidate_primary_family_heldout",
         )
         self.assertEqual(
             policy.family_ids,
@@ -41,7 +41,7 @@ class ExactTaskFamilyAliasTests(unittest.TestCase):
                 "sobel_threshold",
             ),
         )
-        self.assertEqual(policy.deny_reason, "candidate_primary_family_heldout")
+        self.assertEqual(policy.deny_reason, "historical_family_recipe_restriction")
         self.assertIsNotNone(re.fullmatch(r"[0-9a-f]{64}", policy.policy_sha256))
 
     def test_candidate_primary_heldout_set_contains_family_ids_not_topology_aliases(self) -> None:

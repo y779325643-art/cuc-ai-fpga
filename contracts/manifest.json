@@ -1,6 +1,26 @@
 {
   "contract_registry_version": "1.0",
   "contracts": {
+    "development_public_context_v2": {
+      "version": "development-public-context-v2",
+      "path": "contracts/episode-pack/development-public-context-v2.schema.json"
+    },
+    "pc21_development_capability": {
+      "version": "pc21-development-capability-v1",
+      "path": "contracts/pc/2.1/development-capability-v1.schema.json"
+    },
+    "pc21_development_target": {
+      "version": "pc21-development-target-v1",
+      "path": "contracts/pc/2.1/development-target-v1.schema.json"
+    },
+    "pc21_behavior_bundle": {
+      "version": "pc21-behavior-bundle-v1",
+      "path": "contracts/pc/2.1/behavior-bundle-v1.schema.json"
+    },
+    "development_public_boundary": {
+      "version": "development-public-boundary-v1",
+      "path": "contracts/episode-pack/development-public-boundary-v1.schema.json"
+    },
     "pc_assembly_execution": {
       "version": "pc-assembly-execution-v1",
       "path": "contracts/pc/pc-assembly-execution-v1.schema.json"
@@ -12,6 +32,14 @@
     "pc_assembly_record": {
       "version": "pc-assembly-record-v1",
       "path": "contracts/pc/pc-assembly-record-v1.schema.json"
+    },
+    "project_contract_2_1": {
+      "version": "sr2fpga-pc-2.1",
+      "path": "contracts/pc/2.1/project-contract-2.1.schema.json"
+    },
+    "design_proposal_2_1": {
+      "version": "urn:sr2fpga:pc-design:2.1",
+      "path": "contracts/pc/2.1/design-proposal-2.1.schema.json"
     },
     "unparsed_system_his_output": {
       "version": "unparsed-system-his-output-v1",
@@ -268,6 +296,46 @@
     "task_catalog": {
       "version": "v0.2",
       "path": "contracts/task-catalog/sr2fpga-task-catalog-v0.2.json"
+    },
+    "pc21_project_proposal": {
+      "version": "pc21-project-proposal-v1",
+      "path": "contracts/execution/pc21-project-proposal-v1.schema.json"
+    },
+    "pc21_repair_proposal": {
+      "version": "pc21-repair-proposal-v1",
+      "path": "contracts/execution/pc21-repair-proposal-v1.schema.json"
+    },
+    "pc21_analysis_manifest": {
+      "version": "pc21-analysis-manifest-v1",
+      "path": "contracts/execution/pc21-analysis-manifest-v1.schema.json"
+    },
+    "pc21_analysis_results": {
+      "version": "pc21-analysis-results-v1",
+      "path": "contracts/execution/pc21-analysis-results-v1.schema.json"
+    },
+    "pc21_analysis_policy": {
+      "version": "pc21-analysis-policy-v1",
+      "path": "contracts/execution/pc21-analysis-policy-v1.schema.json"
+    },
+    "pc21_runtime_config": {
+      "version": "pc21-runtime-config-v1",
+      "path": "contracts/execution/pc21-runtime-config-v1.schema.json"
+    },
+    "pc21_model_replay": {
+      "version": "pc21-model-replay-v1",
+      "path": "contracts/execution/pc21-model-replay-v1.schema.json"
+    },
+    "pc21_runtime_report": {
+      "version": "pc21-runtime-report-v1",
+      "path": "contracts/execution/pc21-runtime-report-v1.schema.json"
+    },
+    "pc21_cluster_analysis": {
+      "version": "pc21-cluster-analysis-v1",
+      "path": "contracts/execution/pc21-cluster-analysis-v1.schema.json"
+    },
+    "pc21_public_feedback_v2": {
+      "version": "pc21-public-feedback-v2",
+      "path": "contracts/execution/pc21-public-feedback-v2.schema.json"
     }
   }
 }

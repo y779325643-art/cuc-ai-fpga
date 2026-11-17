@@ -1,0 +1,14 @@
+{
+  "contract_version": "pc21-development-capability-v1",
+  "limits": {
+    "max_instances": 8,
+    "max_hierarchy_depth": 4,
+    "max_width": 128,
+    "max_tensor_elements": 64,
+    "supported_reset_kinds": [
+      "none",
+      "sync"
+    ],
+    "max_clock_domains": 2
+  }
+}

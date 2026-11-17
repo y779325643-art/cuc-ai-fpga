@@ -1,0 +1,1234 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc-design:2.0",
+  "title": "PC 2.0 model-authored design projection",
+  "$ref": "#/$defs/design",
+  "$defs": {
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_]*$",
+      "maxLength": 64
+    },
+    "content_ref": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      },
+      "required": [
+        "id",
+        "sha256"
+      ],
+      "additionalProperties": false
+    },
+    "bindings": {
+      "type": "object",
+      "properties": {
+        "requirements": {
+          "$ref": "#/$defs/content_ref"
+        },
+        "target_profile": {
+          "$ref": "#/$defs/content_ref"
+        },
+        "capability_profile": {
+          "$ref": "#/$defs/content_ref"
+        }
+      },
+      "required": [
+        "requirements",
+        "target_profile",
+        "capability_profile"
+      ],
+      "additionalProperties": false,
+      "description": "Controller-owned byte-hash bindings. The model emits only design. Schema alone does not authenticate ownership."
+    },
+    "nat_expr": {
+      "description": "Bounded dimension expression, not HDL or Python. clog2(1)=0; zero widths are invalid after evaluation.",
+      "oneOf": [
+        {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        {
+          "type": "object",
+          "properties": {
+            "param": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "param"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "enum": [
+                "add",
+                "sub",
+                "mul",
+                "ceil_div",
+                "min",
+                "max"
+              ]
+            },
+            "args": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/nat_expr"
+              },
+              "minItems": 2,
+              "maxItems": 2
+            }
+          },
+          "required": [
+            "op",
+            "args"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "clog2"
+            },
+            "arg": {
+              "$ref": "#/$defs/nat_expr"
+            }
+          },
+          "required": [
+            "op",
+            "arg"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "parameter": {
+      "type": "object",
+      "properties": {
+        "minimum": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "maximum": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        }
+      },
+      "required": [
+        "minimum",
+        "maximum"
+      ],
+      "additionalProperties": false
+    },
+    "scalar_type": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "bits"
+            },
+            "width": {
+              "$ref": "#/$defs/nat_expr"
+            }
+          },
+          "required": [
+            "kind",
+            "width"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "uint"
+            },
+            "width": {
+              "$ref": "#/$defs/nat_expr"
+            }
+          },
+          "required": [
+            "kind",
+            "width"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "sint"
+            },
+            "width": {
+              "$ref": "#/$defs/nat_expr"
+            }
+          },
+          "required": [
+            "kind",
+            "width"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "fixed"
+            },
+            "width": {
+              "$ref": "#/$defs/nat_expr"
+            },
+            "signed": {
+              "type": "boolean"
+            },
+            "fraction_bits": {
+              "$ref": "#/$defs/nat_expr"
+            }
+          },
+          "required": [
+            "kind",
+            "width",
+            "signed",
+            "fraction_bits"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "field": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "$ref": "#/$defs/identifier"
+        },
+        "type": {
+          "$ref": "#/$defs/data_type"
+        }
+      },
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false
+    },
+    "data_type": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/scalar_type"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "record"
+            },
+            "fields": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/field"
+              },
+              "minItems": 1
+            }
+          },
+          "required": [
+            "kind",
+            "fields"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "description": "Fields are ordered, first field in least significant bits. Fixed-point means raw integer times 2^-fraction_bits, without implied rounding."
+    },
+    "reset": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "sync"
+            },
+            "polarity": {
+              "enum": [
+                "active_low",
+                "active_high"
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "polarity"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "async"
+            },
+            "polarity": {
+              "enum": [
+                "active_low",
+                "active_high"
+              ]
+            },
+            "release": {
+              "const": "synchronous_to_domain"
+            }
+          },
+          "required": [
+            "kind",
+            "polarity",
+            "release"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "domain": {
+      "type": "object",
+      "properties": {
+        "clock": {
+          "enum": [
+            "rising",
+            "none"
+          ]
+        },
+        "reset": {
+          "$ref": "#/$defs/reset"
+        }
+      },
+      "required": [
+        "clock",
+        "reset"
+      ],
+      "additionalProperties": false,
+      "description": "A local timing-domain slot. clock=none preserves domain identity without consuming a clock pin. It must use reset kind=none."
+    },
+    "port": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "value"
+            },
+            "direction": {
+              "enum": [
+                "input",
+                "output"
+              ]
+            },
+            "type": {
+              "$ref": "#/$defs/data_type"
+            },
+            "domain": {
+              "oneOf": [
+                {
+                  "$ref": "#/$defs/identifier"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "required": [
+            "kind",
+            "direction",
+            "type",
+            "domain"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "stream"
+            },
+            "direction": {
+              "enum": [
+                "input",
+                "output"
+              ]
+            },
+            "protocol": {
+              "const": "ready_valid_v1"
+            },
+            "payload": {
+              "$ref": "#/$defs/data_type"
+            },
+            "domain": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "kind",
+            "direction",
+            "protocol",
+            "payload",
+            "domain"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "signature_fields": {
+      "type": "object",
+      "properties": {
+        "parameters": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/parameter"
+          },
+          "minProperties": 0
+        },
+        "domains": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/domain"
+          },
+          "minProperties": 0
+        },
+        "ports": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/port"
+          },
+          "minProperties": 0
+        }
+      },
+      "required": [
+        "parameters",
+        "domains",
+        "ports"
+      ],
+      "additionalProperties": false
+    },
+    "signature": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "const": "requirement_boundary"
+            }
+          },
+          "required": [
+            "source"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "source": {
+              "const": "declared"
+            },
+            "parameters": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/identifier"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/parameter"
+              },
+              "minProperties": 0
+            },
+            "domains": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/identifier"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/domain"
+              },
+              "minProperties": 0
+            },
+            "ports": {
+              "type": "object",
+              "propertyNames": {
+                "$ref": "#/$defs/identifier"
+              },
+              "additionalProperties": {
+                "$ref": "#/$defs/port"
+              },
+              "minProperties": 0
+            }
+          },
+          "required": [
+            "source",
+            "parameters",
+            "domains",
+            "ports"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "endpoint": {
+      "type": "object",
+      "properties": {
+        "instance": {
+          "$ref": "#/$defs/identifier"
+        },
+        "port": {
+          "$ref": "#/$defs/identifier"
+        }
+      },
+      "required": [
+        "instance",
+        "port"
+      ],
+      "additionalProperties": false,
+      "description": "The reserved instance self means this module boundary. Other names resolve only to immediate child instances."
+    },
+    "source": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "endpoint"
+            },
+            "endpoint": {
+              "$ref": "#/$defs/endpoint"
+            }
+          },
+          "required": [
+            "kind",
+            "endpoint"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "constant"
+            },
+            "type": {
+              "$ref": "#/$defs/scalar_type"
+            },
+            "raw_value": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "kind",
+            "type",
+            "raw_value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "net": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "$ref": "#/$defs/source"
+        },
+        "sinks": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/endpoint"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "source",
+        "sinks"
+      ],
+      "additionalProperties": false,
+      "description": "The single wiring authority. Streams require exactly one sink; ordinary values may fan out. No implicit buffers, conversion, arbitration or CDC."
+    },
+    "instance": {
+      "type": "object",
+      "properties": {
+        "module": {
+          "$ref": "#/$defs/identifier"
+        },
+        "parameters": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/nat_expr"
+          },
+          "minProperties": 0
+        },
+        "domains": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/identifier"
+          },
+          "minProperties": 0
+        }
+      },
+      "required": [
+        "module",
+        "parameters",
+        "domains"
+      ],
+      "additionalProperties": false
+    },
+    "register_reset": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "value"
+            },
+            "raw_value": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "required": [
+            "kind",
+            "raw_value"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "initialization": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "none"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "zero"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "public_asset"
+            },
+            "asset_id": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "kind",
+            "asset_id"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "state": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "register"
+            },
+            "domain": {
+              "$ref": "#/$defs/identifier"
+            },
+            "type": {
+              "$ref": "#/$defs/data_type"
+            },
+            "reset": {
+              "$ref": "#/$defs/register_reset"
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          },
+          "required": [
+            "kind",
+            "domain",
+            "type",
+            "reset"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "memory"
+            },
+            "domain": {
+              "$ref": "#/$defs/identifier"
+            },
+            "element_type": {
+              "$ref": "#/$defs/scalar_type"
+            },
+            "depth": {
+              "$ref": "#/$defs/nat_expr"
+            },
+            "organization": {
+              "enum": [
+                "single_port",
+                "simple_dual_port"
+              ]
+            },
+            "read_latency_cycles": {
+              "$ref": "#/$defs/nat_expr"
+            },
+            "read_during_write": {
+              "enum": [
+                "old_data",
+                "new_data",
+                "hold_output",
+                "forbidden"
+              ]
+            },
+            "initialization": {
+              "$ref": "#/$defs/initialization"
+            },
+            "reset_contents": {
+              "const": "preserve"
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          },
+          "required": [
+            "kind",
+            "domain",
+            "element_type",
+            "depth",
+            "organization",
+            "read_latency_cycles",
+            "read_during_write",
+            "initialization",
+            "reset_contents"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "fifo"
+            },
+            "domain": {
+              "$ref": "#/$defs/identifier"
+            },
+            "element_type": {
+              "$ref": "#/$defs/data_type"
+            },
+            "depth": {
+              "$ref": "#/$defs/nat_expr"
+            },
+            "read_mode": {
+              "enum": [
+                "registered",
+                "fallthrough"
+              ]
+            },
+            "full_exchange": {
+              "enum": [
+                "allow_push_with_pop",
+                "block_push"
+              ]
+            },
+            "empty_exchange": {
+              "enum": [
+                "bypass",
+                "store_only"
+              ]
+            },
+            "reset_contents": {
+              "const": "invalidate"
+            },
+            "purpose": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 8192
+            }
+          },
+          "required": [
+            "kind",
+            "domain",
+            "element_type",
+            "depth",
+            "read_mode",
+            "full_exchange",
+            "empty_exchange",
+            "reset_contents"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "numeric_rule": {
+      "type": "object",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/identifier"
+        },
+        "operation_boundary": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "result_type": {
+          "$ref": "#/$defs/scalar_type"
+        },
+        "rounding": {
+          "enum": [
+            "toward_zero",
+            "floor",
+            "nearest_even"
+          ]
+        },
+        "overflow": {
+          "enum": [
+            "wrap",
+            "saturate",
+            "error"
+          ]
+        }
+      },
+      "required": [
+        "fact",
+        "operation_boundary",
+        "result_type",
+        "rounding",
+        "overflow"
+      ],
+      "additionalProperties": false,
+      "description": "An implementation commitment, not an evaluator result or a behavioral program. It cannot override the referenced public fact."
+    },
+    "timing": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "latency"
+            },
+            "fact": {
+              "$ref": "#/$defs/identifier"
+            },
+            "input": {
+              "$ref": "#/$defs/identifier"
+            },
+            "output": {
+              "$ref": "#/$defs/identifier"
+            },
+            "domain": {
+              "$ref": "#/$defs/identifier"
+            },
+            "start_event": {
+              "const": "accept"
+            },
+            "end_event": {
+              "enum": [
+                "offer",
+                "accept"
+              ]
+            },
+            "min_cycles": {
+              "$ref": "#/$defs/nat_expr"
+            },
+            "max_cycles": {
+              "$ref": "#/$defs/nat_expr"
+            },
+            "under_assumptions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/identifier"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "kind",
+            "fact",
+            "input",
+            "output",
+            "domain",
+            "start_event",
+            "end_event",
+            "min_cycles",
+            "max_cycles",
+            "under_assumptions"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "initiation_interval"
+            },
+            "fact": {
+              "$ref": "#/$defs/identifier"
+            },
+            "input": {
+              "$ref": "#/$defs/identifier"
+            },
+            "domain": {
+              "$ref": "#/$defs/identifier"
+            },
+            "max_cycles": {
+              "$ref": "#/$defs/nat_expr"
+            },
+            "under_assumptions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/identifier"
+              },
+              "minItems": 0
+            }
+          },
+          "required": [
+            "kind",
+            "fact",
+            "input",
+            "domain",
+            "max_cycles",
+            "under_assumptions"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "structural_body": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "structural"
+        },
+        "instances": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/instance"
+          },
+          "minProperties": 0
+        },
+        "nets": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/net"
+          },
+          "minProperties": 0
+        },
+        "unused_values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/endpoint"
+          },
+          "minItems": 0
+        }
+      },
+      "required": [
+        "kind",
+        "instances",
+        "nets"
+      ],
+      "additionalProperties": false
+    },
+    "behavioral_body": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "const": "behavioral"
+        },
+        "execution": {
+          "enum": [
+            "combinational",
+            "clocked"
+          ]
+        },
+        "intent": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        },
+        "states": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/state"
+          },
+          "minProperties": 0
+        },
+        "numeric_rules": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/numeric_rule"
+          },
+          "minProperties": 0
+        },
+        "timing": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/timing"
+          },
+          "minProperties": 0
+        }
+      },
+      "required": [
+        "kind",
+        "execution",
+        "intent"
+      ],
+      "additionalProperties": false
+    },
+    "module": {
+      "type": "object",
+      "properties": {
+        "signature": {
+          "$ref": "#/$defs/signature"
+        },
+        "implementation": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/structural_body"
+            },
+            {
+              "$ref": "#/$defs/behavioral_body"
+            }
+          ]
+        }
+      },
+      "required": [
+        "signature",
+        "implementation"
+      ],
+      "additionalProperties": false
+    },
+    "trace_target": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "module"
+            },
+            "module": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "kind",
+            "module"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "port"
+            },
+            "module": {
+              "$ref": "#/$defs/identifier"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "kind",
+            "module",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "state"
+            },
+            "module": {
+              "$ref": "#/$defs/identifier"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "kind",
+            "module",
+            "name"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "net"
+            },
+            "module": {
+              "$ref": "#/$defs/identifier"
+            },
+            "name": {
+              "$ref": "#/$defs/identifier"
+            }
+          },
+          "required": [
+            "kind",
+            "module",
+            "name"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "requirement_mapping": {
+      "type": "object",
+      "properties": {
+        "fact": {
+          "$ref": "#/$defs/identifier"
+        },
+        "targets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/trace_target"
+          },
+          "minItems": 1
+        }
+      },
+      "required": [
+        "fact",
+        "targets"
+      ],
+      "additionalProperties": false,
+      "description": "Reference coverage only, not entailment or verification. Fact roles and verification stages are owned by the requirements object."
+    },
+    "design": {
+      "type": "object",
+      "properties": {
+        "entry": {
+          "$ref": "#/$defs/identifier"
+        },
+        "modules": {
+          "type": "object",
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/module"
+          },
+          "minProperties": 1
+        },
+        "requirement_map": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/requirement_mapping"
+          },
+          "minItems": 0
+        },
+        "notes": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 8192
+        }
+      },
+      "required": [
+        "entry",
+        "modules",
+        "requirement_map"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

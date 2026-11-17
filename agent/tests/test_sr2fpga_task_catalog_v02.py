@@ -14,6 +14,12 @@ from sr2fpga_agent.task_catalog import (
 
 CATALOG_PATH = task_catalog.CATALOG_PATH
 EXPECTED_FAMILY_IDS = {
+    "llm_quantized_qkv_projection",
+    "llm_kv_cache_decode_attention",
+    "llm_gated_ffn",
+    "ai_dw_pw_block",
+    "ai_quantized_residual_block",
+    "ai_tiled_gemm_pipeline",
     "async_fifo_cdc",
     "baud_generator",
     "binary_bcd_counter",
@@ -142,7 +148,7 @@ def test_catalog_repairs_clock_divider_t7_and_l3_semantics():
     catalog = _load_catalog()
     families = {item["family_id"]: item for item in catalog["task_families"]}
 
-    assert catalog["catalog_version"] == "0.2.2"
+    assert catalog["catalog_version"] == "0.4.0"
     assert families["clock_divider"]["core_modules"] == ["clock_divider"]
     assert not any(
         "sobel" in module for module in families["clock_divider"]["core_modules"]
@@ -206,6 +212,14 @@ def test_task_catalog_v02_has_stable_family_metadata_and_l4_policy():
         assert target_l_level.get("l5_policy") in allowed_enums["l5_policy"], family["family_id"]
         assert isinstance(family["oracle_kind"], list) and family["oracle_kind"], family["family_id"]
         assert set(family["oracle_kind"]) <= set(allowed_enums["oracle_kind"]), family["family_id"]
+        if family.get("pc_format") == "sr2fpga-pc-2.1":
+            assert family["qualification_status"] == "not_ready"
+            expected_status = "partial" if family["family_id"].startswith("llm_") else "future"
+            assert family["implementation_status"] == expected_status
+            assert family["mutation_suite"] == []
+            assert family["mutation_score_threshold"] is None
+            assert not family["current_generator_aliases"]
+            continue
         assert isinstance(family["mutation_suite"], list) and family["mutation_suite"], family["family_id"]
         assert isinstance(family["mutation_score_threshold"], (int, float)), family["family_id"]
         assert 0.0 <= family["mutation_score_threshold"] <= 1.0, family["family_id"]
@@ -302,7 +316,7 @@ def test_task_catalog_runtime_exposes_generation_and_oracle_contract():
         "off_by_one_latency",
     )
     assert spec.mutation_score_threshold == 0.85
-    assert spec.benchmark_role == "paper1_core"
+    assert spec.benchmark_role == "development_regression"
 
 
 def test_task_catalog_runtime_represents_each_previously_omitted_current_family():

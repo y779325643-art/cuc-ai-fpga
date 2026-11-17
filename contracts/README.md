@@ -1,9 +1,87 @@
 # SR2FPGA Contracts
 
+Current PC2.1 development exchange boundaries also include runtime config/report,
+model project/repair proposals, bounded public-feedback v2, explicit synthetic replay fixtures, and analysis
+manifest/results/policy/report under `execution/`. They are registered only in
+[`manifest.json`](manifest.json); see the [current runtime](../agent/src/sr2fpga_agent/execution/README.md).
+Their scope flags do not authorize official experiments or promote local tests.
+
+PC2.1 development now registers `development-public-context-v2`,
+`pc21-development-capability-v1`, `pc21-development-target-v1`, and
+`pc21-behavior-bundle-v1`. The public context extends the existing public
+projection with the PC2.1 boundary, explicit fact roles and hash-bound assets;
+it is development-only and grants no readiness or official outcome credit.
+See the [PC development guide](../agent/src/sr2fpga_agent/pc/README.md).
+
 > [Terminology, 2026-09-08](../docs/specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
-> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> now serialized as `sr2fpga-pc-2.1`; FPGA Project Package (FPP).
 > DSC names the design-space contract; DP names one design point. Internal
 > identifiers and historical evidence names remain unchanged.
+
+Active schemas are registered by [`manifest.json`](manifest.json) and resolved
+by key through `ContractRegistry`; projects exchange versioned files rather than
+importing each other. Registration proves a format exists — never that a runtime
+path implements it, that a family is qualified, or that a result is official.
+
+Development public boundary (2026-09-16):
+[`development-public-boundary-v1.schema.json`](episode-pack/development-public-boundary-v1.schema.json)
+is registered as `development_public_boundary`, with a
+[shape-only example](episode-pack/development-public-boundary-v1.example.json).
+The wrapper requires `validation_scope: boundary_shape_only`. Its boundary has
+`rtl_top`, `signature`, concrete `parameter_values` and `abi`; value mappings
+use `signal`, stream mappings use `payload`/`valid`/`ready`, and domain mappings
+explicitly name clock/reset pins or use null for nonconsuming slots.
+
+Signature types reuse the registered PC2.1 schema by URI, resolved only from
+local registered dependencies through `ContractRegistry`. No duplicate type
+schema or network fallback is used. Dependency file identity participates in
+validator caching. Use `ContractRegistry().load_schema("development_public_boundary").validate(payload)`;
+an empty error tuple means shape conformance only. Bare JSON Schema readers must
+also supply the PC2.1 resource locally.
+
+For the first semantic slice, call
+`sr2fpga_agent.public_boundary.check_public_boundary_ports(payload)`.
+It runs the registered schema first, then checks exact logical-port/ABI-map
+coverage and stream/value mapping form. It returns a tuple of diagnostics;
+an empty tuple covers only those checks and does not mutate the document or
+change its `boundary_shape_only` format marker into a readiness verdict.
+The separate `check_public_boundary_domains(payload)` entry checks schema,
+exact domain-map coverage, clock/reset pin presence (name versus null), and the
+rule that `clock: none` requires `reset.kind: none`. Both entry points live in
+`sr2fpga_agent.public_boundary` and return scoped diagnostics without mutation.
+Passing the domain check does not qualify async reset, prove reset waveforms,
+or establish target support. Port-to-domain references, parameter ranges,
+physical-name collisions and reserved HDL words still require further checks.
+JSON number spelling and duplicate-key rejection belong to the future strict
+file reader. This schema does not register `public-context-v2` or a ready AI task,
+and the PC CLI's opaque-source loader does not yet consume it. It is a reusable
+boundary fragment for that future context, not a second source of requirements.
+
+**On the gate names below.** Many section and field names still use the
+`G1`-`G4b` / `RQ0` / `M6` vocabulary of `paper1-freeze-v1.7` and `paper1-v1.8`,
+because those strings are frozen inside registered schemas and recorded
+evidence. The current
+[`paper1-v2.2`](../docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md)
+plan replaces that sequence with seven work packages `WP0`-`WP6`, makes the
+requirement audit and EA optional extensions that default to disabled, and makes
+`M5-M1@B4` and `M4-M3@initial` the two primary comparisons. **Contract
+identifiers are not renamed to match** — renaming them would invalidate existing
+artifacts. Read a `g3_` prefix as an identifier, not as a claim about the
+current work-package sequence.
+
+| Directory | Registered | Holds |
+| --- | --- | --- |
+| [`pc/2.1/`](pc/2.1/) | **yes** | **The current Project Contract serialization**, `sr2fpga-pc-2.1`: complete PC and model-authored design projection |
+| `system-his/` | yes | The superseded serialization, W1-W10 matrix, capability and compatibility policy. Registered so existing artifacts stay readable; barred from new runtime paths |
+| [`pc/`](pc/README.md) | yes | The System-HIS-era PC decision interface: decision, execution-source, assembly-record. Superseded by PC 2.1, still registered |
+| [`pc/2.0/`](pc/2.0/README.md) | **no** | The PC 2.0 format design candidate — never adopted, resolved by nothing |
+| `evaluation/` | yes | Public/hidden evaluation, terminal candidate, outcome and acceptance records |
+| `requirement-audit/` | yes | The A_req / OASA case, event, replay, outcome and witness formats |
+| `episode-pack/`, `accounting/`, `trajectory/` | yes | Episode identity, three-view cost accounting, attempt and trajectory lineage |
+| `project-envelope/`, `project-package/`, `public-evaluation-candidate/`, `terminal-candidate/` | yes | FPP delivery, candidate submission and sealing |
+| `training-release/`, `training-views/` | yes | Retained non-Paper-1 infrastructure |
+| `task-catalog/` | yes | The task family catalog — **intent, not capability** |
+| `tests/`, `tools/` | n/a | Registry conformance tests and maintenance tooling |
 
 Natural-model M4 pre-candidate stops use
 `evaluation/development-pre-candidate-stop-outcome-v3.schema.json`, retaining
@@ -12,7 +90,13 @@ The reducer replays frozen H stages, method events and raw cost lineage.
 Legacy v1/v2 remain synthetic-only and require one local call. All three remain
 excluded development records without official or pass-credit authority.
 
-## G3 development closure contracts
+## Development closure contracts (`g3_` identifiers)
+
+> These close **development conformance only**. Their acceptance artifacts set
+> `official_outcome=false`, `official_authority=false`,
+> `pass_credit_authority=false` and `g4b_authorized=false`, and nothing here
+> grants an official outcome. Under v2.1 this work sits in `WP2`/`WP3`; the
+> `g3_` identifiers are retained names, not the current sequence.
 
 The [PC decision interface v1](pc/README.md) adds separate decision, execution-source
 and assembly-record schemas. Its model payload excludes host-owned fields; its
@@ -52,11 +136,28 @@ intent. Current executable evidence remains in
 referenced stable artifacts. Do not infer verification from catalog
 `implementation_status`.
 
-The active
-[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
-requires schema/checker/fixture conformance and known catalog semantic defects
-to close before the M0-M5 official campaign. It targets ACM TRETS and does not
-train models.
+The current
+[`paper1-v2.2`](../docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md)
+research plan requires schema/checker/fixture conformance and known catalog
+semantic defects to close before the M0-M5 official campaign; its WP0 inventory
+records the catalog inconsistencies located so far.
+
+`pc/2.1/` holds the **registered** [PC 2.1](../docs/specs/PC-2.1-AI-stream-contract-design.zh.md)
+schemas: `project_contract_2_1` binds `schema_version: sr2fpga-pc-2.1`, and
+`design_proposal_2_1` binds `$id: urn:sr2fpga:pc-design:2.1` because that
+projection is a `$ref` wrapper carrying no version field. `ContractRegistry`
+resolves both and rejects PC 2.0 and System-HIS documents — PC 2.1 ships no
+reader, alias, or conversion path for either.
+
+Registration establishes format identity only. The current `pc/` implementation
+also provides typed public loading, listed configuration/tensor checks,
+deterministic structure construction and real-parser-protected composition.
+The [LLM case guide](../agent/src/sr2fpga_agent/tasks/README.md) documents current
+fixed controls. `reports/conformance.json` remains the historical PC 2.0
+70-test report and supplies no current PC2.1 or LLM benchmark result.
+
+`pc/2.0/` keeps the never-adopted PC 2.0 candidate schemas, deliberately
+unregistered.
 
 <a id="system-his-layer"></a>
 ## Project Contract Layer
@@ -67,6 +168,11 @@ train models.
   W1-W10 stage and applicability matrix
 - `system-his/system-his-compatibility-v1.json` — the canonical,
   legacy-quarantine, method-inapplicable, and unknown-representation policy
+
+System-HIS v1.2 is the **superseded** Project Contract serialization.
+[PC 2.1](pc/2.1/) replaced it on 2026-09-15 and shares no fields or conversion
+path with the schemas below. These remain registered so existing artifacts stay
+readable; new runtime paths must not use them.
 
 Project Contract uses three deliberately separate layers:
 
@@ -85,11 +191,22 @@ Project Contract uses three deliberately separate layers:
   metadata and does not enter the REQ2HIS prompt, Project Contract, or HIS2PROJECT
   input; only an `applied` decision contributes the recipe body to the REQ2HIS
   prompt. Direct-project and deterministic-reference methods do not record this
-  decision. The catalog records the candidate deny set and its policy
-  provenance; the set is marked `candidate_g4a_not_signed`, not as a signed G4b
-  split.
+  decision. This describes the legacy generation path. The catalog retains its
+  deny set as `legacy_candidate_primary_family_heldout`, with status
+  `historical_development_only`; it is not the new research split. PC2.1 core
+  family recipes are disabled. See the [catalog migration](task-catalog/README.md).
 
-## Requirement Audit / OASA (RQ0)
+## Requirement Audit / OASA (A_req)
+
+> **Optional extension, disabled by default under v2.1 section 12.1.** The core
+> keeps only the public fact provenance and the `ready` /
+> `needs_clarification` / `capability_gap` stop boundary before method
+> dispatch; the full audit — natural requirement clusters, gold dispositions,
+> allowed defaults, clarification answers, and its own sample size and
+> statistics — is a separate frozen study. Enabling it does not change the
+> M0-M5 denominator, and its outcomes can neither grant project pass credit nor
+> remove an official instance. These schemas stay registered so the extension
+> can be switched on without rebuilding the format layer.
 
 - `requirement-audit/requirement-audit-v1.schema.json`
 - `requirement-audit/ambiguity-case-manifest-v1.schema.json`

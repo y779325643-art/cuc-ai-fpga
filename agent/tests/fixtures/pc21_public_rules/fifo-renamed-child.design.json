@@ -1,0 +1,192 @@
+{
+  "entry": "Container",
+  "modules": {
+    "Container": {
+      "signature": {
+        "source": "requirement_boundary"
+      },
+      "implementation": {
+        "kind": "structural",
+        "instances": {
+          "stage": {
+            "module": "LocalQueue",
+            "parameters": {},
+            "domains": {
+              "local_clock": "clock_domain"
+            }
+          }
+        },
+        "nets": {
+          "receive": {
+            "source": {
+              "kind": "endpoint",
+              "endpoint": {
+                "instance": "self",
+                "port": "ingress"
+              }
+            },
+            "sinks": [
+              {
+                "instance": "stage",
+                "port": "put"
+              }
+            ]
+          },
+          "send": {
+            "source": {
+              "kind": "endpoint",
+              "endpoint": {
+                "instance": "stage",
+                "port": "get"
+              }
+            },
+            "sinks": [
+              {
+                "instance": "self",
+                "port": "egress"
+              }
+            ]
+          }
+        }
+      }
+    },
+    "LocalQueue": {
+      "signature": {
+        "parameters": {},
+        "domains": {
+          "local_clock": {
+            "clock": "rising",
+            "reset": {
+              "kind": "sync",
+              "polarity": "active_low"
+            }
+          }
+        },
+        "ports": {
+          "put": {
+            "kind": "stream",
+            "direction": "input",
+            "protocol": "ready_valid_v1",
+            "domain": "local_clock",
+            "payload": {
+              "kind": "tensor_beat",
+              "contract": "LocalPacket"
+            }
+          },
+          "get": {
+            "kind": "stream",
+            "direction": "output",
+            "protocol": "ready_valid_v1",
+            "domain": "local_clock",
+            "payload": {
+              "kind": "tensor_beat",
+              "contract": "LocalPacket"
+            }
+          }
+        },
+        "tensor_contracts": {
+          "LocalPacket": {
+            "shape": [
+              {
+                "axis": "N",
+                "extent": 1
+              },
+              {
+                "axis": "C",
+                "extent": 3
+              }
+            ],
+            "element": {
+              "kind": "sint",
+              "width": 8
+            },
+            "quantization": {
+              "kind": "integer"
+            },
+            "layout": {
+              "order": [
+                "N",
+                "C"
+              ],
+              "lane_axis": "C",
+              "lanes": 2,
+              "tail": "zero_pad_mask"
+            },
+            "sequence": {
+              "kind": "dense",
+              "frame_fact": "Frame",
+              "reset_fact": "Reset"
+            }
+          }
+        },
+        "source": "declared"
+      },
+      "implementation": {
+        "kind": "behavioral",
+        "execution": "clocked",
+        "intent": "Declaration-only complete-beat FIFO boundary; no implementation is supplied.",
+        "states": {
+          "storage_unit": {
+            "kind": "fifo",
+            "domain": "local_clock",
+            "element_type": {
+              "kind": "tensor_beat",
+              "contract": "LocalPacket"
+            },
+            "depth": 2,
+            "read_mode": "registered",
+            "full_exchange": "allow_push_with_pop",
+            "empty_exchange": "store_only",
+            "reset_contents": "invalidate"
+          }
+        },
+        "tensor_rules": {
+          "transfer": {
+            "kind": "identity",
+            "fact": "Relation",
+            "input": "put",
+            "output": "get"
+          }
+        },
+        "buffer_rules": {
+          "storage": {
+            "fact": "Relation",
+            "state": "storage_unit",
+            "input": "put",
+            "output": "get",
+            "capacity_unit": "beats"
+          }
+        }
+      }
+    }
+  },
+  "requirement_map": [
+    {
+      "fact": "Frame",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "LocalQueue"
+        }
+      ]
+    },
+    {
+      "fact": "Reset",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "LocalQueue"
+        }
+      ]
+    },
+    {
+      "fact": "Relation",
+      "targets": [
+        {
+          "kind": "module",
+          "module": "LocalQueue"
+        }
+      ]
+    }
+  ]
+}

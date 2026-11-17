@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:development-public-context:2",
+  "title": "Development PC 2.1 public task context",
+  "description": "Versioned development extension of the episode-pack public projection. This is the sole public requirement authority for this task; no readiness or official evaluation credit is implied.",
+  "type": "object", "additionalProperties": false,
+  "required": ["contract_version", "analysis_population", "requirement_id", "revision_id", "public_text", "boundary", "fact_records", "public_assets"],
+  "properties": {
+    "contract_version": {"const": "development-public-context-v2"},
+    "analysis_population": {"const": "development"},
+    "requirement_id": {"type": "string", "minLength": 1},
+    "revision_id": {"type": "string", "minLength": 1},
+    "public_text": {"type": "string", "minLength": 1},
+    "boundary": {"$ref": "urn:sr2fpga:development-public-boundary:1#/$defs/boundary"},
+    "fact_records": {"type": "array", "items": {"$ref": "#/$defs/fact"}},
+    "public_assets": {"type": "array", "items": {"$ref": "#/$defs/asset"}}
+  },
+  "$defs": {
+    "fact": {
+      "type": "object", "additionalProperties": false,
+      "required": ["fact_id", "value", "role", "required_mapping", "provenance", "source_ids"],
+      "properties": {
+        "fact_id": {"type": "string", "minLength": 1}, "value": true,
+        "role": {"enum": ["guarantee", "assumption"]}, "required_mapping": {"type": "boolean"},
+        "provenance": {"enum": ["user_explicit", "platform_default", "system_assumption"]},
+        "source_ids": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "minLength": 1}}
+      }
+    },
+    "asset": {
+      "type": "object", "additionalProperties": false,
+      "required": ["id", "path", "sha256", "size_bytes"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "path": {"type": "string", "minLength": 1},
+        "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+        "size_bytes": {"type": "integer", "minimum": 1}
+      }
+    }
+  }
+}

@@ -1,0 +1,329 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sr2fpga:pc21-runtime-config-v1",
+  "type": "object",
+  "properties": {
+    "contract_version": {
+      "const": "pc21-runtime-config-v1"
+    },
+    "research_plan_version": {
+      "const": "paper1-v2.3"
+    },
+    "population_id": {
+      "const": "llm_inference_subsystems_v1"
+    },
+    "analysis_population": {
+      "const": "development"
+    },
+    "campaign_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "case": {
+      "enum": [
+        "qkv",
+        "attention",
+        "ffn"
+      ]
+    },
+    "design_cluster_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "dependency_group_id": {
+      "anyOf": [
+        {
+          "type": "string",
+          "minLength": 1
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "semantic_instance_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "replicate_id": {
+      "type": "string",
+      "minLength": 1
+    },
+    "schedule_seed": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "public_directory": {
+      "type": "string",
+      "minLength": 1
+    },
+    "limits": {
+      "type": "object",
+      "properties": {
+        "max_total_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_total_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_single_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_context_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_public_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_final_public_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_hidden_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_memory_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_active_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_eda_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_cpu_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "max_total_input_tokens",
+        "max_total_output_tokens",
+        "max_single_output_tokens",
+        "max_context_tokens",
+        "max_public_tool_calls",
+        "max_final_public_tool_calls",
+        "max_hidden_tool_calls",
+        "max_memory_bytes",
+        "max_active_seconds",
+        "max_eda_seconds",
+        "max_cpu_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "final_limits": {
+      "type": "object",
+      "properties": {
+        "max_total_input_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_total_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_single_output_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_context_tokens": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_public_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_final_public_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_hidden_tool_calls": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_memory_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "max_active_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_eda_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "max_cpu_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      },
+      "required": [
+        "max_total_input_tokens",
+        "max_total_output_tokens",
+        "max_single_output_tokens",
+        "max_context_tokens",
+        "max_public_tool_calls",
+        "max_final_public_tool_calls",
+        "max_hidden_tool_calls",
+        "max_memory_bytes",
+        "max_active_seconds",
+        "max_eda_seconds",
+        "max_cpu_seconds"
+      ],
+      "additionalProperties": false
+    },
+    "tool_limits": {
+      "type": "object",
+      "properties": {
+        "timeout_seconds": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "memory_bytes": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cpu_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cpu_count": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "pids_limit": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_output_bytes": {
+          "type": "integer",
+          "minimum": 1
+        }
+      },
+      "required": [
+        "timeout_seconds",
+        "memory_bytes",
+        "cpu_seconds",
+        "cpu_count",
+        "pids_limit",
+        "max_output_bytes"
+      ],
+      "additionalProperties": false
+    },
+    "max_model_call_seconds": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "transport": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "replay"
+            },
+            "path": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "path"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "client_factory"
+            },
+            "factory": {
+              "type": "string",
+              "minLength": 1
+            },
+            "settings": {
+              "type": "object"
+            }
+          },
+          "required": [
+            "kind",
+            "factory",
+            "settings"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "backend": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "local_development"
+            }
+          },
+          "required": [
+            "kind"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "docker"
+            },
+            "image": {
+              "type": "string",
+              "minLength": 1
+            },
+            "user": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "kind",
+            "image"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "required": [
+    "contract_version",
+    "research_plan_version",
+    "population_id",
+    "analysis_population",
+    "campaign_id",
+    "case",
+    "design_cluster_id",
+    "dependency_group_id",
+    "semantic_instance_id",
+    "replicate_id",
+    "schedule_seed",
+    "public_directory",
+    "limits",
+    "final_limits",
+    "tool_limits",
+    "max_model_call_seconds",
+    "transport",
+    "backend"
+  ],
+  "additionalProperties": false
+}

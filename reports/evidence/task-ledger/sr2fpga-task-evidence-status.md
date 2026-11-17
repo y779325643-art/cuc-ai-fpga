@@ -2,14 +2,16 @@
 
 Generated from the task catalog and evidence ledger. Target intent, current implementation, and ledger-declared verification claims are reported separately.
 
+Paper 1 core uses the catalog's current research population. Aggregate tool/oracle counts below include historical families; they do not transfer qualification to the current AI population.
+
 ## Summary
 
 | Measure | Value |
 | --- | --- |
-| Catalog families | 71 |
-| Implemented families | 31 / 71 |
-| Paper 1 core implemented | 14 / 14 |
-| Paper 1 core mutation-qualified | 14 / 14 |
+| Catalog families | 77 |
+| Implemented families | 31 / 77 |
+| Paper 1 core implemented | 0 / 3 |
+| Paper 1 core mutation-qualified | 0 / 3 |
 | Mutation-qualified families | 21 |
 | Independent Python oracle qualified | 9 |
 | OpenXC7 L4 pass | 2 |
@@ -27,33 +29,33 @@ Generated from the task catalog and evidence ledger. Target intent, current impl
 | seven_seg_scan | module_family | T0 | smoke | reference_model |
 | pwm_generator | module_family | T0 | smoke | reference_model |
 | baud_generator | module_family | T0 | smoke | reference_model |
-| uart_tx | module_family | T0 | paper1_core | protocol_checker, transaction_scoreboard |
+| uart_tx | module_family | T0 | development_regression | protocol_checker, transaction_scoreboard |
 | uart_rx | module_family | T1 | eval_subset | protocol_checker, transaction_scoreboard |
-| uart_fifo_loopback | module_family | T1 | paper1_core | protocol_checker, transaction_scoreboard |
-| sync_fifo | module_family | T0 | paper1_core | transaction_scoreboard, protocol_checker |
+| uart_fifo_loopback | module_family | T1 | development_regression | protocol_checker, transaction_scoreboard |
+| sync_fifo | module_family | T0 | development_regression | transaction_scoreboard, protocol_checker |
 | async_fifo_cdc | module_family | T3 | eval_subset | structural_cdc_checker, transaction_scoreboard |
-| single_dual_port_ram | module_family | T0 | paper1_core | reference_model |
+| single_dual_port_ram | module_family | T0 | development_regression | reference_model |
 | vga_timing | module_family | T1 | eval_subset | protocol_checker |
 | pixel_generator_basic | module_family | T1 | eval_subset | frame_object_checker |
 | hdmi_tmds_basic | module_family | T4 | future | protocol_checker |
-| valid_ready_stream_stage | module_family | T2 | paper1_core | transaction_scoreboard, protocol_checker |
-| valid_ready_stream_accumulator | module_family | T2 | paper1_core | transaction_scoreboard, protocol_checker |
-| stream_fork_join | module_family | T2 | paper1_core | transaction_scoreboard, protocol_checker |
-| mac_array | module_family | T3 | paper1_core | python_numpy_golden |
-| matrix_vector_mac | module_family | T3 | paper1_core | python_numpy_golden, transaction_scoreboard |
-| fir_filter | module_family | T3 | paper1_core | python_numpy_golden, transaction_scoreboard |
-| spi_master | module_family | T1 | paper1_core | protocol_checker, transaction_scoreboard |
+| valid_ready_stream_stage | module_family | T2 | development_regression | transaction_scoreboard, protocol_checker |
+| valid_ready_stream_accumulator | module_family | T2 | development_regression | transaction_scoreboard, protocol_checker |
+| stream_fork_join | module_family | T2 | development_regression | transaction_scoreboard, protocol_checker |
+| mac_array | module_family | T3 | development_regression | python_numpy_golden |
+| matrix_vector_mac | module_family | T3 | development_regression | python_numpy_golden, transaction_scoreboard |
+| fir_filter | module_family | T3 | development_regression | python_numpy_golden, transaction_scoreboard |
+| spi_master | module_family | T1 | development_regression | protocol_checker, transaction_scoreboard |
 | i2c_master | module_family | T3 | eval_subset | protocol_checker |
 | line_frame_buffer | module_family | T3 | eval_subset | image_golden, transaction_scoreboard |
-| sobel_threshold | module_family | T3 | paper1_core | image_golden |
-| matched_filter | module_family | T3 | paper1_core | python_signal_golden, transaction_scoreboard |
-| peak_detector | module_family | T3 | paper1_core | python_signal_golden |
-| pattern_matcher | module_family | T2 | paper1_core | transaction_scoreboard, protocol_checker |
+| sobel_threshold | module_family | T3 | development_regression | image_golden |
+| matched_filter | module_family | T3 | development_regression | python_signal_golden, transaction_scoreboard |
+| peak_detector | module_family | T3 | development_regression | python_signal_golden |
+| pattern_matcher | module_family | T2 | development_regression | transaction_scoreboard, protocol_checker |
 | conv2d_core | module_family | T3 | eval_subset | python_numpy_golden, image_golden |
 | pooling_activation | module_family | T3 | eval_subset | python_numpy_golden |
 | image_scale_norm | module_family | T3 | eval_subset | image_golden |
 | sprite_object_mapper | module_family | T4 | eval_subset | frame_object_checker |
-| collision_detector | module_family | T3 | paper1_core | reference_model |
+| collision_detector | module_family | T3 | development_regression | reference_model |
 | font_text_renderer | module_family | T3 | eval_subset | frame_object_checker |
 | ga_fitness_eval | module_family | T3 | paper2_bridge | python_ga_golden |
 | ga_select_cross_mutate | module_family | T3 | paper2_bridge | python_ga_golden |
@@ -70,16 +72,16 @@ Generated from the task catalog and evidence ledger. Target intent, current impl
 | p_led_breath_button | project_family | T0 | smoke_board_demo | reference_model |
 | p_seven_seg_stopwatch | project_family | T0 | smoke_board_demo | reference_model |
 | p_traffic_light | project_family | T1 | smoke | reference_model |
-| p_uart_transceiver | project_family | T2 | paper1_core | protocol_checker, transaction_scoreboard |
+| p_uart_transceiver | project_family | T2 | development_regression | protocol_checker, transaction_scoreboard |
 | p_vga_simple_graphics | project_family | T2 | demo | frame_object_checker |
-| p_fifo_ram_app | project_family | T2 | paper1_core | transaction_scoreboard, reference_model |
-| p_fir_filter | project_family | T3 | paper1_core | python_numpy_golden, transaction_scoreboard |
+| p_fifo_ram_app | project_family | T2 | development_regression | transaction_scoreboard, reference_model |
+| p_fir_filter | project_family | T3 | development_regression | python_numpy_golden, transaction_scoreboard |
 | p_sd_spi_controller | project_family | T3 | eval_subset | protocol_checker, python_numpy_golden |
-| p_pulse_radar_signal | project_family | T3 | paper1_core | python_signal_golden, transaction_scoreboard |
+| p_pulse_radar_signal | project_family | T3 | development_regression | python_signal_golden, transaction_scoreboard |
 | p_vision_defect_core | project_family | T3 | eval_subset | image_golden |
 | p_pong_game | project_family | T4 | board_demo | frame_object_checker, host_signature |
 | p_simple_cnn_pipeline | project_family | T4 | eval_subset | python_numpy_golden, image_golden |
-| p_stream_trigger_filter | project_family | T3 | paper1_core | transaction_scoreboard, protocol_checker |
+| p_stream_trigger_filter | project_family | T3 | development_regression | transaction_scoreboard, protocol_checker |
 | p_ga_accelerator | project_family | T4 | paper2_bridge | python_ga_golden |
 | p_ofdm_modem_subset | project_family | T4 | future | comms_python_golden |
 | p_sensor_fusion_obstacle | project_family | T4 | flagship_candidate | mixed_oracle, host_signature |
@@ -91,6 +93,12 @@ Generated from the task catalog and evidence ledger. Target intent, current impl
 | t8_replay_sample_shell | project_family | T3 | advanced_eval | transaction_scoreboard, host_signature |
 | t9_host_protocol_shell | project_family | T4 | flagship_candidate | protocol_checker, host_signature |
 | t12_replay_arbiter_shell | project_family | T4 | flagship_candidate | transaction_scoreboard, host_signature |
+| ai_dw_pw_block | project_family | T3 | development_regression | reference_model, transaction_scoreboard |
+| ai_quantized_residual_block | project_family | T3 | development_regression | reference_model, transaction_scoreboard |
+| ai_tiled_gemm_pipeline | project_family | T3 | development_regression | reference_model, transaction_scoreboard |
+| llm_quantized_qkv_projection | project_family | T3 | paper1_core | reference_model, transaction_scoreboard |
+| llm_kv_cache_decode_attention | project_family | T3 | paper1_core | reference_model, transaction_scoreboard |
+| llm_gated_ffn | project_family | T3 | paper1_core | reference_model, transaction_scoreboard |
 
 ## Alias/Sample Evidence
 
@@ -187,6 +195,12 @@ These are bounded OpenXC7 results. `logical_only` means board pin constraints we
 | t8_replay_sample_shell | implemented | implemented | embedded_sv |
 | t9_host_protocol_shell | implemented | implemented | embedded_sv |
 | t12_replay_arbiter_shell | implemented | implemented | embedded_sv |
+| ai_dw_pw_block | not_implemented | not_implemented | none |
+| ai_quantized_residual_block | not_implemented | not_implemented | none |
+| ai_tiled_gemm_pipeline | not_implemented | not_implemented | none |
+| llm_quantized_qkv_projection | not_implemented | not_implemented | none |
+| llm_kv_cache_decode_attention | not_implemented | not_implemented | none |
+| llm_gated_ffn | not_implemented | not_implemented | none |
 
 ## Ledger-Declared Verification Claims
 
@@ -265,8 +279,17 @@ This matrix is not an audit of local artifacts. Artifact-backed proof requires `
 | t8_replay_sample_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
 | t9_host_protocol_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
 | t12_replay_arbiter_shell | not_run | - | not_run | L3 | not_run | not_run | not_run | reorganization-final-smoke-fresh |
+| ai_dw_pw_block | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
+| ai_quantized_residual_block | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
+| ai_tiled_gemm_pipeline | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
+| llm_quantized_qkv_projection | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
+| llm_kv_cache_decode_attention | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
+| llm_gated_ffn | not_run | - | not_run | not_run | not_run | not_run | not_run | - |
 
 ## Paper 1 Closure Gaps
 
 | Family | Generator | Testbench | Highest verified level |
 | --- | --- | --- | --- |
+| llm_quantized_qkv_projection | not_implemented | not_implemented | not_run |
+| llm_kv_cache_decode_attention | not_implemented | not_implemented | not_run |
+| llm_gated_ffn | not_implemented | not_implemented | not_run |

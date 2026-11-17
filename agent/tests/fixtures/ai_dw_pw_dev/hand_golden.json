@@ -1,0 +1,12 @@
+{
+  "scope": "exposed_fixed_development_examples_not_task_qualification",
+  "input_shape": [1, 4, 5, 3],
+  "constant_raw_input": -3,
+  "centered_intermediate_at_each_pixel": [0, 2, 0],
+  "pointwise_accumulator_at_each_pixel": [-11, 7, 5, -3, 15],
+  "output_at_each_pixel": [-8, 8, -7, 2, 0],
+  "input_pixel_raw": [-128, 127, -1],
+  "input_pixel_hex_beats": ["37f80", "100ff"],
+  "output_pixel_hex_beats": ["308f8", "302f9", "10000"],
+  "reasoning": "Affine input raw -3 and SAME padding encode mathematical zero. DW biases -5,3,1 divided by2 with signed nearest-even give -2,2,0; add2, saturate, then ReLU at2 gives raw2,4,2. Centered PW input is0,2,0. PW adds its once-only bias, divides by4,8,2,4,8 with nearest-even, adds output zero-points and saturates. Packed lane0 is low byte, lane1 high byte; masks occupy bits17:16."
+}
