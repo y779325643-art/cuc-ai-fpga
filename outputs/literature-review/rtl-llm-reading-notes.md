@@ -2,7 +2,7 @@
 
 > **状态：2026-06-06 文献阅读快照。** 本文中的训练与系统设想是背景研究，
 > 不属于当前 Paper-1 方法或执行计划。当前 Paper-1 不训练模型；研究协议以
-> [`paper1-freeze-v1.7`](../../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
+> [`paper1-v2.3`](../../docs/specs/2026-10-28-sr2fpga-paper1-llm-case-amendment-v2.3.zh.md) 及其 v2.2 基础计划
 > 为准。
 
 更新日期：2026-06-06

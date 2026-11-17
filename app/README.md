@@ -4,13 +4,16 @@ Display terminology follows the [2026-09-08 naming table](../docs/specs/2026-09-
 Project Contract (PC), 工程契约; FPGA Project Package (FPP), FPGA 工程包.
 Internal `system_his` fields and the System-HIS v1.2 serialization stay unchanged.
 
-This local demo connects the existing static interface to the current Agent
-runtime. It uses the deterministic reference generator, runs the normal
+This local demo connects the existing static interface to the retained legacy
+Agent runtime. It uses the deterministic reference generator, runs that runtime's
 requirement boundary and H0-H3/L0-L4 pipeline, and reads the resulting files and
 statuses from the recorded sample artifacts.
 
 It is a local demonstration surface, not a Paper-1 method condition, official
-evaluation path, or research-evidence producer.
+evaluation path, or research-evidence producer. Nothing shown here counts
+toward `VPP-L3` or any comparison in the
+[research plan v2.2](../docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md);
+a rendered status in this UI is not tool evidence.
 
 From the repository root:
 

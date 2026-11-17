@@ -9,8 +9,12 @@ namespace.
 - [HORIZON / arXiv:2606.28279v1 reader packet](paper-readers/2606.28279v1/paper.md)
   contains the source-grounded reader, extraction/translation notes, provenance
   map, figures/tables, and a dated SR2FPGA positioning memo. The memo informs
-  the research argument, but the current experiment protocol remains the
-  [Paper-1 English canonical specification](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md).
+  the research argument, but the current experiment protocol is the
+  [Paper-1 research plan v2.2](../docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md).
+  Its section 13.1 fixes the comparison granularity against HORIZON, CPPL, and
+  HINT: those works already cover project packs, JSON circuit IR, and
+  pre-RTL intent checking, so none of those capabilities is claimed here as
+  novelty on its own. A conceptual comparison is not an executable baseline.
 
 ## Hardware References
 

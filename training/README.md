@@ -6,10 +6,10 @@ and serving smoke assets.
 It consumes released datasets and versioned contracts. It does not import the
 Agent implementation.
 
-Under the active
-[`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md),
-this entire project is retained repository infrastructure outside the research
-scope. Paper-1 targets ACM TRETS and does not train models.
+Under the current
+[`paper1-v2.2`](../docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md)
+research plan, this entire project is retained repository infrastructure outside
+the research scope. Paper-1 targets ACM TRETS and does not train models.
 
 ## Installation
 
@@ -77,9 +77,16 @@ python -m sr2fpga_training.training_dry_run `
 
 ## Paper-1 Scope: No Training
 
-RQ3 and M6U/M6F/M6T/M6TR are withdrawn from Paper-1. No Paper-1 gate, campaign,
-or claim may invoke `train_lora`, `merge_lora`, a training release, or a learned
-checkpoint.
+Section 2.3 of [`paper1-v2.2`](../docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md)
+places model training, SFT, distillation, RL, and learned QoR prediction outside
+the Paper-1 minimum scope. No work package, campaign, or claim may invoke
+`train_lora`, `merge_lora`, a training release, or a learned checkpoint. The
+earlier `RQ3` and `M6U/M6F/M6T/M6TR` conditions were withdrawn in v1.3 and are
+not revived.
+
+The paper wording that follows from this is **"frozen base-model weights, no
+task-specific parameter updates"** — not "untrained model". A pre-trained model
+is not an untrained one.
 
 The current `train_lora` accepts an arbitrary
 YAML configuration and `train_file`, does not consume a promoted release or

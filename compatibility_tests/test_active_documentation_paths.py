@@ -56,7 +56,7 @@ def test_active_docs_do_not_present_legacy_paths_as_primary_commands() -> None:
 
 
 def test_active_docs_state_cross_project_and_verdict_rules() -> None:
-    corpus = "\n".join(_read(path) for path in CORE_ACTIVE_DOCS)
+    corpus = re.sub(r"\s+", " ", "\n".join(_read(path) for path in CORE_ACTIVE_DOCS))
 
     assert "Training does not import Agent" in corpus
     assert "`not_run` is not a failure" in corpus
@@ -71,7 +71,9 @@ def test_agents_is_the_only_repository_agent_guidance() -> None:
     agents = _read(Path("AGENTS.md"))
     docs_index = _read(Path("docs/README.md"))
 
-    assert "repository-wide operating guide" in agents
+    assert "This file guides repository development agents" in agents
+    assert "docs/specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md" in agents
+    assert "not frozen" in agents
     assert "[Coding-agent guidance](../AGENTS.md)" in docs_index
     assert not (REPO_ROOT / "CLAUDE.md").exists()
 

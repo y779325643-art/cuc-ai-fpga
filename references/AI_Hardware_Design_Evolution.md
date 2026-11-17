@@ -3,7 +3,7 @@
 
 > **文档角色：背景综述，不是当前协议、实现状态或实验结果。** SR2FPGA
 > 当前事实见 [`docs/current-status.md`](../docs/current-status.md)，Paper-1 研究定义以
-> [`paper1-freeze-v1.7`](../docs/specs/2026-08-14-sr2fpga-paper1-research-program-design.md)
+> [`paper1-v2.3`](../docs/specs/2026-10-28-sr2fpga-paper1-llm-case-amendment-v2.3.zh.md) 及其 v2.2 基础计划
 > 为准。
 
 # 一、引言

@@ -1,13 +1,241 @@
-# SR2FPGA Current Status - 2026-09-11
+# SR2FPGA Current Status - 2026-10-28
+
+## PC 2.1 generation infrastructure and offline analysis
+
+The explicitly authorized implementation now has a current
+[M0–M5 development runtime](../agent/src/sr2fpga_agent/execution/README.md) and
+[cluster analysis package](../agent/src/sr2fpga_agent/analysis/README.md).
+The six-condition initial DAG, M1 transactional file/project correction, M5
+design/body correction, persistent multi-axis budgets, model-public projection,
+terminal batch barrier, one-shot private slots and verified analysis export
+are implemented. All composition/evaluation subprocesses use accounting hooks;
+terminal-only tools have separate explicit quotas.
+
+Validation used synthetic response fixtures, real PC/Yosys/Icarus execution and
+synthetic statistical data: **842 distinct passing tests**, one OS-permission
+symlink probe skipped, plus a real CLI six-method integration with 6 shared
+initial logical executions / 10 standalone-attributed calls and six terminal
+slots. Natural-model dispatches remain **0**. These are development checks,
+not candidate success rates or official evidence. See the
+[implementation record](migrations/pc21-runtime-implementation-20261028.md).
+
+The Docker backend is implemented fail-closed, but no Docker executable is
+available here, so actual container qualification was not run. The local backend
+remains unqualified and its unmeasured worker CPU/peak-memory usage remains
+unavailable; budget/integrity qualification is not invented. Live provider and
+exact-tokenizer integration remains untested by an actual model request.
+Cross-cluster shared dependency groups are rejected by analysis rather than
+treated as independent. Formal protocol freeze, family/task/split qualification
+and scientific budget/analysis parameter adoption remain open; formal preflight
+rejects execution. The earlier migration snapshots below retain their original
+scope, including old statements of then-missing implementation.
+
+## Current LLM case population under paper1-v2.3
+
+The user authorized replacing the designed cases with LLM-inference cases and
+synchronizing design, task code and documentation. The adopted
+[v2.3 case amendment](specs/2026-10-28-sr2fpga-paper1-llm-case-amendment-v2.3.zh.md)
+replaces the population with `llm_quantized_qkv_projection`,
+`llm_kv_cache_decode_attention` and `llm_gated_ffn`; v2.2 retains method,
+budget, statistical and information-boundary rules. The plan remains unfrozen
+and official experiments remain unauthorized.
+
+Three fixed synthetic development implementations now exist, each with public
+facts/assets, a typed PC reference, explicit hand-authored RTL, an independent
+integer oracle and a trusted transaction harness. The common entry is
+`python -m sr2fpga_agent.tasks.llm`, with `prepare` and `check-reference`; see the
+[case guide](../agent/src/sr2fpga_agent/tasks/README.md). This entry performs no
+model calls and does not make the legacy Runner a current PC2.1 campaign.
+
+Catalog data revision is 0.4.0, with `partial` implementation/oracle scope and
+`not_ready` formal qualification. Previous AI cases move to the explicit
+`legacy_quantized_ai_core_v2_2` selection. The 74 existing task-evidence rows,
+alias results and physical records are retained; only three empty/not-run
+inventory rows are appended. Development validation and code changes are
+recorded in the [LLM migration record](migrations/llm-case-migration-20261028.md).
+
+Final affected regression covers **754 distinct tests with passing records**
+plus 5 subtests, with repeated checks deduplicated. All three actual PC-emitted
+reference FPPs passed compilation, independent simulation/transaction checking
+and full generic Yosys synthesis. The first attention synthesis timed out;
+its separately recorded serial reference preserves the same public arithmetic,
+ABI and 256-cycle bound and completed synthesis in 6.28 seconds. Original tool
+failures are retained. These are manual development controls with zero model
+calls, not candidate success rates or formal family qualification.
+
+These controls do not establish actual checkpoint compatibility, a complete
+decoder, model quality or real LLM throughput. Formal clusters, splits,
+mutation qualification, full budget axes and L4 remain open. The prior v2.2
+status below is retained as a dated baseline and does not define the new case
+population or validate it.
 
 > [Terminology, 2026-09-08](specs/2026-09-08-sr2fpga-terminology.md): Project Contract (PC),
-> currently serialized as System-HIS v1.2; FPGA Project Package (FPP).
+> now serialized as `sr2fpga-pc-2.1`; FPGA Project Package (FPP).
 > DSC names the design-space contract; DP names one design point. Internal
 > identifiers and historical evidence names remain unchanged.
 
-## Approved PC Study Redesign — 2026-09-11
+## Research Plan Migration to `paper1-v2.2` — 2026-09-15
 
-The [field-responsibility and assembly design](specs/2026-09-11-pc-field-responsibility-v1.md)
+The user adopted [`paper1-v2.2`](specs/2026-09-15-sr2fpga-paper1-research-plan-v2.2.zh.md),
+its subordinate [code-architecture spec `v2.1`](specs/2026-09-15-sr2fpga-paper1-code-architecture-development-spec-v2.1.zh.md),
+and the [`sr2fpga-pc-2.1`](specs/PC-2.1-AI-stream-contract-design.zh.md) format
+on 2026-09-15, and authorized repository migration. **Official experiments were
+not authorized.** Repository alignment is **partially complete**; the living record is
+[`docs/migrations/research-plan-alignment.md`](migrations/research-plan-alignment.md).
+Read it before continuing migration work, and do not resume from a superseded
+plan or handoff document.
+
+Three dimensions are tracked separately and must not be conflated:
+
+| Dimension | State |
+| --- | --- |
+| Repository research authority and instruction chain | **Partially migrated.** Root entry points route to v2.2 / spec v2.1 / PC 2.1. The old persistent research state is archived and points here; historical writing aids still require item-level reuse review; this is not a claim that every active instruction has migrated |
+| Project Contract format | **PC 2.1 registered and resolving.** Both schemas live at `contracts/pc/2.1/` and are registered in `contracts/manifest.json`; `ContractRegistry` resolves them and rejects PC 2.0 and System-HIS documents. `system_his` stays registered so existing artifacts remain readable |
+| Capability implementation required by v2.2 | **Development path implemented for one fixed DW→PW task.** PC2.1 configuration-level parameter/domain/port/net/type/tensor checks, tensor ABI, deterministic structure emitter, parser-protected behavior composition and construction origins are implemented. The fixed development reference passes compile, independent simulation and generic synthesis. B4's call-axis allocation remains implemented separately. Residual/GEMM tasks, full benchmark qualification, statistical analysis and official execution remain open |
+| Official v2.2 research experiments | **not started, not authorized** |
+| Bounded development execution | **Authorized and completed for one fixed DW→PW task on 2026-10-26:** 3 external candidate subagent invocations out of 6 allowed, one schema correction, full public validation and distinct-input terminal development replay; excluded from formal comparisons |
+
+### Latest migration verification
+
+- **2026-10-26 PC2.1 and DW→PW development:** new typed public-source loading,
+  static semantics, deterministic RTL construction and real-parser composition
+  are implemented. The affected contract/PC/reference regression recorded
+  **603 passed** on the final combined run. A subsequent monitor correction
+  was checked by **14 passing** math/trace tests and actual candidate replay. These
+  suites overlap and are not research samples. The hand-authored reference in
+  `artifacts/paper1-ai/dw-pw-reference-20261026-04/` passed compilation, complete
+  trusted simulation (3 completed invocations, 180 output beats, 2 reset
+  cancellations) and full generic `Yosys synth -top` within the unchanged
+  60-second tool ceiling. Earlier reference synthesis timeouts and sandbox
+  compiler crashes remain preserved. The serial MAC control was changed before
+  candidate outcomes; public arithmetic and the 2048-cycle per-invocation bound
+  were unchanged. See [PC development commands](../agent/src/sr2fpga_agent/pc/README.md)
+  and [the fixed task scope](../agent/src/sr2fpga_agent/tasks/ai_dw_pw/README.md).
+  Catalog/evidence qualification and official research credit are not inferred.
+
+  The candidate run used 3 external subagent invocations: rejected schema,
+  corrected PC, and two behavior bodies. The resulting three-file RTL project
+  passed compile, independent numerical/transaction simulation and full generic
+  synthesis; the identical candidate passed a distinct-input terminal replay.
+  Each suite completed 3 invocations and 180 output beats with reset/stall
+  checks. The original run record is stored locally at `artifacts/paper1-ai/dw-pw-candidate-20261026-02/README.md`.
+  The evaluator's idle-payload correction was versioned before candidate
+  evaluation; the continuation retains the original responses and remaining
+  budget. Shared-tool subagents lack enforced filesystem isolation and provider
+  token/internal-call telemetry, so this remains explicitly non-official and
+  `formal_method_conformant=false`.
+
+- **2026-09-16 boundary shape slice:** `development_public_boundary` is registered
+  with an explicit `boundary_shape_only` scope and offline PC2.1 type references.
+  The first cross-field slice now checks exact logical-port/ABI-map coverage and
+  stream/value mapping form through `public_boundary.check_public_boundary_ports`.
+  `check_public_boundary_domains` additionally checks domain-map coverage and
+  clock/reset pin presence against declarations. Port-domain references,
+  parameter values, physical-name collisions, public-context-v2 and the typed
+  source loader remain unimplemented. The development example is not a ready task.
+  Contract/PC/resource/document regression: **433 passed**; commands and evidence
+  are recorded in migration §12.19.
+
+- Integrated contracts/catalog/evidence/PC input/legacy entry/document checks:
+  **528 passed, 5 subtests passed**.
+- Focused behavior/B4/Training boundary checks: **150 passed**; local demo:
+  **56 passed**. These suites overlap and are not additive sample counts.
+- Public PC2.1 assemble/check and Icarus/vvp tool smoke passed. The former is
+  input validation only; neither is the new AI task-to-FPP closed loop.
+- [Migration record §12](migrations/research-plan-alignment.md#12-full-migration-continuation--2026-09-15-current)
+  holds commands, scope, prior failures and evidence paths. No model campaign,
+  formal hidden evaluation, training or physical implementation was run.
+
+### What the new plan needs that does not exist yet
+
+- **The catalog still contains three unqualified AI identities.** Catalog data
+  version 0.3.0 registers `ai_dw_pw_block`, `ai_quantized_residual_block` and
+  `ai_tiled_gemm_pipeline` as future/not_ready, without aliases or invented
+  mutation thresholds. A fixed `ai_dw_pw_block` development task now has an
+  independent integer reference and executable control outside the legacy
+  catalog runner; residual/GEMM remain unimplemented. The historical catalog
+  ledger has not been promoted or relabeled with this development evidence.
+  The earlier AI-adjacent
+  catalog entries, `conv2d_core` and `p_simple_cnn_pipeline`, are both
+  `implementation_status: future` and were never run.
+- **PC 2.1 now has a typed development checker and structure construction.** The retained
+  `pc/inputs.py` input boundary and `python -m sr2fpga_agent.pc assemble/check`
+  development commands perform strict JSON/schema and actual-byte binding
+  checks plus module-reference, recursion, reachability and signature-source
+  rules plus exact instance parameter-name coverage. The additional
+  `validate/build/compose` commands load registered typed public sources, check
+  parameters/domains/ports/nets/types/tensor declarations, emit structure and
+  compose body-only responses using actual Yosys AST/elaboration checks.
+  Static declaration consistency still does not establish behavioral fidelity,
+  arithmetic, transaction correctness or physical performance. The historical
+  `reports/conformance.json` remains the PC 2.0 70-test report; it is not the
+  evidence for these new checks.
+- **No statistical implementation exists.** No cluster bootstrap, Holm
+  adjustment, or the two confirmatory hypotheses.
+- **Construction origins are now produced and persisted by development composition.**
+  They distinguish trusted structure/signatures, model bodies and hand-authored
+  controls. No M4−M3 comparative experiment has been run from this implementation.
+
+The four previously primary families (`uart_fifo_loopback`, `stream_fork_join`,
+`matched_filter`, `sobel_threshold`) leave the main statistics under v2.2 and
+keep development and regression value. Their existing L3 and mutation evidence
+**does not transfer** to the AI families.
+
+Verification boundary: the earlier migration recorded an `iverilog` exit 127
+and unavailable `nextpnr-xilinx`. Treat those as historical observations, not
+current tool qualification. Current commands, test outcomes and tool execution
+evidence are recorded in migration section 12. The earlier Icarus/vvp minimal
+tool smoke and unavailable nextpnr observation predate the fixed DW→PW work
+above. Input-only checks still do not establish RTL or research success; the
+new development reference has its own separate tool-execution records.
+
+## Historical: Project Contract 2.0 Design Candidate — 2026-09-14
+
+This dated snapshot is superseded by the v2.2 migration above. Its original
+delivery claims are preserved for provenance, not current operation.
+
+A clean-slate replacement for the Project Contract serialization was delivered as
+a design candidate:
+[`PC-2.0-clean-slate-design.zh.md`](specs/superseded/PC-2.0-clean-slate-design.zh.md),
+machine format `sr2fpga-pc-2.0`. It is **explicitly incompatible with System-HIS
+v1.2** and ships no aliases or conversion layer. It treats `paper1-v2.1` as its
+upstream scope authority and states that a PC format version is not a research
+plan version; it adds no training, does not re-enable EA, and does not change the
+main families or the two primary hypotheses.
+
+**Not adopted, not registered, not integrated.** Its two schemas are in
+`contracts/pc/2.0/` (moved from `contracts/pc-2.0/` during adoption), but are
+absent from `contracts/manifest.json`, so `ContractRegistry` cannot resolve them
+and no current PC 2.1 path consumes them. At delivery time System-HIS v1.2 was
+the runtime serialization; it is now restricted to retained legacy paths.
+
+What the candidate's own section 12 claims as delivered: strict JSON parsing,
+JSON Schema (both files meta-validated), reference and instance expansion, and
+static structural semantics. Explicitly **not** implemented: behavioural and
+requirement conformance, the build and edit boundary, EDA and physical stages,
+and runtime security and authorization. Its section 12.1 states the point
+directly — a schema-valid, type-consistent project can still implement the wrong
+algorithm, so the independent oracle is not replaced.
+
+Three gaps between the design document and this checkout, recorded as-is rather
+than resolved:
+
+- the reference static checker it describes as delivered is **not in the
+  repository**; only the two schemas and one report are present;
+- the two illustrative project contracts it describes are **not in the
+  repository**;
+- its `[T0]` evidence cites three reports. `reports/conformance.json` is now
+  present (70 cases, 0 failures, 0 errors), self-scoped to "local static
+  schema/checker conformance; NOT HDL or benchmark results", but
+  `reports/stream_static_report.json` and `reports/comb_static_report.json`
+  are **still missing**.
+
+No RTL was generated and no simulation, synthesis, place-and-route, or official
+experiment was run for this delivery.
+
+## Historical: Approved PC Study Redesign — 2026-09-11
+
+The [field-responsibility and assembly design](specs/superseded/2026-09-11-pc-field-responsibility-v1.md)
 now distinguishes frozen facts, model decisions, deterministic derivatives and
 external evidence. It specifies owner-derived references, failure retention and
 input-stage accounting. The opt-in [PC interface](../contracts/pc/README.md) now has
@@ -15,11 +243,11 @@ registered decision/execution/assembly schemas, a deterministic assembler, a
 single-invocation generator facade and offline replay CLI. Complete G3 passed
 **74/74 cells and 123 tests**, with independent receipt replay; SHA-256
 `f3980738080b7bc7203c82792381d6c8419efb0d1b20d1677b44806a04896e16`.
-See the [interface verification record](../artifacts/pc-interface-implementation-20260911/verification.md).
+See the `../artifacts/pc-interface-implementation-20260911/verification.md` (historical artifact; not present in this checkout).
 Old Runner defaults and
 historical M0–M5 records have not been migrated.
 
-The user approved the [layered study design v1](specs/2026-09-11-pc-layered-study-design-v1.md):
+The user approved the [layered study design v1](specs/superseded/2026-09-11-pc-layered-study-design-v1.md):
 separate PC generation/recovery, a frozen-PC 2×2 generation/repair comparison,
 and an end-to-end study retaining all failures. Deterministic packaging is now
 implemented in the separate development interface under the subsequent user
@@ -35,7 +263,7 @@ OpenXC7. M3/M4 passed H0 but stopped at H1 on state ownership. M5 used one PC
 correction, passed H0–H3, generated an FPP, and passed public evaluation and
 OpenXC7. Its v2 correction record independently replays with two local calls
 (PC repair + FPP generation), retaining the shared initial-PC cost attribution.
-See the [r5 real-run verification record](../artifacts/deepseek-zynq7020-m1-m5-20260911-r5/verification.md).
+See the `../artifacts/deepseek-zynq7020-m1-m5-20260911-r5/verification.md` (historical artifact; not present in this checkout).
 This is one excluded development instance, not a stable method-effectiveness
 estimate, official hidden/VPP outcome, board deployment or campaign authorization.
 
@@ -49,7 +277,7 @@ replay; SHA-256 `7786bb31725907309cc62f331580833175f4790c7a96f081053ee9029d7ee17
 Related contract regression passed 374 tests; final compatibility regression
 passed 121 tests and 70 subtests. Selections overlap. Legacy v1 correction records
 and shared-PC v2 records both replay; forged local-call totals are rejected.
-See the [four-fix verification record](../artifacts/pc-review-fixes-20260911/verification.md).
+See the `../artifacts/pc-review-fixes-20260911/verification.md` (historical artifact; not present in this checkout).
 No real model call was made (cumulative 22/100), and no historical outcome was
 rewritten. These checks do not grant real-provider, official VPP or campaign authority.
 
@@ -60,7 +288,7 @@ Schema-derived root-key constraints and a checker-tested state-ownership example
 Invalid model output is still retained and rejected; no silent reparenting,
 H0/H1 relaxation or extra correction call was introduced. Focused regression:
 60 passed, with a further four-test check including the state-fragment Schema.
-See the [scoped verification record](../artifacts/pc-generation-fix-20260911/verification.md).
+See the `../artifacts/pc-generation-fix-20260911/verification.md` (historical artifact; not present in this checkout).
 No new model requests were made (cumulative 22/100). This is prompt scaffolding,
 not Schema-constrained decoding; real-model effectiveness remains unverified.
 The current review-fix G3 receipt above also includes these prompt regressions;
@@ -84,7 +312,7 @@ M3/M4 failed H0 because `requirement_trace` appeared at the top level; M5 used o
 correction and then failed H1 on state ownership. None reached H3, so no real-model
 H3 effectiveness improvement is established. Source/prompt/oracle were unchanged
 during the run, and all historical outcomes remain intact.
-See the [r4 verification record](../artifacts/deepseek-zynq7020-m1-m5-20260910-r4/verification.md).
+See the `../artifacts/deepseek-zynq7020-m1-m5-20260910-r4/verification.md` (historical artifact; not present in this checkout).
 This remains excluded development integration, not official hidden/VPP evidence.
 
 <a id="h3-declaration-revision-and-current-g3-receipt--2026-09-10"></a>
@@ -99,7 +327,7 @@ not arbitrary-language semantic equivalence or testbench/RTL correctness proof.
 That source snapshot's G3: **46/46 cells, 78 tests passed**, with independent receipt replay;
 SHA-256 `dd6238f432e27f6dc86768c0f34e6ae3abd94721403922505755f8f7dacb1b04`.
 The additional targeted regression passed 178 tests and 4 subtests; selections
-overlap. See the [H3 verification report](../artifacts/h3-contract-fix-20260910/verification.md).
+overlap. See the `../artifacts/h3-contract-fix-20260910/verification.md` (historical artifact; not present in this checkout).
 No H1 rule, correction budget, Schema version or historical model outcome was
 changed, and no API request was added (cumulative 17/100). Developer-only
 in-memory contrasts pass with aligned declarations/pointers and reject nonsense
@@ -112,7 +340,7 @@ Compact public-evaluator workspaces, natural-origin M4 stop v3, and M5 failed
 correction recording were verified. That snapshot's G3: **41/41 cells, 58 tests passed**,
 with independent receipt replay, SHA-256
 `ad7d4dbf147d1b529d1ab9f8e3611de9e6cfe6cbd1efca055076849b79b49cf4`.
-See the [runtime verification report](../artifacts/provider-fix-20260910/runtime-fix-verification.md).
+See the `../artifacts/provider-fix-20260910/runtime-fix-verification.md` (historical artifact; not present in this checkout).
 
 The bounded r3 run used five additional requests, cumulative **17/100**, with no
 local output-token cap. M1/M2 passed development public evaluation and OpenXC7
@@ -131,7 +359,7 @@ Output controls, final-answer/termination records, shared manifest prompting and
 malformed-PC handling have passed the expanded **38/38-cell G3 matrix** and
 49 dedicated tests, with an independent replay of acceptance SHA-256
 `9598802fc321aa8535424e1e5baa07fd709dbbcda451a932052dcd9aea1d21fa`.
-See the [scoped verification record](../artifacts/provider-fix-20260910/verification.md).
+See the `../artifacts/provider-fix-20260910/verification.md` (historical artifact; not present in this checkout).
 
 The subsequent excluded DeepSeek recheck omitted the local output-token limit
 and requested thinking disabled. M1/M2 reached OpenXC7 L4, but the original
@@ -152,7 +380,7 @@ replayed `g3-acceptance-v1` development artifact: **32/32 required cells passed*
 supported by **40 passing dedicated tests**. Its acceptance SHA-256 is
 `30fc915ad1385b4c44417a925a5a0586a246e199e38d9b97fc0df827d2d2411a`.
 
-The [local verification record](../artifacts/g3-closure-2026-09-09/verification.md)
+The `../artifacts/g3-closure-2026-09-09/verification.md` (historical artifact; not present in this checkout)
 indexes the complete ignored artifact bundle, archived source snapshot and replay
 command. The lightweight regression totals **2,162 passing tests and 453 passing
 subtests**: 2,027 tests plus 448 subtests in Agent/contracts, and 135 tests plus
@@ -210,59 +438,58 @@ local verification rather than remote CI/review evidence.
 The projects communicate through versioned files under `contracts/` and
 `datasets/`, not Python imports across project boundaries.
 
-## Current Research Authority
+## Historical Research Authority Snapshot — 2026-09-14
 
-Governance update (2026-09-07): the user has adopted the pre-outcome
-`paper1-v1.8` EA amendment. It remains open for research-program revision and retains v1.7's M0--M5, no-training,
-evaluator-separation, and execution boundaries while adding RQ5's separately
-gated contract-preserving EA versus equal-budget random-search comparison.
-RL, learned QoR prediction, model runs, G5, and official campaigns remain
-unauthorized. The implementation/evidence snapshot below remains dated
-2026-08-30.
+The following records the v2.1 transition. It is superseded by v2.2 and its
+2026-09-15 implementation authorization; it supplies no current constraints,
+priorities or execution authority. Later dated implementation/evidence sections
+retain their original scope and do not certify PC 2.1 or the three AI families.
 
-The canonical Paper-1 research question, matched M0-M5 baseline ladder, RQ5 EA
-extension, held-out
-benchmark design, information privileges, metrics, and ordered experiment gates
-are recorded in the now-unfrozen revision baseline
-[`2026-08-14-sr2fpga-paper1-research-program-design.md`](specs/2026-08-14-sr2fpga-paper1-research-program-design.md).
-Its pre-outcome v1.8 amendment, effective 2026-09-07, targets ACM Transactions on
-Reconfigurable Technology and Systems（TRETS）, keeps model training outside
-Paper-1, retains RQ0 as a disjoint bounded audit, and treats representative
-OpenXC7 L4 as secondary depth evidence. RQ1 now has a two-member primary Holm
-family (`M4-M3`, `M4-M0`); `M3-M2` is a mandatory prespecified secondary
-estimation contrast. The complete RQ1 claim uses gate-conditional joint power,
-while each retained RQ2 contrast uses Holm-adjusted marginal power within its
-separate Holm family. The v1.6 decoding-control rules remain in force: they
-separate `replicate_id`, provider requested-seed provenance, and local execution-
-schedule randomization, and require G4b to freeze either
-`documented_seed_control` or `stochastic_blocked`. Target-profile adaptation
-remains an optional separately frozen extension, not a minimum G4b or submission
-gate. RQ5 adds `E0` equal-budget random search and `E1` contract-preserving EA;
-it has independent EA-G3/EA-G4a/EA-G5/EA-G4b gates and may use only public tool
-fitness before one-shot hidden final evaluation. RQ3 and M6U/M6F/M6T/M6TR remain
-withdrawn from the Paper-1 method and result matrix. This amendment changes no
-implementation status or empirical result. The updated development G3 verdict
-is recorded above; no later-gate execution is authorized.
-Existing training code and contracts remain repository infrastructure only;
-they neither block nor support Paper-1 claims.
+Governance update (2026-09-14): the user adopted
+[`paper1-v2.1`](specs/superseded/2026-09-14-sr2fpga-paper1-research-plan-v2.1.zh.md)
+as the current Paper-1 research plan. Adoption fixes the research direction
+only; implementation authorization and official-experiment authorization are
+recorded separately and were **not** granted. The plan is not frozen. No model
+run, pilot, hidden evaluation, physical confirmation, or official campaign is
+authorized. The implementation/evidence snapshot below is unchanged by this
+governance update and remains dated 2026-08-30.
 
-Design-direction update (2026-09-08): the user approved a candidate v1.9
-reframing in which contract-guided evolutionary DSE becomes the Paper-1 core.
-Its paper-facing artifact chain is `Design-Space Contract -> Design Point ->
-Project Contract -> FPGA Project Package`; `System-HIS v1.2` remains the current
-internal serialization name for implementation traceability.
-The candidate replaces the unsupported idea that representation alone guarantees
-functionality with a narrower contract-validity claim, adds random/covering,
-conventional-EA, black-box, direct-phenotype and feasible exhaustive references,
-and keeps final functional authority in one-shot hidden evaluation. The design is
-recorded in
+The current plan is written in Chinese and is the authoritative text; the v1.8
+convention that English governs ended with that version, and an English
+counterpart does not yet exist. What `paper1-v2.1` changes relative to the
+superseded `paper1-v1.8`:
+
+| Item | `paper1-v1.8` | `paper1-v2.1` |
+| --- | --- | --- |
+| Primary confirmatory comparisons | RQ1 family `M4-M3`, `M4-M0`; RQ2 family `M5-M4`, `R_HIS-R_generic` | `M5-M1@B4` and `M4-M3@initial` in **one** Holm family |
+| Budget fairness | M1/M5 matched on repair count | **B4**: matched total logical model calls plus matched token/tool/time axes |
+| RQ0 requirement audit, RQ5 EA | RQ0 mandatory, RQ5 a core addition | Both optional extensions, **disabled by default** |
+| Authority model | Single chain ending at the specification | Two chains: research-plan authority vs implementation-fact authority, with `implementation_protocol_drift` recorded on conflict |
+| Sequencing | Ordered gates G0-G9 plus EA-G3..EA-G4b | Seven acceptable work packages WP0-WP6 |
+| Application constraints | Named families treated as synthetic shells; application-realism claims forbidden | Constraints enter public requirements with source, obligation role, and verification responsibility; six evidence dimensions withdraw independently |
+
+The plan also adds a vision streaming-and-flagging subsystem case and a
+fixed-point Q-table case as **descriptive** studies outside the main statistics,
+each with its own denominator and contamination controls.
+
+Held over as explicitly open at adoption: the English counterpart; the
+subordinate code-architecture specification `v1.12`, still written against the
+v1.7/v1.8 method family and gate sequence; and the WP0 catalog inventory
+recorded in the plan's own section 16.4.
+
+Superseded, retained for traceability: the `paper1-v1.8` English specification
+and its Chinese companion, the `paper1-v2.0-draft` editing base, and the
+2026-09-08 candidate v1.9 reframing in
 [`contract-guided-evolutionary-dse-v1.9-candidate.md`](research-program/paper1-v1/writing/contract-guided-evolutionary-dse-v1.9-candidate.md).
-It is not yet the canonical specification: its primary endpoint, aggregation,
-multiplicity, power, batch-QoR repeatability and affected-scope review remain
-open. It authorizes no implementation, model call, pilot or official outcome.
+The v1.9 candidate made contract-guided evolutionary DSE the Paper-1 core; under
+`paper1-v2.1` that direction lives in the optional, disabled-by-default EA
+extension. Its `Design-Space Contract -> Design Point -> Project Contract ->
+FPGA Project Package` chain and the `System-HIS v1.2` internal serialization
+name are retained. Existing training code and contracts remain repository
+infrastructure only; they neither block nor support Paper-1 claims.
 
-Implementation work is governed by the subordinate
-[`Paper-1 code architecture and development specification v1.12`](specs/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
+Implementation work at the time referred to the subordinate
+[`Paper-1 code architecture and development specification v1.12`](specs/superseded/2026-08-18-sr2fpga-paper1-code-architecture-development-spec.md).
 It maps the frozen protocol to modules, interfaces, state machines, artifacts,
 work packages, and acceptance tests; it neither changes the research estimand
 nor turns target architecture into current capability or results.
@@ -770,20 +997,24 @@ is its human-readable view. Direct parsing of the current ledger gives:
 
 | Evidence measure | Current verified count |
 | --- | ---: |
-| Evidence ledger coverage | 71/71 |
+| Evidence ledger coverage | 74/74 |
 | Implemented families | 31 |
 | L3-or-higher families | 31 |
-| Paper 1 core implemented | 14/14 (denominator: v0.2 catalog `recommended_sets.paper1_core`) |
-| Paper 1 core executable / L3 | 14/14 |
-| Paper 1 core mutation-qualified | 14/14 |
+| Paper 1 core implemented | 0/3 (denominator: current catalog `recommended_sets.paper1_core`) |
+| Historical core implemented | 14/14 (denominator: `recommended_sets.legacy_paper1_core`) |
+| Paper 1 core executable / L3 | 0/3 |
+| Historical core executable / L3 | 14/14 |
+| Paper 1 core mutation-qualified | 0/3 |
+| Historical core mutation-qualified | 14/14 |
 | Mutation-qualified families | 21 |
 | Independent Python oracle qualified | 9 |
 | OpenXC7 L4 pass | 2 |
 | Vivado commercial-reference L4 pass | 0 |
 | L5 pass | 0 |
 
-These counts were recomputed from the current ledger. G2 is locally closed on
-this checkout: catalog v0.2.2 corrects `clock_divider`, records T7 as T3, and
+Current core counts concern only the three unqualified AI identities. The other
+counts include historical families and do not transfer to v2.2. The following
+G2 closure describes the old baseline: catalog v0.2.2 corrected `clock_divider`, records T7 as T3, and
 aligns L3 with the runtime `Yosys synth -top` plus `stat` stage. The ledger now
 uses stable run artifacts instead of this status page as evidence, records
 multi-alias evidence per sample (T3 and T11 have L3 smoke evidence but no
